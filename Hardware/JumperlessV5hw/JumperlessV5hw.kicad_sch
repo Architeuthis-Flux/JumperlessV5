@@ -47163,28 +47163,6 @@
 			)
 		)
 	)
-	(global_label "GPIO_7"
-		(shape bidirectional)
-		(at 322.58 261.62 180)
-		(fields_autoplaced yes)
-		(effects
-			(font
-				(size 1.27 1.27)
-			)
-			(justify right)
-		)
-		(uuid "3431a5b3-d321-4528-81ce-1f0301ff2176")
-		(property "Intersheetrefs" "${INTERSHEET_REFS}"
-			(at 311.8311 261.62 0)
-			(effects
-				(font
-					(size 1.27 1.27)
-				)
-				(justify right)
-				(hide yes)
-			)
-		)
-	)
 	(global_label "GPIO_22"
 		(shape bidirectional)
 		(at 469.9 145.415 0)
@@ -51857,28 +51835,6 @@
 			)
 		)
 	)
-	(global_label "GPIO_2"
-		(shape bidirectional)
-		(at 322.58 244.475 180)
-		(fields_autoplaced yes)
-		(effects
-			(font
-				(size 1.27 1.27)
-			)
-			(justify right)
-		)
-		(uuid "95f00cd3-fed9-4675-947d-d800c72d010e")
-		(property "Intersheetrefs" "${INTERSHEET_REFS}"
-			(at 311.8311 244.475 0)
-			(effects
-				(font
-					(size 1.27 1.27)
-				)
-				(justify right)
-				(hide yes)
-			)
-		)
-	)
 	(global_label "DL"
 		(shape bidirectional)
 		(at 354.33 490.855 0)
@@ -53066,28 +53022,6 @@
 				(font
 					(size 1.27 1.27)
 				)
-				(hide yes)
-			)
-		)
-	)
-	(global_label "GPIO_6"
-		(shape bidirectional)
-		(at 322.58 256.54 180)
-		(fields_autoplaced yes)
-		(effects
-			(font
-				(size 1.27 1.27)
-			)
-			(justify right)
-		)
-		(uuid "afbccf6e-c231-4ec3-b8fb-6337a4c7a186")
-		(property "Intersheetrefs" "${INTERSHEET_REFS}"
-			(at 311.8311 256.54 0)
-			(effects
-				(font
-					(size 1.27 1.27)
-				)
-				(justify right)
 				(hide yes)
 			)
 		)
@@ -55026,28 +54960,6 @@
 				(font
 					(size 1.27 1.27)
 				)
-				(hide yes)
-			)
-		)
-	)
-	(global_label "GPIO_3"
-		(shape bidirectional)
-		(at 322.58 250.19 180)
-		(fields_autoplaced yes)
-		(effects
-			(font
-				(size 1.27 1.27)
-			)
-			(justify right)
-		)
-		(uuid "dccec57c-dea7-4848-9c3d-2a77eb337ee1")
-		(property "Intersheetrefs" "${INTERSHEET_REFS}"
-			(at 311.8311 250.19 0)
-			(effects
-				(font
-					(size 1.27 1.27)
-				)
-				(justify right)
 				(hide yes)
 			)
 		)
@@ -57977,7 +57889,7 @@
 				(justify left)
 			)
 		)
-		(property "Value" "10uF"
+		(property "Value" "0.1uF"
 			(at 776.351 274.828 0)
 			(effects
 				(font
@@ -64158,7 +64070,7 @@
 				(justify left)
 			)
 		)
-		(property "Value" "10uF"
+		(property "Value" "0.1uF"
 			(at 781.431 321.818 0)
 			(effects
 				(font
@@ -64366,7 +64278,7 @@
 	)
 	(symbol
 		(lib_id "Device:R_Pack04_Split")
-		(at 827.405 346.075 0)
+		(at 871.855 346.71 0)
 		(unit 3)
 		(exclude_from_sim no)
 		(in_bom yes)
@@ -64374,7 +64286,7 @@
 		(dnp no)
 		(uuid "434acf43-7dbc-4d3d-ac01-c5e8661ed0c2")
 		(property "Reference" "RN9"
-			(at 827.405 348.615 90)
+			(at 871.855 349.25 90)
 			(effects
 				(font
 					(size 1.27 1.27)
@@ -64384,7 +64296,7 @@
 			)
 		)
 		(property "Value" "47K"
-			(at 827.405 347.98 90)
+			(at 871.855 348.615 90)
 			(effects
 				(font
 					(size 1.27 1.27)
@@ -64393,7 +64305,7 @@
 			)
 		)
 		(property "Footprint" "Resistor_SMD:R_Array_Convex_4x0402"
-			(at 825.373 346.075 90)
+			(at 869.823 346.71 90)
 			(effects
 				(font
 					(size 1.27 1.27)
@@ -64402,7 +64314,7 @@
 			)
 		)
 		(property "Datasheet" "~"
-			(at 827.405 346.075 0)
+			(at 871.855 346.71 0)
 			(effects
 				(font
 					(size 1.27 1.27)
@@ -64411,7 +64323,7 @@
 			)
 		)
 		(property "Description" "4 resistor network, parallel topology, split"
-			(at 827.405 346.075 0)
+			(at 871.855 346.71 0)
 			(effects
 				(font
 					(size 1.27 1.27)
@@ -64420,7 +64332,7 @@
 			)
 		)
 		(property "LCSC" " C2769517"
-			(at 827.405 346.075 90)
+			(at 871.855 346.71 90)
 			(effects
 				(font
 					(size 1.27 1.27)
@@ -64429,7 +64341,7 @@
 			)
 		)
 		(property "LCSC Part #" " C2769517"
-			(at 827.405 346.075 0)
+			(at 871.855 346.71 0)
 			(effects
 				(font
 					(size 1.27 1.27)
@@ -77164,7 +77076,7 @@
 	)
 	(symbol
 		(lib_id "Device:R_Pack04_Split")
-		(at 831.85 319.405 90)
+		(at 876.3 320.04 90)
 		(unit 3)
 		(exclude_from_sim no)
 		(in_bom yes)
@@ -77172,7 +77084,7 @@
 		(dnp no)
 		(uuid "a9285a85-d3a8-4b6d-a780-c266e8f1801f")
 		(property "Reference" "RN11"
-			(at 834.39 319.405 90)
+			(at 878.84 320.04 90)
 			(effects
 				(font
 					(size 1.27 1.27)
@@ -77182,7 +77094,7 @@
 			)
 		)
 		(property "Value" "56K"
-			(at 833.755 319.405 90)
+			(at 878.205 320.04 90)
 			(effects
 				(font
 					(size 1.27 1.27)
@@ -77191,7 +77103,7 @@
 			)
 		)
 		(property "Footprint" "Resistor_SMD:R_Array_Convex_4x0402"
-			(at 831.85 321.437 90)
+			(at 876.3 322.072 90)
 			(effects
 				(font
 					(size 1.27 1.27)
@@ -77200,7 +77112,7 @@
 			)
 		)
 		(property "Datasheet" "+-1%"
-			(at 831.85 319.405 0)
+			(at 876.3 320.04 0)
 			(effects
 				(font
 					(size 1.27 1.27)
@@ -77209,7 +77121,7 @@
 			)
 		)
 		(property "Description" "4 resistor network, parallel topology, split "
-			(at 831.85 319.405 0)
+			(at 876.3 320.04 0)
 			(effects
 				(font
 					(size 1.27 1.27)
@@ -77218,7 +77130,7 @@
 			)
 		)
 		(property "LCSC" " C425288"
-			(at 831.85 319.405 90)
+			(at 876.3 320.04 90)
 			(effects
 				(font
 					(size 1.27 1.27)
@@ -77227,7 +77139,7 @@
 			)
 		)
 		(property "LCSC Part #" " C425288"
-			(at 831.85 319.405 0)
+			(at 876.3 320.04 0)
 			(effects
 				(font
 					(size 1.27 1.27)
@@ -79466,7 +79378,7 @@
 	)
 	(symbol
 		(lib_id "Device:R_Pack04_Split")
-		(at 815.34 324.485 0)
+		(at 859.79 325.12 0)
 		(unit 4)
 		(exclude_from_sim no)
 		(in_bom yes)
@@ -79474,7 +79386,7 @@
 		(dnp no)
 		(uuid "ba49c4aa-64de-4a08-ac33-7175ca5a6d64")
 		(property "Reference" "RN11"
-			(at 815.34 327.025 90)
+			(at 859.79 327.66 90)
 			(effects
 				(font
 					(size 1.27 1.27)
@@ -79484,7 +79396,7 @@
 			)
 		)
 		(property "Value" "56K"
-			(at 815.34 326.39 90)
+			(at 859.79 327.025 90)
 			(effects
 				(font
 					(size 1.27 1.27)
@@ -79493,7 +79405,7 @@
 			)
 		)
 		(property "Footprint" "Resistor_SMD:R_Array_Convex_4x0402"
-			(at 813.308 324.485 90)
+			(at 857.758 325.12 90)
 			(effects
 				(font
 					(size 1.27 1.27)
@@ -79502,7 +79414,7 @@
 			)
 		)
 		(property "Datasheet" "+-1%"
-			(at 815.34 324.485 0)
+			(at 859.79 325.12 0)
 			(effects
 				(font
 					(size 1.27 1.27)
@@ -79511,7 +79423,7 @@
 			)
 		)
 		(property "Description" "4 resistor network, parallel topology, split "
-			(at 815.34 324.485 0)
+			(at 859.79 325.12 0)
 			(effects
 				(font
 					(size 1.27 1.27)
@@ -79520,7 +79432,7 @@
 			)
 		)
 		(property "LCSC" " C425288"
-			(at 815.34 324.485 90)
+			(at 859.79 325.12 90)
 			(effects
 				(font
 					(size 1.27 1.27)
@@ -79529,7 +79441,7 @@
 			)
 		)
 		(property "LCSC Part #" " C425288"
-			(at 815.34 324.485 0)
+			(at 859.79 325.12 0)
 			(effects
 				(font
 					(size 1.27 1.27)

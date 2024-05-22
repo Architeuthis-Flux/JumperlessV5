@@ -131,11 +131,11 @@ void initDAC(void)
   digitalWrite(8, HIGH);
 
   // Vref = MCP_VREF_VDD, value = 0, 0V
-  mcp.setChannelValue(MCP4728_CHANNEL_A, 2048);
-  mcp.setChannelValue(MCP4728_CHANNEL_B, 2048);
-  mcp.setChannelValue(MCP4728_CHANNEL_C, 2048);
-  mcp.setChannelValue(MCP4728_CHANNEL_D, 2700); // 1650 is roughly 0V
-
+  mcp.setChannelValue(MCP4728_CHANNEL_A, 0);
+  mcp.setChannelValue(MCP4728_CHANNEL_B, 1650);
+  mcp.setChannelValue(MCP4728_CHANNEL_C, 1650);
+  mcp.setChannelValue(MCP4728_CHANNEL_D, 1650); // 1650 is roughly 0V
+  digitalWrite(8, LOW);
   // // value is vref/2, with 2.048V internal Vref and 1X gain
   // // = 2.048/2 = 1.024V
   // mcp.setChannelValue(MCP4728_CHANNEL_B, 2048, MCP4728_VREF_VDD,
@@ -152,6 +152,63 @@ void initDAC(void)
   // mcp.setChannelValue(MCP4728_CHANNEL_D, 2048);
 
   mcp.saveToEEPROM();
+}
+
+
+void setTopRail(float value)
+{
+
+  int dacValue = (value * 4095 / 16)+1650;
+
+  // if (value < 0)
+  // {
+  //   dacValue -= 2048;
+  // } else {
+  //   dacValue += 2048;
+  // }
+
+  if (dacValue > 4095)
+  {
+    dacValue = 4095;
+  }
+
+  //     if (value < -6)
+  // {
+  //   dacValue = 0;
+  // }
+
+  mcp.setChannelValue(MCP4728_CHANNEL_C, dacValue);
+}
+
+void setBotRail(float value)
+{
+
+  
+  int dacValue = (value * 4095 / 16)+1650;
+
+  // if (value < 0)
+  // {
+  //   dacValue -= 2048;
+  // } else {
+  //   dacValue += 2048;
+  // }
+  if (dacValue > 4095)
+  {
+    dacValue = 4095;
+  }
+  //   if (value < -6)
+  // {
+  //   dacValue = 0;
+  // }
+  mcp.setChannelValue(MCP4728_CHANNEL_A, 0);
+mcp.setChannelValue(MCP4728_CHANNEL_B, dacValue);
+
+mcp.setChannelValue(MCP4728_CHANNEL_C, dacValue);
+  mcp.setChannelValue(MCP4728_CHANNEL_D, 1650);
+
+  
+  Serial.println(dacValue);
+
 }
 
 void setTopRail(int value)

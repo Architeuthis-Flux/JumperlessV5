@@ -191,27 +191,27 @@ void initLEDs(void)
 
 char LEDbrightnessMenu(void)
 {
-    matrix.begin();
-    matrix.setTextWrap(false);
-    matrix.setBrightness(16);
-    matrix.setTextColor(colors[2]);
+    // matrix.begin();
+    // matrix.setTextWrap(false);
+    // matrix.setBrightness(16);
+    // matrix.setTextColor(colors[2]);
 
-    while (Serial.available() == 0)
-    {
-        matrix.writePixel(4, 4, colors[0]);
-        matrix.fillScreen(colors[1]);
-        matrix.setCursor(x, 0);
-        matrix.print("Howdy");
-        if (--x < -36)
-        {
-            x = matrix.width();
-            if (++pass >= 3)
-                pass = 0;
-            matrix.setTextColor(colors[pass]);
-        }
-        matrix.show();
-        delay(300);
-    }
+    // while (Serial.available() == 0)
+    // {
+    //     matrix.writePixel(4, 4, colors[0]);
+    //     matrix.fillScreen(colors[1]);
+    //     matrix.setCursor(x, 0);
+    //     matrix.print("Howdy");
+    //     if (--x < -36)
+    //     {
+    //         x = matrix.width();
+    //         if (++pass >= 3)
+    //             pass = 0;
+    //         matrix.setTextColor(colors[pass]);
+    //     }
+    //     matrix.show();
+    //     delay(300);
+    // }
 
     char input = ' ';
     Serial.print("\n\r\t\tLED Brightness Menu \t\n\n\r");
@@ -1570,7 +1570,7 @@ void randomColors(uint32_t color, int wait)
     for (int i = 0; i < leds.numPixels(); i++)
     {
 
-        count = random(0, 50);
+        count = random(0, 10);
         // if (i > 80)
         // {
         //     count = random(0, 22);
@@ -1741,7 +1741,7 @@ void rainbowBounce(int wait)
     for (long j = 0; j < 140; j += 1)
     {
 
-        for (int i = 0; i < LED_COUNT; i++)
+        for (int i = 0; i < LED_COUNT - 115; i++)
         {
             float huef;
             float i2 = i;
@@ -1752,11 +1752,25 @@ void rainbowBounce(int wait)
             // hsv.h = (j*(int((sin(j+i)*4))))%254;
             hsv.h = ((int)(huef * 255)) % 254;
             hsv.s = 254;
-            hsv.v = 10;
+            hsv.v = 6;
             rgbColor rgb = HsvToRgb(hsv);
             uint32_t rgbPacked = packRgb(rgb.r, rgb.g, rgb.b);
             // rgbPacked = rgbPacked * i
-            leds.setPixelColor(i, rgbPacked);
+            if (i < 300)
+            {
+                if (jumperlessText[textMap[i]] == 0)
+                {
+                    leds.setPixelColor(i, rgbPacked);
+                }
+                else
+                {
+                    leds.setPixelColor(i, 0);
+                }
+            }
+            else
+            {
+                leds.setPixelColor(i + 100, rgbPacked);
+            }
         }
 
         showLEDsCore2 = 3;
@@ -1765,7 +1779,7 @@ void rainbowBounce(int wait)
     for (long j = 140; j >= 0; j -= 1)
     {
 
-        for (int i = 0; i < LED_COUNT; i++)
+        for (int i = 0; i < LED_COUNT - 115; i++)
         {
             float huef;
             float i2 = i;
@@ -1776,11 +1790,26 @@ void rainbowBounce(int wait)
             // hsv.h = (j*(int((sin(j+i)*4))))%254;
             hsv.h = ((int)(huef * 255)) % 254;
             hsv.s = 254;
-            hsv.v = 10;
+            hsv.v = 6;
             rgbColor rgb = HsvToRgb(hsv);
             uint32_t rgbPacked = packRgb(rgb.r, rgb.g, rgb.b);
             // rgbPacked = rgbPacked * i
-            leds.setPixelColor(i, rgbPacked);
+            if (i < 300)
+            {
+                if (jumperlessText[textMap[i]] == 0)
+                {
+                    leds.setPixelColor(i, rgbPacked);
+                }
+                else
+                {
+                    leds.setPixelColor(i, 0);
+                }
+            }
+            else
+            {
+                leds.setPixelColor(i + 100, rgbPacked);
+            }
+            // leds.setPixelColor(i, rgbPacked);
         }
 
         showLEDsCore2 = 3;

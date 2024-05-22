@@ -207,22 +207,37 @@ void loop()
 
   unsigned long timer = 0;
 
-  // while (1)
-  // {
-  //   randomColors(0, 30);
-  //   // for (int i = 0; i < 12; i++)
-  //   // {
-  //   //   setCSex(i, 1);
-  //   //   delay(10);
-  //   //   setCSex(i, 0);
 
-  //   //   // writeGPIOex(1, 0);
-  //   //   // delayMicroseconds(10000);
-  //   //   // writeGPIOex(0, 0);
-  //   // }
-  //   // rainbowBounce(6);
-  // }
+sendXYraw(10, 4, 0, 1);
+sendXYraw(0, 9, 1, 1);
 
+  while (1)
+  {
+   // randomColors(0, 30);
+    // delay(5000);
+    //    for (int i = 0; i < 12; i++)
+    //    {
+    //      setCSex(i, 1);
+    //      delay(10);
+    //      setCSex(i, 0);
+
+    //   // writeGPIOex(1, 0);
+    //   // delayMicroseconds(10000);
+    //   // writeGPIOex(0, 0);
+    // }
+    rainbowBounce(1);
+   //delay(1000);
+ }
+// sendXYraw(10, 6, 0, 1);
+// sendXYraw(10, 0, 0, 1);
+
+// sendXYraw(8, 0, 0, 1);
+// sendXYraw(8, 1, 0, 1);
+
+// sendXYraw(10, 6, 0, 1);
+// sendXYraw(0, 9, 1, 1);
+
+delay(1000);
 menu:
   // showMeasurements();
   //   unsigned long connecttimer = 0;
@@ -951,7 +966,7 @@ void loop1() // core 2 handles the LEDs and the CH446Q8
   // {
   //   logicAnalyzer.processCommand();
   // }
-  if (millis() - lastSwirlTime > 10)
+  if (millis() - lastSwirlTime > 180)
   {
 
     logoSwirl(swirlCount, spread);
@@ -1059,6 +1074,9 @@ void loop1() // core 2 handles the LEDs and the CH446Q8
 int pressedRows[64];
 int pressedRowsIndex = 0;
 
+float topRailVoltage = 0.0;
+float botRailVoltage = 0.0;
+
 void rotaryEncoderStuff(void)
 {
   pio_sm_exec(pioEnc, smEnc, pio_encode_in(pio_x, 32)); // PIO rotary encoder handler
@@ -1084,6 +1102,13 @@ void rotaryEncoderStuff(void)
       {
         position = 0;
       }
+      
+
+      //if (botRailVoltage < 9.0)
+     // {
+        botRailVoltage += 0.3;
+        topRailVoltage += 0.3;
+     // }
       lastPositionEncoder = encoderRaw;
     }
     else if (lastPositionEncoder < encoderRaw)
@@ -1101,8 +1126,17 @@ void rotaryEncoderStuff(void)
       {
         position = 500;
       }
+
+      // if (topRailVoltage > -9.0)
+      // {
+        topRailVoltage -= 0.3;
+        botRailVoltage -= 0.3;
+      //}
+
+
       lastPositionEncoder = encoderRaw;
     }
+    
   }
   if (lastPosition != position)
   {
@@ -1113,18 +1147,23 @@ void rotaryEncoderStuff(void)
     //{
     // leds.setPixelColor(lastPosition, 0x000000);
 
-    setTopRail(((position * 8)) % 4095);
-    setBotRail(((position * 8) + 1600) % 4095);
-    Serial.print("Rails: ");
-    Serial.println(((position * 8)) % 4095);
+    // setTopRail(((position * 8)) % 4095);
+    // setBotRail(((position * 8) + 1600) % 4095);
+    // Serial.print("Rails: ");
+    // Serial.println(((position * 8)) % 4095);
+
+    //setTopRail(topRailVoltage);
+    setBotRail(botRailVoltage);
+    Serial.print("Top Rail: ");
+    Serial.println(topRailVoltage);
 
     if (lastPosition <= 400)
     {
-
-      // leds.setPixelColor(lastPosition + 1, 0x000000);
-      // leds.setPixelColor(lastPosition + 2, 0x000000);
-      // leds.setPixelColor(lastPosition + 3, 0x000000);
-      // leds.setPixelColor(lastPosition + 4, 0x000000);
+      leds.setPixelColor(lastPosition + 0, 0x000000);
+      leds.setPixelColor(lastPosition + 1, 0x000000);
+      leds.setPixelColor(lastPosition + 2, 0x000000);
+      leds.setPixelColor(lastPosition + 3, 0x000000);
+      leds.setPixelColor(lastPosition + 4, 0x000000);
     }
     // }
     // lightUpNode(newPositionEncoder, 0x000000);
@@ -1137,11 +1176,11 @@ void rotaryEncoderStuff(void)
     if (position < 400)
     {
       int lightUpWholeRow = position;
-      // leds.setPixelColor(lightUpWholeRow, 0x120012);
-      //  leds.setPixelColor(lightUpWholeRow + 1, 0x120012);
-      //  leds.setPixelColor(lightUpWholeRow + 2, 0x120012);
-      //  leds.setPixelColor(lightUpWholeRow + 3, 0x120012);
-      //  leds.setPixelColor(lightUpWholeRow + 4, 0x120012);
+      leds.setPixelColor(lightUpWholeRow,0x060006);
+       leds.setPixelColor(lightUpWholeRow + 1, 0x060006);
+       leds.setPixelColor(lightUpWholeRow + 2, 0x060006);
+       leds.setPixelColor(lightUpWholeRow + 3, 0x060006);
+       leds.setPixelColor(lightUpWholeRow + 4, 0x060006);
     }
     else
     {
