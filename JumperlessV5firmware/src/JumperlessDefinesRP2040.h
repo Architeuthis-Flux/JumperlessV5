@@ -7,47 +7,53 @@ extern volatile int sendAllPathsCore2;
 
 #define INPUTBUFFERLENGTH 8000
 
-#define LED_BLACK 0
+// #define LED_BLACK 0
 
-#define LED_RED_VERYLOW (3 << 11)
-#define LED_RED_LOW (7 << 11)
-#define LED_RED_MEDIUM (15 << 11)
-#define LED_RED_HIGH (31 << 11)
+// #define LED_RED_VERYLOW (3 << 11)
+// #define LED_RED_LOW (7 << 11)
+// #define LED_RED_MEDIUM (15 << 11)
+// #define LED_RED_HIGH (31 << 11)
 
-#define LED_GREEN_VERYLOW (1 << 5)
-#define LED_GREEN_LOW (15 << 5)
-#define LED_GREEN_MEDIUM (31 << 5)
-#define LED_GREEN_HIGH (63 << 5)
+// #define LED_GREEN_VERYLOW (1 << 5)
+// #define LED_GREEN_LOW (15 << 5)
+// #define LED_GREEN_MEDIUM (31 << 5)
+// #define LED_GREEN_HIGH (63 << 5)
 
-#define LED_BLUE_VERYLOW 3
-#define LED_BLUE_LOW 7
-#define LED_BLUE_MEDIUM 15
-#define LED_BLUE_HIGH 31
+// #define LED_BLUE_VERYLOW 3
+// #define LED_BLUE_LOW 7
+// #define LED_BLUE_MEDIUM 15
+// #define LED_BLUE_HIGH 31
 
-#define LED_ORANGE_VERYLOW (LED_RED_VERYLOW + LED_GREEN_VERYLOW)
-#define LED_ORANGE_LOW (LED_RED_LOW + LED_GREEN_LOW)
-#define LED_ORANGE_MEDIUM (LED_RED_MEDIUM + LED_GREEN_MEDIUM)
-#define LED_ORANGE_HIGH (LED_RED_HIGH + LED_GREEN_HIGH)
+// #define LED_ORANGE_VERYLOW (LED_RED_VERYLOW + LED_GREEN_VERYLOW)
+// #define LED_ORANGE_LOW (LED_RED_LOW + LED_GREEN_LOW)
+// #define LED_ORANGE_MEDIUM (LED_RED_MEDIUM + LED_GREEN_MEDIUM)
+// #define LED_ORANGE_HIGH (LED_RED_HIGH + LED_GREEN_HIGH)
 
-#define LED_PURPLE_VERYLOW (LED_RED_VERYLOW + LED_BLUE_VERYLOW)
-#define LED_PURPLE_LOW (LED_RED_LOW + LED_BLUE_LOW)
-#define LED_PURPLE_MEDIUM (LED_RED_MEDIUM + LED_BLUE_MEDIUM)
-#define LED_PURPLE_HIGH (LED_RED_HIGH + LED_BLUE_HIGH)
+// #define LED_PURPLE_VERYLOW (LED_RED_VERYLOW + LED_BLUE_VERYLOW)
+// #define LED_PURPLE_LOW (LED_RED_LOW + LED_BLUE_LOW)
+// #define LED_PURPLE_MEDIUM (LED_RED_MEDIUM + LED_BLUE_MEDIUM)
+// #define LED_PURPLE_HIGH (LED_RED_HIGH + LED_BLUE_HIGH)
 
-#define LED_CYAN_VERYLOW (LED_GREEN_VERYLOW + LED_BLUE_VERYLOW)
-#define LED_CYAN_LOW (LED_GREEN_LOW + LED_BLUE_LOW)
-#define LED_CYAN_MEDIUM (LED_GREEN_MEDIUM + LED_BLUE_MEDIUM)
-#define LED_CYAN_HIGH (LED_GREEN_HIGH + LED_BLUE_HIGH)
+// #define LED_CYAN_VERYLOW (LED_GREEN_VERYLOW + LED_BLUE_VERYLOW)
+// #define LED_CYAN_LOW (LED_GREEN_LOW + LED_BLUE_LOW)
+// #define LED_CYAN_MEDIUM (LED_GREEN_MEDIUM + LED_BLUE_MEDIUM)
+// #define LED_CYAN_HIGH (LED_GREEN_HIGH + LED_BLUE_HIGH)
 
-#define LED_WHITE_VERYLOW (LED_RED_VERYLOW + LED_GREEN_VERYLOW + LED_BLUE_VERYLOW)
-#define LED_WHITE_LOW (LED_RED_LOW + LED_GREEN_LOW + LED_BLUE_LOW)
-#define LED_WHITE_MEDIUM (LED_RED_MEDIUM + LED_GREEN_MEDIUM + LED_BLUE_MEDIUM)
-#define LED_WHITE_HIGH (LED_RED_HIGH + LED_GREEN_HIGH + LED_BLUE_HIGH)
+// #define LED_WHITE_VERYLOW (LED_RED_VERYLOW + LED_GREEN_VERYLOW + LED_BLUE_VERYLOW)
+// #define LED_WHITE_LOW (LED_RED_LOW + LED_GREEN_LOW + LED_BLUE_LOW)
+// #define LED_WHITE_MEDIUM (LED_RED_MEDIUM + LED_GREEN_MEDIUM + LED_BLUE_MEDIUM)
+// #define LED_WHITE_HIGH (LED_RED_HIGH + LED_GREEN_HIGH + LED_BLUE_HIGH)
 
 #define PIOSTUFF 1 // comment these out to remove them
 #define EEPROMSTUFF 1
 #define FSSTUFF 1
 
+
+#define QUADRATURE_A_PIN 12
+#define QUADRATURE_B_PIN 13
+#define BUTTON_ENC 11
+
+#define ROTARYENCODER_MODE_ADDRESS 31
 #define DEBUG_FILEPARSINGADDRESS 32
 #define TIME_FILEPARSINGADDRESS 33
 #define DEBUG_NETMANAGERADDRESS 34
@@ -91,32 +97,32 @@ extern volatile int sendAllPathsCore2;
 #define CHIP_K 10
 #define CHIP_L 11
 
-#define CS_A 6
-#define CS_B 7
-#define CS_C 8
-#define CS_D 9
-#define CS_E 10
-#define CS_F 11
-#define CS_G 12
-#define CS_H 13
+// #define CS_A 6
+// #define CS_B 7
+// #define CS_C 8
+// #define CS_D 9
+// #define CS_E 10
+// #define CS_F 11
+// #define CS_G 12
+// #define CS_H 13
 
-#define CS_I 20
-#define CS_J 21
-#define CS_K 22
-#define CS_L 23
+// #define CS_I 20
+// #define CS_J 21
+// #define CS_K 22
+// #define CS_L 23
 
-#define CS_A_EX 0x0001
-#define CS_B_EX 0x0002
-#define CS_C_EX 0x0004
-#define CS_D_EX 0x0008
-#define CS_E_EX 0x0010
-#define CS_F_EX 0x0020
-#define CS_G_EX 0x0040
-#define CS_H_EX 0x0080
-#define CS_I_EX 0x0100
-#define CS_J_EX 0x0200
-#define CS_K_EX 0x0400
-#define CS_L_EX 0x0800
+#define CS_A_EX 0b0000000010000000
+#define CS_B_EX 0b0000000001000000
+#define CS_C_EX 0b0000000000100000
+#define CS_D_EX 0b0000000000010000
+#define CS_E_EX 0b0000000000001000
+#define CS_F_EX 0b0000000000000100
+#define CS_G_EX 0b0000000000000010
+#define CS_H_EX 0b0000000000000001
+#define CS_I_EX 0b1000000000000000
+#define CS_J_EX 0b0100000000000000
+#define CS_K_EX 0b0010000000000000
+#define CS_L_EX 0b0001000000000000
 
 // #define DATAPIN 14
 #define RESETPIN 24
@@ -230,6 +236,9 @@ extern volatile int sendAllPathsCore2;
 #define NANO_A6 92
 #define NANO_A7 93
 
+#define NANO_RESET_0  94
+#define NANO_RESET_1  95
+
 #define GND 100
 #define SUPPLY_3V3 103
 #define SUPPLY_5V 105
@@ -259,6 +268,16 @@ extern volatile int sendAllPathsCore2;
 #define SUPPLY_8V_P 120 // not actually connected to anything
 #define SUPPLY_8V_N 121 // not actually connected to anything
 
+
+#define MCP_GPIO_0 122
+#define MCP_GPIO_1 123
+#define MCP_GPIO_2 124
+#define MCP_GPIO_3 125
+
+#define RP_GPIO_20 20
+#define RP_GPIO_21 21
+#define RP_GPIO_22 22
+#define RP_GPIO_23 23
 /*
 
 #define GND  100

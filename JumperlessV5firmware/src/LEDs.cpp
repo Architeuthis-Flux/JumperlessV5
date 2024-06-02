@@ -6,6 +6,8 @@
 #include "MatrixStateRP2040.h"
 #include "FileParsing.h"
 #include <Adafruit_GFX.h>
+#include "NetManager.h"
+#include "NetsToChipConnections.h"
 
 // MATRIX DECLARATION:
 // Parameter 1 = width of NeoPixel matrix
@@ -547,7 +549,7 @@ char LEDbrightnessMenu(void)
         Serial.print("\n\rPress any key to exit\n\n\r");
         while (Serial.available() == 0)
         {
-            rainbowBounce(40);
+            rainbowBounce(4);
         }
 
         input = '!'; // this tells the main fuction to reset the leds
@@ -573,6 +575,147 @@ char LEDbrightnessMenu(void)
         return input;
     }
     return input;
+}
+
+uint32_t savedLEDcolors[NUM_SLOTS][LED_COUNT];
+int slotLEDpositions[20] = {
+    418,
+    419,
+    420,
+    421,
+    422,
+    423,
+    424,
+    425,
+    426,
+};
+int rotaryEncoderPositions[6] = {
+    97, // AREF
+    95, // D13 (button)
+    94, // D12 (encoder A)
+    93, // D11 (encoder GND)
+    92, // D10 (encoder B)
+};
+
+uint32_t slotSelectionColors[12] = {
+    0x084080, // preview
+    0x005555, // active
+    0x102000, // inactive
+    0x000000, // off
+    0x881261, // preview+active
+
+    0x253500, // rotary encoder High
+    0x000060, // rotary encoder Low
+
+    0x550011, // button High
+    0x001C05, // button Low
+
+};
+
+void saveRawColors(int slot)
+{
+    if (slot == -1)
+    {
+        slot = netSlot;
+    }
+
+    for (int i = 0; i < LED_COUNT; i++)
+    {
+        if (i >= slotLEDpositions[0] && i <= slotLEDpositions[NUM_SLOTS - 1])
+        {
+            // savedLEDcolors[slot][i] = slotSelectionColors[1];
+            //  Serial.print(i);
+            //  Serial.print("\t");
+
+            continue;
+        }
+        savedLEDcolors[slot][i] = leds.getPixelColor(i);
+        // Serial.print(savedLEDcolors[slot][i], HEX);
+        // Serial.print("\t");
+        // if (i % 30 == 0)
+        // {
+        //     Serial.println("\n\r");
+        // }
+    }
+    // Serial.println(" ");
+}
+
+void refreshSavedColors(void)
+{
+    for (int i = 0; i < NUM_SLOTS; i++)
+    {
+        clearAllNTCC();
+        openNodeFile(i);
+        getNodesToConnect();
+        bridgesToPaths();
+        clearLEDs();
+        assignNetColors();
+        showNets();
+        lightUpRail();
+        saveRawColors(i);
+    }
+}
+
+void showSavedColors(int slot)
+{
+    if (slot == -1)
+    {
+        slot = netSlot;
+    }
+    // Serial.println(savedLEDcolors[slot][0], HEX);
+
+    // if (savedLEDcolors[slot][110] == 0) // checking a nano header LED because it should always dimly lit
+    if (true)
+    {
+        // for (int i = 0; i < LED_COUNT; i++)
+        // {
+        //     Serial.print(i);
+
+        //      Serial.print(" ");
+        //     Serial.println(savedLEDcolors[slot][i], HEX);
+
+        // }
+        // Serial.print("\rNo saved colors for slot ");
+        // Serial.print(slot);
+        ///pauseCore2 = 1;
+        clearAllNTCC();
+        openNodeFile(slot);
+        getNodesToConnect();
+        bridgesToPaths();
+        // clearLEDsExceptRails();
+         //leds.clear();
+
+        assignNetColors();
+        //pauseCore2 = 0;
+
+        //showNets();
+
+        //lightUpRail();
+        // delayMicroseconds(100);
+        // saveRawColors(slot);
+    }
+    if (rotaryEncoderMode == 1)
+    {
+        for (int i = 0; i < LED_COUNT; i++)
+        {
+            leds.setPixelColor(i, savedLEDcolors[slot][i]);
+
+            if (i == slotLEDpositions[netSlot])
+            {
+                leds.setPixelColor(i, slotSelectionColors[1]);
+            }
+            if (i == slotLEDpositions[slot])
+            {
+                leds.setPixelColor(i, slotSelectionColors[0]);
+            }
+            if (slot == netSlot && i == slotLEDpositions[netSlot])
+            {
+                leds.setPixelColor(i, slotSelectionColors[4]);
+            }
+        }
+    }
+    showLEDsCore2 = 1;
+    // leds.show();
 }
 
 void assignNetColors(void)
@@ -1332,9 +1475,17 @@ void lightUpNode(int node, uint32_t color)
 }
 uint32_t dimLogoColor(uint32_t color, int brightness)
 {
-    hsvColor colorHsv = RgbToHsv(unpackRgb(color));
+    rgbColor dimColor = unpackRgb(color);
+    // if (dimColor.b != 0)
+    // {
+    //     dimColor.b = dimColor.b * 2;
+    // }
+
+
+    hsvColor colorHsv = RgbToHsv(dimColor);
+
     colorHsv.v = brightness;
-    return packRgb(HsvToRgb(colorHsv).r, HsvToRgb(colorHsv).g, HsvToRgb(colorHsv).b);
+    return packRgb(HsvToRgb(colorHsv).r, HsvToRgb(colorHsv).g*2, HsvToRgb(colorHsv).b*3);
 }
 
 void logoSwirl(int start, int spread)
@@ -1358,7 +1509,7 @@ void logoSwirl(int start, int spread)
     // Serial.println((start + 30) % 42);
     // Serial.println((start + 35) % 42);
     // Serial.println("\n\r");
-    leds.show();
+    //leds.show();
     // delay(200);
     //  showLEDsCore2 = 1;
 }
@@ -1463,7 +1614,7 @@ void showNets(void)
 
         lightUpNet(i);
     }
-    showLEDsCore2 = 1;
+    //showLEDsCore2 = 1;
 }
 
 rgbColor HsvToRgb(hsvColor hsv)
@@ -1698,16 +1849,16 @@ void startupColors(void)
             // hsv.h = (j*(int((sin(j+i)*4))))%254;
             hsv.h = ((int)(huef)) % 254;
             hsv.s = 254;
-            if (((i + offset) % LED_COUNT) == 110)
-            {
-                hsv.v = 85;
-                hsv.h = (189 + j);
-            }
-            else
-            {
+            // if (((i + offset) % LED_COUNT) == 110)
+            // {
+            //     hsv.v = 85;
+            //     hsv.h = (189 + j);
+            // }
+            // else
+            // {
 
-                hsv.v = fade;
-            }
+            //     hsv.v = fade;
+            // }
             rgbColor rgb = HsvToRgb(hsv);
             uint32_t rgbPacked = packRgb(rgb.r, rgb.g, rgb.b);
             // rgbPacked = rgbPacked * i

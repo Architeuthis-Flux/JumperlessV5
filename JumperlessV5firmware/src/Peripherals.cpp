@@ -22,11 +22,19 @@
 #include <Adafruit_MCP4728.h>
 
 #include <SPI.h>
+//#include "MCP23S17.h"
+// #include "SPI.h"
 
-// MCP23S17 MCPIO(17, 16, 19, 18, 0x27); //  SW SPI address 0x00
+#include <Adafruit_MCP23X17.h>
 
-MCP23S17 MCPIO(17, 7); //  HW SPI address 0x00 //USE HW SPI
+#define CS_PIN 17
 
+//MCP23S17 MCPIO(17, 16, 19, 18, 0x27); //  SW SPI address 0x00
+
+// MCP23S17 MCPIO(17, 7,  &SPI); //  HW SPI address 0x00 //USE HW SPI
+Adafruit_MCP23X17 MCPIO;
+
+//MCP23S17 MCPIO(17, 16, 19, 18, 0x7); //  SW SPI address 0x
 #define CSI Serial.write("\x1B\x5B");
 // #define CSI Serial.write("\033");
 
@@ -45,7 +53,7 @@ int showINA1[3] = {0, 0, 0}; // 0 = current, 1 = voltage, 2 = power
 int showDAC0 = 0;
 int showDAC1 = 0;
 
-Adafruit_MCP4728 mcp;
+
 
 float freq[3] = {1, 1, 0};
 uint32_t period[3] = {0, 0, 0};
@@ -63,10 +71,15 @@ int amplitude[3] = {4095, 3763, 0};
 int offset[3] = {2047, 2380, 2047};
 int calib[3] = {-10, 0, 0};
 
-MCP4725_PICO dac0_5V(5.0);
-MCP4725_PICO dac1_8V(18.0);
 
-MCP4822 dac_rev3; // A is dac0  B is dac1
+
+Adafruit_MCP4728 mcp;
+
+
+// MCP4725_PICO dac0_5V(5.0);
+// MCP4725_PICO dac1_8V(18.0);
+
+// MCP4822 dac_rev3; // A is dac0  B is dac1
 
 INA219 INA0(0x40);
 INA219 INA1(0x41);
@@ -78,30 +91,76 @@ uint32_t lastTime = 0;
 uint16_t sine0[360];
 uint16_t sine1[360];
 
+
+
 void initGPIOex(void)
 {
+
+// pinMode(17, OUTPUT);
+// pinMode(16, OUTPUT);
+// pinMode(19, OUTPUT);
+// pinMode(18, OUTPUT);
 
   SPI.setRX(16);
   SPI.setTX(19);
   SPI.setSCK(18);
   SPI.setCS(17);
-  SPI.begin();
 
-  if (MCPIO.begin() == false)
+
+   SPI.begin();
+
+
+  if (MCPIO.begin_SPI(CS_PIN, &SPI, 0b111) == false)
   {
+    //delay(1000);
     Serial.println("MCP23S17 not found");
-    while (1)
-    {
-      delay(10);
-    }
+
   }
 
-  MCPIO.pinMode8(0, 0x00); //  0 = output, 1 = input
-  MCPIO.pinMode8(1, 0x00);
+    //   while (testConnection(MCPIO) != 0)
+    // {
+    //   Serial.println("MCP23S17 not found");
+    //   delay(10);
+    // }
+
+// MCPIO.enableAddrPins();
+// MCPIO.enableAddrPins();
+
+
+
+  MCPIO.pinMode(0, OUTPUT);
+  MCPIO.pinMode(1, OUTPUT);
+  MCPIO.pinMode(2, OUTPUT);
+  MCPIO.pinMode(3, OUTPUT);
+  MCPIO.pinMode(4, OUTPUT);
+  MCPIO.pinMode(5, OUTPUT);
+  MCPIO.pinMode(6, OUTPUT);
+  MCPIO.pinMode(7, OUTPUT);
+  MCPIO.pinMode(8, OUTPUT);
+  MCPIO.pinMode(9, OUTPUT);
+  MCPIO.pinMode(10, OUTPUT);
+  MCPIO.pinMode(11, OUTPUT);
+  MCPIO.pinMode(12, OUTPUT);
+  MCPIO.pinMode(13, OUTPUT);
+  MCPIO.pinMode(14, OUTPUT);
+  MCPIO.pinMode(15, OUTPUT);
+
+  MCPIO.writeGPIOAB(0x0000);
+
+// for (int i = 0; i < 106; i++)
+// {
+//   writeGPIOex(i%2, i);
+//   delay(10);
+// }
+
+  //MCPIO.pinMode8(1, 0x00);
 }
 
 void initDAC(void)
 {
+
+Wire.setSDA(4);
+Wire.setSCL(5);
 
   Wire.begin();
   delay(5);
@@ -109,10 +168,10 @@ void initDAC(void)
   if (!mcp.begin())
   {
     Serial.println("Failed to find MCP4728 chip");
-    while (1)
-    {
-      delay(10);
-    }
+    // while (1)
+    // {
+    //   delay(10);
+    // }
   }
   // delay(1000);
   Serial.println("MCP4728 Found!");
@@ -132,24 +191,11 @@ void initDAC(void)
 
   // Vref = MCP_VREF_VDD, value = 0, 0V
   mcp.setChannelValue(MCP4728_CHANNEL_A, 0);
-  mcp.setChannelValue(MCP4728_CHANNEL_B, 1650);
-  mcp.setChannelValue(MCP4728_CHANNEL_C, 1650);
-  mcp.setChannelValue(MCP4728_CHANNEL_D, 1650); // 1650 is roughly 0V
+  mcp.setChannelValue(MCP4728_CHANNEL_B, 2050);
+  mcp.setChannelValue(MCP4728_CHANNEL_C, 1050);
+  mcp.setChannelValue(MCP4728_CHANNEL_D, 1050); // 1650 is roughly 0V
   digitalWrite(8, LOW);
-  // // value is vref/2, with 2.048V internal Vref and 1X gain
-  // // = 2.048/2 = 1.024V
-  // mcp.setChannelValue(MCP4728_CHANNEL_B, 2048, MCP4728_VREF_VDD,
-  //                     MCP4728_GAIN_1X);
 
-  // // value is vref/2, with 2.048V internal vref and *2X gain*
-  // // = 4.096/2 = 2.048V
-  // mcp.setChannelValue(MCP4728_CHANNEL_C, 2048, MCP4728_VREF_INTERNAL,
-  //                     MCP4728_GAIN_2X);
-
-  // // value is vref/2, Vref is MCP4728_VREF_VDD(default), the power supply
-  // // voltage (usually 3.3V or 5V) For Vdd/Vref = 5V, voltage = 2.5V For 3.3V,
-  // // voltage = 1.65V Values will vary depending on the actual Vref/Vdd
-  // mcp.setChannelValue(MCP4728_CHANNEL_D, 2048);
 
   mcp.saveToEEPROM();
 }
@@ -227,109 +273,190 @@ void setBotRail(int value)
   }
   mcp.setChannelValue(MCP4728_CHANNEL_D, value);
 }
+uint8_t csToPin[16] = {8,9,10,11,12,13,14,15,0,1,2,3,4,5,6,7};
 
 void setCSex(int chip, int value)
 {
-  uint16_t bitMask = 0;
+  // uint16_t bitMask = 0;
 
-  switch (chip)
-  {
-  case 0:
-    bitMask = CS_A_EX;
-    break;
-  case 1:
-    bitMask = CS_B_EX;
-    break;
-  case 2:
-    bitMask = CS_C_EX;
-    break;
-  case 3:
-    bitMask = CS_D_EX;
-    break;
-  case 4:
-    bitMask = CS_E_EX;
-    break;
-  case 5:
-    bitMask = CS_F_EX;
-    break;
-  case 6:
-    bitMask = CS_G_EX;
-    break;
-  case 7:
-    bitMask = CS_H_EX;
-    break;
-  case 8:
-    bitMask = CS_I_EX;
-    break;
-  case 9:
-    bitMask = CS_J_EX;
-    break;
-  case 10:
-    bitMask = CS_K_EX;
-    break;
-  case 11:
-    bitMask = CS_L_EX;
-    break;
-  }
+  // switch (chip)
+  // {
+  // case 0:
+  //   bitMask = CS_A_EX;
+  //   break;
+  // case 1:
+  //   bitMask = CS_B_EX;
+  //   break;
+  // case 2:
+  //   bitMask = CS_C_EX;
+  //   break;
+  // case 3:
+  //   bitMask = CS_D_EX;
+  //   break;
+  // case 4:
+  //   bitMask = CS_E_EX;
+  //   break;
+  // case 5:
+  //   bitMask = CS_F_EX;
+  //   break;
+  // case 6:
+  //   bitMask = CS_G_EX;
+  //   break;
+  // case 7:
+  //   bitMask = CS_H_EX;
+  //   break;
+  // case 8:
+  //   bitMask = CS_I_EX;
+  //   break;
+  // case 9:
+  //   bitMask = CS_J_EX;
+  //   break;
+  // case 10:
+  //   bitMask = CS_K_EX;
+  //   break;
+  // case 11:
+  //   bitMask = CS_L_EX;
+  //   break;
+  // }
 
-  // uint16_t state = MCPIO.read16();
+  // // uint16_t state = MCPIO.read16();
 
-  // state = state & 0xF000; // keep GPIO whereever it is/clear other CS
-  if (value == 0)
-  {
-    bitMask = 0x0000;
-  }
+  // // state = state & 0xF000; // keep GPIO whereever it is/clear other CS
+  // if (value == 0)
+  // {
+  //   bitMask = 0x0000;
+  // }
 
-  MCPIO.write16(bitMask);
+  MCPIO.begin_SPI(CS_PIN, &SPI, 0b111);
+
+if (value > 0)
+{
+  MCPIO.digitalWrite(csToPin[chip], HIGH);
+} else {
+  MCPIO.digitalWrite(csToPin[chip], LOW);
+}
+
+//   delayMicroseconds(3000);
+// Serial.print(csToPin[chip]);
+// Serial.print(" ");
+// Serial.println(value);
+  //MCPIO.writeGPIOAB(bitMask);
+//}
+//MCPIO.writeGPIOAB(bitMask);
+
+//delayMicroseconds(30);
+
+//MCPIO.writeGPIOAB(0x0000);
+
   // Serial.print("chip: ");
   // Serial.print(chipNumToChar(chip));
   // Serial.print(" bitMask: ");
-  // Serial.println(bitMask);
+
+  
+  //Serial.println(bitMask, BIN);
 }
 void writeGPIOex(int value, uint8_t pin)
 {
-  uint16_t bitMask = 0;
+  // uint16_t bitMask = 0;
 
-  bool onOffpin = false;
+  // PinStatus onOffpin;
 
-  if (value > 0)
+
+
+  // // if (value > 0)
+  // // {
+  // //   onOffpin = HIGH;
+  // // } else {
+  // //   onOffpin = LOW;
+  // // }
+
+  // if (onOffpin == true)
+  // {
+  //   switch (pin)
+  //   {
+  //   case 0:
+
+  //     bitMask = 0x1000;
+  //     break;
+  //   case 1:
+
+  //     bitMask = 0x2000;
+  //     break;
+  //   case 2:
+
+  //     bitMask = 0x4000;
+  //     break;
+  //   case 3:
+
+  //     bitMask = 0x8000;
+  //     break;
+  //   }
+  // }
+  // else
+  // {
+  //   bitMask = 0x0000;
+  // }
+  //Serial.println(onOffpin);
+  //Serial.println(MCPIO.write1(5, onOffpin));
+
+  //Serial.println(MCPIO.usesHWSPI(),HEX);
+//Serial.println(value);
+  if (value == 0)
   {
-    onOffpin = true;
+   
+   MCPIO.writeGPIOAB(0x0000);
+    // MCPIO.digitalWrite(0, HIGH);
+    // MCPIO.digitalWrite(1, HIGH);
+    // MCPIO.digitalWrite(2, HIGH);
+    // MCPIO.digitalWrite(3, HIGH);
+    // MCPIO.digitalWrite(4, HIGH);
+    // MCPIO.digitalWrite(5, HIGH);
+    // MCPIO.digitalWrite(6, HIGH);
+    // MCPIO.digitalWrite(7, HIGH);
+    // MCPIO.digitalWrite(8, HIGH);
+    // MCPIO.digitalWrite(9, HIGH);
+    // MCPIO.digitalWrite(10, HIGH);
+    // MCPIO.digitalWrite(11, HIGH);
+    // MCPIO.digitalWrite(12, HIGH);
+    // MCPIO.digitalWrite(13, HIGH);
+
+    // MCPIO.digitalWrite(14, HIGH);
+    // MCPIO.digitalWrite(15, HIGH);
+
+    
+  } else {
+    
+    MCPIO.writeGPIOAB(0xFFFF);
+    // MCPIO.digitalWrite(0, LOW);
+    // MCPIO.digitalWrite(1, LOW);
+    // MCPIO.digitalWrite(2, LOW);
+    // MCPIO.digitalWrite(3, LOW);
+    // MCPIO.digitalWrite(4, LOW);
+    // MCPIO.digitalWrite(5, LOW);
+    // MCPIO.digitalWrite(6, LOW);
+    // MCPIO.digitalWrite(7, LOW);
+    // MCPIO.digitalWrite(8, LOW);
+    // MCPIO.digitalWrite(9, LOW);
+    // MCPIO.digitalWrite(10, LOW);
+    // MCPIO.digitalWrite(11, LOW);
+    // MCPIO.digitalWrite(12, LOW);
+    // MCPIO.digitalWrite(13, LOW);
+
+    // MCPIO.digitalWrite(14, LOW);
+    // MCPIO.digitalWrite(15, LOW);
+
   }
 
-  if (onOffpin == true)
-  {
-    switch (pin)
-    {
-    case 0:
 
-      bitMask = 0x1000;
-      break;
-    case 1:
 
-      bitMask = 0x2000;
-      break;
-    case 2:
+  //Serial.println(MCPIO.write16(bitMask));
 
-      bitMask = 0x4000;
-      break;
-    case 3:
-
-      bitMask = 0x8000;
-      break;
-    }
-  }
-  else
-  {
-    bitMask = 0x0000;
-  }
-
-  MCPIO.write16(bitMask);
+  // MCPIO.read16();
   // Serial.print("pin: ");
   // Serial.print(pin);
 
   // Serial.print(" bitMask: ");
-  // Serial.println(bitMask);
+  //Serial.println(MCPIO.read16());
 }
 
 void initINA219(void)
@@ -403,14 +530,14 @@ void setDac0_5Vvoltage(float voltage)
 {
   if (revisionNumber == 2)
   {
-    dac0_5V.setVoltage(voltage);
+   // dac0_5V.setVoltage(voltage);
   }
   else
   {
     int voltageCode = voltage * 4095 / 5;
 
     // dac_rev3.analogWrite((uint16_t)voltageCode, 0);
-    dac_rev3.fastWriteA((uint16_t)voltageCode);
+   // dac_rev3.fastWriteA((uint16_t)voltageCode);
     lastInputCode0 = voltageCode;
     // dac_rev3.fastWriteB(lastInputCode1);
   }
@@ -420,12 +547,12 @@ void setDac0_5VinputCode(uint16_t inputCode)
 {
   if (revisionNumber == 2)
   {
-    dac0_5V.setInputCode(inputCode);
+    //dac0_5V.setInputCode(inputCode);
   }
   else
   {
-    dac_rev3.analogWrite(inputCode, 0);
-    dac_rev3.fastWriteA(inputCode);
+   //dac_rev3.analogWrite(inputCode, 0);
+    //dac_rev3.fastWriteA(inputCode);
     lastInputCode0 = inputCode;
     // dac_rev3.fastWriteB(lastInputCode1);
   }
@@ -435,7 +562,7 @@ void setDac1_8Vvoltage(float voltage)
 {
   if (revisionNumber == 2)
   {
-    dac1_8V.setVoltage(voltage);
+   // dac1_8V.setVoltage(voltage);
   }
   else
   {
@@ -444,7 +571,7 @@ void setDac1_8Vvoltage(float voltage)
     voltageCode = voltageCode + 2048;
 
     // dac_rev3.analogWrite((uint16_t)voltageCode, 1);
-    dac_rev3.fastWriteB((uint16_t)voltageCode);
+    //dac_rev3.fastWriteB((uint16_t)voltageCode);
     /// lastInputCode1 = voltageCode;
     // dac_rev3.fastWriteA(lastInputCode0);
   }
@@ -454,14 +581,14 @@ void setDac1_8VinputCode(uint16_t inputCode)
 {
   if (revisionNumber == 2)
   {
-    dac1_8V.setInputCode(inputCode);
+    //dac1_8V.setInputCode(inputCode);
   }
   else
   {
 
     // Serial.println(inputCode);
     // dac_rev3.analogWrite(inputCode, 1);
-    dac_rev3.fastWriteB(inputCode);
+   //dac_rev3.fastWriteB(inputCode);
     // lastInputCode1 = inputCode;
     // dac_rev3.fastWriteA(lastInputCode0);
   }
@@ -742,7 +869,7 @@ int waveGen(void)
   // setDac1_8VinputCode(8190);
   // Serial.println(dac_rev3.getGain());
 
-  Serial.println(dac_rev3.maxValue());
+  //Serial.println(dac_rev3.maxValue());
   Serial.print("Revision = ");
   Serial.println(revisionNumber);
   Serial.println("\n\r\t\t\t\t     waveGen\t\n\n\r\toptions\t\t\twaves\t\t\tadjust frequency\n\r");

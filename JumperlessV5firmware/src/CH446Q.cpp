@@ -14,7 +14,7 @@
 
 #define MYNAMEISERIC 0 // on the board I sent to eric, the data and clock lines are bodged to GPIO 18 and 19. To allow for using hardware SPI
 
-int chipToPinArray[12] = {CS_A, CS_B, CS_C, CS_D, CS_E, CS_F, CS_G, CS_H, CS_I, CS_J, CS_K, CS_L};
+//int chipToPinArray[12] = {CS_A, CS_B, CS_C, CS_D, CS_E, CS_F, CS_G, CS_H, CS_I, CS_J, CS_K, CS_L};
 PIO pio = pio0;
 
 uint sm = pio_claim_unused_sm(pio, true);
@@ -25,17 +25,18 @@ volatile uint32_t irq_flags = 0;
 void isrFromPio(void)
 {
   setCSex(chipSelect, 1);
-  // Serial.print("interrupt from pio  ");
+   //Serial.println("interrupt from pio  ");
   // Serial.print(chipSelect);
   // Serial.print(" \n\r");
-  // delayMicroseconds(3000);
+   //delayMicroseconds(30);
 
   setCSex(chipSelect, 0);
 
-  // delayMicroseconds(4);
+   //delayMicroseconds(40);
   irq_flags = pio0_hw->irq;
   pio_interrupt_clear(pio, PIO0_IRQ_0);
   hw_clear_bits(&pio0_hw->irq, irq_flags);
+
 }
 
 void initCH446Q(void)
@@ -115,7 +116,8 @@ void sendAllPaths(void) // should we sort them by chip? for now, no
       continue;
     }
     sendPath(i, 1);
-    if (debugNTCC)
+    //if (debugNTCC)
+    if(1)
     {
       Serial.print("path ");
       Serial.print(i);
@@ -133,7 +135,7 @@ void sendAllPaths(void) // should we sort them by chip? for now, no
         Serial.print(j);
         Serial.print("]:");
         Serial.print(path[i].y[j]);
-        Serial.print(" \t ");
+        Serial.println(" \t ");
       }
       Serial.print("\n\n\r");
     }
@@ -225,6 +227,7 @@ void sendXYraw(int chip, int x, int y, int setOrClear)
   pio_sm_put(pio, sm, chAddress);
 
   delayMicroseconds(80);
+  //isrFromPio();
 }
 
 void createXYarray(void)

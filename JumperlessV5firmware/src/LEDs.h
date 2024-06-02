@@ -7,23 +7,25 @@
 #include "Adafruit_NeoPixel.h"
 #include "NetsToChipConnections.h"
 #include "Adafruit_NeoMatrix.h"
+#include "RotaryEncoder.h"
 
-#define LED_PIN 25 // change this to 0 if you want to run this on a Pico to control the lights on a Jumperlux
+#define LED_PIN 25 //change this to 0 if you want to run this on a Pico to control the lights on a Jumperlux
 #define LED_COUNT 445
-#define DEFAULTBRIGHTNESS 4
-#define DEFAULTRAILBRIGHTNESS 6
-#define DEFAULTSPECIALNETBRIGHTNESS 30
+#define DEFAULTBRIGHTNESS 5
+#define DEFAULTRAILBRIGHTNESS 5
+#define DEFAULTSPECIALNETBRIGHTNESS 5
 
 // #define PCBEXTINCTION 0 //extra brightness for to offset the extinction through pcb
 
-#define PCBEXTINCTION 40    // extra brightness for to offset the extinction through pcb
-#define PCBREDSHIFTPINK -18 // extra hue shift to offset the hue shift through pcb
+
+#define PCBEXTINCTION 30 //extra brightness for to offset the extinction through pcb
+#define PCBREDSHIFTPINK -18    //extra hue shift to offset the hue shift through pcb
 #define PCBGREENSHIFTPINK -25
 #define PCBBLUESHIFTPINK 35
 
-#define PCBREDSHIFTBLUE -25 // extra hue shift to offset the hue shift through pcb
-#define PCBGREENSHIFTBLUE -25
-#define PCBBLUESHIFTBLUE 42
+ #define PCBREDSHIFTBLUE -25    //extra hue shift to offset the hue shift through pcb
+ #define PCBGREENSHIFTBLUE -25
+ #define PCBBLUESHIFTBLUE 42
 
 // #define PCBEXTINCTION 0 //extra brightness for to offset the extinction through pcb
 //  #define PCBREDSHIFTBLUE 0    //extra hue shift to offset the hue shift through pcb
@@ -40,6 +42,7 @@ extern volatile uint8_t LEDbrightnessRail;
 extern volatile uint8_t LEDbrightness;
 extern volatile uint8_t LEDbrightnessSpecial;
 
+    extern volatile uint8_t pauseCore2;
 extern Adafruit_NeoPixel leds;
 extern Adafruit_NeoMatrix matrix;
 extern bool debugLEDs;
@@ -60,6 +63,8 @@ typedef struct hsvColor
     unsigned char s;
     unsigned char v;
 } hsvColor;
+
+
 
 const uint8_t jumperlessText[301] = {
     1,
@@ -830,17 +835,21 @@ const int pixelsToRails[20] = {B_RAIL_NEG, B_RAIL_POS, B_RAIL_POS, B_RAIL_NEG, B
                                T_RAIL_POS, T_RAIL_NEG, T_RAIL_NEG, T_RAIL_POS, T_RAIL_POS, T_RAIL_NEG, T_RAIL_NEG, T_RAIL_POS, T_RAIL_POS, T_RAIL_NEG};
 
 extern rgbColor netColors[MAX_NETS];
+extern uint32_t savedLEDcolors[NUM_SLOTS][LED_COUNT];
 struct rgbColor shiftHue(struct rgbColor colorToShift, int hueShift = 0, int brightnessShift = 0, int saturationShift = 0, int specialFunction = -1);
 void initLEDs(void);
 char LEDbrightnessMenu(void);
+void refreshSavedColors(void);
+void saveRawColors(int slot = -1);
+void showSavedColors(int slot = -1);
 void clearLEDs(void);
 void randomColors(uint32_t color, int wait);
 void rainbowy(int, int, int wait);
 void showNets(void);
 void assignNetColors();
-void lightUpRail(int logo = -1, int railNumber = -1, int onOff = 1, int brightness = DEFAULTRAILBRIGHTNESS, int supplySwitchPosition = 1);
+void lightUpRail(int logo = -1, int railNumber = -1, int onOff = 1, int brightness = DEFAULTRAILBRIGHTNESS, int supplySwitchPosition = 0);
 void logoSwirl(int start = 0, int spread = 5);
-uint32_t dimLogoColor(uint32_t color, int brightness = 5);
+uint32_t dimLogoColor(uint32_t color, int brightness = 7);
 void lightUpNet(int netNumber = 0, int node = -1, int onOff = 1, int brightness = DEFAULTBRIGHTNESS, int hueShift = 0); //-1 means all nodes (default)
 void lightUpNode(int node, uint32_t color);
 rgbColor pcbColorCorrect(rgbColor colorToCorrect);

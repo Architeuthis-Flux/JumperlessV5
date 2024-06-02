@@ -14,6 +14,7 @@
 #include "pico/stdlib.h"
 #include "hardware/pwm.h"
 #include <EEPROM.h>
+#include "RotaryEncoder.h"
 
 #include <Adafruit_GFX.h>
 #include <Adafruit_SSD1306.h>
@@ -59,6 +60,9 @@ int justSelectedConnectedNodes = 0;
 
 int voltageSelection = SUPPLY_3V3;
 int voltageChosen = 0;
+
+int wasRotaryMode = 0; 
+
 
 int rainbowList[13][3] = {
     {40, 50, 80},
@@ -125,6 +129,8 @@ void drawchar(void)
 
 int probeMode(int pin, int setOrClear)
 {
+    // wasRotaryMode = rotaryEncoderMode;
+    // rotaryEncoderMode = 0;
     if (OLED_CONNECTED == 1)
     {
 
@@ -167,6 +173,7 @@ int probeMode(int pin, int setOrClear)
         buttonPin = 19;
     }
 restartProbing:
+probeActive = 1;
     int lastRow[10];
 
     int pokedNumber = 0;
@@ -175,18 +182,19 @@ restartProbing:
 
     if (numberOfNets == 0)
     {
-        clearNodeFile();
+       // clearNodeFile(netSlot);
     }
     clearAllNTCC();
-    openNodeFile();
+    openNodeFile(netSlot);
     getNodesToConnect();
 
     bridgesToPaths();
-    // clearLEDs();
+     clearLEDs();
     assignNetColors();
-    delay(18);
+    showNets();
+    //delay(18);
     showLEDsCore2 = 1;
-    delay(28);
+    //delay(28);
     int probedNodes[40][2];
     int probedNodesIndex = 0;
 
@@ -427,21 +435,22 @@ restartProbing:
 
                     drawchar();
 
-                    addBridgeToNodeFile(nodesToConnect[0], nodesToConnect[1]);
+                    addBridgeToNodeFile(nodesToConnect[0], nodesToConnect[1], netSlot);
                     // rainbowIndex++;
                     if (rainbowIndex > 1)
                     {
                         rainbowIndex = 0;
                     }
+                    showSavedColors(netSlot);
 
-                    clearAllNTCC();
-                    openNodeFile();
-                    getNodesToConnect();
+                    // clearAllNTCC();
+                    // openNodeFile(netSlot);
+                    // getNodesToConnect();
 
-                    bridgesToPaths();
-                    // clearLEDs();
-                    leds.clear();
-                    assignNetColors();
+                    // bridgesToPaths();
+                    // // clearLEDs();
+                    // leds.clear();
+                    // assignNetColors();
                     // Serial.print("bridgesToPaths\n\r");
                     // delay(18);
                     // showNets();
@@ -466,24 +475,25 @@ restartProbing:
                     Serial.print("\r           \r");
                     printNodeOrName(nodesToConnect[0]);
                     Serial.print("\t cleared\n\r");
-                    removeBridgeFromNodeFile(nodesToConnect[0]);
+                    removeBridgeFromNodeFile(nodesToConnect[0], -1, netSlot);
                     leds.setPixelColor(nodesToPixelMap[nodesToConnect[0]], 0, 0, 0);
 
                     // leds.setPixelColor(nodesToPixelMap[nodesToConnect[1]], 0, 0, 0);
                     rainbowIndex = 12;
                     // printNodeFile();
-                    clearAllNTCC();
-                    openNodeFile();
-                    getNodesToConnect();
+                    showSavedColors(netSlot);
+                    // clearAllNTCC();
+                    // openNodeFile(netSlot);
+                    // getNodesToConnect();
 
-                    bridgesToPaths();
-                    // clearLEDs();
-                    leds.clear();
-                    assignNetColors();
-                    // Serial.print("bridgesToPaths\n\r");
-                    // delay(18);
-                    // showNets();
-                    showLEDsCore2 = 1;
+                    // bridgesToPaths();
+                    // // clearLEDs();
+                    // leds.clear();
+                    // assignNetColors();
+                    // // Serial.print("bridgesToPaths\n\r");
+                    // // delay(18);
+                    // // showNets();
+                    // showLEDsCore2 = 1;
                     // sendAllPathsCore2 = 1;
                     // logoFlash = 1;
                     delay(25);
@@ -570,7 +580,7 @@ restartProbing:
     }
     digitalWrite(RESETPIN, LOW);
     clearAllNTCC();
-    openNodeFile();
+    openNodeFile(netSlot);
     getNodesToConnect();
 
     bridgesToPaths();
@@ -579,8 +589,8 @@ restartProbing:
     assignNetColors();
     // // Serial.print("bridgesToPaths\n\r");
     // delay(18);
-    // // showNets();
-    // showLEDsCore2 = 1;
+     showNets();
+     showLEDsCore2 = 1;
     rawOtherColors[1] = 0x550004;
     showLEDsCore2 = 1;
 
@@ -593,6 +603,7 @@ restartProbing:
     // sprintf(oledBuffer, "        ");
     drawchar();
 
+   // rotaryEncoderMode = wasRotaryMode;
     return 1;
 }
 
