@@ -12,10 +12,22 @@ extern int rotState;
 extern int encoderIsPressed;
 extern int showingPreview;
 
+enum encoderDirectionStates { NONE,UP,DOWN };
+
+enum encoderButtonStates { IDLE, PRESSED, HELD, RELEASED, DOUBLECLICKED};
+
+extern volatile encoderDirectionStates encoderDirectionState;
+extern volatile encoderButtonStates encoderButtonState;
+extern volatile encoderButtonStates lastButtonEncoderState;
+extern volatile encoderDirectionStates lastDirectionState;
+
 void initRotaryEncoder(void);
 void unInitRotaryEncoder(void);
 void printRotaryEncoderHelp(void);
 void rotaryEncoderStuff(void);
+
+
+void slotManager(void); 
 
 
 

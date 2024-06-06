@@ -10,6 +10,7 @@
 #include "LEDs.h"
 #include <EEPROM.h>
 #include "MachineCommands.h"
+#include "PersistentStuff.h"
 
 bool debugMM = true;
 // char inputBuffer[INPUTBUFFERLENGTH] = {0};

@@ -116,8 +116,8 @@ void sendAllPaths(void) // should we sort them by chip? for now, no
       continue;
     }
     sendPath(i, 1);
-    //if (debugNTCC)
-    if(1)
+    if (debugNTCC)
+    //if(1)
     {
       Serial.print("path ");
       Serial.print(i);

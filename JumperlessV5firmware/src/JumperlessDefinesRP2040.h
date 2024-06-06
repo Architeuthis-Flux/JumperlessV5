@@ -84,6 +84,7 @@ extern volatile int sendAllPathsCore2;
 #define QUADRATURE_B_PIN 13
 #define BUTTON_ENC 11
 
+#define BOUNCE_NODE 99
 #define CHIP_A 0
 #define CHIP_B 1
 #define CHIP_C 2

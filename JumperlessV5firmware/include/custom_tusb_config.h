@@ -25,8 +25,6 @@
 #ifndef _TUSB_CONFIG_RP2040_H_
 #define _TUSB_CONFIG_RP2040_H_
 
-
-
 #ifdef __cplusplus
 extern "C" {
 #endif
@@ -65,18 +63,14 @@ extern "C" {
 // Device Configuration
 //--------------------------------------------------------------------
 
-#define CFG_TUD_ENDOINT0_SIZE 256
+#define CFG_TUD_ENDOINT0_SIZE 64
 
-#define CFG_TUD_CDC 2
+#define CFG_TUD_CDC 1
 
-#define CFG_TUD_MSC 0
-#define CFG_TUD_HID 0
-#define CFG_TUD_MIDI 0
-#define CFG_TUD_VENDOR 0
-#define CFG_TUD_JUMPERLESS 1
-
-// max is 64
-#define CFG_TUD_JUMPERLESS_EP_BUFSIZE 8
+#define CFG_TUD_MSC 1
+#define CFG_TUD_HID 2
+#define CFG_TUD_MIDI 1
+#define CFG_TUD_VENDOR 1
 
 // CDC FIFO size of TX and RX
 #define CFG_TUD_CDC_RX_BUFSIZE 256
@@ -121,7 +115,7 @@ extern "C" {
 
 // Number of CDC interfaces
 // FTDI and CP210x are not part of CDC class, only to re-use CDC driver API
-#define CFG_TUH_CDC 2
+#define CFG_TUH_CDC 1
 #define CFG_TUH_CDC_FTDI 1
 #define CFG_TUH_CDC_CP210X 1
 

@@ -1,0 +1,114 @@
+//Menu Tree File
+
+Show
+
+-Voltage
+--0 1 2
+---Nodes
+
+-Current
+--Nodes
+
+-Digital
+
+--5V
+---0 1 2 3
+----Nodes
+
+--3.3V
+---0 1 2 3
+----Nodes
+
+--UART
+---Tx Rx
+----Nodes
+-----2nd USB  Print
+------Baud
+
+--I2C
+---SDA SCL
+----Nodes
+-----2nd USB  Print
+------Baud
+
+-Options
+
+--Middle Out
+---Range
+
+--Bottom Up
+---Range
+
+--Bright
+---Range
+
+--Color
+---Range
+
+Rails
+
+-Both
+--VoltageSet
+
+-Top
+--VoltageSet
+
+-Bottom
+--VoltageSet
+
+Slots
+
+-Save
+--Which?
+
+-Load
+--Which?
+
+-Clear
+--Which?
+
+Output
+
+-Volage
+--5 V or ± 8V?
+---VoltageSet
+----Nodes
+
+-Digital
+--5 V
+---0 1 2 3
+----Nodes
+--3.3 V
+---0 1 2 3
+----Nodes
+
+-UART
+--Tx Rx
+---Nodes
+----2nd USB  Print
+-----Baud
+
+-Buffer
+--In Out
+---Nodes
+
+Arduino
+
+-UART
+--Tx Rx
+---Nodes
+----2nd USB  Print
+-----Baud
+
+-Reset
+
+Probe
+
+-Connect
+
+-Clear
+
+-Calibration
+
+
+

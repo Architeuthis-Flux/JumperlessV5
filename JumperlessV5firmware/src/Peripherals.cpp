@@ -17,7 +17,7 @@
 
 #include "mcp4725.hpp"
 #include "MCP_DAC.h"
-#include "AdcUsb.h"
+//#include "AdcUsb.h"
 
 #include <Adafruit_MCP4728.h>
 
@@ -836,7 +836,7 @@ int readAdc(int channel, int samples)
 
   for (int i = 0; i < samples; i++)
   {
-    adcReadingAverage += adcReadings[channel];
+    //adcReadingAverage += adcReadings[channel];//////
     delay(1);
   }
 

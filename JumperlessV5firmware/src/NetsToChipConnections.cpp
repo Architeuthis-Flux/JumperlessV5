@@ -2829,36 +2829,38 @@ void resolveUncommittedHops(void)
         // Serial.println(" ");
         // Serial.print("checking singular -2s for path: ");
         // Serial.println(i);
-        for (int xCheck = 0; xCheck < 4; xCheck++)
-        {
-            // Serial.print("xCheck: ");
-            // Serial.println(xCheck);
-            // Serial.print("path[i].x[xCheck]: ");
-            // Serial.println(path[i].x[xCheck]);
 
-            if (path[i].x[xCheck] == -2)
-            {
-                for (int findFree = 0; findFree < 16; findFree++)
-                {
-                    // Serial.println(" ");
-                    // Serial.println(findFree);
+        // for (int xCheck = 0; xCheck < 4; xCheck++)
+        // {
+        //     Serial.print("xCheck: ");
+        //     Serial.println(xCheck);
+        //     Serial.print("path[i].x[xCheck]: ");
+        //     Serial.println(path[i].x[xCheck]);
 
-                    if (ch[path[i].chip[xCheck]].xStatus[freeXSearchOrder[path[i].chip[xCheck]][findFree]] == -1 || ch[path[i].chip[xCheck]].xStatus[freeXSearchOrder[path[i].chip[xCheck]][findFree]] == path[i].net)
-                    {
-                        // Serial.print("found free x: ");
-                        // Serial.print(freeXSearchOrder[path[i].chip[xCheck]][findFree]);
-                        // Serial.print(" on chip: ");
-                        // Serial.println(path[i].chip[xCheck]);
-                        path[i].x[xCheck] = freeXSearchOrder[path[i].chip[xCheck]][findFree];
+        //     if (path[i].x[xCheck] == -2)
+        //     {
+        //         for (int findFree = 0; findFree < 16; findFree++)
+        //         {
+        //             Serial.println(" ");
+        //             Serial.println(findFree);
 
-                        ch[path[i].chip[xCheck]].xStatus[freeXSearchOrder[path[i].chip[xCheck]][findFree]] = path[i].net;
-                        path[i].altPathNeeded = false;
+        //             if (ch[path[i].chip[xCheck]].xStatus[freeXSearchOrder[path[i].chip[xCheck]][findFree]] == -1 || ch[path[i].chip[xCheck]].xStatus[freeXSearchOrder[path[i].chip[xCheck]][findFree]] == path[i].net)
+        //             {
+        //               //  printBridgeArray();
+        //                 Serial.print("found free x: ");
+        //                 Serial.print(freeXSearchOrder[path[i].chip[xCheck]][findFree]);
+        //                 Serial.print(" on chip: ");
+        //                 Serial.println(path[i].chip[xCheck]);
+        //                 path[i].x[xCheck] = freeXSearchOrder[path[i].chip[xCheck]][findFree];
 
-                        break;
-                    }
-                }
-            }
-        }
+        //                 ch[path[i].chip[xCheck]].xStatus[freeXSearchOrder[path[i].chip[xCheck]][findFree]] = path[i].net;
+        //                 path[i].altPathNeeded = false;
+
+        //                 break;
+        //             }
+        //         }
+        //     }
+        // }
     }
 }
 

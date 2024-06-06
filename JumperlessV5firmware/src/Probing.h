@@ -9,7 +9,7 @@ extern long probeFrequency;
 extern int probePin;
 extern int buttonPin;
 
-extern int probeSwap;
+
 extern volatile int probeActive;
 
 enum measuredState

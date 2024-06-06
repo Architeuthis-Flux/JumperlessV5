@@ -9,7 +9,7 @@
 #include "FileParsing.h"
 #include "NetManager.h"
 #include "Probing.h"
-#include "AdcUsb.h"
+//#include "AdcUsb.h"
 #include <algorithm>
 #include "pico/stdlib.h"
 #include "hardware/pwm.h"
