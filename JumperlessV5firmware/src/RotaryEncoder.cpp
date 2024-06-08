@@ -133,6 +133,7 @@ int debugEncoder = 0;
 
 int encoderStepsToChangePosition = 2;
 
+int lastRotaryDivider = 8;
 int rotaryDivider = 8;
 
 volatile encoderDirectionStates encoderDirectionState = NONE;
@@ -145,6 +146,8 @@ volatile encoderDirectionStates lastDirectionState = NONE;
 void rotaryEncoderStuff(void) {
 
   lastButtonEncoderState = encoderButtonState;
+
+
 
   buttonState = digitalRead(BUTTON_ENC);
 
@@ -200,6 +203,20 @@ pio_sm_restart(pioEnc, smEnc);
 
   lastButtonState = buttonState;
   encoderWasPressed = encoderIsPressed;
+
+
+    if (lastRotaryDivider != rotaryDivider) {
+    pio_sm_restart(pioEnc, smEnc);
+    lastRotaryDivider = rotaryDivider;
+    encoderRaw = quadrature_encoder_get_count(pioEnc, smEnc);
+
+  encoderRaw = encoderRaw / rotaryDivider;
+  lastPositionEncoder = encoderRaw;
+
+    // quadrature_program_init(pioEnc, smEnc, offsetEnc, QUADRATURE_A_PIN,
+    // QUADRATURE_B_PIN);
+  }
+
 
   encoderRaw = quadrature_encoder_get_count(pioEnc, smEnc);
 

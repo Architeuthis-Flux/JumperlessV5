@@ -78,7 +78,7 @@ wchar_t fontMap[120] = {
 'A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'J', 'K', 'L', 'M', 'N', 'O', 'P', 'Q', 'R', 'S', 'T', 'U', 'V', 'W', 'X', 'Y', 'Z',
 'a', 'b', 'c', 'd', 'e', 'f', 'g', 'h', 'i', 'j', 'k', 'l', 'm', 'n', 'o', 'p', 'q', 'r', 's', 't', 'u', 'v', 'w', 'x', 'y', 'z',
 '!', '$', '%', '^', '*', '_', '-', '+', L'÷', 'x', '=', L'±', '?', '<', '>', '~', '\'', ',', '.', '/', '\\', 
-'(', ')', '[', ']', '{', '}', '|', ';', ':', L'µ', L'°', L'❬', L'❭', '"', '\'', L'𝟷', L'𝟸', L'𝟹'};
+'(', ')', '[', ']', '{', '}', '|', ';', ':', L'µ', L'°', L'❬', L'❭', '"', '\'', L'𝟷', L'𝟸', L'𝟹', '0', '1', '2', '3', '4', '5', '6', '7', '8', '9'};
 
 
 
@@ -114,7 +114,13 @@ uint8_t font[][3] = // 'JumperlessFontmap', 500x5px
 0x1b, 0x0e, 0x04, },{ 0x00, 0x1f, 0x00, },{ 0x10, 0x0a, 0x00, },{ 0x00, 0x0a, 0x00, },{ 
 0x1e, 0x08, 0x06, },{ 0x07, 0x05, 0x07, },{ 0x04, 0x0e, 0x1f, },{ 0x1f, 0x0e, 0x04, },{ 
 0x03, 0x00, 0x03, },{ 0x00, 0x03, 0x00, },{ 0x0a, 0x0f, 0x08, },{ 0x0d, 0x0b, 0x00, },{ 
-0x09, 0x0b, 0x0f, }};
+0x09, 0x0b, 0x0f, },{
+
+0x1e, 0x12, 0x1e, },{ 0x14, 0x1e, 0x10, },{ 0x1a, 0x12, 0x16, },{ 0x12, 0x16, 0x1e, },{ //lowercase Numbers
+0x0e, 0x08, 0x1e, },{ 0x16, 0x12, 0x1a, },{ 0x1e, 0x1a, 0x1a, },{ 0x12, 0x0a, 0x06, },{ 
+0x1e, 0x1a, 0x1e, },{ 0x16, 0x16, 0x1e, }
+
+};
 
 /* clang-format on */
 
@@ -178,6 +184,17 @@ void bread::print(const char c, uint32_t color, uint32_t backgroundColor,
   printChar(c, color, backgroundColor, position, topBottom);
 }
 
+void bread::print(const char c, uint32_t color, uint32_t backgroundColor,
+                  int position, int topBottom, int nudge) {
+  printChar(c, color, backgroundColor, position, topBottom, nudge);
+}
+
+void bread::print(const char c, uint32_t color, uint32_t backgroundColor,
+                  int position, int topBottom, int nudge, int lowercaseNumber) {
+  printChar(c, color, backgroundColor, position, topBottom, nudge,
+            lowercaseNumber);
+}
+
 void bread::print(const char *s) {
   // Serial.println("1");
   printString(s, defaultColor);
@@ -208,6 +225,12 @@ void bread::print(const char *s, uint32_t color, uint32_t backgroundColor,
                   int position, int topBottom, int nudge) {
   // Serial.println("5");
   printString(s, color, backgroundColor, position, topBottom, nudge);
+}
+
+void bread::print(const char *s, uint32_t color, uint32_t backgroundColor,
+                  int position, int topBottom, int nudge, int lowercaseNumber) {
+  // Serial.println("5");
+  printString(s, color, backgroundColor, position, topBottom, nudge, lowercaseNumber);
 }
 
 void bread::print(const char *s, uint32_t color, uint32_t backgroundColor,
@@ -249,6 +272,12 @@ void bread::print(int i, uint32_t color, int position, int topBottom) {
 }
 void bread::print(int i, uint32_t color, int position, int topBottom,
                   int nudge) {
+  char buffer[15];
+  itoa(i, buffer, 10);
+  printString(buffer, color, 0xffffff, position, topBottom, nudge);
+}
+void bread::print(int i, uint32_t color, int position, int topBottom,
+                  int nudge, int lowercase) {
   char buffer[15];
   itoa(i, buffer, 10);
   printString(buffer, color, 0xffffff, position, topBottom, nudge);
@@ -381,7 +410,7 @@ void printGraphicsRow(uint8_t data, int row, uint32_t color, uint32_t bg) {
 
 
 void printChar(const char c, uint32_t color, uint32_t bg, int position,
-               int topBottom, int nudge) {
+               int topBottom, int nudge, int lowercaseNumber) {
 
   int charPosition = position;
   if (topBottom == 1) {
@@ -406,7 +435,14 @@ void printChar(const char c, uint32_t color, uint32_t bg, int position,
     color = defaultColor;
   }
   int fontMapIndex = -1;
-  for (int i = 0; i < 100; i++) {
+  int start = 0;
+
+  if (lowercaseNumber > 0)
+  {
+    start = 90;
+  }
+
+  for (int i = start; i < 120; i++) {
     if (c == fontMap[i]) {
       fontMapIndex = i;
       break;
@@ -454,7 +490,7 @@ void printChar(const char c, uint32_t color, uint32_t bg, int position,
 }
 
 void printString(const char *s, uint32_t color, uint32_t bg, int position,
-                 int topBottom, int nudge) {
+                 int topBottom, int nudge, int lowercaseNumber) {
   // int position = 0;
 
   for (int i = 0; i < strlen(s); i++) {
@@ -476,7 +512,7 @@ void printString(const char *s, uint32_t color, uint32_t bg, int position,
     //     printChar(' ', 0x000000, 0x000000, position, topBottom);
     // } else {
     // Serial.println(position);
-    printChar(s[i], color, bg, position, topBottom, nudge);
+    printChar(s[i], color, bg, position, topBottom, nudge, lowercaseNumber);
     // }
 
     position++;

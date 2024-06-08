@@ -191,6 +191,7 @@ int getMenuSelection(void) {
   int firstTime = 1;
 
   int lastSubmenuOption = 0;
+  int back = 0;
 
   int previousMenuSelection[10] = {-1, -1, -1, -1, -1, -1, -1, -1, -1, -1};
   int force = 0;
@@ -248,7 +249,7 @@ int getMenuSelection(void) {
       Serial.print(" ");
       Serial.print(menuLines[menuPosition]);
 
-      if (stayOnTopLevel != -1 && stayOnTopIndex != -1) {
+      if (stayOnTopLevel != -1 && stayOnTopIndex != -1 && menuLevel != stayOnTopLevel) {
         b.clear();
         b.print(menuLines[stayOnTopIndex].c_str(), menuColors[stayOnTopLevel],
                 0xFFFFFF, 0, 0,
@@ -282,6 +283,9 @@ int getMenuSelection(void) {
 
       // lastMenuLevel = menuLevel;
       lastMenuPosition = menuPosition;
+      // if (back == 1) {
+      //   back = 0;
+      // } else {
       if (menuPosition == previousMenuSelection[menuLevel]) {
         previousMenuSelection[menuLevel] = -1;
       } else {
@@ -315,6 +319,7 @@ int getMenuSelection(void) {
         }
         // Serial.println("Fuck");
       }
+     // }
       //         Serial.print("   \t\t");
       // Serial.println(menuPosition);
       // if (menuLevel == lastMenuLevel) {
@@ -348,7 +353,7 @@ int getMenuSelection(void) {
            // Serial.println("-1");
             break;
           }
-          Serial.println(nextOption);
+          // Serial.println(nextOption);
           subMenuChoices[nextOption] = selectNodeAction(nextOption);
           maxNumSelections--;
           /// Serial.println("fuck");
@@ -364,7 +369,7 @@ int getMenuSelection(void) {
 
       } else {
 
-        if (stayOnTopLevel != -1 && stayOnTopIndex != -1) {
+        if ((stayOnTopLevel != -1 && stayOnTopIndex != -1) && menuLevel != stayOnTopLevel) {
           b.clear();
           b.print(menuLines[stayOnTopIndex].c_str(), menuColors[stayOnTopLevel],
                   0xFFFFFF, 0, 0,
@@ -392,8 +397,8 @@ int getMenuSelection(void) {
 
           if (subSelection != -1) {
             // menuLevel++;
-            Serial.print("subselection: ");
-            Serial.println(subSelection);
+            // Serial.print("subselection: ");
+            // Serial.println(subSelection);
             encoderButtonState = RELEASED;
             lastButtonEncoderState = PRESSED;
           }
@@ -410,7 +415,7 @@ int getMenuSelection(void) {
       // b.print(menuPosition);
     }
 
-    delayMicroseconds(180);
+    delayMicroseconds(80);
 
     if (encoderButtonState == RELEASED && lastButtonEncoderState == PRESSED) {
 
@@ -471,7 +476,7 @@ int getMenuSelection(void) {
       firstTime = 1;
       int noPrevious = 0;
 
-      for (int i = menuLevel; i < 10; i++) {
+      for (int i = menuLevel+1; i < 10; i++) {
         previousMenuSelection[i] = -1;
       }
 
@@ -543,10 +548,11 @@ int getMenuSelection(void) {
           b.printMenuReminder(menuLevel, menuColors[menuLevel]);
         }
       }
+      //back = 1;
       // delay(500); // you'll step back a level every 500ms
 
       while (encoderButtonState == HELD)
-        if (encoderDirectionState == DOWN) {
+        if (encoderDirectionState == DOWN || encoderDirectionState == UP) {
           encoderButtonState = IDLE;
 
           break;
@@ -637,6 +643,7 @@ int selectSubmenuOption(int menuPosition, int menuLevel) {
   int firstTime = 1;
 
   while (optionSelected == -1) {
+    delayMicroseconds(80);
 
     if (encoderButtonState == DOUBLECLICKED || encoderButtonState == HELD) {
       b.clear();
@@ -663,8 +670,8 @@ int selectSubmenuOption(int menuPosition, int menuLevel) {
       encoderButtonState = IDLE;
       optionSelected = highlightedOption;
       Serial.print("\r                      \r");
-      Serial.print("Option Selected: ");
-      Serial.println(optionSelected);
+      // Serial.print("Option Selected: ");
+      // Serial.println(optionSelected);
       // return optionSelected;
     }
     if (changed == 1) {
@@ -686,7 +693,7 @@ int selectSubmenuOption(int menuPosition, int menuLevel) {
 
           if (i != (3)) {
             b.print(subMenuStrings[(i + highlightedOption + 5) % 8].c_str(),
-                    subMenuColors[menuLevel], 0xFFFFFF, i, 1, nudge);
+                    subMenuColors[menuLevel], 0xFFFFFF, i, 1, nudge, 1);
             Serial.print(subMenuStrings[(i + highlightedOption + 5) % 8]);
           } else {
             Serial.print(" ");
@@ -753,17 +760,17 @@ int selectNodeAction(int whichSelection) {
   int nodeSelected = -1;
   int currentlySelecting = whichSelection;
 
-  Serial.print("Currently Selecting: ");
-  Serial.println(currentlySelecting);
-  Serial.println();
+  // Serial.print("Currently Selecting: ");
+  // Serial.println(currentlySelecting);
+  // Serial.println();
 
-  int highlightedNode = 13;
+  int highlightedNode = currentlySelecting+13;
   int firstTime = 1;
-  rotaryDivider = 4;
+  
 
 if (subMenuChoices[currentlySelecting] != -1)
   {
-    highlightedNode = subMenuChoices[currentlySelecting]-1;
+    highlightedNode = subMenuChoices[currentlySelecting]+1;
     subMenuChoices[currentlySelecting] = -1;
     maxNumSelections ++;
   }
@@ -781,8 +788,10 @@ if (subMenuChoices[currentlySelecting] != -1)
   //     }
   //   }
   // }
+  rotaryDivider = 4;
 
   while (nodeSelected == -1) {
+    delayMicroseconds(80);
     if (encoderButtonState == DOUBLECLICKED) {
       b.clear();
       rotaryDivider = 8;
@@ -792,21 +801,32 @@ if (subMenuChoices[currentlySelecting] != -1)
     if (encoderDirectionState == UP || firstTime == 1) {
       firstTime = 0;
       encoderDirectionState = NONE;
-      highlightedNode += 1;
+
+      if (firstTime != 1) {
+        highlightedNode += 1;
+      }
+     
       if (highlightedNode > 59) {
         highlightedNode = 0;
       }
       b.clear();
+ uint8_t hatch = 0b00011111;
+      uint32_t overlappingColor = 0xffffff;
       for (int a = 0; a < 8; a++) {
         if (subMenuChoices[a] != -1) {
+          if (subMenuChoices[a] == highlightedNode+1) {
+            hatch = 0b00010101;
+            overlappingColor = nodeSelectionColors[a];
+          }
+          
           b.printRawRow(0b00011111, (subMenuChoices[a] - 1),
                         nodeSelectionColors[a], 0xffffff);
 
           // b.print(subMenuChoices[a], nodeSelectionColors[a], 0xffffff, a, 1,
           // 1);
         }
-        b.printRawRow(0b00011111, (highlightedNode),
-                      nodeSelectionColors[currentlySelecting], 0xffffff);
+        b.printRawRow(hatch, (highlightedNode),
+                      nodeSelectionColors[currentlySelecting], overlappingColor);
       }
       showLEDsCore2 = 1;
       // leds.show();
@@ -817,16 +837,23 @@ if (subMenuChoices[currentlySelecting] != -1)
         highlightedNode = 59;
       }
       b.clear();
+ uint8_t hatch = 0b00011111;
+      uint32_t overlappingColor = 0xffffff;
       for (int a = 0; a < 8; a++) {
         if (subMenuChoices[a] != -1) {
+          if (subMenuChoices[a] == highlightedNode+1) {
+            hatch = 0b00010101;
+            overlappingColor = nodeSelectionColors[a];
+          }
+          
           b.printRawRow(0b00011111, (subMenuChoices[a] - 1),
                         nodeSelectionColors[a], 0xffffff);
 
           // b.print(subMenuChoices[a], nodeSelectionColors[a], 0xffffff, a, 1,
           // 1);
         }
-        b.printRawRow(0b00011111, (highlightedNode),
-                      nodeSelectionColors[currentlySelecting], 0xffffff);
+        b.printRawRow(hatch, (highlightedNode),
+                      nodeSelectionColors[currentlySelecting], overlappingColor);
       }
       showLEDsCore2 = 1;
       // leds.show();
@@ -847,17 +874,24 @@ if (subMenuChoices[currentlySelecting] != -1)
         highlightedNode = 0;
       }
       b.clear();
-            for (int a = 0; a < 8; a++) {
+      uint8_t hatch = 0b00011111;
+      uint32_t overlappingColor = 0xffffff;
+      for (int a = 0; a < 8; a++) {
         if (subMenuChoices[a] != -1) {
+          if (subMenuChoices[a] == highlightedNode+1) {
+            hatch = 0b00010101;
+            overlappingColor = nodeSelectionColors[a];
+          }
+          
           b.printRawRow(0b00011111, (subMenuChoices[a] - 1),
                         nodeSelectionColors[a], 0xffffff);
 
           // b.print(subMenuChoices[a], nodeSelectionColors[a], 0xffffff, a, 1,
           // 1);
         }
-            }
-      b.printRawRow(0b00011111, (highlightedNode),
-                    nodeSelectionColors[currentlySelecting], 0xffffff);
+        b.printRawRow(hatch, (highlightedNode),
+                      nodeSelectionColors[currentlySelecting], overlappingColor);
+      }
       showLEDsCore2 = 1;
       // leds.show();
       while (encoderButtonState == HELD)

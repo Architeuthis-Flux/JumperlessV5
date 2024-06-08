@@ -2,8 +2,6 @@
 
 Show
 
-
-
 -$Digital$
 
 --$GPIO$
@@ -27,9 +25,9 @@ Show
 -->n2
 
 -$Options$
---Middle Out
+--Mid Out
 --->r
---Bottom Up
+--Bot Up
 --->r
 --Bright
 --->r
@@ -56,14 +54,17 @@ Rails
 
 Slots
 
--$Save to$
---*0**1**2**3**4**5**6**7*
-
 -$Load$
 --*0**1**2**3**4**5**6**7*
 
 -$Clear$
 --*0**1**2**3**4**5**6**7*
+
+-$Save to$
+--*0**1**2**3**4**5**6**7*
+
+
+
 
 Output
 

@@ -14,6 +14,7 @@ class bread {
     void print(const char c, uint32_t color, uint32_t backgroundColor);
     void print(const char c, uint32_t color, uint32_t backgroundColor, int position, int topBottom);
     void print(const char c, uint32_t color, uint32_t backgroundColor, int position, int topBottom, int nudge);
+    void print(const char c, uint32_t color, uint32_t backgroundColor, int position, int topBottom, int nudge, int lowercase);
     void print(const char c, uint32_t color, uint32_t backgroundColor, int position);
 
     void print(const char* s);
@@ -24,6 +25,7 @@ class bread {
     void print(const char* s, uint32_t color, uint32_t backgroundColor);
     void print(const char* s, uint32_t color, uint32_t backgroundColor, int position, int topBottom);
     void print(const char* s, uint32_t color, uint32_t backgroundColor, int position, int topBottom, int nudge);
+    void print(const char* s, uint32_t color, uint32_t backgroundColor, int position, int topBottom, int nudge, int lowercaseNumber);
     void print(const char* s, uint32_t color, uint32_t backgroundColor, int position);
 
 
@@ -33,6 +35,7 @@ class bread {
     void print(int i, uint32_t color, int position);
     void print(int i, uint32_t color, int position, int topBottom);
     void print(int i, uint32_t color, int position, int topBottom, int nudge);
+    void print(int i, uint32_t color, int position, int topBottom, int nudge, int lowercase);
     void print(int i, uint32_t color, uint32_t backgroundColor);
 
 
@@ -60,9 +63,9 @@ void printGraphicsRow(uint8_t data, int row, uint32_t color = 0xFFFFFF, uint32_t
 
 void scrollFont(void);
 
-void printChar(const char c, uint32_t color = 0xFFFFFF, uint32_t bg = 0xFFFFFF, int position = 0, int topBottom = -1, int nudge = 0);
+void printChar(const char c, uint32_t color = 0xFFFFFF, uint32_t bg = 0xFFFFFF, int position = 0, int topBottom = -1, int nudge = 0, int lowercase = 0);
 
-void printString(const char* s, uint32_t color = 0xFFFFFF, uint32_t bg = 0xFFFFFF, int position = 0, int topBottom = -1, int nudge = 0);
+void printString(const char* s, uint32_t color = 0xFFFFFF, uint32_t bg = 0xFFFFFF, int position = 0, int topBottom = -1, int nudge = 0, int lowercase = 0);
 
 
 
