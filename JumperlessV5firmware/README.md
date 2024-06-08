@@ -1,3 +1,5 @@
+### This is the README from the current-model [Jumperless](https://github.com/Architeuthis-Flux/Jumperless), it applies to the V5 *in general*, but I've made some changes to how the Special Function chips (I-L) are connected and a bunch of other things so this isn't quite canon if you care about the finer details.
+
 I'm going to do a high-level explanation of what the code in the Jumperless is actually doing. There's a lot going on and it's in a bunch of separate files so I think it will be helpful for people who what to understand or improve upon it.
 
 Table of Contents
