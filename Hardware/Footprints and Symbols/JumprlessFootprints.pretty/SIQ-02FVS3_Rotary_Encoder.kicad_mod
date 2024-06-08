@@ -1,0 +1,281 @@
+(footprint "SIQ-02FVS3_Rotary_Encoder"
+	(version 20240108)
+	(generator "pcbnew")
+	(generator_version "8.0")
+	(layer "F.Cu")
+	(property "Reference" "REF**"
+		(at 0 -18.59 0)
+		(unlocked yes)
+		(layer "F.SilkS")
+		(hide yes)
+		(uuid "cfac5216-f2a4-43b8-a8a3-8d9a20dbd8c5")
+		(effects
+			(font
+				(size 1 1)
+				(thickness 0.15)
+			)
+		)
+	)
+	(property "Value" "RotaryEncoder_Switch"
+		(at 0.095 22.315 0)
+		(unlocked yes)
+		(layer "F.Fab")
+		(hide yes)
+		(uuid "b7039ab8-5800-4368-98e4-06a675ce2553")
+		(effects
+			(font
+				(size 1 1)
+				(thickness 0.15)
+			)
+		)
+	)
+	(property "Footprint" "JumperlessFootprints:SIQ-02FVS3_Rotary_Encoder"
+		(at 0 0 0)
+		(unlocked yes)
+		(layer "F.Fab")
+		(hide yes)
+		(uuid "3392075a-c7f6-431b-8247-cfd408582b30")
+		(effects
+			(font
+				(size 1 1)
+				(thickness 0.15)
+			)
+		)
+	)
+	(property "Datasheet" ""
+		(at 0 0 0)
+		(unlocked yes)
+		(layer "F.Fab")
+		(hide yes)
+		(uuid "30e10588-4d05-46b2-8225-3d843de76570")
+		(effects
+			(font
+				(size 1 1)
+				(thickness 0.15)
+			)
+		)
+	)
+	(property "Description" "Rotary encoder, dual channel, incremental quadrate outputs, with switch"
+		(at 0 0 0)
+		(unlocked yes)
+		(layer "F.Fab")
+		(hide yes)
+		(uuid "1eb78be7-a003-4fe9-b64b-d6e15d715926")
+		(effects
+			(font
+				(size 1 1)
+				(thickness 0.15)
+			)
+		)
+	)
+	(attr smd)
+	(fp_line
+		(start -5.15 0)
+		(end -5.15 7.25)
+		(stroke
+			(width 0.12)
+			(type default)
+		)
+		(layer "F.SilkS")
+		(uuid "5454b3f3-f1a6-4416-967f-7557a8c0edd7")
+	)
+	(fp_line
+		(start -5.15 7.25)
+		(end 5.15 7.25)
+		(stroke
+			(width 0.12)
+			(type default)
+		)
+		(layer "F.SilkS")
+		(uuid "6d8d172a-baca-44b4-ba07-8b87c3642da0")
+	)
+	(fp_line
+		(start -4.199999 0)
+		(end -5.15 0)
+		(stroke
+			(width 0.12)
+			(type default)
+		)
+		(layer "F.SilkS")
+		(uuid "b844e832-e20b-4de1-8c80-650c74886087")
+	)
+	(fp_line
+		(start 0 -3.842113)
+		(end -1.696517 -3.842113)
+		(stroke
+			(width 0.12)
+			(type default)
+		)
+		(layer "F.SilkS")
+		(uuid "e6e4fc68-8529-44b5-b5d7-510dc73d33c7")
+	)
+	(fp_line
+		(start 0 -3.842113)
+		(end 1.696517 -3.842113)
+		(stroke
+			(width 0.12)
+			(type default)
+		)
+		(layer "F.SilkS")
+		(uuid "c63edd61-0dca-4845-98c9-63e808f15647")
+	)
+	(fp_line
+		(start 5.15 0)
+		(end 4.199999 0)
+		(stroke
+			(width 0.12)
+			(type default)
+		)
+		(layer "F.SilkS")
+		(uuid "b885039b-4176-478a-aed1-1e7625532ddb")
+	)
+	(fp_line
+		(start 5.15 7.25)
+		(end 5.15 0)
+		(stroke
+			(width 0.12)
+			(type default)
+		)
+		(layer "F.SilkS")
+		(uuid "0692eab2-338d-4fe4-b885-d3a0ea314c4f")
+	)
+	(fp_arc
+		(start -4.199999 0)
+		(mid -3.518903 -2.292883)
+		(end -1.696517 -3.842113)
+		(stroke
+			(width 0.12)
+			(type default)
+		)
+		(layer "F.SilkS")
+		(uuid "177ac13b-eca9-4468-a977-a147ffb594e1")
+	)
+	(fp_arc
+		(start 1.696517 -3.842113)
+		(mid 3.518905 -2.292884)
+		(end 4.199999 0)
+		(stroke
+			(width 0.12)
+			(type default)
+		)
+		(layer "F.SilkS")
+		(uuid "b96c0c5e-1f86-4768-a67e-fdb4b5d5e7bf")
+	)
+	(fp_circle
+		(center 0 0)
+		(end 7.25 0)
+		(stroke
+			(width 0.12)
+			(type default)
+		)
+		(fill none)
+		(layer "User.6")
+		(uuid "186b4c91-0796-4156-ba0e-9be167b5f492")
+	)
+	(fp_text user "${REFERENCE}"
+		(at 2.000001 -2.5 -90)
+		(layer "F.Fab")
+		(uuid "9a4c3400-30b6-451b-aba5-84c2377fcbe0")
+		(effects
+			(font
+				(size 1 1)
+				(thickness 0.15)
+			)
+		)
+	)
+	(pad "" np_thru_hole circle
+		(at -3 4.5)
+		(size 1.6 1.6)
+		(drill 1.6)
+		(layers "F&B.Cu" "*.Mask")
+		(uuid "b26a56b1-e995-40af-92a3-a4473e1d28c6")
+	)
+	(pad "" np_thru_hole circle
+		(at 3 4.5)
+		(size 1.6 1.6)
+		(drill 1.6)
+		(layers "F&B.Cu" "*.Mask")
+		(uuid "061fbad0-d8b4-405b-ae76-28174419ff6c")
+	)
+	(pad "0" smd roundrect
+		(at -5.4 1.3 90)
+		(size 1.3 1.2)
+		(layers "F.Cu" "F.Paste" "F.Mask")
+		(roundrect_rratio 0.1)
+		(uuid "827e82ed-5646-492d-ad4d-68075f8653b6")
+	)
+	(pad "0" smd roundrect
+		(at -5.4 5.4 90)
+		(size 1.3 1.2)
+		(layers "F.Cu" "F.Paste" "F.Mask")
+		(roundrect_rratio 0.1)
+		(uuid "a0d156a7-5823-4553-b259-8f8c6f3ed3ed")
+	)
+	(pad "0" smd roundrect
+		(at -3.25269 -3.1 225)
+		(size 0.85 1.2)
+		(layers "F.Cu" "F.Paste" "F.Mask")
+		(roundrect_rratio 0.1)
+		(uuid "583fe6a7-f78b-43fc-a5b0-55f2b7ec1f39")
+	)
+	(pad "0" smd roundrect
+		(at 3.25266 -3.100001 315)
+		(size 0.85 1.2)
+		(layers "F.Cu" "F.Paste" "F.Mask")
+		(roundrect_rratio 0.1)
+		(uuid "18c5843e-db55-4277-ae55-ac81d8fd562b")
+	)
+	(pad "0" smd roundrect
+		(at 5.4 1.3 90)
+		(size 1.3 1.2)
+		(layers "F.Cu" "F.Paste" "F.Mask")
+		(roundrect_rratio 0.1)
+		(uuid "e4272445-67e0-4667-bd72-10bf442c3caf")
+	)
+	(pad "0" smd roundrect
+		(at 5.4 5.4 90)
+		(size 1.3 1.2)
+		(layers "F.Cu" "F.Paste" "F.Mask")
+		(roundrect_rratio 0.1)
+		(uuid "62a8873b-99c7-4c16-9814-9dd3380862ee")
+	)
+	(pad "1" smd roundrect
+		(at -4 7.7 180)
+		(size 1.3 1.2)
+		(layers "F.Cu" "F.Paste" "F.Mask")
+		(roundrect_rratio 0.1)
+		(uuid "1a1c002d-6430-4235-b381-b44f85ccadaa")
+	)
+	(pad "2" smd roundrect
+		(at -1.475 7.7 180)
+		(size 1.3 1.2)
+		(layers "F.Cu" "F.Paste" "F.Mask")
+		(roundrect_rratio 0.1)
+		(uuid "fe6c6d32-71af-4331-90c6-3c1b706a68ac")
+	)
+	(pad "3" smd roundrect
+		(at 1.475 7.7 180)
+		(size 1.3 1.2)
+		(layers "F.Cu" "F.Paste" "F.Mask")
+		(roundrect_rratio 0.1)
+		(uuid "aa1f4abd-3320-451d-97ac-c02d1d90a88c")
+	)
+	(pad "4" smd roundrect
+		(at 4 7.7 180)
+		(size 1.3 1.2)
+		(layers "F.Cu" "F.Paste" "F.Mask")
+		(roundrect_rratio 0.1)
+		(uuid "2c66048c-2e15-407d-9227-36df952b177c")
+	)
+	(model "${SHAPES}/SIQ-02FVS3-1.step"
+		(offset
+			(xyz 0 0 0)
+		)
+		(scale
+			(xyz 1 1 1)
+		)
+		(rotate
+			(xyz 0 0 0)
+		)
+	)
+)
