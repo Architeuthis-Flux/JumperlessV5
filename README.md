@@ -17,7 +17,15 @@ Here's a list of the new stuff being added to V5:
 
 
 
-https://github.com/Architeuthis-Flux/JumperlessV5/assets/20519442/0c71af0c-fe0a-4579-8e26-c24e38afd62b
+
+
+https://github.com/Architeuthis-Flux/JumperlessV5/assets/20519442/e1003ef1-e145-4110-8218-d5403845bdf6
+
+
+
+
+
+
 
 
 
