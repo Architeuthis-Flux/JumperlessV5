@@ -38,9 +38,10 @@ class bread {
 
 
 void printMenuReminder(int menuDepth, uint32_t color);
+void printRawRow(uint8_t data, int row, uint32_t color, uint32_t bg);
 
     
-    void clear(void);
+    void clear(int topBottom = -1);
 
     // void printChar(char c, uint32_t color, uint32_t backgroundColor, int position, int topBottom);
 

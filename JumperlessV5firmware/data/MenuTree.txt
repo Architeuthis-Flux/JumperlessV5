@@ -2,103 +2,98 @@
 
 Show
 
--Voltage
---0 1 2
----Nodes
 
--Current
---Nodes
 
--Digital
+-$Digital$
 
---5V
----0 1 2 3
-----Nodes
+--$GPIO$
+---*5V* *3.3V*
+----*0* *1* *2* *3*
+----->n4
 
---3.3V
----0 1 2 3
-----Nodes
+--$UART$
+---*Tx* *Rx*
+----Nodes>n2
+-----*USB 2*  *Print*
+------*9600* *115200*
 
---UART
----Tx Rx
-----Nodes
------2nd USB  Print
-------Baud
+--$I2C$
+---*SDA* *SCL*
+----Nodes>n2
+-----*USB 2*  *Print*
+------*9600* *115200*
 
---I2C
----SDA SCL
-----Nodes
------2nd USB  Print
-------Baud
+-$Current$
+-->n2
 
--Options
-
+-$Options$
 --Middle Out
----Range
-
+--->r
 --Bottom Up
----Range
-
+--->r
 --Bright
----Range
-
+--->r
 --Color
----Range
+--->r
+
+
+
+-$Voltage$
+--*0* *1* *2*
+--->n3
+
 
 Rails
 
--Both
---VoltageSet
+-$Both$
+-->v
 
--Top
---VoltageSet
+-$Top$
+-->v
 
--Bottom
---VoltageSet
+-$Bottom$
+-->v
 
 Slots
 
--Save
---Which?
+-$Save to$
+--*0**1**2**3**4**5**6**7*
 
--Load
---Which?
+-$Load$
+--*0**1**2**3**4**5**6**7*
 
--Clear
---Which?
+-$Clear$
+--*0**1**2**3**4**5**6**7*
 
 Output
 
--Volage
---5 V or ± 8V?
----VoltageSet
-----Nodes
+-$Voltage$
+--*5V* *~8V*
+--->v
+---->n1
 
--Digital
---5 V
----0 1 2 3
-----Nodes
---3.3 V
----0 1 2 3
-----Nodes
+-$GPIO$
+--*5V* *3.3V*
+---*0* *1* *2* *3*
+---->n4
 
--UART
---Tx Rx
----Nodes
-----2nd USB  Print
------Baud
+-$UART$
+--*Tx* *Rx*
+---Nodes>n2
+----*USB 2*  *Print*
+-----*9600* *115200*
 
--Buffer
---In Out
----Nodes
+-$Buffer$
+--*In* *Out*
+--->n2
 
 Arduino
 
--UART
---Tx Rx
----Nodes
-----2nd USB  Print
------Baud
+-$UART$
+--*Tx* *Rx*
+---Nodes>n2
+----*USB 2*  *Print*
+-----*9600* *115200*
 
 -Reset
 

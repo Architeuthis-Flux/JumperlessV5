@@ -108,7 +108,7 @@ uint8_t font[][3] = // 'JumperlessFontmap', 500x5px
 0x19, 0x04, 0x13, },{ 0x02, 0x01, 0x02, },{ 0x02, 0x07, 0x02, },{ 0x10, 0x10, 0x10, },{ 
 0x04, 0x04, 0x04, },{ 0x04, 0x0e, 0x04, },{ 0x04, 0x15, 0x04, },{ 0x0a, 0x04, 0x0a, },{ 
 0x0a, 0x0a, 0x0a, },{ 0x12, 0x17, 0x12, },{ 0x01, 0x1d, 0x07, },{ 0x04, 0x0a, 0x11, },{ 
-0x11, 0x0a, 0x04, },{ 0x06, 0x04, 0x0c, },{ 0x01, 0x02, 0x00, },{ 0x10, 0x08, 0x00, },{ 
+0x11, 0x0a, 0x04, },{ 0x12, 0x17, 0x12, },{ 0x01, 0x02, 0x00, },{ 0x10, 0x08, 0x00, },{ 
 0x00, 0x10, 0x00, },{ 0x18, 0x04, 0x03, },{ 0x03, 0x04, 0x18, },{ 0x00, 0x0e, 0x11, },{ 
 0x11, 0x0e, 0x00, },{ 0x00, 0x1f, 0x11, },{ 0x00, 0x11, 0x1f, },{ 0x04, 0x0e, 0x1b, },{ 
 0x1b, 0x0e, 0x04, },{ 0x00, 0x1f, 0x00, },{ 0x10, 0x0a, 0x00, },{ 0x00, 0x0a, 0x00, },{ 
@@ -331,6 +331,11 @@ void bread::printMenuReminder(int menuDepth, uint32_t color) {
 
 
 }
+
+void bread::printRawRow(uint8_t data, int row, uint32_t color, uint32_t bg) {
+  printGraphicsRow(data, row, color, bg);
+
+}
 /*
 
 ||||||||||||||||||||||||||||||
@@ -372,6 +377,8 @@ void printGraphicsRow(uint8_t data, int row, uint32_t color, uint32_t bg) {
     }
   
 }
+
+
 
 void printChar(const char c, uint32_t color, uint32_t bg, int position,
                int topBottom, int nudge) {
@@ -422,7 +429,12 @@ void printChar(const char c, uint32_t color, uint32_t bg, int position,
       }
     }
   } else {
+    if (charPosition + nudge != 0) {
+        for (int j = 0; j < 5; j++) {
 
+            leds.setPixelColor(((charPosition + nudge - 1) * 5) + j, bg);
+          }
+    }
     for (int i = 0; i < 4; i++) {
       if (i < 3) {
         for (int j = 0; j < 5; j++) {
@@ -469,12 +481,27 @@ void printString(const char *s, uint32_t color, uint32_t bg, int position,
 
     position++;
   }
+  //Serial.println();
 }
 
-void bread::clear() {
+void bread::clear(int topBottom) {
+if (topBottom == -1) {
   for (int i = 0; i < 60; i++) {
     for (int j = 0; j < 5; j++) {
       leds.setPixelColor((i * 5) + j, 0x00, 0x00, 0x00);
+    }
+  }
+} else if (topBottom == 0) {
+  for (int i = 0; i < 30; i++) {
+    for (int j = 0; j < 5; j++) {
+      leds.setPixelColor((i * 5) + j, 0x00, 0x00, 0x00);
+    }
+  }
+  } else if (topBottom == 1) {
+    for (int i = 30; i < 60; i++) {
+      for (int j = 0; j < 5; j++) {
+        leds.setPixelColor((i * 5) + j, 0x00, 0x00, 0x00);
+      }
     }
   }
   // leds.show();

@@ -14,7 +14,7 @@ KevinC@ppucc.io
 // #define LED LED_BUILTIN
 // #ifdef USE_TINYUSB
 //#include "../include/Adafruit_TinyUSB_Arduino_changed/Adafruit_TinyUSB_changed.h"
-#include "../lib/Adafruit_TinyUSB_Arduino_changed/src/Adafruit_TinyUSB_changed.h"
+//#include "../lib/Adafruit_TinyUSB_Arduino_changed/src/Adafruit_TinyUSB_changed.h"
 // #endif
 #include <SPI.h>
 #include <Wire.h>
@@ -41,7 +41,7 @@ KevinC@ppucc.io
 #include "PersistentStuff.h"
 #include "Probing.h"
 #include "RotaryEncoder.h"
-//#include <Adafruit_TinyUSB.h>
+#include <Adafruit_TinyUSB.h>
 
 // #include "AdcUsb.h"
 // #include "logic_analyzer.h"

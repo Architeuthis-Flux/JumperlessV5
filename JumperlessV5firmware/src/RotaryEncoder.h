@@ -12,6 +12,8 @@ extern int rotState;
 extern int encoderIsPressed;
 extern int showingPreview;
 
+extern int rotaryDivider;
+
 enum encoderDirectionStates { NONE,UP,DOWN };
 
 enum encoderButtonStates { IDLE, PRESSED, HELD, RELEASED, DOUBLECLICKED};

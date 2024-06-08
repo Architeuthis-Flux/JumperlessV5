@@ -133,6 +133,8 @@ int debugEncoder = 0;
 
 int encoderStepsToChangePosition = 2;
 
+int rotaryDivider = 8;
+
 volatile encoderDirectionStates encoderDirectionState = NONE;
 volatile encoderButtonStates encoderButtonState = IDLE;
 
@@ -178,6 +180,9 @@ void rotaryEncoderStuff(void) {
   if (encoderIsPressed == 1 && encoderWasPressed == 0) {
     buttonHoldTimer = millis();
     // lastButtonEncoderState = IDLE;
+pio_sm_restart(pioEnc, smEnc);
+  // encoderRaw = quadrature_encoder_get_count(pioEnc, smEnc);
+  // lastPositionEncoder = encoderRaw;
 
     if (millis() - doubleClickTimer < doubleClickLength) {
       encoderButtonState = DOUBLECLICKED;
@@ -191,33 +196,14 @@ void rotaryEncoderStuff(void) {
     encoderWasPressed = encoderIsPressed;
   }
 
-  //   if (lastButtonEncoderState != encoderButtonState)
-  //   {
-  //     //buttonDebounceTimer2 = millis();
-  //     Serial.print("WasPressed: ");
-  //     Serial.print(encoderWasPressed);
-  //     Serial.print("\t\t");
-  //     Serial.print("IsPressed: ");
-  //     Serial.print(encoderIsPressed);
-  //     Serial.println("\t");
 
-  //     Serial.print("lastButtonState: ");
-  //     Serial.print(lastButtonEncoderState);
-  //     Serial.print("\t");
-  //     Serial.print("ButtonState: ");
-  //     Serial.print(encoderButtonState);
-  //     Serial.print("\t");
-
-  //     Serial.println("\n\r");
-  //     delay(150);
-  //   }
 
   lastButtonState = buttonState;
   encoderWasPressed = encoderIsPressed;
 
   encoderRaw = quadrature_encoder_get_count(pioEnc, smEnc);
 
-  encoderRaw = encoderRaw / 8;
+  encoderRaw = encoderRaw / rotaryDivider;
 
   if (lastPositionEncoder != encoderRaw) {
 
