@@ -18,6 +18,18 @@ Here's a list of the new stuff being added to V5:
 
 
 
+
+https://github.com/Architeuthis-Flux/JumperlessV5/assets/20519442/e1003ef1-e145-4110-8218-d5403845bdf6
+
+
+
+
+
+
+
+
+
+
 https://github.com/Architeuthis-Flux/JumperlessV5/assets/20519442/8845355e-0e21-4cbd-b4f0-f0b5bd2063a3
 
 ![JumperlessV5hw](https://github.com/Architeuthis-Flux/JumperlessV5/assets/20519442/c84130b7-95ff-4f1b-9ff0-9a2cf94c56ce)
