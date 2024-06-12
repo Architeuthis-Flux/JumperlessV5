@@ -13,6 +13,8 @@ extern int encoderIsPressed;
 extern int showingPreview;
 
 extern int rotaryDivider;
+extern int encoderRaw;
+extern volatile int numberOfSteps;
 
 enum encoderDirectionStates { NONE,UP,DOWN };
 

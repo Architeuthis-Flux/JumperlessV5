@@ -108,7 +108,7 @@ struct chipStatus ch[12] = {
   {10,'K',
   {-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1}, // x status
   {-1,-1,-1,-1,-1,-1,-1,-1}, //y status
-  {1, 30, 31, 60, T_RAIL_POS, B_RAIL_POS, DAC0, DAC1, ADC0, ADC1, ADC2, ADC3, CHIP_L, CHIP_I, CHIP_J, GND}, //this is for V5r1 change this for V5r2
+  {1, 30, 31, 60, TOP_RAIL, BOTTOM_RAIL, DAC0, DAC1, ADC0, ADC1, ADC2, ADC3, CHIP_L, CHIP_I, CHIP_J, GND}, //this is for V5r1 change this for V5r2
   {CHIP_A,CHIP_B,CHIP_C,CHIP_D,CHIP_E,CHIP_F,CHIP_G,CHIP_H}},
 
   {11,'L',

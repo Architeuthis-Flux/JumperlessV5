@@ -241,6 +241,8 @@ extern volatile int sendAllPathsCore2;
 #define NANO_RESET_1  95
 
 #define GND 100
+#define TOP_RAIL 101
+#define BOTTOM_RAIL 102
 #define SUPPLY_3V3 103
 #define SUPPLY_5V 105
 

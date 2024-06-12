@@ -674,10 +674,10 @@ void lightUpNet(int netNumber, int node, int onOff, int brightness2, int hueShif
 
                                 color = packRgb(shiftedColor.r, shiftedColor.g, shiftedColor.b);
                                 // color = packRgb((shiftedColor.r * LEDbrightnessRail) >> 8, (shiftedColor.g * LEDbrightnessRail) >> 8, (shiftedColor.b * LEDbrightnessRail) >> 8);
-                                // Serial.print("rail color: ");
-                                // Serial.print(color, HEX);
+                                 Serial.print("rail color: ");
+                                 Serial.print(color, HEX);
                             }
-                            else if (net[netNumber].specialFunction >= 106 && net[netNumber].specialFunction <= 120)
+                            else if (net[netNumber].specialFunction >= 100 && net[netNumber].specialFunction <= 120)
                             {
                                 if (brightness2 != DEFAULTBRIGHTNESS)
                                 {
@@ -1189,14 +1189,14 @@ void lightUpRail(int logo, int rail, int onOff, int brightness2, int switchPosit
     leds.setPixelColor(416, scaleDownBrightness(rawSpecialNetColors[3], 5, 45));
     leds.setPixelColor(426, scaleDownBrightness(rawSpecialNetColors[2], 5, 45));
 
-    leds.setPixelColor(430, rawOtherColors[8]);
-    leds.setPixelColor(431, rawOtherColors[8]);
+    leds.setPixelColor(430, scaleDownBrightness(rawOtherColors[8], 2, 45));
+    leds.setPixelColor(431, scaleDownBrightness(rawOtherColors[8], 2, 45));
 
-    leds.setPixelColor(432, rawOtherColors[9]);
-    leds.setPixelColor(433, rawOtherColors[9]);
+    leds.setPixelColor(432, scaleDownBrightness(rawOtherColors[9], 5, 45));
+    leds.setPixelColor(433, scaleDownBrightness(rawOtherColors[9], 5, 45));
 
-    leds.setPixelColor(434, rawOtherColors[10]);
-    leds.setPixelColor(435, rawOtherColors[10]);
+    leds.setPixelColor(434, scaleDownBrightness(rawOtherColors[10], 2, 45));
+    leds.setPixelColor(435, scaleDownBrightness(rawOtherColors[10], 2, 45));
 
     if (switchPosition == 2) //+-8V
     {

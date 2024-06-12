@@ -97,7 +97,7 @@ void setup()
   USBDevice.addStringDescriptor("Architeuthis Flux");
 
 delay(20);
-  
+ // Serial.ignoreFlowControl(true);
 Serial.begin(115200);
 
 delay(20);
@@ -838,7 +838,7 @@ unsigned long lastTimeReset = 0;
 unsigned long lastSwirlTime = 0;
 
 int swirlCount = 0;
-int spread = 7;
+int spread = 6;
 
 int csCycle = 0;
 int onOff = 0;
@@ -847,13 +847,14 @@ float botRailVoltage = 0.0;
 
 
 unsigned long schedulerTimer = 0;
-unsigned long schedulerUpdateTime = 5;
+unsigned long schedulerUpdateTime = 5000;
 
 void loop1() // core 2 handles the LEDs and the CH446Q8
 {
 
-  if (millis() - schedulerTimer > schedulerUpdateTime || showLEDsCore2 == 3)
+  if (micros() - schedulerTimer > schedulerUpdateTime || showLEDsCore2 == 3)
   {
+
    
     if ((showLEDsCore2 >= 1 && loadingFile == 0) || showLEDsCore2 == 3) {
      // Serial.println(showLEDsCore2);
@@ -861,22 +862,23 @@ void loop1() // core 2 handles the LEDs and the CH446Q8
 
       if (rails == 1 || rails == 2) {
         lightUpRail(-1, -1, 1);
-        logoSwirl(swirlCount, spread);
+        //logoSwirl(swirlCount, spread);
       }
 
       if (rails == 5 || rails == 3) {
         logoSwirl(swirlCount, spread);
       }
 
-      if (rails != 2 && rails != 5 && rails != 3) {
+      if (rails != 2 && rails != 5 && rails != 3 && inClickMenu == 0) {
         showNets();
       }
+      //showNets();
 
       // if (rails == 3) {
       //   Serial.print("\n\r");
       //   Serial.print(rails);
       // }
-      delayMicroseconds(2220);
+      delayMicroseconds(1220);
 
       leds.show();
       
@@ -884,6 +886,10 @@ void loop1() // core 2 handles the LEDs and the CH446Q8
         delayMicroseconds(2200);
         showLEDsCore2 = 0;
       }
+          if (inClickMenu == 1)
+    {
+      rotaryEncoderStuff();
+    }
       
 
     } else if (sendAllPathsCore2 == 1) {
@@ -897,7 +903,7 @@ void loop1() // core 2 handles the LEDs and the CH446Q8
       //showLEDsCore2 = 1;
       sendAllPathsCore2 = 0;
 
-    } else if (millis() - lastSwirlTime > 330 && loadingFile == 0 &&
+    } else if (millis() - lastSwirlTime > 130 && loadingFile == 0 &&
                showLEDsCore2 == 0) {
 
 
@@ -912,13 +918,13 @@ void loop1() // core 2 handles the LEDs and the CH446Q8
 
         swirlCount++;
       }
-      showLEDsCore2 = 2;
-      // leds.show();
+      //showLEDsCore2 = 5;
+       leds.show();
     } else {
 
       rotaryEncoderStuff();
     }
-    schedulerTimer = millis();
+    schedulerTimer = micros() ;
   } 
 
   

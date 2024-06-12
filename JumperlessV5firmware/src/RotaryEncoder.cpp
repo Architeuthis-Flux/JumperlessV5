@@ -135,7 +135,7 @@ int encoderStepsToChangePosition = 2;
 
 int lastRotaryDivider = 8;
 int rotaryDivider = 8;
-
+volatile int numberOfSteps = 0;
 volatile encoderDirectionStates encoderDirectionState = NONE;
 volatile encoderButtonStates encoderButtonState = IDLE;
 
@@ -146,8 +146,6 @@ volatile encoderDirectionStates lastDirectionState = NONE;
 void rotaryEncoderStuff(void) {
 
   lastButtonEncoderState = encoderButtonState;
-
-
 
   buttonState = digitalRead(BUTTON_ENC);
 
@@ -183,9 +181,9 @@ void rotaryEncoderStuff(void) {
   if (encoderIsPressed == 1 && encoderWasPressed == 0) {
     buttonHoldTimer = millis();
     // lastButtonEncoderState = IDLE;
-pio_sm_restart(pioEnc, smEnc);
-  // encoderRaw = quadrature_encoder_get_count(pioEnc, smEnc);
-  // lastPositionEncoder = encoderRaw;
+    pio_sm_restart(pioEnc, smEnc);
+    // encoderRaw = quadrature_encoder_get_count(pioEnc, smEnc);
+    // lastPositionEncoder = encoderRaw;
 
     if (millis() - doubleClickTimer < doubleClickLength) {
       encoderButtonState = DOUBLECLICKED;
@@ -199,34 +197,34 @@ pio_sm_restart(pioEnc, smEnc);
     encoderWasPressed = encoderIsPressed;
   }
 
-
-
   lastButtonState = buttonState;
   encoderWasPressed = encoderIsPressed;
 
-
-    if (lastRotaryDivider != rotaryDivider) {
+  if (lastRotaryDivider != rotaryDivider) {
     pio_sm_restart(pioEnc, smEnc);
     lastRotaryDivider = rotaryDivider;
     encoderRaw = quadrature_encoder_get_count(pioEnc, smEnc);
 
-  encoderRaw = encoderRaw / rotaryDivider;
-  lastPositionEncoder = encoderRaw;
+    encoderRaw = encoderRaw / rotaryDivider;
+    lastPositionEncoder = encoderRaw;
 
     // quadrature_program_init(pioEnc, smEnc, offsetEnc, QUADRATURE_A_PIN,
     // QUADRATURE_B_PIN);
   }
 
-
   encoderRaw = quadrature_encoder_get_count(pioEnc, smEnc);
 
   encoderRaw = encoderRaw / rotaryDivider;
+
+  numberOfSteps = abs(lastPositionEncoder - encoderRaw);
 
   if (lastPositionEncoder != encoderRaw) {
 
     if (lastPositionEncoder > encoderRaw && encoderDirectionState != DOWN) {
       position++;
       encoderDirectionState = UP;
+      //numberOfSteps = abs(lastPositionEncoder - encoderRaw);
+      numberOfSteps = abs(lastPositionEncoder - encoderRaw);
 
       lastPositionEncoder = encoderRaw;
 
@@ -234,7 +232,7 @@ pio_sm_restart(pioEnc, smEnc);
                encoderDirectionState != UP) {
       position--;
       encoderDirectionState = DOWN;
-
+numberOfSteps = lastPositionEncoder - encoderRaw;
       lastPositionEncoder = encoderRaw;
 
     } else {
@@ -247,8 +245,7 @@ pio_sm_restart(pioEnc, smEnc);
     encoderDirectionState = NONE;
   }
 
-  //slotManager();
-
+  // slotManager();
 
   // buttonState = digitalRead(BUTTON_ENC);
   //  if (millis() - buttonHoldTimer > buttonHoldLength && buttonState == 0 )
@@ -262,34 +259,34 @@ pio_sm_restart(pioEnc, smEnc);
 
   if (debugEncoder == 1) {
     if (encoderButtonState != lastButtonEncoderState) {
-    switch (encoderButtonState) {
-    case IDLE:
-      // Serial.print("IDLE");
-      break;
-    case PRESSED:
-      Serial.print(lastButtonEncoderState);
-      Serial.println(" PRESSED");
-      //delay(150);
-      break;
-    case HELD:
+      switch (encoderButtonState) {
+      case IDLE:
+        // Serial.print("IDLE");
+        break;
+      case PRESSED:
+        Serial.print(lastButtonEncoderState);
+        Serial.println(" PRESSED");
+        // delay(150);
+        break;
+      case HELD:
 
-      Serial.println("HELD");
-      //delay(150);
-      break;
-    case RELEASED:
+        Serial.println("HELD");
+        // delay(150);
+        break;
+      case RELEASED:
 
-      Serial.println("RELEASED");
-      //delay(150);
-      break;
+        Serial.println("RELEASED");
+        // delay(150);
+        break;
 
-    case DOUBLECLICKED:
-      Serial.println("DOUBLECLICKED");
-      ///delay(150);
-      break;
+      case DOUBLECLICKED:
+        Serial.println("DOUBLECLICKED");
+        /// delay(150);
+        break;
 
-    default:
-      break;
-    }
+      default:
+        break;
+      }
     }
     if (encoderDirectionState != NONE || encoderButtonState != IDLE) {
       switch (encoderDirectionState) {
@@ -312,7 +309,7 @@ pio_sm_restart(pioEnc, smEnc);
         break;
       }
     }
-    }
+  }
 }
 
 unsigned long previewLength = 3500;
