@@ -18,7 +18,7 @@ Breadboards should be a playground, and now you can attach a debug probe to them
 https://github.com/Architeuthis-Flux/JumperlessV5/assets/20519442/a3d5ecf4-4665-409d-bab6-2a62fbbe0eb7
 
 Now you have a breadboard with:
-- 4 12 bit DACs ([MCP4278](https://www.microchip.com/en-us/product/mcp4728)) buffered and shifted to ±8V through high current op amps [2 L272D](https://estore.st.com/en/l272d-cpn.html)
+- 4 12 bit DACs ([MCP4278](https://www.microchip.com/en-us/product/mcp4728)) buffered and shifted to ±8V through high current op amps ([2 L272D](https://estore.st.com/en/l272d-cpn.html))
 - 3 12 bit ADCs (built into the RP2040) double buffered and level shifted (2 LM324) to read ±8V 
 - 2 12 bit current/voltage sensors ([INA219](https://www.ti.com/product/INA219)) which can also be used to measure resistance
 - 4 5V logic level GPIO ([MCP23S17](https://www.microchip.com/en-us/product/mcp23s17))
