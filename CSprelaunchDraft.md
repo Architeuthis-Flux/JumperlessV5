@@ -50,6 +50,8 @@ The firmware saves multiple netlists in separate text files. You can save/load/m
 ## Voltage/Current Limits
 The CMOS analog switches inside these CH446Qs can only block or pass voltages that are between their power supply rails. They're powered with an [LT1054CP](https://www.ti.com/product/LT1054) charge pump voltage doubler/inverter circuit that produces ~±9V. So it can handle any voltages between +9V and -9V and ~100mA per connection.
 You may notice that these values are well outside the absolute maximum ratings (14.6V and 10mA per connection) listed in the CH446Q datasheet. That's because they are, all the specifications of the CH446Q get better as the supply voltage increases, so I'm exploiting the arcane weirdness of CMOS to get closer to an ideal switch. All of this is unchanged from the original Jumperless, so it's been well tested. 
+![lossm](https://github.com/Architeuthis-Flux/JumperlessV5/assets/20519442/12a3e0c7-4bda-411f-af50-9e27af2528fb)
+
 
 ## On resistance
 Okay, here's the main bummer here. As it turns out, we live in a universe governed by both physics and capitalism, so manufacturers only make chips they think people will buy. The [CH446Q](https://www.wch-ic.com/products/CH446.html) (and the [MT8816](https://www.microsemi.com/product-directory/analog-cross-point-switches/4920-mt8816) it was based on) were made with radio, video, and audio in mind, which is much more concerned with frequency response than acting like an idealized jumper wire that can pass a bunch of current. So the total resistance for a jumperless connection is ~90Ω (45Ω for each pass through an overdriven crosspoint switch). For most circuits, this really doesn't have a noticeable effect. The beauty of the Jumperless V5 is that it can show you when that resistance is affecting your circuit and tell you to place an old-school jumper wire on that connection like it's the 1800's.
@@ -59,5 +61,6 @@ Okay, here's the main bummer here. As it turns out, we live in a universe govern
 ## Frequency Response
 The [CH446Q](https://www.wch-ic.com/products/CH446.html) analog crosspoint switches used here have a 3dB rolloff (1/2 the signal amplitude is passed, not a hard limit) of 50MHz, which is well above any breadboard's rolloff frequency (the clip-plastic-clip between each row is effectively a tiny capacitor.) So even for super high speed SPI signals, this really isn't an issue. Modern (last ~30 years) input buffers on ICs are just amazing. TL;DR In regards to frequency, if it works on a regular breadboard, it will work on this.
 
+![Sequence 01 00_00_25_14 Still001](https://github.com/Architeuthis-Flux/JumperlessV5/assets/20519442/56a7ac87-6821-4dcd-8ce5-59f5e6ab4683)
 
 
