@@ -60,6 +60,7 @@ The firmware saves multiple netlists in separate text files. You can save/load/m
 ## Voltage/Current Limits
 The CMOS analog switches inside these CH446Qs can only block or pass voltages that are between their power supply rails. They're powered with an [LT1054CP](https://www.ti.com/product/LT1054) charge pump voltage doubler/inverter circuit that produces ~±9V. So it can handle any voltages between +9V and -9V and ~100mA per connection.
 You may notice that these values are well outside the absolute maximum ratings (14.6V and 10mA per connection) listed in the CH446Q datasheet. That's because they are, all the specifications of the CH446Q get better as the supply voltage increases, so I'm exploiting the arcane weirdness of CMOS to get closer to an ideal switch. All of this is unchanged from the original Jumperless, so it's been well tested. 
+
 ![lossm](https://github.com/Architeuthis-Flux/JumperlessV5/assets/20519442/12a3e0c7-4bda-411f-af50-9e27af2528fb)
 
 
