@@ -33,7 +33,13 @@ All these things are routable to anywhere on the breadboard or Nano header in a 
 
 But for now, I'll only talk about things I've written firmware for and is supported without any hacking required.
 
-Jumperless accepts commands and stores connections in a ridiculously simple, human readable format [f {ADC1-10, 15-48, TOP_RAIL-17, TOP_RAIL>6.5V, D0-UART_Rx, D1-UART_Tx, } ^that's it, that's everything you need to send it to make things happen] that you can just drop onto the board as a text file. You can save a bunch of these net lists into persistent storage and switch between them at a whim. It will even accept connections from whatever's plugged into the Nano header (or anywhere else on the board over UART).
+Jumperless accepts commands and stores connections in a ridiculously simple, human readable format that you can just drop onto the board as a text file. You can save a bunch of these net lists into persistent storage and switch between them at a whim. It will even accept connections from whatever's plugged into the Nano header (or anywhere else on the board over UART).
+
+```
+f {ADC1-10, 15-48, TOP_RAIL-17, TOP_RAIL>6.5V, D0-UART_Rx, D1-UART_Tx, }
+```
+^that's it, that's everything you need to send it to make things happen
+
 
 ## The App
 The desktop app allows you to assign up to 8 [Wokwi](https://wokwi.com/) projects to separate slots that are polled for changes and automatically updated on the Jumperless V5 (within half a second of clicking Save). Or if you don't want to use Wokwi, it simply acts as a regular terminal emulator like PuTTY, xTerm, Serial, etc. You could also just use any of those, the menus are sent and handled on the Jumperless itself, the Jumperless desktop app just adds automatic firmware updates, Wokwi polling, and arduino-cli for flashing code from your Wokwi sketch to the Arduino via a single USB cable.
