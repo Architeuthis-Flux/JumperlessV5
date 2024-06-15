@@ -18,13 +18,13 @@ Breadboards should be a playground, and now you can attach a debug probe to them
 https://github.com/Architeuthis-Flux/JumperlessV5/assets/20519442/a3d5ecf4-4665-409d-bab6-2a62fbbe0eb7
 
 Now you have a breadboard with:
-- 4 12 bit DACs ([MCP4278](https://www.microchip.com/en-us/product/mcp4728)) buffered and shifted to ±8V through high current op amps ([2 L272D](https://estore.st.com/en/l272d-cpn.html))
-- 3 12 bit ADCs (built into the RP2040) double buffered and level shifted (2 LM324) to read ±8V 
-- 2 12 bit current/voltage sensors ([INA219](https://www.ti.com/product/INA219)) which can also be used to measure resistance
-- 4 5V logic level GPIO ([MCP23S17](https://www.microchip.com/en-us/product/mcp23s17))
-- 6 3.3V logic level GPIO ([RP2040](https://www.raspberrypi.com/documentation/microcontrollers/rp2040.html)) which can also be hardware I2C, UART, or SPI
-- 1 noninverting ±8V op amp buffer ([LM324](https://www.ti.com/product/LM324B))
-- 2 14 pin daisy chain headers on either side to pass 8 analog signals + SPI + Power to another Jumperless
+- 4 x 12 bit DACs ([MCP4278](https://www.microchip.com/en-us/product/mcp4728)) buffered and shifted to ±8V through high current op amps ([2 L272D](https://estore.st.com/en/l272d-cpn.html))
+- 3 x 12 bit ADCs (built into the RP2040) double buffered and level shifted (2 LM324) to read ±8V 
+- 2 x 12 bit current/voltage sensors ([INA219](https://www.ti.com/product/INA219)) which can also be used to measure resistance
+- 4 x 5V logic level GPIO ([MCP23S17](https://www.microchip.com/en-us/product/mcp23s17))
+- 6 x 3.3V logic level GPIO ([RP2040](https://www.raspberrypi.com/documentation/microcontrollers/rp2040.html)) which can also be hardware I2C, UART, or SPI
+- 1 x ±8V op amp noninverting buffer ([LM324](https://www.ti.com/product/LM324B))
+- 2 x 14 pin daisy chain headers on either side to pass 8 analog signals + SPI + Power to another Jumperless
 - A probe to select rows without affecting connections (TRRRS jack with I2C)
 - A rotary encoder / switch ([SIQ-02FVS3](https://www.lcsc.com/product-detail/Rotary-Encoders_Mitsumi-Electric-SIQ-02FVS3_C2925423.html))
 - 445 addressable RGB LEDs ([XL-1010RGBC](https://www.lcsc.com/product-detail/Light-Emitting-Diodes-LED_XINGLIGHT-XL-1010RGBC-WS2812B_C5349953.html))
