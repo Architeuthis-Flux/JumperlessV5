@@ -1,5 +1,7 @@
 # Jumperless V5
-You're flipping through a comic book and see an ad in the back for some X ray glasses. You put some coins in an envelope and send it off (because it's like 50 years ago in this made up scenario), and eventually you get back some spectacles. You immediately look up at the night sky towards the galactic center for Sagittarius A* and don't see a thing; you've been had. You go back to prototyping your new Eurorack module (because that's what I assume everyone was doing in the early 80's) and forget to take them off. You notice that you can now see electrons flowing, capacitors charging, frequencies changing, UART messages passing, all right there on your breadboard. Those aren't X-ray specs(10^16Hz - 10^20Hz), they're electronics specs (0Hz - 10^5Hz), even better.  
+You're flipping through a comic book and see an ad in the back for some X ray glasses. You put some coins in an envelope and send it off (because it's like 50 years ago in this made up scenario), and eventually you get back some spectacles. You immediately look up at the night sky towards the galactic center for Sagittarius A* and don't see a thing; you've been had. You go back to prototyping your new Eurorack module (because that's what I assume everyone was doing in the early 80's) and forget to take them off. 
+
+You notice that you can now see electrons flowing, capacitors charging, frequencies changing, UART messages passing, all right there on your breadboard. Those aren't X-ray specs(10^16Hz - 10^20Hz), they're electronics specs (0Hz - 10^5Hz), even better.  
 
 ![tfhtgh](https://github.com/Architeuthis-Flux/JumperlessV5/assets/20519442/2c2376a0-41c4-471f-a3ac-84daf95a678d)
 
