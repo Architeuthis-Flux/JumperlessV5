@@ -1,7 +1,7 @@
 # Jumperless V5
 ###### The next generation jumperless breadboard
 
-Jumperless V5 is a breaboard where any point can be connected to any other with software-defined jumpers. RGBs under each hole turn the breadboard itself into a display; paired with its assortment of routable analog/digial IO, Jumperless V5 gives you real-time information about everything that's happening in your circuit and the ability to change it at a whim.
+Jumperless V5 is a breaboard where any point can be connected to any other with software-defined jumpers. RGB LEDs under each hole turn the breadboard itself into a display; paired with its assortment of routable analog/digial IO, Jumperless V5 gives you real-time information about everything that's happening in your circuit and the ability to change it at a whim.
 
 ![JumperlessV5front](https://github.com/crowd-supply-projects/jumperless-v2/assets/20519442/254942ed-aee7-4358-be31-6e2b277b6bb7)
 
@@ -11,7 +11,7 @@ V5 is a major redesign of the original [Jumperless](https://github.com/Architeut
 
 ![JumperlessV5back](https://github.com/crowd-supply-projects/jumperless-v2/assets/20519442/44f11bb7-6da3-478f-88de-a0c3db043c6b)
 
-These additions may seem somewhat minor, but they fundamentally change the way using a Jumperless V5 *feels*. It's intuitive enough that it quickly just becomes "part of your brain" in the same way your computer does. And it's easy to forget this isn't how protyping stuff on a breadboard always has been.
+These additions may seem somewhat minor, but they fundamentally change the way using a Jumperless V5 *feels*. It's intuitive enough that it quickly just becomes "part of your brain" in the same way your computer does. And it's easy to forget this isn't how prototyping stuff on a breadboard always has been.
 
 Jumperless V5 will cost roughly $350 (with free shipping worldwide)
 
@@ -31,13 +31,14 @@ Jumper wires are another time-consuming, flow-breaking thing, so let's get rid o
 
 This isn't meant to abstract away the tactile process of prototyping under a layer of software. In fact, it's just the opposite, not having your circuit hidden under a tangled mass of jumper wires gives you a breadboard that is understandable at a glance and almost reads like a schematic. You can just drop a measurement anywhere and have it displayed on the LEDs under that row so you will immediately see if anything changes in real time, so you can get a much more intuitive sense about *why* things work (or don't). It's about cutting down on the debugging bullshit and letting the grander plans for what you're building flow freely. Ideas happen at their own pace, and getting stuck on the finicky details of circuit design can break the creative momentum. 
 
-The probe, rotary encoder and onboard menus make connecting to a computer optional. You can do everything with only USB C power. Your past projects are saved into onboard flash as simple text files that can be saved to your computer and shared.
+The probe, rotary encoder, and onboard menus make connecting to a computer optional. You can do everything with only USB C power. Your past projects are saved into onboard flash as simple text files that can be uploaded to your computer and shared.
 
 Breadboards should be a playground, and now you can attach a debug probe to them.
 
 https://github.com/Architeuthis-Flux/JumperlessV5/assets/20519442/a3d5ecf4-4665-409d-bab6-2a62fbbe0eb7
 
 Now you have a breadboard with:
+
 - 4 x 12 bit DACs ([MCP4278](https://www.microchip.com/en-us/product/mcp4728)) buffered and shifted to ±8V through high current op amps ([2 L272D](https://estore.st.com/en/l272d-cpn.html))
 - 3 x 12 bit ADCs (built into the RP2040) double buffered and level shifted (2 LM324) to read ±8V 
 - 2 x 12 bit current/voltage sensors ([INA219](https://www.ti.com/product/INA219)) which can also be used to measure resistance
@@ -54,16 +55,16 @@ You can see how all this stuff is connected in the [schematic](https://kicanvas.
 
 Or check out the [PCB](https://kicanvas.org/?github=https://github.com/Architeuthis-Flux/JumperlessV5/blob/main/Hardware/JumperlessV5hw/JumperlessV5hw.kicad_pcb) and [GitHub repo](https://github.com/Architeuthis-Flux/JumperlessV5)
 
-All these things are routable to anywhere on the breadboard or Nano header in a few microseconds under the control of an RP2040. This freedom to script connections/measurements/outputs to everything presumably makes just about any random circuit on the Jumperless V5 Turing complete. There are an infinite number of things you could make this thing do, and the Prime Directive is to make those awesome hacks as simple and straightforward to pull off as possible. 
+All these things are routable to anywhere on the breadboard or Nano header in a few microseconds under the control of the onboard RP2040. This freedom to script connections and measurements and route outputs anywhere presumably makes just about any random circuit on the Jumperless V5 Turing complete. There are an infinite number of things you could make this thing do, and the Prime Directive is to make those awesome hacks as simple and straightforward to pull off as possible. 
 
-But for now, I'll only talk about things I've written firmware for and is supported without any hacking required.
+But for now, I'll only talk about things I've written firmware for that is currently supported without any hacking required.
 
-Jumperless accepts commands and stores connections in a ridiculously simple, human readable format that you can just drop onto the board as a text file. You can save a bunch of these net lists into persistent storage and switch between them at a whim. It will even accept connections from whatever's plugged into the Nano header (or anywhere else on the board over UART).
+Jumperless V5 accepts commands and stores connections in a ridiculously simple, human readable format that you can just drop onto the board as a text file. You can save a bunch of these net lists into persistent storage and switch between them at your whim. It will even accept connections from whatever's plugged into the Nano header (or anywhere else on the board over UART).
 
 ```
 f {ADC1-10, 15-48, TOP_RAIL-17, TOP_RAIL>6.5V, D0-UART_Rx, D1-UART_Tx, }
 ```
-^that's it, that's everything you need to send it to make things happen
+⬆︎ *that's it, that's everything you need to send it to make things happen*
 
 You can see how all that firmware works in the [firmware section of the GitHub repo]([https://github.com/Architeuthis-Flux/JumperlessV5](https://github.com/Architeuthis-Flux/JumperlessV5/tree/main/JumperlessV5firmware))
 
@@ -101,7 +102,7 @@ You may notice that these values are well outside the absolute maximum ratings (
 
 
 ## On resistance
-Okay, here's the main bummer here. As it turns out, we live in a universe governed by both physics and capitalism, so manufacturers only make chips they think people will buy. The [CH446Q](https://www.wch-ic.com/products/CH446.html) (and the [MT8816](https://www.microsemi.com/product-directory/analog-cross-point-switches/4920-mt8816) it was based on) were made with radio, video, and audio in mind, which is much more concerned with frequency response than acting like an idealized jumper wire that can pass a bunch of current. So the total resistance for a jumperless connection is ~90Ω (45Ω for each pass through an overdriven crosspoint switch). For most circuits, this really doesn't have a noticeable effect. The beauty of the Jumperless V5 is that it can show you when that resistance is affecting your circuit and tell you to place an old-school jumper wire on that connection like it's the 1800's.
+Okay, here's the main bummer here. As it turns out, we live in a universe governed by both physics and capitalism, so manufacturers only make chips they think people will buy. The [CH446Q](https://www.wch-ic.com/products/CH446.html) (and the [MT8816](https://www.microsemi.com/product-directory/analog-cross-point-switches/4920-mt8816) it was based on) were made with radio, video, and audio in mind, which is much more concerned with frequency response than acting like an idealized jumper wire that can pass a bunch of current. So the total resistance for a jumperless connection is ~90Ω (45Ω for each pass through an overdriven crosspoint switch). For most circuits, this really doesn't have a noticeable effect. The beauty of the Jumperless V5 is that it can show you when that resistance is affecting your circuit and tell you to place an old-school jumper wire on that connection like it's the 1800s.
 
 ###### If this campaign does well enough, the next project will be making a general purpose crossbar switch out of beefy MOSFETs and [floating gate](https://en.wikipedia.org/wiki/Floating-gate_MOSFET) drivers to get the voltage limits into the ±50V range and the Ron down to ~1Ω, but custom high-current silicon is a huge, expensive undertaking (that I am 100% committed to doing)
 
