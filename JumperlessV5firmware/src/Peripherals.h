@@ -10,6 +10,7 @@
 
 extern int showReadings;
 
+
 extern int inaConnected;
 extern int showINA0[3]; // 0 = current, 1 = voltage, 2 = power
 extern int showINA1[3]; // 0 = current, 1 = voltage, 2 = power
@@ -26,7 +27,8 @@ void initGPIOex(void);
 void writeGPIOex(int value, uint8_t pin);
 
 void initINA219(void);
-
+void initADC(void);
+void printCalibration(void);
 void initDAC(void);
 void setTopRail(int value = 1650);
 void setTopRail(float value);
@@ -45,10 +47,10 @@ void setDac1_8VinputCode(uint16_t value);
 void refillTable(int amplitude = 2047, int offset = 2047, int adc = 2);
 int waveGen(void);
 void GetAdc29Status(int i);
-int readAdc(int channel, int samples = 10);
+int readAdc(int channel, int samples = 8);
 
 void chooseShownReadings(void);
-void showMeasurements(int samples = 50);
+void showMeasurements(int samples = 8, int printOrBB = 2);// 0 = print, 1 = breadboard 2 = both
 
 const uint16_t DACLookup_FullSine_9Bit[512] =
     {

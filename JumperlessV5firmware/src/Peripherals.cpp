@@ -4,37 +4,39 @@
 
 #include "Adafruit_INA219.h"
 
-#include "NetManager.h"
-#include "MatrixStateRP2040.h"
 #include "LEDs.h"
+#include "MatrixStateRP2040.h"
+#include "NetManager.h"
 
-#include <Arduino.h>
 #include "hardware/adc.h"
-#include <stdio.h>
-#include "pico/stdlib.h"
 #include "hardware/gpio.h"
 #include "pico/cyw43_arch.h"
+#include "pico/stdlib.h"
+#include <Arduino.h>
+#include <stdio.h>
 
-#include "mcp4725.hpp"
 #include "MCP_DAC.h"
-//#include "AdcUsb.h"
+#include "mcp4725.hpp"
+// #include "AdcUsb.h"
 
 #include <Adafruit_MCP4728.h>
 
 #include <SPI.h>
-//#include "MCP23S17.h"
-// #include "SPI.h"
+// #include "MCP23S17.h"
+//  #include "SPI.h"
 
 #include <Adafruit_MCP23X17.h>
 
+#include "CH446Q.h"
+
 #define CS_PIN 17
 
-//MCP23S17 MCPIO(17, 16, 19, 18, 0x27); //  SW SPI address 0x00
+// MCP23S17 MCPIO(17, 16, 19, 18, 0x27); //  SW SPI address 0x00
 
 // MCP23S17 MCPIO(17, 7,  &SPI); //  HW SPI address 0x00 //USE HW SPI
 Adafruit_MCP23X17 MCPIO;
 
-//MCP23S17 MCPIO(17, 16, 19, 18, 0x7); //  SW SPI address 0x
+// MCP23S17 MCPIO(17, 16, 19, 18, 0x7); //  SW SPI address 0x
 #define CSI Serial.write("\x1B\x5B");
 // #define CSI Serial.write("\033");
 
@@ -53,7 +55,14 @@ int showINA1[3] = {0, 0, 0}; // 0 = current, 1 = voltage, 2 = power
 int showDAC0 = 0;
 int showDAC1 = 0;
 
-
+int adcCalibration[4][3] = {{0, 0, 0},
+                            {0, 0, 0},
+                            {0, 0, 0},
+                            {0, 0, 0}}; // 0 = min, 1 = middle, 2 = max,
+int dacCalibration[4][3] = {{0, 0, 0},
+                            {0, 0, 0},
+                            {0, 0, 0},
+                            {0, 0, 0}}; // 0 = min, 1 = middle, 2 = max,
 
 float freq[3] = {1, 1, 0};
 uint32_t period[3] = {0, 0, 0};
@@ -71,10 +80,7 @@ int amplitude[3] = {4095, 3763, 0};
 int offset[3] = {2047, 2380, 2047};
 int calib[3] = {-10, 0, 0};
 
-
-
 Adafruit_MCP4728 mcp;
-
 
 // MCP4725_PICO dac0_5V(5.0);
 // MCP4725_PICO dac1_8V(18.0);
@@ -91,42 +97,33 @@ uint32_t lastTime = 0;
 uint16_t sine0[360];
 uint16_t sine1[360];
 
+void initGPIOex(void) {
 
-
-void initGPIOex(void)
-{
-
-// pinMode(17, OUTPUT);
-// pinMode(16, OUTPUT);
-// pinMode(19, OUTPUT);
-// pinMode(18, OUTPUT);
+  // pinMode(17, OUTPUT);
+  // pinMode(16, OUTPUT);
+  // pinMode(19, OUTPUT);
+  // pinMode(18, OUTPUT);
 
   SPI.setRX(16);
   SPI.setTX(19);
   SPI.setSCK(18);
   SPI.setCS(17);
 
+  SPI.begin();
 
-   SPI.begin();
-
-
-  if (MCPIO.begin_SPI(CS_PIN, &SPI, 0b111) == false)
-  {
-    //delay(1000);
+  if (MCPIO.begin_SPI(CS_PIN, &SPI, 0b111) == false) {
+    // delay(1000);
     Serial.println("MCP23S17 not found");
-
   }
 
-    //   while (testConnection(MCPIO) != 0)
-    // {
-    //   Serial.println("MCP23S17 not found");
-    //   delay(10);
-    // }
+  //   while (testConnection(MCPIO) != 0)
+  // {
+  //   Serial.println("MCP23S17 not found");
+  //   delay(10);
+  // }
 
-// MCPIO.enableAddrPins();
-// MCPIO.enableAddrPins();
-
-
+  // MCPIO.enableAddrPins();
+  // MCPIO.enableAddrPins();
 
   MCPIO.pinMode(0, OUTPUT);
   MCPIO.pinMode(1, OUTPUT);
@@ -147,26 +144,346 @@ void initGPIOex(void)
 
   MCPIO.writeGPIOAB(0x0000);
 
-// for (int i = 0; i < 106; i++)
-// {
-//   writeGPIOex(i%2, i);
-//   delay(10);
-// }
+  // for (int i = 0; i < 106; i++)
+  // {
+  //   writeGPIOex(i%2, i);
+  //   delay(10);
+  // }
 
-  //MCPIO.pinMode8(1, 0x00);
+  // MCPIO.pinMode8(1, 0x00);
 }
 
-void initDAC(void)
-{
+int reads2[30][2];
+int readIndex2 = 0;
 
-Wire.setSDA(4);
-Wire.setSCL(5);
+int foundRolloff = 0;
+
+int lastReading = 0;
+int dacSetting = 0;
+int reads[30][2];
+int readIndex = 0;
+
+void initADC(void) {
+  pinMode(ADC0_PIN, INPUT);
+  pinMode(ADC1_PIN, INPUT);
+  pinMode(ADC2_PIN, INPUT);
+  pinMode(ADC3_PIN, INPUT);
+
+  analogReadResolution(12);
+
+  // digitalWrite(RESETPIN, HIGH);
+  // delayMicroseconds(100);
+  // digitalWrite(RESETPIN, LOW);
+  // delayMicroseconds(100);
+  // delay(10);
+  // sendXYraw(CHIP_K, 7, 0, 1);
+  // sendXYraw(CHIP_K, 9, 0, 1);
+
+  // // sendXYraw(CHIP_K, 0, 0, 1);
+  // delay(10);
+
+  // digitalWrite(8, HIGH);
+
+  // mcp.setChannelValue(MCP4728_CHANNEL_A, 0, MCP4728_VREF_VDD, MCP4728_GAIN_1X,
+  //                     MCP4728_PD_MODE_NORMAL, true);
+  // digitalWrite(8, LOW);
+  // delay(10);
+  // adcCalibration[1][0] = readAdc(1, 64);
+
+  // delay(10);
+  // digitalWrite(8, HIGH);
+  // mcp.setChannelValue(MCP4728_CHANNEL_A, 2047, MCP4728_VREF_VDD,
+  //                     MCP4728_GAIN_1X, MCP4728_PD_MODE_NORMAL, true);
+  // digitalWrite(8, LOW);
+  // delay(10);
+
+  // adcCalibration[1][1] = readAdc(1, 64);
+  // delay(10);
+
+  //   digitalWrite(8, HIGH);
+  // mcp.setChannelValue(MCP4728_CHANNEL_A, 4095, MCP4728_VREF_VDD,
+  //                     MCP4728_GAIN_1X, MCP4728_PD_MODE_NORMAL, true);
+
+  // digitalWrite(8, LOW);
+  // delay(10);
+  // adcCalibration[1][2] = readAdc(1, 64);
+
+  // digitalWrite(RESETPIN, HIGH);
+  // delayMicroseconds(100);
+  // digitalWrite(RESETPIN, LOW);
+  // delayMicroseconds(100);
+  // delay(10);
+  // sendXYraw(CHIP_K, 6, 0, 1);
+  // sendXYraw(CHIP_K, 10, 0, 1);
+
+  // // sendXYraw(CHIP_K, 0, 0, 1);
+  // delay(10);
+
+
+  // digitalWrite(8, HIGH);
+
+  // mcp.setChannelValue(MCP4728_CHANNEL_B, 0, MCP4728_VREF_VDD, MCP4728_GAIN_1X,
+  //                     MCP4728_PD_MODE_NORMAL, true);
+  // digitalWrite(8, LOW);
+  // delay(10);
+  // adcCalibration[2][0] = readAdc(2, 64);
+
+  // delay(10);
+  // digitalWrite(8, HIGH);
+  // mcp.setChannelValue(MCP4728_CHANNEL_B, 2047, MCP4728_VREF_VDD,
+  //                     MCP4728_GAIN_1X, MCP4728_PD_MODE_NORMAL, true);
+  // digitalWrite(8, LOW);
+  // delay(10);
+
+  // adcCalibration[2][1] = readAdc(2, 64);
+  // delay(10);
+
+  //   digitalWrite(8, HIGH);
+  // mcp.setChannelValue(MCP4728_CHANNEL_B, 4095, MCP4728_VREF_VDD,
+  //                     MCP4728_GAIN_1X, MCP4728_PD_MODE_NORMAL, true);
+
+  // digitalWrite(8, LOW);
+  // delay(10);
+  // adcCalibration[2][2] = readAdc(2, 64);
+
+
+  // digitalWrite(RESETPIN, HIGH);
+  // delayMicroseconds(100);
+  // digitalWrite(RESETPIN, LOW);
+  // delayMicroseconds(100);
+  // delay(10);
+  // sendXYraw(CHIP_K, 6, 0, 1);
+  // sendXYraw(CHIP_K, 11, 0, 1);
+
+  // // sendXYraw(CHIP_K, 0, 0, 1);
+  // delay(10);
+
+
+  // digitalWrite(8, HIGH);
+
+  // mcp.setChannelValue(MCP4728_CHANNEL_B, 0, MCP4728_VREF_VDD, MCP4728_GAIN_1X,
+  //                     MCP4728_PD_MODE_NORMAL, true);
+  // digitalWrite(8, LOW);
+  // delay(10);
+  // adcCalibration[3][0] = readAdc(3, 64);
+
+  // delay(10);
+  // digitalWrite(8, HIGH);
+  // mcp.setChannelValue(MCP4728_CHANNEL_B, 2047, MCP4728_VREF_VDD,
+  //                     MCP4728_GAIN_1X, MCP4728_PD_MODE_NORMAL, true);
+  // digitalWrite(8, LOW);
+  // delay(10);
+
+  // adcCalibration[3][1] = readAdc(3, 64);
+  // delay(10);
+
+  //   digitalWrite(8, HIGH);
+  // mcp.setChannelValue(MCP4728_CHANNEL_B, 4095, MCP4728_VREF_VDD,
+  //                     MCP4728_GAIN_1X, MCP4728_PD_MODE_NORMAL, true);
+
+  // digitalWrite(8, LOW);
+  // delay(10);
+  // adcCalibration[3][2] = readAdc(3, 64);
+  // digitalWrite(RESETPIN, HIGH);
+  // delayMicroseconds(1000);
+  // digitalWrite(RESETPIN, LOW);
+  // delayMicroseconds(100);
+
+  // while (foundRolloff == 0) {
+
+  //   mcp.setChannelValue(MCP4728_CHANNEL_A, dacSetting);
+
+  //   adcCalibration[1][2] = readAdc(1, 16);
+
+  //   reads2[readIndex2][0] = dacSetting;
+  //   reads2[readIndex2][1] = adcCalibration[1][2];
+  //   readIndex2++;
+
+  //   if (adcCalibration[1][2] < lastReading && lastReading > 0) {
+  //     adcCalibration[1][2] = lastReading;
+  //     foundRolloff = 1;
+
+  //     break;
+  //   }
+  //   dacSetting -= 1;
+  //   lastReading = adcCalibration[1][2];
+  //   delayMicroseconds(1);
+
+  // }
+
+
+  //  //sendXYraw(CHIP_K, 9, 0, 0);
+  //   mcp.setChannelValue(MCP4728_CHANNEL_A, 4095);
+  // while (1) {
+  //   delay(10);
+  // }
+}
+
+void printCalibration(void) {
+  // delay(1000);
+  digitalWrite(RESETPIN, HIGH);
+  delayMicroseconds(100);
+  digitalWrite(RESETPIN, LOW);
+  delayMicroseconds(100);
+
+  Serial.println("ADC 1 (0-5V)");
+
+  // sendXYraw(CHIP_K, 7, 0, 1);
+  // sendXYraw(CHIP_K, 9, 0, 1);
+
+  // sendXYraw(CHIP_K, 0, 0, 1);
+
+    sendXYraw(CHIP_K, 7, 0, 1);
+  sendXYraw(CHIP_K, 9, 0, 1);
+
+  sendXYraw(CHIP_K, 0, 0, 1);
+
+  digitalWrite(8, HIGH);
+  mcp.setChannelValue(MCP4728_CHANNEL_A, 0);
+  digitalWrite(8, LOW);
+
+  for (int i = 0; i <= 32; i++) {
+  digitalWrite(8, HIGH);
+  mcp.setChannelValue(MCP4728_CHANNEL_A, i*127);
+  digitalWrite(8, LOW);
+  delay(10);
+
+Serial.print(INA1.getBusVoltage());
+  Serial.print(" ");
+  delay(10);
+
+
+    Serial.println(readAdc(1, 16));
+    delay(20);
+  }
+    sendXYraw(CHIP_K, 7, 0, 0);
+  sendXYraw(CHIP_K, 9, 0, 0);
+
+  sendXYraw(CHIP_K, 0, 0, 0);
+delay(100);
+
+    digitalWrite(RESETPIN, HIGH);
+  delayMicroseconds(800);
+  digitalWrite(RESETPIN, LOW);
+  delayMicroseconds(10000);
+
+  Serial.println("ADC 2 +-8V");
+
+  // sendXYraw(CHIP_K, 7, 0, 1);
+  // sendXYraw(CHIP_K, 9, 0, 1);
+
+  // sendXYraw(CHIP_K, 0, 0, 1);
+
+    sendXYraw(CHIP_K, 6, 0, 1);
+  sendXYraw(CHIP_K, 10, 0, 1);
+
+   sendXYraw(CHIP_K, 0, 0, 1);
+
+  // digitalWrite(8, HIGH);
+  // mcp.setChannelValue(MCP4728_CHANNEL_B, 0);
+  // digitalWrite(8, LOW);
+
+  for (int i = 0; i <= 32; i++) {
+
+    Serial.print(i*127);
+    Serial.print(" ");
+  digitalWrite(8, HIGH);
+  mcp.setChannelValue(MCP4728_CHANNEL_B, i*127);
+  digitalWrite(8, LOW);
+  delay(50);
+
+// Serial.print(INA0.getBusVoltage());
+//   Serial.print(" ");
+//   delay(100);
+
+
+    Serial.println(readAdc(2, 16));
+    delay(10);
+  }
+
+      digitalWrite(RESETPIN, HIGH);
+  delayMicroseconds(800);
+  digitalWrite(RESETPIN, LOW);
+  delayMicroseconds(10000);
+
+    sendXYraw(CHIP_K, 6, 0, 1);
+  sendXYraw(CHIP_K, 13, 0, 1);
+
+   sendXYraw(CHIP_K, 0, 0, 1);
+
+   sendXYraw(CHIP_I, 15, 5, 1);
+  sendXYraw(CHIP_I, 0, 5, 1);
+
+  digitalWrite(8, HIGH);
+  mcp.setChannelValue(MCP4728_CHANNEL_B, 4095);
+  digitalWrite(8, LOW);
+  Serial.print("INA 0 ");
+  Serial.print("Bus Voltage: ");
+
+  
+  Serial.println(INA0.getBusVoltage());
+  Serial.print("INA 1 ");
+  Serial.print("Bus Voltage: ");
+
+  
+  Serial.println(INA1.getBusVoltage());
+
+
+  // for (int i = 0; i < readIndex; i++) {
+  //   Serial.print("[");
+  //   Serial.print(reads[i][0]);
+  //   Serial.print(" ");
+  //   Serial.print(reads[i][1]);
+  //   Serial.println("]");
+  // }
+
+  //   for (int i = 0; i < readIndex2; i++) {
+  //   Serial.print("[");
+  //   Serial.print(reads2[i][0]);
+  //   Serial.print(" ");
+  //   Serial.print(reads2[i][1]);
+  //   Serial.println("]");
+  // }
+
+  for (int i = 0; i < 3; i++) {
+
+    Serial.print("ADC1 ");
+    Serial.print(i);
+    Serial.print(": ");
+    Serial.println(adcCalibration[1][i]);
+  }
+
+    for (int i = 0; i < 3; i++) {
+
+    Serial.print("ADC2 ");
+    Serial.print(i);
+    Serial.print(": ");
+    Serial.println(adcCalibration[2][i]);
+  }
+
+    for (int i = 0; i < 3; i++) {
+
+    Serial.print("ADC3 ");
+    Serial.print(i);
+    Serial.print(": ");
+    Serial.println(adcCalibration[3][i]);
+  }
+
+    digitalWrite(RESETPIN, HIGH);
+  delayMicroseconds(1000);
+  digitalWrite(RESETPIN, LOW);
+  delayMicroseconds(100);
+}
+void initDAC(void) {
+
+  Wire.setSDA(4);
+  Wire.setSCL(5);
 
   Wire.begin();
   delay(5);
   // Try to initialize!
-  if (!mcp.begin())
-  {
+  if (!mcp.begin()) {
+    delay(3000);
     Serial.println("Failed to find MCP4728 chip");
     // while (1)
     // {
@@ -191,20 +508,17 @@ Wire.setSCL(5);
 
   // Vref = MCP_VREF_VDD, value = 0, 0V
   mcp.setChannelValue(MCP4728_CHANNEL_A, 0);
-  mcp.setChannelValue(MCP4728_CHANNEL_B, 2050);
-  mcp.setChannelValue(MCP4728_CHANNEL_C, 1050);
-  mcp.setChannelValue(MCP4728_CHANNEL_D, 1050); // 1650 is roughly 0V
+  mcp.setChannelValue(MCP4728_CHANNEL_B, 1650);
+  mcp.setChannelValue(MCP4728_CHANNEL_C, 1660);
+  mcp.setChannelValue(MCP4728_CHANNEL_D, 1641); // 1650 is roughly 0V
   digitalWrite(8, LOW);
-
 
   mcp.saveToEEPROM();
 }
 
+void setTopRail(float value) {
 
-void setTopRail(float value)
-{
-
-  int dacValue = (value * 4095 / 16)+1650;
+  int dacValue = (value * 4095 / 19.8) + 1660;
 
   // if (value < 0)
   // {
@@ -213,8 +527,7 @@ void setTopRail(float value)
   //   dacValue += 2048;
   // }
 
-  if (dacValue > 4095)
-  {
+  if (dacValue > 4095) {
     dacValue = 4095;
   }
 
@@ -222,15 +535,14 @@ void setTopRail(float value)
   // {
   //   dacValue = 0;
   // }
-
+  digitalWrite(8, HIGH);
   mcp.setChannelValue(MCP4728_CHANNEL_C, dacValue);
+  digitalWrite(8, LOW);
 }
 
-void setBotRail(float value)
-{
+void setBotRail(float value) {
 
-  
-  int dacValue = (value * 4095 / 16)+1650;
+  int dacValue = (value * 4095 / 19.8) + 1641;
 
   // if (value < 0)
   // {
@@ -238,45 +550,35 @@ void setBotRail(float value)
   // } else {
   //   dacValue += 2048;
   // }
-  if (dacValue > 4095)
-  {
+  if (dacValue > 4095) {
     dacValue = 4095;
   }
   //   if (value < -6)
   // {
   //   dacValue = 0;
   // }
-  mcp.setChannelValue(MCP4728_CHANNEL_A, 0);
-mcp.setChannelValue(MCP4728_CHANNEL_B, dacValue);
+  digitalWrite(8, HIGH);
+  mcp.setChannelValue(MCP4728_CHANNEL_D, dacValue);
+  digitalWrite(8, LOW);
 
-mcp.setChannelValue(MCP4728_CHANNEL_C, dacValue);
-  mcp.setChannelValue(MCP4728_CHANNEL_D, 1650);
-
-  
-  Serial.println(dacValue);
-
+ 
 }
 
-void setTopRail(int value)
-{
-  if (value > 4095)
-  {
+void setTopRail(int value) {
+  if (value > 4095) {
     value = 4095;
   }
   mcp.setChannelValue(MCP4728_CHANNEL_C, value);
 }
-void setBotRail(int value)
-{
-  if (value > 4095)
-  {
+void setBotRail(int value) {
+  if (value > 4095) {
     value = 4095;
   }
   mcp.setChannelValue(MCP4728_CHANNEL_D, value);
 }
-uint8_t csToPin[16] = {8,9,10,11,12,13,14,15,0,1,2,3,4,5,6,7};
+uint8_t csToPin[16] = {8, 9, 10, 11, 12, 13, 14, 15, 0, 1, 2, 3, 4, 5, 6, 7};
 
-void setCSex(int chip, int value)
-{
+void setCSex(int chip, int value) {
   // uint16_t bitMask = 0;
 
   // switch (chip)
@@ -329,39 +631,34 @@ void setCSex(int chip, int value)
 
   MCPIO.begin_SPI(CS_PIN, &SPI, 0b111);
 
-if (value > 0)
-{
-  MCPIO.digitalWrite(csToPin[chip], HIGH);
-} else {
-  MCPIO.digitalWrite(csToPin[chip], LOW);
-}
+  if (value > 0) {
+    MCPIO.digitalWrite(csToPin[chip], HIGH);
+  } else {
+    MCPIO.digitalWrite(csToPin[chip], LOW);
+  }
 
-//   delayMicroseconds(3000);
-// Serial.print(csToPin[chip]);
-// Serial.print(" ");
-// Serial.println(value);
-  //MCPIO.writeGPIOAB(bitMask);
-//}
-//MCPIO.writeGPIOAB(bitMask);
+  //   delayMicroseconds(3000);
+  // Serial.print(csToPin[chip]);
+  // Serial.print(" ");
+  // Serial.println(value);
+  // MCPIO.writeGPIOAB(bitMask);
+  //}
+  // MCPIO.writeGPIOAB(bitMask);
 
-//delayMicroseconds(30);
+  // delayMicroseconds(30);
 
-//MCPIO.writeGPIOAB(0x0000);
+  // MCPIO.writeGPIOAB(0x0000);
 
   // Serial.print("chip: ");
   // Serial.print(chipNumToChar(chip));
   // Serial.print(" bitMask: ");
 
-  
-  //Serial.println(bitMask, BIN);
+  // Serial.println(bitMask, BIN);
 }
-void writeGPIOex(int value, uint8_t pin)
-{
+void writeGPIOex(int value, uint8_t pin) {
   // uint16_t bitMask = 0;
 
   // PinStatus onOffpin;
-
-
 
   // // if (value > 0)
   // // {
@@ -396,15 +693,14 @@ void writeGPIOex(int value, uint8_t pin)
   // {
   //   bitMask = 0x0000;
   // }
-  //Serial.println(onOffpin);
-  //Serial.println(MCPIO.write1(5, onOffpin));
+  // Serial.println(onOffpin);
+  // Serial.println(MCPIO.write1(5, onOffpin));
 
-  //Serial.println(MCPIO.usesHWSPI(),HEX);
-//Serial.println(value);
-  if (value == 0)
-  {
-   
-   MCPIO.writeGPIOAB(0x0000);
+  // Serial.println(MCPIO.usesHWSPI(),HEX);
+  // Serial.println(value);
+  if (value == 0) {
+
+    MCPIO.writeGPIOAB(0x0000);
     // MCPIO.digitalWrite(0, HIGH);
     // MCPIO.digitalWrite(1, HIGH);
     // MCPIO.digitalWrite(2, HIGH);
@@ -423,9 +719,8 @@ void writeGPIOex(int value, uint8_t pin)
     // MCPIO.digitalWrite(14, HIGH);
     // MCPIO.digitalWrite(15, HIGH);
 
-    
   } else {
-    
+
     MCPIO.writeGPIOAB(0xFFFF);
     // MCPIO.digitalWrite(0, LOW);
     // MCPIO.digitalWrite(1, LOW);
@@ -444,23 +739,19 @@ void writeGPIOex(int value, uint8_t pin)
 
     // MCPIO.digitalWrite(14, LOW);
     // MCPIO.digitalWrite(15, LOW);
-
   }
 
-
-
-  //Serial.println(MCPIO.write16(bitMask));
+  // Serial.println(MCPIO.write16(bitMask));
 
   // MCPIO.read16();
   // Serial.print("pin: ");
   // Serial.print(pin);
 
   // Serial.print(" bitMask: ");
-  //Serial.println(MCPIO.read16());
+  // Serial.println(MCPIO.read16());
 }
 
-void initINA219(void)
-{
+void initINA219(void) {
 
   // delay(3000);
   // Serial.println(__FILE__);
@@ -471,8 +762,7 @@ void initINA219(void)
   // Wire.setClock(1000000);
   Wire.begin();
 
-  if (!INA0.begin() || !INA1.begin())
-  {
+  if (!INA0.begin() || !INA1.begin()) {
     Serial.println("Failed to find INA219 chip");
   }
 
@@ -483,40 +773,33 @@ void initINA219(void)
   Serial.println(INA1.setBusVoltageRange(16));
 }
 
-void dacSine(int resolution)
-{
+void dacSine(int resolution) {
   uint16_t i;
-  switch (resolution)
-  {
+  switch (resolution) {
   case 0 ... 5:
-    for (i = 0; i < 32; i++)
-    {
+    for (i = 0; i < 32; i++) {
       setDac1_8VinputCode(DACLookup_FullSine_5Bit[i]);
     }
     break;
   case 6:
-    for (i = 0; i < 64; i++)
-    {
+    for (i = 0; i < 64; i++) {
       setDac1_8VinputCode(DACLookup_FullSine_6Bit[i]);
     }
     break;
   case 7:
-    for (i = 0; i < 128; i++)
-    {
+    for (i = 0; i < 128; i++) {
       setDac1_8VinputCode(DACLookup_FullSine_7Bit[i]);
     }
     break;
 
   case 8:
-    for (i = 0; i < 256; i++)
-    {
+    for (i = 0; i < 256; i++) {
       setDac1_8VinputCode(DACLookup_FullSine_8Bit[i]);
     }
     break;
 
   case 9 ... 12:
-    for (i = 0; i < 512; i++)
-    {
+    for (i = 0; i < 512; i++) {
       setDac1_8VinputCode(DACLookup_FullSine_9Bit[i]);
     }
     break;
@@ -526,76 +809,59 @@ void dacSine(int resolution)
 uint16_t lastInputCode0 = 0;
 uint16_t lastInputCode1 = offset[1] + calib[1];
 
-void setDac0_5Vvoltage(float voltage)
-{
-  if (revisionNumber == 2)
-  {
-   // dac0_5V.setVoltage(voltage);
-  }
-  else
-  {
+void setDac0_5Vvoltage(float voltage) {
+  if (revisionNumber == 2) {
+    // dac0_5V.setVoltage(voltage);
+  } else {
     int voltageCode = voltage * 4095 / 5;
 
     // dac_rev3.analogWrite((uint16_t)voltageCode, 0);
-   // dac_rev3.fastWriteA((uint16_t)voltageCode);
+    // dac_rev3.fastWriteA((uint16_t)voltageCode);
     lastInputCode0 = voltageCode;
     // dac_rev3.fastWriteB(lastInputCode1);
   }
 }
 
-void setDac0_5VinputCode(uint16_t inputCode)
-{
-  if (revisionNumber == 2)
-  {
-    //dac0_5V.setInputCode(inputCode);
-  }
-  else
-  {
-   //dac_rev3.analogWrite(inputCode, 0);
-    //dac_rev3.fastWriteA(inputCode);
+void setDac0_5VinputCode(uint16_t inputCode) {
+  if (revisionNumber == 2) {
+    // dac0_5V.setInputCode(inputCode);
+  } else {
+    // dac_rev3.analogWrite(inputCode, 0);
+    // dac_rev3.fastWriteA(inputCode);
     lastInputCode0 = inputCode;
     // dac_rev3.fastWriteB(lastInputCode1);
   }
 }
 
-void setDac1_8Vvoltage(float voltage)
-{
-  if (revisionNumber == 2)
-  {
-   // dac1_8V.setVoltage(voltage);
-  }
-  else
-  {
+void setDac1_8Vvoltage(float voltage) {
+  if (revisionNumber == 2) {
+    // dac1_8V.setVoltage(voltage);
+  } else {
 
     int voltageCode = voltage * 4095 / 16;
     voltageCode = voltageCode + 2048;
 
     // dac_rev3.analogWrite((uint16_t)voltageCode, 1);
-    //dac_rev3.fastWriteB((uint16_t)voltageCode);
+    // dac_rev3.fastWriteB((uint16_t)voltageCode);
     /// lastInputCode1 = voltageCode;
     // dac_rev3.fastWriteA(lastInputCode0);
   }
 }
 
-void setDac1_8VinputCode(uint16_t inputCode)
-{
-  if (revisionNumber == 2)
-  {
-    //dac1_8V.setInputCode(inputCode);
-  }
-  else
-  {
+void setDac1_8VinputCode(uint16_t inputCode) {
+  if (revisionNumber == 2) {
+    // dac1_8V.setInputCode(inputCode);
+  } else {
 
     // Serial.println(inputCode);
     // dac_rev3.analogWrite(inputCode, 1);
-   //dac_rev3.fastWriteB(inputCode);
-    // lastInputCode1 = inputCode;
-    // dac_rev3.fastWriteA(lastInputCode0);
+    // dac_rev3.fastWriteB(inputCode);
+    //  lastInputCode1 = inputCode;
+    //  dac_rev3.fastWriteA(lastInputCode0);
   }
 }
 
-void chooseShownReadings(void)
-{
+void chooseShownReadings(void) {
   showADCreadings[0] = 0;
   showADCreadings[1] = 0;
   showADCreadings[2] = 0;
@@ -607,37 +873,43 @@ void chooseShownReadings(void)
 
   inaConnected = 0;
 
-  for (int i = 0; i <= newBridgeIndex; i++)
-  {
+  for (int i = 0; i <= newBridgeIndex; i++) {
 
-    if (path[i].node1 == ADC0 || path[i].node2 == ADC0)
-    {
+    if (path[i].node1 == ADC0 || path[i].node2 == ADC0) {
       showADCreadings[0] = path[i].net;
     }
 
-    if (path[i].node1 == ADC1 || path[i].node2 == ADC1)
-    {
+    if (path[i].node1 == ADC1 || path[i].node2 == ADC1) {
       showADCreadings[1] = path[i].net;
     }
 
-    if (path[i].node1 == ADC2 || path[i].node2 == ADC2)
-    {
+    if (path[i].node1 == ADC2 || path[i].node2 == ADC2) {
       showADCreadings[2] = path[i].net;
     }
 
-    if (path[i].node1 == ADC3 || path[i].node2 == ADC3)
-    {
+    if (path[i].node1 == ADC3 || path[i].node2 == ADC3) {
       showADCreadings[3] = path[i].net;
     }
+    // Serial.println(newBridgeIndex);
+    //     for (int j = 0; j < 4; j++)
+    //     {
+    //       Serial.print("ADC");
+    //       Serial.print(j);
+    //       Serial.print(": ");
+    //       Serial.print(showADCreadings[j]);
+    //       Serial.print(" ");
 
-    if (path[i].node1 == ISENSE_PLUS || path[i].node1 == ISENSE_PLUS || path[i].node2 == ISENSE_MINUS || path[i].node2 == ISENSE_MINUS)
-    {
+    //     }
+
+    //     Serial.println(" ");
+
+    if (path[i].node1 == ISENSE_PLUS || path[i].node1 == ISENSE_PLUS ||
+        path[i].node2 == ISENSE_MINUS || path[i].node2 == ISENSE_MINUS) {
       // Serial.println(showReadings);
 
       inaConnected = 1;
 
-      switch (showReadings)
-      {
+      switch (showReadings) {
       case 0:
         break;
 
@@ -665,8 +937,7 @@ void chooseShownReadings(void)
       // Serial.println(" ");
     }
   }
-  if (inaConnected == 0)
-  {
+  if (inaConnected == 0) {
     showINA0[0] = 0;
     showINA0[1] = 0;
     showINA0[2] = 0;
@@ -674,17 +945,21 @@ void chooseShownReadings(void)
   }
 }
 
-void showMeasurements(int samples)
-{
 
-  while (Serial.available() == 0 && Serial1.available() == 0)
+// void setRails(float topRail, float botRail) {
+//   setTopRail(topRail);
+//   setBotRail(botRail);
+// }
+void showMeasurements(int samples, int printOrBB) {
+
+  if (Serial.available() == 0 && Serial1.available() == 0)
 
   {
     // CSI
     // Serial.write("\x1B\x5B 2K");
     // Serial.write("2K");
 
-    Serial.print("\r                                                                       \r");
+    Serial.print("\r                                              \r");
     int adc0ReadingUnscaled;
     float adc0Reading;
 
@@ -703,95 +978,105 @@ void showMeasurements(int samples)
     // Serial.print(showINA0[2]);
     // Serial.print("\t");
 
-    if (showADCreadings[0] != 0)
-    {
+    if (showADCreadings[0] != 0) {
 
       adc0ReadingUnscaled = readAdc(0, samples);
       adc0Reading = (adc0ReadingUnscaled) * (5.0 / 4095);
       // adc0Reading -= 0.1; // offset
+      if (printOrBB != 1) {
       bs += Serial.print("D0: ");
       bs += Serial.print(adc0Reading);
       bs += Serial.print("V\t");
+      }
 
       int mappedAdc0Reading = map(adc0ReadingUnscaled, 0, 4095, 5, 80);
-      lightUpNet(showADCreadings[0], -1, 1, mappedAdc0Reading, 0);
-      showLEDsCore2 = 1;
+      //lightUpNet(showADCreadings[0], -1, 1, mappedAdc0Reading, 0);
+     // showLEDsCore2 = 1;
     }
 
-    if (showADCreadings[1] != 0)
-    {
+    if (showADCreadings[1] != 0) {
 
-      adc1ReadingUnscaled = readAdc(1, samples);
+      adc1ReadingUnscaled = readAdc(1, 8);
       adc1Reading = (adc1ReadingUnscaled) * (5.0 / 4095);
       // adc1Reading -= 0.1; // offset
+      if (printOrBB != 1) {
       bs += Serial.print("D1: ");
       bs += Serial.print(adc1Reading);
       bs += Serial.print("V\t");
-      int mappedAdc1Reading = map(adc1ReadingUnscaled, 0, 4095, 5, 80);
+      }
+      int mappedAdc1Reading = map(adc1ReadingUnscaled, 0, 4095, 2, 20);
 
-      lightUpNet(showADCreadings[1], -1, 1, mappedAdc1Reading, 0);
-      showLEDsCore2 = 1;
+      //lightUpNet(showADCreadings[1], -1, 1, mappedAdc1Reading, 0);
+      //showLEDsCore2 = 3;
     }
 
-    if (showADCreadings[2] != 0)
-    {
+    if (showADCreadings[2] != 0) {
 
       adc2ReadingUnscaled = readAdc(2, samples);
-      adc2Reading = (adc2ReadingUnscaled) * (5.0 / 4095);
+      adc2Reading = (adc2ReadingUnscaled) * (16.0 / 4095);
+      adc2Reading -= 8; // offset
       // adc2Reading -= 0.1; // offset
+
+      if (printOrBB != 1) {
 
       bs += Serial.print("D2: ");
       bs += Serial.print(adc2Reading);
       bs += Serial.print("V\t");
+      }
       int mappedAdc2Reading = map(adc2ReadingUnscaled, 0, 4095, 5, 80);
-      lightUpNet(showADCreadings[2], -1, 1, mappedAdc2Reading, 0);
-      showLEDsCore2 = 1;
+      //lightUpNet(showADCreadings[2], -1, 1, mappedAdc2Reading, 0);
+      //showLEDsCore2 = 1;
     }
 
-    if (showADCreadings[3] != 0)
-    {
+    if (showADCreadings[3] != 0) {
 
       adc3ReadingUnscaled = readAdc(3, samples);
       adc3Reading = (adc3ReadingUnscaled) * (16.0 / 4010);
-      adc3Reading -= 8.7; // offset
+      adc3Reading -= 8; // offset
+
+      if (printOrBB != 1) {
       bs += Serial.print("D3: ");
       bs += Serial.print(adc3Reading);
       bs += Serial.print("V\t");
+      }
       int mappedAdc3Reading = map(adc3ReadingUnscaled, 0, 4095, -80, 80);
       int hueShift = 0;
 
-      if (mappedAdc3Reading < 0)
-      {
+      if (mappedAdc3Reading < 0) {
         hueShift = map(mappedAdc3Reading, -80, 0, 0, 200);
         mappedAdc3Reading = abs(mappedAdc3Reading);
       }
 
-      lightUpNet(showADCreadings[3], -1, 1, mappedAdc3Reading, hueShift);
-      showLEDsCore2 = 1;
+      // lightUpNet(showADCreadings[3], -1, 1, mappedAdc3Reading, hueShift);
+      // showLEDsCore2 = 1;
     }
 
-    if (showINA0[0] == 1 || showINA0[1] == 1 || showINA0[2] == 1)
-    {
+    if (showINA0[0] == 1 || showINA0[1] == 1 || showINA0[2] == 1) {
+      if (printOrBB != 1) {
       bs += Serial.print("   INA219: ");
+      }
     }
 
-    if (showINA0[0] == 1)
-    {
+    if (showINA0[0] == 1) {
+      if (printOrBB != 1) {
       bs += Serial.print("I: ");
       bs += Serial.print(INA0.getCurrent_mA());
       bs += Serial.print("mA\t");
+      }
     }
-    if (showINA0[1] == 1)
-    {
+    if (showINA0[1] == 1) {
+      if (printOrBB != 1) {
       bs += Serial.print(" V: ");
       bs += Serial.print(INA0.getBusVoltage());
       bs += Serial.print("V\t");
+      }
     }
-    if (showINA0[2] == 1)
-    {
+    if (showINA0[2] == 1) {
+      if (printOrBB != 1) {
       bs += Serial.print("P: ");
       bs += Serial.print(INA0.getPower_mW());
       bs += Serial.print("mW\t");
+      }
     }
 
     bs += Serial.print("      \r");
@@ -811,9 +1096,8 @@ void showMeasurements(int samples)
     // Serial.print(adc3ReadingUnscaled);
     // Serial.print("V\n\n\r");
 
-    if (Serial.available() == 0 && Serial1.available() == 0)
-    {
-      delay(350);
+    if (Serial.available() == 0 && Serial1.available() == 0 && encoderButtonState == IDLE) {
+      delay(250);
     }
     // else {
     //   Serial.print("Serial.available =");
@@ -826,18 +1110,16 @@ void showMeasurements(int samples)
     // }
   }
   //   else{
-  //     Serial.print("\r  nothing to sample                                                                     \r");
+  //     Serial.print("\r  nothing to sample \r");
   // }
 }
 
-int readAdc(int channel, int samples)
-{
+int readAdc(int channel, int samples) {
   int adcReadingAverage = 0;
 
-  for (int i = 0; i < samples; i++)
-  {
-    //adcReadingAverage += adcReadings[channel];//////
-    delay(1);
+  for (int i = 0; i < samples; i++) {
+    adcReadingAverage += analogRead(ADC0_PIN + channel);
+    delayMicroseconds(10);
   }
 
   int adcReading = adcReadingAverage / samples;
@@ -847,8 +1129,7 @@ int readAdc(int channel, int samples)
   return adcReading;
 }
 
-int waveGen(void)
-{
+int waveGen(void) {
   int loopCounter = 0;
   int c = 0;
   listSpecialNets();
@@ -869,13 +1150,17 @@ int waveGen(void)
   // setDac1_8VinputCode(8190);
   // Serial.println(dac_rev3.getGain());
 
-  //Serial.println(dac_rev3.maxValue());
+  // Serial.println(dac_rev3.maxValue());
   Serial.print("Revision = ");
   Serial.println(revisionNumber);
-  Serial.println("\n\r\t\t\t\t     waveGen\t\n\n\r\toptions\t\t\twaves\t\t\tadjust frequency\n\r");
-  Serial.println("\t5/0 = dac 0 0-5V (togg)\tq = square\t\t+ = frequency++\n\r");
+  Serial.println(
+      "\n\r\t\t\t\t     waveGen\t\n\n\r\toptions\t\t\twaves\t\t\tadjust "
+      "frequency\n\r");
+  Serial.println(
+      "\t5/0 = dac 0 0-5V (togg)\tq = square\t\t+ = frequency++\n\r");
   Serial.println("\t8/1 = dac 1 +-8V (togg)\ts = sine\t\t- = frequency--\n\r");
-  Serial.println("\ta = set amplitude (p-p)\tw = sawtooth\t\t* = frequency*2\n\r");
+  Serial.println(
+      "\ta = set amplitude (p-p)\tw = sawtooth\t\t* = frequency*2\n\r");
   Serial.println("\to = set offset\t\tt = triangle\t\t/ = frequency/2\n\r");
   Serial.println("\tv = voltage\t\tr = random\t\t \n\r");
   Serial.println("\th = show this menu\tx = exit\t\t \n\r");
@@ -889,31 +1174,27 @@ int waveGen(void)
   int firstCrossFreq0 = 0;
   int firstCrossFreq1 = 0;
 
-  while (1)
-  {
+  while (1) {
     yield();
     uint32_t now = micros();
 
     count++;
 
-    // float adc3Voltage = (adc3Reading - 2528) / 220.0; //painstakingly measured
-    // float adc0Voltage = ((adc0Reading) / 400.0) - 0.69; //- 0.93; //painstakingly measured
+    // float adc3Voltage = (adc3Reading - 2528) / 220.0; //painstakingly
+    // measured float adc0Voltage = ((adc0Reading) / 400.0) - 0.69; //- 0.93;
+    // //painstakingly measured
 
     int adc0Reading = 0;
     int brightness0 = 0;
     int hueShift0 = 0;
     // firstCrossFreq0 = 1;
 
-    if (dacOn[0] == 1 && freq[0] < 33)
-    {
+    if (dacOn[0] == 1 && freq[0] < 33) {
       // adc0Reading = INA1.getBusVoltage_mV();
       //  adc0Reading = dac0_5V.getInputCode();
 
-      if (c == 'q')
-      {
-      }
-      else
-      {
+      if (c == 'q') {
+      } else {
 
         adc0Reading = readAdc(26, 1);
         adc0Reading = abs(adc0Reading);
@@ -924,11 +1205,8 @@ int waveGen(void)
         showLEDsCore2 = 1;
         firstCrossFreq0 = 1;
       }
-    }
-    else
-    {
-      if (firstCrossFreq0 == 1)
-      {
+    } else {
+      if (firstCrossFreq0 == 1) {
         lightUpNet(4);
         showLEDsCore2 = 1;
         firstCrossFreq0 = 0;
@@ -939,8 +1217,7 @@ int waveGen(void)
     int brightness1 = 0;
     int hueShift1 = 0;
 
-    if (dacOn[1] == 1 && freq[1] < 17)
-    {
+    if (dacOn[1] == 1 && freq[1] < 17) {
       adc1Reading = readAdc(29, 1);
       hueShift1 = map(adc1Reading, -2048, 2048, -50, 45);
       adc1Reading = adc1Reading - 2048;
@@ -952,19 +1229,15 @@ int waveGen(void)
       lightUpNet(5, -1, 1, brightness1, hueShift1);
       showLEDsCore2 = 1;
       firstCrossFreq1 = 1;
-    }
-    else
-    {
-      if (firstCrossFreq1 == 1)
-      {
+    } else {
+      if (firstCrossFreq1 == 1) {
         lightUpNet(5);
         showLEDsCore2 = 1;
         firstCrossFreq1 = 0;
       }
     }
 
-    if (now - lastTime > 100000)
-    {
+    if (now - lastTime > 100000) {
       loopCounter++;
       //
       // int adc0Reading = analogRead(26);
@@ -992,38 +1265,26 @@ int waveGen(void)
       // Serial.println(count); // show # updates per 0.1 second
       count = 0;
 
-      if (Serial.available() == 0)
-      {
+      if (Serial.available() == 0) {
         // break;
-      }
-      else
-      {
+      } else {
         c = Serial.read();
-        switch (c)
-        {
+        switch (c) {
         case '+':
-          if (freq[activeDac] >= 1.0)
-          {
+          if (freq[activeDac] >= 1.0) {
 
             freq[activeDac]++;
-          }
-          else
-          {
+          } else {
             freq[activeDac] += 0.1;
           }
           break;
         case '-':
 
-          if (freq[activeDac] > 1.0)
-          {
+          if (freq[activeDac] > 1.0) {
             freq[activeDac]--;
-          }
-          else if (freq[activeDac] > 0.1)
-          {
+          } else if (freq[activeDac] > 0.1) {
             freq[activeDac] -= 0.1;
-          }
-          else
-          {
+          } else {
             freq[activeDac] = 0.0;
           }
 
@@ -1035,8 +1296,7 @@ int waveGen(void)
           freq[activeDac] /= 2;
           break;
         case '8':
-          if (activeDac == 0)
-          {
+          if (activeDac == 0) {
             setDac0_5Vvoltage(0.0);
             dacOn[0] = 0;
           }
@@ -1046,15 +1306,13 @@ int waveGen(void)
 
           activeDac = 1;
 
-          if (dacOn[1] == 0)
-          {
+          if (dacOn[1] == 0) {
             setDac1_8VinputCode(offset[1] + calib[1]);
           }
 
           break;
         case '5':
-          if (activeDac == 1)
-          {
+          if (activeDac == 1) {
             setDac1_8VinputCode(offset[1] + calib[1]);
             dacOn[1] = 0;
           }
@@ -1063,8 +1321,7 @@ int waveGen(void)
             dacOn[0] = !dacOn[0];
 
           activeDac = 0;
-          if (dacOn[activeDac] == 0)
-          {
+          if (dacOn[activeDac] == 0) {
             setDac0_5Vvoltage(0.0);
           }
           break;
@@ -1072,10 +1329,8 @@ int waveGen(void)
           // freq[activeDac] = 0;
           break;
 
-        case 's':
-        {
-          if (mode[2] == 'v')
-          {
+        case 's': {
+          if (mode[2] == 'v') {
             refillTable(amplitude[activeDac], offset[activeDac] + calib[1], 1);
             mode[2] = 's';
           }
@@ -1107,27 +1362,21 @@ int waveGen(void)
           mode[activeDac] = c;
           break;
         case '{':
-        case 'f':
-        {
-          if (mode[0] != 'v')
-          {
+        case 'f': {
+          if (mode[0] != 'v') {
             setDac0_5Vvoltage(0.0);
           }
-          if (mode[1] != 'v')
-          {
+          if (mode[1] != 'v') {
             setDac1_8VinputCode(offset[1]);
           }
           return 0;
         }
 
-        case 'x':
-        {
-          if (mode[0] != 'v')
-          {
+        case 'x': {
+          if (mode[0] != 'v') {
             setDac0_5Vvoltage(0.0);
           }
-          if (mode[1] != 'v')
-          {
+          if (mode[1] != 'v') {
 
             setDac1_8VinputCode(offset[1]);
           }
@@ -1139,8 +1388,7 @@ int waveGen(void)
         }
         period[activeDac] = 1e6 / freq[activeDac];
         halvePeriod[activeDac] = period[activeDac] / 2;
-        if (activeDac == 0)
-        {
+        if (activeDac == 0) {
           Serial.print("dac 0:   ");
           Serial.print("ampl: ");
           Serial.print((float)(amplitude[activeDac]) / 819);
@@ -1155,9 +1403,7 @@ int waveGen(void)
           Serial.print(freq[activeDac]);
 
           // Serial.print("\t\n\r");
-        }
-        else if (activeDac == 1)
-        {
+        } else if (activeDac == 1) {
           Serial.print("dac 1:   ");
           Serial.print("ampl: ");
           Serial.print((float)(amplitude[activeDac]) / 276);
@@ -1187,34 +1433,25 @@ int waveGen(void)
     uint32_t t = now % period[activeDac];
     // if (dacOn[activeDac] == 1 )
     //{
-    switch (mode[activeDac])
-    {
+    switch (mode[activeDac]) {
     case 'q':
-      if (t < halvePeriod[activeDac])
-      {
-        if (activeDac == 0 && dacOn[activeDac] == 1)
-        {
+      if (t < halvePeriod[activeDac]) {
+        if (activeDac == 0 && dacOn[activeDac] == 1) {
           setDac0_5VinputCode(amplitude[activeDac]);
           lightUpNet(4, -1, 1, DEFAULTSPECIALNETBRIGHTNESS, 12);
           showLEDsCore2 = 1;
-        }
-        else if (activeDac == 1 && dacOn[activeDac] == 1)
-        {
+        } else if (activeDac == 1 && dacOn[activeDac] == 1) {
           setDac1_8VinputCode(amplitude[activeDac]);
 
           showLEDsCore2 = 1;
         }
-      }
-      else
-      {
-        if (activeDac == 0 && dacOn[activeDac] == 1)
-        {
+      } else {
+        if (activeDac == 0 && dacOn[activeDac] == 1) {
           setDac0_5VinputCode(0);
           lightUpNet(4, -1, 1, 2, 12);
         }
 
-        else if (activeDac == 1 && dacOn[activeDac] == 1)
-        {
+        else if (activeDac == 1 && dacOn[activeDac] == 1) {
           setDac1_8VinputCode(offset[activeDac]);
         }
       }
@@ -1226,27 +1463,28 @@ int waveGen(void)
         setDac1_8VinputCode(t * amplitude[activeDac] / period[activeDac]);
       break;
     case 't':
-      if (activeDac == 0 && dacOn[activeDac] == 1)
-      {
+      if (activeDac == 0 && dacOn[activeDac] == 1) {
 
         if (t < halvePeriod[activeDac])
-          setDac0_5VinputCode(((t * amplitude[activeDac]) / halvePeriod[activeDac]));
+          setDac0_5VinputCode(
+              ((t * amplitude[activeDac]) / halvePeriod[activeDac]));
         else
-          setDac0_5VinputCode((((period[activeDac] - t) * (amplitude[activeDac]) / halvePeriod[activeDac])));
-      }
-      else if (activeDac == 1 && dacOn[activeDac] == 1)
-      {
+          setDac0_5VinputCode(
+              (((period[activeDac] - t) * (amplitude[activeDac]) /
+                halvePeriod[activeDac])));
+      } else if (activeDac == 1 && dacOn[activeDac] == 1) {
         if (t < halvePeriod[activeDac])
-          setDac1_8VinputCode(t * amplitude[activeDac] / halvePeriod[activeDac]);
+          setDac1_8VinputCode(t * amplitude[activeDac] /
+                              halvePeriod[activeDac]);
         else
-          setDac1_8VinputCode((period[activeDac] - t) * amplitude[activeDac] / halvePeriod[activeDac]);
+          setDac1_8VinputCode((period[activeDac] - t) * amplitude[activeDac] /
+                              halvePeriod[activeDac]);
       }
       break;
     case 'r':
       if (activeDac == 0 && dacOn[activeDac] == 1)
         setDac0_5VinputCode(random(amplitude[activeDac]));
-      else if (activeDac == 1 && dacOn[activeDac] == 1)
-      {
+      else if (activeDac == 1 && dacOn[activeDac] == 1) {
         setDac1_8VinputCode(random(amplitude[activeDac]));
       }
       break;
@@ -1257,10 +1495,15 @@ int waveGen(void)
         setDac1_8VinputCode(offset[activeDac]);
       break;
     case 'h': // high
-      Serial.println("\n\r\t\t\t\t     waveGen\t\n\n\r\toptions\t\t\twaves\t\t\tadjust frequency\n\r");
-      Serial.println("\t5/0 = dac 0 0-5V (togg)\tq = square\t\t+ = frequency++\n\r");
-      Serial.println("\t8/1 = dac 1 +-8V (togg)\ts = sine\t\t- = frequency--\n\r");
-      Serial.println("\ta = set amplitude (p-p)\tw = sawtooth\t\t* = frequency*2\n\r");
+      Serial.println(
+          "\n\r\t\t\t\t     waveGen\t\n\n\r\toptions\t\t\twaves\t\t\tadjust "
+          "frequency\n\r");
+      Serial.println(
+          "\t5/0 = dac 0 0-5V (togg)\tq = square\t\t+ = frequency++\n\r");
+      Serial.println(
+          "\t8/1 = dac 1 +-8V (togg)\ts = sine\t\t- = frequency--\n\r");
+      Serial.println(
+          "\ta = set amplitude (p-p)\tw = sawtooth\t\t* = frequency*2\n\r");
       Serial.println("\to = set offset\t\tt = triangle\t\t/ = frequency/2\n\r");
       Serial.println("\tv = voltage\t\tr = random\t\t \n\r");
       Serial.println("\th = show this menu\tx = exit\t\t \n\r");
@@ -1269,15 +1512,13 @@ int waveGen(void)
     case 'm': // mid
       // setDac1_8VinputCode(2047);
       break;
-    case 'a':
-    {
+    case 'a': {
       float newAmplitudeF = 0;
       int newAmplitude = 0;
       int input = 0;
       char aC = 0;
       int a = 0;
-      if (activeDac == 0)
-      {
+      if (activeDac == 0) {
 
         Serial.print("\n\renter amplitude (0-5): ");
         while (Serial.available() == 0)
@@ -1289,8 +1530,7 @@ int waveGen(void)
 
         Serial.print(aC);
 
-        if (a >= 48 && a <= 53)
-        {
+        if (a >= 48 && a <= 53) {
 
           input = a - 48;
           newAmplitude = input * 819;
@@ -1299,16 +1539,14 @@ int waveGen(void)
             ;
           a = Serial.read();
 
-          if (a == '.')
-          {
+          if (a == '.') {
             while (Serial.available() == 0)
               ;
 
             a = Serial.read();
           }
 
-          if (a >= 48 && a <= 57)
-          {
+          if (a >= 48 && a <= 57) {
             Serial.print((char)a);
             input = a - 48;
             newAmplitude += input * 81.9;
@@ -1317,13 +1555,11 @@ int waveGen(void)
             Serial.print("\tamplitude: ");
             Serial.print((float)(amplitude[activeDac]) / 819);
             Serial.println("V");
-            if ((offset[activeDac] - (amplitude[activeDac] / 2)) < 10 || ((amplitude[activeDac] / 2) - offset[activeDac]) < 10)
-            {
+            if ((offset[activeDac] - (amplitude[activeDac] / 2)) < 10 ||
+                ((amplitude[activeDac] / 2) - offset[activeDac]) < 10) {
               offset[activeDac] = (amplitude[activeDac] / 2) - 1;
             }
-            {
-              offset[activeDac] = (amplitude[activeDac] / 2) - 2;
-            }
+            { offset[activeDac] = (amplitude[activeDac] / 2) - 2; }
             refillTable(amplitude[activeDac], offset[activeDac], 0);
 
             mode[activeDac] = mode[2];
@@ -1331,9 +1567,7 @@ int waveGen(void)
             break;
           }
         }
-      }
-      else if (activeDac == 1)
-      {
+      } else if (activeDac == 1) {
 
         Serial.print("\n\renter peak amplitude (0-7.5): ");
         while (Serial.available() == 0)
@@ -1345,8 +1579,7 @@ int waveGen(void)
 
         Serial.print(aC);
 
-        if (a >= 48 && a <= 55)
-        {
+        if (a >= 48 && a <= 55) {
 
           input = a - 48;
           newAmplitude = input * 276;
@@ -1355,16 +1588,14 @@ int waveGen(void)
             ;
           a = Serial.read();
 
-          if (a == '.')
-          {
+          if (a == '.') {
             while (Serial.available() == 0)
               ;
 
             a = Serial.read();
           }
 
-          if (a >= 48 && a <= 57)
-          {
+          if (a >= 48 && a <= 57) {
             Serial.print((char)a);
             input = a - 48;
             newAmplitude += input * 27.6;
@@ -1386,15 +1617,13 @@ int waveGen(void)
         }
       }
     }
-    case 'o':
-    {
+    case 'o': {
 
       int newOffset = 0;
       int input = 0;
       char aC = 0;
       int o = 0;
-      if (activeDac == 0)
-      {
+      if (activeDac == 0) {
 
         Serial.print("\n\renter offset (0-5): ");
         while (Serial.available() == 0)
@@ -1407,8 +1636,7 @@ int waveGen(void)
 
         Serial.print(aC);
 
-        if (o >= 48 && o <= 53)
-        {
+        if (o >= 48 && o <= 53) {
 
           input = o - 48;
           newOffset = input * 819;
@@ -1417,16 +1645,14 @@ int waveGen(void)
             ;
           o = Serial.read();
 
-          if (o == '.')
-          {
+          if (o == '.') {
             while (Serial.available() == 0)
               ;
 
             o = Serial.read();
           }
 
-          if (o >= 48 && o <= 57)
-          {
+          if (o >= 48 && o <= 57) {
             Serial.print((char)o);
             input = o - 48;
             newOffset += input * 81.9;
@@ -1442,17 +1668,14 @@ int waveGen(void)
             break;
           }
         }
-      }
-      else if (activeDac == 1)
-      {
+      } else if (activeDac == 1) {
         int negative = 0;
 
         Serial.print("\n\rEnter offset (-7 - 7): ");
         while (Serial.available() == 0)
           ;
         aC = Serial.read();
-        if (aC == '-')
-        {
+        if (aC == '-') {
           Serial.print('-');
           negative = 1;
           while (Serial.available() == 0)
@@ -1464,32 +1687,26 @@ int waveGen(void)
 
         Serial.print(aC);
 
-        if (o >= 48 && o <= 55)
-        {
+        if (o >= 48 && o <= 55) {
 
           input = o - 48;
           newOffset = input * 276;
 
-          if (input == '7')
-          {
+          if (input == '7') {
             Serial.print(".00");
-          }
-          else
-          {
+          } else {
 
             Serial.print(".");
             while (Serial.available() == 0)
               ;
             o = Serial.read();
-            if (o == '.')
-            {
+            if (o == '.') {
               while (Serial.available() == 0)
                 ;
               o = Serial.read();
             }
 
-            if (o >= 48 && o <= 57)
-            {
+            if (o >= 48 && o <= 57) {
               Serial.print((char)o);
               input = o - 48;
               newOffset += input * 27.6;
@@ -1515,23 +1732,18 @@ int waveGen(void)
         }
       }
     }
-    case 'v':
-    {
-      if (activeDac == 0 && mode[2] != 'v')
-      {
+    case 'v': {
+      if (activeDac == 0 && mode[2] != 'v') {
         // freq[activeDac] = 0;
         setDac0_5Vvoltage(amplitude[activeDac] / 819);
         mode[2] = 'v';
-      }
-      else if (activeDac == 1 && mode[2] != 'v')
-      {
+      } else if (activeDac == 1 && mode[2] != 'v') {
         // freq[activeDac] = 0;
         // refillTable(0, offset[activeDac] + calib[1], 1);
-        setDac1_8Vvoltage(((amplitude[activeDac] + calib[1]) / 276) - ((offset[activeDac] / 276) - 7));
+        setDac1_8Vvoltage(((amplitude[activeDac] + calib[1]) / 276) -
+                          ((offset[activeDac] / 276) - 7));
         mode[2] = 'v';
-      }
-      else if (mode[2] == 'v')
-      {
+      } else if (mode[2] == 'v') {
         // mode[2] = 's';
       }
 
@@ -1544,8 +1756,7 @@ int waveGen(void)
       // float f = ((PI * 2) * t)/period;
       // setDac1_8VinputCode(2047 + 2047 * sin(f));
       //
-      if (mode[activeDac] != 'v')
-      {
+      if (mode[activeDac] != 'v') {
         int idx = (360 * t) / period[activeDac];
         if (activeDac == 0 && dacOn[activeDac] == 1)
           setDac0_5VinputCode(sine0[idx]); // lookuptable
@@ -1557,33 +1768,25 @@ int waveGen(void)
   }
 }
 
-void refillTable(int amplitude, int offset, int dac)
-{
+void refillTable(int amplitude, int offset, int dac) {
   // int offsetCorr = 0;
-  if (dac == 0)
-  {
+  if (dac == 0) {
     // offset = amplitude / 2;
   }
 
-  for (int i = 0; i < 360; i++)
-  {
-    if (dac == 0)
-    {
+  for (int i = 0; i < 360; i++) {
+    if (dac == 0) {
       sine0[i] = offset + round(amplitude / 2 * sin(i * PI / 180));
-    }
-    else if (dac == 1)
-    {
-      sine1[i] = offset + round((amplitude - (offset - 2047)) / 2 * sin(i * PI / 180));
-    }
-    else if (dac == 2)
-    {
+    } else if (dac == 1) {
+      sine1[i] =
+          offset + round((amplitude - (offset - 2047)) / 2 * sin(i * PI / 180));
+    } else if (dac == 2) {
       sine0[i] = offset + round(amplitude / 2 * sin(i * PI / 180));
       sine1[i] = offset + round(amplitude / 2 * sin(i * PI / 180));
     }
   }
 }
-void GetAdc29Status(int i)
-{
+void GetAdc29Status(int i) {
   gpio_function gpio29Function = gpio_get_function(29);
   Serial.print("GPIO29 func: ");
   Serial.println(gpio29Function);
@@ -1611,5 +1814,7 @@ void GetAdc29Status(int i)
   bool out = gpio_is_dir_out(29);
   Serial.print("GPIO29 out: ");
   Serial.println(out);
-  Serial.printf("(%i) GPIO29 func: %i, pd: %i, h: %i, slew: %i, drive: %i, irqmask: %i, out: %i\n", i, gpio29Function, pd, h, slew, drive, irqmask, out);
+  Serial.printf("(%i) GPIO29 func: %i, pd: %i, h: %i, slew: %i, drive: %i, "
+                "irqmask: %i, out: %i\n",
+                i, gpio29Function, pd, h, slew, drive, irqmask, out);
 }

@@ -173,12 +173,21 @@ const int bbPixelToNodesMap[120] = {
     57,        58,         59,       60,       61,         0,         0,
     0,         0,          0,        0,        0,          0,         0,
     0,         0,          0,        0,        0,          0,         0,
-    0,         0,          NANO_D1,  NANO_D0,  NANO_RESET, GND,       NANO_D2,
+    0,         0,          NANO_D1,  NANO_D0,  NANO_RESET_1, GND,       NANO_D2,
     NANO_D3,   NANO_D4,    NANO_D5,  NANO_D6,  NANO_D7,    NANO_D8,   NANO_D9,
     NANO_D10,  NANO_D11,   NANO_D12, NANO_D13, SUPPLY_3V3, NANO_AREF, NANO_A0,
     NANO_A1,   NANO_A2,    NANO_A3,  NANO_A4,  NANO_A5,    NANO_A6,   NANO_A7,
-    SUPPLY_5V, NANO_RESET, GND,      SUPPLY_5V
+    SUPPLY_5V, NANO_RESET_0, GND,      SUPPLY_5V
 
+};
+
+const int bbPixelToNodesMapV5[35][2] = {
+{NANO_D1, 400}, {NANO_D0, 401}, {NANO_RESET_1, 402}, {NANO_D2, 404}, {NANO_D3, 405},
+{NANO_D4, 406}, {NANO_D5, 407}, {NANO_D6, 408}, {NANO_D7, 409}, {NANO_D8, 410}, 
+{NANO_D9, 411}, {NANO_D10, 412}, {NANO_D11, 413}, {NANO_D12, 414}, {NANO_D13, 415},
+{NANO_AREF, 417}, {NANO_A0, 418}, {NANO_A1, 419}, {NANO_A2, 420},
+{NANO_A3, 421}, {NANO_A4, 422}, {NANO_A5, 423}, {NANO_A6, 424}, {NANO_A7, 425},
+{NANO_RESET_0, 427}
 };
 
 extern uint32_t

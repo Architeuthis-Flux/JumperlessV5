@@ -8,6 +8,7 @@
 #include <Adafruit_GFX.h>
 #include "NetManager.h"
 #include "NetsToChipConnections.h"
+#include "Peripherals.h"
 
 // MATRIX DECLARATION:
 // Parameter 1 = width of NeoPixel matrix
@@ -288,11 +289,13 @@ void showSavedColors(int slot)
 //Serial.println("saving colors\n\r");
         clearAllNTCC();
         openNodeFile(slot);
-        clearLEDs();
+       // printNodeFile(slot, 0);
+       //clearLEDs();
+        clearLEDsExceptRails();
         getNodesToConnect();
         bridgesToPaths();
-        leds.clear();
-
+        //leds.clear();
+        clearLEDsExceptRails();
 
         assignNetColors();
 
@@ -337,7 +340,7 @@ void showSavedColors(int slot)
             }
         }
     }
-    showLEDsCore2 = 1;
+   showLEDsCore2 = 1;
     // leds.show();
 }
 
@@ -674,8 +677,8 @@ void lightUpNet(int netNumber, int node, int onOff, int brightness2, int hueShif
 
                                 color = packRgb(shiftedColor.r, shiftedColor.g, shiftedColor.b);
                                 // color = packRgb((shiftedColor.r * LEDbrightnessRail) >> 8, (shiftedColor.g * LEDbrightnessRail) >> 8, (shiftedColor.b * LEDbrightnessRail) >> 8);
-                                 Serial.print("rail color: ");
-                                 Serial.print(color, HEX);
+                                //  Serial.print("rail color: ");
+                                //  Serial.print(color, HEX);
                             }
                             else if (net[netNumber].specialFunction >= 100 && net[netNumber].specialFunction <= 120)
                             {
@@ -1850,5 +1853,14 @@ void clearLEDsExceptRails(void)
 
 
         leds.setPixelColor(i, 0);
+    }
+
+    for (int i = 400; i <= 430; i++)
+    {
+        if (i != 403 && i != 428 && i != 429 && i != 416 && i != 426)
+        {
+        leds.setPixelColor(i, 0);
+        }
+
     }
 }

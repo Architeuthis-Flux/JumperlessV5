@@ -61,9 +61,9 @@ int getMenuSelection(void);
 int selectSubmenuOption(int menuPosition, int menuLevel);
 int selectNodeAction(int whichSelection = 0);
 
-void printActionSruct(void);
+void printActionStruct(void);
 void clearAction(void);
-int doMenuAction(int menuPosition , int selection = -1);
+int doMenuAction(int menuPosition = -1, int selection = -1);
 void populateAction(void);
 
 enum actionCategories getActionCategory(int menuPosition);

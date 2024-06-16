@@ -108,7 +108,7 @@ unsigned long buttonHoldTimer = 0;
 unsigned long buttonHoldLength = 500;
 
 unsigned long doubleClickTimer = 0;
-unsigned long doubleClickLength = 300;
+unsigned long doubleClickLength = 250;
 
 unsigned long buttonDebounceTimer = 0;
 unsigned long buttonDebounceTimer2 = 0;

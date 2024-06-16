@@ -4,6 +4,14 @@
 	(generator_version "8.0")
 	(uuid "9e84508f-197d-4fa4-9656-ceb00aba40e6")
 	(paper "A0")
+	(title_block
+		(title "Jumperless V5")
+		(date "2024-06-15")
+		(rev "5r2")
+		(company "Architeuthis Flux")
+		(comment 1 "Kevin Santo Cappuccio")
+		(comment 2 "KevinC@ppucc.io")
+	)
 	(lib_symbols
 		(symbol "+5V_1"
 			(power)

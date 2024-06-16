@@ -23,9 +23,9 @@ void openNodeFile(int slot = 0);
 void splitStringToFields();
 
 void replaceSFNamesWithDefinedInts();
-void printNodeFile(int slot = 0);
+void printNodeFile(int slot = 0, int printOrString = 0);
 void replaceNanoNamesWithDefinedInts();
-
+void saveCurrentSlotToSlot(int slotFrom = 0, int slotTo = 1);
 void parseStringToBridges();
 
 

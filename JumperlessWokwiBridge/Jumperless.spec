@@ -3,7 +3,7 @@
 
 a = Analysis(
     ['JumperlessWokwiBridge.py'],
-    pathex=['/Users/kevinsanto/Documents/GitHub/Jumperless/Jumperless_Wokwi_Bridge_App/JumperlessWokwiBridge/.venv/lib/python3.12/site-packages'],
+    pathex=['/Users/kevinsanto/Documents/GitHub/JumperlessV5/JumperlessWokwiBridge/.venv/lib/python3.12/site-packages'],
     binaries=[],
     datas=[],
     hiddenimports=[],
@@ -32,7 +32,7 @@ exe = EXE(
     target_arch='universal2',
     codesign_identity=None,
     entitlements_file=None,
-    icon=['/Users/kevinsanto/Documents/GitHub/Jumperless/Jumperless_Wokwi_Bridge_App/jumperlesswokwibridge/icon.icns'],
+    icon=['/Users/kevinsanto/Documents/GitHub/JumperlessV5/jumperlesswokwibridge/icon.icns'],
 )
 coll = COLLECT(
     exe,
@@ -46,6 +46,6 @@ coll = COLLECT(
 app = BUNDLE(
     coll,
     name='Jumperless.app',
-    icon='/Users/kevinsanto/Documents/GitHub/Jumperless/Jumperless_Wokwi_Bridge_App/jumperlesswokwibridge/icon.icns',
+    icon='/Users/kevinsanto/Documents/GitHub/JumperlessV5/jumperlesswokwibridge/icon.icns',
     bundle_identifier=None,
 )

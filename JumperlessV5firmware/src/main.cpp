@@ -75,6 +75,8 @@ volatile int sendAllPathsCore2 = 0; // this signals the core 2 to send all the p
 int rotEncInit = 0;
 // https://wokwi.com/projects/367384677537829889
 
+int core2initFinished = 0;
+
 void setup()
 {
   pinMode(RESETPIN, OUTPUT_12MA);
@@ -112,6 +114,7 @@ delay(20);
   debugFlagInit();
 
   delay(10);
+ 
 
   initDAC(); // also sets revisionNumber
 
@@ -122,6 +125,8 @@ delay(20);
   
 
   initArduino();
+
+ 
   delay(4);
 
   LittleFS.begin();
@@ -141,10 +146,18 @@ delay(20);
 
   delay(10);
 
+  while (core2initFinished == 0)
+  {
+    
+  }
+  delay(300);
+
+  initADC();
+
 
 }
 
-int core2initFinished = 0;
+
 void setup1()
 {
   //delay(10);
@@ -160,6 +173,8 @@ void setup1()
   initLEDs();
 
   delay(4);
+
+    
 
   core2initFinished = 1;
   // delay(4);
@@ -180,13 +195,13 @@ int baudRate = 115200;
 
 int restoredNodeFile = 0;
 
-const char firmwareVersion[] = "5.0.00"; //// remember to update this
+const char firmwareVersion[] = "5.0.0"; //// remember to update this
 
 int firstLoop = 1;
 
 volatile int probeActive = 1;
 
-int showExtraMenu = 0;
+int showExtraMenu = 1;
 
 void printSMstatus(void)
 {
@@ -221,6 +236,10 @@ void loop()
 // {
 // }
  delay(15);
+ while (millis() < 4000)
+ {
+  char ddd = Serial.read();
+ }
 // Serial.flush();
 // startupColorsV5();
 //lightUpRail();
@@ -232,9 +251,10 @@ void loop()
 menu:
   //showLEDsCore2 = 1;
   //Serial.println(showLEDsCore2);
-  Serial.print("Fuck you!\n\r");
+  // Serial.print("Fuck you!\n\r");
 
   printMainMenu(showExtraMenu);
+//  printCalibration();
  
   if (firstLoop == 1 && rotaryEncoderMode == 1)
   {
@@ -253,7 +273,9 @@ dontshowmenu:
 
   while (Serial.available() == 0 && connectFromArduino == '\0' && slotChanged == 0)
   {
-      clickMenu();
+      if (clickMenu() >= 0){
+        goto loadfile;
+      }
      
     if (showReadings >= 1)
     {
@@ -351,7 +373,7 @@ skipinput:
     }
     f[index] = ' ';
     f[index + 1] = ' ';
-    uint32_t color = 0x101000;
+    uint32_t color = 0x100010;
     // Serial.print(index);
     b.print(f, color);
 
@@ -851,6 +873,7 @@ unsigned long schedulerUpdateTime = 5000;
 
 void loop1() // core 2 handles the LEDs and the CH446Q8
 {
+  
 
   if (micros() - schedulerTimer > schedulerUpdateTime || showLEDsCore2 == 3)
   {

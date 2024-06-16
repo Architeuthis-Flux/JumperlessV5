@@ -311,6 +311,21 @@ void inputNodeFileList(int addRotaryConnections)
     // }
 }
 
+void saveCurrentSlotToSlot(int slotFrom, int slotTo)
+{
+    nodeFile = LittleFS.open("nodeFileSlot" + String(slotFrom) + ".txt", "r");
+    nodeFileString.clear();
+    nodeFileString.read(nodeFile);
+    nodeFile.close();
+
+    nodeFile = LittleFS.open("nodeFileSlot" + String(slotTo) + ".txt", "w");
+    nodeFileString.printTo(nodeFile);
+    nodeFile.close();
+}
+
+
+
+
 void savePreformattedNodeFile(int source, int slot, int keepEncoder)
 {
 
@@ -389,7 +404,7 @@ void savePreformattedNodeFile(int source, int slot, int keepEncoder)
     // printNodeFile(slot);
 }
 
-void printNodeFile(int slot)
+void printNodeFile(int slot, int printOrString)
 {
 
     nodeFile = LittleFS.open("nodeFileSlot" + String(slot) + ".txt", "r");
@@ -419,6 +434,8 @@ void printNodeFile(int slot)
         // nodeFileString.replace("116-80, 117-82, 114-83, 85-100, 81-100,", "rotEnc_0,");
 
         nodeFileString.replace("100", "GND");
+        nodeFileString.replace("101", "TOP_RAIL");
+        nodeFileString.replace("102", "BOTTOM_RAIL");
         nodeFileString.replace("105", "5V");
         nodeFileString.replace("103", "3V3");
         nodeFileString.replace("106", "DAC0");
@@ -495,9 +512,11 @@ void printNodeFile(int slot)
     // nodeFileString.readUntilToken(nodeFileString, "{");
     // nodeFileString.removeLast(9);
 
+if (printOrString == 0){
     Serial.print(nodeFileString);
     // Serial.print('*');
     nodeFileString.clear();
+}
 }
 
 void parseWokwiFileToNodeFile(void)
