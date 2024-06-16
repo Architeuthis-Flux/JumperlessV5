@@ -3,13 +3,16 @@
 
 Jumperless V5 is a breaboard where any point can be connected to any other with software-defined jumpers. RGB LEDs under each hole turn the breadboard itself into a display; paired with its assortment of routable analog/digial IO, Jumperless V5 gives you real-time information about everything that's happening in your circuit and the ability to change it at a whim.
 
-![JumperlessV5front](https://github.com/crowd-supply-projects/jumperless-v2/assets/20519442/254942ed-aee7-4358-be31-6e2b277b6bb7)
+![JumperlessV5front](https://github.com/Architeuthis-Flux/JumperlessV5/assets/20519442/60e26150-3dce-4d52-812f-8f1f99c58989)
+
+
 
 The 4 individually programmable ±8V power supplies, 5 voltage/current/resistance measurement channels, and 10 GPIO can all be connected anywhere on the breadboard or the Arduino Nano header. Connections made with its matrix of 12 analog crossbar switches can be changed in just a few microseconds, so measurements and GPIO can multiplexed to cover the entire board at once.
 
 V5 is a major redesign of the original [Jumperless](https://github.com/Architeuthis-Flux/Jumperless). Having a few hundred people out there using Jumperlesses, sharing ideas, and [writing their](https://github.com/nilclass/jlctl) [own apps](https://github.com/nilclass/jumperlab) gave me a long enough list of things I wish I had done that I felt it was time to push the design even further. Now that the fundamentals are battle-tested (switching matrix, power supply, routing algorithm), Jumperless V5 can add some even crazier new stuff like; an ungodly number (445) of LEDs, a built in rotary encoder/switch, daisy chain headers, individually programmable power rails, and an isolated, always-on probing system. 
 
-![JumperlessV5back](https://github.com/crowd-supply-projects/jumperless-v2/assets/20519442/44f11bb7-6da3-478f-88de-a0c3db043c6b)
+![JumperlessV5back](https://github.com/Architeuthis-Flux/JumperlessV5/assets/20519442/615c90cc-c19b-41ef-a5fb-0dfb2a027084)
+
 
 These additions may seem somewhat minor, but they fundamentally change the way using a Jumperless V5 *feels*. It's intuitive enough that it quickly just becomes "part of your brain" in the same way your computer does. And it's easy to forget this isn't how prototyping stuff on a breadboard always has been.
 
@@ -73,7 +76,8 @@ Jumperless V5 uses a string of 92 ±0.1% precision resistors in a huge voltage d
 
 If you happen to misplace your probe, the way it's designed allows you to just plug in any random 1/8" audio cable and poke out connections with the tip.
 
-![DSC01819](https://github.com/crowd-supply-projects/jumperless-v2/assets/20519442/5b91ffcf-1a7b-48be-af81-8e4c1e7ae00a)
+![DSC01819-3](https://github.com/Architeuthis-Flux/JumperlessV5/assets/20519442/b48b3448-29d8-4961-aaad-c2f262ceb448)
+
 ###### Just pretend this has an audio cable stuck to the back and it's sitting on a V5
 
 ## The App
@@ -87,7 +91,8 @@ The desktop app allows you to assign up to 8 [Wokwi](https://wokwi.com/) project
 Jumperless V5 can sniff or write any UART, I2C, SPI, or MIDI signals on the board. It can be set to either print whatever it reads on the breadboard LEDs, turning the Jumperless into a serial monitor and/or show up as 2 USB devices to your computer and give you bidirectional communication through that other port. 
 Look at that, Jumperless just saved you $3 on one of those little USB-UART boards, it practically pays for itself!!1!
 
-![lossm-5](https://github.com/crowd-supply-projects/jumperless-v2/assets/20519442/af056a1c-c4c2-4bdf-82ef-4774aedbaecc)
+![lossm-5](https://github.com/Architeuthis-Flux/JumperlessV5/assets/20519442/dc569c44-6b25-495a-891e-34616fd231ba)
+
 
 
 ## Slots/Music
@@ -112,7 +117,8 @@ The [CH446Q](https://www.wch-ic.com/products/CH446.html) analog crosspoint switc
 ## Repairability
 If you're worried about messing up one of the a spring clips and ruining your Jumperless, fear not! The breadboard shell is removable, so you can easily remove the shell and replace the offending clip (5-6 spares will be included). 
 
-![JumperlessV5boardoff](https://github.com/crowd-supply-projects/jumperless-v2/assets/20519442/332e81b6-b315-4f7c-b11e-1c9e5de59405)
+![JumperlessV5boardoff](https://github.com/Architeuthis-Flux/JumperlessV5/assets/20519442/448d4c7b-01eb-44f2-b1fb-f901f95a15cd)
+
 
 This is really just for peace of mind. These clips are made of spring-tempered phosphor bronze, which is what they use for super high quality breadboards, and they're pretty hard to permanently bend out of shape. 
 
