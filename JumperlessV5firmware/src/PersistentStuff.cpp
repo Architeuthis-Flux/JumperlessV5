@@ -24,6 +24,7 @@ void debugFlagInit(int forceDefaults) {
     EEPROM.write(SPECIALBRIGHTNESSADDRESS, DEFAULTSPECIALNETBRIGHTNESS);
     EEPROM.write(PROBESWAPADDRESS, 0);
     EEPROM.write(ROTARYENCODER_MODE_ADDRESS, 0);
+    EEPROM.write(DISPLAYMODE_ADDRESS, 0);
 
     EEPROM.commit();
     delay(5);
@@ -46,6 +47,8 @@ void debugFlagInit(int forceDefaults) {
   debugLEDs = EEPROM.read(DEBUG_LEDSADDRESS);
 
   rotaryEncoderMode = EEPROM.read(ROTARYENCODER_MODE_ADDRESS);
+
+  displayMode = EEPROM.read(DISPLAYMODE_ADDRESS);
 
   probeSwap = EEPROM.read(PROBESWAPADDRESS);
 
@@ -101,6 +104,10 @@ void debugFlagInit(int forceDefaults) {
   if (rotaryEncoderMode != 0 && rotaryEncoderMode != 1) {
     EEPROM.write(ROTARYENCODER_MODE_ADDRESS, 0);
     rotaryEncoderMode = 0;
+  }
+  if (displayMode != 0 && displayMode != 1) {
+    EEPROM.write(DISPLAYMODE_ADDRESS, 0);
+    displayMode = 0;
   }
 
   EEPROM.commit();
@@ -253,6 +260,14 @@ void debugFlagSet(int flag) {
 
       rotaryEncoderMode = 1;
     }
+    break;
+  }
+  case 12: {
+    
+      EEPROM.write(DISPLAYMODE_ADDRESS, displayMode);
+
+      
+    
     break;
   }
   }

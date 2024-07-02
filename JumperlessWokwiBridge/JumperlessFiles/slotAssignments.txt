@@ -1,5 +1,5 @@
-slot 0	https://wokwi.com/projects/399335389161866241	 fuck
-slot 1
+slot 0	https://wokwi.com/projects/401043137838589953	 ess32
+slot 1	https://wokwi.com/projects/400405843811118081	 esp32
 slot 2
 slot 3
 slot 4

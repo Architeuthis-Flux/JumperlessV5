@@ -1,7 +1,5 @@
-//Menu Tree File
 
 Show
-
 -$Digital$
 
 --$GPIO$
@@ -112,5 +110,11 @@ Probe
 -Calibration
 -Connect
 -Clear
+
+DisplayOptions
+-$Jumpers$
+--*Wires* *Lines*
+-$Bright$
+--*1**2**3**4**5**6**7**8*
 
 

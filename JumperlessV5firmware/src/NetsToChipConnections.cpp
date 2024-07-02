@@ -104,43 +104,29 @@ void clearAllNTCC(void) {
       }
     }
   }
+  //clang-format off
+// struct netStruct net[MAX_NETS] = { //these are the special function nets that will always be made
+// //netNumber,       ,netName          ,memberNodes[]         ,memberBridges[][2]     ,specialFunction        ,intsctNet[] ,doNotIntersectNodes[]                 ,priority (unused)
+//     {     127      ,"Empty Net"      ,{EMPTY_NET}           ,{{}}                   ,EMPTY_NET              ,{}          ,{EMPTY_NET,EMPTY_NET,EMPTY_NET,EMPTY_NET,EMPTY_NET,EMPTY_NET,EMPTY_NET} , 0},     
+//     {     1        ,"GND"            ,{GND}                 ,{{}}                   ,GND                    ,{}          ,{SUPPLY_3V3,SUPPLY_5V,DAC0,DAC1}    , 1},
+//     {     2        ,"Top Rail"       ,{TOP_RAIL}            ,{{}}                   ,TOP_RAIL               ,{}          ,{GND}                               , 1},
+//     {     3        ,"Bottom Rail"    ,{BOTTOM_RAIL}         ,{{}}                   ,BOTTOM_RAIL            ,{}          ,{GND}                               , 1},
+//     {     4        ,"DAC 0"          ,{DAC0}                ,{{}}                   ,DAC0                   ,{}          ,{GND}                               , 1},
+//     {     5        ,"DAC 1"          ,{DAC1}                ,{{}}                   ,DAC1                   ,{}          ,{GND}                               , 1},
+//     {     6        ,"I Sense +"      ,{ISENSE_PLUS}         ,{{}}                   ,ISENSE_PLUS            ,{}          ,{ISENSE_MINUS}                      , 2},
+//     {     7        ,"I Sense -"      ,{ISENSE_MINUS}        ,{{}}                   ,ISENSE_MINUS           ,{}          ,{ISENSE_PLUS}                       , 2},
+// };
+net[0] =     {     127      ,"Empty Net"      ,{EMPTY_NET}           ,{{}}                   ,EMPTY_NET              ,{}          ,{EMPTY_NET,EMPTY_NET,EMPTY_NET,EMPTY_NET,EMPTY_NET,EMPTY_NET,EMPTY_NET} , 0};
+net[1] =     {     1        ,"GND"            ,{GND}                 ,{{}}                   ,GND                    ,{}          ,{SUPPLY_3V3,SUPPLY_5V,DAC0,DAC1}    , 1};
+net[2] =     {     2        ,"Top Rail"       ,{TOP_RAIL}            ,{{}}                   ,TOP_RAIL               ,{}          ,{GND}                               , 1};
+net[3] =     {     3        ,"Bottom Rail"    ,{BOTTOM_RAIL}         ,{{}}                   ,BOTTOM_RAIL            ,{}          ,{GND}                               , 1};
+net[4] =     {     4        ,"DAC 0"          ,{DAC0}                ,{{}}                   ,DAC0                   ,{}          ,{GND}                               , 1};
+net[5] =     {     5        ,"DAC 1"          ,{DAC1}                ,{{}}                   ,DAC1                   ,{}          ,{GND}                               , 1};
+net[6] =     {     6        ,"I Sense +"      ,{ISENSE_PLUS}         ,{{}}                   ,ISENSE_PLUS            ,{}          ,{ISENSE_MINUS}                      , 2};
+net[7] =     {     7        ,"I Sense -"      ,{ISENSE_MINUS}        ,{{}}                   ,ISENSE_MINUS           ,{}          ,{ISENSE_PLUS}                       , 2};
 
-  net[0] = {127,
-            "Empty Net",
-            {EMPTY_NET},
-            {{}},
-            EMPTY_NET,
-            {},
-            {EMPTY_NET, EMPTY_NET, EMPTY_NET, EMPTY_NET, EMPTY_NET, EMPTY_NET,
-             EMPTY_NET},
-            0,
-            0};
-  net[1] = {1, "GND", {GND}, {{}}, GND, {}, {SUPPLY_3V3, SUPPLY_5V, DAC0, DAC1},
-            1, 0};
-  net[2] = {
-      2, "+5V", {SUPPLY_5V}, {{}}, SUPPLY_5V, {}, {GND, SUPPLY_3V3, DAC0, DAC1},
-      1, 0};
-  net[3] = {3,
-            "+3.3V",
-            {SUPPLY_3V3},
-            {{}},
-            SUPPLY_3V3,
-            {},
-            {GND, SUPPLY_5V, DAC0, DAC1},
-            0};
-  net[4] = {
-      4, "DAC 0", {DAC0}, {{}}, DAC0, {}, {GND, SUPPLY_5V, SUPPLY_3V3, DAC1},
-      1, 0};
-  net[5] = {
-      5, "DAC 1", {DAC1}, {{}}, DAC1, {}, {GND, SUPPLY_5V, SUPPLY_3V3, DAC0},
-      1, 0,
-  };
-  net[6] = {
-      6, "I Sense +", {ISENSE_PLUS}, {{}}, ISENSE_PLUS, {}, {ISENSE_MINUS}, 2,
-      0};
-  net[7] = {
-      7, "I Sense -", {ISENSE_MINUS}, {{}}, ISENSE_MINUS, {}, {ISENSE_PLUS}, 2,
-      0};
+
+      //clang-format on
 
   net[1].rawColor = rawSpecialNetColors[1];
   net[2].rawColor = rawSpecialNetColors[2];
@@ -1010,8 +996,8 @@ void resolveAltPaths(void) {
   for (int i = 0; i < numberOfPaths; i++) {
 
     if (path[i].altPathNeeded == true) {
-      Serial.print("PATH: ");
-      Serial.print(i);
+      // Serial.print("PATH: ");
+      // Serial.print(i);
 
       switch (path[i].pathType) {
       case BBtoBB: {

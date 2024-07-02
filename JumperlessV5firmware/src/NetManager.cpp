@@ -910,31 +910,31 @@ const char *definesToChar(int defined, int longOrShort) // converts the internal
         //Serial.println(defined);
 
 
-    const char *defNanoToCharShort[26] = {"D0", "D1", "D2", "D3", "D4", "D5", "D6", "D7", "D8", "D9", "D10", "D11", "D12", "D13", "RESET", "AREF", "A0", "A1", "A2", "A3", "A4", "A5", "A6", "A7"};
+    const char *defNanoToCharShort[35] = {"VIN", "D0", "D1", "D2", "D3", "D4", "D5", "D6", "D7", "D8", "D9", "D10", "D11", "D12", "D13", "RESET", "AREF", "A0", "A1", "A2", "A3", "A4", "A5", "A6", "A7", "RST0", "RST1", "N_GND1", "N_GND0", "NANO_3V3", "NANO_5V"};
 
-    const char *defSpecialToCharShort[20] = {"GND", "TOP_R", "BOT_R", "3V3", "NOT_DEFINED", "5V", "DAC_0", "DAC_1", "I_POS", "I_NEG", "ADC_0" , "ADC_1" , "ADC_2" , "ADC_3", "GPIO_0", "NOT_DEFINED", "UART_Tx", "UART_Rx", "GPIO_18", "GPIO_19"};
+    const char *defSpecialToCharShort[45] = {"GND", "TOP_R", "BOT_R", "3V3", "TOP_GND", "5V", "DAC_0", "DAC_1", "I_POS", "I_NEG", "ADC_0" , "ADC_1" , "ADC_2" , "ADC_3", "GPIO_0", "NOT_DEFINED", "UART_Tx", "UART_Rx", "GPIO_18", "GPIO_19", "8V_P", "8V_N", "EXP_GPIO_0", "EXP_GPIO_1", "EXP_GPIO_2", "EXP_GPIO_3", "BOT_GND", "EMPTY", "LOGO_TOP", "LOGO_BOT", "GPIO_PAD", "DAC_PAD", "ADC_PAD", "BLDG_TOP", "BLDG_BOT", "GPIO_20", "GPIO_21", "GPIO_22", "GPIO_23", "BUF_IN", "BUF_OUT"};
 
 
-    const char *defNanoToCharLong[26] = {"NANO_D0", "NANO_D1", "NANO_D2", "NANO_D3", "NANO_D4", "NANO_D5", "NANO_D6", "NANO_D7", "NANO_D8", "NANO_D9", "NANO_D10", "NANO_D11", "NANO_D12", "NANO_D13", "NANO_RESET", "NANO_AREF", "NANO_A0", "NANO_A1", "NANO_A2", "NANO_A3", "NANO_A4", "NANO_A5", "NANO_A6", "NANO_A7"};
+    const char *defNanoToCharLong[35] = {"NANO_VIN", "NANO_D0", "NANO_D1", "NANO_D2", "NANO_D3", "NANO_D4", "NANO_D5", "NANO_D6", "NANO_D7", "NANO_D8", "NANO_D9", "NANO_D10", "NANO_D11", "NANO_D12", "NANO_D13", "NANO_RESET", "NANO_AREF", "NANO_A0", "NANO_A1", "NANO_A2", "NANO_A3", "NANO_A4", "NANO_A5", "NANO_A6", "NANO_A7", "NANO_RST0", "NANO_RST1", "NANO_N_GND1", "NANO_N_GND0", "NANO_3V3", "NANO_5V"};
 
-    const char *defSpecialToCharLong[20] = {"GND", "TOP_RAIL", "BOTTOM_RAIL", "SUPPLY_3V3", "NOT_DEFINED", "SUPPLY_5V", "DAC0", "DAC1", "ISENSE_PLUS", "ISENSE_MINUS", "ADC0" , "ADC1" , "ADC2" , "ADC3", "RP_GPIO_0", "NOT_DEFINED", "RP_UART_Tx", "RP_UART_Rx", "RP_GPIO_18", "RP_GPIO_19"};
+    const char *defSpecialToCharLong[45] = {"GND", "TOP_RAIL", "BOTTOM_RAIL", "SUPPLY_3V3", "TOP_GND", "SUPPLY_5V", "DAC0", "DAC1", "ISENSE_PLUS", "ISENSE_MINUS", "ADC0" , "ADC1" , "ADC2" , "ADC3", "RP_GPIO_0", "NOT_DEFINED", "RP_UART_Tx", "RP_UART_Rx", "RP_GPIO_18", "RP_GPIO_19", "8V_POS", "8V_NEG", "EXP_GPIO_0", "EXP_GPIO_1", "EXP_GPIO_2", "EXP_GPIO_3", "BOTTOM_GND", "EMPTY_NET", "LOGO_TOP", "LOGO_BOTTOM", "GPIO_PAD", "DAC_PAD", "ADC_PAD", "BUILDING_TOP", "BUILDING_BOT", "RP_GPIO_20", "RP_GPIO_21", "RP_GPIO_22", "RP_GPIO_23", "BUFFER_IN", "BUFFER_OUT"};
 
 
     const char *emptyNet[] = {"EMPTY_NET", "?"};
 
-    if (defined >= 70 && defined <= 93)
+    if (defined >= 70 && defined <= 99)
     {
         if (longOrShort == 1)
         {
-            return defNanoToCharLong[defined - 70];
+            return defNanoToCharLong[defined - 69];
         }
         else
         {
-            return defNanoToCharShort[defined - 70];
+            return defNanoToCharShort[defined - 69];
         }
         
     }
-    else if (defined >= 100 && defined <= RP_GPIO_19)
+    else if (defined >= 100 && defined <= 140)
     {
   
         if (longOrShort == 1)

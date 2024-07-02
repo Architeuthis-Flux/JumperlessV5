@@ -118,7 +118,7 @@ int showingPreview = 0;
 int rotState = 0;
 int encoderWasPressed = 1;
 int encoderIsPressed = 0;
-int buttonState = digitalRead(BUTTON_ENC);
+int buttonState = 1;//digitalRead(BUTTON_ENC);
 
 int encoderAstate = 0;
 int encoderBstate = 0;
@@ -229,7 +229,7 @@ void rotaryEncoderStuff(void) {
       lastPositionEncoder = encoderRaw;
 
     } else if (lastPositionEncoder < encoderRaw &&
-               encoderDirectionState != UP) {
+              encoderDirectionState != UP) {
       position--;
       encoderDirectionState = DOWN;
 numberOfSteps = lastPositionEncoder - encoderRaw;
@@ -312,7 +312,7 @@ numberOfSteps = lastPositionEncoder - encoderRaw;
   }
 }
 
-unsigned long previewLength = 3500;
+unsigned long previewLength = 30500;
 unsigned long previewTimer = 0;
 int lastSlotPreview = 0;
 

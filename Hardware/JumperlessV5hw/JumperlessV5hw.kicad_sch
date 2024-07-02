@@ -43790,6 +43790,17 @@
 		)
 		(uuid "90f499e0-6d6b-4368-9c40-ba1df9f9349c")
 	)
+	(text "Change this to GPIO\nor something +-8V \ntolerant ----------->"
+		(exclude_from_sim no)
+		(at 653.034 128.524 0)
+		(effects
+			(font
+				(size 1.27 1.27)
+			)
+			(justify left)
+		)
+		(uuid "9a748e79-dc57-4791-8154-8fb21b08774d")
+	)
 	(text "Power / USB"
 		(exclude_from_sim no)
 		(at 90.043 150.495 0)

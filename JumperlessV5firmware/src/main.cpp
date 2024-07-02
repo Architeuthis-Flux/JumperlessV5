@@ -103,7 +103,11 @@ delay(20);
 Serial.begin(115200);
 
 delay(20);
+  pinMode(buttonPin, INPUT_PULLDOWN);
+  pinMode(probePin, OUTPUT_8MA);
+  pinMode(10, OUTPUT_8MA);
 
+  digitalWrite(10, HIGH);
 
   // USBSer1.setStringDescriptor("Jumperless USB Serial");
 
@@ -134,11 +138,11 @@ delay(20);
   // setDac0_5Vvoltage(0.0);
   // setDac1_8Vvoltage(1.9);
 
-  createSlots(-1, rotaryEncoderMode);
-
+  //createSlots(-1, 0);
+delay(10);
   clearAllNTCC();
 
-  initMenu();
+  
 
   digitalWrite(RESETPIN, LOW);
 
@@ -151,7 +155,7 @@ delay(20);
     
   }
   delay(300);
-
+initMenu();
   initADC();
 
 
@@ -185,6 +189,10 @@ void setup1()
 //showLEDsCore2 = 1;
 }
 
+unsigned long teardownTimer = 0;
+unsigned long lastTeardown = 0;
+unsigned long teardownTime = 2000;
+
 char connectFromArduino = '\0';
 
 char input;
@@ -199,9 +207,10 @@ const char firmwareVersion[] = "5.0.0"; //// remember to update this
 
 int firstLoop = 1;
 
-volatile int probeActive = 1;
+volatile int probeActive = 0;
 
 int showExtraMenu = 1;
+int tearDownToggle = 0;
 
 void printSMstatus(void)
 {
@@ -236,15 +245,21 @@ void loop()
 // {
 // }
  delay(15);
- while (millis() < 4000)
- {
-  char ddd = Serial.read();
- }
+//  while (millis() < 4000)
+//  {
+//   char ddd = Serial.read();
+//  }
 // Serial.flush();
 // startupColorsV5();
 //lightUpRail();
 
 //showLEDsCore2 = 3;
+
+// while(1){
+// Serial.println(digitalRead(BUTTON_ENC));
+// delay(100);
+// } 
+  
 
 
 
@@ -255,16 +270,13 @@ menu:
 
   printMainMenu(showExtraMenu);
 //  printCalibration();
- 
-  if (firstLoop == 1 && rotaryEncoderMode == 1)
+ getNothingTouched();
+  if (firstLoop == 1)
   {
-    Serial.print("Use the rotary encoder to change slots\n\r");
-    Serial.print("Press the button to select\n\r");
-    Serial.print("\n\n\r");
     firstLoop = 0;
-    probeActive = 0;
 
     goto loadfile;
+
   }
 
 dontshowmenu:
@@ -272,37 +284,90 @@ dontshowmenu:
   connectFromArduino = '\0';
 
   while (Serial.available() == 0 && connectFromArduino == '\0' && slotChanged == 0)
-  {
+{
+  // {  pinMode(26, INPUT);
+  // pinMode(10, OUTPUT_8MA);
+  // digitalWrite(10, HIGH);
+  // pinMode(9, OUTPUT_8MA);
+  // digitalWrite(9, HIGH);
       if (clickMenu() >= 0){
         goto loadfile;
       }
+      // Serial.println(digitalRead(11));
+      // delay(300);
      
     if (showReadings >= 1)
     {
       showMeasurements();
     }
 
-    // if ((millis() % 200) < 5)
-    // {
-    //   if (checkProbeButton() == 1)
-    //   {
-    //     int longShort = longShortPress(1000);
-    //     if (longShort == 1)
-    //     {
-    //       input = 'c';
-    //       probingTimer = millis();
-    //       goto skipinput;
-    //     }
-    //     else if (longShort == 0)
-    //     {
-    //       input = 'p';
-    //       probingTimer = millis();
-    //       goto skipinput;
-    //     }
-    //   }
 
-      // pinMode(19, INPUT);
-   // }
+// if (millis()-teardownTimer > teardownTime )
+// {
+// tearDownToggle ++;
+// if (tearDownToggle > 2)
+// {
+//   tearDownToggle = 0;
+// }
+// Serial.println (tearDownToggle);
+// } else {
+ 
+// }
+
+
+// if (tearDownToggle == 1) {
+//   //b.clear();
+//   clearLEDsExceptRails();
+//   //showLEDsCore2 = 2;
+//   //delay(10);
+//   b.print(" Tear   Down",0x000310, 0xffffff,0,-1,0,0);
+//   showLEDsCore2 = 1;
+//   teardownTimer = millis();
+//   showLEDsCore2 = 2;
+//   tearDownToggle++;
+
+// } else if (tearDownToggle == 0)
+// {
+//   b.clear();
+//   leds.clear();
+//   showLEDsCore2 = 1;
+//   goto loadfile;
+ 
+
+// } else {
+  
+// }
+
+// if (checkProbeButton == 1)
+// {
+
+// }
+    if ((millis() % 200) < 5)
+    {
+      if (checkProbeButton() == 1)
+      {
+        //calibrateProbe();
+        int longShort = longShortPress(1200);
+        if (longShort == 1)
+        {
+          
+          input = 'c';
+          probingTimer = millis();
+          goto skipinput;
+        }
+        else if (longShort == 0)
+        {
+          //getNothingTouched();
+          input = 'p';
+          probingTimer = millis();
+          //Serial.println("probing\n\r");
+          
+          goto skipinput;
+        }
+      }
+
+     // pinMode(19, INPUT);
+   }
   }
 
   if (slotChanged == 1)
@@ -471,7 +536,7 @@ skipinput:
     probeActive = 1;
 
     delayMicroseconds(1500);
-    probeMode(19, 1);
+    probeMode(10, 1);
     delayMicroseconds(1500);
     probeActive = 0;
     break;
@@ -582,6 +647,7 @@ skipinput:
     digitalWrite(RESETPIN, LOW);
 
     showSavedColors(netSlot);
+   // drawWires();
     sendAllPathsCore2 = 1;
     //showLEDsCore2 = 1;
     slotChanged = 0;
@@ -592,7 +658,7 @@ skipinput:
     //  {
     //    goto dontshowmenu;
     //  }
-    probeActive = 0;
+   //probeActive = 0;
     break;
   }
   case 'f':
@@ -869,13 +935,13 @@ float botRailVoltage = 0.0;
 
 
 unsigned long schedulerTimer = 0;
-unsigned long schedulerUpdateTime = 5000;
-
+unsigned long schedulerUpdateTime = 9000;
+int rowProbed = 0;
 void loop1() // core 2 handles the LEDs and the CH446Q8
 {
   
 
-  if (micros() - schedulerTimer > schedulerUpdateTime || showLEDsCore2 == 3)
+  if (micros() - schedulerTimer > schedulerUpdateTime * (probeActive*4) || showLEDsCore2 == 3)
   {
 
    
@@ -889,7 +955,7 @@ void loop1() // core 2 handles the LEDs and the CH446Q8
       }
 
       if (rails == 5 || rails == 3) {
-        logoSwirl(swirlCount, spread);
+        logoSwirl(swirlCount, spread, probeActive);
       }
 
       if (rails != 2 && rails != 5 && rails != 3 && inClickMenu == 0) {
@@ -901,12 +967,12 @@ void loop1() // core 2 handles the LEDs and the CH446Q8
       //   Serial.print("\n\r");
       //   Serial.print(rails);
       // }
-      delayMicroseconds(1220);
+      delayMicroseconds(2220);
 
       leds.show();
       
       if (rails != 3) {
-        delayMicroseconds(2200);
+        delayMicroseconds(3200);
         showLEDsCore2 = 0;
       }
           if (inClickMenu == 1)
@@ -926,11 +992,11 @@ void loop1() // core 2 handles the LEDs and the CH446Q8
       //showLEDsCore2 = 1;
       sendAllPathsCore2 = 0;
 
-    } else if (millis() - lastSwirlTime > 130 && loadingFile == 0 &&
+    } else if (millis() - lastSwirlTime > 100 && loadingFile == 0 &&
                showLEDsCore2 == 0) {
 
 
-      logoSwirl(swirlCount, spread);
+      //logoSwirl(swirlCount, spread, probeActive);
 
       lastSwirlTime = millis();
 
@@ -941,14 +1007,15 @@ void loop1() // core 2 handles the LEDs and the CH446Q8
 
         swirlCount++;
       }
-      //showLEDsCore2 = 5;
-       leds.show();
-    } else {
+      showLEDsCore2 = 5;
+       //leds.show();
+    } else if (inClickMenu == 0){
 
       rotaryEncoderStuff();
     }
     schedulerTimer = micros() ;
   } 
+
 
   
 
@@ -957,140 +1024,32 @@ void loop1() // core 2 handles the LEDs and the CH446Q8
 
 
 
-// if (readInNodesArduino == 0)
-// {
 
-//   if (USBSer1.available())
-//   {
 
-//     char ch = USBSer1.read();
-//     Serial1.write(ch);
-//     // Serial.print(ch);
-//   }
 
-//   if (Serial1.available())
-//   {
-//     char ch = Serial1.read();
-//     USBSer1.write(ch);
-//     // Serial.print(ch);
 
-//     if (ch == 'f' && connectFromArduino == '\0')
-//     {
-//       input = 'f';
 
-//       connectFromArduino = 'f';
-//       // Serial.print("!!!!");
-//     }
-//     else
-//     {
-//       // connectFromArduino = '\0';
-//     }
-//   }
-// }
 
-//~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-// void lastNetConfirm(int forceLastNet)
-// {
-//   // while (tud_connected() == 0 && millis() < 500)
-//   //   ;
 
-//   // if (millis() - lastNetConfirmTimer < 3000 && tud_connected() == 1)
-//   // {
-//   //   // Serial.println(lastNetConfirmTimer);
 
-//   //   // lastNetConfirmTimer = millis();
-//   //   return;
-//   // }
 
-//   if (forceLastNet == 1)
-//   {
 
-//     int bootselPressed = 0;
-//     openNodeFile();
-//     getNodesToConnect();
-//     // Serial.print("openNF\n\r");
-//     digitalWrite(RESETPIN, HIGH);
-//     bridgesToPaths();
-//     clearLEDs();
-//     assignNetColors();
 
-//     sendAllPathsCore2 = 1;
-//     Serial.print("\n\r   short press BOOTSEL to restore last netlist\n\r");
-//     Serial.print("   long press to cancel\n\r");
-//     delay(250);
-//     if (BOOTSEL)
-//     {
-//       bootselPressed = 1;
-//     }
 
-//     while (forceLastNet == 1)
-//     {
-//       if (BOOTSEL)
-//         bootselPressed = 1;
 
-//       // clearLEDs();
-//       // leds.show();
-//       leds.clear();
-//       lightUpRail(-1, -1, 1, 28, supplySwitchPosition);
-//       leds.show();
-//       // showLEDsCore2 = 1;
 
-//       if (BOOTSEL)
-//         bootselPressed = 1;
 
-//       delay(250);
 
-//       // showLEDsCore2 = 2;
-//       sendAllPathsCore2 = 1;
-//       // Serial.print("p\n\r");
-//       if (BOOTSEL)
-//         bootselPressed = 1;
-//       // delay(250);
 
-//       if (bootselPressed == 1)
-//       {
-//         unsigned long longPressTimer = millis();
-//         int fade = 8;
-//         while (BOOTSEL)
-//         {
 
-//           sendAllPathsCore2 = 1;
-//           showLEDsCore2 = 2;
-//           delay(250);
-//           clearLEDs();
-//           // leds.clear();
-//           showLEDsCore2 = 2;
 
-//           if (fade <= 0)
-//           {
-//             clearAllNTCC();
-//             clearLEDs();
-//             startupColors();
-//             // clearNodeFile();
-//             sendAllPathsCore2 = 1;
-//             lastNetConfirmTimer = millis();
-//             restoredNodeFile = 0;
-//             // delay(1000);
-//             Serial.print("\n\r   cancelled\n\r");
-//             return;
-//           }
 
-//           delay(fade * 10);
-//           fade--;
-//         }
 
-//         digitalWrite(RESETPIN, LOW);
-//         restoredNodeFile = 1;
-//         sendAllPathsCore2 = 1;
-//         Serial.print("\n\r   restoring last netlist\n\r");
-//         printNodeFile();
-//         return;
-//       }
-//       delay(250);
-//     }
-//   }
-// }
+
+
+
+
 unsigned long lastTimeNetlistLoaded = 0;
 unsigned long lastTimeCommandRecieved = 0;
 

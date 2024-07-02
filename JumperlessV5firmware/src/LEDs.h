@@ -41,6 +41,8 @@ extern Adafruit_NeoPixel leds;
 extern Adafruit_NeoMatrix matrix;
 extern bool debugLEDs;
 
+extern int displayMode;
+
 extern int showLEDsCore2;
 extern int logoFlash;
 
@@ -235,11 +237,11 @@ void assignNetColors();
 void lightUpRail(int logo = -1, int railNumber = -1, int onOff = 1,
                  int brightness = DEFAULTRAILBRIGHTNESS,
                  int supplySwitchPosition = 0);
-void logoSwirl(int start = 0, int spread = 5);
+void logoSwirl(int start = 0, int spread = 5, int probe = 0);
 uint32_t dimLogoColor(uint32_t color, int brightness = 5);
 void lightUpNet(int netNumber = 0, int node = -1, int onOff = 1,
                 int brightness = DEFAULTBRIGHTNESS,
-                int hueShift = 0); //-1 means all nodes (default)
+                int hueShift = 0, int dontClear = 0); //-1 means all nodes (default)
 void lightUpNode(int node, uint32_t color);
 rgbColor pcbColorCorrect(rgbColor colorToCorrect);
 hsvColor RgbToHsv(rgbColor rgb);

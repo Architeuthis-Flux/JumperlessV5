@@ -1,5 +1,7 @@
 #include "Graphics.h"
 #include "Adafruit_NeoPixel.h"
+#include "JumperlessDefinesRP2040.h"
+#include "MatrixStateRP2040.h"
 #include "leds.h"
 
 /* clang-format off */
@@ -122,36 +124,246 @@ uint8_t font[][3] = // 'JumperlessFontmap', 500x5px
 
 };
 
+
+int wireStatus[62][5]; // row, led (net stored)
+
 /* clang-format on */
 
-// class bread {
-//     public:
-//     bread();
-//     void print(char c);
-//     void print(char c, uint32_t color);
-//     void print(char c, uint32_t color, int position, int topBottom);
-//     void print(char c, uint32_t color, uint32_t backgroundColor);
-//     void print(char c, uint32_t color, uint32_t backgroundColor, int
-//     position, int topBottom); void print(char c, uint32_t color, uint32_t
-//     backgroundColor, int position);
 
-//     void print(char* s);
-//     void print(char* s, uint32_t color);
-//     void print(char* s, uint32_t color, int position, int topBottom);
-//     void print(char* s, uint32_t color, uint32_t backgroundColor);
-//     void print(char* s, uint32_t color, uint32_t backgroundColor, int
-//     position, int topBottom); void print(char* s, uint32_t color, uint32_t
-//     backgroundColor, int position);
 
-//     // void printChar(char c);
-//     // void printString(char* s);
-//     // void printChar(char c, uint32_t color);
-//     // void printString(char* s, uint32_t color);
-//     // void printChar(char c, uint32_t color, int x, int y);
-//     // void printString(char* s, uint32_t color, int x, int y);
-//     // void printChar(char c, uint32_t color, int topBottom);
-//     // void printString(char* s, uint32_t color, int topBottom);
+void drawWires(int net) {
+  // int fillSequence[6] = {0,2,4,1,3,};
+  assignNetColors();
+  int fillSequence[6] = {0, 1, 2, 3, 4};
+  int fillIndex = 0;
+  int filledPaths[60][3] = {-1}; // node1 node2 rowfilled
 
+  for (int i = 0; i < 62; i++) {
+    for (int j = 0; j < 5; j++) {
+      wireStatus[i][j] = 0;
+    }
+  }
+  if (net == -1) {
+
+    for (int i = 0; i < numberOfNets; i++) {
+
+      int sameLevel = 0;
+      int bothOnTop = 0;
+      int bothOnBottom = 0;
+      int bothOnBB = 0;
+      int whichIsLarger = 0;
+
+      if (path[i].node1 != -1 && path[i].node2 != -1 &&
+          path[i].node1 != path[i].node2) {
+        if (path[i].node1 <= 60 && path[i].node2 <= 60) {
+          bothOnBB = 1;
+          if (path[i].node1 > 0 && path[i].node1 <= 30 && path[i].node2 > 0 &&
+              path[i].node2 <= 30) {
+            bothOnTop = 1;
+            sameLevel = 1;
+            if (path[i].node1 > path[i].node2) {
+              whichIsLarger = 1;
+            } else {
+              whichIsLarger = 2;
+            }
+          } else if (path[i].node1 > 30 && path[i].node1 <= 60 &&
+                     path[i].node2 > 30 && path[i].node2 <= 60) {
+            bothOnBottom = 1;
+            sameLevel = 1;
+            if (path[i].node1 > path[i].node2) {
+              whichIsLarger = 1;
+            } else {
+              whichIsLarger = 2;
+            }
+          }
+        } else {
+          lightUpNet(path[i].net);
+        }
+
+        if (sameLevel == 1) {
+          int range = 0;
+          int first = 0;
+          int last = 0;
+          if (whichIsLarger == 1) {
+            range = path[i].node1 - path[i].node2;
+            first = path[i].node2;
+            last = path[i].node1;
+          } else {
+            range = path[i].node2 - path[i].node1;
+            first = path[i].node1;
+            last = path[i].node2;
+          }
+
+          // Serial.print("\nfirst = ");
+          // Serial.println(first);
+          // Serial.print("last = ");
+          // Serial.println(last);
+          // Serial.print("range = ");
+          // Serial.println(range);
+          // Serial.print("net = ");
+          // Serial.println(path[i].net);
+          int inside = 0;
+          int largestFillIndex = 0;
+
+          for (int j = first; j <= first + range; j++) {
+            // Serial.print("j = ");
+            // Serial.println(j);
+            for (int w = 0; w < 5; w++) {
+              if ((wireStatus[j][w] == path[i].net || wireStatus[j][w] == 0) &&
+                  w >= largestFillIndex) {
+
+                // wireStatus[j][w] = path[i].net;
+                if (w > largestFillIndex) {
+                  largestFillIndex = w;
+                }
+                // Serial.print("j = ");
+                // Serial.println(j);
+                // if (first > 30) {
+                //   Serial.print("bottom ");
+                // }
+                // Serial.print("largestFillIndex = ");
+                // Serial.println(largestFillIndex);
+                break;
+              }
+            }
+          }
+
+          for (int j = first; j <= first + range; j++) {
+            if (j == first || j == last) {
+              for (int k = largestFillIndex; k < 5; k++) {
+
+                wireStatus[j][k] = path[i].net;
+                // wireStatus[j][largestFillIndex] = path[i].net;
+              }
+            } else {
+              wireStatus[j][largestFillIndex] = path[i].net;
+            }
+          }
+
+          fillIndex = largestFillIndex;
+
+
+          filledPaths[i][0] = first;
+          filledPaths[i][1] = last;
+          filledPaths[i][2] = fillSequence[fillIndex];
+          // showLEDsCore2 = 1;
+        } else {
+          for (int j = 0; j < 5; j++) {
+            
+              wireStatus[path[i].node1][j] = path[i].net;
+              wireStatus[path[i].node2][j] = path[i].net;
+              
+            }
+          }
+
+
+      }
+    }
+    for (int i = 0; i <= 60; i++) {
+      for (int j = 0; j < 4; j++) {
+        if (wireStatus[i][j] != 0) {
+          if (wireStatus[i][j+1] != wireStatus[i][j] && wireStatus[i][j+1] != 0 && wireStatus[i][4] == wireStatus[i][j]) {
+            wireStatus[i][j+1] = wireStatus[i][j];
+            // leds.setPixelColor((i * 5) + fillSequence[j], 0x000000);
+          } else {
+            // leds.setPixelColor((i * 5) + fillSequence[j], 0x100010);
+          }
+
+        }
+      }
+    }
+    for (int i = 1; i <= 60; i++) {
+      if (i <= 30){
+
+      for (int j = 0; j < 5; j++) {
+
+        uint32_t color3 = 0x100010;
+
+        rgbColor colorRGB = netColors[wireStatus[i][j]];
+
+        hsvColor colorHSV = RgbToHsv(colorRGB);
+
+        // colorHSV.v = colorHSV.v * 0.25;
+        // colorHSV.s = colorHSV.s * 0.5;
+        colorRGB = HsvToRgb(colorHSV);
+
+        uint32_t color = packRgb(colorRGB.r, colorRGB.g, colorRGB.b);
+
+        if (wireStatus[i][j] == 0) {
+          // leds.setPixelColor((i * 5) + fillSequence[j], 0x000000);
+        } else {
+          leds.setPixelColor((((i - 1) * 5) + j), color);
+        }
+      }} else {
+            for (int j = 0; j < 5; j++) {
+
+        uint32_t color3 = 0x100010;
+
+        rgbColor colorRGB = netColors[wireStatus[i][j]];
+
+        hsvColor colorHSV = RgbToHsv(colorRGB);
+
+        // colorHSV.v = colorHSV.v * 0.25;
+        // colorHSV.s = colorHSV.s * 0.5;
+        colorRGB = HsvToRgb(colorHSV);
+
+        uint32_t color = packRgb(colorRGB.r, colorRGB.g, colorRGB.b);
+
+        if (wireStatus[i][j] == 0) {
+          // leds.setPixelColor((i * 5) + fillSequence[j], 0x000000);
+        } else {
+          leds.setPixelColor((((i - 1) * 5) + (4-j)), color);
+        }
+      }
+    }
+    }
+  }
+}
+void printWireStatus(void)
+{
+
+
+          for (int s = 1; s <= 30; s++) {
+            Serial.print(s);
+            Serial.print(" ");
+            if (s < 9) {
+              Serial.print(" ");
+            }
+          }
+          Serial.println();
+
+          int level = 1;
+          for (int r = 0; r < 5; r++) {
+            for (int s = 1; s <= 30; s++) {
+              Serial.print(wireStatus[s][r]);
+              Serial.print(" ");
+              if (wireStatus[s][r] < 10) {
+                Serial.print(" ");
+              }
+            }
+            Serial.println();
+          }
+          Serial.println("\n\n");
+          for (int s = 31; s <= 60; s++) {
+            Serial.print(s);
+            Serial.print(" ");
+            if (s < 9) {
+              Serial.print(" ");
+            }
+          }
+          Serial.println();
+          for (int r = 0; r < 5; r++) {
+            for (int s = 31; s <= 60; s++) {
+              Serial.print(wireStatus[s][r]);
+              Serial.print(" ");
+              if (wireStatus[s][r] < 10) {
+                Serial.print(" ");
+              }
+            }
+            Serial.println();
+          }
+
+}
 // }
 uint32_t defaultColor = 0x001012;
 
@@ -230,7 +442,8 @@ void bread::print(const char *s, uint32_t color, uint32_t backgroundColor,
 void bread::print(const char *s, uint32_t color, uint32_t backgroundColor,
                   int position, int topBottom, int nudge, int lowercaseNumber) {
   // Serial.println("5");
-  printString(s, color, backgroundColor, position, topBottom, nudge, lowercaseNumber);
+  printString(s, color, backgroundColor, position, topBottom, nudge,
+              lowercaseNumber);
 }
 
 void bread::print(const char *s, uint32_t color, uint32_t backgroundColor,
@@ -276,8 +489,8 @@ void bread::print(int i, uint32_t color, int position, int topBottom,
   itoa(i, buffer, 10);
   printString(buffer, color, 0xffffff, position, topBottom, nudge);
 }
-void bread::print(int i, uint32_t color, int position, int topBottom,
-                  int nudge, int lowercase) {
+void bread::print(int i, uint32_t color, int position, int topBottom, int nudge,
+                  int lowercase) {
   char buffer[15];
   itoa(i, buffer, 10);
   printString(buffer, color, 0xffffff, position, topBottom, nudge);
@@ -288,8 +501,6 @@ void bread::print(int i, uint32_t color, uint32_t backgroundColor) {
   itoa(i, buffer, 10);
   printString(buffer, color, backgroundColor);
 }
-
-
 
 void bread::printMenuReminder(int menuDepth, uint32_t color) {
   uint8_t columnMask[5] = // 'JumperlessFontmap', 500x5px
@@ -354,16 +565,10 @@ void bread::printMenuReminder(int menuDepth, uint32_t color) {
 
     printGraphicsRow(graphicRow[i], i, color);
   }
-
-
-
-
-
 }
 
 void bread::printRawRow(uint8_t data, int row, uint32_t color, uint32_t bg) {
   printGraphicsRow(data, row, color, bg);
-
 }
 /*
 
@@ -387,27 +592,24 @@ void printGraphicsRow(uint8_t data, int row, uint32_t color, uint32_t bg) {
   if (bg == 0xFFFFFF) {
 
     for (int j = 4; j >= 0; j--) {
-      //Serial.println(((data) & columnMask[j]) != 0 ? "1" : "0");
-      if (((data) & columnMask[j]) != 0) {
-        
-        leds.setPixelColor(((row ) * 5) + j, color);
+      // Serial.println(((data) & columnMask[j]) != 0 ? "1" : "0");
+      if (((data)&columnMask[j]) != 0) {
+
+        leds.setPixelColor(((row) * 5) + j, color);
       } else {
-        leds.setPixelColor(((row ) * 5) + j, 0);
+        leds.setPixelColor(((row) * 5) + j, 0);
       }
     }
-    } else {
-      for (int j = 4; j >= 0; j--) {
-        if (((data) & columnMask[j]) != 0) {
-          leds.setPixelColor(((row) * 5) + j, color);
-        } else {
-          leds.setPixelColor(((row) * 5) + j, bg);
-        }
+  } else {
+    for (int j = 4; j >= 0; j--) {
+      if (((data)&columnMask[j]) != 0) {
+        leds.setPixelColor(((row) * 5) + j, color);
+      } else {
+        leds.setPixelColor(((row) * 5) + j, bg);
       }
     }
-  
+  }
 }
-
-
 
 void printChar(const char c, uint32_t color, uint32_t bg, int position,
                int topBottom, int nudge, int lowercaseNumber) {
@@ -437,8 +639,7 @@ void printChar(const char c, uint32_t color, uint32_t bg, int position,
   int fontMapIndex = -1;
   int start = 0;
 
-  if (lowercaseNumber > 0)
-  {
+  if (lowercaseNumber > 0) {
     start = 90;
   }
 
@@ -466,10 +667,10 @@ void printChar(const char c, uint32_t color, uint32_t bg, int position,
     }
   } else {
     if (charPosition + nudge != 0) {
-        for (int j = 0; j < 5; j++) {
+      for (int j = 0; j < 5; j++) {
 
-            leds.setPixelColor(((charPosition + nudge - 1) * 5) + j, bg);
-          }
+        leds.setPixelColor(((charPosition + nudge - 1) * 5) + j, bg);
+      }
     }
     for (int i = 0; i < 4; i++) {
       if (i < 3) {
@@ -517,22 +718,22 @@ void printString(const char *s, uint32_t color, uint32_t bg, int position,
 
     position++;
   }
-  //Serial.println();
+  // Serial.println();
 }
 
 void bread::clear(int topBottom) {
-if (topBottom == -1) {
-  for (int i = 0; i < 60; i++) {
-    for (int j = 0; j < 5; j++) {
-      leds.setPixelColor((i * 5) + j, 0x00, 0x00, 0x00);
+  if (topBottom == -1) {
+    for (int i = 0; i < 60; i++) {
+      for (int j = 0; j < 5; j++) {
+        leds.setPixelColor((i * 5) + j, 0x00, 0x00, 0x00);
+      }
     }
-  }
-} else if (topBottom == 0) {
-  for (int i = 0; i < 30; i++) {
-    for (int j = 0; j < 5; j++) {
-      leds.setPixelColor((i * 5) + j, 0x00, 0x00, 0x00);
+  } else if (topBottom == 0) {
+    for (int i = 0; i < 30; i++) {
+      for (int j = 0; j < 5; j++) {
+        leds.setPixelColor((i * 5) + j, 0x00, 0x00, 0x00);
+      }
     }
-  }
   } else if (topBottom == 1) {
     for (int i = 30; i < 60; i++) {
       for (int j = 0; j < 5; j++) {

@@ -43,7 +43,7 @@ class bread {
 void printMenuReminder(int menuDepth, uint32_t color);
 void printRawRow(uint8_t data, int row, uint32_t color, uint32_t bg);
 
-    
+   
     void clear(int topBottom = -1);
 
     // void printChar(char c, uint32_t color, uint32_t backgroundColor, int position, int topBottom);
@@ -67,7 +67,8 @@ void printChar(const char c, uint32_t color = 0xFFFFFF, uint32_t bg = 0xFFFFFF, 
 
 void printString(const char* s, uint32_t color = 0xFFFFFF, uint32_t bg = 0xFFFFFF, int position = 0, int topBottom = -1, int nudge = 0, int lowercase = 0);
 
-
+ void drawWires(int net = -1);
+ void printWireStatus(void);
 
 
 

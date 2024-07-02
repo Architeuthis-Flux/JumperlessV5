@@ -351,14 +351,16 @@ def checkIfFWisOld ():
 
 
     currentList = currentString.split('.')
+    try:
+        if (len(currentList[2]) < 2):
+            currentList[2] = '0' + currentList[2]
 
-    if (len(currentList[2]) < 2):
-        currentList[2] = '0' + currentList[2]
 
-
-    if (len(currentList[1]) < 2):
-        currentList[1] = '0' + currentList[1]
-
+        if (len(currentList[1]) < 2):
+            currentList[1] = '0' + currentList[1]
+    except:
+        print('\nCouldn\'t read FW version from the Jumperless\n\nMake sure you don\'t have this app running in \nanother window. Or if the firmware is really \nold, just enter \'Y\' to auto update from here\n')
+        return
 
     if (int(currentList[0])>5):
         jumperlessV5 = True
@@ -1336,7 +1338,7 @@ def serialTermIn():
                 portNotFound = 1
                 while (portNotFound == 1):
                     portFound = 0
-                   
+                    #print("Disconnected")
                     time.sleep(0.15)
                     for port in serial.tools.list_ports.comports():
 
@@ -1596,9 +1598,9 @@ while True:
         lastDiagram = blankDiagrams
         
         forceWokwiUpdate = 1
-        time.sleep(.1)
+        #time.sleep(.2)
         ser.close()
-        time.sleep(.1)#######
+        #time.sleep(.2)#######
         #if (portNotFound != 1):
             #ser = serial.Serial(portName, 115200, timeout=None)
         if (serialconnected == 1):
@@ -1908,9 +1910,9 @@ while True:
 
                     if conn1.startswith("GND") == True:
                         conn1 = "100"
-                    elif conn1 == "AREF":
+                    elif conn1 == "AREF" or conn1 == "B0":
                         conn1 = "85"
-                    elif conn1 == "RESET":
+                    elif conn1 == "RESET" or conn1 == "RST" or conn1 == "B1":
                         conn1 = "84"
                     elif conn1 == "5V":
                         conn1 = "105"
@@ -1919,15 +1921,26 @@ while True:
                     elif conn1 == "5V":
                         conn1 = "105"
 
-                    elif conn1.startswith("A") == True:
+                    elif conn1.startswith("A") == True and conn2 != "AREF":
                         conn1 = conn1[1:(len(conn1))]
                         conn1 = int(conn1)
                         conn1 = conn1 + 86
                         conn1 = str(conn1)
-                    elif conn1.isdigit() == True:
+                    elif conn1.isdigit() == True :
                         conn1 = int(conn1)
                         conn1 = conn1 + 70
                         conn1 = str(conn1)
+
+                    elif conn1.startswith("D") == True:
+                        conn1 = conn1[1:(len(conn1))]
+                        conn1 = int(conn1)
+                        conn1 = conn1 + 70
+                        conn1 = str(conn1)
+
+                    elif conn1.startswith("TX") == True:
+                        conn1 = "71"
+                    elif conn2.startswith("RX") == True:
+                        conn1 = "70"
 
                 conn2 = str(f["connections"][i][1])
 
@@ -1989,9 +2002,9 @@ while True:
 
                     if conn2.startswith("GND") == True:
                         conn2 = "100"
-                    elif conn2 == "AREF":
+                    elif conn2 == "AREF" or conn2 == "B0":
                         conn2 = "85"
-                    elif conn2 == "RESET":
+                    elif conn2 == "RESET" or conn2 == "RST" or conn2 == "B1":
                         conn2 = "84"
                     elif conn2 == "5V":
                         conn2 = "105"
@@ -2006,10 +2019,23 @@ while True:
                         conn2 = int(conn2)
                         conn2 = conn2 + 86
                         conn2 = str(conn2)
-                    elif conn2.isdigit() == True:
+                    elif (conn2.isdigit() == True):
                         conn2 = int(conn2)
                         conn2 = conn2 + 70
                         conn2 = str(conn2)
+
+                    elif conn2.startswith("D") == True:
+                        conn2 = conn2[1:(len(conn2))]
+                        conn2 = int(conn2)
+                        conn2 = conn2 + 70
+                        conn2 = str(conn2)
+
+                    elif conn2.startswith("TX") == True:
+                        conn2 = "71"
+                    elif conn2.startswith("RX") == True:
+                        conn2 = "70"
+
+                        
 
                 if conn1.isdigit() == True and conn2.isdigit() == True:
 
@@ -2033,7 +2059,7 @@ while True:
                     ser.write(str(currentSlotUpdate).encode())
                     ser.write("\n\n\rf ".encode())
                     ser.write(p.encode())
-                    time.sleep(0.4)
+                    time.sleep(0.35)
                 # else:
                 #     ser.write('f'.encode())
                 #     time.sleep(0.001)
@@ -2070,5 +2096,7 @@ while True:
         
         else:
             if (noWokwiStuff == False):
-                time.sleep(1.0)
+                time.sleep(0.95)
+
+
 

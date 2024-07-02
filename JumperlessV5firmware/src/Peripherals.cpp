@@ -28,7 +28,7 @@
 #include <Adafruit_MCP23X17.h>
 
 #include "CH446Q.h"
-
+#include "hardware/adc.h"
 #define CS_PIN 17
 
 // MCP23S17 MCPIO(17, 16, 19, 18, 0x27); //  SW SPI address 0x00
@@ -1116,16 +1116,29 @@ void showMeasurements(int samples, int printOrBB) {
 
 int readAdc(int channel, int samples) {
   int adcReadingAverage = 0;
+  if (channel == 0) { //I have no fucking idea why this works
+
+  pinMode(ADC1_PIN , OUTPUT);
+  digitalWrite(ADC1_PIN, LOW);
+  }
+
+
+
 
   for (int i = 0; i < samples; i++) {
-    adcReadingAverage += analogRead(ADC0_PIN + channel);
-    delayMicroseconds(10);
+    adcReadingAverage += analogRead(ADC0_PIN+channel);//(int)adc_read();
+    delayMicroseconds(30);
   }
 
   int adcReading = adcReadingAverage / samples;
   // Serial.print(adc3Reading);
 
   // float adc3Voltage = (adc3Reading - 2528) / 220.0; // painstakingly measured
+
+  if(channel == 0)
+  {
+    pinMode(ADC1_PIN , INPUT);
+  }
   return adcReading;
 }
 

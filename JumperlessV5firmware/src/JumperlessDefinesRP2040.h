@@ -53,6 +53,7 @@ extern volatile int sendAllPathsCore2;
 #define QUADRATURE_B_PIN 13
 #define BUTTON_ENC 11
 
+#define DISPLAYMODE_ADDRESS 30
 #define ROTARYENCODER_MODE_ADDRESS 31
 #define DEBUG_FILEPARSINGADDRESS 32
 #define TIME_FILEPARSINGADDRESS 33
@@ -240,11 +241,29 @@ extern volatile int sendAllPathsCore2;
 #define NANO_RESET_0  94
 #define NANO_RESET_1  95
 
+#define NANO_GND_1 96
+#define NANO_GND_0 97
+#define NANO_3V3 98
+#define NANO_5V 99
+
+#define NANO_VIN 69
+
+#define LOGO_PAD_TOP 128
+#define LOGO_PAD_BOTTOM 129
+#define GPIO_PAD 130
+#define DAC_PAD 131
+#define ADC_PAD 132
+#define BUILDING_PAD_TOP 133
+#define BUILDING_PAD_BOTTOM 134
+
 #define GND 100
 #define TOP_RAIL 101
 #define BOTTOM_RAIL 102
 #define SUPPLY_3V3 103
 #define SUPPLY_5V 105
+
+#define TOP_RAIL_GND 104
+#define BOTTOM_RAIL_GND 126
 
 #define DAC0 106
 #define DAC1 107
@@ -277,10 +296,13 @@ extern volatile int sendAllPathsCore2;
 #define MCP_GPIO_2 124
 #define MCP_GPIO_3 125
 
-#define RP_GPIO_20 20
-#define RP_GPIO_21 21
-#define RP_GPIO_22 22
-#define RP_GPIO_23 23
+#define RP_GPIO_20 135
+#define RP_GPIO_21 136
+#define RP_GPIO_22 137
+#define RP_GPIO_23 138
+
+#define ROUTABLE_BUFFER_IN 139
+#define ROUTABLE_BUFFER_OUT 140
 /*
 
 #define GND  100

@@ -12,6 +12,7 @@
 #include "Peripherals.h"
 #include "PersistentStuff.h"
 #include "RotaryEncoder.h"
+#include "Probing.h"
 
 int inClickMenu = 0;
 
@@ -284,8 +285,9 @@ uint32_t menuColors[10] = {0x09000a, 0x0f0004, 0x080800, 0x010f00,
 
 void initMenu(void) {
 
+  delay(10);
   if (menuRead == 0) {
-    /// Serial.println(menuLines);
+    // Serial.println(menuLines);
     delay(10);
     readMenuFile();
     // return 0;
@@ -298,7 +300,7 @@ void initMenu(void) {
 }
 
 unsigned long noInputTimer = millis();
-unsigned long exitMenuTime = 15000;
+unsigned long exitMenuTime = 55000;
 
 int subSelection = -1;
 
@@ -317,13 +319,22 @@ int previousMenuSelection[10] = {-1, -1, -1, -1, -1, -1, -1, -1, -1, -1};
 
 int clickMenu(int menuType, int menuOption, int extraOptions) {
   if (menuLineIndex < 2) {
+    //b.clear();
+    b.print("No menu file", 0x0f0400, 0xFFFFFF, 0, -1, 0);
     inClickMenu = 0;
     return -1;
   }
+
   int returnedMenuPosition = -1;
   if (encoderButtonState == RELEASED && lastButtonEncoderState == PRESSED) {
     encoderButtonState = IDLE;
     inClickMenu = 1;
+    // if (menuRead == 0) {
+    //   readMenuFile();
+    // }
+    // if (menuParsed == 0) {
+    //   parseMenuFile();
+    // }
     // Serial.setTimeout(1000);
     // Serial.flush();
 
@@ -333,6 +344,10 @@ int clickMenu(int menuType, int menuOption, int extraOptions) {
     returnedMenuPosition = getMenuSelection();
     while (returnedMenuPosition == -1 && Serial.available() == 0) {
       // delayMicroseconds(5000);
+      if (checkProbeButton() == 1) {
+        Serial.println("Probe button pressed");
+        return -3;
+      }
       returnedMenuPosition = getMenuSelection();
     }
     if (returnedMenuPosition == -2) {
@@ -340,9 +355,10 @@ int clickMenu(int menuType, int menuOption, int extraOptions) {
       inClickMenu = 0;
       return -2;
     }
-    showLEDsCore2 = 1;
 
-    // Serial.print("returnedMenuPosition: ");
+    //showLEDsCore2 = 1;
+
+     Serial.print("returnedMenuPosition: ");
     // Serial.println(returnedMenuPosition);
     // Serial.print("subSelection: ");
     // Serial.println(subSelection);
@@ -485,6 +501,7 @@ int getMenuSelection(void) {
   //     Serial.println(selectMultiple[i]);
   //   }
   // }
+  delay(10);
 
   for (int i = 0; i < 10; i++) {
     previousMenuSelection[i] = -1;
@@ -1145,7 +1162,7 @@ int selectSubmenuOption(int menuPosition, int menuLevel) {
   int changed = 1;
 
   String choiceLine = menuLines[menuPosition];
-
+  int brightnessMenu = 0;
   int cut = 0;
   if (choiceLine.length() > 7) {
     cut = 1;
@@ -1159,20 +1176,25 @@ int selectSubmenuOption(int menuPosition, int menuLevel) {
   } else if (maxMenuOptionLength > 2 && choiceLine.length() > 7) {
     menuType = 2;
   }
-  if (previousMenuSelection[1] != -1) {
-    Serial.print("previousMenuSelection[1]: ");
+  // if (previousMenuSelection[1] != -1) {
+  //   Serial.print("previousMenuSelection[1]: ");
 
-    Serial.print(previousMenuSelection[1]);
-    Serial.print(" ");
-    Serial.println(menuLines[previousMenuSelection[1]]);
-  }
+  //   Serial.print(previousMenuSelection[1]);
+  //   Serial.print(" ");
+  //   Serial.println(menuLines[previousMenuSelection[1]]);
+  // }
 
   if (menuLines[previousMenuSelection[1]].indexOf("Load") != -1) {
-    Serial.println("Load");
+    // Serial.println("Load");
     menuType = 3;
   }
-  Serial.print("menuType: ");
-  Serial.println(menuType);
+
+  if (menuLines[previousMenuSelection[1]].indexOf("Bright") != -1) {
+
+    brightnessMenu = 1;
+  }
+  // Serial.print("menuType: ");
+  // Serial.println(menuType);
   // Serial.println("selected Submenu Option\n\r");
 
   encoderButtonState = IDLE;
@@ -1256,6 +1278,19 @@ int selectSubmenuOption(int menuPosition, int menuLevel) {
       b.clear(1);
 
       if (menuType == 0) {
+
+        if (brightnessMenu == 1) {
+          if (highlightedOption == 0) {
+            selectColor = subMenuColors[(menuLevel + 5) % 8] & 0x030303;
+          } else if (highlightedOption == 1) {
+            selectColor = subMenuColors[(menuLevel + 5) % 8] & 0x070707;
+          }
+
+          else {
+            selectColor = subMenuColors[(menuLevel + 5) % 8] *
+                          (((highlightedOption - 1)));
+          }
+        }
 
         b.print(subMenuStrings[highlightedOption].c_str(), selectColor,
                 backgroundColor, 3, 1, 0);
@@ -1632,16 +1667,21 @@ int selectNodeAction(int whichSelection) {
         }
 
         if (overlappingConnection != -1 || overlappingSelection != -1) {
-
-          b.printRawRow(middle, (highlightedNode),
-                        leds.getPixelColor(((highlightedNode) * 5) + 3),
-                        nodeSelectionColors[currentlySelecting]);
+          if (highlightedNode <= 30) {
+            b.printRawRow(middle, (highlightedNode),
+                          leds.getPixelColor(((highlightedNode) * 5) + 4),
+                          nodeSelectionColors[currentlySelecting]);
+          } else {
+            b.printRawRow(middle, (highlightedNode),
+                          leds.getPixelColor(((highlightedNode) * 5) + 0),
+                          nodeSelectionColors[currentlySelecting]);
+          }
           b.printRawRow(0b00000100, (highlightedNode + 1),
-                        nodeSelectionColors[currentlySelecting],
-                        leds.getPixelColor(((highlightedNode + 1) * 5) + 3));
+                        nodeSelectionColors[currentlySelecting], 0x000000);
+          // leds.getPixelColor(((highlightedNode + 1) * 5) + 3));
           b.printRawRow(0b00000100, (highlightedNode - 1),
-                        nodeSelectionColors[currentlySelecting],
-                        leds.getPixelColor(((highlightedNode - 1) * 5) + 3));
+                        nodeSelectionColors[currentlySelecting], 0x000000);
+          // leds.getPixelColor(((highlightedNode - 1) * 5) + 3));
         } else {
           b.printRawRow(0b00000100, (highlightedNode), middleColor,
                         nodeSelectionColors[currentlySelecting]);
@@ -1958,6 +1998,10 @@ int doMenuAction(int menuPosition, int selection) {
   } else if (menuLines[currentAction.previousMenuPositions[0]].indexOf(
                  "Probe") != -1) {
     currentCategory = PROBEACTION;
+  } else if (menuLines[currentAction.previousMenuPositions[0]].indexOf(
+                 "Display") != -1) {
+    currentCategory = DISPLAYACTION;
+
   } else {
     currentCategory = NOCATEGORY;
   }
@@ -2087,12 +2131,32 @@ int doMenuAction(int menuPosition, int selection) {
 
     Serial.print("Probe Action\n\r");
 
+  } else if (currentCategory == DISPLAYACTION) {
+
+    if (menuLines[currentAction.previousMenuPositions[1]].indexOf("Jumpers") !=
+        -1) {
+      if (currentAction.from[0] == 0) {
+        displayMode = 1;
+      } else {
+        displayMode = 0;
+      }
+      debugFlagSet(12);
+    } else if (menuLines[currentAction.previousMenuPositions[1]].indexOf(
+                   "Bright") != -1) {
+      int brightnessOptionMap[] = {2, 3, 5, 7, 10, 14, 17, 20, 25, 32, 36};
+      LEDbrightness = (brightnessOptionMap[currentAction.from[0]]);
+      saveLEDbrightness(0);
+      showNets();
+      showLEDsCore2 = 2;
+    }
+    Serial.print("Display Action\n\r");
+
   } else if (currentCategory == NOCATEGORY) {
 
     Serial.print("No Category\n\r");
   }
 
-  return -1;
+  return 1;
 }
 
 String categoryNames[] = {"Show",    "Rails", "Slots",     "Output",
@@ -2208,14 +2272,15 @@ char LEDbrightnessMenu(void) {
         }
 
         showLEDsCore2 = 2;
-      } else if (input2 == 'x') {
+      } else if (input2 == 'x' || input2 == ' ' || input2 == 'm') {
         input = ' ';
       } else {
       }
+      showNets();
 
-      for (int i = 8; i <= numberOfNets; i++) {
-        lightUpNet(i, -1, 1, LEDbrightness, 0);
-      }
+      // for (int i = 8; i <= numberOfNets; i++) {
+      //   lightUpNet(i, -1, 1, LEDbrightness, 0);
+      // }
       showLEDsCore2 = 1;
 
       if (Serial.available() == 0) {

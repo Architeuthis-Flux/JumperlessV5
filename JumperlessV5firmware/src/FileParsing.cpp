@@ -39,6 +39,8 @@ const char rotaryConnectionString[] = "{AREF-GND,D11-GND,D10-UART_TX,D12-UART_RX
 
 void createSlots(int slot, int addRotaryConnections)
 {
+
+   //LittleFS.open("nodeFileSlot0.txt", "r");
     if (slot == -1)
     {
         for (int i = 0; i < NUM_SLOTS; i++)
@@ -115,6 +117,9 @@ void createSlots(int slot, int addRotaryConnections)
         //     // nodeFile.print(slot * 4 + 2);
         //     // nodeFile.print(", } ");
         // }
+                        
+                    nodeFile.print("f { \n\r } \n\r");
+                
         nodeFile.close();
     }
 }
@@ -957,24 +962,30 @@ void removeBridgeFromNodeFile(int node1, int node2, int slot)
     }
     nodeFileString.concat("}\n\r");
 
+    //nodeFileString.printTo(Serial);
+
     nodeFile.close();
     nodeFile = LittleFS.open("nodeFileSlot" + String(slot) + ".txt", "w+");
 
     nodeFile.write(nodeFileString.c_str());
+    
 
     nodeFile.close();
 }
 
 void addBridgeToNodeFile(int node1, int node2, int slot)
 {
+    debugFP = 1;
     nodeFile = LittleFS.open("nodeFileSlot" + String(slot) + ".txt", "r+");
-    // Serial.println(nodeFile);
+     //Serial.println(nodeFile);
 
     if (!nodeFile)
     {
-        if (debugFP)
-            Serial.println("Failed to open nodeFile");
-        return;
+       // if (debugFP)
+            Serial.println("Failed to open nodeFile, creating a new one\n\r");
+            createSlots();
+            nodeFile = LittleFS.open("nodeFileSlot" + String(slot) + ".txt", "r+");
+        //return;
     }
     else
     {
@@ -987,7 +998,7 @@ void addBridgeToNodeFile(int node1, int node2, int slot)
     while (nodeFile.available())
     {
         char c = nodeFile.read();
-        // Serial.print(c);
+        //Serial.print(c);
 
         if (c == '}')
         {
@@ -1047,6 +1058,7 @@ void addBridgeToNodeFile(int node1, int node2, int slot)
         Serial.println("\n\r");
     }
     nodeFile.close();
+    debugFP = 0;
 }
 
 void writeToNodeFile(int slot)

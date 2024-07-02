@@ -8,6 +8,7 @@ enum actionCategories {
   OUTPUTACTION,
   ARDUINOACTION,
   PROBEACTION,
+  DISPLAYACTION,
   NOCATEGORY
 };
 
