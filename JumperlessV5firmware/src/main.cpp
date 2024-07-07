@@ -157,8 +157,9 @@ delay(10);
   delay(300);
 initMenu();
   initADC();
-
-
+setupSwirlColors();
+//showLEDsCore2 = 1;
+  //
 }
 
 
@@ -212,26 +213,6 @@ volatile int probeActive = 0;
 int showExtraMenu = 1;
 int tearDownToggle = 0;
 
-void printSMstatus(void)
-{
-  for (int i = 0; i < 4; i++)
-  {
-    Serial.print("PIO_0 State Machine ");
-    Serial.print(i);
-    Serial.print(" ");
-    Serial.print(pio_sm_is_claimed(pio0, i));
-    Serial.println(" ");
-  }
-
-  for (int i = 0; i < 4; i++)
-  {
-    Serial.print("PIO_1 State Machine ");
-    Serial.print(i);
-    Serial.print(" ");
-    Serial.print(pio_sm_is_claimed(pio1, i));
-    Serial.println(" ");
-  }
-}
 int tinyUSB = 0;
 unsigned long timer = 0;
 
@@ -271,9 +252,11 @@ menu:
   printMainMenu(showExtraMenu);
 //  printCalibration();
  getNothingTouched();
+ //setupSwirlColors();
   if (firstLoop == 1)
   {
     firstLoop = 0;
+    delay(100);
 
     goto loadfile;
 
@@ -282,7 +265,7 @@ menu:
 dontshowmenu:
 
   connectFromArduino = '\0';
-
+//showLEDsCore2 = 1;
   while (Serial.available() == 0 && connectFromArduino == '\0' && slotChanged == 0)
 {
   // {  pinMode(26, INPUT);
@@ -302,46 +285,6 @@ dontshowmenu:
     }
 
 
-// if (millis()-teardownTimer > teardownTime )
-// {
-// tearDownToggle ++;
-// if (tearDownToggle > 2)
-// {
-//   tearDownToggle = 0;
-// }
-// Serial.println (tearDownToggle);
-// } else {
- 
-// }
-
-
-// if (tearDownToggle == 1) {
-//   //b.clear();
-//   clearLEDsExceptRails();
-//   //showLEDsCore2 = 2;
-//   //delay(10);
-//   b.print(" Tear   Down",0x000310, 0xffffff,0,-1,0,0);
-//   showLEDsCore2 = 1;
-//   teardownTimer = millis();
-//   showLEDsCore2 = 2;
-//   tearDownToggle++;
-
-// } else if (tearDownToggle == 0)
-// {
-//   b.clear();
-//   leds.clear();
-//   showLEDsCore2 = 1;
-//   goto loadfile;
- 
-
-// } else {
-  
-// }
-
-// if (checkProbeButton == 1)
-// {
-
-// }
     if ((millis() % 200) < 5)
     {
       if (checkProbeButton() == 1)
@@ -539,6 +482,10 @@ skipinput:
     probeMode(10, 1);
     delayMicroseconds(1500);
     probeActive = 0;
+    clearLEDs();
+        assignNetColors();
+    showNets();
+    showLEDsCore2 = 1;
     break;
   }
   case 'c':
@@ -549,6 +496,10 @@ skipinput:
     probeMode(19, 0);
     delayMicroseconds(1500);
     probeActive = 0;
+    clearLEDs();
+    assignNetColors();
+    showNets();
+    showLEDsCore2 = 1;
     break;
   }
   case 'n':
@@ -652,13 +603,18 @@ skipinput:
     //showLEDsCore2 = 1;
     slotChanged = 0;
     loadingFile = 0;
-    // input = ' ';
-    //  break;
-    //  if (rotaryEncoderMode == 1)
-    //  {
-    //    goto dontshowmenu;
-    //  }
-   //probeActive = 0;
+  clearAllNTCC();
+  openNodeFile(netSlot);
+  getNodesToConnect();
+
+  bridgesToPaths();
+  clearLEDs();
+  assignNetColors();
+  showNets();
+  // delay(18);
+  lightUpRail();
+  showLEDsCore2 = 1;
+   chooseShownReadings();
     break;
   }
   case 'f':
@@ -719,6 +675,7 @@ skipinput:
 
       goto dontshowmenu;
     }
+    chooseShownReadings();
 
     connectFromArduino = '\0';
     readInNodesArduino = 0;
@@ -926,14 +883,14 @@ unsigned long lastTimeReset = 0;
 unsigned long lastSwirlTime = 0;
 
 int swirlCount = 0;
-int spread = 6;
+int spread =7;
 
 int csCycle = 0;
 int onOff = 0;
 float topRailVoltage = 0.0;
 float botRailVoltage = 0.0;
 
-
+int readcounter = 0;
 unsigned long schedulerTimer = 0;
 unsigned long schedulerUpdateTime = 9000;
 int rowProbed = 0;
@@ -990,17 +947,18 @@ void loop1() // core 2 handles the LEDs and the CH446Q8
       //leds.show();
       //delayMicroseconds(7200);
       //showLEDsCore2 = 1;
+      chooseShownReadings();
       sendAllPathsCore2 = 0;
 
-    } else if (millis() - lastSwirlTime > 100 && loadingFile == 0 &&
+    } else if (millis() - lastSwirlTime > 90 && loadingFile == 0 &&
                showLEDsCore2 == 0) {
-
+readcounter++;
 
       //logoSwirl(swirlCount, spread, probeActive);
 
       lastSwirlTime = millis();
 
-      if (swirlCount >= 41) {
+      if (swirlCount >= LOGO_COLOR_LENGTH-1) {
         swirlCount = 0;
 
       } else {
@@ -1008,10 +966,25 @@ void loop1() // core 2 handles the LEDs and the CH446Q8
         swirlCount++;
       }
       showLEDsCore2 = 5;
+      
+      
        //leds.show();
-    } else if (inClickMenu == 0){
-
+    } else if (inClickMenu == 0 && probeActive == 0) {
+      checkPads();
+      
+      if (readcounter > 20) {
+        readcounter = 0;
+        setGPIO();
+        
+// readGPIO();  
+      }
+      readGPIO(); 
+ 
       rotaryEncoderStuff();
+      if (probeActive == 0) {
+ showLEDmeasurements();
+      }
+      
     }
     schedulerTimer = micros() ;
   } 

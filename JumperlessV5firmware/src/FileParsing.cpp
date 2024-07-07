@@ -482,6 +482,32 @@ void printNodeFile(int slot, int printOrString)
         nodeFileString.replace("91", "A5");
         nodeFileString.replace("92", "A6");
         nodeFileString.replace("93", "A7");
+        nodeFileString.replace("94", "RESET_0");
+        nodeFileString.replace("95", "RESET_1");
+        nodeFileString.replace("96", "GND_1");
+        nodeFileString.replace("97", "GND_0");
+        nodeFileString.replace("98", "3V3");
+        nodeFileString.replace("99", "5V");
+        nodeFileString.replace("128", "LOGO_PAD_TOP");
+        nodeFileString.replace("129", "LOGO_PAD_BOTTOM");
+        nodeFileString.replace("130", "GPIO_PAD");
+        nodeFileString.replace("131", "DAC_PAD");
+        nodeFileString.replace("132", "ADC_PAD");
+        nodeFileString.replace("133", "BUILDING_PAD_TOP");
+        nodeFileString.replace("134", "BUILDING_PAD_BOTTOM");
+        nodeFileString.replace("126", "BOTTOM_RAIL_GND");
+        nodeFileString.replace("104", "TOP_RAIL_GND");
+        nodeFileString.replace("122", "MCP_GPIO_0");
+        nodeFileString.replace("123", "MCP_GPIO_1");
+        nodeFileString.replace("124", "MCP_GPIO_2");
+        nodeFileString.replace("125", "MCP_GPIO_3");
+        nodeFileString.replace("135", "GPIO_0");
+        nodeFileString.replace("136", "GPIO_1");
+        nodeFileString.replace("137", "GPIO_2");
+        nodeFileString.replace("138", "GPIO_3");
+        nodeFileString.replace("139", "BUFFER_IN");
+        nodeFileString.replace("140", "BUFFER_OUT");
+
     }
 
     if (nodeFileString.charAt(nodeFileString.indexOf(",") + 1) != '\n')
@@ -975,7 +1001,7 @@ void removeBridgeFromNodeFile(int node1, int node2, int slot)
 
 void addBridgeToNodeFile(int node1, int node2, int slot)
 {
-    debugFP = 1;
+    //debugFP = 1;
     nodeFile = LittleFS.open("nodeFileSlot" + String(slot) + ".txt", "r+");
      //Serial.println(nodeFile);
 
@@ -1058,7 +1084,7 @@ void addBridgeToNodeFile(int node1, int node2, int slot)
         Serial.println("\n\r");
     }
     nodeFile.close();
-    debugFP = 0;
+   // debugFP = 0;
 }
 
 void writeToNodeFile(int slot)

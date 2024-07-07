@@ -2169,7 +2169,7 @@ void findStartAndEndChips(int node1, int node2, int pathIdx) {
       }
       break;
     }
-    case GND ... 126: {
+    case GND ... 141: {
       if (debugNTCC) {
         Serial.print("special function candidate chips: ");
       }
@@ -2324,7 +2324,7 @@ void assignPathType(int pathIndex) {
              path[pathIndex].node1 <= NANO_A7) {
     path[pathIndex].nodeType[0] = NANO;
   } else if (path[pathIndex].node1 >= GND &&
-             path[pathIndex].node1 <= EMPTY_NET) {
+             path[pathIndex].node1 <= 141) {
     path[pathIndex].nodeType[0] = SF;
   }
 
@@ -2343,7 +2343,7 @@ void assignPathType(int pathIndex) {
              path[pathIndex].node2 <= NANO_A7) {
     path[pathIndex].nodeType[1] = NANO;
   } else if (path[pathIndex].node2 >= GND &&
-             path[pathIndex].node2 <= EMPTY_NET) {
+             path[pathIndex].node2 <= 141) {
     path[pathIndex].nodeType[1] = SF;
   }
 

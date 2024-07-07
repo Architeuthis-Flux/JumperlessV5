@@ -8,6 +8,7 @@
 #include <Wire.h>
 #include "MCP23S17.h"
 
+
 extern int showReadings;
 
 
@@ -20,7 +21,19 @@ extern int showDAC1;
 
 extern int showADCreadings[4];
 
+extern float adcRange[4][2];
+extern float dacOutput[2];
+extern float railVoltage[2];
+extern uint8_t gpioState[10];
+extern uint8_t gpioReading[10];
+extern int gpioNet[10];
+
 extern int revisionNumber;
+
+void setGPIO(void);
+void readGPIO(void);
+
+int readFloatingOrStateMCP (int pin = 0);
 
 void setCSex(int chip, int value);
 void initGPIOex(void);
@@ -51,7 +64,7 @@ int readAdc(int channel, int samples = 8);
 
 void chooseShownReadings(void);
 void showMeasurements(int samples = 8, int printOrBB = 2);// 0 = print, 1 = breadboard 2 = both
-
+void showLEDmeasurements(void);
 const uint16_t DACLookup_FullSine_9Bit[512] =
     {
         2048, 2073, 2098, 2123, 2148, 2174, 2199, 2224,

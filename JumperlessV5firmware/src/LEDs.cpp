@@ -91,34 +91,8 @@ uint32_t rawOtherColors[12] = {
     0x0000E5, // GPIO
 };
 
-uint32_t logoColors[43] = {
-    0x800058, 0x750053, 0x700068, 0x650063, 0x600078, 0x550073, 0x500088,
-    0x450083, 0x400098, 0x350093, 0x3000A8, 0x2500A3, 0x2000B8, 0x1500B3,
-    0x1000C8, 0x0502C3, 0x0204D8, 0x0007E3, 0x0010E8, 0x0015F3, 0x0020F8,
-    0x0025FA, 0x0030FF, 0x0035E0, 0x0240BF, 0x0545A0, 0x10509F, 0x15558F,
-    0x20607F, 0x25656F, 0x30705F, 0x35754F, 0x40803F, 0x45722F, 0x506518,
-    0x55481A, 0x603A2A, 0x653332, 0x702538, 0x751948, 0x791052, 0x7E0562,
 
-};
-uint32_t logoColorsConnect[43] = {
-    0xff2200, 0xee1133, 0xee0055, 0xdd0066, 0xcc0077, 0xaa0088, 0x880099,
-    0x660099, 0x551188, 0x444499, 0x3355AA, 0x4466bb, 0x5577cc, 0x4477DD,
-    0x3355dd, 0x4422dd, 0x5500ee, 0x4400ee, 0x4400dd, 0x5500cc, 0x6600bb,
-    0x7700aa, 0x880099, 0x990088, 0xaa0077, 0xbb0066, 0xcc0077, 0xcc0088,
-    0xdd0077, 0xdd0066, 0xdd0044, 0xee2222, 0xee4411, 0xee5500, 0xee6600,
-    0xdd7711, 0xee8811, 0xff7711, 0xff5500, 0xff5500, 0xff4400, 0xff3300,
 
-};
-
-uint32_t logoColorsClear[43] = {
-    0x5500ff, 0x4400ff, 0x3311ff, 0x2233ff, 0x1144ff, 0x0055ff, 0x0088ee,
-    0x0066dd, 0x0077aa, 0x009999, 0x118866, 0x339933, 0x44aa22, 0x669922,
-    0x559944, 0x227766, 0x009988, 0x00aa88, 0x00aa77, 0x009966, 0x007777,
-    0x005588, 0x0033aa, 0x0033dd, 0x0011ff, 0x0000ff, 0x0022ff, 0x1122ff,
-    0x2222ff, 0x3311ee, 0x4411ee, 0x4400ee, 0x5500ee, 0x6600ee, 0x6600dd,
-    0x7700ee, 0xdd00ff, 0xff00ff, 0xee00ff, 0xaa00ff, 0x9900ff, 0x6600ff,
-
-};
 rgbColor specialNetColors[8] = {{00, 00, 00},       {0x00, 0xFF, 0x30},
                                 {0xFF, 0x41, 0x14}, {0xFF, 0x10, 0x40},
                                 {0xeF, 0x78, 0x7a}, {0xeF, 0x40, 0x7f},
@@ -358,9 +332,10 @@ void assignNetColors(void) {
   int colorSlots1[20] = {-1};
   int colorSlots2[20] = {-1};
   int colorSlots3[20] = {-1};
-
+Serial.print("number of nets: ");
+Serial.println(numberOfNets);
   if (numberOfNets < 60) {
-    for (int i = 0; i < numberOfNets - 8; i++) {
+    for (int i = 0; i <= numberOfNets - 8; i++) {
 
       colorSlots[i] = abs(230 - ((((i)*colorDistance)))) % 254;
     }
@@ -372,7 +347,7 @@ void assignNetColors(void) {
       int index3 = 0;
       //   int third = (numberOfNets - 8) / 3;
 
-      for (int i = 0; i < (numberOfNets - 8); i++) {
+      for (int i = 0; i <= (numberOfNets - 8); i++) {
         // Serial.print(colorSlots[i]);
         // Serial.print(" ");
         switch (i % 3) {
@@ -452,14 +427,14 @@ void assignNetColors(void) {
     }
   }
   if (debugLEDs) {
-    for (int i = 0; i < numberOfNets - 8; i++) {
+    for (int i = 0; i <= numberOfNets - 8; i++) {
 
       Serial.print(colorSlots[i]);
       Serial.print(" ");
     }
   }
   int frontIndex = 0;
-  for (int i = 8; i < numberOfNets; i++) {
+  for (int i = 8; i <= numberOfNets; i++) {
     // if(net[i].nodes[0] == -1){
     //     continue;
     // }
@@ -528,7 +503,7 @@ uint32_t packRgb(uint8_t r, uint8_t g, uint8_t b) {
 }
 
 void lightUpNet(int netNumber, int node, int onOff, int brightness2,
-                int hueShift, int dontClear) {
+                int hueShift, int dontClear, uint32_t forceColor) {
   uint32_t color;
   int pcbExtinction = 0;
   int colorCorrection = 0;
@@ -541,7 +516,7 @@ void lightUpNet(int netNumber, int node, int onOff, int brightness2,
   //     Serial.print(" onOff: ");
   //     Serial.print(onOff);
   if (net[netNumber].nodes[1] != 0 &&
-      net[netNumber].nodes[1] <= 127) { // NANO_A7) {
+      net[netNumber].nodes[1] <= 141) { // NANO_A7) {
 
     for (int j = 0; j < MAX_NODES; j++) {
       if (net[netNumber].nodes[j] <= 0) {
@@ -581,31 +556,8 @@ void lightUpNet(int netNumber, int node, int onOff, int brightness2,
                 Serial.println(net[netNumber].rawColor, HEX);
               }
             }
-            // leds.setPixelColor(nodesToPixelMap[net[netNumber].nodes[j]],
-            // net[netNumber].color.r, net[netNumber].color.g,
-            // net[netNumber].color.b);
-          } else {
-            // Serial.print("net: ");
-            // Serial.print(netNumber);
-            // Serial.print("  onOff:  ");
-            // Serial.println(onOff);
 
-            // leds.setPixelColor((nodesToPixelMap[net[netNumber].nodes[j]]) *
-            // 5
-            // + 0, 0);
-            // leds.setPixelColor((nodesToPixelMap[net[netNumber].nodes[j]]) *
-            // 5
-            // + 1, 0);
-            // leds.setPixelColor((nodesToPixelMap[net[netNumber].nodes[j]]) *
-            // 5
-            // + 2, 0);
-            // leds.setPixelColor((nodesToPixelMap[net[netNumber].nodes[j]]) *
-            // 5
-            // + 3, 0);
-            // leds.setPixelColor((nodesToPixelMap[net[netNumber].nodes[j]]) *
-            // 5
-            // + 4, 0);
-          }
+          } 
         }
       } else {
         if (net[netNumber].nodes[j] <= NANO_A7) {
@@ -629,6 +581,9 @@ void lightUpNet(int netNumber, int node, int onOff, int brightness2,
               struct rgbColor colorToShift = {net[netNumber].color.r,
                                               net[netNumber].color.g,
                                               net[netNumber].color.b};
+              if (forceColor != 0xffffff) {
+                colorToShift = unpackRgb(forceColor);
+              }
 
               struct rgbColor shiftedColor =
                   shiftHue(colorToShift, hueShift, pcbExtinction, 254);
@@ -1028,6 +983,7 @@ void lightUpNode(int node, uint32_t color) {
   showLEDsCore2 = 1;
 }
 uint32_t dimLogoColor(uint32_t color, int brightness) {
+  //return color;
   rgbColor dimColor = unpackRgb(color);
   // if (dimColor.b != 0)
   // {
@@ -1041,58 +997,294 @@ uint32_t dimLogoColor(uint32_t color, int brightness) {
                  HsvToRgb(colorHsv).b * 3);
 }
 
-void logoSwirl(int start, int spread, int probe) {
-  if (probe == 1) {
-    if (connectOrClearProbe == 0) {
 
-      leds.setPixelColor(436, dimLogoColor(logoColorsConnect[start % 42]));
+
+
+uint32_t logoColors[LOGO_COLOR_LENGTH+1] = {
+    0x800058, 0x750053, 0x700068, 0x650063, 0x600078, 0x550073, 0x500088,
+    0x450083, 0x400098, 0x350093, 0x3000A8, 0x2500A3, 0x2000B8, 0x1500B3,
+    0x1000C8, 0x0502C3, 0x0204D8, 0x0007E3, 0x0010E8, 0x0015F3, 0x0020F8,
+    0x0025FA, 0x0030FF, 0x0035E0, 0x0240BF, 0x0545A0, 0x10509F, 0x15558F,
+    0x20607F, 0x25656F, 0x30705F, 0x35754F, 0x40803F, 0x45722F, 0x506518,
+    0x55481A, 0x603A2A, 0x653332, 0x702538, 0x751948, 0x791052, 0x7E0562,
+
+};
+uint32_t logoColorsCold[LOGO_COLOR_LENGTH+1];
+
+uint32_t logoColorsHot[LOGO_COLOR_LENGTH+1];
+
+uint32_t logoColorsPink[LOGO_COLOR_LENGTH+1];
+
+uint32_t logoColorsGreen[LOGO_COLOR_LENGTH+1];
+
+uint32_t logoColorsYellow[LOGO_COLOR_LENGTH+1];
+
+uint32_t logoColors8vSelect[LOGO_COLOR_LENGTH+1];
+
+uint8_t eightSelectHues[LOGO_COLOR_LENGTH+1] = {
+  195, 191, 187, 183, 179, 175, 171, 168, 166, 164, 162, 160, 158, 156, 153,
+  148, 140, 130, 120, 111,  104,  99,  96,  93,  91,  89,  87,  85,  83,  81,
+   80,  79,  78,  76,  73,  70,  67,  64,  59,  54,  49,  44,  39,  35,  31,
+   27,  23,  19,  16,  13,  10,   7,   4,   3,   2,   1,   0, 254, 253, 251};
+
+
+
+void setupSwirlColors(void) {
+rgbColor logoColorsRGB[LOGO_COLOR_LENGTH+1];
+int fudgeMult = 1;
+
+  for (int i = 0; i < (LOGO_COLOR_LENGTH/2)+1; i++) {
+
+    hsvColor connectHSV;
+    connectHSV.h = (i * 2 + 130) % 255;
+    connectHSV.s = 254;
+    connectHSV.v = 254;
+    rgbColor connectRGB = HsvToRgb(connectHSV);
+     logoColorsRGB[i] = connectRGB;
+      logoColorsCold[i] =
+        packRgb(logoColorsRGB[i].r / 8,  logoColorsRGB[i].g / 8,
+                 logoColorsRGB[i].b / 8);
+      logoColorsCold[LOGO_COLOR_LENGTH - i] =   logoColorsCold[i];
+
+   
+    connectHSV.h = (i * 2 + 230) % 255;
+    connectHSV.s = 254;
+    connectHSV.v = 254;
+    connectRGB = HsvToRgb(connectHSV);
+     logoColorsRGB[i] = connectRGB;
+
+      logoColorsHot[i] =
+        packRgb( logoColorsRGB[i].r / 8,  logoColorsRGB[i].g / 8,
+                 logoColorsRGB[i].b / 8);
+      logoColorsHot[LOGO_COLOR_LENGTH - i] =   logoColorsHot[i];
+
+
+    connectHSV.h = (i * 2 + 155) % 255;
+    connectHSV.s = 254;
+    connectHSV.v = 254;
+    connectRGB = HsvToRgb(connectHSV);
+     logoColorsRGB[i] = connectRGB;
+
+     logoColorsPink[i] =
+        packRgb( logoColorsRGB[i].r / 8,  logoColorsRGB[i].g / 8,
+                 logoColorsRGB[i].b / 8);
+     logoColorsPink[LOGO_COLOR_LENGTH - i] =  logoColorsPink[i];
+
+    connectHSV.h = (i * 2 + 55) % 255;
+    connectHSV.s = 254;
+    connectHSV.v = 254;
+    connectRGB = HsvToRgb(connectHSV);
+     logoColorsRGB[i] = connectRGB;
+
+     logoColorsYellow[i] =
+        packRgb( logoColorsRGB[i].r / 8,  logoColorsRGB[i].g / 8,
+                 logoColorsRGB[i].b / 8);
+     logoColorsYellow[LOGO_COLOR_LENGTH - i] =  logoColorsYellow[i];
+
+         connectHSV.h = (i * 2 + 85) % 255;
+    connectHSV.s = 254;
+    connectHSV.v = 254;
+    connectRGB = HsvToRgb(connectHSV);
+     logoColorsRGB[i] = connectRGB;
+
+     logoColorsGreen[i] =
+        packRgb( logoColorsRGB[i].r / 8,  logoColorsRGB[i].g / 8,
+                 logoColorsRGB[i].b / 8);
+     logoColorsGreen[LOGO_COLOR_LENGTH - i] =  logoColorsGreen[i];
+
+
+
+
+  }
+
+
+    for (int i = 0; i < LOGO_COLOR_LENGTH; i++) {
+
+    hsvColor connectHSV;
+    connectHSV.h = i * (255 / LOGO_COLOR_LENGTH);
+    connectHSV.s = 254;
+    connectHSV.v = 254;
+    rgbColor connectRGB = HsvToRgb(connectHSV);
+     logoColorsRGB[i] = connectRGB;
+
+    logoColors[i] =
+        packRgb( logoColorsRGB[i].r / 8,  logoColorsRGB[i].g / 8,
+                 logoColorsRGB[i].b / 8);
+
+    
+    connectHSV.h = eightSelectHues[i];
+
+    // connectHSV.h = (connectHSV.h - 8);
+    // connectHSV.h<0?connectHSV.h = 254 - connectHSV.h:connectHSV.h;
+    connectHSV.s = 254;
+    connectHSV.v = 254;
+    connectRGB = HsvToRgb(connectHSV);
+     logoColorsRGB[i] = connectRGB;
+
+     logoColors8vSelect[i] =
+        packRgb( logoColorsRGB[i].r / 8,  logoColorsRGB[i].g / 8,
+                 logoColorsRGB[i].b / 8);
+    //  logoColors8vSelect[LOGO_COLOR_LENGTH - i] =   logoColors8vSelect[i];
+    
+  }
+
+
+//   //delay(2000);
+//   for (int i = 0; i < LOGO_COLOR_LENGTH; i++) {
+// Serial.print("logoColorsCold: ");
+// Serial.print(i);
+// Serial.print(" ");
+// Serial.println(logoColorsCold[i], HEX);
+
+//   }
+//   Serial.println(" ");
+//     for (int i = 0; i <= LOGO_COLOR_LENGTH; i++) {
+// Serial.print("logoColorsHot: ");
+// Serial.print(i);
+// Serial.print(" ");
+// Serial.println(logoColorsHot[i], HEX);
+
+//   }
+
+//     for (int i = 0; i < LOGO_COLOR_LENGTH; i++) {
+// Serial.print("logoColorsPink: ");
+// Serial.print(i);
+// Serial.print(" ");
+// Serial.println(logoColorsPink[i], HEX);
+
+//   }
+
+//     for (int i = 0; i < LOGO_COLOR_LENGTH; i++) {
+// Serial.print("logoColorsGreen: ");
+// Serial.print(i);
+// Serial.print(" ");
+// Serial.println(logoColorsGreen[i], HEX);
+
+//   }
+
+//     for (int i = 0; i < LOGO_COLOR_LENGTH; i++) {
+// Serial.print("logoColorsYellow: ");
+// Serial.print(i);
+// Serial.print(" ");
+// Serial.println(logoColorsYellow[i], HEX);
+
+//   }
+
+//     for (int i = 0; i < LOGO_COLOR_LENGTH; i++) {
+// Serial.print("logoColors8vSelect: ");
+// Serial.print(i);
+// Serial.print(" ");
+// Serial.println(logoColors8vSelect[i], HEX);
+
+//   }
+
+
+
+}
+
+void logoSwirl(int start, int spread, int probe) {
+
+  // int fiddyNine = 58;
+
+
+  if (probe == 1) {
+
+    // for (int i = 0; i < 42; i++) {
+
+    //   b.printRawRow(0b11111111, i,  logoColorsCold[i], 0xffffff);
+    // }
+    // leds.show();
+    if (connectOrClearProbe == 1 && node1or2 == 0) {
+      // for (int i = 0; i < 30; i++) {
+
+      //   b.printRawRow(0b11111111, i,  logoColorsCold[i*2], 0xffffff);
+      // }
+      //       for (int i = 0; i < 30; i++) {
+
+      //   b.printRawRow(0b11111111, i+31,  logoColorsHot[i*2], 0xffffff);
+      // }
+      //leds.show();
+      //Serial.println("fuck");
+      leds.setPixelColor(436, dimLogoColor( logoColorsCold[start % (LOGO_COLOR_LENGTH-1)]));
       leds.setPixelColor(
-          437, dimLogoColor(logoColorsConnect[(start + (spread)) % 42]));
+          437, dimLogoColor( logoColorsCold[(start + (spread)) % (LOGO_COLOR_LENGTH-1)]));
       leds.setPixelColor(
-          438, dimLogoColor(logoColorsConnect[(start + (spread * 2)) % 42]));
+          438, dimLogoColor( logoColorsCold[(start + (spread * 2)) % (LOGO_COLOR_LENGTH-1)]));
       leds.setPixelColor(
-          439, dimLogoColor(logoColorsConnect[(start + (spread * 3)) % 42]));
+          439, dimLogoColor( logoColorsCold[(start + (spread * 3)) % (LOGO_COLOR_LENGTH-1)]));
       leds.setPixelColor(
-          440, dimLogoColor(logoColorsConnect[(start + (spread * 4)) % 42]));
+          440, dimLogoColor( logoColorsCold[(start + (spread * 4)) % (LOGO_COLOR_LENGTH-1)]));
       leds.setPixelColor(
-          441, dimLogoColor(logoColorsConnect[(start + (spread * 5)) % 42]));
+          441, dimLogoColor( logoColorsCold[(start + (spread * 5)) % (LOGO_COLOR_LENGTH-1)]));
       leds.setPixelColor(
-          442, dimLogoColor(logoColorsConnect[(start + (spread * 6)) % 42]));
+          442, dimLogoColor( logoColorsCold[(start + (spread * 6)) % (LOGO_COLOR_LENGTH-1)]));
       leds.setPixelColor(
-          443, dimLogoColor(logoColorsConnect[(start + (spread * 7)) % 42]));
+          443, dimLogoColor( logoColorsCold[(start + (spread * 7)) % (LOGO_COLOR_LENGTH-1)]));
+    } else if (connectOrClearProbe == 1 && node1or2 != 0)
+    {
+      leds.setPixelColor(436, dimLogoColor( logoColorsPink[start % (LOGO_COLOR_LENGTH-1)]));
+      leds.setPixelColor(
+          437, dimLogoColor( logoColorsPink[(start + (spread)) % (LOGO_COLOR_LENGTH-1)]));
+      leds.setPixelColor(
+          438, dimLogoColor( logoColorsPink[(start + (spread * 2)) % (LOGO_COLOR_LENGTH-1)]));
+      leds.setPixelColor(
+          439, dimLogoColor( logoColorsPink[(start + (spread * 3)) % (LOGO_COLOR_LENGTH-1)]));
+      leds.setPixelColor(
+          440, dimLogoColor( logoColorsPink[(start + (spread * 4)) % (LOGO_COLOR_LENGTH-1)]));
+      leds.setPixelColor(
+          441, dimLogoColor( logoColorsPink[(start + (spread * 5)) % (LOGO_COLOR_LENGTH-1)]));
+      leds.setPixelColor(
+          442, dimLogoColor( logoColorsPink[(start + (spread * 6)) % (LOGO_COLOR_LENGTH-1)]));
+      leds.setPixelColor(
+          443, dimLogoColor( logoColorsPink[(start + (spread * 7)) % (LOGO_COLOR_LENGTH-1)]));
+
+    
     } else {
-      leds.setPixelColor(436, dimLogoColor(logoColorsClear[start % 42]));
+      // for (int i = 0; i < (LOGO_COLOR_LENGTH-1); i++) {
+
+      //   b.printRawRow(0b11111111, i,   logoColors8vSelect[i], 0xffffff);
+       
+      // } 
+      
+      //Serial.println("fuck");
+      //leds.show();
+
+      leds.setPixelColor(436, dimLogoColor(    logoColorsHot[start % (LOGO_COLOR_LENGTH-1)]));
       leds.setPixelColor(
-          437, dimLogoColor(logoColorsClear[(start + (spread)) % 42]));
+          437, dimLogoColor(   logoColorsHot[(start + (spread)) % (LOGO_COLOR_LENGTH-1)]));
       leds.setPixelColor(
-          438, dimLogoColor(logoColorsClear[(start + (spread * 2)) % 42]));
+          438, dimLogoColor(   logoColorsHot[(start + (spread * 2)) % (LOGO_COLOR_LENGTH-1)]));
       leds.setPixelColor(
-          439, dimLogoColor(logoColorsClear[(start + (spread * 3)) % 42]));
+          439, dimLogoColor(   logoColorsHot[(start + (spread * 3)) % (LOGO_COLOR_LENGTH-1)]));
       leds.setPixelColor(
-          440, dimLogoColor(logoColorsClear[(start + (spread * 4)) % 42]));
+          440, dimLogoColor(   logoColorsHot[(start + (spread * 4)) % (LOGO_COLOR_LENGTH-1)]));
       leds.setPixelColor(
-          441, dimLogoColor(logoColorsClear[(start + (spread * 5)) % 42]));
+          441, dimLogoColor(   logoColorsHot[(start + (spread * 5)) % (LOGO_COLOR_LENGTH-1)]));
       leds.setPixelColor(
-          442, dimLogoColor(logoColorsClear[(start + (spread * 6)) % 42]));
+          442, dimLogoColor(   logoColorsHot[(start + (spread * 6)) % (LOGO_COLOR_LENGTH-1)]));
       leds.setPixelColor(
-          443, dimLogoColor(logoColorsClear[(start + (spread * 7)) % 42]));
+          443, dimLogoColor(   logoColorsHot[(start + (spread * 7)) % (LOGO_COLOR_LENGTH-1)]));
     }
 
   } else {
-    leds.setPixelColor(436, dimLogoColor(logoColors[start % 42]));
-    leds.setPixelColor(437, dimLogoColor(logoColors[(start + (spread)) % 42]));
+      //     for (int i = 0; i < (LOGO_COLOR_LENGTH-1); i++) {
+
+      //  // b.printRawRow(0b11111111, i, 0, 0xffffff);
+      // }
+    leds.setPixelColor(436, dimLogoColor(logoColors[start % (LOGO_COLOR_LENGTH-1)]));
+    leds.setPixelColor(437, dimLogoColor(logoColors[(start + (spread)) % (LOGO_COLOR_LENGTH-1)]));
     leds.setPixelColor(438,
-                       dimLogoColor(logoColors[(start + (spread * 2)) % 42]));
+                       dimLogoColor(logoColors[(start + (spread * 2)) % (LOGO_COLOR_LENGTH-1)]));
     leds.setPixelColor(439,
-                       dimLogoColor(logoColors[(start + (spread * 3)) % 42]));
+                       dimLogoColor(logoColors[(start + (spread * 3)) % (LOGO_COLOR_LENGTH-1)]));
     leds.setPixelColor(440,
-                       dimLogoColor(logoColors[(start + (spread * 4)) % 42]));
+                       dimLogoColor(logoColors[(start + (spread * 4)) % (LOGO_COLOR_LENGTH-1)]));
     leds.setPixelColor(441,
-                       dimLogoColor(logoColors[(start + (spread * 5)) % 42]));
+                       dimLogoColor(logoColors[(start + (spread * 5)) % (LOGO_COLOR_LENGTH-1)]));
     leds.setPixelColor(442,
-                       dimLogoColor(logoColors[(start + (spread * 6)) % 42]));
+                       dimLogoColor(logoColors[(start + (spread * 6)) % (LOGO_COLOR_LENGTH-1)]));
     leds.setPixelColor(443,
-                       dimLogoColor(logoColors[(start + (spread * 7)) % 42]));
+                       dimLogoColor(logoColors[(start + (spread * 7)) % (LOGO_COLOR_LENGTH-1)]));
   }
   // Serial.println(start % 42);
   // Serial.println((start + 5) % 42);

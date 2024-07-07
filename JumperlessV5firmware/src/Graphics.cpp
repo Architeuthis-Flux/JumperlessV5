@@ -460,11 +460,11 @@ void bread::print(int i) {
   // Serial.println(buffer);
 }
 
-void bread::print(int i, int position) {
-  char buffer[15];
-  itoa(i, buffer, 10);
-  printString(buffer, defaultColor, 0xffffff, position);
-}
+// void bread::print(int i, int position) {
+//   char buffer[15];
+//   itoa(i, buffer, 10);
+//   printString(buffer, defaultColor, 0xffffff, position);
+// }
 
 void bread::print(int i, uint32_t color) {
   char buffer[15];
@@ -598,6 +598,18 @@ void printGraphicsRow(uint8_t data, int row, uint32_t color, uint32_t bg) {
         leds.setPixelColor(((row) * 5) + j, color);
       } else {
         leds.setPixelColor(((row) * 5) + j, 0);
+      }
+    }
+  } else if (bg == 0xFFFFFE) {
+
+    for (int j = 4; j >= 0; j--) {
+      // Serial.println(((data) & columnMask[j]) != 0 ? "1" : "0");
+      if (((data)&columnMask[j]) != 0) {
+
+        leds.setPixelColor(((row) * 5) + j, color);
+      } else {
+        // leds.getPixelColor(((row) * 5) + j);
+        // leds.setPixelColor(((row) * 5) + j, 0);
       }
     }
   } else {

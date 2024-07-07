@@ -161,7 +161,15 @@ const int nodesToPixelMap[120] = {
 
 };
 
-extern uint32_t logoColors[43];
+#define LOGO_COLOR_LENGTH 60
+
+extern uint32_t logoColors[LOGO_COLOR_LENGTH+1];
+extern uint32_t logoColorsHot[LOGO_COLOR_LENGTH+1];
+extern uint32_t logoColorsCold[LOGO_COLOR_LENGTH+1];
+extern uint32_t logoColorsYellow[LOGO_COLOR_LENGTH+1];
+extern uint32_t logoColorsPink[LOGO_COLOR_LENGTH+1];
+extern uint32_t logoColors8vSelect[LOGO_COLOR_LENGTH+1];
+
 
 const int bbPixelToNodesMap[120] = {
     0,         1,          2,        3,        4,          5,         6,
@@ -220,6 +228,7 @@ const int pixelsToRails[20] = {B_RAIL_NEG, B_RAIL_POS, B_RAIL_POS, B_RAIL_NEG,
 
 extern rgbColor netColors[MAX_NETS];
 extern uint32_t savedLEDcolors[NUM_SLOTS][LED_COUNT + 1];
+extern rgbColor specialNetColors[8];
 
 struct rgbColor shiftHue(struct rgbColor colorToShift, int hueShift = 0,
                          int brightnessShift = 0, int saturationShift = 0,
@@ -237,11 +246,12 @@ void assignNetColors();
 void lightUpRail(int logo = -1, int railNumber = -1, int onOff = 1,
                  int brightness = DEFAULTRAILBRIGHTNESS,
                  int supplySwitchPosition = 0);
+void setupSwirlColors(void);
 void logoSwirl(int start = 0, int spread = 5, int probe = 0);
-uint32_t dimLogoColor(uint32_t color, int brightness = 5);
+uint32_t dimLogoColor(uint32_t color, int brightness = 4);
 void lightUpNet(int netNumber = 0, int node = -1, int onOff = 1,
                 int brightness = DEFAULTBRIGHTNESS,
-                int hueShift = 0, int dontClear = 0); //-1 means all nodes (default)
+                int hueShift = 0, int dontClear = 0, uint32_t forceColor = 0xffffff); //-1 means all nodes (default)
 void lightUpNode(int node, uint32_t color);
 rgbColor pcbColorCorrect(rgbColor colorToCorrect);
 hsvColor RgbToHsv(rgbColor rgb);

@@ -290,16 +290,21 @@ extern volatile int sendAllPathsCore2;
 #define SUPPLY_8V_P 120 // not actually connected to anything
 #define SUPPLY_8V_N 121 // not actually connected to anything
 
+#define RP_GPIO_20 135
+#define RP_GPIO_21 136
+#define RP_GPIO_22 137
+#define RP_GPIO_23 138
+#define RP_GPIO_1 135
+#define RP_GPIO_2 136
+#define RP_GPIO_3 137
+#define RP_GPIO_4 138
 
 #define MCP_GPIO_0 122
 #define MCP_GPIO_1 123
 #define MCP_GPIO_2 124
 #define MCP_GPIO_3 125
 
-#define RP_GPIO_20 135
-#define RP_GPIO_21 136
-#define RP_GPIO_22 137
-#define RP_GPIO_23 138
+
 
 #define ROUTABLE_BUFFER_IN 139
 #define ROUTABLE_BUFFER_OUT 140

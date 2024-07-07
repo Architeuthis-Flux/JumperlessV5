@@ -48,73 +48,73 @@ struct chipStatus ch[12] = {
   {0,'A',
   {-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1}, // x status
   {-1,-1,-1,-1,-1,-1,-1,-1}, //y status
-  {CHIP_I, CHIP_J, CHIP_B, CHIP_B, CHIP_C, CHIP_C, CHIP_D, CHIP_D, CHIP_E, CHIP_K, CHIP_F, CHIP_F, CHIP_G, CHIP_G, CHIP_H, CHIP_H},//X MAP constant
+  {CHIP_I, CHIP_J, CHIP_B, CHIP_B, CHIP_C, CHIP_C, CHIP_D, CHIP_D, CHIP_E, CHIP_K, CHIP_F, CHIP_F, CHIP_G, CHIP_L, CHIP_H, CHIP_H},//X MAP constant
   {BOUNCE_NODE,  TOP_2,TOP_3, TOP_4, TOP_5, TOP_6, TOP_7, TOP_8}},  // Y MAP constant
 
   {1,'B',
   {-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1}, // x status
   {-1,-1,-1,-1,-1,-1,-1,-1}, //y status
-  {CHIP_A, CHIP_A, CHIP_I, CHIP_J, CHIP_C, CHIP_C, CHIP_D, CHIP_D, CHIP_E, CHIP_E, CHIP_F, CHIP_K, CHIP_G, CHIP_G, CHIP_H, CHIP_H},
+  {CHIP_A, CHIP_A, CHIP_I, CHIP_J, CHIP_C, CHIP_C, CHIP_D, CHIP_D, CHIP_E, CHIP_E, CHIP_F, CHIP_K, CHIP_G, CHIP_G, CHIP_H, CHIP_L},
   {BOUNCE_NODE,  TOP_9,TOP_10,TOP_11,TOP_12,TOP_13,TOP_14,TOP_15}},//yMap
 
   {2,'C',
   {-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1}, // x status
   {-1,-1,-1,-1,-1,-1,-1,-1}, //y status
-  {CHIP_A, CHIP_A, CHIP_B, CHIP_B, CHIP_I, CHIP_J, CHIP_D, CHIP_D, CHIP_E, CHIP_E, CHIP_F, CHIP_F, CHIP_G, CHIP_K, CHIP_H, CHIP_H},
+  {CHIP_A, CHIP_A, CHIP_B, CHIP_B, CHIP_I, CHIP_J, CHIP_D, CHIP_D, CHIP_E, CHIP_L, CHIP_F, CHIP_F, CHIP_G, CHIP_K, CHIP_H, CHIP_H},
   {BOUNCE_NODE, TOP_16,TOP_17,TOP_18,TOP_19,TOP_20,TOP_21,TOP_22}},
 
   {3,'D',
   {-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1}, // x status
   {-1,-1,-1,-1,-1,-1,-1,-1}, //y status
-  {CHIP_A, CHIP_A, CHIP_B, CHIP_B, CHIP_C, CHIP_C, CHIP_I, CHIP_J, CHIP_E, CHIP_E, CHIP_F, CHIP_F, CHIP_G, CHIP_G, CHIP_H, CHIP_K},
+  {CHIP_A, CHIP_A, CHIP_B, CHIP_B, CHIP_C, CHIP_C, CHIP_I, CHIP_J, CHIP_E, CHIP_E, CHIP_F, CHIP_L, CHIP_G, CHIP_G, CHIP_H, CHIP_K},
   {BOUNCE_NODE, TOP_23,TOP_24,TOP_25,TOP_26,TOP_27,TOP_28,TOP_29}},
 
   {4,'E',
   {-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1}, // x status
   {-1,-1,-1,-1,-1,-1,-1,-1}, //y status
-  {CHIP_A, CHIP_K, CHIP_B, CHIP_B, CHIP_C, CHIP_C, CHIP_D, CHIP_D, CHIP_I, CHIP_J, CHIP_F, CHIP_F, CHIP_G, CHIP_G, CHIP_H, CHIP_H},
+  {CHIP_A, CHIP_K, CHIP_B, CHIP_B, CHIP_C, CHIP_L, CHIP_D, CHIP_D, CHIP_I, CHIP_J, CHIP_F, CHIP_F, CHIP_G, CHIP_G, CHIP_H, CHIP_H},
   {BOUNCE_NODE,   BOTTOM_2, BOTTOM_3, BOTTOM_4, BOTTOM_5, BOTTOM_6, BOTTOM_7, BOTTOM_8}},
 
   {5,'F',
   {-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1}, // x status
   {-1,-1,-1,-1,-1,-1,-1,-1}, //y status
-  {CHIP_A, CHIP_A, CHIP_B, CHIP_K, CHIP_C, CHIP_C, CHIP_D, CHIP_D, CHIP_E, CHIP_E, CHIP_I, CHIP_J, CHIP_G, CHIP_G, CHIP_H, CHIP_H},
+  {CHIP_A, CHIP_A, CHIP_B, CHIP_K, CHIP_C, CHIP_C, CHIP_D, CHIP_L, CHIP_E, CHIP_E, CHIP_I, CHIP_J, CHIP_G, CHIP_G, CHIP_H, CHIP_H},
   {BOUNCE_NODE,  BOTTOM_9, BOTTOM_10,BOTTOM_11,BOTTOM_12,BOTTOM_13,BOTTOM_14,BOTTOM_15}},
 
   {6,'G',
   {-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1}, // x status
   {-1,-1,-1,-1,-1,-1,-1,-1}, //y status
-  {CHIP_A, CHIP_A, CHIP_B, CHIP_B, CHIP_C, CHIP_K, CHIP_D, CHIP_D, CHIP_E, CHIP_E, CHIP_F, CHIP_F, CHIP_I, CHIP_J, CHIP_H, CHIP_H},
+  {CHIP_A, CHIP_L, CHIP_B, CHIP_B, CHIP_C, CHIP_K, CHIP_D, CHIP_D, CHIP_E, CHIP_E, CHIP_F, CHIP_F, CHIP_I, CHIP_J, CHIP_H, CHIP_H},
   {BOUNCE_NODE,  BOTTOM_16,BOTTOM_17,BOTTOM_18,BOTTOM_19,BOTTOM_20,BOTTOM_21,BOTTOM_22}},
 
   {7,'H',
   {-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1}, // x status
   {-1,-1,-1,-1,-1,-1,-1,-1}, //y status
-  {CHIP_A, CHIP_A, CHIP_B, CHIP_B, CHIP_C, CHIP_C, CHIP_D, CHIP_K, CHIP_E, CHIP_E, CHIP_F, CHIP_F, CHIP_G, CHIP_G, CHIP_I, CHIP_J},
+  {CHIP_A, CHIP_A, CHIP_B, CHIP_L, CHIP_C, CHIP_C, CHIP_D, CHIP_K, CHIP_E, CHIP_E, CHIP_F, CHIP_F, CHIP_G, CHIP_G, CHIP_I, CHIP_J},
   {BOUNCE_NODE,  BOTTOM_23,BOTTOM_24,BOTTOM_25,BOTTOM_26,BOTTOM_27,BOTTOM_28,BOTTOM_29}},
 
   {8,'I',
   {-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1}, // x status
   {-1,-1,-1,-1,-1,-1,-1,-1}, //y status
-  {NANO_A0, NANO_D1, NANO_A2, NANO_D3, NANO_A4, NANO_D5, NANO_A6, NANO_D7, NANO_D11, NANO_D9, NANO_D13, UART0_RX, CHIP_L, CHIP_J, CHIP_K, ISENSE_PLUS}, //this is for V5r1 change this for V5r2
+  {NANO_A0, NANO_D1, NANO_A2, NANO_D3, NANO_A4, NANO_D5, NANO_A6, NANO_D7, NANO_D11, NANO_D9, NANO_D13,ISENSE_PLUS , CHIP_L, CHIP_J, CHIP_K,UART0_RX }, //this is for V5r1 change this for V5r2
   {CHIP_A,CHIP_B,CHIP_C,CHIP_D,CHIP_E,CHIP_F,CHIP_G,CHIP_H}},
 
   {9,'J',
   {-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1}, // x status
   {-1,-1,-1,-1,-1,-1,-1,-1}, //y status
-  {NANO_D0, NANO_A1, NANO_D2, NANO_A3, NANO_D4, NANO_A5, NANO_D6, NANO_A7, NANO_D8, NANO_D10, NANO_D12, UART0_TX, CHIP_L, CHIP_I, CHIP_K, ISENSE_MINUS},  //this is for V5r1 change this for V5r2
+  {NANO_D0, NANO_A1, NANO_D2, NANO_A3, NANO_D4, NANO_A5, NANO_D6, NANO_A7, NANO_D8, NANO_D10, NANO_D12, NANO_AREF , CHIP_L, CHIP_I, CHIP_K, UART0_TX},  //this is for V5r1 change this for V5r2
   {CHIP_A,CHIP_B,CHIP_C,CHIP_D,CHIP_E,CHIP_F,CHIP_G,CHIP_H}},
 
   {10,'K',
   {-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1}, // x status
   {-1,-1,-1,-1,-1,-1,-1,-1}, //y status
-  {1, 30, 31, 60, TOP_RAIL, BOTTOM_RAIL, DAC0, DAC1, ADC0, ADC1, ADC2, ADC3, CHIP_L, CHIP_I, CHIP_J, GND}, //this is for V5r1 change this for V5r2
+  {1, 30, 31, 60, TOP_RAIL, BOTTOM_RAIL, DAC1, DAC0, ROUTABLE_BUFFER_OUT, ADC1, ADC2, ADC3, CHIP_L, CHIP_I, CHIP_J, GND}, //this is for V5r1 change this for V5r2
   {CHIP_A,CHIP_B,CHIP_C,CHIP_D,CHIP_E,CHIP_F,CHIP_G,CHIP_H}},
 
   {11,'L',
   {-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1}, // x status
   {-1,-1,-1,-1,-1,-1,-1,-1}, //y status
-  {SUPPLY_5V, NANO_RESET_0, NANO_RESET_1, NANO_AREF, RP_GPIO_20, RP_GPIO_21, RP_GPIO_22, RP_GPIO_23, MCP_GPIO_0, MCP_GPIO_1, MCP_GPIO_2, MCP_GPIO_3, CHIP_I, CHIP_J, CHIP_K, GND}, //this is for V5r1 change this for V5r2
+  {ROUTABLE_BUFFER_IN, NANO_RESET_0, NANO_RESET_1, ISENSE_MINUS, RP_GPIO_20, RP_GPIO_21, RP_GPIO_22, RP_GPIO_23, MCP_GPIO_0, MCP_GPIO_1, MCP_GPIO_2, MCP_GPIO_3, CHIP_I, CHIP_J, CHIP_K, GND}, //this is for V5r1 change this for V5r2
   {CHIP_A,CHIP_B,CHIP_C,CHIP_D,CHIP_E,CHIP_F,CHIP_G,CHIP_H}}
   };
 

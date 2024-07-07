@@ -7,9 +7,10 @@
 #include "SafeString.h"
 #include "NetsToChipConnections.h"
 #include <EEPROM.h>
+#include "Peripherals.h"
 
-int8_t newNode1 = -1;
-int8_t newNode2 = -1;
+int16_t newNode1 = -1;
+int16_t newNode2 = -1;
 
 int foundNode1Net = 0; // netNumbers where that node is, a node can only be in 1 net (except current sense, we'll deal with that separately)
 int foundNode2Net = 0; // netNumbers where that node is, a node can only be in 1 net (except current sense, we'll deal with that separately)
@@ -43,7 +44,7 @@ void getNodesToConnect() // read in the nodes you'd like to connect
         newNode1 = path[i].node1;
 
         newNode2 = path[i].node2;
-
+//debugNM = true;
         if (debugNM)
             printNodeOrName(newNode1);
         if (debugNM)
@@ -52,7 +53,7 @@ void getNodesToConnect() // read in the nodes you'd like to connect
             printNodeOrName(newNode2);
         if (debugNM)
             Serial.print("\n\r");
-
+//debugNM = false;
         // do some error checking
 
         if (newNode1 <= 0 || newNode2 <= 0)
@@ -428,16 +429,70 @@ void createNewNet() // add those nodes to a new net
     path[newBridgeIndex].net = newNetNumber;
 }
 
-void addBridgeToNet(uint8_t netToAddBridge, int8_t node1, int8_t node2) // just add those nodes to the net
+void addBridgeToNet(uint16_t netToAddBridge, int16_t node1, int16_t node2) // just add those nodes to the net
 {
     int newBridgeIndex = findFirstUnusedBridgeIndex(netToAddBridge);
     net[netToAddBridge].bridges[newBridgeIndex][0] = node1;
     net[netToAddBridge].bridges[newBridgeIndex][1] = node2;
 }
 
+void populateSpecialFunctions(int net, int node)
+{
+int foundGPIO = 0;
+    switch (node)
+    {
+        case 135:
+            gpioNet[0] = net;
+            foundGPIO = 1;
+            break;
+        case 136:
+
+            gpioNet[1] = net;
+            foundGPIO = 1;
+            break;
+        case 137:
+            
+                gpioNet[2] = net;
+                foundGPIO = 1;
+                break;
+        case 138:
+            gpioNet[3] = net;
+            foundGPIO = 1;
+            break;
+        case 122:
+            gpioNet[4] = net;
+            foundGPIO = 1;
+            break;
+        case 123:
+            gpioNet[5] = net;
+            foundGPIO = 1;
+            break;
+        case 124:
+            gpioNet[6] = net;
+            foundGPIO = 1;
+            break;
+        case 125:
+            gpioNet[7] = net;
+            foundGPIO = 1;
+            break;
+    }
+    if (foundGPIO ==1)
+    {
+//     for (int i = 0; i < 8; i++)
+//     {
+// Serial.print("gpioNet[");
+// Serial.print(i);
+// Serial.print("] = ");
+// Serial.println(gpioNet[i]);
+    
+//     }   
+    }
+
+}
 void addNodeToNet(int netToAddNode, int node)
 {
     int newNodeIndex = findFirstUnusedNodeIndex(netToAddNode); // using a function lets us add more error checking later and maybe shift the nodes down so they're left justified
+    populateSpecialFunctions(netToAddNode, node);
     for (int i = 0; i < MAX_NODES; i++)
     {
         if (net[netToAddNode].nodes[i] == 0)
@@ -912,7 +967,7 @@ const char *definesToChar(int defined, int longOrShort) // converts the internal
 
     const char *defNanoToCharShort[35] = {"VIN", "D0", "D1", "D2", "D3", "D4", "D5", "D6", "D7", "D8", "D9", "D10", "D11", "D12", "D13", "RESET", "AREF", "A0", "A1", "A2", "A3", "A4", "A5", "A6", "A7", "RST0", "RST1", "N_GND1", "N_GND0", "NANO_3V3", "NANO_5V"};
 
-    const char *defSpecialToCharShort[45] = {"GND", "TOP_R", "BOT_R", "3V3", "TOP_GND", "5V", "DAC_0", "DAC_1", "I_POS", "I_NEG", "ADC_0" , "ADC_1" , "ADC_2" , "ADC_3", "GPIO_0", "NOT_DEFINED", "UART_Tx", "UART_Rx", "GPIO_18", "GPIO_19", "8V_P", "8V_N", "EXP_GPIO_0", "EXP_GPIO_1", "EXP_GPIO_2", "EXP_GPIO_3", "BOT_GND", "EMPTY", "LOGO_TOP", "LOGO_BOT", "GPIO_PAD", "DAC_PAD", "ADC_PAD", "BLDG_TOP", "BLDG_BOT", "GPIO_20", "GPIO_21", "GPIO_22", "GPIO_23", "BUF_IN", "BUF_OUT"};
+    const char *defSpecialToCharShort[45] = {"GND", "TOP_R", "BOT_R", "3V3", "TOP_GND", "5V", "DAC_0", "DAC_1", "I_POS", "I_NEG", "ADC_0" , "ADC_1" , "ADC_2" , "ADC_3", "GP_0", "NOT_DEFINED", "UART_Tx", "UART_Rx", "GP_18", "GP_19", "8V_P", "8V_N", "EXP_0", "EXP_1", "EXP_2", "EXP_3", "BOT_GND", "EMPTY", "LOGO_T", "LOGO_B", "GPIO_PAD", "DAC_PAD", "ADC_PAD", "BLDG_TOP", "BLDG_BOT", "GP_20", "GP_21", "GP_22", "GP_23", "BUF_IN", "BUF_OUT"};
 
 
     const char *defNanoToCharLong[35] = {"NANO_VIN", "NANO_D0", "NANO_D1", "NANO_D2", "NANO_D3", "NANO_D4", "NANO_D5", "NANO_D6", "NANO_D7", "NANO_D8", "NANO_D9", "NANO_D10", "NANO_D11", "NANO_D12", "NANO_D13", "NANO_RESET", "NANO_AREF", "NANO_A0", "NANO_A1", "NANO_A2", "NANO_A3", "NANO_A4", "NANO_A5", "NANO_A6", "NANO_A7", "NANO_RST0", "NANO_RST1", "NANO_N_GND1", "NANO_N_GND0", "NANO_3V3", "NANO_5V"};
