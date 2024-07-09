@@ -497,14 +497,14 @@ void printNodeFile(int slot, int printOrString)
         nodeFileString.replace("134", "BUILDING_PAD_BOTTOM");
         nodeFileString.replace("126", "BOTTOM_RAIL_GND");
         nodeFileString.replace("104", "TOP_RAIL_GND");
-        nodeFileString.replace("122", "MCP_GPIO_0");
-        nodeFileString.replace("123", "MCP_GPIO_1");
-        nodeFileString.replace("124", "MCP_GPIO_2");
-        nodeFileString.replace("125", "MCP_GPIO_3");
-        nodeFileString.replace("135", "GPIO_0");
-        nodeFileString.replace("136", "GPIO_1");
-        nodeFileString.replace("137", "GPIO_2");
-        nodeFileString.replace("138", "GPIO_3");
+        nodeFileString.replace("122", "GPIO_5");
+        nodeFileString.replace("123", "GPIO_6");
+        nodeFileString.replace("124", "GPIO_7");
+        nodeFileString.replace("125", "GPIO_8");
+        nodeFileString.replace("135", "GPIO_1");
+        nodeFileString.replace("136", "GPIO_2");
+        nodeFileString.replace("137", "GPIO_3");
+        nodeFileString.replace("138", "GPIO_4");
         nodeFileString.replace("139", "BUFFER_IN");
         nodeFileString.replace("140", "BUFFER_OUT");
 

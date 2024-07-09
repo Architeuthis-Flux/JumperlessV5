@@ -43,6 +43,8 @@ void initINA219(void);
 void initADC(void);
 void printCalibration(void);
 void initDAC(void);
+
+void setRailsAndDACs(void);
 void setTopRail(int value = 1650);
 void setTopRail(float value);
 void setBotRail(int value = 1650);

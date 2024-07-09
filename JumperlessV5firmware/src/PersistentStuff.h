@@ -22,9 +22,12 @@ void debugFlagInit(int forceDefaults = 0);
 void saveLEDbrightness(int forceDefaults = 0);
 
 
-
+void saveVoltages(float top , float bot , float dac0 ,  float dac1 );
+void readVoltages(void);
 void saveDebugFlags(void);
 
+void saveLogoBindings(void);
+void readLogoBindings(void);
 char lastCommandRead(void);
 void lastCommandWrite(char lastCommand);
 

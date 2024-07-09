@@ -122,8 +122,7 @@ net[2] =     {     2        ,"Top Rail"       ,{TOP_RAIL}            ,{{}}      
 net[3] =     {     3        ,"Bottom Rail"    ,{BOTTOM_RAIL}         ,{{}}                   ,BOTTOM_RAIL            ,{}          ,{GND}                               , 1};
 net[4] =     {     4        ,"DAC 0"          ,{DAC0}                ,{{}}                   ,DAC0                   ,{}          ,{GND}                               , 1};
 net[5] =     {     5        ,"DAC 1"          ,{DAC1}                ,{{}}                   ,DAC1                   ,{}          ,{GND}                               , 1};
-net[6] =     {     6        ,"I Sense +"      ,{ISENSE_PLUS}         ,{{}}                   ,ISENSE_PLUS            ,{}          ,{ISENSE_MINUS}                      , 2};
-net[7] =     {     7        ,"I Sense -"      ,{ISENSE_MINUS}        ,{{}}                   ,ISENSE_MINUS           ,{}          ,{ISENSE_PLUS}                       , 2};
+
 
 
       //clang-format on
@@ -133,18 +132,16 @@ net[7] =     {     7        ,"I Sense -"      ,{ISENSE_MINUS}        ,{{}}      
   net[3].rawColor = rawSpecialNetColors[3];
   net[4].rawColor = rawSpecialNetColors[4];
   net[5].rawColor = rawSpecialNetColors[5];
-  net[6].rawColor = rawSpecialNetColors[6];
-  net[7].rawColor = rawSpecialNetColors[7];
+
 
   net[1].machine = false;
   net[2].machine = false;
   net[3].machine = false;
   net[4].machine = false;
   net[5].machine = false;
-  net[6].machine = false;
-  net[7].machine = false;
 
-  for (int i = 8; i < MAX_NETS; i++) {
+
+  for (int i = 6; i < MAX_NETS; i++) {
     net[i] = {0, " ", {}, {{}}, 0, {}, {}, 0, 0, 0, 0, false};
   }
 

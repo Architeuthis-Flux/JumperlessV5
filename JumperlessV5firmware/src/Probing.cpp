@@ -10,15 +10,15 @@
 #include "NetsToChipConnections.h"
 #include "Peripherals.h"
 // #include "AdcUsb.h"
+#include "Graphics.h"
+#include "PersistentStuff.h"
 #include "RotaryEncoder.h"
 #include "hardware/pwm.h"
 #include "pico/stdlib.h"
-#include <EEPROM.h>
-#include <algorithm>
-
-#include "Graphics.h"
 #include <Adafruit_GFX.h>
 #include <Adafruit_SSD1306.h>
+#include <EEPROM.h>
+#include <algorithm>
 #define OLED_CONNECTED 0
 
 #define SCREEN_WIDTH 128 // OLED display width, in pixels
@@ -72,7 +72,7 @@ int voltageSelection = SUPPLY_3V3;
 int voltageChosen = 0;
 int connectOrClearProbe = 0;
 int wasRotaryMode = 0;
-
+int inPadMenu = 0;
 int rainbowList[13][3] = {
     {40, 50, 80}, {88, 33, 70}, {30, 15, 45}, {8, 27, 45},  {45, 18, 19},
     {35, 42, 5},  {02, 45, 35}, {18, 25, 45}, {40, 12, 45}, {10, 32, 45},
@@ -118,9 +118,13 @@ void drawchar(void) {
   }
   /// delay(2000);
 }
+int checkingPads = 0;
 
+int justAttached = 0;
 int probeMode(int pin, int setOrClear) {
-
+  if (checkingPads == 1) {
+    return -1;
+  }
   startProbe();
   int probeButtonToggle = 0;
 restartProbing:
@@ -204,7 +208,7 @@ restartProbing:
     if (row[0] == -18 && (millis() - probingTimer > 500)) { //&&
       // checkProbeButton() == 1 ){//&& (millis() - probeButtonTimer) > 1000) {
       // Serial.println("button\n\r");
-      if (longShortPress(750) == 1) {
+      if (longShortPress(500) == 1) {
         setOrClear = !setOrClear;
         probeButtonToggle = 1;
 
@@ -213,6 +217,8 @@ restartProbing:
         // showNets();
         showLEDsCore2 = 1;
         sfProbeMenu = 0;
+        connectedRowsIndex = 0;
+        connectedRows[0] = -1;
         goto restartProbing;
         // break;
       }
@@ -462,6 +468,9 @@ uint32_t sfOptionColors[12] = {
 
 int selectSFprobeMenu(int function) {
 
+  if (checkingPads == 1) {
+    return function;
+  }
   switch (function) {
 
   case 132: {
@@ -558,14 +567,8 @@ int selectSFprobeMenu(int function) {
       break;
     }
     }
-    // showLEDsCore2 = 2;
-    unsigned long skipTimer = millis();
-    while (millis() - skipTimer < 2000) {
-
-      if (checkProbeButton() == 1 || readProbe() != -1) {
-        break;
-      }
-    }
+    showLEDsCore2 = 2;
+    delayWithButton(800);
 
     // b.clear();
     clearLEDsExceptRails();
@@ -574,27 +577,24 @@ int selectSFprobeMenu(int function) {
     b.print("Attach", sfOptionColors[0], 0xFFFFFF, 0, 0, -1);
     b.print("to Pad", sfOptionColors[2], 0xFFFFFF, 0, 1, -1);
     // showLEDsCore2 = 2;
-    skipTimer = millis();
 
-    while (millis() - skipTimer < 1000) {
+    delayWithButton(800);
 
-      if (checkProbeButton() == 1 || readProbe() != -1) {
-        // delay(100);
-        break;
-      }
-    }
     // delay(800);
 
     function = attachPadsToSettings(function);
-    node1or2 = 0;
-    nodesToConnect[0] = -1;
-    nodesToConnect[1] = -1;
-    connectedRowsIndex = 0;
+    // node1or2 = 0;
+    // nodesToConnect[0] = function;
+    // nodesToConnect[1] = -1;
+    // connectedRowsIndex = 1;
+
+    Serial.print("function!!!!!: ");
+    printNodeOrName(function, 1);
     showLEDsCore2 = 1;
     lightUpRail();
-    delay(500);
+    delay(200);
     sfProbeMenu = 0;
-    return -1;
+    // return function;
 
     delay(100);
 
@@ -637,11 +637,14 @@ int attachPadsToSettings(int pad) {
   int dacChosen = -1;
   int adcChosen = -1;
   int gpioChosen = -1;
+  connectedRowsIndex = 0;
+  connectedRows[0] = -1;
+  node1or2 = 0;
   unsigned long skipTimer = millis();
 
   // b.clear();
   clearLEDsExceptRails();
-  // showLEDsCore2 = 2;
+  showLEDsCore2 = 2;
   //  lastReadRaw = 0;
   b.print("DAC", sfOptionColors[0], 0xFFFFFF, 0, 0, -1);
   b.print("ADC", sfOptionColors[1], 0xFFFFFF, 4, 0, 0);
@@ -660,8 +663,9 @@ int attachPadsToSettings(int pad) {
         Serial.print("dacChosen: ");
         Serial.println(dacChosen);
         // b.clear();
+        settingOption = dacChosen - DAC0;
         clearLEDsExceptRails();
-        // showLEDsCore2 = 1;
+         showLEDsCore2 = 1;
 
         break;
       }
@@ -671,38 +675,21 @@ int attachPadsToSettings(int pad) {
         adcChosen = chooseADC();
         Serial.print("adcChosen: ");
         Serial.println(adcChosen);
+        settingOption = adcChosen - ADC0;
 
-        while (settingOption == -1) {
-          int reading = readProbe();
-          if (reading != -1) {
-            switch (reading) {
-            case 37 ... 53: {
-              settingOption = 0;
-              break;
-            }
-            case 54 ... 70: {
-              settingOption = 1;
-              break;
-            }
-            case 71 ... 87: {
-              settingOption = 2;
-              break;
-            }
-            }
-          }
-        }
         // b.clear();
         clearLEDsExceptRails();
-        // showLEDsCore2 = 1;
+       showLEDsCore2 = 1;
 
         break;
       }
       case 37 ... 53: {
         selected = 2;
         functionSetting = 2;
-        b.clear();
+        // b.clear();
         clearLEDsExceptRails();
         // showLEDsCore2 = 2;
+
         gpioChosen = chooseGPIO(1);
         // b.clear();
         clearLEDsExceptRails();
@@ -712,7 +699,7 @@ int attachPadsToSettings(int pad) {
         } else if (gpioChosen >= 135 && gpioChosen <= 138) {
           gpioChosen = gpioChosen - 134;
         }
-        if (gpioState[gpioChosen] == 2) {
+        if (gpioState[gpioChosen] != 0) {
           clearLEDsExceptRails();
           showLEDsCore2 = 2;
           Serial.print("Set GP");
@@ -733,21 +720,27 @@ int attachPadsToSettings(int pad) {
           b.printRawRow(0b00001110, 34, 0x200010, 0xffffff);
           b.printRawRow(0b00000100, 35, 0x200010, 0xffffff);
           showLEDsCore2 = 2;
-          delayWithButton(2000);
+          delayWithButton(400);
 
-          gpioState[gpioChosen] = 0;
-          clearLEDsExceptRails();
+
         } else {
+
+
+
         }
-        clearLEDsExceptRails();
+          gpioState[gpioChosen] = 0;
+          settingOption = gpioChosen;
+          setGPIO();
+          clearLEDsExceptRails();
+  
         showLEDsCore2 = 2;
         b.print("Tap to", sfOptionColors[(gpioChosen + 1) % 7], 0xFFFFFF, 0, 0,
                 1);
         b.print("toggle", sfOptionColors[(gpioChosen + 2) % 7], 0xFFFFFF, 0, 1,
                 1);
-        delayWithButton(2000);
+        delayWithButton(500);
         clearLEDsExceptRails();
-        // showLEDsCore2 = 1;
+         showLEDsCore2 = 1;
 
         break;
       }
@@ -835,8 +828,10 @@ int attachPadsToSettings(int pad) {
     break;
   }
   }
+  saveLogoBindings();
+  delay(3);
   showLEDsCore2 = 1;
-  return -1;
+  return function;
 }
 
 int delayWithButton(int delayTime) {
@@ -924,18 +919,20 @@ int chooseADC(void) {
   // b.clear();
   clearLEDsExceptRails();
   // lastReadRaw = 0;
-  showLEDsCore2 = 2;
+  // showLEDsCore2 = 2;
   b.print(" ADC", scaleDownBrightness(rawOtherColors[8], 4, 22), 0xFFFFFF, 0, 0,
           3);
-  sfProbeMenu = 1;
-  // delay(1000);
-  // function = 111;
+  // sfProbeMenu = 1;
+  //  delay(1000);
+  //  function = 111;
   b.print("1", sfOptionColors[0], 0xFFFFFF, 0, 1, 3);
   b.print("2", sfOptionColors[1], 0xFFFFFF, 2, 1, 3);
   b.print("3", sfOptionColors[2], 0xFFFFFF, 4, 1, 3);
   int selected = -1;
   while (selected == -1) {
     int reading = readProbe();
+    // Serial.print("reading: ");
+    // Serial.println(reading);
     if (reading != -1) {
       switch (reading) {
       case 34 ... 40: {
@@ -959,8 +956,8 @@ int chooseADC(void) {
   }
 
   clearLEDsExceptRails();
-  showNets();
-  showLEDsCore2 = 1;
+  // showNets();
+  // showLEDsCore2 = 1;
   return function;
 }
 
@@ -1021,6 +1018,7 @@ int chooseGPIO(int skipInputOutput) {
   b.print("7", sfOptionColors[6], 0xFFFFFF, 4, 1, 3);
   b.print("8", sfOptionColors[7], 0xFFFFFF, 5, 1, 4);
   int selected = -1;
+  delayWithButton(300);
   while (selected == -1) {
     int reading = readProbe();
     if (reading != -1) {
@@ -1176,7 +1174,7 @@ float voltageSelect(int fiveOrEight) {
         delay(10);
       }
       if (checkProbeButton() == 1 || vSelected == 10) {
-        // Serial.println("button\n\r");
+        Serial.println("button\n\r");
 
         rawSpecialNetColors[4] = color;
         rgbColor rg = unpackRgb(color);
@@ -1850,28 +1848,31 @@ int getNothingTouched(int samples) {
 unsigned long doubleTimeout = 0;
 
 unsigned long padTimeout = 0;
-int padTimeoutLength = 1500;
-int checkingPads = 0;
+int padTimeoutLength = 250;
 
 int state = 0;
+int lastPadTouched = 0;
+unsigned long padNoTouch = 0;
+
 void checkPads(void) {
   // startProbe();
   checkingPads = 1;
   int probeReading = readProbeRaw();
   if (probeReading == -1) {
 
-    padTimeout = millis();
-    lastReadRaw = 0;
     checkingPads = 0;
+    padNoTouch++;
 
+    if (millis() - padTimeout > padTimeoutLength) {
+      padTimeout = millis();
+      lastReadRaw = 0;
+    }
     return;
   }
+  Serial.print("padNoTouch: ");
+  Serial.println(padNoTouch);
+  padNoTouch = 0;
 
-  if (millis() - padTimeout > padTimeoutLength) {
-    padTimeout = millis();
-    lastReadRaw = 0;
-    // checkingPads = 0;
-  }
   /* clang-format off */
   int probeRowMap[103] = {
 
@@ -1900,23 +1901,193 @@ void checkPads(void) {
     checkingPads = 0;
     return;
   }
-  // padTimeout = millis();
+
+  padTimeout = millis();
   Serial.print("probeReading: ");
   Serial.println(probeReading);
+  int foundGpio = 0;
+  int foundAdc = 0;
+  int foundDac = 0;
+  // inPadMenu = 1;
+  switch (probeReading) {
 
-  checkingPads = 0;
+  case LOGO_PAD_TOP: {
+    switch (logoTopSetting[0]) {
+    case -1:
+      break;
+    case 0: {
+      foundDac = 1;
+      if (logoTopSetting[1] >= 0 && logoTopSetting[1] <= 1) {
 
-  state = !state;
+        // probeActive = 1;
+        // sfProbeMenu = 1;
+        clearLEDsExceptRails();
+        // checkingPads = 0;
+        if (logoTopSetting[1] == 0) {
 
-  if (state == 1) {
-    b.clear();
-    b.printRawRow(0b00011111, probeReading/3, 0x4500e8, 0xffffff);
-    leds.show();
-  } else {
-    b.clear();
-    b.printRawRow(0b00011111, probeReading/3, 0x000000, 0xffffff);
-    leds.show();
+          dacOutput[0] = voltageSelect(5);
+
+        } else {
+          dacOutput[1] = voltageSelect(8);
+        }
+
+        setRailsAndDACs();
+      }
+
+      break;
+    }
+    case 1: {
+      foundAdc = 1;
+      if (logoTopSetting[1] >= 0 && logoTopSetting[1] <= 3) {
+        adcRange[logoTopSetting[1]][1] += 0.1;
+      }
+      break;
+    }
+    case 2: {
+      foundGpio = 1;
+      if (logoTopSetting[1] >= 0 && logoTopSetting[1] <= 8) {
+        if (gpioState[logoTopSetting[1]] == 0) {
+          gpioState[logoTopSetting[1]] = 1;
+        } else {
+          gpioState[logoTopSetting[1]] = 0;
+        }
+      }
+      setGPIO();
+      break;
+    }
+    }
+    break;
   }
+
+  case LOGO_PAD_BOTTOM: {
+    switch (logoBottomSetting[0]) {
+    case -1:
+      break;
+    case 0: {
+      foundDac = 1;
+      if (logoBottomSetting[1] >= 0 && logoBottomSetting[1] <= 1) {
+        // probeActive = 1;
+        // sfProbeMenu = 1;
+        clearLEDsExceptRails();
+        // checkingPads = 0;
+        if (logoBottomSetting[1] == 0) {
+          dacOutput[2] = voltageSelect(5);
+        } else {
+          dacOutput[3] = voltageSelect(8);
+        }
+        setRailsAndDACs();
+      }
+      break;
+    }
+    case 1: {
+      foundAdc = 1;
+      if (logoBottomSetting[1] >= 0 && logoBottomSetting[1] <= 3) {
+        adcRange[logoBottomSetting[1]][1] += 0.1;
+      }
+      break;
+    }
+    case 2: {
+      foundGpio = 1;
+      if (logoBottomSetting[1] >= 0 && logoBottomSetting[1] <= 8) {
+        if (gpioState[logoBottomSetting[1]] == 0) {
+          gpioState[logoBottomSetting[1]] = 1;
+        } else {
+          gpioState[logoBottomSetting[1]] = 0;
+        }
+      }
+      setGPIO();
+      break;
+    }
+    }
+    break;
+  }
+  case BUILDING_PAD_TOP: {
+    switch (buildingTopSetting[0]) {
+    case -1:
+      break;
+    case 0: {
+      foundDac = 1;
+      if (buildingTopSetting[1] >= 0 && buildingTopSetting[1] <= 1) {
+        // probeActive = 1;
+        // sfProbeMenu = 1;
+        clearLEDsExceptRails();
+        // checkingPads = 0;
+        if (buildingTopSetting[1] == 0) {
+          dacOutput[4] = voltageSelect(5);
+        } else {
+          dacOutput[5] = voltageSelect(8);
+        }
+        setRailsAndDACs();
+      }
+      break;
+    }
+    case 1: {
+      foundAdc = 1;
+      if (buildingTopSetting[1] >= 0 && buildingTopSetting[1] <= 3) {
+        adcRange[buildingTopSetting[1]][1] += 0.1;
+      }
+      break;
+    }
+    case 2: {
+      foundGpio = 1;
+      if (buildingTopSetting[1] >= 0 && buildingTopSetting[1] <= 8) {
+        if (gpioState[buildingTopSetting[1]] == 0) {
+          gpioState[buildingTopSetting[1]] = 1;
+        } else {
+          gpioState[buildingTopSetting[1]] = 0;
+        }
+      }
+      setGPIO();
+      break;
+    }
+    }
+    break;
+  }
+  case BUILDING_PAD_BOTTOM: {
+    switch (buildingBottomSetting[0]) {
+    case -1:
+      break;
+    case 0: {
+      foundDac = 1;
+      if (buildingBottomSetting[1] >= 0 && buildingBottomSetting[1] <= 1) {
+        // probeActive = 1;
+        // sfProbeMenu = 1;
+        clearLEDsExceptRails();
+        // checkingPads = 0;
+        if (buildingBottomSetting[1] == 0) {
+          dacOutput[6] = voltageSelect(5);
+        } else {
+          dacOutput[7] = voltageSelect(8);
+        }
+        setRailsAndDACs();
+      }
+      break;
+    }
+    case 1: {
+      foundAdc = 1;
+      if (buildingBottomSetting[1] >= 0 && buildingBottomSetting[1] <= 3) {
+        adcRange[buildingBottomSetting[1] ][1] += 0.1;
+      }
+      break;
+    }
+    case 2: {
+      foundGpio = 1;
+      if (buildingBottomSetting[1] >= 0 && buildingBottomSetting[1] <= 8) {
+        if (gpioState[buildingBottomSetting[1] ] == 0) {
+          gpioState[buildingBottomSetting[1] ] = 1;
+        } else {
+          gpioState[buildingBottomSetting[1]] = 0;
+        }
+      }
+      setGPIO();
+      break;
+    }
+    }
+    break;
+  }
+  }
+  inPadMenu = 0;
+  // delay(1000);
 }
 
 int readProbeRaw(int readNothingTouched) {

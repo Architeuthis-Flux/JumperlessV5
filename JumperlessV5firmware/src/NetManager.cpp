@@ -383,7 +383,7 @@ int shiftNets(int deletedNet) // why in the ever-loving fuck does this work? the
     net[lastNet].priority = 0;
     net[lastNet].specialFunction = -1;
 
-    for (int i = 0; i < 8; i++)
+    for (int i = 0; i < 6; i++)
     {
         net[lastNet].intersections[i] = 0;
         net[lastNet].doNotIntersectNodes[i] = 0;
@@ -442,37 +442,37 @@ int foundGPIO = 0;
     switch (node)
     {
         case 135:
-            gpioNet[0] = net;
+            gpioNet[1] = net;
             foundGPIO = 1;
             break;
         case 136:
 
-            gpioNet[1] = net;
+            gpioNet[2] = net;
             foundGPIO = 1;
             break;
         case 137:
             
-                gpioNet[2] = net;
+                gpioNet[3] = net;
                 foundGPIO = 1;
                 break;
         case 138:
-            gpioNet[3] = net;
-            foundGPIO = 1;
-            break;
-        case 122:
             gpioNet[4] = net;
             foundGPIO = 1;
             break;
-        case 123:
+        case 122:
             gpioNet[5] = net;
             foundGPIO = 1;
             break;
-        case 124:
+        case 123:
             gpioNet[6] = net;
             foundGPIO = 1;
             break;
-        case 125:
+        case 124:
             gpioNet[7] = net;
+            foundGPIO = 1;
+            break;
+        case 125:
+            gpioNet[8] = net;
             foundGPIO = 1;
             break;
     }
@@ -675,7 +675,7 @@ int checkDoNotIntersectsByNode(int netToCheck, int nodeToCheck) // make sure non
 
 void listNets(void) // list nets doesnt care about debugNM, don't call it if you don't want it to print
 {
-    if (net[8].number == 0)
+    if (net[6].number == 0)
     {
           //Serial.print("No nets to list\n\r");
         // return;
@@ -685,7 +685,7 @@ void listNets(void) // list nets doesnt care about debugNM, don't call it if you
         Serial.print("\n\rIndex\tName\t\tNumber\tColor\t\tNodes\t");
 
         int tabs = 0;
-        for (int i = 8; i < MAX_NETS; i++)
+        for (int i = 6; i < MAX_NETS; i++)
         {
             if (net[i].number == 0 || net[i].nodes[0] == -1) // stops searching if it gets to an unallocated net
             {
@@ -787,10 +787,12 @@ Serial.print("\t\t");
 
 void listSpecialNets()
 {
-    Serial.print("\n\rIndex\tName\t\tNumber\tColor\t\tNodes\t");//\t\t\t\tColor\t\tDo Not Intersects");
+    Serial.print("\n\rIndex\tName\t\tVoltage\t   Color\t    Nodes\t");//\t\t\t\tColor\t\tDo Not Intersects");
     int tabs = 0;
-    for (int i = 0; i < 8; i++)
+     
+    for (int i = 1; i < 6; i++)
     {
+        int spaces = 0;
         if (net[i].number == 0) // stops searching if it gets to an unallocated net
         {
             // Serial.print("Done listing nets");
@@ -798,24 +800,80 @@ void listSpecialNets()
         }
 
         Serial.print("\n\r");
-        Serial.print(i);
+        Serial.print(net[i].number);
         Serial.print("\t");
 
         int netNameLength = Serial.print(net[i].name);
-        if (netNameLength < 8)
+        // if (netNameLength < 8)
+        // {
+        //     Serial.print("\t");
+        // }
+        for (int i = 0; i < 8 - netNameLength; i++)
         {
-            Serial.print("\t");
+            Serial.print(" ");
         }
 
         Serial.print("\t");
-        Serial.print(net[i].number);
-        Serial.print("\t0x");
-        netNameLength = Serial.print(net[i].rawColor, HEX);
-        if (netNameLength < 6)
+
+        switch (i)
         {
-            Serial.print("\t");
+            case 1:
+                spaces += Serial.print("0V");
+                break;
+            case 2:
+                spaces += Serial.print(railVoltage[0]);
+                spaces += Serial.print("V");
+                break;
+            case 3:
+                spaces += Serial.print(railVoltage[1]);
+                spaces += Serial.print("V");
+                break;
+            case 4:
+                spaces += Serial.print(dacOutput[0]);
+                spaces += Serial.print("V");
+                break;
+            case 5:
+                spaces += Serial.print(dacOutput[1]);
+                spaces += Serial.print("V");
+                break;
+            default:
+               spaces +=  Serial.print("N/A");
+                //Serial.print("V");
+                break;
         }
-        Serial.print("\t");
+        for (int i = 0; i < 8 - spaces; i++)
+        {
+            Serial.print(" ");
+        }
+        Serial.print("   ");
+
+
+        Serial.print("r");
+        if (net[i].color.r < 16)
+        {
+            Serial.print("0");
+        }
+        netNameLength = Serial.print(net[i].color.r, HEX);
+
+        Serial.print(" g");
+        if (net[i].color.g < 16)
+        {
+            Serial.print("0");
+        }
+        netNameLength = Serial.print(net[i].color.g, HEX);
+
+        Serial.print(" b");
+        if (net[i].color.b < 16)
+        {
+            Serial.print("0");
+        }
+        netNameLength = Serial.print(net[i].color.b, HEX);
+
+        // if (netNameLength < 6)
+        // {
+        //     Serial.print("\t");
+        // }
+        Serial.print("\t    ");
 
         tabs = 0;
         for (int j = 0; j < MAX_NODES; j++)
@@ -839,28 +897,28 @@ void listSpecialNets()
             Serial.print("\t");
         }
 
-        Serial.print("{");
+        // Serial.print("{");
 
-        tabs = 0;
-        for (int j = 0; j < MAX_BRIDGES; j++)
-        {
+        // tabs = 0;
+        // for (int j = 0; j < MAX_BRIDGES; j++)
+        // {
 
-            tabs += printNodeOrName(net[i].bridges[j][0]);
-            tabs += Serial.print("-");
-            tabs += printNodeOrName(net[i].bridges[j][1]);
-            // Serial.print(",");
+        //     tabs += printNodeOrName(net[i].bridges[j][0]);
+        //     tabs += Serial.print("-");
+        //     tabs += printNodeOrName(net[i].bridges[j][1]);
+        //     // Serial.print(",");
 
-            if (net[i].bridges[j + 1][0] == 0)
-            {
-                break;
-            }
-            else
-            {
+        //     if (net[i].bridges[j + 1][0] == 0)
+        //     {
+        //         break;
+        //     }
+        //     else
+        //     {
 
-                tabs += Serial.print(",");
-            }
-        }
-        tabs += Serial.print("}\t");
+        //         tabs += Serial.print(",");
+        //     }
+        // }
+        // tabs += Serial.print("}\t");
 
         for (int i = 0; i < 3 - (tabs / 8); i++)
         {
@@ -967,12 +1025,12 @@ const char *definesToChar(int defined, int longOrShort) // converts the internal
 
     const char *defNanoToCharShort[35] = {"VIN", "D0", "D1", "D2", "D3", "D4", "D5", "D6", "D7", "D8", "D9", "D10", "D11", "D12", "D13", "RESET", "AREF", "A0", "A1", "A2", "A3", "A4", "A5", "A6", "A7", "RST0", "RST1", "N_GND1", "N_GND0", "NANO_3V3", "NANO_5V"};
 
-    const char *defSpecialToCharShort[45] = {"GND", "TOP_R", "BOT_R", "3V3", "TOP_GND", "5V", "DAC_0", "DAC_1", "I_POS", "I_NEG", "ADC_0" , "ADC_1" , "ADC_2" , "ADC_3", "GP_0", "NOT_DEFINED", "UART_Tx", "UART_Rx", "GP_18", "GP_19", "8V_P", "8V_N", "EXP_0", "EXP_1", "EXP_2", "EXP_3", "BOT_GND", "EMPTY", "LOGO_T", "LOGO_B", "GPIO_PAD", "DAC_PAD", "ADC_PAD", "BLDG_TOP", "BLDG_BOT", "GP_20", "GP_21", "GP_22", "GP_23", "BUF_IN", "BUF_OUT"};
+    const char *defSpecialToCharShort[45] = {"GND", "TOP_R", "BOT_R", "3V3", "TOP_GND", "5V", "DAC_0", "DAC_1", "I_POS", "I_NEG", "ADC_0" , "ADC_1" , "ADC_2" , "ADC_3", "GP_0", "NOT_DEFINED", "UART_Tx", "UART_Rx", "GP_18", "GP_19", "8V_P", "8V_N", "GP_5", "GP_6", "GP_7", "GP_8", "BOT_GND", "EMPTY", "LOGO_T", "LOGO_B", "GPIO_PAD", "DAC_PAD", "ADC_PAD", "BLDG_TOP", "BLDG_BOT", "GP_1", "GP_2", "GP_3", "GP_4", "BUF_IN", "BUF_OUT"};
 
 
     const char *defNanoToCharLong[35] = {"NANO_VIN", "NANO_D0", "NANO_D1", "NANO_D2", "NANO_D3", "NANO_D4", "NANO_D5", "NANO_D6", "NANO_D7", "NANO_D8", "NANO_D9", "NANO_D10", "NANO_D11", "NANO_D12", "NANO_D13", "NANO_RESET", "NANO_AREF", "NANO_A0", "NANO_A1", "NANO_A2", "NANO_A3", "NANO_A4", "NANO_A5", "NANO_A6", "NANO_A7", "NANO_RST0", "NANO_RST1", "NANO_N_GND1", "NANO_N_GND0", "NANO_3V3", "NANO_5V"};
 
-    const char *defSpecialToCharLong[45] = {"GND", "TOP_RAIL", "BOTTOM_RAIL", "SUPPLY_3V3", "TOP_GND", "SUPPLY_5V", "DAC0", "DAC1", "ISENSE_PLUS", "ISENSE_MINUS", "ADC0" , "ADC1" , "ADC2" , "ADC3", "RP_GPIO_0", "NOT_DEFINED", "RP_UART_Tx", "RP_UART_Rx", "RP_GPIO_18", "RP_GPIO_19", "8V_POS", "8V_NEG", "EXP_GPIO_0", "EXP_GPIO_1", "EXP_GPIO_2", "EXP_GPIO_3", "BOTTOM_GND", "EMPTY_NET", "LOGO_TOP", "LOGO_BOTTOM", "GPIO_PAD", "DAC_PAD", "ADC_PAD", "BUILDING_TOP", "BUILDING_BOT", "RP_GPIO_20", "RP_GPIO_21", "RP_GPIO_22", "RP_GPIO_23", "BUFFER_IN", "BUFFER_OUT"};
+    const char *defSpecialToCharLong[45] = {"GND", "TOP_RAIL", "BOTTOM_RAIL", "SUPPLY_3V3", "TOP_GND", "SUPPLY_5V", "DAC0", "DAC1", "ISENSE_PLUS", "ISENSE_MINUS", "ADC0" , "ADC1" , "ADC2" , "ADC3", "RP_GPIO_0", "NOT_DEFINED", "RP_UART_Tx", "RP_UART_Rx", "RP_GPIO_18", "RP_GPIO_19", "8V_POS", "8V_NEG", "GPIO_5", "GPIO_6", "GPIO_7", "GPIO_8", "BOTTOM_GND", "EMPTY_NET", "LOGO_TOP", "LOGO_BOTTOM", "GPIO_PAD", "DAC_PAD", "ADC_PAD", "BUILDING_TOP", "BUILDING_BOT", "GPIO_1", "GPIO_2", "GPIO_3", "GPIO_4", "BUFFER_IN", "BUFFER_OUT"};
 
 
     const char *emptyNet[] = {"EMPTY_NET", "?"};

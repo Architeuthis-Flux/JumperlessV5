@@ -18,6 +18,7 @@ extern int buildingTopSetting[2];
 extern int buildingBottomSetting[2];
 
 extern volatile int probeActive;
+extern int inPadMenu;
 
 enum measuredState
 {

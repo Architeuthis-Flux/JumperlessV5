@@ -26,6 +26,7 @@
 //  #include "SPI.h"
 
 #include <Adafruit_MCP23X17.h>
+#include "PersistentStuff.h"
 
 #include "CH446Q.h"
 #include "Probing.h"
@@ -379,47 +380,62 @@ void initDAC(void) {
 
 void setGPIO(void) {
 
-  for (int i = 0; i < 4; i++) {
+  for (int i = 0; i <= 4; i++) {
     switch (gpioState[i]) {
     case 0:
-      pinMode(20 + i, OUTPUT);
-      digitalWrite(i, LOW);
+      pinMode(19 + i, OUTPUT);
+      digitalWrite(19 +i, LOW);
       break;
     case 1:
-      pinMode(20 + i, OUTPUT);
-      digitalWrite(i, HIGH);
+      pinMode(19 + i, OUTPUT);
+      digitalWrite(19 +i, HIGH);
+      
       break;
     case 2:
-      pinMode(20 + i, INPUT);
+      pinMode(19 + i, INPUT);
       break;
     case 3:
-      pinMode(20 + i, INPUT_PULLUP);
+      pinMode(19 + i, INPUT_PULLUP);
       break;
     case 4:
-      pinMode(20 + i, INPUT_PULLDOWN);
+      pinMode(19 + i, INPUT_PULLDOWN);
       break;
     }
+    // Serial.print(19+i);
+    // Serial.print(" ");
+    // Serial.println(gpioState[i]);
   }
 
-  for (int i = 0; i < 4; i++) {
-    switch (gpioState[i + 4]) {
+  for (int i = 4; i <= 8; i++) {
+    switch (gpioState[i]) {
     case 0:
-      MCPIO.pinMode(4+i, OUTPUT);
-      MCPIO.digitalWrite(4+i, LOW);
+      MCPIO.pinMode(i, OUTPUT);
+      MCPIO.digitalWrite(i, LOW);
       break;
     case 1:
-      MCPIO.pinMode(4+i, OUTPUT);
-      MCPIO.digitalWrite(4+i, HIGH);
+      MCPIO.pinMode(i, OUTPUT);
+      MCPIO.digitalWrite(i, HIGH);
       break;
     case 2:
-      MCPIO.pinMode(4+i, INPUT);
+      MCPIO.pinMode(i, INPUT);
       break;
     case 3:
-      MCPIO.pinMode(4+i, INPUT_PULLUP);
+      MCPIO.pinMode(i, INPUT_PULLUP);
       
       break;
 
 
+    }
+  }
+  rgbColor onColor = {254, 40, 35};
+  rgbColor offColor = {0, 254, 48};
+  
+
+  for (int i = 1; i <= 8; i++) {
+    if (gpioNet[i] != -1 && gpioState[i] != 2 && gpioState[i] != 3 && gpioState[i] != 4) {
+      
+      net[gpioNet[i]].color = (gpioState[i] == 1 ? onColor : offColor);
+      lightUpNet(gpioNet[i], -1, 1, 05, 0, 0,packRgb(net[gpioNet[i]].color.r, net[gpioNet[i]].color.g, net[gpioNet[i]].color.b));
     }
   }
 }
@@ -549,6 +565,13 @@ int readFloatingOrStateMCP(int pin ) {
   return state;
 }
 
+
+void setRailsAndDACs(void) {
+  setTopRail(railVoltage[0]);
+  setBotRail(railVoltage[1]);
+  setDac0_5Vvoltage(dacOutput[0]);
+  setDac1_8Vvoltage(dacOutput[1]);
+}
 void setTopRail(float value) {
 
   int dacValue = (value * 4095 / 19.8) + 1660;
@@ -568,9 +591,11 @@ void setTopRail(float value) {
   // {
   //   dacValue = 0;
   // }
+  railVoltage[0] = value;
   digitalWrite(8, HIGH);
   mcp.setChannelValue(MCP4728_CHANNEL_C, dacValue);
   digitalWrite(8, LOW);
+  saveVoltages(railVoltage[0], railVoltage[1], dacOutput[0], dacOutput[1]);
 }
 
 void setBotRail(float value) {
@@ -580,10 +605,11 @@ void setBotRail(float value) {
   if (dacValue > 4095) {
     dacValue = 4095;
   }
-
+railVoltage[1] = value; 
   digitalWrite(8, HIGH);
   mcp.setChannelValue(MCP4728_CHANNEL_D, dacValue);
   digitalWrite(8, LOW);
+  saveVoltages(railVoltage[0], railVoltage[1], dacOutput[0], dacOutput[1]);
 }
 
 void setTopRail(int value) {
@@ -608,10 +634,12 @@ void setDac0_5Vvoltage(float voltage) {
   if (dacValue > 4095) {
     dacValue = 4095;
   }
+  dacOutput[0] = voltage;
 
   digitalWrite(8, HIGH);
   mcp.setChannelValue(MCP4728_CHANNEL_A, dacValue);
   digitalWrite(8, LOW);
+  saveVoltages(railVoltage[0], railVoltage[1], dacOutput[0], dacOutput[1]);
 }
 
 void setDac0_5VinputCode(uint16_t inputCode) {
@@ -630,10 +658,11 @@ void setDac1_8Vvoltage(float voltage) {
   if (dacValue < 0) {
     dacValue = 0;
   }
-
+  dacOutput[1] = voltage;
   digitalWrite(8, HIGH);
   mcp.setChannelValue(MCP4728_CHANNEL_B, dacValue);
   digitalWrite(8, LOW);
+  saveVoltages(railVoltage[0], railVoltage[1], dacOutput[0], dacOutput[1]);
 }
 
 void setDac1_8VinputCode(uint16_t inputCode) {

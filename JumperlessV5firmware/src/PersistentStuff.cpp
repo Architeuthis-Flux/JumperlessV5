@@ -5,7 +5,7 @@
 #include "LEDs.h"
 #include "NetManager.h"
 #include "Probing.h"
-
+#include "Peripherals.h"
 #include <EEPROM.h>
 
 void debugFlagInit(int forceDefaults) {
@@ -109,7 +109,8 @@ void debugFlagInit(int forceDefaults) {
     EEPROM.write(DISPLAYMODE_ADDRESS, 0);
     displayMode = 0;
   }
-
+readVoltages();
+readLogoBindings();
   EEPROM.commit();
   delay(5);
 }
@@ -277,6 +278,69 @@ void debugFlagSet(int flag) {
   return;
 }
 
+void saveVoltages(float top, float bot, float dac0, float dac1) {
+  EEPROM.put(TOP_RAIL_ADDRESS0, top);
+  EEPROM.put(BOTTOM_RAIL_ADDRESS0, bot);
+  EEPROM.put(DAC0_ADDRESS0, dac0);
+  EEPROM.put(DAC1_ADDRESS0, dac1);
+  EEPROM.commit();
+  delay(2);
+
+
+}
+
+void readVoltages(void) {
+
+  EEPROM.get(TOP_RAIL_ADDRESS0, railVoltage[0]);
+  EEPROM.get(BOTTOM_RAIL_ADDRESS0, railVoltage[1]);
+  EEPROM.get(DAC0_ADDRESS0, dacOutput[0]);
+  EEPROM.get(DAC1_ADDRESS0, dacOutput[1]);
+
+// setTopRail(railVoltage[0]);
+// setBotRail(railVoltage[1]);
+// setDac0_5Vvoltage(dacOutput[0]);
+// setDac1_8Vvoltage(dacOutput[1]);
+  return;
+}
+
+void saveLogoBindings(void) {
+  EEPROM.put(LOGO_TOP_ADDRESS0, logoTopSetting[0]);
+  EEPROM.put(LOGO_TOP_ADDRESS1, logoTopSetting[1]);
+  EEPROM.put(LOGO_BOTTOM_ADDRESS0, logoBottomSetting[0]);
+  EEPROM.put(LOGO_BOTTOM_ADDRESS1, logoBottomSetting[1]);
+  EEPROM.put(BUILDING_TOP_ADDRESS0, buildingTopSetting[0]);
+  EEPROM.put(BUILDING_TOP_ADDRESS1, buildingTopSetting[1]);
+  EEPROM.put(BUILDING_BOTTOM_ADDRESS0, buildingBottomSetting[0]);
+  EEPROM.put(BUILDING_BOTTOM_ADDRESS1, buildingBottomSetting[1]);
+  EEPROM.commit();
+  delay(2);
+}
+
+void readLogoBindings(void) {
+  EEPROM.get(LOGO_TOP_ADDRESS0, logoTopSetting[0]);
+
+  EEPROM.get(LOGO_TOP_ADDRESS1, logoTopSetting[1]);
+  if (logoTopSetting[0] == 2) {
+    gpioState[logoTopSetting[1]] = 0;
+  }
+  EEPROM.get(LOGO_BOTTOM_ADDRESS0, logoBottomSetting[0]);
+  EEPROM.get(LOGO_BOTTOM_ADDRESS1, logoBottomSetting[1]);
+  if (logoBottomSetting[0] == 2) {
+    gpioState[logoBottomSetting[1]] = 0;
+  }
+  EEPROM.get(BUILDING_TOP_ADDRESS0, buildingTopSetting[0]);
+  EEPROM.get(BUILDING_TOP_ADDRESS1, buildingTopSetting[1]);
+
+  if (buildingTopSetting[0] == 2) {
+    gpioState[buildingTopSetting[1]] = 0;
+  }
+  EEPROM.get(BUILDING_BOTTOM_ADDRESS0, buildingBottomSetting[0]);
+  EEPROM.get(BUILDING_BOTTOM_ADDRESS1, buildingBottomSetting[1]);
+  if (buildingBottomSetting[0] == 2) {
+    gpioState[buildingBottomSetting[1]] = 0;
+  }
+  return;
+} 
 
 void saveLEDbrightness(int forceDefaults) {
   if (forceDefaults == 1) {

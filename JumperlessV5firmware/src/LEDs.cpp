@@ -332,8 +332,8 @@ void assignNetColors(void) {
   int colorSlots1[20] = {-1};
   int colorSlots2[20] = {-1};
   int colorSlots3[20] = {-1};
-Serial.print("number of nets: ");
-Serial.println(numberOfNets);
+// Serial.print("number of nets: ");
+// Serial.println(numberOfNets);
   if (numberOfNets < 60) {
     for (int i = 0; i <= numberOfNets - 8; i++) {
 
@@ -433,8 +433,24 @@ Serial.println(numberOfNets);
       Serial.print(" ");
     }
   }
+  // for (int i = 0; i < numberOfNets; i++) {
+  //   Serial.println(colorSlots[i]);
+  // }
+  // Serial.println();
+  // Serial.println();
+  // int lastColor = numberOfNets - 8;
+  // for (int i=0; i<(numberOfNets-8)/2; i++){
+  //   int tempColor = colorSlots[i];
+  //   colorSlots[i] = colorSlots[lastColor]; 
+  //   colorSlots[lastColor] = tempColor;
+  //   lastColor--;
+    
+  // }
+  // for (int i = 0; i < numberOfNets; i++) {
+  //   Serial.println(colorSlots[i]);
+  // }
   int frontIndex = 0;
-  for (int i = 8; i <= numberOfNets; i++) {
+  for (int i = 6; i <= numberOfNets; i++) {
     // if(net[i].nodes[0] == -1){
     //     continue;
     // }
@@ -655,6 +671,8 @@ void lightUpNet(int netNumber, int node, int onOff, int brightness2,
                 leds.setPixelColor(
                     (nodesToPixelMap[net[netNumber].nodes[j]]) + 320, color);
               } else {
+
+
                 leds.setPixelColor(
                     (nodesToPixelMap[net[netNumber].nodes[j]]) * 5 + 0, color);
                 leds.setPixelColor(
@@ -665,7 +683,22 @@ void lightUpNet(int netNumber, int node, int onOff, int brightness2,
                     (nodesToPixelMap[net[netNumber].nodes[j]]) * 5 + 3, color);
                 leds.setPixelColor(
                     (nodesToPixelMap[net[netNumber].nodes[j]]) * 5 + 4, color);
+
+                    // if (logoTopSetting[
               }
+
+              // if (net[netNumber].nodes[j] >= RP_GPIO_1 && net[netNumber].nodes[j] <= RP_GPIO_4) {
+              //   leds.setPixelColor(
+              //       (nodesToPixelMap[net[netNumber].nodes[j]]) * 5 + 0, 0x101010);
+              //   leds.setPixelColor(
+              //       (nodesToPixelMap[net[netNumber].nodes[j]]) * 5 + 1, 0x101010);
+              //   leds.setPixelColor(
+              //       (nodesToPixelMap[net[netNumber].nodes[j]]) * 5 + 2, 0x101010);
+              //   leds.setPixelColor(
+              //       (nodesToPixelMap[net[netNumber].nodes[j]]) * 5 + 3, 0x101010);
+              //   leds.setPixelColor(
+              //       (nodesToPixelMap[net[netNumber].nodes[j]]) * 5 + 4, 0x101010);
+              // }
 
               if (debugLEDs) {
                 Serial.print("net: ");

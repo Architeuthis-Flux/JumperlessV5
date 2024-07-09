@@ -27,6 +27,8 @@ ssl._create_default_https_context = ssl._create_unverified_context
 os.system("")
 #import platform
 
+if (sys.platform == "win32"):
+    import win32api
 #from watchedserial import WatchedReaderThread
 
 import serial.tools.list_ports
@@ -115,6 +117,7 @@ def openSerial():
 
     portSelected = 0
     foundports = []
+    serialTries = 0
     
     print("\n")
 
@@ -227,9 +230,14 @@ def openSerial():
 #portName =  '/dev/cu.usbmodem11301'
     try:
         ser = serial.Serial(portName, 115200, timeout=None, write_timeout=0.5, exclusive=False)
+        serialTries = 0
     #ser.open()
     except:
-        print("Couldn't open serial port")
+        serialTries += 1
+        #
+        if (serialTries > 5):
+            print("Couldn't open serial port")
+            serialTries = 0
         serialconnected = 0
         pass
 
@@ -337,7 +345,7 @@ def checkIfFWisOld ():
     global currentString
     global jumperlessFirmwareString
     global jumperlessV5
-    
+    global noWokwiStuff
 
     if (len(jumperlessFirmwareString) < 2):
         print('\nCouldn\'t read FW version from the Jumperless\n\nMake sure you don\'t have this app running in \nanother window. Or if the firmware is really \nold, just enter \'Y\' to auto update from here\n')
@@ -365,55 +373,57 @@ def checkIfFWisOld ():
     if (int(currentList[0])>5):
         jumperlessV5 = True
 
-
-    if (jumperlessV5 is True):#Change this to the new repo when you have releases
-        print('Jumperless V5')
-        response = requests.get("https://github.com/Architeuthis-Flux/Jumperless/releases/latest")
-    else:
-        response = requests.get("https://github.com/Architeuthis-Flux/Jumperless/releases/latest")
-
-
-    version = response.url.split("/").pop()
-    #print(version)
-    
-    latestVersion = version.split('.')
-    latestString = latestVersion[0] + '.' + latestVersion[1] + '.' + latestVersion[2]
-
-    
-    latestList = latestString.split('.')
-
-    if (len(latestList[2]) < 2):
-        latestList[2] = '0' + latestList[2]
-
-    if (len(latestList[1]) < 2):
-        latestList[1] = '0' + latestList[1]
-    
-    # print(currentList)
-    # print(latestList)
-
-
-    #latestInt = (int(latestList[0])* 100) + (int(latestList[2])* 10) + (int(latestList[2]))
-    #currentInt = (int(currentList[0])* 100) + (int(currentList[2])* 10) + (int(currentList[2]))
-    # try:
-    latestInt = int("".join(latestList))
     try:
-        currentInt = int("".join(currentList))
-    except:
-        currentInt = 0
-        #return True
-    # print (latestInt)
-    # print (currentInt)
-    
-    
-    if (latestInt > currentInt):
-        
-    
-        print("\n\n\rThe latest firmware is: " + latestString)
-        print(      "You're running version: " + currentString)
-        return True
-    else:
-        return False
+        if (jumperlessV5 is True):#Change this to the new repo when you have releases
+            print('Jumperless V5')
+            response = requests.get("https://github.com/Architeuthis-Flux/Jumperless/releases/latest")
+        else:
+            response = requests.get("https://github.com/Architeuthis-Flux/Jumperless/releases/latest")
 
+
+        version = response.url.split("/").pop()
+        #print(version)
+        
+        latestVersion = version.split('.')
+        latestString = latestVersion[0] + '.' + latestVersion[1] + '.' + latestVersion[2]
+
+        
+        latestList = latestString.split('.')
+
+        if (len(latestList[2]) < 2):
+            latestList[2] = '0' + latestList[2]
+
+        if (len(latestList[1]) < 2):
+            latestList[1] = '0' + latestList[1]
+        
+        # print(currentList)
+        # print(latestList)
+
+
+        #latestInt = (int(latestList[0])* 100) + (int(latestList[2])* 10) + (int(latestList[2]))
+        #currentInt = (int(currentList[0])* 100) + (int(currentList[2])* 10) + (int(currentList[2]))
+        # try:
+        latestInt = int("".join(latestList))
+        try:
+            currentInt = int("".join(currentList))
+        except:
+            currentInt = 0
+            #return True
+        # print (latestInt)
+        # print (currentInt)
+        
+        
+        if (latestInt > currentInt):
+            
+        
+            print("\n\n\rThe latest firmware is: " + latestString)
+            print(      "You're running version: " + currentString)
+            return True
+        else:
+            return False
+    except:
+        noWokwiStuff = True
+        return False
     
 
 def updateJumperlessFirmware(force):
@@ -445,7 +455,7 @@ def updateJumperlessFirmware(force):
         print("Putting Jumperless in BOOTSEL...")
         
         serTickle = serial.Serial(portName, 1200, timeout=None)
-        
+        time.sleep(0.55)
         
         serTickle.close()
         time.sleep(0.55)
@@ -464,16 +474,20 @@ def updateJumperlessFirmware(force):
             
             for p in partitions:
                 #print(p.mountpoint)
-                if (p.mountpoint.endswith("RPI-RP2") == True):
-                    foundVolume = p.mountpoint
-                    print("Found Jumperless at " + foundVolume + "...")
-                    break
+                if (sys.platform == "win32"):
+                    if (win32api.GetVolumeInformation(p.mountpoint)[0] == "RPI-RP2"):
+                        foundVolume = p.mountpoint
+                        print("Found Jumperless at " + foundVolume + "...")
+                        break
+
+                else:
+                    if (p.mountpoint.endswith("RPI-RP2") == True):
+                        foundVolume = p.mountpoint
+                        print("Found Jumperless at " + foundVolume + "...")
+                        break
+                    
                 
-                
-                #if (win32api.GetVolumeInformation(p.mountpoint)[0] == "RPI-RP2"):
-                 #   foundVolume = p.mountpoint
-                  #  print("Found Jumperless at " + foundVolume + "...")
-                   # break
+
             
         fullPathRP = os.path.join(foundVolume, "firmware.uf2")
         #print(fullPathRP)
@@ -491,7 +505,7 @@ def updateJumperlessFirmware(force):
         
         
         #ser.open()
-        time.sleep(0.75)
+        time.sleep(1.5)
         
         #openSerial()
         ser = serial.Serial(portName, 115200, timeout=None)
@@ -512,7 +526,7 @@ defaultWokwiSketchText = 'void setup() {'
 # the website URL
 #url_link = "https://wokwi.com/projects/369024970682423297"
 menuEntered = 0
-
+wokwiUpdateRate = 0.35
 
 def bridgeMenu():
     global menuEntered
@@ -522,10 +536,12 @@ def bridgeMenu():
     global url_link
     global currentString
     global numAssignedSlots
+    global wokwiUpdateRate
     #global serTickle
 
 
     while(menuEntered == 1):
+        wokwiUpdateString = str(wokwiUpdateRate + 0.4)
 
         print("\t\t\tBridge App Menu\n\n")
 
@@ -544,6 +560,7 @@ def bridgeMenu():
         # else:
         #     print("Disabled")
         
+        print("\t\tf = Change Wokwi update frequency - currently " + wokwiUpdateString + "s" )
         print("\t\tu = Update Jumperless Firmware - " + currentString)
 
         print("\t\tj = Go Back To Jumperless\n")
@@ -582,14 +599,16 @@ def bridgeMenu():
             break
         
         if (menuSelection == 'r'):
+            menuEntered = 0
             ser.close()
             openSerial()
             #openProject()
             assignWokwiSlots()
             #time.sleep(1)
-            menuEntered = 0
-            time.sleep(.5)
-            ser.write(b'm')
+            
+            return
+            #time.sleep(.5)
+            #ser.write(b'm')
             
             break
             
@@ -613,6 +632,18 @@ def bridgeMenu():
             menuEntered = 0
             time.sleep(.25)
             ser.write(b'm')
+            break
+
+        if (menuSelection == 'f'):
+            wokwiUpdateString = input("enter new Wokwi update interval > ")
+            try:
+                wokwiUpdateRate = float(wokwiUpdateString)
+                if (wokwiUpdateRate < 0.5):
+                    wokwiUpdateRate = 0.5
+                wokwiUpdateRate -= 0.4
+
+            except:
+                break
             break
         
         
@@ -772,10 +803,16 @@ def assignWokwiSlots():
 
     global noWokwiStuff 
     global menuEntered
+    #global ser
     #countAssignedSlots()
 
 
     printOpenProjectOptions()
+    if (noWokwiStuff == True):
+        print("\n  No internet, Wokwi updates disabled!\n")
+        #ser.write('m'.encode())
+        return
+
     printSlotOptions()
 
 
@@ -990,6 +1027,7 @@ def assignWokwiSlots():
 
 
 def searchSavedProjects(inputToSearchFor, returnName = False):
+    
     try:
         f = open(savedProjectsFile, "r")
     except:
@@ -1208,7 +1246,8 @@ assignWokwiSlots()
 
 if (noWokwiStuff == False):
     print("\n\nSave your Wokwi project to update the Jumperless\n")
-    print("      'm' to show the onboard menu\n\n")
+
+print("      'm' to show the onboard menu\n\n")
 
 
 
@@ -1217,53 +1256,55 @@ if (noWokwiStuff == False):
                             
 portNotFound = 1
                             
-def check_presence(correct_port, interval=.15):
+def check_presence(correct_port, interval=.35):
     global ser
     global justreconnected
     global serialconnected
     global justChecked
     global reading
-
+    global menuEntered
     portFound = 0
     while True:
         
-       
-        if (reading == 0):
-            
-            portFound = 0
+        if (menuEntered == 1):
+            time.sleep(0.5)
+        else:
+            if (reading == 0):
+                
+                portFound = 0
 
-            for port in serial.tools.list_ports.comports():
+                for port in serial.tools.list_ports.comports():
 
-                if portName in port.device:
-                    
-                    portFound = 1
+                    if portName in port.device:
+                        
+                        portFound = 1
 
-            #print (portFound)
+                #print (portFound)
 
-            if portFound == 1:
-                try:
-                    #print (portName)
-                    #ser = serial.Serial(portName, 115200)
-                    #print (portName)
-                    #ser.open(portName)
-                    justChecked = 1
-                    serialconnected = 1
-                    time.sleep(0.1)
+                if portFound == 1:
+                    try:
+                        #print (portName)
+                        #ser = serial.Serial(portName, 115200)
+                        #print (portName)
+                        #ser.open(portName)
+                        justChecked = 1
+                        serialconnected = 1
+                        time.sleep(0.2)
+                        justChecked = 0
+                        
+                        
+                    except:
+                        
+                        continue
+
+                else:
+                    justreconnected = 1
                     justChecked = 0
-                    
-                    
-                except:
-                    
-                    continue
+                    serialconnected = 0
 
-            else:
-                justreconnected = 1
-                justChecked = 0
-                serialconnected = 0
+                    ser.close()
 
-                ser.close()
-
-            time.sleep(interval)
+                time.sleep(interval)
 
 
 import threading
@@ -1284,11 +1325,14 @@ def serialTermIn():
     global menuEntered
     global portNotFound
     global forceWokwiUpdate
+
+    readTries = 0
     while True:
         readLength = 0
         
         
         while menuEntered == 0:
+        #while True:
             try:
                 if (ser.in_waiting > 0):
                     #justChecked = 0
@@ -1326,6 +1370,7 @@ def serialTermIn():
                     #justChecked = 0
                     reading = 0
                     portNotFound = 0
+                    readTries = 0
 
             except:
                 try:
@@ -1333,12 +1378,18 @@ def serialTermIn():
                     ser.close()
                 except:
                     pass
-                print("Disconnected")
+                
+
                 forceWokwiUpdate = 1
                 portNotFound = 1
                 while (portNotFound == 1):
                     portFound = 0
                     #print("Disconnected")
+                    
+                    readTries += 1
+                    if (readTries == 2):
+                        print("Disconnected")
+                    # readTries = 0
                     time.sleep(0.15)
                     for port in serial.tools.list_ports.comports():
 
@@ -1371,11 +1422,14 @@ def serialTermIn():
                         #ser.close()
                         portNotFound = 1
                         time.sleep(.1)
+        else:
+            time.sleep(0.75)
 
 
 port_controller = threading.Thread(target=serialTermIn, daemon=True)
 # port_controller.daemon(True)
 port_controller.start()
+
 
 forceWokwiUpdate = 0
 
@@ -1401,6 +1455,7 @@ def serialTermOut():
             if (outputBuffer == 'menu') or (outputBuffer == 'Menu'):
                 print("Menu Entered")
                 menuEntered = 1
+                #bridgeMenu()
                 continue
             if (outputBuffer == 'slots') or (outputBuffer == 'Slots'):
                 assignWokwiSlots()
@@ -1478,8 +1533,10 @@ def serialTermOut():
                             time.sleep(.5)
                             print("reset")
                             justreconnected = 1
+        else:
+            time.sleep(0.5)
 
-    # time.sleep(.5)
+        #time.sleep(.5)
     
 def removeLibraryLines(line):
     
@@ -1580,8 +1637,9 @@ except:
 currentSlotUpdate = 1
 cycled = 0
 
-
-while True:
+if (menuEntered == 1):
+    bridgeMenu()
+while (noWokwiStuff == False):
    
     if (menuEntered == 1):
         bridgeMenu()
@@ -1645,12 +1703,13 @@ while True:
                 
             #     forceWokwiUpdate = 0
             #     cycled = 0
-
-            while(slotURLs[currentSlotUpdate] == '!'):
+            loop = 0
+            while(slotURLs[currentSlotUpdate] == '!' and loop < 2 and menuEntered == 0):
                 
-                #print(currentSlotUpdate)
+                #print(currentSlotUpdate)                
                 currentSlotUpdate += 1
                 if (currentSlotUpdate > 7):
+                    loop+=1
                     currentSlotUpdate = 0
                     forceWokwiUpdate = 0
 
@@ -2059,7 +2118,7 @@ while True:
                     ser.write(str(currentSlotUpdate).encode())
                     ser.write("\n\n\rf ".encode())
                     ser.write(p.encode())
-                    time.sleep(0.35)
+                    time.sleep(wokwiUpdateRate)
                 # else:
                 #     ser.write('f'.encode())
                 #     time.sleep(0.001)
@@ -2096,7 +2155,11 @@ while True:
         
         else:
             if (noWokwiStuff == False):
-                time.sleep(0.95)
+                time.sleep(0.5)
 
 
 
+while (noWokwiStuff == True):
+    if (menuEntered == 1):
+        bridgeMenu()
+    time.sleep(0.1)
