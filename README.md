@@ -1,5 +1,5 @@
 # Jumperless V5
-###### The next generation jumperless breadboard
+###### The next generation [jumperless](https://github.com/Architeuthis-Flux/Jumperless) breadboard
 
 Jumperless V5 is a breaboard where any point can be connected to any other with software-defined jumpers. RGB LEDs under each hole turn the breadboard itself into a display; paired with its assortment of routable analog/digial IO, Jumperless V5 gives you real-time information about everything that's happening in your circuit and the ability to change it at a whim.
 
