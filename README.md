@@ -3,9 +3,11 @@
 
 Jumperless V5 is a breaboard where any point can be connected to any other with software-defined jumpers. RGB LEDs under each hole turn the breadboard itself into a display; paired with its assortment of routable analog/digial IO, Jumperless V5 gives you real-time information about everything that's happening in your circuit and the ability to change it at a whim.
 
+
 ![JumperlessV5front](https://github.com/Architeuthis-Flux/JumperlessV5/assets/20519442/60e26150-3dce-4d52-812f-8f1f99c58989)
 
-
+## You'll be able to get one on [Crowd Supply](https://www.crowdsupply.com/architeuthis-flux/jumperless-v5) in the near future.
+###### Sign up for updates so I know how many of these to make
 
 The 4 individually programmable ±8V power supplies, 5 voltage/current/resistance measurement channels, and 10 GPIO can all be connected anywhere on the breadboard or the Arduino Nano header. Connections made with its matrix of 12 analog crossbar switches can be changed in just a few microseconds, so measurements and GPIO can multiplexed to cover the entire board at once.
 
