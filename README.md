@@ -1,9 +1,17 @@
 # Jumperless V5
-###### The next generation jumperless breadboard
+###### The next generation [jumperless](https://github.com/Architeuthis-Flux/Jumperless) breadboard
 
 Jumperless V5 is a breaboard where any point can be connected to any other with software-defined jumpers. RGB LEDs under each hole turn the breadboard itself into a display; paired with its assortment of routable analog/digial IO, Jumperless V5 gives you real-time information about everything that's happening in your circuit and the ability to change it at a whim.
 
+
 ![JumperlessV5front](https://github.com/Architeuthis-Flux/JumperlessV5/assets/20519442/60e26150-3dce-4d52-812f-8f1f99c58989)
+
+## You'll be able to get one on [Crowd Supply](https://www.crowdsupply.com/architeuthis-flux/jumperless-v5) in the near future.
+###### Sign up for updates so I know how many of these to make
+
+
+https://github.com/user-attachments/assets/703db848-5871-4152-bb03-244a400a1bb8
+
 
 
 
@@ -11,10 +19,21 @@ The 4 individually programmable ±8V power supplies, 5 voltage/current/resistanc
 
 V5 is a major redesign of the original [Jumperless](https://github.com/Architeuthis-Flux/Jumperless). Having a few hundred people out there using Jumperlesses, sharing ideas, and [writing their](https://github.com/nilclass/jlctl) [own apps](https://github.com/nilclass/jumperlab) gave me a long enough list of things I wish I had done that I felt it was time to push the design even further. Now that the fundamentals are battle-tested (switching matrix, power supply, routing algorithm), Jumperless V5 can add some even crazier new stuff like; an ungodly number (445) of LEDs, a built in rotary encoder/switch, daisy chain headers, individually programmable power rails, and an isolated, always-on probing system. 
 
+
+
+
+
 ![JumperlessV5back](https://github.com/Architeuthis-Flux/JumperlessV5/assets/20519442/615c90cc-c19b-41ef-a5fb-0dfb2a027084)
 
 
 These additions may seem somewhat minor, but they fundamentally change the way using a Jumperless V5 *feels*. It's intuitive enough that it quickly just becomes "part of your brain" in the same way your computer does. And it's easy to forget this isn't how prototyping stuff on a breadboard always has been.
+
+
+
+https://github.com/user-attachments/assets/c78493ee-f2cd-4704-bab7-26346f978c54
+
+https://github.com/user-attachments/assets/168cb387-934b-4a25-b30d-b696312ee0e1
+
 
 Jumperless V5 will cost roughly $350 (with free shipping worldwide)
 
@@ -24,6 +43,7 @@ You're flipping through a comic book and see an ad in the back for some X ray gl
 You notice that you can now see electrons flowing, capacitors charging, frequencies changing, UART messages passing, all right there on your breadboard. Those aren't X-ray specs, they're electron specs, even better.  
 
 ![tfhtgh](https://github.com/Architeuthis-Flux/JumperlessV5/assets/20519442/2c2376a0-41c4-471f-a3ac-84daf95a678d)
+
 ###### //When the prototypes get here on Monday, I'll take proper photos and these will be replaced
 
 *Jumperless V5 is that pair of x-ray spectacles.* Like all the fancy test equipment covering our workbenches, it converts the things that our hunter-gatherer-ass MK 1 eyeballs can't perceive into something they can. The difference is that it does it for everything, everywhere, exactly where it's happening with an RGB LED under every hole. 
