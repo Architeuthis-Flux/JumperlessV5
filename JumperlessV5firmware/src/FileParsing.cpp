@@ -12,6 +12,7 @@
 #include <EEPROM.h>
 #include "MachineCommands.h"
 #include "Probing.h"
+#include "menuTree.h"
 
 bool debugFP = EEPROM.read(DEBUG_FILEPARSINGADDRESS);
 bool debugFPtime = EEPROM.read(TIME_FILEPARSINGADDRESS);
@@ -36,6 +37,38 @@ File nodeFileBuffer;
 unsigned long timeToFP = 0;
 
 const char rotaryConnectionString[] = "{AREF-GND,D11-GND,D10-UART_TX,D12-UART_RX,D13-GPIO_0, ";
+
+void writeMenuTree(void)
+{
+    File menuTreeFile = LittleFS.open("/MenuTree.txt", "w");
+    if (!menuTreeFile)
+    {
+        
+            //Serial.println("Failed to open menuTree.txt");
+       
+    }
+    else
+    {
+        // if (debugFP)
+        // {
+        //     Serial.println("\n\ropened menuTree.txt\n\r");
+        // }
+        // else
+        // {
+        //     // Serial.println("\n\r");
+        // }
+    }
+    int menuIndex = 0;
+    while(menuTree[menuIndex] != '\0')
+    {
+        menuTreeFile.print(menuTree[menuIndex]);
+        Serial.print(menuTree[menuIndex]);
+        menuIndex++;
+    }
+// menuTreeFile.write(menuTree);
+    //menuTreeFile.print(menuTreeString);
+    menuTreeFile.close();
+}
 
 void createSlots(int slot, int addRotaryConnections)
 {

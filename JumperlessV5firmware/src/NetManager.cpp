@@ -673,6 +673,7 @@ int checkDoNotIntersectsByNode(int netToCheck, int nodeToCheck) // make sure non
     return 1; // return 1 if it's ok to connect these nets
 }
 
+
 void listNets(void) // list nets doesnt care about debugNM, don't call it if you don't want it to print
 {
     if (net[6].number == 0)
@@ -682,7 +683,7 @@ void listNets(void) // list nets doesnt care about debugNM, don't call it if you
     }
     else
     {
-        Serial.print("\n\rIndex\tName\t\tNumber\tColor\t\tNodes\t");
+         Serial.print("\n\rIndex\tName\t\tVoltage\t   Color\t    Nodes\t");
 
         int tabs = 0;
         for (int i = 6; i < MAX_NETS; i++)
@@ -703,13 +704,47 @@ void listNets(void) // list nets doesnt care about debugNM, don't call it if you
             }
             Serial.print("\t");
             Serial.print(net[i].number);
-            Serial.print("\t0x");
-        netNameLength = Serial.print(net[i].rawColor, HEX);
-        if (netNameLength < 6)
-        {
-            Serial.print("\t");
-        }
-        Serial.print("\t");
+            Serial.print("\t   ");
+
+            hsvColor color = RgbToHsv(net[i].color);
+
+            int hue = (color.h)/38;
+            Serial.print(color.h);
+            Serial.print(" ");
+            Serial.print(hue);
+            Serial.print(" ");
+            
+            // Serial.print(colorNamesSim[hue]);
+            //  Serial.print("\t");
+
+
+
+        // Serial.print("r");
+        // if (net[i].color.r < 16)
+        // {
+        //     Serial.print("0");
+        // }
+        // netNameLength = Serial.print(net[i].color.r, HEX);
+
+        // Serial.print(" g");
+        // if (net[i].color.g < 16)
+        // {
+        //     Serial.print("0");
+        // }
+        // netNameLength = Serial.print(net[i].color.g, HEX);
+
+        // Serial.print(" b");
+        // if (net[i].color.b < 16)
+        // {
+        //     Serial.print("0");
+        // }
+        // netNameLength = Serial.print(net[i].color.b, HEX);
+
+        // if (netNameLength < 6)
+        // {
+        //     Serial.print("\t");
+        // }
+        // Serial.print("\t");
             
             tabs = 0;
             for (int j = 0; j < MAX_NODES; j++)
@@ -733,28 +768,28 @@ void listNets(void) // list nets doesnt care about debugNM, don't call it if you
                 Serial.print("\t");
             }
 
-            Serial.print("{");
+            //Serial.print("{");
 
             tabs = 0;
-            for (int j = 0; j < MAX_BRIDGES; j++)
-            {
+            // for (int j = 0; j < MAX_BRIDGES; j++)
+            // {
 
-                tabs += printNodeOrName(net[i].bridges[j][0]);
-                tabs += Serial.print("-");
-                tabs += printNodeOrName(net[i].bridges[j][1]);
-                // Serial.print(",");
+            //     tabs += printNodeOrName(net[i].bridges[j][0]);
+            //     tabs += Serial.print("-");
+            //     tabs += printNodeOrName(net[i].bridges[j][1]);
+            //     // Serial.print(",");
 
-                if (net[i].bridges[j + 1][0] == 0)
-                {
-                    break;
-                }
-                else
-                {
+            //     if (net[i].bridges[j + 1][0] == 0)
+            //     {
+            //         break;
+            //     }
+            //     else
+            //     {
 
-                    tabs += Serial.print(",");
-                }
-            }
-            tabs += Serial.print("}\t");
+            //         tabs += Serial.print(",");
+            //     }
+            // }
+            // tabs += Serial.print("}\t");
 
             for (int i = 0; i < 3 - (tabs / 8); i++)
             {

@@ -100,6 +100,7 @@ struct action {
 
 void readMenuFile(void) {
   LittleFS.begin();
+  writeMenuTree();
 
   File menuFile = LittleFS.open("/MenuTree.txt", "r");
   if (!menuFile) {
@@ -2111,6 +2112,7 @@ int doMenuAction(int menuPosition, int selection) {
         -1) {
 
       saveCurrentSlotToSlot(netSlot, currentAction.from[0]);
+      netSlot = currentAction.from[0];
 
     } else if (menuLines[currentAction.previousMenuPositions[1]].indexOf(
                    "Load") != -1) {

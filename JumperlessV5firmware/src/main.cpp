@@ -84,7 +84,7 @@ void setup() {
   pinMode(RESETPIN, OUTPUT_12MA);
 
   digitalWrite(RESETPIN, HIGH);
-  delayMicroseconds(4);
+  delayMicroseconds(8000);
   // Serial.setTimeout(8000);
   //  USB_PID = 0xACAB;
   //  USB_VID = 0x1D50;
@@ -120,9 +120,9 @@ void setup() {
 
   delay(10);
 
-  initDAC(); // also sets revisionNumber
 
-  delay(1);
+
+  //delay(1);
 
   initINA219();
 
@@ -140,6 +140,9 @@ void setup() {
   clearAllNTCC();
 
   digitalWrite(RESETPIN, LOW);
+  pinMode(probePin, OUTPUT_8MA);
+  pinMode(buttonPin, INPUT_PULLDOWN);
+  digitalWrite(probePin, HIGH);
 
   initRotaryEncoder();
 
@@ -147,17 +150,18 @@ void setup() {
 
   while (core2initFinished == 0) {
   }
-  delay(300);
+  delay(100);
   initMenu();
   initADC();
+    initDAC(); // also sets revisionNumber
   setupSwirlColors();
-  setRailsAndDACs();
+  //setRailsAndDACs();
   // showLEDsCore2 = 1;
   //
 }
 
 void setup1() {
-  // delay(10);
+   delay(20);
 
   initGPIOex();
 
@@ -214,7 +218,8 @@ void loop() {
   // while (core2initFinished == 0)
   // {
   // }
-  delay(15);
+  delay(100);
+  setRailsAndDACs();
   //  while (millis() < 4000)
   //  {
   //   char ddd = Serial.read();
@@ -244,41 +249,42 @@ menu:
   // int buildingTopSetting[2] = {-1, -1};
   // int buildingBottomSetting[2] = {-1, -1};
 
-  Serial.print("Logo Top      :\t");
-  Serial.print(logoTopSetting[0]);
-  Serial.print("\t");
-  Serial.println(logoTopSetting[1]);
-  Serial.print("Logo Bottom   :\t");
-  Serial.print(logoBottomSetting[0]);
-  Serial.print("\t");
-  Serial.println(logoBottomSetting[1]);
-  Serial.print("Building Top  :\t");
-  Serial.print(buildingTopSetting[0]);
-  Serial.print("\t");
-  Serial.println(buildingTopSetting[1]);
-  Serial.print("Building Bot  :\t");
-  Serial.print(buildingBottomSetting[0]);
-  Serial.print("\t");
-  Serial.println(buildingBottomSetting[1]);
+  // Serial.print("Logo Top      :\t");
+  // Serial.print(logoTopSetting[0]);
+  // Serial.print("\t");
+  // Serial.println(logoTopSetting[1]);
+  // Serial.print("Logo Bottom   :\t");
+  // Serial.print(logoBottomSetting[0]);
+  // Serial.print("\t");
+  // Serial.println(logoBottomSetting[1]);
+  // Serial.print("Building Top  :\t");
+  // Serial.print(buildingTopSetting[0]);
+  // Serial.print("\t");
+  // Serial.println(buildingTopSetting[1]);
+  // Serial.print("Building Bot  :\t");
+  // Serial.print(buildingBottomSetting[0]);
+  // Serial.print("\t");
+  // Serial.println(buildingBottomSetting[1]);
 
-  for (int i = 1; i < 9; i++)
-  {
-    Serial.print (gpioState[i]);
-    Serial.print("\t");
-
-
-
-  }
-    Serial.println();
-    for (int i = 1; i < 9; i++)
-  {
-    Serial.print (gpioNet[i]);
-    Serial.print("\t");
+  // for (int i = 1; i < 9; i++)
+  // {
+  //   Serial.print (gpioState[i]);
+  //   Serial.print("\t");
 
 
 
-  }
+  // }
+  //   Serial.println();
+  //   for (int i = 1; i < 9; i++)
+  // {
+  //   Serial.print (gpioNet[i]);
+  //   Serial.print("\t");
+
+
+
+  // }
   Serial.println();
+  //printColorName(5);
   // saveVoltages(railVoltage[0], railVoltage[1], dacOutput[0], dacOutput[1]);
   // readVoltages();
 
@@ -291,7 +297,7 @@ menu:
   }
 
 dontshowmenu:
-
+//readVoltages();
   connectFromArduino = '\0';
   // showLEDsCore2 = 1;
   while (Serial.available() == 0 && connectFromArduino == '\0' &&
@@ -310,7 +316,9 @@ dontshowmenu:
     if (showReadings >= 1) {
       showMeasurements();
     }
-    
+    //Serial.println(digitalRead(buttonPin));
+
+
 
     if ((millis() % 200) < 5) {
       if (checkProbeButton() == 1 && inPadMenu == 0) {

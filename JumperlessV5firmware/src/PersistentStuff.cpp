@@ -25,6 +25,7 @@ void debugFlagInit(int forceDefaults) {
     EEPROM.write(PROBESWAPADDRESS, 0);
     EEPROM.write(ROTARYENCODER_MODE_ADDRESS, 0);
     EEPROM.write(DISPLAYMODE_ADDRESS, 0);
+    saveVoltages(0.0f, 0.0f, 0.0f, 0.0f);
 
     EEPROM.commit();
     delay(5);
@@ -109,6 +110,8 @@ void debugFlagInit(int forceDefaults) {
     EEPROM.write(DISPLAYMODE_ADDRESS, 0);
     displayMode = 0;
   }
+
+
 readVoltages();
 readLogoBindings();
   EEPROM.commit();
@@ -291,10 +294,49 @@ void saveVoltages(float top, float bot, float dac0, float dac1) {
 
 void readVoltages(void) {
 
-  EEPROM.get(TOP_RAIL_ADDRESS0, railVoltage[0]);
-  EEPROM.get(BOTTOM_RAIL_ADDRESS0, railVoltage[1]);
-  EEPROM.get(DAC0_ADDRESS0, dacOutput[0]);
-  EEPROM.get(DAC1_ADDRESS0, dacOutput[1]);
+
+
+
+   EEPROM.get(TOP_RAIL_ADDRESS0, railVoltage[0]);
+   EEPROM.get(BOTTOM_RAIL_ADDRESS0, railVoltage[1]);
+   EEPROM.get(DAC0_ADDRESS0, dacOutput[0]);
+   EEPROM.get(DAC1_ADDRESS0, dacOutput[1]);
+   delay(2);
+
+int needsInit = 0;
+if (railVoltage[0] > 8.0f || railVoltage[0] < -8.0f) {
+    railVoltage[0] = 0.0f;
+    needsInit = 1;
+    Serial.println("rail voltage 0 out of range");
+  }
+  if (railVoltage[1] > 8.0f || railVoltage[1] < -8.0f) {
+    railVoltage[1] = 0.0f;
+    needsInit = 1;
+    Serial.println("rail voltage 1 out of range");
+  }
+  if (dacOutput[0] > 5.0f || dacOutput[0] < 0.0f) {
+    dacOutput[0] = 0.0f;
+    needsInit = 1;
+    Serial.println("dac 0 out of range");
+  }
+  if (dacOutput[1] > 8.0f || dacOutput[1] < -8.0f) {
+    dacOutput[1] = 0.0f;
+    needsInit = 1;
+    Serial.println("dac 1 out of range");
+  }
+saveVoltages(railVoltage[0],railVoltage[1],dacOutput[0],dacOutput[1]);
+
+//Serial.println(sizeof(float));
+
+  Serial.print("top rail: ");
+  Serial.println((float)railVoltage[0]);
+  Serial.print("bot rail: ");
+  Serial.println(railVoltage[1],BIN);
+  Serial.print("dac0: ");
+  Serial.println(dacOutput[0],BIN);
+  Serial.print("dac1: ");
+  Serial.println(dacOutput[1],BIN);
+
 
 // setTopRail(railVoltage[0]);
 // setBotRail(railVoltage[1]);

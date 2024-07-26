@@ -125,7 +125,7 @@ void initGPIOex(void) {
   SPI.begin();
 
   if (MCPIO.begin_SPI(CS_PIN, &SPI, 0b111) == false) {
-    // delay(1000);
+     delay(3000);
     Serial.println("MCP23S17 not found");
   }
 
@@ -366,14 +366,16 @@ void initDAC(void) {
    *
    */
   pinMode(8, OUTPUT);
-  digitalWrite(8, HIGH);
 
-  // Vref = MCP_VREF_VDD, value = 0, 0V
-  mcp.setChannelValue(MCP4728_CHANNEL_A, 0);
-  mcp.setChannelValue(MCP4728_CHANNEL_B, 1650);
-  mcp.setChannelValue(MCP4728_CHANNEL_C, 1660);
-  mcp.setChannelValue(MCP4728_CHANNEL_D, 1641); // 1650 is roughly 0V
-  digitalWrite(8, LOW);
+  //saveVoltages(railVoltage[0], railVoltage[1], dacOutput[0], dacOutput[1]);
+  // digitalWrite(8, HIGH);
+
+  // // Vref = MCP_VREF_VDD, value = 0, 0V
+  // mcp.setChannelValue(MCP4728_CHANNEL_A, 0);
+  // mcp.setChannelValue(MCP4728_CHANNEL_B, 1650);
+  // mcp.setChannelValue(MCP4728_CHANNEL_C, 1660);
+  // mcp.setChannelValue(MCP4728_CHANNEL_D, 1641); // 1650 is roughly 0V
+  // digitalWrite(8, LOW);
 
   mcp.saveToEEPROM();
 }
@@ -567,12 +569,12 @@ int readFloatingOrStateMCP(int pin ) {
 
 
 void setRailsAndDACs(void) {
-  setTopRail(railVoltage[0]);
-  setBotRail(railVoltage[1]);
+  setTopRail(railVoltage[0], 0);
+  setBotRail(railVoltage[1], 0);
   setDac0_5Vvoltage(dacOutput[0]);
   setDac1_8Vvoltage(dacOutput[1]);
 }
-void setTopRail(float value) {
+void setTopRail(float value, int save) {
 
   int dacValue = (value * 4095 / 19.8) + 1660;
 
@@ -585,6 +587,8 @@ void setTopRail(float value) {
 
   if (dacValue > 4095) {
     dacValue = 4095;
+  } else if (dacValue < 0) {
+    dacValue = 0;
   }
 
   //     if (value < -6)
@@ -595,30 +599,39 @@ void setTopRail(float value) {
   digitalWrite(8, HIGH);
   mcp.setChannelValue(MCP4728_CHANNEL_C, dacValue);
   digitalWrite(8, LOW);
-  saveVoltages(railVoltage[0], railVoltage[1], dacOutput[0], dacOutput[1]);
+  if (save) {
+    saveVoltages(railVoltage[0], railVoltage[1], dacOutput[0], dacOutput[1]);
+  }
+  
 }
 
-void setBotRail(float value) {
+void setBotRail(float value, int save) {
 
   int dacValue = (value * 4095 / 19.8) + 1641;
 
   if (dacValue > 4095) {
     dacValue = 4095;
-  }
+  } else if (dacValue < 0) {
+    dacValue = 0;
+  } 
+
 railVoltage[1] = value; 
   digitalWrite(8, HIGH);
   mcp.setChannelValue(MCP4728_CHANNEL_D, dacValue);
   digitalWrite(8, LOW);
-  saveVoltages(railVoltage[0], railVoltage[1], dacOutput[0], dacOutput[1]);
+  if (save) {
+    saveVoltages(railVoltage[0], railVoltage[1], dacOutput[0], dacOutput[1]);
+  }
+  
 }
 
-void setTopRail(int value) {
+void setTopRail(int value, int save) {
   if (value > 4095) {
     value = 4095;
   }
   mcp.setChannelValue(MCP4728_CHANNEL_C, value);
 }
-void setBotRail(int value) {
+void setBotRail(int value, int save) {
   if (value > 4095) {
     value = 4095;
   }
@@ -893,7 +906,7 @@ void chooseShownReadings(void) {
 }
 
 void showLEDmeasurements(void) {
-  int samples = 16;
+  int samples = 8;
 
   int adc0ReadingUnscaled;
   float adc0Reading;
@@ -919,7 +932,7 @@ void showLEDmeasurements(void) {
 
     lightUpNet(showADCreadings[0], -1, 1, mappedAdc0Reading, 0, 0, color);
 
-    showLEDsCore2 = 2;
+   // showLEDsCore2 = 2;
   }
 
   if (showADCreadings[1] != 0) {
@@ -932,7 +945,7 @@ void showLEDmeasurements(void) {
         logoColors8vSelect[(map(adc1ReadingUnscaled, 50, 4095, 0, 30) + 26)%59];
 
     lightUpNet(showADCreadings[1], -1, 1, mappedAdc1Reading, 0, 0, color);
-    showLEDsCore2 = 2;
+    //showLEDsCore2 = 2;
   }
 
   if (showADCreadings[2] != 0) {
@@ -945,7 +958,7 @@ void showLEDmeasurements(void) {
         logoColors8vSelect[map(adc2ReadingUnscaled, 0, 4095, 0, 30) + 28];
 
     lightUpNet(showADCreadings[2], -1, 1, mappedAdc2Reading, 0, 0, color);
-    showLEDsCore2 = 2;
+    //showLEDsCore2 = 2;
   }
 
   if (showADCreadings[3] != 0) {
@@ -967,13 +980,13 @@ void showLEDmeasurements(void) {
         logoColors8vSelect[map(adc3ReadingUnscaled, 1000, 3000, 0, 59)];
 
     lightUpNet(showADCreadings[3], -1, 1, mappedAdc3Reading, 0, 0, color);
-    showLEDsCore2 = 2;
+   // showLEDsCore2 = 2;
   }
 }
 
 void showMeasurements(int samples, int printOrBB) {
   unsigned long startMillis = millis();
-  int printInterval = 100;
+  int printInterval = 250;
   while (Serial.available() == 0 && Serial1.available() == 0 &&
          checkProbeButton() == 0)
 
@@ -1069,17 +1082,21 @@ void showMeasurements(int samples, int printOrBB) {
       bs += Serial.print(INA0.getPower_mW());
       bs += Serial.print("mW\t");
     }
-
+Serial.print(digitalRead(buttonPin));
     bs += Serial.print("      \r");
-
+rotaryEncoderStuff();
+if (encoderButtonState != IDLE)
+{
+  //showReadings = 0;
+  return;
+}
     while (millis() - startMillis < printInterval &&
            (Serial.available() == 0 && Serial1.available() == 0 &&
-            checkProbeButton() == 0)) {
-      // if (Serial.available() == 0 && Serial1.available() == 0 &&
-      // checkProbeButton() == 0 ) {
+            checkProbeButton() == 0 )) {
+
       showLEDmeasurements();
-      // delay(150);
-      // }
+       delayMicroseconds(5000);
+    
     }
     startMillis = millis();
   }

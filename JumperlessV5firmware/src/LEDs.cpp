@@ -161,6 +161,97 @@ uint32_t slotSelectionColors[12] = {
 
 };
 
+
+
+void printColorName(int hue)
+{
+char colorNames[17][14] = {"red          ","orange      ","amber       ","yellow      ","chartreuse  ","green       ","seafoam    ","aqua        ","blue        ","royal blue  ","violet      ","purple      ","pink        ", "magenta     ", "white       ", "black       ", "grey        "};  
+char colorNamesSim[8][14] = {"red          ","orange      ","yellow      ","green       ","blue        ","purple      ","pink        "};
+b.clear();
+for (int i = 0; i < 60; i ++)
+{
+  hue = i*4.4;
+  hsvColor hsv = {hue, 254, 10};
+  rgbColor rgb = HsvToRgb(hsv);
+  Serial.print(i+1);
+  Serial.print("\t");
+  Serial.print(hue%254);
+  Serial.print("\t");
+ char colorName[14];
+  switch (hue%255)
+  { 
+    case 0 ... 11:
+      sprintf(colorName, "red");
+      break;
+    case 12 ... 22:
+      sprintf(colorName, "orange");
+      break;  
+    case 23 ... 36:
+      sprintf(colorName, "amber");
+      break;
+    case 37 ... 64:
+      sprintf(colorName, "yellow");
+      break;
+    case 65 ... 79:
+      sprintf(colorName, "chartreuse");
+      break;
+    case 80 ... 94:
+      sprintf(colorName, "green");
+      break;
+    case 95 ... 122:
+      sprintf(colorName, "aqua");
+      break;
+    case 123 ... 145:
+      sprintf(colorName, "teal");
+      break;
+    case 146 ... 175:
+      sprintf(colorName, "blue");
+      break;
+    case 176 ... 191:
+      sprintf(colorName, "indigo");
+      break;
+    case 192 ... 210:
+      sprintf(colorName, "purple");
+      break;
+    case 211 ... 223:
+      sprintf(colorName, "violet");
+      break;
+    case 224 ... 235:
+      sprintf(colorName, "pink");
+      break;
+    case 236 ... 255:
+      sprintf(colorName, "magenta");
+      break;
+    // case 246 ... 255: 
+    //   sprintf(colorName, "white");
+    //   break;
+
+    default:
+      sprintf(colorName, "grey");
+      break;  
+    
+  }
+  Serial.println(colorName);
+if (i == 29)
+{
+  Serial.println();
+}
+
+
+
+
+  // Serial.print(hue/16);
+  // Serial.print("\t");
+  // Serial.println(colorNames[hue/16]);
+uint32_t color = packRgb(rgb.r, rgb.g, rgb.b);
+
+  b.printRawRow(0b00011111, i, color, 0xffffff);
+
+}
+
+
+}
+
 int saveRawColors(int slot) {
 
   // if (savedLEDcolors[slot][LED_COUNT] == 0xFFFFFF) // put this to say it was
@@ -1365,11 +1456,11 @@ void lightUpRail(int logo, int rail, int onOff, int brightness2,
   //     }
   //   }
 
-  leds.setPixelColor(403, scaleDownBrightness(rawSpecialNetColors[1], 5, 45));
-  leds.setPixelColor(428, scaleDownBrightness(rawSpecialNetColors[1], 5, 45));
-  leds.setPixelColor(429, scaleDownBrightness(rawSpecialNetColors[2], 5, 45));
-  leds.setPixelColor(416, scaleDownBrightness(rawSpecialNetColors[3], 5, 45));
-  leds.setPixelColor(426, scaleDownBrightness(rawSpecialNetColors[2], 5, 45));
+  leds.setPixelColor(403, scaleDownBrightness(rawSpecialNetColors[1], 5, 35));
+  leds.setPixelColor(428, scaleDownBrightness(rawSpecialNetColors[1], 5, 35));
+  leds.setPixelColor(429, scaleDownBrightness(rawSpecialNetColors[2], 5, 35));
+  leds.setPixelColor(416, scaleDownBrightness(rawSpecialNetColors[3], 5, 35));
+  leds.setPixelColor(426, scaleDownBrightness(rawSpecialNetColors[2], 5, 35));
 
   if (sfProbeMenu == 1) {
     leds.setPixelColor(430, scaleDownBrightness(rawOtherColors[8], 2, 45));
@@ -1431,7 +1522,7 @@ void lightUpRail(int logo, int rail, int onOff, int brightness2,
 
           /// Serial.println(color,HEX);
           leds.setPixelColor(railsToPixelMap[j][i],
-                             scaleDownBrightness(color, 5, 25));
+                             scaleDownBrightness(color, 10, 25));
         } else {
           leds.setPixelColor(railsToPixelMap[j][i], 0);
         }

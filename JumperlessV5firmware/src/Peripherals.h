@@ -45,10 +45,10 @@ void printCalibration(void);
 void initDAC(void);
 
 void setRailsAndDACs(void);
-void setTopRail(int value = 1650);
-void setTopRail(float value);
-void setBotRail(int value = 1650);
-void setBotRail(float value);
+void setTopRail(int value = 1650, int save = 1);
+void setTopRail(float value, int save = 1);
+void setBotRail(int value = 1650, int save = 1);
+void setBotRail(float value, int save = 1);
 
 void dacSine(int resolution = 9);
 

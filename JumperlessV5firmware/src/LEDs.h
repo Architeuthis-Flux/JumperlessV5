@@ -230,6 +230,9 @@ extern rgbColor netColors[MAX_NETS];
 extern uint32_t savedLEDcolors[NUM_SLOTS][LED_COUNT + 1];
 extern rgbColor specialNetColors[8];
 
+void printColorName(uint32_t color);
+void printColorName(int hue);
+
 struct rgbColor shiftHue(struct rgbColor colorToShift, int hueShift = 0,
                          int brightnessShift = 0, int saturationShift = 0,
                          int specialFunction = -1);

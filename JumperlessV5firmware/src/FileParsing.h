@@ -8,6 +8,7 @@
 
 
 //extern File nodeFile;  
+void writeMenuTree(void);
 void createSlots(int slot = -1, int addRotaryConnections = 0);
 void inputNodeFileList(int addRotaryConnections = 0);
 //this just opens the file, takes out all the bullshit, and then populates the newBridge array
