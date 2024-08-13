@@ -18,7 +18,10 @@ extern int buildingTopSetting[2];
 extern int buildingBottomSetting[2];
 
 extern volatile int probeActive;
-extern int inPadMenu;
+extern volatile int inPadMenu;
+extern volatile int checkingButton;
+
+extern int debugProbing;
 
 enum measuredState
 {
@@ -48,6 +51,7 @@ void clearLastFound(void);
 int probeMode(int pin = 19, int setOrClear = 1);
 int checkProbeButton(void);
 int readFloatingOrState (int pin = 0, int row = 0);
+void routableBufferPower (int offOn);
 
 void startProbe (long probeSpeed = 25000);
 void stopProbe();

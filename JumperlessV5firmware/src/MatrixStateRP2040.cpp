@@ -25,17 +25,17 @@ char *netNameConstants[MAX_NETS] = {(char*)"Net 0",(char*)"Net 1",(char*)"Net 2"
 
 
 //note that the bottom row is shifted from the schematic by one, so the nodes are what's written on the board
-const int bbNodesToChip[62] = {-1,CHIP_L,           //0,1
+const int bbNodesToChip[62] = {-1,CHIP_K,           //0,1
 CHIP_A,CHIP_A,CHIP_A,CHIP_A,CHIP_A,CHIP_A,CHIP_A,  // 2, 3, 4, 5, 6, 7, 8
 CHIP_B,CHIP_B,CHIP_B,CHIP_B,CHIP_B,CHIP_B,CHIP_B,  // 9,10,11,12,13,14,15
 CHIP_C,CHIP_C,CHIP_C,CHIP_C,CHIP_C,CHIP_C,CHIP_C,  //16,17,18,19,20,21,22
 CHIP_D,CHIP_D,CHIP_D,CHIP_D,CHIP_D,CHIP_D,CHIP_D,  //23,24,25,26,27,28,29
-CHIP_L,CHIP_L,                                     //30,31
+CHIP_K,CHIP_K,                                     //30,31
 CHIP_E,CHIP_E,CHIP_E,CHIP_E,CHIP_E,CHIP_E,CHIP_E,  //32,33,34,35,36,37,38
 CHIP_F,CHIP_F,CHIP_F,CHIP_F,CHIP_F,CHIP_F,CHIP_F,  //39,40,41,42,43,44,45
 CHIP_G,CHIP_G,CHIP_G,CHIP_G,CHIP_G,CHIP_G,CHIP_G,  //46,47,48,49,50,51,52
 CHIP_H,CHIP_H,CHIP_H,CHIP_H,CHIP_H,CHIP_H,CHIP_H,  //53,54,55,56,57,58,59
-CHIP_L};                                           //60
+CHIP_K};                                           //60
 
 
 // const int xHopMap[12][12][16] =  //[chip] [other chip][x]

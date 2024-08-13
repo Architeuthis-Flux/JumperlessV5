@@ -13,7 +13,7 @@ extern int newBridgeIndex;
 extern bool debugNM;
 extern bool debugNMtime;
 
-void populateSpecialFunctions(int net, int node);
+
 
 
 void writeJSONtoFile();

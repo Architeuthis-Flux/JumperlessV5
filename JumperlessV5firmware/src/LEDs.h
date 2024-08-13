@@ -10,8 +10,9 @@
 #include <Arduino.h>
 
 #define LED_PIN                                                                \
-  25 // change this to 0 if you want to run this on a Pico to control the lights
-     // on a Jumperlux
+  25 
+
+  #define PROBE_LED_PIN 2
 #define LED_COUNT 445
 #define DEFAULTBRIGHTNESS 5
 #define DEFAULTRAILBRIGHTNESS 5
@@ -38,12 +39,13 @@ extern volatile uint8_t LEDbrightnessSpecial;
 
 extern volatile uint8_t pauseCore2;
 extern Adafruit_NeoPixel leds;
+extern Adafruit_NeoPixel probeLEDs;
 extern Adafruit_NeoMatrix matrix;
 extern bool debugLEDs;
 
 extern int displayMode;
 
-extern int showLEDsCore2;
+//extern int showLEDsCore2;
 extern int logoFlash;
 
 typedef struct rgbColor {
@@ -169,6 +171,7 @@ extern uint32_t logoColorsCold[LOGO_COLOR_LENGTH+1];
 extern uint32_t logoColorsYellow[LOGO_COLOR_LENGTH+1];
 extern uint32_t logoColorsPink[LOGO_COLOR_LENGTH+1];
 extern uint32_t logoColors8vSelect[LOGO_COLOR_LENGTH+1];
+extern uint32_t logoColorsAll[8][LOGO_COLOR_LENGTH + 1];
 
 
 const int bbPixelToNodesMap[120] = {

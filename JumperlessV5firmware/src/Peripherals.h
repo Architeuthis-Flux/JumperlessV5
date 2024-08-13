@@ -33,6 +33,8 @@ extern int revisionNumber;
 void setGPIO(void);
 void readGPIO(void);
 
+int i2cScan(int sdaRow = -1 , int sclRow = -1);
+
 int readFloatingOrStateMCP (int pin = 0);
 
 void setCSex(int chip, int value);

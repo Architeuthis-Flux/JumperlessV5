@@ -1267,7 +1267,7 @@ def check_presence(correct_port, interval=.35):
     while True:
         
         if (menuEntered == 1):
-            time.sleep(0.5)
+            time.sleep(0.95)
         else:
             if (reading == 0):
                 
@@ -1332,6 +1332,7 @@ def serialTermIn():
         
         
         while menuEntered == 0:
+            time.sleep(0.15)
         #while True:
             try:
                 if (ser.in_waiting > 0):
@@ -1449,6 +1450,7 @@ def serialTermOut():
         resetEntered = 0
 
         while (menuEntered == 0):
+            time.sleep(0.15)
 
             outputBuffer = input()
 

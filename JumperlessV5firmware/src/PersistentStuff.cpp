@@ -10,8 +10,8 @@
 
 void debugFlagInit(int forceDefaults) {
 
-  if (EEPROM.read(FIRSTSTARTUPADDRESS) == 255 || forceDefaults == 1) {
-    EEPROM.write(FIRSTSTARTUPADDRESS, 0);
+  if (EEPROM.read(FIRSTSTARTUPADDRESS) != 0xAA || forceDefaults == 1) {
+    EEPROM.write(FIRSTSTARTUPADDRESS, 0xAA);
     EEPROM.write(DEBUG_FILEPARSINGADDRESS, 0);
     EEPROM.write(TIME_FILEPARSINGADDRESS, 0);
     EEPROM.write(DEBUG_NETMANAGERADDRESS, 0);
@@ -24,7 +24,7 @@ void debugFlagInit(int forceDefaults) {
     EEPROM.write(SPECIALBRIGHTNESSADDRESS, DEFAULTSPECIALNETBRIGHTNESS);
     EEPROM.write(PROBESWAPADDRESS, 0);
     EEPROM.write(ROTARYENCODER_MODE_ADDRESS, 0);
-    EEPROM.write(DISPLAYMODE_ADDRESS, 0);
+    EEPROM.write(DISPLAYMODE_ADDRESS, 1);
     saveVoltages(0.0f, 0.0f, 0.0f, 0.0f);
 
     EEPROM.commit();
@@ -107,7 +107,7 @@ void debugFlagInit(int forceDefaults) {
     rotaryEncoderMode = 0;
   }
   if (displayMode != 0 && displayMode != 1) {
-    EEPROM.write(DISPLAYMODE_ADDRESS, 0);
+    EEPROM.write(DISPLAYMODE_ADDRESS, 1);
     displayMode = 0;
   }
 
@@ -304,38 +304,40 @@ void readVoltages(void) {
    delay(2);
 
 int needsInit = 0;
-if (railVoltage[0] > 8.0f || railVoltage[0] < -8.0f) {
+if (railVoltage[0] > 8.0f || railVoltage[0] < -8.0f || (uint32_t)railVoltage[0] == 0x00000000 || (uint32_t)railVoltage[0] == 0xFFFFFFFF) {
     railVoltage[0] = 0.0f;
     needsInit = 1;
-    Serial.println("rail voltage 0 out of range");
+    //Serial.println("rail voltage 0 out of range");
   }
-  if (railVoltage[1] > 8.0f || railVoltage[1] < -8.0f) {
+  if (railVoltage[1] > 8.0f || railVoltage[1] < -8.0f || (uint32_t)railVoltage[1] == 0x00000000 || (uint32_t)railVoltage[1] == 0xFFFFFFFF) {
     railVoltage[1] = 0.0f;
     needsInit = 1;
-    Serial.println("rail voltage 1 out of range");
+    //Serial.println("rail voltage 1 out of range");
   }
-  if (dacOutput[0] > 5.0f || dacOutput[0] < 0.0f) {
+  if (dacOutput[0] > 5.0f || dacOutput[0] < 0.0f || (uint32_t)dacOutput[0] == 0x00000000 || (uint32_t)dacOutput[0] == 0xFFFFFFFF) {
     dacOutput[0] = 0.0f;
     needsInit = 1;
-    Serial.println("dac 0 out of range");
+    //Serial.println("dac 0 out of range");
   }
-  if (dacOutput[1] > 8.0f || dacOutput[1] < -8.0f) {
+  if (dacOutput[1] > 8.0f || dacOutput[1] < -8.0f || (uint32_t)dacOutput[1] == 0x00000000 || (uint32_t)dacOutput[1] == 0xFFFFFFFF) {
     dacOutput[1] = 0.0f;
     needsInit = 1;
-    Serial.println("dac 1 out of range");
+    //Serial.println("dac 1 out of range");
   }
+  if (needsInit == 1)
+  {
 saveVoltages(railVoltage[0],railVoltage[1],dacOutput[0],dacOutput[1]);
-
+  }
 //Serial.println(sizeof(float));
 
-  Serial.print("top rail: ");
-  Serial.println((float)railVoltage[0]);
-  Serial.print("bot rail: ");
-  Serial.println(railVoltage[1],BIN);
-  Serial.print("dac0: ");
-  Serial.println(dacOutput[0],BIN);
-  Serial.print("dac1: ");
-  Serial.println(dacOutput[1],BIN);
+  // Serial.print("top rail: ");
+  // Serial.println((float)railVoltage[0]);
+  // Serial.print("bot rail: ");
+  // Serial.println(railVoltage[1],BIN);
+  // Serial.print("dac0: ");
+  // Serial.println(dacOutput[0],BIN);
+  // Serial.print("dac1: ");
+  // Serial.println(dacOutput[1],BIN);
 
 
 // setTopRail(railVoltage[0]);

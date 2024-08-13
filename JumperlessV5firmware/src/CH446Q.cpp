@@ -24,18 +24,22 @@ volatile uint32_t irq_flags = 0;
 
 void isrFromPio(void)
 {
+
+    irq_flags = pio0_hw->irq;
+  pio_interrupt_clear(pio, PIO0_IRQ_0);
+  hw_clear_bits(&pio0_hw->irq, irq_flags);
+
+  //delayMicroseconds(500);
   setCSex(chipSelect, 1);
-   //Serial.println("interrupt from pio  ");
+  //  Serial.println("interrupt from pio  ");
   // Serial.print(chipSelect);
   // Serial.print(" \n\r");
-   //delayMicroseconds(30);
+   //delayMicroseconds(3000);
 
   setCSex(chipSelect, 0);
 
    //delayMicroseconds(40);
-  irq_flags = pio0_hw->irq;
-  pio_interrupt_clear(pio, PIO0_IRQ_0);
-  hw_clear_bits(&pio0_hw->irq, irq_flags);
+
 
 }
 
@@ -107,15 +111,20 @@ void resetArduino(void)
 }
 void sendAllPaths(void) // should we sort them by chip? for now, no
 {
-
+//   digitalWrite(RESETPIN, HIGH);
+// delay(1);
+// digitalWrite(RESETPIN, LOW);
+//   delay(10);
+//MCPIO.write16(0);
   for (int i = 0; i < numberOfPaths; i++)
   {
 
-    if (path[i].skip == true)
-    {
-      continue;
-    }
+    // if (path[i].skip == true)
+    // {
+    //   continue;
+    // }
     sendPath(i, 1);
+   // delay(1);
     if (debugNTCC)
     //if(1)
     {
@@ -222,11 +231,11 @@ void sendXYraw(int chip, int x, int y, int setOrClear)
 
   chAddress = chAddress << 24;
 
-  delayMicroseconds(50);
+  delayMicroseconds(100);
 
   pio_sm_put(pio, sm, chAddress);
 
-  delayMicroseconds(80);
+  delayMicroseconds(180);
   //isrFromPio();
 }
 

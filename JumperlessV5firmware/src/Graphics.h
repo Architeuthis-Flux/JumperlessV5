@@ -54,7 +54,7 @@ void printRawRow(uint8_t data, int row, uint32_t color, uint32_t bg);
 
 };
 
-
+extern char defconString[16];
 extern uint8_t font[][3];
 
 extern bread b;
@@ -70,7 +70,7 @@ void printString(const char* s, uint32_t color = 0xFFFFFF, uint32_t bg = 0xFFFFF
  void drawWires(int net = -1);
  void printWireStatus(void);
 
-
+void defcon(int start, int spread, int color = 0);
 
 
 

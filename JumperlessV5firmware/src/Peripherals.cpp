@@ -22,21 +22,24 @@
 #include <Adafruit_MCP4728.h>
 
 #include <SPI.h>
-// #include "MCP23S17.h"
+ #include "MCP23S17.h"
 //  #include "SPI.h"
 
-#include <Adafruit_MCP23X17.h>
 #include "PersistentStuff.h"
+#include <Adafruit_MCP23X17.h>
+#include <Wire.h>
+#include "FileParsing.h"
 
 #include "CH446Q.h"
 #include "Probing.h"
 #include "hardware/adc.h"
+#include "Commands.h"
 #define CS_PIN 17
 
 // MCP23S17 MCPIO(17, 16, 19, 18, 0x27); //  SW SPI address 0x00
 
-// MCP23S17 MCPIO(17, 7,  &SPI); //  HW SPI address 0x00 //USE HW SPI
-Adafruit_MCP23X17 MCPIO;
+ MCP23S17 MCPIO(17, 7,  &SPI); //  HW SPI address 0x00 //USE HW SPI
+//Adafruit_MCP23X17 MCPIO;
 
 // MCP23S17 MCPIO(17, 16, 19, 18, 0x7); //  SW SPI address 0x
 #define CSI Serial.write("\x1B\x5B");
@@ -48,10 +51,11 @@ float adcRange[4][2] = {{0, 5}, {0, 5}, {0, 5}, {-8, 8}};
 float dacOutput[2] = {0, 0};
 float railVoltage[2] = {0, 0};
 uint8_t gpioState[10] = {
-    2, 2, 2, 2, 2, 2,
-    2, 2, 2, 2}; // 0 = output low, 1 = output high, 2 = input, 3 = input
-                 // pullup, 4 = input pulldown
-uint8_t gpioReading[10] = {3, 3, 3, 3, 3, 3, 3, 3, 3, 3}; // 0 = low, 1 = high 2 = floating 3 = unknown
+    2, 2, 2, 2, 2,
+    2, 2, 2, 2, 2}; // 0 = output low, 1 = output high, 2 = input, 3 = input
+                    // pullup, 4 = input pulldown
+uint8_t gpioReading[10] = {
+    3, 3, 3, 3, 3, 3, 3, 3, 3, 3}; // 0 = low, 1 = high 2 = floating 3 = unknown
 
 int gpioNet[10] = {-1, -1, -1, -1, -1, -1, -1, -1, -1, -1};
 
@@ -116,19 +120,37 @@ void initGPIOex(void) {
   // pinMode(16, OUTPUT);
   // pinMode(19, OUTPUT);
   // pinMode(18, OUTPUT);
-
+delay(30);
   SPI.setRX(16);
   SPI.setTX(19);
   SPI.setSCK(18);
   SPI.setCS(17);
 
+
+  
+
   SPI.begin();
 
-  if (MCPIO.begin_SPI(CS_PIN, &SPI, 0b111) == false) {
-     delay(3000);
+  // if (MCPIO.begin_SPI(CS_PIN, &SPI, 0b111) == false) {
+  //   delay(3000);
+  //   Serial.println("MCP23S17 not found");
+  // }
+  
+    MCPIO.setSPIspeed(8000000);
+MCPIO.begin(false);
+delay(20);
+
+
+  if (MCPIO.isConnected() == false) {
+    delay(3000);
     Serial.println("MCP23S17 not found");
+    
   }
 
+
+  Serial.println(MCPIO.getSPIspeed());
+  Serial.println(MCPIO.usesHWSPI());
+//MCPIO.isConnected();
   //   while (testConnection(MCPIO) != 0)
   // {
   //   Serial.println("MCP23S17 not found");
@@ -138,24 +160,27 @@ void initGPIOex(void) {
   // MCPIO.enableAddrPins();
   // MCPIO.enableAddrPins();
 
-  MCPIO.pinMode(0, OUTPUT);
-  MCPIO.pinMode(1, OUTPUT);
-  MCPIO.pinMode(2, OUTPUT);
-  MCPIO.pinMode(3, OUTPUT);
-  MCPIO.pinMode(4, INPUT);
-  MCPIO.pinMode(5, INPUT);
-  MCPIO.pinMode(6, INPUT);
-  MCPIO.pinMode(7, INPUT);
-  MCPIO.pinMode(8, OUTPUT);
-  MCPIO.pinMode(9, OUTPUT);
-  MCPIO.pinMode(10, OUTPUT);
-  MCPIO.pinMode(11, OUTPUT);
-  MCPIO.pinMode(12, OUTPUT);
-  MCPIO.pinMode(13, OUTPUT);
-  MCPIO.pinMode(14, OUTPUT);
-  MCPIO.pinMode(15, OUTPUT);
+MCPIO.pinMode16(0b0000000000000000);
 
-  MCPIO.writeGPIOAB(0x0000);
+  // MCPIO.pinMode1(0, OUTPUT);
+  // MCPIO.pinMode1(1, OUTPUT);
+  // MCPIO.pinMode1(2, OUTPUT);
+  // MCPIO.pinMode1(3, OUTPUT);
+
+  // MCPIO.pinMode1(4, INPUT);
+  // MCPIO.pinMode1(5, INPUT);
+  // MCPIO.pinMode1(6, INPUT);
+  // MCPIO.pinMode1(7, INPUT);
+  // MCPIO.pinMode1(8, OUTPUT);
+  // MCPIO.pinMode1(9, OUTPUT);
+  // MCPIO.pinMode1(10, OUTPUT);
+  // MCPIO.pinMode1(11, OUTPUT);
+  // MCPIO.pinMode1(12, OUTPUT);
+  // MCPIO.pinMode1(13, OUTPUT);
+  // MCPIO.pinMode1(14, OUTPUT);
+  // MCPIO.pinMode1(15, OUTPUT);
+MCPIO.write16(0b0000000000000000);
+  // MCPIO.writeGPIOAB(0x0000);
 
   // for (int i = 0; i < 106; i++)
   // {
@@ -188,6 +213,7 @@ void initADC(void) {
 
 void printCalibration(void) {
   // delay(1000);
+  return;
   digitalWrite(RESETPIN, HIGH);
   delayMicroseconds(100);
   digitalWrite(RESETPIN, LOW);
@@ -367,8 +393,8 @@ void initDAC(void) {
    */
   pinMode(8, OUTPUT);
 
-  //saveVoltages(railVoltage[0], railVoltage[1], dacOutput[0], dacOutput[1]);
-  // digitalWrite(8, HIGH);
+  // saveVoltages(railVoltage[0], railVoltage[1], dacOutput[0], dacOutput[1]);
+  //  digitalWrite(8, HIGH);
 
   // // Vref = MCP_VREF_VDD, value = 0, 0V
   // mcp.setChannelValue(MCP4728_CHANNEL_A, 0);
@@ -380,18 +406,115 @@ void initDAC(void) {
   mcp.saveToEEPROM();
 }
 
-void setGPIO(void) {
+void initI2C(void) {
+  return;
+  pinMode(22, INPUT_PULLUP);
+  pinMode(23, INPUT_PULLUP);
+  Wire1.setSDA(22);
+  Wire1.setSCL(23);
+  Wire1.begin();
+}
 
-  for (int i = 0; i <= 4; i++) {
+
+
+int i2cScan(int sdaRow, int sclRow)
+{
+  //return 0;
+initI2C();
+removeBridgeFromNodeFile(RP_GPIO_22, -1, netSlot);
+removeBridgeFromNodeFile(RP_GPIO_23, -1, netSlot);
+
+addBridgeToNodeFile(RP_GPIO_22, sdaRow, netSlot);
+addBridgeToNodeFile(RP_GPIO_23, sclRow, netSlot);
+  clearAllNTCC();
+  digitalWrite(RESETPIN, HIGH);
+  openNodeFile(netSlot);
+
+  getNodesToConnect();
+
+  bridgesToPaths();
+digitalWrite(RESETPIN, LOW);
+  assignNetColors();
+
+  showLEDsCore2 = 1;
+
+  delay(5);
+  sendAllPathsCore2 = 1;
+delay(200);
+  byte error, address;
+  int nDevices;
+
+  Serial.println("Scanning...");
+
+  nDevices = 0;
+  for(address = 1; address < 127; address++ )
+  {
+    // The i2c_scanner uses the return value of
+    // the Write.endTransmisstion to see if
+    // a device did acknowledge to the address.
+    Wire1.beginTransmission(address);
+    error = Wire1.endTransmission();
+
+    if (error == 0)
+    {
+      Serial.print("I2C device found at address 0x");
+      if (address<16)
+        Serial.print("0");
+      Serial.print(address,HEX);
+      Serial.println("  !");
+
+      nDevices++;
+    }
+    else if (error==4)
+    {
+      Serial.print("Unknown error at address 0x");
+      if (address<16)
+        Serial.print("0");
+      Serial.println(address,HEX);
+    }
+  }
+  if (nDevices == 0)
+    Serial.println("No I2C devices found\n");
+  else
+    Serial.println("done\n");
+  removeBridgeFromNodeFile(RP_GPIO_22, sdaRow, netSlot);
+  removeBridgeFromNodeFile(RP_GPIO_23, sclRow, netSlot);
+
+
+
+  return count;
+  
+
+
+
+
+
+
+
+}
+
+
+
+
+
+
+
+void setGPIO(void) {
+//     // Serial.print(19+i);
+//     // Serial.print(" ");
+//     // Serial.println(gpioState[i]);
+//     Serial.println("\n\n\n\rsetGPIO\n\n\n\n\n\r");
+// return;
+  for (int i = 0; i < 4; i++) {
     switch (gpioState[i]) {
     case 0:
       pinMode(19 + i, OUTPUT);
-      digitalWrite(19 +i, LOW);
+      digitalWrite(19 + i, LOW);
       break;
     case 1:
       pinMode(19 + i, OUTPUT);
-      digitalWrite(19 +i, HIGH);
-      
+      digitalWrite(19 + i, HIGH);
+
       break;
     case 2:
       pinMode(19 + i, INPUT);
@@ -403,170 +526,159 @@ void setGPIO(void) {
       pinMode(19 + i, INPUT_PULLDOWN);
       break;
     }
-    // Serial.print(19+i);
-    // Serial.print(" ");
-    // Serial.println(gpioState[i]);
+
   }
 
-  for (int i = 4; i <= 8; i++) {
-    switch (gpioState[i]) {
-    case 0:
-      MCPIO.pinMode(i, OUTPUT);
-      MCPIO.digitalWrite(i, LOW);
-      break;
-    case 1:
-      MCPIO.pinMode(i, OUTPUT);
-      MCPIO.digitalWrite(i, HIGH);
-      break;
-    case 2:
-      MCPIO.pinMode(i, INPUT);
-      break;
-    case 3:
-      MCPIO.pinMode(i, INPUT_PULLUP);
-      
-      break;
+  // for (int i = 4; i <= 8; i++) {
+  //   switch (gpioState[i]) {
+  //   case 0:
+  //     MCPIO.pinMode(i, OUTPUT);
+  //     MCPIO.digitalWrite(i, LOW);
+  //     break;
+  //   case 1:
+  //     MCPIO.pinMode(i, OUTPUT);
+  //     MCPIO.digitalWrite(i, HIGH);
+  //     break;
+  //   case 2:
+  //     MCPIO.pinMode(i, INPUT);
+  //     break;
+  //   case 3:
+  //     MCPIO.pinMode(i, INPUT_PULLUP);
 
-
-    }
-  }
+  //     break;
+  //   }
+  //}
   rgbColor onColor = {254, 40, 35};
   rgbColor offColor = {0, 254, 48};
-  
 
   for (int i = 1; i <= 8; i++) {
-    if (gpioNet[i] != -1 && gpioState[i] != 2 && gpioState[i] != 3 && gpioState[i] != 4) {
-      
+    if (gpioNet[i] != -1 && gpioState[i] != 2 && gpioState[i] != 3 &&
+        gpioState[i] != 4) {
+
       net[gpioNet[i]].color = (gpioState[i] == 1 ? onColor : offColor);
-      lightUpNet(gpioNet[i], -1, 1, 05, 0, 0,packRgb(net[gpioNet[i]].color.r, net[gpioNet[i]].color.g, net[gpioNet[i]].color.b));
+      net[gpioNet[i]].machine = 1;
+      //net[gpioNet[i]].color = (gpioState[i] == 1 ? onColor : offColor);
+      lightUpNet(gpioNet[i], -1, 1, 05, 0, 0,
+                 packRgb(net[gpioNet[i]].color.r, net[gpioNet[i]].color.g,
+                         net[gpioNet[i]].color.b));
     }
   }
 }
 
 void readGPIO(void) {
+      // Serial.println("\n\n\n\rreadGPIO\n\n\n\n\n\r");
+      // return;
   for (int i = 0; i < 4; i++) {
-    if (gpioNet[i] != -1 && (gpioState[i] == 2 || gpioState[i] == 3 || gpioState[i] == 4)) {
-    int reading = readFloatingOrState(20 + i);
-    switch (reading) {
+    if (gpioNet[i] != -1 &&
+        (gpioState[i] == 2 || gpioState[i] == 3 || gpioState[i] == 4)) {
+      int reading = 0;//readFloatingOrState(20 + i);
+      switch (reading) {
 
-    case 0:
-      gpioReading[i] = 2;
-      break;
-    case 1:
+      case 0:
+        gpioReading[i] = 2;
+        break;
+      case 1:
 
-      gpioReading[i] = 1;
-      break;
-    case 2:
+        gpioReading[i] = 1;
+        break;
+      case 2:
 
-      gpioReading[i] = 0;
-      break;
-    }
+        gpioReading[i] = 0;
+        break;
+      }
     } else {
       gpioReading[i] = 3;
     }
-    //gpioReading[i] = digitalRead(20 + i);
+    // gpioReading[i] = digitalRead(20 + i);
   }
 
   for (int i = 0; i < 4; i++) {
 
-if (gpioNet[i+4] != -1 && (gpioState[i+4] == 2 || gpioState[i+4] == 3 || gpioState[i+4] == 4)) {
-    int reading = readFloatingOrStateMCP(i);
-    switch (reading) {
+    if (gpioNet[i + 4] != -1 &&
+        (gpioState[i + 4] == 2 || gpioState[i + 4] == 3 ||
+         gpioState[i + 4] == 4)) {
+      int reading = 0;//readFloatingOrStateMCP(i);
+      switch (reading) {
 
-    case 0:
-      gpioReading[i+4] = 2;
-      break;
-    case 1:
+      case 0:
+        gpioReading[i + 4] = 2;
+        break;
+      case 1:
 
-      gpioReading[i+4] = 1;
-      break;
-    case 2:
+        gpioReading[i + 4] = 1;
+        break;
+      case 2:
 
-      gpioReading[i+4] = 0;
-      break;
-    } 
+        gpioReading[i + 4] = 0;
+        break;
+      }
     } else {
-      gpioReading[i+4] = 3;
+      gpioReading[i + 4] = 3;
     }
-
   }
 
   for (int i = 0; i < 8; i++) {
 
     if (gpioNet[i] != -1) {
       if (gpioReading[i] == 0) {
-        lightUpNet(gpioNet[i], -1, 1, 5, 0, 0,0x000f05);
-        
-      } else if (gpioReading[i] == 1){
-        lightUpNet(gpioNet[i], -1, 1, 22, 0, 0,0x220005);
+        lightUpNet(gpioNet[i], -1, 1, 5, 0, 0, 0x000f05);
+
+      } else if (gpioReading[i] == 1) {
+        lightUpNet(gpioNet[i], -1, 1, 22, 0, 0, 0x220005);
       } else {
         lightUpNet(gpioNet[i]);
       }
     }
     // Serial.print(gpioReading[i]);
     // Serial.print(" ");
-
   }
   showLEDsCore2 = 2;
-  //Serial.println();
+  // Serial.println();
 }
 
-
-
-
-int readFloatingOrStateMCP(int pin ) {
-  //return 0;
-  pin = pin+4;
+int readFloatingOrStateMCP(int pin) {
+  return 0;
+  pin = pin + 3;
   enum measuredState state = unknownState;
   // enum measuredState state2 = floating;
 
-  int readingPullup = 0;
-  int readingPullup2 = 0;
-  int readingPullup3 = 0;
+  // int readingPullup = 0;
+  // int readingPullup2 = 0;
+  // int readingPullup3 = 0;
 
-  int readingPulldown = 0;
-  int readingPulldown2 = 0;
-  int readingPulldown3 = 0;
+  // int readingPulldown = 0;
+  // int readingPulldown2 = 0;
+  // int readingPulldown3 = 0;
 
-  MCPIO.pinMode(pin, INPUT_PULLUP);
+  // MCPIO.pinMode(pin, INPUT_PULLUP);
 
+  // delayMicroseconds(10);
 
-  delayMicroseconds(10);
+  // readingPullup = MCPIO.digitalRead(pin);
 
+  // MCPIO.pinMode(pin, OUTPUT);
+  // MCPIO.digitalWrite(pin, LOW);
+  // MCPIO.pinMode(pin, INPUT);
 
-  readingPullup =   MCPIO.digitalRead(pin);
+  // delayMicroseconds(10);
 
+  // readingPulldown = MCPIO.digitalRead(pin);
 
-    MCPIO.pinMode(pin, OUTPUT);
-    MCPIO.digitalWrite(pin, LOW);
-    MCPIO.pinMode(pin, INPUT);
+  // if (readingPullup == 1 && readingPulldown == 0) {
 
+  //   state = floating;
+  // } else if (readingPullup == 1 && readingPulldown == 1) {
 
+  //   state = high;
+  // } else if (readingPullup == 0 && readingPulldown == 0) {
 
-  delayMicroseconds(10);
+  //   state = low;
+  // } else if (readingPullup == 0 && readingPulldown == 1) {
+  //   // Serial.print("shorted");
+  // }
 
-  readingPulldown =   MCPIO.digitalRead(pin);
-
-
-
-
-    if (readingPullup == 1 && readingPulldown == 0) {
-
-      state = floating;
-    } else if (readingPullup == 1 && readingPulldown == 1) {
-
-      state = high;
-    } else if (readingPullup == 0 && readingPulldown == 0) {
-
-      state = low;
-    } else if (readingPullup == 0 && readingPulldown == 1) {
-      // Serial.print("shorted");
-    }
-  
-
-
-  return state;
+  // return state;
 }
-
 
 void setRailsAndDACs(void) {
   setTopRail(railVoltage[0], 0);
@@ -602,7 +714,6 @@ void setTopRail(float value, int save) {
   if (save) {
     saveVoltages(railVoltage[0], railVoltage[1], dacOutput[0], dacOutput[1]);
   }
-  
 }
 
 void setBotRail(float value, int save) {
@@ -613,16 +724,15 @@ void setBotRail(float value, int save) {
     dacValue = 4095;
   } else if (dacValue < 0) {
     dacValue = 0;
-  } 
+  }
 
-railVoltage[1] = value; 
+  railVoltage[1] = value;
   digitalWrite(8, HIGH);
   mcp.setChannelValue(MCP4728_CHANNEL_D, dacValue);
   digitalWrite(8, LOW);
   if (save) {
     saveVoltages(railVoltage[0], railVoltage[1], dacOutput[0], dacOutput[1]);
   }
-  
 }
 
 void setTopRail(int value, int save) {
@@ -685,85 +795,85 @@ void setDac1_8VinputCode(uint16_t inputCode) {
 }
 
 uint8_t csToPin[16] = {8, 9, 10, 11, 12, 13, 14, 15, 0, 1, 2, 3, 4, 5, 6, 7};
+//uint8_t csToPin[16] = { 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15};
+uint16_t chipMask[16] = {
+  0b0000000000000001, 0b0000000000000010, 0b0000000000000100, 0b0000000000001000,
+  0b0000000000010000, 0b0000000000100000, 0b0000000001000000, 0b0000000010000000,
+  0b0000000100000000, 0b0000001000000000, 0b0000010000000000, 0b0000100000000000,
+  0b0001000000000000, 0b0010000000000000, 0b0100000000000000, 0b1000000000000000};
+
 
 void setCSex(int chip, int value) {
 
 
-  MCPIO.begin_SPI(CS_PIN, &SPI, 0b111);
+
+ //delayMicroseconds(300);
 
   if (value > 0) {
-    MCPIO.digitalWrite(csToPin[chip], HIGH);
+    // MCPIO.digitalWrite(csToPin[chip], HIGH);
+   //MCPIO.write16(0b1111111111111111);
+    MCPIO.write16(chipMask[chip]);
+    // Serial.println(chipMask[chip]);
+    // Serial.println(" ");
+    delayMicroseconds(50);
   } else {
-    MCPIO.digitalWrite(csToPin[chip], LOW);
+    MCPIO.write16(0b0000000000000000);
+    delayMicroseconds(50);
+   ///MCPIO.digitalWrite(csToPin[chip], LOW);
   }
+// } else {
+//  //MCPIO.digitalWrite(csToPin[i], LOW);
+// }
+// }
+     //delayMicroseconds(300);
 
-  //   delayMicroseconds(3000);
-  // Serial.print(csToPin[chip]);
-  // Serial.print(" ");
-  // Serial.println(value);
-  // MCPIO.writeGPIOAB(bitMask);
-  //}
-  // MCPIO.writeGPIOAB(bitMask);
-
-  // delayMicroseconds(30);
-
-  // MCPIO.writeGPIOAB(0x0000);
-
-  // Serial.print("chip: ");
-  // Serial.print(chipNumToChar(chip));
-  // Serial.print(" bitMask: ");
-
-  // Serial.println(bitMask, BIN);
 }
 
 void writeGPIOex(int value, uint8_t pin) {
-switch (pin)
-{
-case 1:
-case 5:
-  if (value == 0)
-  {
-    MCPIO.digitalWrite(0, LOW);
+//MCPIO.begin(false);
+  //MCPIO.write1(pin, value);
+  switch (value) {
+  case 0:
+    MCPIO.write16(0b0000000000000000);
+    break;
+  case 1:
+    MCPIO.write16(0b1111111111111111);
+    break;
   }
-  else
-  {
-    MCPIO.digitalWrite(0, HIGH);
-  }
-  break;
-case 2:
-case 6:
-  if (value == 0)
-  {
-    MCPIO.digitalWrite(1, LOW);
-  }
-  else
-  {
-    MCPIO.digitalWrite(1, HIGH);
-  }
-  break;
-case 3:
-case 7:
-  if (value == 0)
-  {
-    MCPIO.digitalWrite(2, LOW);
-  }
-  else
-  {
-    MCPIO.digitalWrite(2, HIGH);
-  }
-  break;
-case 4:
-case 8:
-  if (value == 0)
-  {
-    MCPIO.digitalWrite(3, LOW);
-  }
-  else
-  {
-    MCPIO.digitalWrite(3, HIGH);
-  }
-}
 
+  // switch (pin) {
+  // case 1:
+  // case 5:
+  //   if (value == 0) {
+  //     MCPIO.digitalWrite(0, LOW);
+  //   } else {
+  //     MCPIO.digitalWrite(0, HIGH);
+  //   }
+  //   break;
+  // case 2:
+  // case 6:
+  //   if (value == 0) {
+  //     MCPIO.digitalWrite(1, LOW);
+  //   } else {
+  //     MCPIO.digitalWrite(1, HIGH);
+  //   }
+  //   break;
+  // case 3:
+  // case 7:
+  //   if (value == 0) {
+  //     MCPIO.digitalWrite(2, LOW);
+  //   } else {
+  //     MCPIO.digitalWrite(2, HIGH);
+  //   }
+  //   break;
+  // case 4:
+  // case 8:
+  //   if (value == 0) {
+  //     MCPIO.digitalWrite(3, LOW);
+  //   } else {
+  //     MCPIO.digitalWrite(3, HIGH);
+  //   }
+  // }
 }
 
 void initINA219(void) {
@@ -928,11 +1038,12 @@ void showLEDmeasurements(void) {
     adc0Reading = (adc0ReadingUnscaled) * (5.0 / 4095);
     int mappedAdc0Reading = map(adc0ReadingUnscaled, 0, 4095, 4, 30);
     uint32_t color =
-        logoColors8vSelect[(map(adc0ReadingUnscaled, 0, 4095, 0, 30) + 26)%59];
+        logoColors8vSelect[(map(adc0ReadingUnscaled, 0, 4095, 0, 30) + 26) %
+                           59];
 
     lightUpNet(showADCreadings[0], -1, 1, mappedAdc0Reading, 0, 0, color);
 
-   // showLEDsCore2 = 2;
+    // showLEDsCore2 = 2;
   }
 
   if (showADCreadings[1] != 0) {
@@ -942,10 +1053,11 @@ void showLEDmeasurements(void) {
     int mappedAdc1Reading = map(adc1ReadingUnscaled, 0, 4095, 4, 45);
 
     uint32_t color =
-        logoColors8vSelect[(map(adc1ReadingUnscaled, 50, 4095, 0, 30) + 26)%59];
+        logoColors8vSelect[(map(adc1ReadingUnscaled, 50, 4095, 0, 30) + 26) %
+                           59];
 
     lightUpNet(showADCreadings[1], -1, 1, mappedAdc1Reading, 0, 0, color);
-    //showLEDsCore2 = 2;
+    // showLEDsCore2 = 2;
   }
 
   if (showADCreadings[2] != 0) {
@@ -958,7 +1070,7 @@ void showLEDmeasurements(void) {
         logoColors8vSelect[map(adc2ReadingUnscaled, 0, 4095, 0, 30) + 28];
 
     lightUpNet(showADCreadings[2], -1, 1, mappedAdc2Reading, 0, 0, color);
-    //showLEDsCore2 = 2;
+    // showLEDsCore2 = 2;
   }
 
   if (showADCreadings[3] != 0) {
@@ -980,7 +1092,7 @@ void showLEDmeasurements(void) {
         logoColors8vSelect[map(adc3ReadingUnscaled, 1000, 3000, 0, 59)];
 
     lightUpNet(showADCreadings[3], -1, 1, mappedAdc3Reading, 0, 0, color);
-   // showLEDsCore2 = 2;
+    // showLEDsCore2 = 2;
   }
 }
 
@@ -1082,21 +1194,19 @@ void showMeasurements(int samples, int printOrBB) {
       bs += Serial.print(INA0.getPower_mW());
       bs += Serial.print("mW\t");
     }
-Serial.print(digitalRead(buttonPin));
+    Serial.print(digitalRead(buttonPin));
     bs += Serial.print("      \r");
-rotaryEncoderStuff();
-if (encoderButtonState != IDLE)
-{
-  //showReadings = 0;
-  return;
-}
+    rotaryEncoderStuff();
+    if (encoderButtonState != IDLE) {
+      // showReadings = 0;
+      return;
+    }
     while (millis() - startMillis < printInterval &&
            (Serial.available() == 0 && Serial1.available() == 0 &&
-            checkProbeButton() == 0 )) {
+            checkProbeButton() == 0)) {
 
       showLEDmeasurements();
-       delayMicroseconds(5000);
-    
+      delayMicroseconds(5000);
     }
     startMillis = millis();
   }
@@ -1104,15 +1214,21 @@ if (encoderButtonState != IDLE)
 
 int readAdc(int channel, int samples) {
   int adcReadingAverage = 0;
-  if (channel == 0) { // I have no fucking idea why this works
+  // if (channel == 0) { // I have no fucking idea why this works
 
-    pinMode(ADC1_PIN, OUTPUT);
-    digitalWrite(ADC1_PIN, LOW);
-  }
+  //   pinMode(ADC1_PIN, OUTPUT);
+  //   digitalWrite(ADC1_PIN, LOW);
+  // }
+unsigned long timeoutTimer = micros();
 
   for (int i = 0; i < samples; i++) {
+    if (micros() - timeoutTimer > 5000)
+    {
+      break;
+    }
     adcReadingAverage += analogRead(ADC0_PIN + channel); //(int)adc_read();
-    delayMicroseconds(30);
+    delayMicroseconds(25);
+
   }
 
   int adcReading = adcReadingAverage / samples;

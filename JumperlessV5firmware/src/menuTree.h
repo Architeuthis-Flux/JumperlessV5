@@ -117,4 +117,6 @@ DisplayOptions\n\
 -$Jumpers$\n\
 --*Wires* *Lines*\n\
 -$Bright$\n\
---*1**2**3**4**5**6**7**8*\n\0"};
+--*1**2**3**4**5**6**7**8*\n\
+-$DEFCON$\n\
+--*On**Off**Fuck*\n\0"};

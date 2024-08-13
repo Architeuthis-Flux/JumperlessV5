@@ -14,6 +14,7 @@
 
 #include "Graphics.h"
 #include "Menus.h"
+#include "Commands.h"
 
 volatile int slotChanged = 0;
 PIO pioEnc = pio1;

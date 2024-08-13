@@ -44,7 +44,7 @@ void sortSFchipsLeastToMostCrowded(void);
 
 int moreAvailableChip (int chip1 , int chip2);
 
-
+void setChipStatusOtherSide(void);
 
 int xMapForNode(int node, int chip);
 

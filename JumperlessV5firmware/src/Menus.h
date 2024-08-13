@@ -1,6 +1,6 @@
 #ifndef MENUS_H
 #define MENUS_H
-
+extern int defconDisplay;
 enum actionCategories {
   SHOWACTION,
   RAILSACTION,
@@ -69,7 +69,7 @@ void populateAction(void);
 
 enum actionCategories getActionCategory(int menuPosition);
 
-float getActionFloat(int menuPosition);
+float getActionFloat(int menuPosition, int rail = -1);
 
 char* findSubMenuString(int menuPosition, int selection);
 
