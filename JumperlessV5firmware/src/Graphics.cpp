@@ -702,8 +702,15 @@ void printChar(const char c, uint32_t color, uint32_t bg, int position,
   if (topBottom == 1) {
     charPosition = charPosition % 7;
     charPosition += 7;
+    if (charPosition > 13) {
+      return;
+    }
   }
   if (topBottom == 0) {
+    if (charPosition > 6) {
+      return;
+      // charPosition = charPosition % 7;
+    }
     charPosition = charPosition % 7;
   }
 
@@ -745,6 +752,35 @@ void printChar(const char c, uint32_t color, uint32_t bg, int position,
         if (((font[fontMapIndex][i]) & columnMask[j]) != 0) {
           leds.setPixelColor(((charPosition + i + nudge) * 5) + j, color);
         } else {
+leds.setPixelColor(((charPosition + i + nudge) * 5) + j, 0);
+        }
+      }
+    }
+  } else if (bg == 0xFFFFFD) {
+        for (int j = 0; j < 5; j++) {
+      
+          leds.setPixelColor(((charPosition + nudge - 1) * 5) + j, 0);
+        }
+          
+    for (int i = 0; i < 3; i++) {
+      for (int j = 0; j < 5; j++) {
+        if (((font[fontMapIndex][i]) & columnMask[j]) != 0) {
+          leds.setPixelColor(((charPosition + i + nudge) * 5) + j, color);
+        } else {
+          leds.setPixelColor(((charPosition + i + nudge) * 5) + j, 0);
+        }
+      }
+    }
+            for (int j = 0; j < 5; j++) {
+      
+          leds.setPixelColor(((charPosition + nudge + 3) * 5) + j, 0);
+        }
+  }else if (bg == 0xFFFFFE) {
+    for (int i = 0; i < 3; i++) {
+      for (int j = 0; j < 5; j++) {
+        if (((font[fontMapIndex][i]) & columnMask[j]) != 0) {
+          leds.setPixelColor(((charPosition + i + nudge) * 5) + j, color);
+        } else {
           // leds.setPixelColor((i*5)+j, bg);
         }
       }
@@ -780,15 +816,15 @@ void printString(const char *s, uint32_t color, uint32_t bg, int position,
 
   for (int i = 0; i < strlen(s); i++) {
 
-    if (topBottom == 1) {
-      position = position % 7;
+    // if (topBottom == 1) {
+    //   position = position % 7;
 
-    } else if (topBottom == 0) {
-      position = position % 7;
+    // } else if (topBottom == 0) {
+    //   position = position % 7;
 
-    } else {
-      position = position % 14;
-    }
+    // } else {
+    //   position = position % 14;
+    // }
     // Serial.print(s[i]);
     // Serial.print(" ");
     // Serial.println(position);

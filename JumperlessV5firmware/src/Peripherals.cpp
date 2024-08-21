@@ -815,10 +815,10 @@ void setCSex(int chip, int value) {
     MCPIO.write16(chipMask[chip]);
     // Serial.println(chipMask[chip]);
     // Serial.println(" ");
-    delayMicroseconds(50);
+    delayMicroseconds(200);
   } else {
     MCPIO.write16(0b0000000000000000);
-    delayMicroseconds(50);
+    delayMicroseconds(100);
    ///MCPIO.digitalWrite(csToPin[chip], LOW);
   }
 // } else {

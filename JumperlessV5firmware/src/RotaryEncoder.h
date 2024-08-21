@@ -15,6 +15,7 @@ extern int showingPreview;
 extern int rotaryDivider;
 extern int encoderRaw;
 extern volatile int numberOfSteps;
+extern volatile bool resetPosition;
 
 enum encoderDirectionStates { NONE,UP,DOWN };
 

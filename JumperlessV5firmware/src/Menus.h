@@ -9,6 +9,7 @@ enum actionCategories {
   ARDUINOACTION,
   PROBEACTION,
   DISPLAYACTION,
+  APPSACTION,
   NOCATEGORY
 };
 

@@ -18,6 +18,7 @@
 #define DEFAULTRAILBRIGHTNESS 5
 #define DEFAULTSPECIALNETBRIGHTNESS 5
 
+extern volatile bool core2busy;
 // #define PCBEXTINCTION 0 //extra brightness for to offset the extinction
 // through pcb
 

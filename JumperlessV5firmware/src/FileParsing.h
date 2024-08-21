@@ -8,6 +8,7 @@
 
 
 //extern File nodeFile;  
+extern volatile bool core1busy;
 
 
 void createLocalNodeFile(int slot = 0);

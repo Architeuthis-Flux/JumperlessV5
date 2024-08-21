@@ -533,18 +533,23 @@ int selectSFprobeMenu(int function) {
   switch (function) {
 
   case 132: {
+    inPadMenu = 1;
     function = chooseADC();
     delay(100);
+    inPadMenu = 0;
 
     break;
   }
   case 131: {
+    inPadMenu = 1;
     function = chooseDAC();
     delay(100);
+    inPadMenu = 0;
 
     break;
   }
   case 130: {
+    
     function = chooseGPIO();
     delay(100);
 
@@ -920,6 +925,8 @@ int chooseDAC(int justPickOne) {
   // b.clear();
   clearLEDsExceptRails();
   showLEDsCore2 = 2;
+
+
   // lastReadRaw = 0;
   b.print("DAC", scaleDownBrightness(rawOtherColors[9], 4, 22), 0xFFFFFF, 1, 0,
           3);

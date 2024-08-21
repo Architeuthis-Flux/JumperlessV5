@@ -30,6 +30,7 @@ int lastPositionEncoder = 0;
 int encoderRaw = 0;
 int lastPosition = 0;
 int position = 0;
+volatile bool resetPosition = false;
 
 int lastButtonState = 0;
 
@@ -114,6 +115,8 @@ unsigned long doubleClickLength = 250;
 unsigned long buttonDebounceTimer = 0;
 unsigned long buttonDebounceTimer2 = 0;
 unsigned long debounceTime = 2000;
+
+long positionOffset = 0;
 
 int showingPreview = 0;
 int rotState = 0;
@@ -209,21 +212,40 @@ void rotaryEncoderStuff(void) {
     pio_sm_restart(pioEnc, smEnc);
     lastRotaryDivider = rotaryDivider;
     encoderRaw = quadrature_encoder_get_count(pioEnc, smEnc);
-
+   //encoderRaw -= positionOffset;
     encoderRaw = encoderRaw / rotaryDivider;
     lastPositionEncoder = encoderRaw;
 
     // quadrature_program_init(pioEnc, smEnc, offsetEnc, QUADRATURE_A_PIN,
     // QUADRATURE_B_PIN);
   }
+  // if (resetPosition == true) {
+  //  // quadrature_encoder_program_init(pioEnc, smEnc, PIN_AB, 0);
+  //   //pio_sm_restart(pioEnc, smEnc);
+  //   //pio_sm_clear_fifos(pioEnc, smEnc);
+  //   //pio_sm_drain_tx_fifo(pioEnc, smEnc);
+    
+  //   positionOffset = quadrature_encoder_get_count(pioEnc, smEnc);
+  //   positionOffset = positionOffset / rotaryDivider;
+  //   Serial.print("\n\n\rencoderRaw: ");
+  //   Serial.println(encoderRaw);
+  //   Serial.print("positionOffset: ");
+  //   Serial.println(positionOffset);
+    
+
+  //   // encoderRaw -= positionOffset;
+  //   // encoderRaw = encoderRaw / rotaryDivider;
+  //   //lastPositionEncoder = positionOffset/rotaryDivider;
+  //   resetPosition = false;
+  // }
 
   encoderRaw = quadrature_encoder_get_count(pioEnc, smEnc);
 
   encoderRaw = encoderRaw / rotaryDivider;
-
+//encoderRaw -= positionOffset;
   numberOfSteps = abs(lastPositionEncoder - encoderRaw);
 
-  if (lastPositionEncoder != encoderRaw) {
+  if ((lastPositionEncoder - encoderRaw > 1 || lastPositionEncoder - encoderRaw < -1) || (lastPositionEncoder != encoderRaw && rotaryDivider < 4)) {
 
     if (lastPositionEncoder > encoderRaw && encoderDirectionState != DOWN) {
       position++;

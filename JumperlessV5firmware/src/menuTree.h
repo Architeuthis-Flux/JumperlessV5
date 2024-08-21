@@ -2,6 +2,44 @@
 
 
 char menuTree[] = {"\n\
+$Rails$\n\
+\n\
+-*Both* *Top* *Bottom*\n\
+-->v1\n\
+\n\
+Apps\n\
+\n\
+-Oscill oscope\n\
+-MIDI   Synth\n\
+-I2C    Scanner\n\
+-Self   Dstruct\n\
+-EEPROM Dumper\n\
+-7 Seg  Mapper\n\
+-Rick   Roll\n\
+-$Circuts>$\n\
+--555\n\
+--Op Amp\n\
+--$7400$\n\
+---*74x109**74x161**74x42**74x595*\n\
+-$Games  >$\n\
+--*DOOM**Pong**Tetris**Snake*\n\
+-$Manage >$\n\
+--Delete\n\
+--->a3\n\
+--Upload\n\
+--->a4\n\
+-Logic  Analyzr\n\
+Slots\n\
+\n\
+-$Load$\n\
+--*0**1**2**3**4**5**6**7*>s\n\
+\n\
+-$Clear$\n\
+--*0**1**2**3**4**5**6**7*>s\n\
+\n\
+-$Save to$\n\
+--*0**1**2**3**4**5**6**7*>s\n\
+\n\
 Show\n\
 -$Digital$\n\
 \n\
@@ -45,26 +83,6 @@ Show\n\
 -$Voltage$\n\
 --*0* *1* *2*\n\
 --->n3\n\
-\n\
-$Rails$\n\
-\n\
--*Both* *Top* *Bottom*\n\
--->v1\n\
-\n\
-Slots\n\
-\n\
--$Load$\n\
---*0**1**2**3**4**5**6**7*>s\n\
-\n\
--Browse\n\
--->b\n\
-\n\
--$Clear$\n\
---*0**1**2**3**4**5**6**7*>s\n\
-\n\
-\n\
--$Save to$\n\
---*0**1**2**3**4**5**6**7*>s\n\
 \n\
 Output\n\
 \n\

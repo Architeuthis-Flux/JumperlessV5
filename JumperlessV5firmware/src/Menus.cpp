@@ -22,13 +22,13 @@ int menuLength = 0;
 char menuChars[1000];
 
 int menuLineIndex = 0;
-String menuLines[120];
-int menuLevels[120];
-int stayOnTop[120];
-uint8_t numberOfChoices[120];
-uint8_t actions[120]; //>n nodes 1 //>b baud 2 //>v voltage 3
+String menuLines[150];
+int menuLevels[150];
+int stayOnTop[150];
+uint8_t numberOfChoices[150];
+uint8_t actions[150]; //>n nodes 1 //>b baud 2 //>v voltage 3
 
-uint32_t optionSlpitLocations[120];
+uint32_t optionSlpitLocations[150];
 int numberOfLevels = 0;
 int optionVoltage = 0;
 
@@ -103,11 +103,16 @@ void readMenuFile(void) {
   LittleFS.begin();
   delay(10);
   writeMenuTree();
-
+while(core2busy == true)
+{
+ // Serial.println("waiting for core2 to finish");
+}
+core1busy = true;
   File menuFile = LittleFS.open("/MenuTree.txt", "r");
   if (!menuFile) {
     Serial.println("Failed to open menu file");
     return;
+    core1busy = false;
   }
   menuLength = 0;
 
@@ -120,6 +125,7 @@ void readMenuFile(void) {
   menuRead = 1;
 
   menuFile.close();
+  core1busy = false;
 }
 
 int menuParsed = 0;
@@ -196,6 +202,9 @@ void parseMenuFile(void) {
         break;
       case 's':
         actions[i] = 4;
+        break;
+      case 'a':
+        actions[i] = 5;
         break;
       default:
         actions[i] = 0;
@@ -538,7 +547,7 @@ int getMenuSelection(void) {
     }
     /// rotaryDivider = 9;
     // delayMicroseconds(1000);
-    rotaryDivider = 8;
+    rotaryDivider = 4;
     if (encoderButtonState == DOUBLECLICKED ||
         millis() - noInputTimer > exitMenuTime) {
       encoderButtonState = IDLE;
@@ -556,6 +565,7 @@ int getMenuSelection(void) {
       encoderDirectionState = NONE;
       firstTime = 0;
       // currentAction.Category
+      resetPosition = true;
       noInputTimer = millis();
       lastMenuPosition = menuPosition;
       if (returningFromTimeout == 0) {
@@ -1096,7 +1106,7 @@ uint32_t nodeSelectionColorsHeader[10] = {
 
 int selectSubmenuOption(int menuPosition, int menuLevel) {
 
-  rotaryDivider = 16;
+  rotaryDivider = 4;
   delayMicroseconds(3000);
   int optionSelected = -1;
   int highlightedOption = 1;
@@ -1383,11 +1393,12 @@ int selectSubmenuOption(int menuPosition, int menuLevel) {
 
         lightUpRail();
         showSavedColors(highlightedOption);
-        b.print(subMenuStrings[highlightedOption].c_str(),
-                nodeSelectionColors[highlightedOption], 0xFFFFFF, 3, 1, 0, 0);
+
         showNets();
         leds.setPixelColor(bbPixelToNodesMapV5[highlightedOption + 16][1],
                            nodeSelectionColorsHeader[highlightedOption]);
+        b.print(subMenuStrings[highlightedOption].c_str(),
+                nodeSelectionColors[highlightedOption], 0xFFFFFD, 3, 1, -1, 0);
         showLEDsCore2 = 1;
         // inClickMenu = 1;
       }
@@ -1496,7 +1507,7 @@ int selectNodeAction(int whichSelection) {
     if (encoderButtonState == DOUBLECLICKED || encoderButtonState == HELD ||
         Serial.available() > 0) {
       b.clear();
-      rotaryDivider = 8;
+      rotaryDivider = 4;
       return -1;
     }
 
@@ -1535,7 +1546,7 @@ int selectNodeAction(int whichSelection) {
           }
         } else {
           scrollAcceleration = 1;
-          rotaryDivider = 4;
+          rotaryDivider = 3;
           accelCount = 0;
         }
         scrollAccelerationTimer = micros();
@@ -1779,7 +1790,7 @@ int selectNodeAction(int whichSelection) {
     //   }
     // }
   }
-  rotaryDivider = 8;
+  rotaryDivider = 4;
   if (nodeSelected <= 59 && nodeSelected >= 0) {
     return nodeSelected + 1;
   } else {
@@ -1791,7 +1802,7 @@ float getActionFloat(int menuPosition, int rail) {
   float currentChoice = -0.1;
 
   char floatString[8] = "0.0";
-  rotaryDivider = 4;
+  rotaryDivider = 3;
   b.clear(1);
   int firstTime = 1;
 

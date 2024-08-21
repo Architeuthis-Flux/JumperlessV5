@@ -61,6 +61,8 @@ bread b;
 Adafruit_USBD_CDC USBSer1;
 
 int supplySwitchPosition = 0;
+volatile bool core1busy = false;
+volatile bool core2busy = false;
 
 void machineMode(void);
 // void lastNetConfirm(int forceLastNet = 0);
@@ -82,6 +84,7 @@ void setup() {
   pinMode(RESETPIN, OUTPUT_12MA);
 
   digitalWrite(RESETPIN, HIGH);
+  ///multicore_lockout_victim_init();
   delayMicroseconds(8000);
   // Serial.setTimeout(8000);
   //  USB_PID = 0xACAB;
@@ -98,7 +101,7 @@ void setup() {
   USBDevice.addStringDescriptor("Architeuthis Flux");
 
   delay(20);
-  // Serial.ignoreFlowControl(true);
+   Serial.setTimeout(500);
   Serial.begin(115200);
 
   delay(20);
@@ -156,6 +159,7 @@ void setup() {
   // setRailsAndDACs();
   //  showLEDsCore2 = 1;
   //
+ // multicore_lockout_victim_init();
 }
 
 void setup1() {
@@ -175,7 +179,7 @@ void setup1() {
 
   core2initFinished = 1;
   // delay(4);
-
+//multicore_lockout_victim_init();
   // lightUpRail();
 
   // delay(4);
@@ -325,15 +329,20 @@ menu:
   if (firstLoop == 1) {
     firstLoop = 0;
     delay(100);
-   // defconDisplay = 0;
+    // defconDisplay = 0;
 
     goto loadfile;
   }
 
 dontshowmenu:
-//defconDisplay = 0;
-  // readVoltages();
-  // refreshConnections();
+
+Serial.print("core2busy = ");
+Serial.println(core2busy);
+
+
+  // defconDisplay = 0;
+  //  readVoltages();
+  //  refreshConnections();
   connectFromArduino = '\0';
   // showLEDsCore2 = 1;
   while (Serial.available() == 0 && connectFromArduino == '\0' &&
@@ -343,9 +352,9 @@ dontshowmenu:
     // digitalWrite(10, HIGH);
     // pinMode(9, OUTPUT_8MA);
     // digitalWrite(9, HIGH);
-   // Serial.println(defconDisplay);
+    // Serial.println(defconDisplay);
     if (clickMenu() >= 0) {
-     //defconDisplay = -1;
+      // defconDisplay = -1;
       goto loadfile;
     }
     // Serial.println(digitalRead(11));
@@ -368,7 +377,7 @@ dontshowmenu:
                                // Serial.println(probeButton);
           // calibrateProbe();
           // int longShort = longShortPress(1000);
-          //defconDisplay = -1;
+          // defconDisplay = -1;
           if (probeButton == 2) {
 
             input = 'p';
@@ -501,7 +510,7 @@ skipinput:
     defconString[14] = f[14];
     defconString[15] = f[15];
     defconDisplay = 0;
-    //b.print(f, color);
+    // b.print(f, color);
 
     break;
   }
@@ -902,11 +911,13 @@ void loop1() // core 2 handles the LEDs and the CH446Q8
 {
 
   if (micros() - schedulerTimer > schedulerUpdateTime || showLEDsCore2 == 3 ||
-      showLEDsCore2 == 4) {
+      showLEDsCore2 == 4 && core1busy == false) {
 
     if (((showLEDsCore2 >= 1 && loadingFile == 0) || showLEDsCore2 == 3 ||
          swirled == 1) &&
         sendAllPathsCore2 == 0) {
+
+         
       // Serial.println(showLEDsCore2);
       int rails =
           showLEDsCore2; // 3 doesn't show nets and keeps control of the LEDs
@@ -924,12 +935,19 @@ void loop1() // core 2 handles the LEDs and the CH446Q8
       }
 
       if (rails != 2 && rails != 5 && rails != 3 && inClickMenu == 0 &&
-          inPadMenu == 0) { 
-                    if (defconDisplay >= 0 && probeActive == 0) {
-          //defcon(swirlCount, spread, defconDisplay);
-        } else {
-        showNets();
-        }
+          inPadMenu == 0) {
+        // if (defconDisplay >= 0 && probeActive == 0) {
+        //   // defcon(swirlCount, spread, defconDisplay);
+        // } else {
+         //multicore_lockout_start_blocking();
+         //multicore_lockout_start_timeout_us(1000);
+         while(core1busy == true){
+          }
+          core2busy = true;
+          showNets();
+          //multicore_lockout_end_timeout_us(1000);
+          //multicore_lockout_end_blocking();
+        //}
 
       } else {
 
@@ -983,7 +1001,7 @@ void loop1() // core 2 handles the LEDs and the CH446Q8
       // probeLEDs.setPixelColor(0, 0x000005);
 
       // probeLEDs.show();
-
+ 
       if (rails != 3) {
         showLEDsCore2 = 0;
         // delayMicroseconds(3200);
@@ -991,20 +1009,29 @@ void loop1() // core 2 handles the LEDs and the CH446Q8
       if (inClickMenu == 1) {
         rotaryEncoderStuff();
       }
+      core2busy = false;
 
     } else if (sendAllPathsCore2 == 1) {
       // leds.show();
+      //multicore_lockout_start_blocking();
+      while (core1busy == true) {
+        Serial.println("core1busy");
+        delay(1);
+      } // wait for core 1 to finish
+      core2busy = true;
       digitalWrite(RESETPIN, HIGH);
       delayMicroseconds(50);
       digitalWrite(RESETPIN, LOW);
       delayMicroseconds(2200);
       sendAllPaths();
       delayMicroseconds(2200);
+      //multicore_lockout_end_blocking();
       // showNets();
       // leds.show();
       // delayMicroseconds(7200);
       // showLEDsCore2 = 1;
       // chooseShownReadings();
+      core2busy = false;
       sendAllPathsCore2 = 0;
 
     } else if (millis() - lastSwirlTime > 40 && loadingFile == 0 &&
@@ -1025,12 +1052,9 @@ void loop1() // core 2 handles the LEDs and the CH446Q8
 
       if (swirlCount % 10 == 0) {
         countsss++;
-        
       }
 
-      
-
-      //defconDisplay = 0;
+      // defconDisplay = 0;
       if (probeActive == 0) {
 
         showProbeLEDs = 3;
@@ -1046,26 +1070,24 @@ void loop1() // core 2 handles the LEDs and the CH446Q8
       // leds.show();
     } else if (inClickMenu == 0 && probeActive == 0) {
 
-      if (((countsss > 8 && defconDisplay > 0) || countsss > 20) && defconDisplay != -1) {
+      if (((countsss > 8 && defconDisplay > 0) || countsss > 20) &&
+          defconDisplay != -1) {
         countsss = 0;
 
-       if (defconDisplay == 0) {
+        if (defconDisplay == 0) {
           tempDD++;
-        
-        if (tempDD > 6) {
-          tempDD = 0;
+
+          if (tempDD > 6) {
+            tempDD = 0;
+          }
+          // defconDisplay = tempDD;
+        } else {
+          // defconDisplay = 0;
         }
-        //defconDisplay = tempDD;
-       } else {
-         //defconDisplay = 0;
-       }
-
-
       }
 
-
       if (defconDisplay > 6) {
-       // defconDisplay = 0;
+        // defconDisplay = 0;
       }
       if (readcounter > 20) {
         readcounter = 0;
@@ -1076,12 +1098,13 @@ void loop1() // core 2 handles the LEDs and the CH446Q8
       }
 
       // readGPIO();
-
+//multicore_lockout_start_blocking();
       rotaryEncoderStuff();
+       //multicore_lockout_end_blocking();
       if (probeActive == 0) {
-        //showLEDmeasurements();
+        // showLEDmeasurements();
       }
-    } 
+    }
     schedulerTimer = micros();
   }
 }
