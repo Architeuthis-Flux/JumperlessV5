@@ -1,7 +1,7 @@
 # Jumperless V5
 ###### The next generation [jumperless](https://github.com/Architeuthis-Flux/Jumperless) breadboard
 
-Jumperless V5 is a breaboard where any point can be connected to any other with software-defined jumpers. RGB LEDs under each hole turn the breadboard itself into a display; paired with its assortment of routable analog/digial IO, Jumperless V5 gives you real-time information about everything that's happening in your circuit and the ability to change it at a whim.
+Jumperless V5 is a breadboard where any point can be connected to any other with software-defined jumpers. RGB LEDs under each hole turn the breadboard itself into a display; paired with its assortment of routable analog/digial IO, Jumperless V5 gives you real-time information about everything that's happening in your circuit and the ability to change it at a whim.
 
 
 ![JumperlessV5front](https://github.com/Architeuthis-Flux/JumperlessV5/assets/20519442/60e26150-3dce-4d52-812f-8f1f99c58989)
@@ -38,7 +38,7 @@ https://github.com/user-attachments/assets/168cb387-934b-4a25-b30d-b696312ee0e1
 Jumperless V5 will cost roughly $350 (with free shipping worldwide)
 
 ## For People Who Like Reading
-You're flipping through a comic book and see an ad in the back for some X ray glasses. You put some coins in an envelope and send it off (because it's like 50 years ago in this made up scenario) and get back some spectacles. You immediately look up at the night sky towards the galactic center for Sagittarius A* and don't see a thing; you've been had. You go back to prototyping your new Eurorack module (because that's what I assume everyone was doing in the early 80's) and forget to take them off. 
+You're flipping through a comic book and see an ad in the back for some X-ray glasses. You put some coins in an envelope and send it off (because it's like 50 years ago in this made up scenario) and get back some spectacles. You immediately look up at the night sky towards the galactic center for Sagittarius A* and don't see a thing; you've been had. You go back to prototyping your new Eurorack module (because that's what I assume everyone was doing in the early 80's) and forget to take them off. 
 
 You notice that you can now see electrons flowing, capacitors charging, frequencies changing, UART messages passing, all right there on your breadboard. Those aren't X-ray specs, they're electron specs, even better.  
 
@@ -46,7 +46,7 @@ You notice that you can now see electrons flowing, capacitors charging, frequenc
 
 ###### //When the prototypes get here on Monday, I'll take proper photos and these will be replaced
 
-*Jumperless V5 is that pair of x-ray spectacles.* Like all the fancy test equipment covering our workbenches, it converts the things that our hunter-gatherer-ass MK 1 eyeballs can't perceive into something they can. The difference is that it does it for everything, everywhere, exactly where it's happening with an RGB LED under every hole. 
+*Jumperless V5 is that pair of X-ray spectacles.* Like all the fancy test equipment covering our workbenches, it converts the things that our hunter-gatherer-ass MK 1 eyeballs can't perceive into something they can. The difference is that it does it for everything, everywhere, exactly where it's happening with an RGB LED under every hole. 
 
 Now you're prototyping in God Mode, never again will you spend 2 hours testing every possible issue just to find that your Tx and Rx lines are swapped, or you forgot to hook up the Vcc pin, or some other thing that seems absolutely obvious in retrospect but you simply didn't have the information until you went down the list and checked each thing that could possibly go wrong.
 
