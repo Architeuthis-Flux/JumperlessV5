@@ -186,9 +186,7 @@ void setup1() {
   // showLEDsCore2 = 1;
 }
 
-unsigned long teardownTimer = 0;
-unsigned long lastTeardown = 0;
-unsigned long teardownTime = 2000;
+
 
 char connectFromArduino = '\0';
 
