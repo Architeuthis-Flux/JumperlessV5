@@ -282,6 +282,16 @@ void debugFlagSet(int flag) {
 }
 
 void saveVoltages(float top, float bot, float dac0, float dac1) {
+  // Serial.print("saving voltages: ");
+  // Serial.print(top);
+  // Serial.print(" ");
+  // Serial.print(bot);
+  // Serial.print(" ");
+  // Serial.print(dac0);
+  // Serial.print(" ");
+  // Serial.println(dac1);
+
+
   EEPROM.put(TOP_RAIL_ADDRESS0, top);
   EEPROM.put(BOTTOM_RAIL_ADDRESS0, bot);
   EEPROM.put(DAC0_ADDRESS0, dac0);
@@ -295,31 +305,37 @@ void saveVoltages(float top, float bot, float dac0, float dac1) {
 void readVoltages(void) {
 
 
+delay(1000);
 
 
    EEPROM.get(TOP_RAIL_ADDRESS0, railVoltage[0]);
+
+
    EEPROM.get(BOTTOM_RAIL_ADDRESS0, railVoltage[1]);
    EEPROM.get(DAC0_ADDRESS0, dacOutput[0]);
    EEPROM.get(DAC1_ADDRESS0, dacOutput[1]);
-   delay(2);
+   delayMicroseconds(2000);
 
 int needsInit = 0;
-if (railVoltage[0] > 8.0f || railVoltage[0] < -8.0f || (uint32_t)railVoltage[0] == 0x00000000 || (uint32_t)railVoltage[0] == 0xFFFFFFFF) {
+if (railVoltage[0] > 8.0f || railVoltage[0] < -8.0f ){//|| (uint32_t)railVoltage[0] == 0x00000000 || (uint32_t)railVoltage[0] == 0xFFFFFFFF) {
+Serial.println(railVoltage[0]);
+
     railVoltage[0] = 0.0f;
     needsInit = 1;
+    
     //Serial.println("rail voltage 0 out of range");
   }
-  if (railVoltage[1] > 8.0f || railVoltage[1] < -8.0f || (uint32_t)railVoltage[1] == 0x00000000 || (uint32_t)railVoltage[1] == 0xFFFFFFFF) {
+  if (railVoltage[1] > 8.0f || railVoltage[1] < -8.0f){// || (uint32_t)railVoltage[1] == 0x00000000 || (uint32_t)railVoltage[1] == 0xFFFFFFFF) {
     railVoltage[1] = 0.0f;
     needsInit = 1;
     //Serial.println("rail voltage 1 out of range");
   }
-  if (dacOutput[0] > 5.0f || dacOutput[0] < 0.0f || (uint32_t)dacOutput[0] == 0x00000000 || (uint32_t)dacOutput[0] == 0xFFFFFFFF) {
+  if (dacOutput[0] > 5.0f || dacOutput[0] < 0.0f){// || (uint32_t)dacOutput[0] == 0x00000000 || (uint32_t)dacOutput[0] == 0xFFFFFFFF) {
     dacOutput[0] = 0.0f;
     needsInit = 1;
     //Serial.println("dac 0 out of range");
   }
-  if (dacOutput[1] > 8.0f || dacOutput[1] < -8.0f || (uint32_t)dacOutput[1] == 0x00000000 || (uint32_t)dacOutput[1] == 0xFFFFFFFF) {
+  if (dacOutput[1] > 8.0f || dacOutput[1] < -8.0f){// || (uint32_t)dacOutput[1] == 0x00000000 || (uint32_t)dacOutput[1] == 0xFFFFFFFF) {
     dacOutput[1] = 0.0f;
     needsInit = 1;
     //Serial.println("dac 1 out of range");

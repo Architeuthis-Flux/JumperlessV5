@@ -108,7 +108,7 @@ int probeMode(int pin, int setOrClear) {
   int deleteMissesIndex = 0;
   clearLEDsExceptRails();
   startProbe();
-  createLocalNodeFile();
+  //createLocalNodeFile(netSlot);
   routableBufferPower(1);
 
 restartProbing:
@@ -1439,7 +1439,7 @@ float voltageSelect(int fiveOrEight) {
 
 void routableBufferPower(int offOn) {
   if (offOn == 1) {
-    Serial.println("power on\n\r");
+   // Serial.println("power on\n\r");
     // delay(10);
     removeBridgeFromNodeFile(ROUTABLE_BUFFER_IN, RP_GPIO_23, netSlot, 1);
 
@@ -1470,7 +1470,7 @@ void routableBufferPower(int offOn) {
     // delay(30);
 
   } else {
-    Serial.println("power off\n\r");
+    //Serial.println("power off\n\r");
     /// removeBridgeFromNodeFile(ROUTABLE_BUFFER_IN, RP_GPIO_22, netSlot);
     delay(10);
     removeBridgeFromNodeFile(ROUTABLE_BUFFER_IN, RP_GPIO_23, netSlot, 1);

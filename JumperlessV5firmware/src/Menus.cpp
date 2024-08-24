@@ -312,7 +312,7 @@ void initMenu(void) {
 }
 
 unsigned long noInputTimer = millis();
-unsigned long exitMenuTime = 55000;
+unsigned long exitMenuTime = 9995000;
 
 int subSelection = -1;
 
@@ -2031,7 +2031,7 @@ switch (rail) {
 
 // subSelection
 
-int defconDisplay = 1;
+int defconDisplay = -1;
 int doMenuAction(int menuPosition, int selection) {
 
   populateAction();
@@ -2071,7 +2071,7 @@ int doMenuAction(int menuPosition, int selection) {
     if (menuLines[currentAction.previousMenuPositions[1]].indexOf("Voltage") !=
         -1) {
 
-      printActionStruct();
+     // printActionStruct();
 
       for (int i = 0; i < 10; i++) {
         if (currentAction.from[i] != -1) {

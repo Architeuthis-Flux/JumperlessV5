@@ -54,10 +54,10 @@ void initRotaryEncoder(void) {
   //   quadrature_program_init(pioEnc, smEnc, offsetEnc, QUADRATURE_A_PIN,
   //                           QUADRATURE_B_PIN);
   // delay(1000);
-  Serial.print(smEnc);
-  Serial.print("\n\rRotary Encoder Mode: ");
-  Serial.print(rotaryEncoderMode);
-  Serial.print("\n\r");
+  // Serial.print(smEnc);
+  // Serial.print("\n\rRotary Encoder Mode: ");
+  // Serial.print(rotaryEncoderMode);
+  // Serial.print("\n\r");
 }
 
 void unInitRotaryEncoder(void) {

@@ -753,7 +753,7 @@ uint16_t lastInputCode1 = offset[1] + calib[1];
 void setDac0_5Vvoltage(float voltage) {
   int dacValue = (voltage * 4095 / 5.0);
 
-  Serial.println(voltage);
+  //Serial.println(voltage);
   if (dacValue > 4095) {
     dacValue = 4095;
   }

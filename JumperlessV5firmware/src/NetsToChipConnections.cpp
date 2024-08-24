@@ -827,7 +827,7 @@ void resolveAltPaths(void) {
 
           int xMapBB = xMapForChipLane0(path[i].chip[0], bb);
           if (xMapBB == -1) {
-             Serial.print("xMapBB == -1");
+             //Serial.print("xMapBB == -1");
 
             continue; // don't bother checking if there's no connection
           }

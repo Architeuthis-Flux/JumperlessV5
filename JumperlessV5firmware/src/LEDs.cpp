@@ -307,7 +307,7 @@ void showSavedColors(int slot) {
     openNodeFile(slot);
     // printNodeFile(slot, 0);
     // clearLEDs();
-    //clearLEDsExceptRails();
+    clearLEDsExceptRails();
     getNodesToConnect();
     bridgesToPaths();
     // leds.clear();
@@ -1107,6 +1107,7 @@ struct rgbColor shiftHue(struct rgbColor colorToShift, int hueShift,
 
   return colorToShiftRgb;
 }
+bool photos = true;
 
 void lightUpNode(int node, uint32_t color) {
 
@@ -1124,8 +1125,13 @@ uint32_t dimLogoColor(uint32_t color, int brightness) {
   hsvColor colorHsv = RgbToHsv(dimColor);
 
   colorHsv.v = brightness;
-  return packRgb(HsvToRgb(colorHsv).r, HsvToRgb(colorHsv).g * 2,
-                 HsvToRgb(colorHsv).b * 3);
+  if (photos == true){
+  return packRgb(HsvToRgb(colorHsv).r, HsvToRgb(colorHsv).g * 1,
+                 HsvToRgb(colorHsv).b * 2);
+  } else {
+    return packRgb(HsvToRgb(colorHsv).r, HsvToRgb(colorHsv).g*2,
+                 HsvToRgb(colorHsv).b*3);
+  }
 }
 
 uint32_t logoColors[LOGO_COLOR_LENGTH + 1] = {
@@ -1529,12 +1535,21 @@ void lightUpRail(int logo, int rail, int onOff, int brightness2,
     leds.setPixelColor(435, scaleDownBrightness(rawOtherColors[10], 2, 45));
 
   } else {
+    if (photos == true){
+    leds.setPixelColor(430, scaleDownBrightness(rawOtherColors[8], 6, 25));
+    leds.setPixelColor(431, scaleDownBrightness(rawOtherColors[8], 6, 25));
+    leds.setPixelColor(432, scaleDownBrightness(rawOtherColors[9], 12, 25));
+    leds.setPixelColor(433, scaleDownBrightness(rawOtherColors[9], 12, 25));
+    leds.setPixelColor(434, scaleDownBrightness(rawOtherColors[10], 6, 25));
+    leds.setPixelColor(435, scaleDownBrightness(rawOtherColors[10], 6, 25));
+    } else {
     leds.setPixelColor(430, scaleDownBrightness(rawOtherColors[8], 2, 45));
     leds.setPixelColor(431, scaleDownBrightness(rawOtherColors[8], 2, 45));
     leds.setPixelColor(432, scaleDownBrightness(rawOtherColors[9], 5, 45));
     leds.setPixelColor(433, scaleDownBrightness(rawOtherColors[9], 5, 45));
     leds.setPixelColor(434, scaleDownBrightness(rawOtherColors[10], 2, 45));
     leds.setPixelColor(435, scaleDownBrightness(rawOtherColors[10], 2, 45));
+    }
   }
   if (switchPosition == 2) //+-8V
   {

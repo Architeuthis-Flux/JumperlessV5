@@ -40,6 +40,10 @@ const char rotaryConnectionString[] =
     "{AREF-GND,D11-GND,D10-UART_TX,D12-UART_RX,D13-GPIO_0, ";
 
 void writeMenuTree(void) {
+  while (core2busy == true) {
+    // Serial.println("waiting for core2 to finish");
+  }
+  core1busy = true;
   File menuTreeFile = LittleFS.open("/MenuTree.txt", "w");
   if (!menuTreeFile) {
 
@@ -58,19 +62,43 @@ void writeMenuTree(void) {
   int menuIndex = 0;
   while (menuTree[menuIndex] != '\0') {
     menuTreeFile.print(menuTree[menuIndex]);
-    Serial.print(menuTree[menuIndex]);
+    //Serial.print(menuTree[menuIndex]);
     menuIndex++;
   }
   // menuTreeFile.write(menuTree);
   // menuTreeFile.print(menuTreeString);
   menuTreeFile.close();
+  core1busy = false;
 }
 
 void createLocalNodeFile(int slot) {
-  nodeFile = LittleFS.open("nodeFileSlot" + String(slot) + ".txt", "r");
+  // Serial.println("creating local node file");
+  // Serial.print ("slot = ");
+  // Serial.println(slot);
+  // Serial.print ("nodeFileString = ");
+  // nodeFileString.printTo(Serial);
+  while (core2busy == true) {
+    // Serial.println("waiting for core2 to finish");
+  }
+  core1busy = true;
+  delay(1);
+  nodeFile = LittleFS.open("nodeFileSlot" + String(slot) + ".txt", "a+");
+      if (!nodeFile) {
+      if (debugFP)
+        Serial.println("Failed to open nodeFile");
+        core1busy = false;
+      return;
+    } else {
+      if (debugFP)
+        Serial.println("\n\ropened nodeFileSlot" + String(slot) +
+                       +".txt\n\n\rloading bridges from file\n\r");
+    }
+
   nodeFileString.clear();
   nodeFileString.read(nodeFile);
-  Serial.println(nodeFileString);
+    nodeFile.close();
+  core1busy = false;
+  //Serial.println(nodeFileString);
   nodeFileString.replace(" ", "");
   nodeFileString.replace(" ", "");
   nodeFileString.replace("{", "");
@@ -78,17 +106,22 @@ void createLocalNodeFile(int slot) {
   nodeFileString.prefix("{ ");
   nodeFileString.concat(" } ");
 
-  nodeFile.close();
+
 }
 
 void saveLocalNodeFile(int slot) {
-  Serial.println("saving local node file");
-  Serial.print("nodeFileString = ");
-  Serial.println(nodeFileString);
+  // Serial.println("saving local node file");
+  // Serial.print("nodeFileString = ");
+  // Serial.println(nodeFileString);
+   core1busy = true;
+   long count = 0;
   while (core2busy == true) {
-    // Serial.println("waiting for core2 to finish");
+    // delay(1);
+    // Serial.print("core2");
+    // Serial.println(count);
+    // count++;
   }
-  core1busy = true;
+ 
   nodeFile = LittleFS.open("nodeFileSlot" + String(slot) + ".txt", "w");
   nodeFileString.replace(" ", "");
   nodeFileString.replace(" ", "");
@@ -96,7 +129,7 @@ void saveLocalNodeFile(int slot) {
   nodeFileString.replace("}", "");
   nodeFileString.prefix("{ ");
   nodeFileString.concat(" } ");
-  delay(1);
+  delay(3);
 
   nodeFileString.printTo(nodeFile);
   //
@@ -117,8 +150,9 @@ void saveLocalNodeFile(int slot) {
   //     {
   //         Serial.write(nodeFile.read());
   //     }
-  core1busy = false;
+   delay(10);
   nodeFile.close();
+  core1busy = false;
   // Serial.println("\n\n\rsaved local node file");
 }
 
@@ -322,7 +356,13 @@ void inputNodeFileList(int addRotaryConnections) {
 
     if (i >= firstSlotNumber && i <= lastSlotNumber) {
       // Serial.println(i);
+      while (core2busy == true) {
+        // Serial.println("waiting for core2 to finish");
+      } 
+      core1busy = true;
+
       nodeFile = LittleFS.open("nodeFileSlot" + String(i) + ".txt", "w");
+      
     }
 
     // nodeFileStringSlot.clear();
@@ -357,8 +397,9 @@ void inputNodeFileList(int addRotaryConnections) {
       nodeFile.seek(0);
       nodeFile.close();
     }
-    core1busy = false;
+    
     refreshSavedColors(i);
+    core1busy = false;
   }
   // uint8_t trash = Serial.read();
   // Serial.write(trash);
@@ -399,7 +440,7 @@ void savePreformattedNodeFile(int source, int slot, int keepEncoder) {
     // Serial.println("waiting for core2 to finish");
   }
   core1busy = true;
-  nodeFile = LittleFS.open("nodeFileSlot" + String(slot) + ".txt", "w+");
+  nodeFile = LittleFS.open("nodeFileSlot" + String(slot) + ".txt", "w");
   // Serial.println("Slot " + String(slot));
 
   // Serial.println(nodeFile);
@@ -877,6 +918,10 @@ int removeBridgeFromNodeFile(int node1, int node2, int slot, int flashOrLocal) {
   // Serial.print("Slot = ");
   // Serial.println(slot);
   if (flashOrLocal == 0) {
+    while (core2busy == true) {
+       Serial.println("remove core2busy");
+    }
+    core1busy = true;
     nodeFile = LittleFS.open("nodeFileSlot" + String(slot) + ".txt", "r+");
     /// Serial.println(nodeFile);
 
@@ -900,6 +945,7 @@ int removeBridgeFromNodeFile(int node1, int node2, int slot, int flashOrLocal) {
     if (nodeFile.size() < 2) {
       // Serial.println("empty file");
       nodeFile.close();
+      core1busy = false;
       return -1;
     }
     nodeFile.seek(0);
@@ -1318,6 +1364,9 @@ void openNodeFile(int slot, int flashOrLocal) {
   // Serial.println(nodeFileString);
   // Serial.println("opening nodeFileSlot" + String(slot) + ".txt");
   // Serial.println("flashOrLocal = " + String(flashOrLocal));
+  while (core2busy == true) {
+    // Serial.println("waiting for core2 to finish");
+  } 
   core1busy = true;
   if (flashOrLocal == 0) {
     // multicore_lockout_start_blocking();
@@ -1327,6 +1376,7 @@ void openNodeFile(int slot, int flashOrLocal) {
     if (!nodeFile) {
       if (debugFP)
         Serial.println("Failed to open nodeFile");
+        core1busy = false;
       return;
     } else {
       if (debugFP)
