@@ -1,0 +1,1 @@
+Remove characters in a SafeString, removeLast, keepLast
