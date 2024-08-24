@@ -200,7 +200,7 @@ int baudRate = 115200;
 
 int restoredNodeFile = 0;
 
-const char firmwareVersion[] = "5.0.0.1"; // remember to update this
+const char firmwareVersion[] = "5.0.0.2"; // remember to update this
 
 int firstLoop = 1;
 
