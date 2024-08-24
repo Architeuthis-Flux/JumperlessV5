@@ -29,6 +29,7 @@ extern char inputBuffer[INPUTBUFFERLENGTH];
 extern char machineModeInstructionString[NUMBEROFINSTRUCTIONS][20];
 
 enum machineModeInstruction parseMachineInstructions(int *sequenceNumber);
+void machineMode(void);
 void machineModeRespond(int sequenceNumber, bool ok);
 void getUnconnectedPaths(void);
 void machineNetlistToNetstruct(void);

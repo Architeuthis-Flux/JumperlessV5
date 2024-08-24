@@ -64,7 +64,7 @@ int supplySwitchPosition = 0;
 volatile bool core1busy = false;
 volatile bool core2busy = false;
 
-void machineMode(void);
+
 // void lastNetConfirm(int forceLastNet = 0);
 void rotaryEncoderStuff(void);
 
@@ -72,13 +72,9 @@ volatile uint8_t pauseCore2 = 0;
 
 volatile int loadingFile = 0;
 
-unsigned long lastNetConfirmTimer = 0;
+
 // int machineMode = 0;
 
-int rotEncInit = 0;
-// https://wokwi.com/projects/367384677537829889
-
-int core2initFinished = 0;
 
 void setup() {
   pinMode(RESETPIN, OUTPUT_12MA);
@@ -86,12 +82,6 @@ void setup() {
   digitalWrite(RESETPIN, HIGH);
   ///multicore_lockout_victim_init();
   delayMicroseconds(8000);
-  // Serial.setTimeout(8000);
-  //  USB_PID = 0xACAB;
-  //  USB_VID = 0x1D50;
-  //  USB_MANUFACTURER = "Architeuthis Flux";
-  //  USB_PRODUCT = "Jumperless";
-  //  USBSetup
 
   USBDevice.setProductDescriptor("Jumperless");
   USBDevice.setManufacturerDescriptor("Architeuthis Flux");
@@ -149,20 +139,6 @@ void setup() {
 
   delay(10);
 
-  while (core2initFinished == 0) {
-  }
-  delay(100);
-  initMenu();
-  initADC();
-  initDAC(); // also sets revisionNumber
-  setupSwirlColors();
-  // setRailsAndDACs();
-  //  showLEDsCore2 = 1;
-  //
- // multicore_lockout_victim_init();
-}
-
-void setup1() {
   delay(10);
 
   initGPIOex();
@@ -177,13 +153,16 @@ void setup1() {
 
   delay(4);
 
-  core2initFinished = 1;
-  // delay(4);
-//multicore_lockout_victim_init();
-  // lightUpRail();
+  delay(100);
+  initMenu();
+  initADC();
+  initDAC(); // also sets revisionNumber
+  setupSwirlColors();
 
-  // delay(4);
-  // showLEDsCore2 = 1;
+}
+
+void setup1() {
+
 }
 
 
@@ -205,7 +184,7 @@ int firstLoop = 1;
 volatile int probeActive = 0;
 
 int showExtraMenu = 1;
-int tearDownToggle = 0;
+
 
 int tinyUSB = 0;
 unsigned long timer = 0;
@@ -285,48 +264,16 @@ menu:
 
   // }
   Serial.println();
-  // printColorName(5);
-  //  saveVoltages(railVoltage[0], railVoltage[1], dacOutput[0], dacOutput[1]);
-  //  readVoltages();
+
   int toggg = 0;
 
   int chipSc = 0;
   unsigned long lastTimerrr = 0;
-  // while (1) {
-  //   // if (millis() - lastTimerrr > 600) {
-  //   //   chipSc++;
-  //   //   if (chipSc > 15) {
-  //   //     toggg = !toggg;
-  //   //     chipSc = 0;
-  //   //     Serial.println(" ");
-  //   //   }
-  //   //    lastTimerrr = millis();
-  //   //   // Serial.print("chipSc = ");
-  //   //   // Serial.println(chipSc);
-  //   //   // Serial.println();
-  //   //   // delay(300);
-  //   // }
-  //     // Serial.print("chipSc = ");
-  //     // Serial.println(chipNumToChar(chipSc));
-  //     // Serial.println();
-  //     // delay(100);
 
-  //   setCSex(chipSc, 1);
-  //   //delay(100);
-  //   setCSex(chipSc, 0);
-  //   delay(1);
-
-  //   // writeGPIOex(toggg, 0);
-  //   // delay(10);
-
-  //   //delay(100);
-  //   //  delay(1000
-  // }
-  // setupSwirlColors();\
 
   if (firstLoop == 1) {
     firstLoop = 0;
-    delay(100);
+    delay(1);
     // defconDisplay = 0;
 
     goto loadfile;
@@ -334,13 +281,6 @@ menu:
 
 dontshowmenu:
 
-// Serial.print("core2busy = ");
-// Serial.println(core2busy);
-
-
-  // defconDisplay = 0;
-  //  readVoltages();
-  //  refreshConnections();
   connectFromArduino = '\0';
   // showLEDsCore2 = 1;
   while (Serial.available() == 0 && connectFromArduino == '\0' &&
@@ -1130,130 +1070,3 @@ core2busy = true;
 
 unsigned long lastTimeNetlistLoaded = 0;
 unsigned long lastTimeCommandRecieved = 0;
-
-void machineMode(void) // read in commands in machine readable format
-{
-  int sequenceNumber = -1;
-
-  lastTimeCommandRecieved = millis();
-
-  if (millis() - lastTimeCommandRecieved > 100) {
-    machineModeRespond(sequenceNumber, true);
-    return;
-  }
-  enum machineModeInstruction receivedInstruction =
-      parseMachineInstructions(&sequenceNumber);
-
-  // Serial.print("receivedInstruction: ");
-  // Serial.print(receivedInstruction);
-  // Serial.print("\n\r");
-
-  switch (receivedInstruction) {
-  case netlist:
-    lastTimeNetlistLoaded = millis();
-    clearAllNTCC();
-
-    // writeNodeFileFromInputBuffer();
-
-    digitalWrite(RESETPIN, HIGH);
-
-    machineNetlistToNetstruct();
-    populateBridgesFromNodes();
-    bridgesToPaths();
-
-    clearLEDs();
-    assignNetColors();
-    // showNets();
-    digitalWrite(RESETPIN, LOW);
-    sendAllPathsCore2 = 1;
-    break;
-
-  case getnetlist:
-    if (millis() - lastTimeNetlistLoaded > 300) {
-
-      listNetsMachine();
-    } else {
-      machineModeRespond(0, true);
-      // Serial.print ("too soon bro\n\r");
-      return;
-    }
-    break;
-
-  case bridgelist:
-    clearAllNTCC();
-
-    writeNodeFileFromInputBuffer();
-
-    openNodeFile();
-    getNodesToConnect();
-    // Serial.print("openNF\n\r");
-    digitalWrite(RESETPIN, HIGH);
-    bridgesToPaths();
-    clearLEDs();
-    assignNetColors();
-    // Serial.print("bridgesToPaths\n\r");
-    digitalWrite(RESETPIN, LOW);
-    // showNets();
-
-    sendAllPathsCore2 = 1;
-    break;
-
-  case getbridgelist:
-    listBridgesMachine();
-    break;
-
-  case lightnode:
-    lightUpNodesFromInputBuffer();
-    break;
-
-  case lightnet:
-    lightUpNetsFromInputBuffer();
-    //   lightUpNet();
-    // assignNetColors();
-    // showLEDsCore2 = 1;
-    break;
-
-    // case getmeasurement:
-    //   showMeasurements();
-    //   break;
-
-  case setsupplyswitch:
-
-    supplySwitchPosition = setSupplySwitch();
-    // printSupplySwitch(supplySwitchPosition);
-    machineModeRespond(sequenceNumber, true);
-
-    showLEDsCore2 = 1;
-    break;
-
-  case getsupplyswitch:
-    // if (millis() - lastTimeNetlistLoaded > 100)
-    //{
-
-    printSupplySwitch(supplySwitchPosition);
-    // machineModeRespond(sequenceNumber, true);
-
-    // }else {
-    // Serial.print ("\n\rtoo soon bro\n\r");
-    // machineModeRespond(0, true);
-    // return;
-    // }
-    break;
-
-  case getchipstatus:
-    printChipStatusMachine();
-    break;
-
-    // case gpio:
-    //   break;
-  case getunconnectedpaths:
-    getUnconnectedPaths();
-    break;
-
-  case unknown:
-    machineModeRespond(sequenceNumber, false);
-    return;
-  }
-
-  machineModeRespond(sequenceNumber, true);
-}
