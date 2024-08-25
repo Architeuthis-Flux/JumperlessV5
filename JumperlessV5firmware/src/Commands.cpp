@@ -19,7 +19,8 @@ volatile int showProbeLEDs =
 void refreshConnections(int ledShowOption) {
 
   clearAllNTCC();
-  openNodeFile(netSlot, 0);
+  //dontUpdateLEDs = true;
+   openNodeFile(netSlot, 0);
   getNodesToConnect();
   // digitalWrite(RESETPIN, HIGH);
   bridgesToPaths();
@@ -27,12 +28,15 @@ void refreshConnections(int ledShowOption) {
   // delay(1);
   assignNetColors();
   clearLEDsExceptRails();
+  chooseShownReadings();
+  //dontUpdateLEDs = false;
   // delay(1);
   //  digitalWrite(RESETPIN, LOW);
   // delay(5);
   sendAllPathsCore2 = 1;
-   delay(5);
+  // delay(5);
   showLEDsCore2 = 1;
+//ledUpdate();
   // while (showLEDsCore2 != 0)
   // {
 
@@ -44,6 +48,7 @@ void refreshConnections(int ledShowOption) {
 
 void refreshLocalConnections(int ledShowOption) {
   clearAllNTCC();
+  //dontUpdateLEDs = true;
   openNodeFile(netSlot, 1);
   getNodesToConnect();
   // digitalWrite(RESETPIN, HIGH);
@@ -51,12 +56,13 @@ void refreshLocalConnections(int ledShowOption) {
 
   assignNetColors();
   clearLEDsExceptRails();
+  chooseShownReadings();
   // delay(1);
-
+//dontUpdateLEDs = false;
   // digitalWrite(RESETPIN, LOW);
   // delay(5);
   sendAllPathsCore2 = 1;
-   delay(5);
+ // delay(5);
   showLEDsCore2 = ledShowOption;
 }
 

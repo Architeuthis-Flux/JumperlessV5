@@ -2,7 +2,7 @@
 #ifndef LEDS_H
 #define LEDS_H
 
-#include "Adafruit_NeoMatrix.h"
+//#include "Adafruit_NeoMatrix.h"
 #include "Adafruit_NeoPixel.h"
 #include "JumperlessDefinesRP2040.h"
 #include "NetsToChipConnections.h"
@@ -41,7 +41,7 @@ extern volatile uint8_t LEDbrightnessSpecial;
 extern volatile uint8_t pauseCore2;
 extern Adafruit_NeoPixel leds;
 extern Adafruit_NeoPixel probeLEDs;
-extern Adafruit_NeoMatrix matrix;
+//extern Adafruit_NeoMatrix matrix;
 extern bool debugLEDs;
 
 extern int displayMode;
@@ -233,6 +233,9 @@ const int pixelsToRails[20] = {B_RAIL_NEG, B_RAIL_POS, B_RAIL_POS, B_RAIL_NEG,
 extern rgbColor netColors[MAX_NETS];
 extern uint32_t savedLEDcolors[NUM_SLOTS][LED_COUNT + 1];
 extern rgbColor specialNetColors[8];
+
+
+
 
 void printColorName(uint32_t color);
 void printColorName(int hue);

@@ -9,7 +9,7 @@
 
 //extern File nodeFile;  
 extern volatile bool core1busy;
-
+extern volatile int loadingFile;
 
 void createLocalNodeFile(int slot = 0);
 void saveLocalNodeFile(int slot = 0);   

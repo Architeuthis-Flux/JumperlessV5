@@ -1,57 +1,82 @@
 // SPDX-License-Identifier: MIT
 
 #include "CH446Q.h"
+#include "JumperlessDefinesRP2040.h"
+#include "LEDs.h"
 #include "MatrixStateRP2040.h"
 #include "NetsToChipConnections.h"
-#include "LEDs.h"
 #include "Peripherals.h"
-#include "JumperlessDefinesRP2040.h"
 
 #include "hardware/pio.h"
 
-#include "spi.pio.h"
 #include "pio_spi.h"
+#include "spi.pio.h"
 
-#define MYNAMEISERIC 0 // on the board I sent to eric, the data and clock lines are bodged to GPIO 18 and 19. To allow for using hardware SPI
+#define MYNAMEISERIC                                                           \
+  0 // on the board I sent to eric, the data and clock lines are bodged to GPIO
+    // 18 and 19. To allow for using hardware SPI
 
-//int chipToPinArray[12] = {CS_A, CS_B, CS_C, CS_D, CS_E, CS_F, CS_G, CS_H, CS_I, CS_J, CS_K, CS_L};
+// int chipToPinArray[12] = {CS_A, CS_B, CS_C, CS_D, CS_E, CS_F, CS_G, CS_H,
+// CS_I, CS_J, CS_K, CS_L};
+
 PIO pio = pio0;
 
 uint sm = pio_claim_unused_sm(pio, true);
 
 volatile int chipSelect = 0;
 volatile uint32_t irq_flags = 0;
+unsigned long timeCheck = 0;
 
-void isrFromPio(void)
-{
-
-    irq_flags = pio0_hw->irq;
-  pio_interrupt_clear(pio, PIO0_IRQ_0);
+void isrFromPio(void) {
+  return;
+  //
+  int time = micros() - timeCheck;
+  Serial.println(time);
+  Serial.println("^");
+  //
+  strobeCS();
+  // delayMicroseconds(500);
+  irq_flags = pio0_hw->irq;
+  // pio_interrupt_clear(pio, PIO0_IRQ_0);
   hw_clear_bits(&pio0_hw->irq, irq_flags);
 
-  //delayMicroseconds(500);
+  // delayMicroseconds(50);
+  // pio_sm_clear_fifos(pio, sm);
+
+  pio_sm_clear_fifos(pio, sm);
+  // delayMicroseconds(40);
+  // pio_sm_restart(pio, sm);
+  // Serial.println("v");
+
+  // pio_interrupt_clear(pio, PIO0_IRQ_0);
+  // delay(100);
+  pio_sm_restart(pio, sm);
+}
+
+void strobeCS(void) {
+  // chipSelect = 0;
   setCSex(chipSelect, 1);
-  //  Serial.println("interrupt from pio  ");
-  // Serial.print(chipSelect);
-  // Serial.print(" \n\r");
-   //delayMicroseconds(3000);
+  // // //  Serial.println("interrupt from pio  ");
+  // // // Serial.print(chipSelect);
+  // // // Serial.print(" \n\r");
+  // //  delayMicroseconds(300);
 
   setCSex(chipSelect, 0);
 
-   //delayMicroseconds(40);
-
-
+  // setCSex(0, 1);
+  // setCSex(0, 0);
 }
 
-void initCH446Q(void)
-{
+void initCH446Q(void) {
 
   uint dat = 14;
   uint clk = 15;
 
   uint cs = 7;
 
-  irq_add_shared_handler(PIO0_IRQ_0, isrFromPio, PICO_SHARED_IRQ_HANDLER_DEFAULT_ORDER_PRIORITY);
+  // irq_add_shared_handler(PIO0_IRQ_0, isrFromPio,
+  // PICO_SHARED_IRQ_HANDLER_DEFAULT_ORDER_PRIORITY);
+  irq_set_exclusive_handler(PIO0_IRQ_0, isrFromPio);
   irq_set_enabled(PIO0_IRQ_0, true);
 
   uint offset = pio_add_program(pio, &spi_ch446_multi_cs_program);
@@ -60,7 +85,7 @@ void initCH446Q(void)
   // Serial.print("offset: ");
   // Serial.println(offset);
 
-  pio_spi_ch446_multi_cs_init(pio, sm, offset, 8, 16, 0, 1, clk, dat);
+  pio_spi_ch446_multi_cs_init(pio, sm, offset, 8, 1, 0, 1, clk, dat);
   // pio_spi_ch446_cs_handler_init(pio, smCS, offsetCS, 256, 1, 8, 20, 6);
   // pinMode(CS_A, OUTPUT);
   // digitalWrite(CS_A, HIGH);
@@ -95,8 +120,7 @@ void initCH446Q(void)
   /// digitalWrite(RESETPIN, LOW);
 }
 
-void resetArduino(void)
-{
+void resetArduino(void) {
   int lastPath = MAX_BRIDGES - 1;
   path[lastPath].chip[0] = CHIP_I;
   path[lastPath].chip[1] = CHIP_I;
@@ -111,30 +135,28 @@ void resetArduino(void)
 }
 void sendAllPaths(void) // should we sort them by chip? for now, no
 {
-//   digitalWrite(RESETPIN, HIGH);
-// delay(1);
-// digitalWrite(RESETPIN, LOW);
-//   delay(10);
-//MCPIO.write16(0);
-  for (int i = 0; i < numberOfPaths; i++)
-  {
+  //   digitalWrite(RESETPIN, HIGH);
+  // delay(1);
+  // digitalWrite(RESETPIN, LOW);
+  //   delay(10);
+  // MCPIO.write16(0);
+  for (int i = 0; i < numberOfPaths; i++) {
 
     // if (path[i].skip == true)
     // {
     //   continue;
     // }
     sendPath(i, 1);
-   // delay(1);
+    // delay(1);
     if (debugNTCC)
-    //if(1)
+    // if(1)
     {
       Serial.print("path ");
       Serial.print(i);
       Serial.print(" \t");
       printPathType(i);
       Serial.print(" \n\r");
-      for (int j = 0; j < 4; j++)
-      {
+      for (int j = 0; j < 4; j++) {
         printChipNumToChar(path[i].chip[j]);
         Serial.print("  x[");
         Serial.print(j);
@@ -151,8 +173,7 @@ void sendAllPaths(void) // should we sort them by chip? for now, no
   }
 }
 
-void sendPath(int i, int setOrClear)
-{
+void sendPath(int i, int setOrClear) {
 
   uint32_t chAddress = 0;
 
@@ -160,16 +181,13 @@ void sendPath(int i, int setOrClear)
   int chYdata = 0;
   int chXdata = 0;
 
-  for (int chip = 0; chip < 4; chip++)
-  {
-    if (path[i].chip[chip] != -1)
-    {
+  for (int chip = 0; chip < 4; chip++) {
+    if (path[i].chip[chip] != -1) {
       chipSelect = path[i].chip[chip];
 
       chipToConnect = path[i].chip[chip];
 
-      if (path[i].y[chip] == -1 || path[i].x[chip] == -1)
-      {
+      if (path[i].y[chip] == -1 || path[i].x[chip] == -1) {
         if (debugNTCC)
           Serial.print("!");
 
@@ -191,7 +209,8 @@ void sendPath(int i, int setOrClear)
 
       // if (setOrClear == 1)
       // {
-      //   chAddress = chAddress | 0b00000001; // this last bit determines whether we set or unset the path
+      //   chAddress = chAddress | 0b00000001; // this last bit determines
+      //   whether we set or unset the path
       // }
 
       // chAddress = chAddress << 24;
@@ -208,8 +227,7 @@ void sendPath(int i, int setOrClear)
   }
 }
 
-void sendXYraw(int chip, int x, int y, int setOrClear)
-{
+void sendXYraw(int chip, int x, int y, int setOrClear) {
   uint32_t chAddress = 0;
   chipSelect = chip;
 
@@ -224,21 +242,35 @@ void sendXYraw(int chip, int x, int y, int setOrClear)
 
   chAddress = chYdata | chXdata;
 
-  if (setOrClear == 1)
-  {
-    chAddress = chAddress | 0b00000001; // this last bit determines whether we set or unset the path
+  if (setOrClear == 1) {
+    chAddress =
+        chAddress |
+        0b00000001; // this last bit determines whether we set or unset the path
   }
 
   chAddress = chAddress << 24;
 
-  delayMicroseconds(100);
+  // delayMicroseconds(100);
+  while (pio_interrupt_get(pio, PIO0_IRQ_0) == true) {
+  }
+  pio_sm_put_blocking(pio, sm, chAddress);
+  // timeCheck = micros();
+  while (pio_sm_get_tx_fifo_level(pio, sm) > 1) {
+    // Serial.println(pio_sm_get_tx_fifo_level(pio, sm));
+  }
+  // int time = micros() - timeCheck;
+delayMicroseconds(2);
+  //
+  strobeCS();
+  delayMicroseconds(20);
+  // delayMicroseconds(500);
+  irq_flags = pio0_hw->irq;
+  // pio_interrupt_clear(pio, PIO0_IRQ_0);
+  hw_clear_bits(&pio0_hw->irq, irq_flags);
 
-  pio_sm_put(pio, sm, chAddress);
+  pio_sm_clear_fifos(pio, sm);
 
-  delayMicroseconds(180);
-  //isrFromPio();
-}
-
-void createXYarray(void)
-{
+  pio_sm_restart(pio, sm);
+  // Serial.println(time);
+  // Serial.println("^");
 }

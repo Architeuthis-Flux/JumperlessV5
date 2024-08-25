@@ -89,6 +89,8 @@ Adafruit_NeoPixel::Adafruit_NeoPixel(uint16_t n, int16_t p, neoPixelType t)
   if (sm < 0) {
     pio = pio1;
     sm = pio_claim_unused_sm(pio, true); // panic if no SM is free
+    // delay(1000); //
+    // Serial.println("PIO1");
   }
   init = true;
 #endif
@@ -221,6 +223,8 @@ void  Adafruit_NeoPixel::rp2040Show(uint8_t pin, uint8_t *pixels, uint32_t numBy
   }
 
   while(numBytes--)
+  // Serial.println(numBytes);
+  // delay(10);
     // Bits for transmission must be shifted to top 8 bits
     pio_sm_put_blocking(pio, sm, ((uint32_t)*pixels++)<< 24);
 }

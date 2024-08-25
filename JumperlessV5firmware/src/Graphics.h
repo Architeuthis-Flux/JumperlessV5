@@ -54,10 +54,16 @@ void printRawRow(uint8_t data, int row, uint32_t color, uint32_t bg);
 
 };
 
+
+extern struct repeating_timer timerStruct;
+extern volatile bool dontUpdateLEDs;
 extern char defconString[16];
 extern uint8_t font[][3];
 
 extern bread b;
+
+void displayHandler(void);
+bool ledUpdate(__unused struct repeating_timer *t = &timerStruct);
 
 void printGraphicsRow(uint8_t data, int row, uint32_t color = 0xFFFFFF, uint32_t bg = 0xFFFFFF);
 

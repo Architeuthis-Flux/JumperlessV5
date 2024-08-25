@@ -25,6 +25,12 @@ enum machineModeInstruction lastReceivedInstruction = unknown;
 
 char machineModeInstructionString[NUMBEROFINSTRUCTIONS][20] = {"unknown", "netlist", "getnetlist", "bridgelist", "getbridgelist", "lightnode", "lightnet", "getmeasurement", "gpio", "uart", "arduinoflash", "setnetcolor", "setnodecolor", "setsupplyswitch", "getsupplyswitch", "getchipstatus", "getunconnectedpaths"};
 
+unsigned long lastTimeCommandRecieved = 0;
+unsigned long lastTimeNetlistLoaded = 0;
+
+//int supplySwitchPosition = 1;
+
+
 enum machineModeInstruction parseMachineInstructions(int *sequenceNumber)
 {
 
@@ -155,7 +161,7 @@ void machineMode(void) // read in commands in machine readable format
     assignNetColors();
     // showNets();
     digitalWrite(RESETPIN, LOW);
-    sendAllPathsCore2 = 1;
+   /// sendAllPathsCore2 = 1;
     break;
 
   case getnetlist:
@@ -209,18 +215,18 @@ void machineMode(void) // read in commands in machine readable format
 
   case setsupplyswitch:
 
-    supplySwitchPosition = setSupplySwitch();
+    //supplySwitchPosition = setSupplySwitch();
     // printSupplySwitch(supplySwitchPosition);
     machineModeRespond(sequenceNumber, true);
 
-    showLEDsCore2 = 1;
+    //showLEDsCore2 = 1;
     break;
 
   case getsupplyswitch:
     // if (millis() - lastTimeNetlistLoaded > 100)
     //{
 
-    printSupplySwitch(supplySwitchPosition);
+   // printSupplySwitch(supplySwitchPosition);
     // machineModeRespond(sequenceNumber, true);
 
     // }else {

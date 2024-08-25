@@ -11,7 +11,7 @@ extern int hueShiftC2;
 extern int lightUpNetCore2;
 
 
-
+void strobeCS(void);
 void initCH446Q(void);
 void sendXYraw(int chip, int x, int y, int setorclear);
 

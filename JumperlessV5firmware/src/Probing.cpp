@@ -328,7 +328,7 @@ saveLocalNodeFile();
           b.printRawRow(0b00000100, nodesToConnect[node1or2] - 1, 0x4000e8,
                         0xfffffe);
            showLEDsCore2 = 2;
-          delay(80);
+          //delay(80);
           // showLEDsCore2 = 1;
         }
 

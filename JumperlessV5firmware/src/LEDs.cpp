@@ -41,14 +41,14 @@ Adafruit_NeoPixel leds(LED_COUNT, LED_PIN, NEO_GRB + NEO_KHZ800);
 
 Adafruit_NeoPixel probeLEDs(1, PROBE_LED_PIN, NEO_GRB + NEO_KHZ800);
 
-Adafruit_NeoMatrix matrix =
-    Adafruit_NeoMatrix(30, 5, LED_PIN,
-                       NEO_MATRIX_TOP + NEO_MATRIX_LEFT + NEO_MATRIX_COLUMNS +
-                           NEO_MATRIX_PROGRESSIVE,
-                       NEO_GRB + NEO_KHZ800);
+// Adafruit_NeoMatrix matrix =
+//     Adafruit_NeoMatrix(30, 5, LED_PIN,
+//                        NEO_MATRIX_TOP + NEO_MATRIX_LEFT + NEO_MATRIX_COLUMNS +
+//                            NEO_MATRIX_PROGRESSIVE,
+//                        NEO_GRB + NEO_KHZ800);
 
-const uint16_t colors[] = {matrix.Color(70, 0, 50), matrix.Color(0, 30, 0),
-                           matrix.Color(0, 0, 8)};
+// const uint16_t colors[] = {matrix.Color(70, 0, 50), matrix.Color(0, 30, 0),
+//                            matrix.Color(0, 0, 8)};
 
 rgbColor netColors[MAX_NETS] = {0};
 
@@ -112,7 +112,7 @@ uint32_t rawRailColors[3][4] = // depends on supplySwitchPosition 0 = 3.3V, 1 =
 
      {0x301A02, 0x001C04, 0x120932, 0x001C04}};
 
-int x = matrix.width();
+// int x = matrix.width();
 int pass = 0;
 
 void initLEDs(void) {
@@ -576,8 +576,8 @@ void assignNetColors(void) {
       //    } else {
       //      hue = 255-((i - 8) * colorDistance);
       //    }
-
-      hsvColor netHsv = {hue, 254, LEDbrightness};
+uint8_t hueUint = (hue % 255);
+      hsvColor netHsv = {hueUint, 254, LEDbrightness};
       // netHsv.v = 200;
       netColors[i] = HsvToRgb(netHsv);
 
@@ -1156,6 +1156,8 @@ uint32_t logoColorsYellow[LOGO_COLOR_LENGTH + 1];
 uint32_t logoColors8vSelect[LOGO_COLOR_LENGTH + 1];
 
 uint32_t logoColorsAll[8][LOGO_COLOR_LENGTH + 1];
+
+//uint32_t voltageScaleColors[8][LOGO_COLOR_LENGTH + 1];
 
 uint8_t eightSelectHues[LOGO_COLOR_LENGTH + 1] = {
     195, 191, 187, 183, 179, 175, 171, 168, 166, 164, 162, 160, 158, 156, 153,

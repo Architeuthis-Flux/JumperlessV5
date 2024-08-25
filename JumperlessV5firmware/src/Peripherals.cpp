@@ -26,7 +26,7 @@
 //  #include "SPI.h"
 
 #include "PersistentStuff.h"
-#include <Adafruit_MCP23X17.h>
+///#include <Adafruit_MCP23X17.h>
 #include <Wire.h>
 #include "FileParsing.h"
 
@@ -148,8 +148,8 @@ delay(20);
   }
 
 
-  Serial.println(MCPIO.getSPIspeed());
-  Serial.println(MCPIO.usesHWSPI());
+  // Serial.println(MCPIO.getSPIspeed());
+  // Serial.println(MCPIO.usesHWSPI());
 //MCPIO.isConnected();
   //   while (testConnection(MCPIO) != 0)
   // {
@@ -815,10 +815,10 @@ void setCSex(int chip, int value) {
     MCPIO.write16(chipMask[chip]);
     // Serial.println(chipMask[chip]);
     // Serial.println(" ");
-    delayMicroseconds(200);
+    //delayMicroseconds(2500);
   } else {
     MCPIO.write16(0b0000000000000000);
-    delayMicroseconds(100);
+    //delayMicroseconds(250);
    ///MCPIO.digitalWrite(csToPin[chip], LOW);
   }
 // } else {
@@ -1040,10 +1040,13 @@ void showLEDmeasurements(void) {
     uint32_t color =
         logoColors8vSelect[(map(adc0ReadingUnscaled, 0, 4095, 0, 30) + 26) %
                            59];
+                              Serial.println(color);
 
-    lightUpNet(showADCreadings[0], -1, 1, mappedAdc0Reading, 0, 0, color);
 
-    // showLEDsCore2 = 2;
+    //lightUpNet(showADCreadings[0], -1, 1, mappedAdc0Reading, 0, 0, color);
+    net[showADCreadings[0]].color = unpackRgb(color);
+
+     showLEDsCore2 = 2;
   }
 
   if (showADCreadings[1] != 0) {
@@ -1055,22 +1058,30 @@ void showLEDmeasurements(void) {
     uint32_t color =
         logoColors8vSelect[(map(adc1ReadingUnscaled, 50, 4095, 0, 30) + 26) %
                            59];
+                        Serial.println(color, HEX);
+      
 
-    lightUpNet(showADCreadings[1], -1, 1, mappedAdc1Reading, 0, 0, color);
-    // showLEDsCore2 = 2;
+    //lightUpNet(showADCreadings[1], -1, 1, mappedAdc1Reading, 0, 0, color);
+    net[showADCreadings[1]].color = unpackRgb(color);
+    showLEDsCore2 = 2;
   }
 
   if (showADCreadings[2] != 0) {
 
     adc2ReadingUnscaled = readAdc(2, samples);
-    adc2Reading = (adc2ReadingUnscaled) * (5.0 / 4095);
-
+    //adc2Reading = (adc2ReadingUnscaled) * (5.0 / 4095);
+    adc2Reading = (adc3ReadingUnscaled) * (16.0 / 4010);
+    adc2Reading -= 8.1; // offset
     int mappedAdc2Reading = map(adc2ReadingUnscaled, 0, 4095, 4, 40);
     uint32_t color =
-        logoColors8vSelect[map(adc2ReadingUnscaled, 0, 4095, 0, 30) + 28];
+        logoColors8vSelect[map(adc2ReadingUnscaled, 0, 4095, 0, LOGO_COLOR_LENGTH)];
+        // Serial.println(color, HEX);
+        // Serial.println(adc2ReadingUnscaled);
+        // Serial.println(map(adc2ReadingUnscaled, 0, 4095, 0, LOGO_COLOR_LENGTH));
 
-    lightUpNet(showADCreadings[2], -1, 1, mappedAdc2Reading, 0, 0, color);
-    // showLEDsCore2 = 2;
+    //lightUpNet(showADCreadings[2], -1, 1, mappedAdc2Reading, 0, 0, color);
+    net[showADCreadings[2]].color = unpackRgb(color);
+    showLEDsCore2 = 2;
   }
 
   if (showADCreadings[3] != 0) {
@@ -1090,9 +1101,11 @@ void showLEDmeasurements(void) {
     }
     uint32_t color =
         logoColors8vSelect[map(adc3ReadingUnscaled, 1000, 3000, 0, 59)];
+   Serial.println(color, HEX);
 
-    lightUpNet(showADCreadings[3], -1, 1, mappedAdc3Reading, 0, 0, color);
-    // showLEDsCore2 = 2;
+   // lightUpNet(showADCreadings[3], -1, 1, mappedAdc3Reading, 0, 0, color);
+    net[showADCreadings[3]].color = unpackRgb(color);
+     showLEDsCore2 = 2;
   }
 }
 
@@ -1151,6 +1164,8 @@ void showMeasurements(int samples, int printOrBB) {
 
       adc2ReadingUnscaled = readAdc(2, samples);
       adc2Reading = (adc2ReadingUnscaled) * (5.0 / 4095);
+            adc2Reading = (adc2ReadingUnscaled) * (16.0 / 4010);
+      adc2Reading -= 8.2; // offset
       // adc2Reading -= 0.1; // offset
 
       bs += Serial.print("D2: ");
@@ -1206,7 +1221,7 @@ void showMeasurements(int samples, int printOrBB) {
             checkProbeButton() == 0)) {
 
       showLEDmeasurements();
-      delayMicroseconds(5000);
+      delayMicroseconds(1000);
     }
     startMillis = millis();
   }
@@ -1220,14 +1235,14 @@ int readAdc(int channel, int samples) {
   //   digitalWrite(ADC1_PIN, LOW);
   // }
 unsigned long timeoutTimer = micros();
-
+// noInterrupts();
   for (int i = 0; i < samples; i++) {
     if (micros() - timeoutTimer > 5000)
     {
       break;
     }
     adcReadingAverage += analogRead(ADC0_PIN + channel); //(int)adc_read();
-    delayMicroseconds(25);
+    delayMicroseconds(2);
 
   }
 
@@ -1236,9 +1251,10 @@ unsigned long timeoutTimer = micros();
 
   // float adc3Voltage = (adc3Reading - 2528) / 220.0; // painstakingly measured
 
-  if (channel == 0) {
-    pinMode(ADC1_PIN, INPUT);
-  }
+  // if (channel == 0) {
+  //   pinMode(ADC1_PIN, INPUT);
+  // }
+  // interrupts();
   return adcReading;
 }
 

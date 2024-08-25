@@ -2,7 +2,16 @@
 #include "Adafruit_NeoPixel.h"
 #include "JumperlessDefinesRP2040.h"
 #include "MatrixStateRP2040.h"
-#include "leds.h"
+#include "LEDs.h"
+#include "Probing.h"
+#include "RotaryEncoder.h"
+#include "Menus.h"
+#include "Peripherals.h"
+#include "NetsToChipConnections.h"
+#include "NetManager.h"
+#include "FileParsing.h"
+#include "CH446Q.h"
+#include "Commands.h"
 
 /* clang-format off */
 
@@ -183,11 +192,299 @@ leds.setPixelColor(bbPixelToNodesMapV5[23][1], logoColorsAll[0][(start + spread 
 
 
 }
+volatile bool dontUpdateLEDs = false; 
+
+bool ledUpdate(__unused struct repeating_timer *t) {
+  // if (dontUpdateLEDs == true) {
+  //   return false;
+  // } else{
+    displayHandler();
+    return true;
+  //}
+  return false;
+}
+
+
+unsigned long logoFlashTimer = 0;
+
+int arduinoReset = 0;
+unsigned long lastTimeReset = 0;
+
+unsigned long lastSwirlTime = 0;
+
+int swirlCount = 42;
+int spread = 7;
+
+int csCycle = 0;
+int onOff = 0;
+float topRailVoltage = 0.0;
+float botRailVoltage = 0.0;
+
+int readcounter = 0;
+unsigned long schedulerTimer = 0;
+unsigned long schedulerUpdateTime = 500;
+int rowProbed = 0;
+int swirled = 0;
+int countsss = 0;
+
+int probeCycle = 0;
+
+int tempDD = 0;
+
+uint8_t lastPixelBuffer[LED_COUNT * 3];
+int countFire = 0;
+unsigned long lastFire = 0;
+
+void displayHandler(void){
+  core2busy = false;
+  // countFire++;
+  // if (countFire == 10) {
+  //   //Serial.println("Fire");
+  //   Serial.println(millis() - lastFire);
+  //   lastFire = millis();
+  //   countFire = 0;
+  // }
+  //strobeCS();
+  // setCSex(0,1);
+  // setCSex(0,0);
+
+
+       if (millis() - lastSwirlTime > 50 && loadingFile == 0 &&
+               showLEDsCore2 == 0 ) {
+      readcounter++;
+
+      // logoSwirl(swirlCount, spread, probeActive);
+
+      lastSwirlTime = millis();
+
+      if (swirlCount >= LOGO_COLOR_LENGTH - 1) {
+        swirlCount = 0;
+
+      } else {
+
+        swirlCount++;
+      }
+
+      if (swirlCount % 10 == 0) {
+        countsss++;
+      }
+      if (probeActive == 0) {
+        showProbeLEDs = 3;
+      }
+
+      // probeLEDs.setPixelColor(0, 0xffffff);
+      if (showLEDsCore2 == 0) {
+        swirled = 1;
+      }
+
+      // leds.show();
+    } else if (inClickMenu == 0 && probeActive == 0) {
+
+      if (((countsss > 8 && defconDisplay > 0) || countsss > 20) &&
+          defconDisplay != -1) {
+        countsss = 0;
+
+        if (defconDisplay == 0) {
+          tempDD++;
+
+          if (tempDD > 6) {
+            tempDD = 0;
+          }
+           defconDisplay = tempDD;
+        } else {
+          // defconDisplay = 0;
+        }
+      }
+
+      if (defconDisplay > 6) {
+         defconDisplay = 0;
+      }
+      if (readcounter > 100) {
+        readcounter = 0;
+        //probeCycle++; 
+        if (probeCycle > 4) {
+          probeCycle = 1;
+        } 
+        // setGPIO();
+        // showLEDsCore2 = 1;
+
+        // readGPIO();
+      }
+
+      // readGPIO();
+
+      //if (probeActive == 0) {
+         showLEDmeasurements();
+     // }
+    }
+
+
+    if (showLEDsCore2 == 0 && swirled == 0 && sendAllPathsCore2 == 0)
+    {
+      
+      rotaryEncoderStuff();
+      return;
+    }
+    if (((showLEDsCore2 >= 1 && loadingFile == 0) || showLEDsCore2 == 3 ||
+         swirled == 1)) {
+
+         
+      // Serial.println(showLEDsCore2);
+      int rails =
+          showLEDsCore2; // 3 doesn't show nets and keeps control of the LEDs
+
+      // if (swirled == 1) {
+      //   rails = 2;
+      // }
+      if (rails != 3) {
+        //core2busy = true;
+        lightUpRail(-1, -1, 1);
+        logoSwirl(swirlCount, spread, probeActive);
+        ///core2busy = false;
+      }
+
+      if (rails == 5 || rails == 3) {
+        //core2busy = true;
+        logoSwirl(swirlCount, spread, probeActive);
+        //core2busy = false;
+      }
+
+      if (rails != 2 && rails != 5 && rails != 3 && inClickMenu == 0 &&
+          inPadMenu == 0) {
+        if (defconDisplay >= 0 && probeActive == 0) {
+         // core2busy = true;
+          defcon(swirlCount, spread, defconDisplay);
+          //core2busy = false;
+        } else {
+         //multicore_lockout_start_blocking();
+         //multicore_lockout_start_timeout_us(1000);
+        //  while(core1busy == true){
+        //   core2busy = false;
+        //   }
+          //core2busy = true;
+       
+          showNets();
+          
+          //core2busy = false;
+          //multicore_lockout_end_timeout_us(1000);
+          //multicore_lockout_end_blocking();
+        }
+
+      }
+      swirled = 0;
+      // delayMicroseconds(220);
+        //core2busy = true;
+      //       unsigned long howLong = micros();
+      //   bool differentPixels = false;
+      //   for (int i = 0; i < LED_COUNT*3; i++) {
+      //     //Serial.println(lastPixelBuffer[i]);
+      //     if (lastPixelBuffer[i] != leds.getPixels()[i]) {
+      //       differentPixels = true;
+      //       //Serial.println("Different Pixels");
+      //       break;
+      //     }
+
+
+      //  }
+      //  if (differentPixels) {
+         //Serial.println(micros() - howLong);
+      leds.show();
+        
+
+      // for (int i = 0; i < LED_COUNT * 3; i++) {
+      //   lastPixelBuffer[i] = leds.getPixels()[i];
+      // }
+      // } else {
+      //   //Serial.println("Same Pixels");
+      // }
+      // Serial.print(differentPixels? "Diff\t" : "Same\t");
+      // Serial.println(micros() - howLong);
+      
+      //core2busy = false;
+      // probeLEDs.clear();
+
+      if (checkingButton == 0) {
+        // Serial.print("probeActive = ");
+        // Serial.println(probeActive);
+        //showProbeLEDs = probeCycle;
+        switch (showProbeLEDs) {
+        case 1:
+          probeLEDs.setPixelColor(0, 0x0000ff);
+          // probeLEDs.show();
+          break;
+        case 2:
+          probeLEDs.setPixelColor(0, 0xff0000);
+          // probeLEDs.show();
+          break;
+        case 3:
+          probeLEDs.setPixelColor(0, 0x00ff00);
+          // probeLEDs.show();
+          break;
+        case 4:
+          probeLEDs.setPixelColor(0, 0xffffff);
+          // probeLEDs.show();
+          break;
+
+        default:
+          break;
+          showProbeLEDs = 0;
+        }
+        //core2busy = true;
+     
+        probeLEDs.show();
+        
+
+      }
+
+      // probeLEDs.setPixelColor(0, 0x000005);
+
+      // probeLEDs.show();
+ 
+      if (rails != 3) {
+        showLEDsCore2 = 0;
+      }
+      // if (inClickMenu == 1) {
+      //   rotaryEncoderStuff();
+      // }
+
+
+    }  
+
+       if (sendAllPathsCore2 == 1) {
+      // leds.show();
+      //multicore_lockout_start_blocking();
+      // while (core1busy == true) {
+      //   Serial.println("core1busy");
+      //  // delay(1);
+      // } // wait for core 1 to finish
+      //core2busy = true;
+      digitalWrite(RESETPIN, HIGH);
+      delayMicroseconds(25);
+      digitalWrite(RESETPIN, LOW);
+      delayMicroseconds(120);
+      //unsigned long howLong = micros();
+      sendAllPaths();
+      //Serial.println(micros() - howLong);
+      //delayMicroseconds(2200);
+      //multicore_lockout_end_blocking();
+      // showNets();
+      // leds.show();
+      // delayMicroseconds(7200);
+      // showLEDsCore2 = 1;
+      // chooseShownReadings();
+      core2busy = false;
+      sendAllPathsCore2 = 0;
+
+    }
+
+    schedulerTimer = micros();
+  return;
+}
 
 
 void drawWires(int net) {
   // int fillSequence[6] = {0,2,4,1,3,};
-  assignNetColors();
+  //assignNetColors();
 
   int fillSequence[6] = {0, 1, 2, 3, 4};
   int fillIndex = 0;
