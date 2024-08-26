@@ -524,7 +524,7 @@ void BufferedOutput::nextByteOut() {
     SafeString::Output.println(F("BufferedOutput Error: need to call connect(..) first in setup()"));
     SafeString::Output.println();
     SafeString::Output.flush();
-    delay(5000);
+  //  delay(5000);
     return;
   }
   if (mode != DROP_UNTIL_EMPTY) {

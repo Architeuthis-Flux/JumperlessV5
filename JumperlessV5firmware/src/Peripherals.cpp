@@ -29,16 +29,16 @@
 ///#include <Adafruit_MCP23X17.h>
 #include <Wire.h>
 #include "FileParsing.h"
-
+#include "MCP23x17_registers.h"
 #include "CH446Q.h"
 #include "Probing.h"
 #include "hardware/adc.h"
 #include "Commands.h"
 #define CS_PIN 17
 
-// MCP23S17 MCPIO(17, 16, 19, 18, 0x27); //  SW SPI address 0x00
+ MCP23S17 MCPIO(20, 16, 19, 18, 0x27); //  SW SPI address 0x00
 
- MCP23S17 MCPIO(17, 7,  &SPI); //  HW SPI address 0x00 //USE HW SPI
+ //MCP23S17 MCPIO(17, 7,  &SPI); //  HW SPI address 0x00 //USE HW SPI
 //Adafruit_MCP23X17 MCPIO;
 
 // MCP23S17 MCPIO(17, 16, 19, 18, 0x7); //  SW SPI address 0x
@@ -114,17 +114,26 @@ uint32_t lastTime = 0;
 uint16_t sine0[360];
 uint16_t sine1[360];
 
+SPISettings spittings(8000000, MSBFIRST, SPI_MODE0);
+
 void initGPIOex(void) {
 
-  // pinMode(17, OUTPUT);
+   pinMode(17, OUTPUT);
+   digitalWrite(17, HIGH);
+   delayMicroseconds(100);
+    digitalWrite(17, LOW);
+    delayMicroseconds(100);
+    digitalWrite(17, HIGH);
+    delayMicroseconds(100);
+    digitalWrite(17, LOW);
   // pinMode(16, OUTPUT);
   // pinMode(19, OUTPUT);
   // pinMode(18, OUTPUT);
 delay(30);
-  SPI.setRX(16);
-  SPI.setTX(19);
-  SPI.setSCK(18);
-  SPI.setCS(17);
+  // SPI.setRX(16);
+  // SPI.setTX(19);
+  // SPI.setSCK(18);
+  // SPI.setCS(17);
 
 
   
@@ -136,7 +145,8 @@ delay(30);
   //   Serial.println("MCP23S17 not found");
   // }
   
-    MCPIO.setSPIspeed(8000000);
+    //MCPIO.setSPIspeed(8000000);
+
 MCPIO.begin(false);
 delay(20);
 
@@ -147,49 +157,100 @@ delay(20);
     
   }
 
+MCPIO.pinMode16(0x0000);
 
-  // Serial.println(MCPIO.getSPIspeed());
-  // Serial.println(MCPIO.usesHWSPI());
-//MCPIO.isConnected();
-  //   while (testConnection(MCPIO) != 0)
-  // {
-  //   Serial.println("MCP23S17 not found");
-  //   delay(10);
-  // }
+// digitalWrite(RESETPIN, HIGH);
+// for (int i = 0; i < 16; i++)
+// {
+// strobeCS();
+// }
+// digitalWrite(RESETPIN, LOW);
 
-  // MCPIO.enableAddrPins();
-  // MCPIO.enableAddrPins();
 
-MCPIO.pinMode16(0b0000000000000000);
 
-  // MCPIO.pinMode1(0, OUTPUT);
-  // MCPIO.pinMode1(1, OUTPUT);
-  // MCPIO.pinMode1(2, OUTPUT);
-  // MCPIO.pinMode1(3, OUTPUT);
 
-  // MCPIO.pinMode1(4, INPUT);
-  // MCPIO.pinMode1(5, INPUT);
-  // MCPIO.pinMode1(6, INPUT);
-  // MCPIO.pinMode1(7, INPUT);
-  // MCPIO.pinMode1(8, OUTPUT);
-  // MCPIO.pinMode1(9, OUTPUT);
-  // MCPIO.pinMode1(10, OUTPUT);
-  // MCPIO.pinMode1(11, OUTPUT);
-  // MCPIO.pinMode1(12, OUTPUT);
-  // MCPIO.pinMode1(13, OUTPUT);
-  // MCPIO.pinMode1(14, OUTPUT);
-  // MCPIO.pinMode1(15, OUTPUT);
-MCPIO.write16(0b0000000000000000);
-  // MCPIO.writeGPIOAB(0x0000);
-
-  // for (int i = 0; i < 106; i++)
-  // {
-  //   writeGPIOex(i%2, i);
-  //   delay(10);
-  // }
-
-  // MCPIO.pinMode8(1, 0x00);
 }
+
+uint8_t csToPin[16] = {8, 9, 10, 11, 12, 13, 14, 15, 0, 1, 2, 3, 4, 5, 6, 7};
+//uint8_t csToPin[16] = { 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15};
+
+
+
+
+void setCSex(int chip, int value) {
+
+uint8_t chipMask8[16][2] = {
+  {0b00000000, 0b00000001}, {0b00000000, 0b00000010}, {0b00000000, 0b00000100}, {0b00000000, 0b00001000},
+  {0b00000000, 0b00010000}, {0b00000000, 0b00100000}, {0b00000000, 0b01000000}, {0b00000000, 0b10000000},
+  {0b00000001, 0b00000000}, {0b00000010, 0b00000000}, {0b00000100, 0b00000000}, {0b00001000, 0b00000000},
+  {0b00010000, 0b00000000}, {0b00100000, 0b00000000}, {0b01000000, 0b00000000}, {0b10000000, 0b00000000}};
+uint16_t chipMask[16] = {
+  0b0000000000000001, 0b0000000000000010, 0b0000000000000100, 0b0000000000001000,
+  0b0000000000010000, 0b0000000000100000, 0b0000000001000000, 0b0000000010000000,
+  0b0000000100000000, 0b0000001000000000, 0b0000010000000000, 0b0000100000000000,
+  0b0001000000000000, 0b0010000000000000, 0b0100000000000000, 0b1000000000000000};
+ //delayMicroseconds(800);
+ //unsigned long start = micros();  
+
+// if (chip > 11 || chip < 0) {
+//   return;
+// }
+  if (value > 0) {
+    // MCPIO.digitalWrite(csToPin[chip], HIGH);
+   //MCPIO.write16(0b1111111111111111);
+   digitalWrite(17, LOW);
+    MCPIO.write16(chipMask[chip]);
+    digitalWrite(17, HIGH);
+// digitalWrite(17, LOW);
+//       SPI.beginTransaction(spittings);
+//     //  _address already shifted
+//     SPI.transfer(0x40);
+//     SPI.transfer(MCP23x17_GPIO_A);
+//     SPI.transfer(chipMask[chip] >> 8);
+//     SPI.transfer(chipMask[chip] & 0xFF);
+//     SPI.endTransaction();
+//     digitalWrite(17, HIGH);
+    // Serial.println(chipMask[chip]);
+    // Serial.println(" ");
+    //delayMicroseconds(2500);
+  } else {
+    digitalWrite(17, LOW);
+    MCPIO.write16(0b0000000000000000);
+    digitalWrite(17, HIGH);
+    //delayMicroseconds(250);
+   ///MCPIO.digitalWrite(csToPin[chip], LOW);
+  }
+// } else {
+//  //MCPIO.digitalWrite(csToPin[i], LOW);
+// }
+// // }
+// Serial.print("\n\rsetCSex ");
+// Serial.print(value);
+// Serial.print(" ");
+//Serial.println(micros()-start);
+     // delayMicroseconds(300);
+    // Serial.print(value);
+      //Serial.print(" > ");
+
+
+// delay(10);
+}
+
+void writeGPIOex(int value, uint8_t pin) {
+//MCPIO.begin(false);
+  //MCPIO.write1(pin, value);
+  switch (value) {
+  case 0:
+    MCPIO.write16(0b0000000000000000);
+    break;
+  case 1:
+    MCPIO.write16(0b1111111111111111);
+    break;
+  }
+
+
+}
+
 
 int reads2[30][2];
 int readIndex2 = 0;
@@ -794,87 +855,6 @@ void setDac1_8VinputCode(uint16_t inputCode) {
   digitalWrite(8, LOW);
 }
 
-uint8_t csToPin[16] = {8, 9, 10, 11, 12, 13, 14, 15, 0, 1, 2, 3, 4, 5, 6, 7};
-//uint8_t csToPin[16] = { 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15};
-uint16_t chipMask[16] = {
-  0b0000000000000001, 0b0000000000000010, 0b0000000000000100, 0b0000000000001000,
-  0b0000000000010000, 0b0000000000100000, 0b0000000001000000, 0b0000000010000000,
-  0b0000000100000000, 0b0000001000000000, 0b0000010000000000, 0b0000100000000000,
-  0b0001000000000000, 0b0010000000000000, 0b0100000000000000, 0b1000000000000000};
-
-
-void setCSex(int chip, int value) {
-
-
-
- //delayMicroseconds(300);
-
-  if (value > 0) {
-    // MCPIO.digitalWrite(csToPin[chip], HIGH);
-   //MCPIO.write16(0b1111111111111111);
-    MCPIO.write16(chipMask[chip]);
-    // Serial.println(chipMask[chip]);
-    // Serial.println(" ");
-    //delayMicroseconds(2500);
-  } else {
-    MCPIO.write16(0b0000000000000000);
-    //delayMicroseconds(250);
-   ///MCPIO.digitalWrite(csToPin[chip], LOW);
-  }
-// } else {
-//  //MCPIO.digitalWrite(csToPin[i], LOW);
-// }
-// }
-     //delayMicroseconds(300);
-
-}
-
-void writeGPIOex(int value, uint8_t pin) {
-//MCPIO.begin(false);
-  //MCPIO.write1(pin, value);
-  switch (value) {
-  case 0:
-    MCPIO.write16(0b0000000000000000);
-    break;
-  case 1:
-    MCPIO.write16(0b1111111111111111);
-    break;
-  }
-
-  // switch (pin) {
-  // case 1:
-  // case 5:
-  //   if (value == 0) {
-  //     MCPIO.digitalWrite(0, LOW);
-  //   } else {
-  //     MCPIO.digitalWrite(0, HIGH);
-  //   }
-  //   break;
-  // case 2:
-  // case 6:
-  //   if (value == 0) {
-  //     MCPIO.digitalWrite(1, LOW);
-  //   } else {
-  //     MCPIO.digitalWrite(1, HIGH);
-  //   }
-  //   break;
-  // case 3:
-  // case 7:
-  //   if (value == 0) {
-  //     MCPIO.digitalWrite(2, LOW);
-  //   } else {
-  //     MCPIO.digitalWrite(2, HIGH);
-  //   }
-  //   break;
-  // case 4:
-  // case 8:
-  //   if (value == 0) {
-  //     MCPIO.digitalWrite(3, LOW);
-  //   } else {
-  //     MCPIO.digitalWrite(3, HIGH);
-  //   }
-  // }
-}
 
 void initINA219(void) {
 

@@ -56,6 +56,7 @@ See the top of each file for its license
 Note, this is NOT my work, I am simply hosting it for easy access. The original code belongs to [Forward Computing and Control Pty. Ltd](https://www.forward.com.au/pfod/ArduinoProgramming/SafeString/index.html).
 
 # Revisions
+V4.1.34 fixed SafeStringLengthTrim example (removed unsupported setLength() calls)  
 V4.1.33 fix for bool for SAM boards  
 V4.1.32 added support for Adafruit SAMD boards  
 V4.1.31 added support for other Arduino MBED boards like Opta   

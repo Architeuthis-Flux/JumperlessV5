@@ -64,19 +64,14 @@ int supplySwitchPosition = 0;
 volatile bool core1busy = false;
 volatile bool core2busy = false;
 
-
 // void lastNetConfirm(int forceLastNet = 0);
 void rotaryEncoderStuff(void);
-
-
 
 volatile uint8_t pauseCore2 = 0;
 
 volatile int loadingFile = 0;
 
-
 // int machineMode = 0;
-
 
 struct repeating_timer timerStruct;
 
@@ -84,7 +79,7 @@ void setup() {
   pinMode(RESETPIN, OUTPUT_12MA);
 
   digitalWrite(RESETPIN, HIGH);
-  ///multicore_lockout_victim_init();
+  /// multicore_lockout_victim_init();
   delayMicroseconds(8000);
 
   USBDevice.setProductDescriptor("Jumperless");
@@ -95,7 +90,7 @@ void setup() {
   USBDevice.addStringDescriptor("Architeuthis Flux");
 
   delay(20);
-   Serial.setTimeout(500);
+  Serial.setTimeout(500);
   Serial.begin(115200);
 
   delay(20);
@@ -143,7 +138,6 @@ void setup() {
 
   delay(10);
 
-
   initGPIOex();
 
   delay(4);
@@ -161,16 +155,12 @@ void setup() {
   initADC();
   initDAC(); // also sets revisionNumber
   setupSwirlColors();
- add_repeating_timer_us(8000, ledUpdate, NULL, &timerStruct);
-//refreshConnections();
- 
+
+  add_repeating_timer_ms(100, ledUpdate, NULL, &timerStruct);
+  // refreshConnections();
 }
 
-void setup1() {
-
-}
-
-
+void setup1() {}
 
 char connectFromArduino = '\0';
 
@@ -190,24 +180,38 @@ volatile int probeActive = 0;
 
 int showExtraMenu = 1;
 
-
 int tinyUSB = 0;
 unsigned long timer = 0;
 int lastProbeButton = 0;
 
-
-
-
+unsigned long buttonCheckTimer = millis();
 
 void loop() {
   // #ifdef USE_TINYUSB
   //   tinyUSB = 1;
   // #endif
+// int countforev = 0;  
+//   while(countforev < 10){
+//     countforev++;
+//     delay(100);
+  
+//   sendAllPathsCore2 = 1;
+//   ledUpdate();
+
+//   }
 
   // while (core2initFinished == 0)
   // {
   // }
-  delay(10);
+  
+  // while (1){
+  //   delay(100);
+  // unsigned long howLong = micros();
+  // ledUpdate();
+  // Serial.print("ledUpdate took ");
+  // Serial.println(micros() - howLong);
+  // delay(10);
+  // }
 
   setRailsAndDACs();
   //  while (millis() < 4000)
@@ -228,12 +232,18 @@ void loop() {
     getNothingTouched();
   }
 menu:
-  routableBufferPower(1);
+ // routableBufferPower(1);
 
   // while (1)
   // {
-  //   setCSex(0, 1);
-  //   setCSex(0, 0);
+  //   // setCSex(0, 1);
+  //   writeGPIOex(1, 1);
+  //   delayMicroseconds(40);
+  //   // setCSex(0, 0);
+  //   //delay(1);
+  //   writeGPIOex(0, 0);
+  //  // delay(1);
+  //   delayMicroseconds(40);
   // }
   // showLEDsCore2 = 1;
   // Serial.println(showLEDsCore2);
@@ -285,7 +295,6 @@ menu:
   int chipSc = 0;
   unsigned long lastTimerrr = 0;
 
-
   if (firstLoop == 1) {
     firstLoop = 0;
     delay(1);
@@ -298,6 +307,7 @@ dontshowmenu:
 
   connectFromArduino = '\0';
   // showLEDsCore2 = 1;
+
   while (Serial.available() == 0 && connectFromArduino == '\0' &&
          slotChanged == 0) {
     // {  pinMode(26, INPUT);
@@ -314,10 +324,10 @@ dontshowmenu:
     // Serial.println(digitalRead(11));
     // delay(300);
 
-
     // Serial.println(digitalRead(buttonPin));
 
-    if ((millis() % 100) < 1) {
+    if (millis() - buttonCheckTimer > 100) {
+      buttonCheckTimer = millis();
 
       int probeButton = checkProbeButton();
 
@@ -352,9 +362,9 @@ dontshowmenu:
         // Serial.print("Prototype Version ");
         // Serial.print(PROTOTYPE_VERSION);
         // Serial.print("\n\r");
-            if (showReadings >= 1) {
-      showMeasurements();
-    }
+        if (showReadings >= 1) {
+          showMeasurements();
+        }
         checkPads();
       }
       //
@@ -598,7 +608,7 @@ skipinput:
   }
   case 'y': {
   loadfile:
-   // loadingFile = 1;
+    // loadingFile = 1;
 
     // digitalWrite(RESETPIN, HIGH);
 
@@ -833,8 +843,15 @@ skipinput:
   goto menu;
 }
 
-
-
 void loop1() // core 2 handles the LEDs and the CH446Q8
 {
+
+  // int isrState = 0;
+  // isrState = pio_interrupt_get(pio0,0);
+  // //Serial.println(pio_interrupt_get(pio0, PIO0_IRQ_0));
+  // if (isrState != 0)
+  // {
+  //   Serial.println("ISR");
+  // }
+  // delay(10);
 }

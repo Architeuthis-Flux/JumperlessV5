@@ -25,7 +25,7 @@ static const uint16_t spi_ch446_multi_cs_program_instructions[] = {
     0x7001, //  3: out    pins, 1         side 1     
     0xb022, //  4: mov    x, y            side 1     
     0xd000, //  5: irq    nowait 0        side 1     
-    0x3050, //  6: wait   0 irq, 0 rel    side 1     
+    0x3040, //  6: wait   0 irq, 0        side 1     
     0x00e0, //  7: jmp    !osre, 0        side 0     
     0x81e0, //  8: pull   ifempty block   side 0 [1] 
     0xa142, //  9: nop                    side 0 [1] 
@@ -59,17 +59,18 @@ static inline void pio_spi_ch446_multi_cs_init(PIO pio, uint sm, uint prog_offs,
 pio_sm_set_consecutive_pindirs	(pio, sm, pin_mosi, 2, true);
     pio_gpio_init(pio, pin_mosi);
     pio_gpio_init(pio, pin_sck);
+//pio_set_irq0_source_enabled(pio, pis_interrupt0, true);
    // pio_set_irqn_source_enabled	(pio,0,pis_sm0_tx_fifo_not_full,true);
            // The reason for doing interrupt0 + sm:
         // IRQ sources are enabled per irq flag. Since the irq flag being set depends on the state
         // machine because of the "0 rel", we want to make sure we're enabling the correct interrupt
         // source for the state machine the program is loaded into. 
-        pio_set_irq0_source_enabled(pio, (pio_interrupt_source)(pis_interrupt0 + sm), true);
+     //pio_set_irq0_source_enabled(pio, (pio_interrupt_source)(pis_interrupt0 + sm), true);
         // Make sure the interrupt starts cleared. It should already be cleared, so this should
         // basically be a no-op. I call it defensive programming.
-        pio_interrupt_clear(pio, sm);
+        //pio_interrupt_clear(pio, 0);
         // Build the configuration for the state machine
-//pio_set_irq0_source_enabled(pio, pis_interrupt0, true);
+//
 //irq_set_enabled(PIO0_IRQ_0, true);
     uint entry_point = prog_offs;
     pio_sm_init(pio, sm, entry_point, &c);

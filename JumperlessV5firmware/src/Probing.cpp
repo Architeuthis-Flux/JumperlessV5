@@ -175,8 +175,10 @@ saveLocalNodeFile();
 
   // Serial.print("\n\r");
   // Serial.println(setOrClear);
+  // Serial.print("\n\r");
+  // Serial.println(encoderButtonState);
   while (Serial.available() == 0 && (millis() - probeTimeout) < 6200 &&
-         encoderButtonState == IDLE) {
+         encoderButtonState != PRESSED && encoderButtonState != HELD) {
     delayMicroseconds(800);
 
     connectedRowsIndex = 0;
@@ -499,10 +501,10 @@ saveLocalNodeFile();
   // Serial.println("fuck you");
   // digitalWrite(RESETPIN, LOW);
 
-   refreshLocalConnections();
-   delay(10);
+   //refreshLocalConnections();
+   //delay(10);
   saveLocalNodeFile();
-  delay(10);
+  //delay(10);
   refreshConnections();
   row[1] = -2;
 
@@ -1438,16 +1440,19 @@ float voltageSelect(int fiveOrEight) {
 }
 
 void routableBufferPower(int offOn) {
+//dontUpdateLEDs = true;
+  
   if (offOn == 1) {
-   // Serial.println("power on\n\r");
+    Serial.println("power on\n\r");
     // delay(10);
+    
     removeBridgeFromNodeFile(ROUTABLE_BUFFER_IN, RP_GPIO_23, netSlot, 1);
 
-    delay(10);
+   // delay(10);
     // //  removeBridgeFromNodeFile(ROUTABLE_BUFFER_IN, RP_GPIO_22, netSlot);
     //  //delay(10);
     addBridgeToNodeFile(ROUTABLE_BUFFER_IN, RP_GPIO_23, netSlot, 1);
-    delay(10);
+    //delay(10);
     // // addBridgeToNodeFile(ROUTABLE_BUFFER_IN, RP_GPIO_22, netSlot);
     // // delay(10);
     // // pinMode(22, OUTPUT_12MA);
@@ -1483,6 +1488,8 @@ void routableBufferPower(int offOn) {
     // bridgesToPaths();
     // sendAllPathsCore2 = 1;
   }
+
+  //dontUpdateLEDs = false;
 }
 
 int selectFromLastFound(void) {
@@ -1655,6 +1662,7 @@ int checkProbeButton(void) {
   int buttonState = 0;
   int buttonState2 = 0;
   checkingButton = 1;
+  //dontUpdateLEDs = true;
 
   //     probeLEDs.setPixelColor(0, 0x000000);
   //   probeLEDs.show();
@@ -1673,14 +1681,14 @@ int checkProbeButton(void) {
 
   digitalWrite(10, HIGH);
 
-  delayMicroseconds(500);
+  delayMicroseconds(100);
 
   buttonState = digitalRead(9);
 
-  delayMicroseconds(500);
+  delayMicroseconds(20);
 
   pinMode(9, INPUT_PULLUP);
-  delayMicroseconds(500);
+  delayMicroseconds(100);
   buttonState2 = digitalRead(9);
 
   // pinMode(9, INPUT);
@@ -1688,39 +1696,19 @@ int checkProbeButton(void) {
   // pinMode(9, OUTPUT);
   pinMode(9, OUTPUT_12MA);
   digitalWrite(9, LOW);
-  // probeLEDs.setPin(9);
-  // probeLEDs.begin();
-  // probeLEDs.setPixelColor(0, 0x000000);
-  // probeLEDs.show();
-  // delayMicroseconds(300);
-  checkingButton = 0;
-  // switch(countLED){
-  //   case 0:
-  //   probeLEDs.setPixelColor(0, 0x000008);
-  //   probeLEDs.show();
-  //   countLED ++;
-  //   break;
-  //   case 1:
-  //   probeLEDs.setPixelColor(0, 0x000800);
-  //   probeLEDs.show();
-  //   countLED ++;
-  //   break;
-  //   case 2:
-  //   probeLEDs.setPixelColor(0, 0x080000);
-  //   probeLEDs.show();
-  //   countLED = 0;
-  // }
 
-  // probeLEDs.begin();
-  // probeLEDs.clear();
-  delayMicroseconds(500);
-  probeLEDs.show();
+  
 
+  delayMicroseconds(100);
+
+  //probeLEDs.show();
+checkingButton = 0;
   // if (buttonState == 1) {
   //      Serial.print("buttonState");
 
   //    Serial.println(buttonState);
   // }
+  //dontUpdateLEDs = false;
   if (buttonState == 1 && buttonState2 == 0) { // disconnect Button
     //   Serial.print("buttonState ");
     // Serial.println(buttonState);

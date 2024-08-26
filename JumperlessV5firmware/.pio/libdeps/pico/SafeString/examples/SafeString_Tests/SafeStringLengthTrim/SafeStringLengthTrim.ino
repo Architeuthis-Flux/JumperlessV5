@@ -41,20 +41,6 @@ void setup() {
   Serial.print(F("stringOne.c_str() = ")); Serial.println(stringOne.c_str());
   Serial.println();
 
-  Serial.println(F(" setLength(newLength) truncates to the new length"));
-  stringOne.setLength(5);
-  stringOne.debug(F("stringOne.setLength(5); => "));
-  Serial.print(F("stringOne.hasError():"));  Serial.println(stringOne.hasError() ? "true" : "false");
-  Serial.print(F("SafeString::errorDetected():"));  Serial.println(SafeString::errorDetected() ? "true" : "false");
-  Serial.println();
-
-  Serial.println(F("Trying to set a new length > length() is an error"));
-  Serial.println(F("stringOne.setLength(6);"));
-  stringOne.setLength(6);
-  Serial.print(F("stringOne.hasError():"));  Serial.println(stringOne.hasError() ? "true" : "false");
-  Serial.print(F("SafeString::errorDetected():"));  Serial.println(SafeString::errorDetected() ? "true" : "false");
-  Serial.println();
-
 
 }
 
