@@ -11,6 +11,8 @@
 extern volatile bool core1busy;
 
 
+
+int openFileThreadSafe(int openTypeEnum, int slot = 0, int flashOrLocal = 0);
 void createLocalNodeFile(int slot = 0);
 void saveLocalNodeFile(int slot = 0);   
 void writeMenuTree(void);

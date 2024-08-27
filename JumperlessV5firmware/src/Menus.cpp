@@ -8,7 +8,7 @@
 #include "Graphics.h"
 #include "JumperlessDefinesRP2040.h"
 #include "LEDs.h"
-#include "LittleFS.h"
+#include "FatFS.h"
 #include "Peripherals.h"
 #include "PersistentStuff.h"
 #include "RotaryEncoder.h"
@@ -100,15 +100,15 @@ struct action {
 // };
 
 void readMenuFile(void) {
-  LittleFS.begin();
-  delay(10);
+ // FatFS.begin();
+  //delay(10);
   writeMenuTree();
 while(core2busy == true)
 {
  // Serial.println("waiting for core2 to finish");
 }
 core1busy = true;
-  File menuFile = LittleFS.open("/MenuTree.txt", "r");
+  File menuFile = FatFS.open("/MenuTree.txt", "r");
   if (!menuFile) {
     Serial.println("Failed to open menu file");
     return;

@@ -34,6 +34,7 @@ int debugProbing = 0;
 
 Adafruit_SSD1306 display(SCREEN_WIDTH, SCREEN_HEIGHT, &Wire, OLED_RESET);
 
+volatile bool bufferPowerConnected = 0;
 int probeToRowMap2[102] = {
     0,  1,  2,  4,  5,  6,  7,  8,  9,  10, 11, 12, 13, 14, 15,  16,  17,
     18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32,  33,  34,
@@ -100,7 +101,7 @@ int probeMode(int pin, int setOrClear) {
     Serial.println("checkingPads\n\r");
     return -1;
   }
-    probeActive = 1;
+  probeActive = 1;
   int deleteMisses[20] = {
       -1, -1, -1, -1, -1, -1, -1, -1, -1, -1,
       -1, -1, -1, -1, -1, -1, -1, -1, -1, -1,
@@ -108,18 +109,19 @@ int probeMode(int pin, int setOrClear) {
   int deleteMissesIndex = 0;
   clearLEDsExceptRails();
   startProbe();
-  //createLocalNodeFile(netSlot);
+  // createLocalNodeFile(netSlot);
   routableBufferPower(1);
 
 restartProbing:
-saveLocalNodeFile();
+  saveLocalNodeFile();
+
+  int numberOfLocalChanges = 0;
 
   if (setOrClear == 1) {
     showProbeLEDs = 1;
   } else {
     showProbeLEDs = 2;
   }
-
 
   connectOrClearProbe = setOrClear;
   int lastRow[10];
@@ -224,15 +226,8 @@ saveLocalNodeFile();
 
     if ((row[0] == -18 || row[0] == -16) &&
         (millis() - probingTimer > 500)) { //&&
-      // checkProbeButton() == 1 ){//&& (millis() - probeButtonTimer) > 1000) {
-      // Serial.println("button\n\r");
-      // int buttonState = longShortPress(500);
-      // int buttonState = checkProbeButton();
 
       if (row[0] == -18) {
-        // Serial.print("setOrClear: ");
-        // Serial.print(setOrClear);
-        // Serial.print("\n\r");
 
         if (setOrClear == 0) {
           showProbeLEDs = 1;
@@ -242,8 +237,7 @@ saveLocalNodeFile();
           setOrClear = 0;
           probingTimer = millis();
           probeButtonTimer = millis();
-          // showNets();
-          // showLEDsCore2 = 1;
+
           sfProbeMenu = 0;
           connectedRowsIndex = 0;
           connectedRows[0] = -1;
@@ -251,9 +245,6 @@ saveLocalNodeFile();
         }
         // break;
       } else if (row[0] == -16) {
-        // Serial.print("setOrClear: ");
-        // Serial.print(setOrClear);
-        // Serial.print("\n\r");
 
         if (setOrClear == 1) {
           showProbeLEDs = 2;
@@ -294,9 +285,6 @@ saveLocalNodeFile();
       nodesToConnect[0] = -1;
       nodesToConnect[1] = -1;
 
-      // showLEDsCore2 = 1;
-      //saveLocalNodeFile();
-
       break;
     } else {
       // probingTimer = millis();
@@ -318,16 +306,16 @@ saveLocalNodeFile();
           // b.clear();
           b.printRawRow(0b0010001, nodesToConnect[node1or2] - 1, 0x000121e,
                         0xfffffe);
-           showLEDsCore2 = 2;
+          showLEDsCore2 = 2;
           delay(40);
           b.printRawRow(0b00001010, nodesToConnect[node1or2] - 1, 0x0f0498,
                         0xfffffe);
-           showLEDsCore2 = 2;
+          showLEDsCore2 = 2;
           delay(40);
 
           b.printRawRow(0b00000100, nodesToConnect[node1or2] - 1, 0x4000e8,
                         0xfffffe);
-           showLEDsCore2 = 2;
+          showLEDsCore2 = 2;
           delay(80);
           // showLEDsCore2 = 1;
         }
@@ -341,24 +329,14 @@ saveLocalNodeFile();
 
         // delay(3);
       }
-      if (node1or2 == 1) {
-        // sprintf(oledBuffer, "%s", definesToChar(nodesToConnect[0]));
-        // drawchar();
-      }
 
       if (node1or2 >= 2 || (setOrClear == 0 && node1or2 >= 1)) {
-        // Serial.print("\n\n\n\r!!!!!!!!!\n\n\n\r");
-        //  if (nodesToConnect[0] != nodesToConnect[1])
-        //  {
-
-        // }
 
         if (setOrClear == 1 && (nodesToConnect[0] != nodesToConnect[1]) &&
             nodesToConnect[0] > 0 && nodesToConnect[1] > 0) {
-          // char oledBuffer2[32];
-          // int charsPrinted = 0;
+
           Serial.print("\r           \r");
-          // itoa(nodesToConnect[0], oledBuffer, 10);
+
           printNodeOrName(nodesToConnect[0]);
           Serial.print(" - ");
           printNodeOrName(nodesToConnect[1]);
@@ -368,30 +346,26 @@ saveLocalNodeFile();
 
           char node1Name[12];
 
-          // node1Name =  (char)definesToChar(nodesToConnect[0]);
-
           strcpy(node1Name, definesToChar(nodesToConnect[0]));
 
           char node2Name[12];
 
-          // node2Name =  (char)definesToChar(nodesToConnect[1]);
-
           strcpy(node2Name, definesToChar(nodesToConnect[1]));
 
-          // sprintf(oledBuffer, "%s - %s           ", node1Name, node2Name);
-
-          // drawchar();
-          // Serial.println("fuuuuuuuuck");
-
           addBridgeToNodeFile(nodesToConnect[0], nodesToConnect[1], netSlot, 1);
-          // printNodeFile(netSlot);
-          //  delay(100);
-          //   rainbowIndex++;
-          if (rainbowIndex > 1) {
-            rainbowIndex = 0;
-          }
+          numberOfLocalChanges++;
 
-          refreshLocalConnections(1);
+          Serial.println(numberOfLocalChanges);
+
+          if (numberOfLocalChanges > 5) {
+            saveLocalNodeFile(netSlot);
+            refreshConnections();
+            numberOfLocalChanges = 0;
+
+          } else {
+           // saveLocalNodeFile(netSlot);
+            refreshLocalConnections(1);
+          }
 
           row[1] = -1;
 
@@ -439,19 +413,29 @@ saveLocalNodeFile();
             //  Serial.println(map(i, 0,deleteMissesIndex, 0, 19));
           }
           //  Serial.println();
-
-          if (removeBridgeFromNodeFile(nodesToConnect[0], -1, netSlot, 1) > 0) {
+          int rowsRemoved =
+              removeBridgeFromNodeFile(nodesToConnect[0], -1, netSlot, 1);
+          if (rowsRemoved > 0) {
             Serial.print("\t cleared");
             Serial.println();
 
             rainbowIndex = 12;
+
             // goto restartProbing;
-            refreshLocalConnections(1);
-            // deleteMissesIndex = 0;
-            // for (int i = 0; i < 20; i++) {
-            //   deleteMisses[i] = -1;
-            // }
-            // delay(20);
+            numberOfLocalChanges += rowsRemoved;
+            Serial.println(numberOfLocalChanges);
+            if (numberOfLocalChanges > 5) {
+              saveLocalNodeFile();
+              numberOfLocalChanges = 0;
+            } else {
+              refreshLocalConnections(1);
+            }
+            // refreshLocalConnections(1);
+            //  deleteMissesIndex = 0;
+            //  for (int i = 0; i < 20; i++) {
+            //    deleteMisses[i] = -1;
+            //  }
+            //  delay(20);
             fadeTimer = 0;
           }
         }
@@ -499,8 +483,8 @@ saveLocalNodeFile();
   // Serial.println("fuck you");
   // digitalWrite(RESETPIN, LOW);
 
-   refreshLocalConnections();
-   delay(10);
+  refreshLocalConnections();
+  delay(10);
   saveLocalNodeFile();
   delay(10);
   refreshConnections();
@@ -529,7 +513,7 @@ int selectSFprobeMenu(int function) {
     // inPadMenu = 0;
     return function;
   }
-  
+
   switch (function) {
 
   case 132: {
@@ -549,7 +533,7 @@ int selectSFprobeMenu(int function) {
     break;
   }
   case 130: {
-    
+
     function = chooseGPIO();
     delay(100);
 
@@ -635,7 +619,7 @@ int selectSFprobeMenu(int function) {
       break;
     }
     }
-    //showLEDsCore2 = 2;
+    // showLEDsCore2 = 2;
     delayWithButton(800);
 
     // b.clear();
@@ -683,9 +667,8 @@ int selectSFprobeMenu(int function) {
     function = 100;
     break;
   }
-  default:
-  {
-   // inPadMenu = 0;
+  default: {
+    // inPadMenu = 0;
   }
   }
   connectedRows[0] = function;
@@ -715,7 +698,7 @@ int attachPadsToSettings(int pad) {
   connectedRows[0] = -1;
   node1or2 = 0;
   unsigned long skipTimer = millis();
-inPadMenu = 1;
+  inPadMenu = 1;
   b.clear();
   clearLEDsExceptRails();
   // showLEDsCore2 = 2;
@@ -776,7 +759,7 @@ inPadMenu = 1;
         }
         if (gpioState[gpioChosen] != 0) {
           clearLEDsExceptRails();
-         // showLEDsCore2 = 2;
+          // showLEDsCore2 = 2;
           Serial.print("Set GP");
           Serial.print(gpioChosen);
           Serial.println(" to Output");
@@ -794,7 +777,7 @@ inPadMenu = 1;
           b.printRawRow(0b00010101, 33, 0x200010, 0xffffff);
           b.printRawRow(0b00001110, 34, 0x200010, 0xffffff);
           b.printRawRow(0b00000100, 35, 0x200010, 0xffffff);
-         // showLEDsCore2 = 2;
+          // showLEDsCore2 = 2;
           delayWithButton(400);
 
         } else {
@@ -804,7 +787,7 @@ inPadMenu = 1;
         setGPIO();
         clearLEDsExceptRails();
 
-        //showLEDsCore2 = 2;
+        // showLEDsCore2 = 2;
         b.print("Tap to", sfOptionColors[(gpioChosen + 1) % 7], 0xFFFFFF, 0, 0,
                 1);
         b.print("toggle", sfOptionColors[(gpioChosen + 2) % 7], 0xFFFFFF, 0, 1,
@@ -902,7 +885,7 @@ inPadMenu = 1;
   }
   saveLogoBindings();
   delay(3);
-   inPadMenu = 0;
+  inPadMenu = 0;
   showLEDsCore2 = 1;
   return function;
 }
@@ -925,7 +908,6 @@ int chooseDAC(int justPickOne) {
   // b.clear();
   clearLEDsExceptRails();
   showLEDsCore2 = 2;
-
 
   // lastReadRaw = 0;
   b.print("DAC", scaleDownBrightness(rawOtherColors[9], 4, 22), 0xFFFFFF, 1, 0,
@@ -1439,7 +1421,7 @@ float voltageSelect(int fiveOrEight) {
 
 void routableBufferPower(int offOn) {
   if (offOn == 1) {
-   // Serial.println("power on\n\r");
+    // Serial.println("power on\n\r");
     // delay(10);
     removeBridgeFromNodeFile(ROUTABLE_BUFFER_IN, RP_GPIO_23, netSlot, 1);
 
@@ -1454,6 +1436,7 @@ void routableBufferPower(int offOn) {
     // // digitalWrite(22, HIGH);
     pinMode(23, OUTPUT_12MA);
     digitalWrite(23, HIGH);
+    bufferPowerConnected = true;
 
     // delay(10);
     // clearAllNTCC();
@@ -1470,13 +1453,14 @@ void routableBufferPower(int offOn) {
     // delay(30);
 
   } else {
-    //Serial.println("power off\n\r");
+    // Serial.println("power off\n\r");
     /// removeBridgeFromNodeFile(ROUTABLE_BUFFER_IN, RP_GPIO_22, netSlot);
     delay(10);
     removeBridgeFromNodeFile(ROUTABLE_BUFFER_IN, RP_GPIO_23, netSlot, 1);
-    delay(100);
-    // // pinMode(22, INPUT);
-    // pinMode(23, INPUT);
+    bufferPowerConnected = false;
+    // delay(100);
+    //  // pinMode(22, INPUT);
+    //  pinMode(23, INPUT);
 
     // openNodeFile(netSlot);
     // getNodesToConnect();
@@ -2302,7 +2286,7 @@ void checkPads(void) {
     break;
   }
   }
-   inPadMenu = 0;
+  inPadMenu = 0;
   //  delay(1000);
 }
 

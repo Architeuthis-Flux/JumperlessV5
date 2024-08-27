@@ -34,7 +34,7 @@ KevinC@ppucc.io
 #include "Graphics.h"
 #include "JumperlessDefinesRP2040.h"
 #include "LEDs.h"
-#include "LittleFS.h"
+#include "FatFS.h"
 #include "MachineCommands.h"
 #include "MatrixStateRP2040.h"
 #include "Menus.h"
@@ -45,6 +45,10 @@ KevinC@ppucc.io
 #include "Probing.h"
 #include "RotaryEncoder.h"
 #include <Adafruit_TinyUSB.h>
+//#include "hardware/flash.h"
+// #include "pico/multicore.h"
+// #include <picosdk/src/rp2_common/hardware_flash.h>
+
 
 // #include "AdcUsb.h"
 // #include "logic_analyzer.h"
@@ -64,9 +68,11 @@ int supplySwitchPosition = 0;
 volatile bool core1busy = false;
 volatile bool core2busy = false;
 
-void machineMode(void);
+
 // void lastNetConfirm(int forceLastNet = 0);
 void rotaryEncoderStuff(void);
+
+void core2onCore1(void);
 
 volatile uint8_t pauseCore2 = 0;
 
@@ -130,7 +136,7 @@ void setup() {
 
   delay(4);
 
-  LittleFS.begin();
+  FatFS.begin();
 
   // setDac0_5Vvoltage(0.0);
   // setDac1_8Vvoltage(1.9);
@@ -149,9 +155,12 @@ void setup() {
 
   delay(10);
 
-  while (core2initFinished == 0) {
-  }
-  delay(100);
+  initGPIOex();
+
+  delay(4);
+
+
+  //delay(100);
   initMenu();
   initADC();
   initDAC(); // also sets revisionNumber
@@ -162,13 +171,7 @@ void setup() {
  // multicore_lockout_victim_init();
 }
 
-void setup1() {
-  delay(10);
-
-  initGPIOex();
-
-  delay(4);
-
+void setupCore2stuff() {
   initCH446Q();
 
   delay(4);
@@ -176,6 +179,12 @@ void setup1() {
   initLEDs();
 
   delay(4);
+}
+
+void setup1() {
+  //flash_safe_execute_core_init();
+setupCore2stuff();
+
 
   core2initFinished = 1;
   // delay(4);
@@ -865,7 +874,7 @@ skipinput:
     if (Serial.read() == ':') {
       // Serial.print("\n\r");
       // Serial.print("entering machine mode\n\r");
-      machineMode();
+      //machineMode();
       showLEDsCore2 = 1;
       goto dontshowmenu;
       break;
@@ -910,7 +919,15 @@ int countsss = 0;
 int probeCycle = 0;
 
 int tempDD = 0;
-void loop1() // core 2 handles the LEDs and the CH446Q8
+
+
+void loop1() {
+  core2onCore1();
+}
+
+
+
+void core2onCore1() // core 2 handles the LEDs and the CH446Q8
 {
 core2busy = false;
   if (micros() - schedulerTimer > schedulerUpdateTime || showLEDsCore2 == 3 ||
@@ -1033,12 +1050,15 @@ core2busy = false;
         Serial.println("core1busy");
        // delay(1);
       } // wait for core 1 to finish
+      
       core2busy = true;
       digitalWrite(RESETPIN, HIGH);
       delayMicroseconds(50);
       digitalWrite(RESETPIN, LOW);
       delayMicroseconds(2200);
+      unsigned long pathTimer = micros();
       sendAllPaths();
+      int pathTime = micros() - pathTimer;
       delayMicroseconds(2200);
       //multicore_lockout_end_blocking();
       // showNets();
@@ -1047,6 +1067,8 @@ core2busy = false;
       // showLEDsCore2 = 1;
       // chooseShownReadings();
       core2busy = false;
+      Serial.print("pathTime = ");
+      Serial.println(pathTime);
       sendAllPathsCore2 = 0;
 
     } else if (millis() - lastSwirlTime > 60 && loadingFile == 0 &&
@@ -1130,132 +1152,3 @@ core2busy = true;
   }
 }
 
-unsigned long lastTimeNetlistLoaded = 0;
-unsigned long lastTimeCommandRecieved = 0;
-
-void machineMode(void) // read in commands in machine readable format
-{
-  int sequenceNumber = -1;
-
-  lastTimeCommandRecieved = millis();
-
-  if (millis() - lastTimeCommandRecieved > 100) {
-    machineModeRespond(sequenceNumber, true);
-    return;
-  }
-  enum machineModeInstruction receivedInstruction =
-      parseMachineInstructions(&sequenceNumber);
-
-  // Serial.print("receivedInstruction: ");
-  // Serial.print(receivedInstruction);
-  // Serial.print("\n\r");
-
-  switch (receivedInstruction) {
-  case netlist:
-    lastTimeNetlistLoaded = millis();
-    clearAllNTCC();
-
-    // writeNodeFileFromInputBuffer();
-
-    digitalWrite(RESETPIN, HIGH);
-
-    machineNetlistToNetstruct();
-    populateBridgesFromNodes();
-    bridgesToPaths();
-
-    clearLEDs();
-    assignNetColors();
-    // showNets();
-    digitalWrite(RESETPIN, LOW);
-    sendAllPathsCore2 = 1;
-    break;
-
-  case getnetlist:
-    if (millis() - lastTimeNetlistLoaded > 300) {
-
-      listNetsMachine();
-    } else {
-      machineModeRespond(0, true);
-      // Serial.print ("too soon bro\n\r");
-      return;
-    }
-    break;
-
-  case bridgelist:
-    clearAllNTCC();
-
-    writeNodeFileFromInputBuffer();
-
-    openNodeFile();
-    getNodesToConnect();
-    // Serial.print("openNF\n\r");
-    digitalWrite(RESETPIN, HIGH);
-    bridgesToPaths();
-    clearLEDs();
-    assignNetColors();
-    // Serial.print("bridgesToPaths\n\r");
-    digitalWrite(RESETPIN, LOW);
-    // showNets();
-
-    sendAllPathsCore2 = 1;
-    break;
-
-  case getbridgelist:
-    listBridgesMachine();
-    break;
-
-  case lightnode:
-    lightUpNodesFromInputBuffer();
-    break;
-
-  case lightnet:
-    lightUpNetsFromInputBuffer();
-    //   lightUpNet();
-    // assignNetColors();
-    // showLEDsCore2 = 1;
-    break;
-
-    // case getmeasurement:
-    //   showMeasurements();
-    //   break;
-
-  case setsupplyswitch:
-
-    supplySwitchPosition = setSupplySwitch();
-    // printSupplySwitch(supplySwitchPosition);
-    machineModeRespond(sequenceNumber, true);
-
-    showLEDsCore2 = 1;
-    break;
-
-  case getsupplyswitch:
-    // if (millis() - lastTimeNetlistLoaded > 100)
-    //{
-
-    printSupplySwitch(supplySwitchPosition);
-    // machineModeRespond(sequenceNumber, true);
-
-    // }else {
-    // Serial.print ("\n\rtoo soon bro\n\r");
-    // machineModeRespond(0, true);
-    // return;
-    // }
-    break;
-
-  case getchipstatus:
-    printChipStatusMachine();
-    break;
-
-    // case gpio:
-    //   break;
-  case getunconnectedpaths:
-    getUnconnectedPaths();
-    break;
-
-  case unknown:
-    machineModeRespond(sequenceNumber, false);
-    return;
-  }
-
-  machineModeRespond(sequenceNumber, true);
-}

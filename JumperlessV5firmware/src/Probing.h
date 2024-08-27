@@ -21,6 +21,8 @@ extern volatile int probeActive;
 extern volatile int inPadMenu;
 extern volatile int checkingButton;
 
+extern volatile bool bufferPowerConnected;
+
 extern int debugProbing;
 
 enum measuredState

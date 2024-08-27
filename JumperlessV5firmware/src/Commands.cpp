@@ -19,6 +19,11 @@ volatile int showProbeLEDs =
 void refreshConnections(int ledShowOption) {
 
   clearAllNTCC();
+  while (core2busy)
+  {
+    //Serial.println("core2busy");
+    //delay(1);
+  }
   openNodeFile(netSlot, 0);
   getNodesToConnect();
   // digitalWrite(RESETPIN, HIGH);
@@ -43,7 +48,14 @@ void refreshConnections(int ledShowOption) {
 }
 
 void refreshLocalConnections(int ledShowOption) {
+
+
   clearAllNTCC();
+  while (core2busy)
+  {
+    //Serial.println("core2busy");
+    //delay(1);
+  }
   openNodeFile(netSlot, 1);
   getNodesToConnect();
   // digitalWrite(RESETPIN, HIGH);
