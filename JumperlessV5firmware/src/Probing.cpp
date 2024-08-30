@@ -174,12 +174,13 @@ restartProbing:
 
   int lastProbedRows[4] = {0, 0, 0, 0};
   unsigned long fadeTimer = millis();
+  int fadeClear = -1;  
 
   // Serial.print("\n\r");
   // Serial.println(setOrClear);
   while (Serial.available() == 0 && (millis() - probeTimeout) < 6200 &&
          encoderButtonState == IDLE) {
-    delayMicroseconds(800);
+    delayMicroseconds(500);
 
     connectedRowsIndex = 0;
 
@@ -190,8 +191,10 @@ restartProbing:
 
     if (setOrClear == 1) {
       deleteMissesIndex = 0;
+      //showLEDsCore2 = -1;
+
     } else {
-      if (millis() - fadeTimer > 50) {
+      if (millis() - fadeTimer > 15 ) {
         fadeTimer = millis();
 
         if (fadeIndex < 12) {
@@ -207,12 +210,14 @@ restartProbing:
         if (fadeFloor < 0) {
           fadeFloor = 0;
         }
-
+        //Serial.println(deleteMissesIndex);
         for (int i = deleteMissesIndex - 1; i >= 0; i--) {
           int fadeOffset = map(i, 0, deleteMissesIndex, 0, 12) + fadeFloor;
           if (fadeOffset > 12) {
             fadeOffset = 12;
+            //showLEDsCore2 = -1;
           }
+          //clearLEDsExceptMiddle(deleteMisses[i], -1);
           b.printRawRow(0b00000100, deleteMisses[i] - 1, deleteFade[fadeOffset],
                         0xfffffe);
           //   Serial.print(i);
@@ -220,6 +225,10 @@ restartProbing:
           //   Serial.print(deleteMisses[i]);
           //   Serial.print("    ");
           //  Serial.println(map(i, 0,deleteMissesIndex, 0, 19));
+        }
+        if (deleteMissesIndex == 0 && fadeClear == 0) {
+          fadeClear = 1;
+          showLEDsCore2 = -1;
         }
       }
     }
@@ -241,6 +250,7 @@ restartProbing:
           sfProbeMenu = 0;
           connectedRowsIndex = 0;
           connectedRows[0] = -1;
+          showLEDsCore2 = -1;
           goto restartProbing;
         }
         // break;
@@ -269,6 +279,7 @@ restartProbing:
             //   Serial.print("    ");
             //  Serial.println(map(i, 0,deleteMissesIndex, 0, 19));
           }
+          showLEDsCore2 = -1;
 
           goto restartProbing;
         }
@@ -334,7 +345,8 @@ restartProbing:
 
         if (setOrClear == 1 && (nodesToConnect[0] != nodesToConnect[1]) &&
             nodesToConnect[0] > 0 && nodesToConnect[1] > 0) {
-
+          b.printRawRow(0b00000000, nodesToConnect[node1or2] - 1, 0x4000e8,
+                        0x00000000);
           Serial.print("\r           \r");
 
           printNodeOrName(nodesToConnect[0]);
@@ -356,16 +368,17 @@ restartProbing:
           numberOfLocalChanges++;
 
           Serial.println(numberOfLocalChanges);
+            refreshLocalConnections(1);
 
-          if (numberOfLocalChanges > 5) {
+          if (numberOfLocalChanges > 3) {
             saveLocalNodeFile(netSlot);
-            refreshConnections();
+            //refreshConnections();
             numberOfLocalChanges = 0;
 
-          } else {
+          } //else {
            // saveLocalNodeFile(netSlot);
-            refreshLocalConnections(1);
-          }
+            
+          //}
 
           row[1] = -1;
 
@@ -411,31 +424,42 @@ restartProbing:
             //   Serial.print(deleteMisses[i]);
             //   Serial.print("    ");
             //  Serial.println(map(i, 0,deleteMissesIndex, 0, 19));
+            
           }
+          
           //  Serial.println();
           int rowsRemoved =
               removeBridgeFromNodeFile(nodesToConnect[0], -1, netSlot, 1);
+             // numberOfLocalChanges += rowsRemoved;
           if (rowsRemoved > 0) {
             Serial.print("\t cleared");
             Serial.println();
 
             rainbowIndex = 12;
 
-            // goto restartProbing;
+             //goto restartProbing;
             numberOfLocalChanges += rowsRemoved;
-            Serial.println(numberOfLocalChanges);
+            // Serial.println(numberOfLocalChanges);
+
+
+           
+          refreshLocalConnections(1);
+
             if (numberOfLocalChanges > 5) {
-              saveLocalNodeFile();
+              saveLocalNodeFile(netSlot);
+              //refreshConnections();
               numberOfLocalChanges = 0;
-            } else {
-              refreshLocalConnections(1);
-            }
+            } //else {
+               //showLEDsCore2 = -1;
+            //}
             // refreshLocalConnections(1);
             //  deleteMissesIndex = 0;
             //  for (int i = 0; i < 20; i++) {
             //    deleteMisses[i] = -1;
             //  }
             //  delay(20);
+            //showLEDsCore2 = -1;
+            fadeClear = 0;
             fadeTimer = 0;
           }
         }
@@ -456,15 +480,15 @@ restartProbing:
       justSelectedConnectedNodes = 0;
     }
 
-    if (millis() - doubleSelectTimeout > 500) {
-      // Serial.println("doubleSelectCountdown");
-      row[1] = -2;
-      lastReadRaw = 0;
-      lastProbedRows[0] = 0;
-      lastProbedRows[1] = 0;
-      doubleSelectTimeout = millis();
-      doubleSelectCountdown = 1000;
-    }
+    // if (millis() - doubleSelectTimeout > 500) {
+    //   // Serial.println("doubleSelectCountdown");
+    //   row[1] = -2;
+    //   lastReadRaw = 0;
+    //   lastProbedRows[0] = 0;
+    //   lastProbedRows[1] = 0;
+    //   doubleSelectTimeout = millis();
+    //   doubleSelectCountdown = 1000;
+    // }
 
     // Serial.println(doubleSelectCountdown);
 
@@ -484,9 +508,9 @@ restartProbing:
   // digitalWrite(RESETPIN, LOW);
 
   refreshLocalConnections();
-  delay(10);
+  //delay(10);
   saveLocalNodeFile();
-  delay(10);
+ //delay(10);
   refreshConnections();
   row[1] = -2;
 
@@ -1260,60 +1284,6 @@ float voltageSelect(int fiveOrEight) {
       }
     }
 
-    // b.clear();
-    // clearLEDsExceptRails();
-
-    // uint8_t step = 0b00000001;
-    // for (int i = 32; i <= 60; i++) {
-    //   if (i % 6 == 0) {
-    //     step = step << 1;
-    //     step = step | 0b00000001;
-    //   }
-
-    //   b.printRawRow(step, i - 1, logoColors[((60 - i) % LOGO_COLOR_LENGTH)],
-    //                 0xffffff);
-    // }
-    // b.print("Set", scaleDownBrightness(rawOtherColors[9], 4, 22), 0xFFFFFF,
-    // 1,
-    //         0, 3);
-    // b.print("0v", sfOptionColors[7], 0xFFFFFF, 0, 0, -2);
-    // b.print("5v", sfOptionColors[7], 0xFFFFFF, 5, 0, 1);
-    // int vSelected = -1;
-
-    // while (vSelected == -1) {
-    //   int reading = readProbe();
-
-    //   if (reading > 0 && reading >= 31 && reading <= 60) {
-    //     // Serial.println(reading);
-    //     b.clear(1);
-
-    //     char voltageString[7] = " 0.0 V";
-    //     voltageProbe = (reading - 31) * (5.0 / 29);
-    //     // Serial.println(voltageProbe);
-    //     color = logoColors[((60 - reading)) % LOGO_COLOR_LENGTH];
-
-    //     snprintf(voltageString, 7, "+%0.1f v", voltageProbe);
-    //     b.print(voltageString, logoColors[((60 - reading)) %
-    //     LOGO_COLOR_LENGTH],
-    //             0xFFFFFF, 0, 1, 3);
-    //     showLEDsCore2 = 2;
-    //     delay(10);
-    //   }
-    //   if (checkProbeButton() == 1) {
-    //     ///Serial.println("button\n\r");
-    //     vSelected = 1;
-    //     rawSpecialNetColors[4] = color;
-    //     rgbColor rg = unpackRgb(color);
-    //     specialNetColors[4].r = rg.r;
-    //     specialNetColors[4].g = rg.g;
-    //     specialNetColors[4].b = rg.b;
-    //     b.clear();
-    //     // clearLEDsExceptRails();
-    //     // showLEDsCore2 = 1;
-    //     return voltageProbe;
-    //     break;
-    //   }
-    // }
   } else if (fiveOrEight == 8) {
     b.clear();
     clearLEDsExceptRails();

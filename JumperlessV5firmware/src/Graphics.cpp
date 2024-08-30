@@ -125,7 +125,7 @@ uint8_t font[][3] = // 'JumperlessFontmap', 500x5px
 };
 
 
-int wireStatus[62][5]; // row, led (net stored)
+int wireStatus[64][5]; // row, led (net stored)
 char defconString[16] = " Fuck    You   ";
 /* clang-format on */
 int colorCycle = 0;
@@ -277,12 +277,16 @@ void drawWires(int net) {
                 // if (first > 30) {
                 //   Serial.print("bottom ");
                 // }
-                // Serial.print("largestFillIndex = ");
-                // Serial.println(largestFillIndex);
+
                 break;
               }
             }
           }
+                //           Serial.print("largestFillIndex = ");
+                // Serial.println(largestFillIndex);
+          // if (largestFillIndex > 4) {
+          //   largestFillIndex = 0;
+          // }
 
           for (int j = first; j <= first + range; j++) {
             if (j == first || j == last) {

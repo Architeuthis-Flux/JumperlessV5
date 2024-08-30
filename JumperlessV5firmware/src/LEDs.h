@@ -276,4 +276,8 @@ uint32_t packRgb(uint8_t r, uint8_t g, uint8_t b);
 void startupColors(void);
 void startupColorsV5(void);
 void rainbowBounce(int wait, int logo = 0);
+
+
+void clearLEDsExceptMiddle(int start = 1, int end = 60);
+void clearLEDsMiddle(int start = 1, int end = 60);
 #endif

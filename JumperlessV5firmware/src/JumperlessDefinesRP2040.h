@@ -58,7 +58,7 @@ extern volatile int sendAllPathsCore2;
 #define BUILDING_BOTTOM_ADDRESS0 84
 #define BUILDING_BOTTOM_ADDRESS1 88
 
-#define MAX_NETS 64
+#define MAX_NETS 100
 #define MAX_BRIDGES 255
 #define MAX_NODES 64
 #define MAX_DNI 8 // max number of doNotIntersect rules
@@ -269,17 +269,23 @@ extern volatile int sendAllPathsCore2;
 
 #define RP_GPIO_0 114
 
-#define RP_UART_TX 116 // also GPIO_16
-#define RP_GPIO_16 116 // these are the same as the UART pins
 
-#define RP_UART_RX 117 // also GPIO_17
-#define RP_GPIO_17 117 // but if we want to use them as GPIO we should use these names
 
 #define RP_GPIO_18 118 // these aren't actually connected to anything
 #define RP_GPIO_19 119 // but we might as well define names for them
 
 #define SUPPLY_8V_P 120 // not actually connected to anything
 #define SUPPLY_8V_N 121 // not actually connected to anything
+
+
+#define RP_UART_TX 116 // also GPIO_16
+#define RP_GPIO_16 116 // these are the same as the UART pins
+
+#define RP_UART_RX 117 // also GPIO_17
+#define RP_GPIO_17 117 // but if we want to use them as GPIO we should use these names
+
+#define GPIO_TX_PIN 0
+#define GPIO_RX_PIN 1
 
 #define RP_GPIO_20 135
 #define RP_GPIO_21 136
@@ -290,6 +296,13 @@ extern volatile int sendAllPathsCore2;
 #define RP_GPIO_2 136
 #define RP_GPIO_3 137
 #define RP_GPIO_4 138
+
+#define GPIO_1_PIN 20
+#define GPIO_2_PIN 21
+#define GPIO_3_PIN 22
+#define GPIO_4_PIN 23
+
+
 
 #define MCP_GPIO_0 122
 #define MCP_GPIO_1 123

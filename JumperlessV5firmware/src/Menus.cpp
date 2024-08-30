@@ -14,6 +14,7 @@
 #include "RotaryEncoder.h"
 #include "Probing.h"
 #include "Commands.h"
+#include "CH446Q.h" 
 
 int inClickMenu = 0;
 
@@ -2128,6 +2129,7 @@ int doMenuAction(int menuPosition, int selection) {
     digitalWrite(RESETPIN, LOW);
 
     showSavedColors(netSlot);
+    sendPaths();
     sendAllPathsCore2 = 1;
     chooseShownReadings();
 
@@ -2178,8 +2180,12 @@ int doMenuAction(int menuPosition, int selection) {
     } else if (menuLines[currentAction.previousMenuPositions[1]].indexOf(
                    "Load") != -1) {
         if (currentAction.from[0] > 0 && currentAction.from[0] < NUM_SLOTS) {
-          saveCurrentSlotToSlot(netSlot, currentAction.from[0]);
+          //saveCurrentSlotToSlot(netSlot, currentAction.from[0]);
+
           netSlot = currentAction.from[0];
+          refreshConnections();
+          chooseShownReadings();
+
         }
      // netSlot = currentAction.from[0];
       return currentAction.from[0];
@@ -2298,6 +2304,7 @@ int doMenuAction(int menuPosition, int selection) {
     digitalWrite(RESETPIN, LOW);
 
     showSavedColors(netSlot);
+    sendPaths();
     sendAllPathsCore2 = 1;
     chooseShownReadings();
 
@@ -2399,7 +2406,7 @@ char printMainMenu(int extraOptions) {
     Serial.print("\tp = probe connections\n\r");
     Serial.print("\tw = waveGen\n\r");
     Serial.print("\tv = toggle show current/voltage\n\r");
-    Serial.print("\tu = set baud rate for USB-Serial\n\r");
+   // Serial.print("\tu = set baud rate for USB-Serial\n\r");
     Serial.print("\tl = LED brightness / test\n\r");
     Serial.print("\td = toggle debug flags\n\r");
   }

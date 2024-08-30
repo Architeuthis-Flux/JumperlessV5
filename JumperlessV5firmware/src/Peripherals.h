@@ -30,6 +30,8 @@ extern int gpioNet[10];
 
 extern int revisionNumber;
 
+
+
 void setGPIO(void);
 void readGPIO(void);
 

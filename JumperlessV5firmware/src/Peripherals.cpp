@@ -24,6 +24,7 @@
 #include <SPI.h>
  #include "MCP23S17.h"
 //  #include "SPI.h"
+//#include "pio_spi.h"
 
 #include "PersistentStuff.h"
 #include <Adafruit_MCP23X17.h>
@@ -36,7 +37,7 @@
 #include "Commands.h"
 #define CS_PIN 17
 
-// MCP23S17 MCPIO(17, 16, 19, 18, 0x27); //  SW SPI address 0x00
+ //MCP23S17 MCPIO(17, 16, 19, 18, 0x27); //  SW SPI address 0x00
 
  MCP23S17 MCPIO(17, 7,  &SPI); //  HW SPI address 0x00 //USE HW SPI
 //Adafruit_MCP23X17 MCPIO;
@@ -120,7 +121,7 @@ void initGPIOex(void) {
   // pinMode(16, OUTPUT);
   // pinMode(19, OUTPUT);
   // pinMode(18, OUTPUT);
-delay(30);
+delay(5);
   SPI.setRX(16);
   SPI.setTX(19);
   SPI.setSCK(18);
@@ -136,9 +137,9 @@ delay(30);
   //   Serial.println("MCP23S17 not found");
   // }
   
-    MCPIO.setSPIspeed(8000000);
+    MCPIO.setSPIspeed(9000000);
 MCPIO.begin(false);
-delay(20);
+delay(2);
 
 
   if (MCPIO.isConnected() == false) {
@@ -211,157 +212,7 @@ void initADC(void) {
   analogReadResolution(12);
 }
 
-void printCalibration(void) {
-  // delay(1000);
-  return;
-  digitalWrite(RESETPIN, HIGH);
-  delayMicroseconds(100);
-  digitalWrite(RESETPIN, LOW);
-  delayMicroseconds(100);
 
-  Serial.println("ADC 1 (0-5V)");
-
-  // sendXYraw(CHIP_K, 7, 0, 1);
-  // sendXYraw(CHIP_K, 9, 0, 1);
-
-  // sendXYraw(CHIP_K, 0, 0, 1);
-
-  sendXYraw(CHIP_K, 7, 0, 1);
-  sendXYraw(CHIP_K, 9, 0, 1);
-
-  sendXYraw(CHIP_K, 0, 0, 1);
-
-  digitalWrite(8, HIGH);
-  mcp.setChannelValue(MCP4728_CHANNEL_A, 0);
-  digitalWrite(8, LOW);
-
-  for (int i = 0; i <= 32; i++) {
-    digitalWrite(8, HIGH);
-    mcp.setChannelValue(MCP4728_CHANNEL_A, i * 127);
-    digitalWrite(8, LOW);
-    delay(10);
-
-    Serial.print(INA1.getBusVoltage());
-    Serial.print(" ");
-    delay(10);
-
-    Serial.println(readAdc(1, 16));
-    delay(20);
-  }
-  sendXYraw(CHIP_K, 7, 0, 0);
-  sendXYraw(CHIP_K, 9, 0, 0);
-
-  sendXYraw(CHIP_K, 0, 0, 0);
-  delay(100);
-
-  digitalWrite(RESETPIN, HIGH);
-  delayMicroseconds(800);
-  digitalWrite(RESETPIN, LOW);
-  delayMicroseconds(10000);
-
-  Serial.println("ADC 2 +-8V");
-
-  // sendXYraw(CHIP_K, 7, 0, 1);
-  // sendXYraw(CHIP_K, 9, 0, 1);
-
-  // sendXYraw(CHIP_K, 0, 0, 1);
-
-  sendXYraw(CHIP_K, 6, 0, 1);
-  sendXYraw(CHIP_K, 10, 0, 1);
-
-  sendXYraw(CHIP_K, 0, 0, 1);
-
-  // digitalWrite(8, HIGH);
-  // mcp.setChannelValue(MCP4728_CHANNEL_B, 0);
-  // digitalWrite(8, LOW);
-
-  for (int i = 0; i <= 32; i++) {
-
-    Serial.print(i * 127);
-    Serial.print(" ");
-    digitalWrite(8, HIGH);
-    mcp.setChannelValue(MCP4728_CHANNEL_B, i * 127);
-    digitalWrite(8, LOW);
-    delay(50);
-
-    // Serial.print(INA0.getBusVoltage());
-    //   Serial.print(" ");
-    //   delay(100);
-
-    Serial.println(readAdc(2, 16));
-    delay(10);
-  }
-
-  digitalWrite(RESETPIN, HIGH);
-  delayMicroseconds(800);
-  digitalWrite(RESETPIN, LOW);
-  delayMicroseconds(10000);
-
-  sendXYraw(CHIP_K, 6, 0, 1);
-  sendXYraw(CHIP_K, 13, 0, 1);
-
-  sendXYraw(CHIP_K, 0, 0, 1);
-
-  sendXYraw(CHIP_I, 15, 5, 1);
-  sendXYraw(CHIP_I, 0, 5, 1);
-
-  digitalWrite(8, HIGH);
-  mcp.setChannelValue(MCP4728_CHANNEL_B, 4095);
-  digitalWrite(8, LOW);
-  Serial.print("INA 0 ");
-  Serial.print("Bus Voltage: ");
-
-  Serial.println(INA0.getBusVoltage());
-  Serial.print("INA 1 ");
-  Serial.print("Bus Voltage: ");
-
-  Serial.println(INA1.getBusVoltage());
-
-  // for (int i = 0; i < readIndex; i++) {
-  //   Serial.print("[");
-  //   Serial.print(reads[i][0]);
-  //   Serial.print(" ");
-  //   Serial.print(reads[i][1]);
-  //   Serial.println("]");
-  // }
-
-  //   for (int i = 0; i < readIndex2; i++) {
-  //   Serial.print("[");
-  //   Serial.print(reads2[i][0]);
-  //   Serial.print(" ");
-  //   Serial.print(reads2[i][1]);
-  //   Serial.println("]");
-  // }
-
-  for (int i = 0; i < 3; i++) {
-
-    Serial.print("ADC1 ");
-    Serial.print(i);
-    Serial.print(": ");
-    Serial.println(adcCalibration[1][i]);
-  }
-
-  for (int i = 0; i < 3; i++) {
-
-    Serial.print("ADC2 ");
-    Serial.print(i);
-    Serial.print(": ");
-    Serial.println(adcCalibration[2][i]);
-  }
-
-  for (int i = 0; i < 3; i++) {
-
-    Serial.print("ADC3 ");
-    Serial.print(i);
-    Serial.print(": ");
-    Serial.println(adcCalibration[3][i]);
-  }
-
-  digitalWrite(RESETPIN, HIGH);
-  delayMicroseconds(1000);
-  digitalWrite(RESETPIN, LOW);
-  delayMicroseconds(100);
-}
 void initDAC(void) {
 
   Wire.setSDA(4);
@@ -379,7 +230,7 @@ void initDAC(void) {
     // }
   }
   // delay(1000);
-  Serial.println("MCP4728 Found!");
+  //Serial.println("MCP4728 Found!");
   /*
    * @param channel The channel to update
    * @param new_value The new value to assign
@@ -439,6 +290,7 @@ digitalWrite(RESETPIN, LOW);
   showLEDsCore2 = 1;
 
   delay(5);
+  sendPaths();
   sendAllPathsCore2 = 1;
 delay(200);
   byte error, address;
@@ -806,26 +658,16 @@ uint16_t chipMask[16] = {
 void setCSex(int chip, int value) {
 
 
-
- //delayMicroseconds(300);
-
   if (value > 0) {
-    // MCPIO.digitalWrite(csToPin[chip], HIGH);
-   //MCPIO.write16(0b1111111111111111);
+
     MCPIO.write16(chipMask[chip]);
-    // Serial.println(chipMask[chip]);
-    // Serial.println(" ");
-    delayMicroseconds(200);
+
+    delayMicroseconds(20);
   } else {
     MCPIO.write16(0b0000000000000000);
-    delayMicroseconds(100);
-   ///MCPIO.digitalWrite(csToPin[chip], LOW);
+    delayMicroseconds(20);
+
   }
-// } else {
-//  //MCPIO.digitalWrite(csToPin[i], LOW);
-// }
-// }
-     //delayMicroseconds(300);
 
 }
 
@@ -1899,35 +1741,35 @@ void refillTable(int amplitude, int offset, int dac) {
     }
   }
 }
-void GetAdc29Status(int i) {
-  gpio_function gpio29Function = gpio_get_function(29);
-  Serial.print("GPIO29 func: ");
-  Serial.println(gpio29Function);
+// void GetAdc29Status(int i) {
+//   gpio_function gpio29Function = gpio_get_function(29);
+//   Serial.print("GPIO29 func: ");
+//   Serial.println(gpio29Function);
 
-  bool pd = gpio_is_pulled_down(29);
-  Serial.print("GPIO29 pd: ");
-  Serial.println(pd);
+//   bool pd = gpio_is_pulled_down(29);
+//   Serial.print("GPIO29 pd: ");
+//   Serial.println(pd);
 
-  bool h = gpio_is_input_hysteresis_enabled(29);
-  Serial.print("GPIO29 h: ");
-  Serial.println(h);
+//   bool h = gpio_is_input_hysteresis_enabled(29);
+//   Serial.print("GPIO29 h: ");
+//   Serial.println(h);
 
-  gpio_slew_rate slew = gpio_get_slew_rate(29);
-  Serial.print("GPIO29 slew: ");
-  Serial.println(slew);
+//   gpio_slew_rate slew = gpio_get_slew_rate(29);
+//   Serial.print("GPIO29 slew: ");
+//   Serial.println(slew);
 
-  gpio_drive_strength drive = gpio_get_drive_strength(29);
-  Serial.print("GPIO29 drive: ");
-  Serial.println(drive);
+//   gpio_drive_strength drive = gpio_get_drive_strength(29);
+//   Serial.print("GPIO29 drive: ");
+//   Serial.println(drive);
 
-  int irqmask = gpio_get_irq_event_mask(29);
-  Serial.print("GPIO29 irqmask: ");
-  Serial.println(irqmask);
+//   int irqmask = gpio_get_irq_event_mask(29);
+//   Serial.print("GPIO29 irqmask: ");
+//   Serial.println(irqmask);
 
-  bool out = gpio_is_dir_out(29);
-  Serial.print("GPIO29 out: ");
-  Serial.println(out);
-  Serial.printf("(%i) GPIO29 func: %i, pd: %i, h: %i, slew: %i, drive: %i, "
-                "irqmask: %i, out: %i\n",
-                i, gpio29Function, pd, h, slew, drive, irqmask, out);
-}
+//   bool out = gpio_is_dir_out(29);
+//   Serial.print("GPIO29 out: ");
+//   Serial.println(out);
+//   Serial.printf("(%i) GPIO29 func: %i, pd: %i, h: %i, slew: %i, drive: %i, "
+//                 "irqmask: %i, out: %i\n",
+//                 i, gpio29Function, pd, h, slew, drive, irqmask, out);
+// }

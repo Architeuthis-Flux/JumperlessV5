@@ -9,8 +9,8 @@
 
 #include "hardware/pio.h"
 
-#include "spi.pio.h"
-#include "pio_spi.h"
+#include "ch446.pio.h"
+//#include "pio_spi.h"
 
 #define MYNAMEISERIC 0 // on the board I sent to eric, the data and clock lines are bodged to GPIO 18 and 19. To allow for using hardware SPI
 
@@ -42,6 +42,8 @@ void isrFromPio(void)
 
 
 }
+
+
 
 void initCH446Q(void)
 {
