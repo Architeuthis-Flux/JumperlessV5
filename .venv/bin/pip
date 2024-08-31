@@ -1,4 +1,4 @@
-#!/Users/kevinsanto/Documents/GitHub/JumperlessV5/.venv/bin/python
+#!/Users/kevinsanto/Documents/GitHub/JumperlessV5/.venv/bin/python3
 # -*- coding: utf-8 -*-
 import re
 import sys
