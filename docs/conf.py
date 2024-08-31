@@ -15,7 +15,7 @@ release = '5.0.0.2'
 # https://www.sphinx-doc.org/en/master/usage/configuration.html#general-configuration
 
 extensions = [
-    'myst_parser',
+    "myst_parser",
     ]
 
 source_suffix = {
