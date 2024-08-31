@@ -1,2 +1,2 @@
 sphinx
-myst-parser
+myst_parser
