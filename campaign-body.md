@@ -1,4 +1,9 @@
-{jNameLogo.svg}
+
+![hero](https://github.com/user-attachments/assets/cb08fe97-e3e9-4bd4-80e1-58738aefd0c0)
+
+![JNameLogo](https://github.com/user-attachments/assets/04c9e1be-118f-4960-8744-adef260e2bba)
+
+
 
 **Jumperless V5** is a breadboard where any point can be connected to any other with software-defined jumpers. RGB LEDs under each hole turn the breadboard into a display; paired with its assortment of routable analog/digital I/O, Jumperless V5 gives you real-time information about everything happening in your circuit and the ability to change it at a whim.
 
@@ -12,7 +17,8 @@ Jumperless V5 is like x-ray specs for electronics enthusiasts—it lets you see 
 
 V5 is a significant redesign of the original [Jumperless](https://github.com/Architeuthis-Flux/Jumperless). Having a few hundred people out there using Jumperlesses, sharing ideas, and [writing their](https://github.com/nilclass/jlctl) [own apps](https://github.com/nilclass/jumperlab) gave us a long enough list of things to improve and upgrade. Now that the fundamentals are battle-tested, Jumperless V5 can add some even crazier new stuff like an ungodly number (451) of LEDs, a built-in rotary encoder/switch, daisy chain headers, individually programmable power rails, and an isolated, always-on probing system.
 
-{hero-1}
+![hero-1](https://github.com/user-attachments/assets/f06a0391-deb9-48fe-b2fc-8d83a38082f8)
+
 
 These additions may seem minor, but they fundamentally change how using a Jumperless *feels*. It's intuitive enough that it quickly just becomes "part of your brain" in the same way your computer does. And it's easy to forget this isn't how prototyping stuff on a breadboard has always been.
 
@@ -20,7 +26,9 @@ These additions may seem minor, but they fundamentally change how using a Jumper
 
 Jumperless V5 was designed to make using it with a computer completely optional. Anything you could do over the serial terminal can be done on the board itself, using the clickwheel, probe, and LEDs under the breadboard acting as a 14x30 display. Everything you do gets saved to its 16Mb of flash memory, so you can always just plug it into power and pick up where you left off.
 
-{HandMenus.mp4}
+https://github.com/user-attachments/assets/d15c155e-91ff-43bf-bdfb-77dca244222f
+
+
 ## Programmable as Heck
 
 What's the fun of having software-defined jumpers if we're just gonna use them like regular meatspace ones? The power of the shiny new RP2350B means all the housekeeping stuff runs on a single core, leaving the other core free to run a Python interpreter with a built-in module to control everything with simple calls.
@@ -77,7 +85,8 @@ Serial.print("f 5-gnd, 23-adc_1, 4-20, gpio_2-nano_reset, ");
 
 Jumperless V5 uses a string of 92 ±0.1% precision resistors in a huge voltage divider and one of the ADC channels to sense which number the probe is poking. The probe has LEDs to show you which mode you're in and a switch that changes into a routable analog IO to measure things or quickly inject signals into your circuit.
 
-{newProbe2}
+![newProbe2](https://github.com/user-attachments/assets/1aecc98a-428c-4794-bf05-6d5bcc994c5e)
+
 
 If you misplace your probe, its design allows you to plug in any random 1/8-inch audio cable and poke out connections with the tip.
 
@@ -150,6 +159,5 @@ The RP2350B is brand new, so there could be [more silicon errata](https://hackad
 
 Aside from some huge global catastrophe happening, you *will* get this and it'll be awesome.
 
+![JumperlessV5back](https://github.com/user-attachments/assets/46948e94-cf79-4662-9bbe-b61d638dd225)
 
-
-{jumperlessv5back}
