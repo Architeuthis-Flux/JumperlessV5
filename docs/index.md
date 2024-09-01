@@ -15,11 +15,11 @@ Jumperless V5 is like x-ray specs for electronics enthusiasts—it lets you see 
 
 V5 is a significant redesign of the original [Jumperless](https://github.com/Architeuthis-Flux/Jumperless). Having a few hundred people out there using Jumperlesses, sharing ideas, and [writing their](https://github.com/nilclass/jlctl) [own apps](https://github.com/nilclass/jumperlab) gave us a long enough list of things to improve and upgrade. Now that the fundamentals are battle-tested, Jumperless V5 can add some even crazier new stuff like an ungodly number (451) of LEDs, a built-in rotary encoder/switch, daisy chain headers, individually programmable power rails, and an isolated, always-on probing system. 
 
-This isn't just bolting on a bunch of new features, in fact they're all about getting a circuit from your brain into hardware with minimal friction.
+
 
 ![hero-1](https://github.com/user-attachments/assets/f06a0391-deb9-48fe-b2fc-8d83a38082f8)
 
-These additions may seem minor, but they fundamentally change how using a Jumperless *feels*. It's intuitive enough that it quickly just becomes "part of your brain" in the same way your computer does. And it's easy to forget this isn't how prototyping stuff on a breadboard has always been.
+This isn't just bolting on a bunch of new features you'll never use. The Prime Directive of V5 is to make getting a circuit from your brain into hardware completely frictionless, and once it's there, make understanding what's going on as simple as looking at it. The additions may seem minor, but they fundamentally change how using a Jumperless *feels*. It's intuitive enough that it quickly just becomes "part of your brain" in the same way your computer does. And it's easy to forget this isn't how prototyping stuff on a breadboard has always been.
 
 ## Computer Optional
 
@@ -76,13 +76,13 @@ Serial.println("f 5-gnd, 23-adc_1, 4-20, gpio_2-nano_reset, ");
 - 2 x 12-bit current/voltage sensors ([INA219](https://www.ti.com/product/INA219)) which can also be used to measure resistance
 - 10 x Routable GPIO ([RP2350](https://www.raspberrypi.com/products/rp2350/)) which can also be hardware I²C, UART, or SPI
 - 2 x 14 pin daisy chain headers on either side to pass eight analog signals + SPI + Power to another Jumperless
-- A cool probe to connect and measure stuff (TRRRS jack with I²C)
+- A cool probe to connect and measure stuff (TRRRS jack)
 - A rotary encoder / switch ([SIQ-02FVS3](https://www.lcsc.com/product-detail/Rotary-Encoders_Mitsumi-Electric-SIQ-02FVS3_C2925423.html))
 - 451 addressable RGB LEDs ([XL-1010RGBC](https://www.lcsc.com/product-detail/Light-Emitting-Diodes-LED_XINGLIGHT-XL-1010RGBC-WS2812B_C5349953.html))
 
 ### Included Probe
 
-Jumperless V5 uses a string of 92 precision resistors in a huge voltage divider and an ADC channel to sense which number the probe is poking. The probe has LEDs to show you which mode you're in and a switch to turn it into a routable analog IO to measure things or quickly inject signals into your circuit.
+Jumperless V5 uses a string of 92 precision resistors in a huge voltage divider and an ADC channel to sense which number the probe is poking. The probe has LEDs to show you which mode you're in, 2 buttons to channge between adding or removing connections, and a switch to turn it into a routable analog IO to measure things or quickly inject signals into your circuit.
 
 ![newProbe2](https://github.com/user-attachments/assets/1aecc98a-428c-4794-bf05-6d5bcc994c5e)
 
@@ -130,10 +130,6 @@ Jumperless V5 can sniff or write any UART, I²C, SPI, or MIDI signals on the boa
 [13]:https://en.wikipedia.org/wiki/Crossbar_switch
 [14]:https://en.wikipedia.org/wiki/Clos_network
 
-## The App
-
-The desktop app allows you to assign up to 8 [Wokwi](https://wokwi.com/) projects to separate slots that are polled for changes and automatically updated on the Jumperless V5 (within half a second of clicking save). Or if you don't want to use Wokwi, it simply acts as a regular terminal emulator like PuTTY, xTerm, Serial, etc. You could also just use any of those; the menus are sent and handled on the Jumperless itself, and the Jumperless desktop app just adds automatic firmware updates, Wokwi polling, and arduino-cli for flashing code from your Wokwi sketch to an Arduino via a single USB cable.
-
 
 ## Openest Source 
 
@@ -142,14 +138,25 @@ Jumperless V5 is designed to be infinitely open-source and hackable. Want to mak
 Every single file that goes into this thing is available for anyone's viewing/modifying/cloning pleasure. I'm here to make awesome hardware, not keep secrets. The [schematic](https://github.com/Architeuthis-Flux/JumperlessV5/blob/main/Hardware/JumperlessV5hw/JumperlessV5hw.kicad_sch), [PCB design](https://github.com/Architeuthis-Flux/JumperlessV5/blob/main/Hardware/JumperlessV5hw/JumperlessV5hw.kicad_pcb), [firmware](https://github.com/Architeuthis-Flux/JumperlessV5/tree/main/JumperlessV5firmware), [breadboard shell models](https://github.com/Architeuthis-Flux/JumperlessV5/tree/main/Hardware/Board%20Shell), [spring clip models](https://github.com/Architeuthis-Flux/JumperlessV5/tree/main/Hardware/Spring%20Clips), [Jumperless app code](https://github.com/Architeuthis-Flux/Jumperless/tree/main/Jumperless_Wokwi_Bridge_App/JumperlessWokwiBridge), are  in [the GitHub repo](https://github.com/Architeuthis-Flux/JumperlessV5).
 
 
+The menus are handled on the Jumperless itself, so it can be controlled from any terminal emulator like [PuTTY](https://www.putty.org/), xTerm, Serial, etc. Or use the [Jumperless desktop app](https://github.com/Architeuthis-Flux/JumperlessV5/releases/latest) to poll your [Wokwi](https://wokwi.com/) projects for changes and automatically update connections within half a second of clicking save. 
+
+
+## Do Whatever You Want
+
+There is no "prescribed" use case for this thing. Every design decision was meant to keep it as general purpose as possible while staying easy and fun to use. Whether you're a hobbyist, musician, student, hacker, scientist, teacher, engineer, artist, or just want to be the first person to get Doom running on a breadboard, Jumperless was made to give _you_ an entirely new tool for turning your ideas into rad stuff.
+
+
+
 
 ## Manufacturing Plan
 
 [Elecrow](https://www.elecrow.com/) will be doing the PCB fabrication and final assembly. They already have experience from the OG Jumperless, so they know all the tricks (and there were quite a few things to get figured out, this is a *dense* board with 5 separate PCBs and a lot of weird fabrication steps to get them all together.) 
 
-The phosphor bronze spring clips are made by [Shenzhen Fulimei Technology](https://fulimei.en.made-in-china.com/) and the stamping/forming molds have already been made, fiddled with, and perfected. The breadboard shells are SLS printed in PA-12 nylon by [JLC3DP](https://jlc3dp.com/). Packaging is made by [Shenzhen Zhibang Packaging and Printing](https://www.zhibangpackaging.com/).
+The phosphor bronze spring clips are made by [Shenzhen Fulimei Technology](https://fulimei.en.made-in-china.com/) and the stamping/forming molds have already been made, fiddled with, and perfected. The breadboard shells are SLS printed in black PA-12 nylon by [JLC3DP](https://jlc3dp.com/). Packaging is made by [Shenzhen Zhibang Packaging and Printing](https://www.zhibangpackaging.com/).
 
 All the parts get sent to Elecrow for final assembly and shipped to Henderson, NV where I will lovingly pack each one myself. They could totally do the packing for me, but I like to make sure each Jumperless V5 is absolutely perfect before it goes out to you. 
+
+![boxMockup](/Images/boxMockupSm.jpg)
 
 ## Fulfillment & Logistics
 
