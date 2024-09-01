@@ -16,7 +16,6 @@ release = '5.0.0.2'
 # https://www.sphinx-doc.org/en/master/usage/configuration.html#general-configuration
 
 extensions = [
-    'numpydoc',
     'myst_parser'
     ]
 
@@ -24,8 +23,8 @@ templates_path = ['_templates']
 exclude_patterns = ['_build', 'Thumbs.db', '.DS_Store']
 
 html_favicon = 'favicon.ico'
-bodyfont = 'Eurostile'
-headfont = 'Eurostile extended'
+bodyfont = 'Helvetica'
+headfont = 'Helvetica'
 
 # -- Options for HTML output -------------------------------------------------
 # https://www.sphinx-doc.org/en/master/usage/configuration.html#options-for-html-output
