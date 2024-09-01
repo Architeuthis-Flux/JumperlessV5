@@ -11,7 +11,7 @@ The four individually programmable ±8 V power supplies, seven voltage/current/r
 
 Jumperless V5 is like x-ray specs for electronics enthusiasts—it lets you see electrons flowing, capacitors charging, frequencies changing, and UART messages zipping, all right there on your breadboard.
 
-#### Oh yeah, and it runs on the brand spankin' new [RP2350B](https://www.raspberrypi.com/products/rp2350/)!
+###### Oh yeah, and it runs on the brand spankin' new [RP2350B](https://www.raspberrypi.com/products/rp2350/)!
 
 ## Improving on the Original
 
