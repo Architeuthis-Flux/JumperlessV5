@@ -154,4 +154,16 @@ If you have some feature you want to add, I'm happy to help. Either by just addi
 ![JumperlessV5hw](https://github.com/Architeuthis-Flux/JumperlessV5/assets/20519442/ce409b68-03f8-4ee0-b19b-1aba168de07f)
 
 
+https://github.com/user-attachments/assets/f4ce75e4-14b6-48c8-96ba-9c4a3180d78c
+
+
+
+https://github.com/user-attachments/assets/7bf4f20c-272e-4586-8e50-9da7c20dedf6
+
+https://github.com/user-attachments/assets/13d6d9ab-8ea0-4387-aee6-343be06bf343
+
+
+
+
+
 
