@@ -156,7 +156,8 @@ The phosphor bronze spring clips are made by [Shenzhen Fulimei Technology](https
 
 All the parts get sent to Elecrow for final assembly and shipped to Henderson, NV where I will lovingly pack each one myself. They could totally do the packing for me, but I like to make sure each Jumperless V5 is absolutely perfect before it goes out to you. 
 
-![boxMockup](/Images/boxMockupSm.jpg)
+![boxMockupSm](https://github.com/user-attachments/assets/bbdbe2b4-47c8-4775-87e9-9dc950532440)
+
 
 ## Fulfillment & Logistics
 
