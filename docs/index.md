@@ -1,7 +1,7 @@
 
-![hero](https://github.com/user-attachments/assets/cb08fe97-e3e9-4bd4-80e1-58738aefd0c0)
+![hero](https://github.com/user-attachments/assets/38994585-8f21-4f8c-b38f-5f4ed03819de)
 
-![JNameLogo](https://github.com/user-attachments/assets/04c9e1be-118f-4960-8744-adef260e2bba)
+![JumperlessV5halftonedText](https://github.com/user-attachments/assets/a652f61c-b2b8-423d-a2b5-5c1bc6b47fb9)
 
 **Jumperless V5** is a breadboard where any point can be connected to any other with software-defined jumpers. RGB LEDs under each hole turn the breadboard into a display; paired with its assortment of routable analog/digital I/O, Jumperless V5 gives you real-time information about everything happening in your circuit and the ability to change it at a whim.
 
@@ -16,8 +16,8 @@ Jumperless V5 is like x-ray specs for electronics enthusiasts—it lets you see 
 V5 is a significant redesign of the original [Jumperless](https://github.com/Architeuthis-Flux/Jumperless). Having a few hundred people out there using Jumperlesses, sharing ideas, and [writing their](https://github.com/nilclass/jlctl) [own apps](https://github.com/nilclass/jumperlab) gave us a long enough list of things to improve and upgrade. Now that the fundamentals are battle-tested, Jumperless V5 can add some even crazier new stuff like an ungodly number (451) of LEDs, a built-in rotary encoder/switch, daisy chain headers, individually programmable power rails, and an isolated, always-on probing system. 
 
 
+![hero-1](https://github.com/user-attachments/assets/2cdd6212-2ef7-42cc-999f-4337693a6acc)
 
-![hero-1](https://github.com/user-attachments/assets/f06a0391-deb9-48fe-b2fc-8d83a38082f8)
 
 This isn't just bolting on a bunch of new features you'll never use. The Prime Directive of V5 is to make getting a circuit from your brain into hardware completely frictionless, and once it's there, make understanding what's going on as simple as looking at it. The additions may seem minor, but they fundamentally change how using a Jumperless *feels*. It's intuitive enough that it quickly just becomes "part of your brain" in the same way your computer does. And it's easy to forget this isn't how prototyping stuff on a breadboard has always been.
 
@@ -143,8 +143,7 @@ The menus are handled on the Jumperless itself, so it can be controlled from any
 
 ## Do Whatever You Want
 
-There is no "prescribed" use case for this thing. Every design decision was meant to keep it as general purpose as possible while staying easy and fun to use. Whether you're a hobbyist, musician, student, hacker, scientist, teacher, engineer, artist, or just want to be the first person to get Doom running on a breadboard, Jumperless was made to give _you_ an entirely new tool for turning your ideas into rad stuff.
-
+There is no "prescribed" use case for this thing. Every design decision was meant to keep it as general purpose as possible while staying easy and fun to use. Whether you're a hobbyist, musician, student, hacker, scientist, teacher, engineer, artist, or just want to be the first person to get Doom running on a breadboard, Jumperless was made to give you an entirely new tool for turning your ideas into rad stuff.
 
 
 
