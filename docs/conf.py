@@ -5,7 +5,8 @@
 
 # -- Project information -----------------------------------------------------
 # https://www.sphinx-doc.org/en/master/usage/configuration.html#project-information
-
+# import myst_parser
+# import numpydoc
 project = 'Jumperless V5'
 copyright = '2024, Kevin Santo Cappuccio'
 author = 'Kevin Santo Cappuccio'
@@ -14,7 +15,10 @@ release = '5.0.0.2'
 # -- General configuration ---------------------------------------------------
 # https://www.sphinx-doc.org/en/master/usage/configuration.html#general-configuration
 
-extensions = ["myst_parser"]
+extensions = [
+    'myst_parser',
+    'numpydoc'
+    ]
 
 templates_path = ['_templates']
 exclude_patterns = ['_build', 'Thumbs.db', '.DS_Store']
