@@ -17,6 +17,7 @@ release = '5.0.0.2'
 
 extensions = [
     'numpydoc'
+    'myst_parser'
     ]
 
 templates_path = ['_templates']
