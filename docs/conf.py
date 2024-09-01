@@ -24,8 +24,8 @@ templates_path = ['_templates']
 exclude_patterns = ['_build', 'Thumbs.db', '.DS_Store']
 
 html_favicon = 'favicon.ico'
-bodyfont = 'Monaco'
-headfont = 'Monaco'
+bodyfont = 'Eurostile'
+headfont = 'Eurostile extended'
 
 # -- Options for HTML output -------------------------------------------------
 # https://www.sphinx-doc.org/en/master/usage/configuration.html#options-for-html-output
