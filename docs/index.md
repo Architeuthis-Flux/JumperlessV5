@@ -3,7 +3,6 @@
 
 
 ![JNameLogo](https://github.com/user-attachments/assets/4f71138b-a656-4f00-a202-d9780bc17df5)
-
 **Jumperless V5** is a breadboard where any point can be connected to any other with software-defined jumpers. RGB LEDs under each hole turn the breadboard into a display; paired with its assortment of routable analog/digital I/O, Jumperless V5 gives you real-time information about everything happening in your circuit and the ability to change it at a whim.
 
 The four individually programmable ±8 V power supplies, seven voltage/current/resistance measurement channels, and 10 GPIO can all be connected anywhere on the breadboard or the Arduino Nano header, it's pretty much every piece of equipment on an electronics workbench shoved inside a breadboard.
@@ -17,20 +16,27 @@ Jumperless V5 is like x-ray specs for electronics enthusiasts—it lets you see 
 V5 is a significant redesign of the original [Jumperless](https://github.com/Architeuthis-Flux/Jumperless). Having a few hundred people out there using Jumperlesses, sharing ideas, and [writing their](https://github.com/nilclass/jlctl) [own apps](https://github.com/nilclass/jumperlab) gave us a long enough list of things to improve and upgrade. Now that the fundamentals are battle-tested, Jumperless V5 can add some even crazier new stuff like an ungodly number (451) of LEDs, a built-in rotary encoder/switch, daisy chain headers, individually programmable power rails, and an isolated, always-on probing system. 
 
 
-
-
-
 This isn't just bolting on a bunch of new features you'll never use. The Prime Directive of V5 is to make getting a circuit from your brain into hardware completely frictionless, and once it's there, make understanding what's going on as simple as looking at it. The additions may seem minor, but they fundamentally change how using a Jumperless *feels*. It's intuitive enough that it quickly just becomes "part of your brain" in the same way your computer does. And it's easy to forget this isn't how prototyping stuff on a breadboard has always been.
+
+https://github.com/user-attachments/assets/723ba62c-1593-4311-ae09-2840a28bddf5
 
 ## Computer Optional
 
 Jumperless V5 was designed to make using it with a computer completely optional. Anything you could do over the serial terminal can be done on the board itself, using the clickwheel, probe, and LEDs under the breadboard acting as a 14x30 display. Everything you do gets saved to its 16Mb of flash memory, so you can always just plug it into power and pick up where you left off.
 
-https://github.com/user-attachments/assets/723ba62c-1593-4311-ae09-2840a28bddf5
 
+## Features & Specifications
 
+- 4 x 12-bit DACs ([MCP4278](https://www.microchip.com/en-us/product/mcp4728)) buffered and shifted to ±8 V through high current op amps ([L272D](https://estore.st.com/en/l272d-cpn.html))
+- 7 x 12-bit ADCs (built into the RP2350) buffered and level shifted ([LM324](https://www.ti.com/product/LM324B)) to read ±8V
+- 2 x 12-bit current/voltage sensors ([INA219](https://www.ti.com/product/INA219)) which can also be used to measure resistance
+- 10 x Routable GPIO ([RP2350](https://www.raspberrypi.com/products/rp2350/)) which can also be hardware I²C, UART, or SPI
+- 2 x 14 pin daisy chain headers on either side to pass eight analog signals + SPI + Power to another Jumperless
+- A cool probe to connect and measure stuff (TRRRS jack)
+- A rotary encoder / switch ([SIQ-02FVS3](https://www.lcsc.com/product-detail/Rotary-Encoders_Mitsumi-Electric-SIQ-02FVS3_C2925423.html))
+- 451 addressable RGB LEDs ([XL-1010RGBC](https://www.lcsc.com/product-detail/Light-Emitting-Diodes-LED_XINGLIGHT-XL-1010RGBC-WS2812B_C5349953.html))
 
-
+![JumperlessV5back](https://github.com/user-attachments/assets/46948e94-cf79-4662-9bbe-b61d638dd225)
 
 ## Programmable as Heck
 
@@ -74,20 +80,6 @@ or just send it a whole netlist
 ```
 Serial.println("f 5-gnd, 23-adc_1, 4-20, gpio_2-nano_reset, ");
 ```
-
-
-## Features & Specifications
-
-- 4 x 12-bit DACs ([MCP4278](https://www.microchip.com/en-us/product/mcp4728)) buffered and shifted to ±8 V through high current op amps ([L272D](https://estore.st.com/en/l272d-cpn.html))
-- 7 x 12-bit ADCs (built into the RP2350) buffered and level shifted ([LM324](https://www.ti.com/product/LM324B)) to read ±8V
-- 2 x 12-bit current/voltage sensors ([INA219](https://www.ti.com/product/INA219)) which can also be used to measure resistance
-- 10 x Routable GPIO ([RP2350](https://www.raspberrypi.com/products/rp2350/)) which can also be hardware I²C, UART, or SPI
-- 2 x 14 pin daisy chain headers on either side to pass eight analog signals + SPI + Power to another Jumperless
-- A cool probe to connect and measure stuff (TRRRS jack)
-- A rotary encoder / switch ([SIQ-02FVS3](https://www.lcsc.com/product-detail/Rotary-Encoders_Mitsumi-Electric-SIQ-02FVS3_C2925423.html))
-- 451 addressable RGB LEDs ([XL-1010RGBC](https://www.lcsc.com/product-detail/Light-Emitting-Diodes-LED_XINGLIGHT-XL-1010RGBC-WS2812B_C5349953.html))
-
-![JumperlessV5back](https://github.com/user-attachments/assets/46948e94-cf79-4662-9bbe-b61d638dd225)
 
 ### Serial/I²C/SPI/MIDI
 
@@ -146,6 +138,8 @@ If you misplace your probe, its design allows you to plug in any random 1/8-inch
 ### [**Documentation, guides, and example projects can be found here**](https://jumperlessv5.readthedocs.io/en/latest/)
 
 Jumperless V5 is designed to be infinitely open-source and hackable. Want to make 10 of these with a mini USB port for you and your friends? Let me know, and I'll double-check everything when you're putting in the PCB order to make sure all the parts are placed correctly. I'll even send you the custom spring clips.
+
+![Jumperless23V50schematic](https://github.com/user-attachments/assets/b3812e3e-bc94-4816-a912-dd29f40b5f83)
 
 Every single file that goes into this thing is available for anyone's viewing/modifying/cloning pleasure. I'm here to make awesome hardware, not keep secrets. The [schematic](https://github.com/Architeuthis-Flux/JumperlessV5/blob/main/Hardware/JumperlessV5hw/JumperlessV5hw.kicad_sch), [PCB design](https://github.com/Architeuthis-Flux/JumperlessV5/blob/main/Hardware/JumperlessV5hw/JumperlessV5hw.kicad_pcb), [firmware](https://github.com/Architeuthis-Flux/JumperlessV5/tree/main/JumperlessV5firmware), [breadboard shell models](https://github.com/Architeuthis-Flux/JumperlessV5/tree/main/Hardware/Board%20Shell), [spring clip models](https://github.com/Architeuthis-Flux/JumperlessV5/tree/main/Hardware/Spring%20Clips), [Jumperless app code](https://github.com/Architeuthis-Flux/Jumperless/tree/main/Jumperless_Wokwi_Bridge_App/JumperlessWokwiBridge), are  in [the GitHub repo](https://github.com/Architeuthis-Flux/JumperlessV5).
 
