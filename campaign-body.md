@@ -180,7 +180,7 @@ After our production run is complete, we will package everything up and send it 
 
 ## Risks & Challenges
 
-The RP2350B is brand new, so there could be [more silicon errata](https://hackaday.com/2024/08/28/hardware-bug-in-raspberry-pis-rp2350-causes-faulty-pull-down-behavior/). Luckily, this is a friggin' Jumperless, the hardware *is* the firmware, so that one isn't an issue. It just checks for a lockup by connecting an ADC and breifly shorts that pin to ground to overpower the pullup and get out of that state. There's *always* a workaround here.
+The RP2350B is brand new, so there could be [more silicon errata](https://hackaday.com/2024/08/28/hardware-bug-in-raspberry-pis-rp2350-causes-faulty-pull-down-behavior/). Luckily, this is a friggin' Jumperless, the hardware *is* the firmware, so that one isn't an issue. It just checks for a lockup by connecting an ADC and briefly shorts that pin to ground to overpower the pullup and get out of that state. There's *always* a workaround here.
 
 Aside from some huge global catastrophe happening, you *will* get this and it'll be awesome. 
 
