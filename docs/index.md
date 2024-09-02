@@ -17,7 +17,7 @@ Jumperless V5 is like x-ray specs for electronics enthusiasts—it lets you see 
 V5 is a significant redesign of the original [Jumperless](https://github.com/Architeuthis-Flux/Jumperless). Having a few hundred people out there using Jumperlesses, sharing ideas, and [writing their](https://github.com/nilclass/jlctl) [own apps](https://github.com/nilclass/jumperlab) gave us a long enough list of things to improve and upgrade. Now that the fundamentals are battle-tested, Jumperless V5 can add some even crazier new stuff like an ungodly number (451) of LEDs, a built-in rotary encoder/switch, daisy chain headers, individually programmable power rails, and an isolated, always-on probing system. 
 
 
-![hero-1](https://github.com/user-attachments/assets/2cdd6212-2ef7-42cc-999f-4337693a6acc)
+
 
 
 This isn't just bolting on a bunch of new features you'll never use. The Prime Directive of V5 is to make getting a circuit from your brain into hardware completely frictionless, and once it's there, make understanding what's going on as simple as looking at it. The additions may seem minor, but they fundamentally change how using a Jumperless *feels*. It's intuitive enough that it quickly just becomes "part of your brain" in the same way your computer does. And it's easy to forget this isn't how prototyping stuff on a breadboard has always been.
@@ -26,7 +26,11 @@ This isn't just bolting on a bunch of new features you'll never use. The Prime D
 
 Jumperless V5 was designed to make using it with a computer completely optional. Anything you could do over the serial terminal can be done on the board itself, using the clickwheel, probe, and LEDs under the breadboard acting as a 14x30 display. Everything you do gets saved to its 16Mb of flash memory, so you can always just plug it into power and pick up where you left off.
 
-https://github.com/user-attachments/assets/d15c155e-91ff-43bf-bdfb-77dca244222f
+https://github.com/user-attachments/assets/723ba62c-1593-4311-ae09-2840a28bddf5
+
+
+
+
 
 ## Programmable as Heck
 
@@ -83,6 +87,12 @@ Serial.println("f 5-gnd, 23-adc_1, 4-20, gpio_2-nano_reset, ");
 - A rotary encoder / switch ([SIQ-02FVS3](https://www.lcsc.com/product-detail/Rotary-Encoders_Mitsumi-Electric-SIQ-02FVS3_C2925423.html))
 - 451 addressable RGB LEDs ([XL-1010RGBC](https://www.lcsc.com/product-detail/Light-Emitting-Diodes-LED_XINGLIGHT-XL-1010RGBC-WS2812B_C5349953.html))
 
+![JumperlessV5back](https://github.com/user-attachments/assets/46948e94-cf79-4662-9bbe-b61d638dd225)
+
+### Serial/I²C/SPI/MIDI
+
+Jumperless V5 can sniff or write any UART, I²C, SPI, or MIDI signals on the board. It can be set to either print whatever it reads on the breadboard LEDs, turning the Jumperless into a serial monitor, or show up as two USB devices on your computer and give you bidirectional communication through that other port.
+
 ### Included Probe
 
 Jumperless V5 uses a string of 92 precision resistors in a huge voltage divider and an ADC channel to sense which number the probe is poking. The probe has LEDs to show you which mode you're in, 2 buttons to channge between adding or removing connections, and a switch to turn it into a routable analog IO to measure things or quickly inject signals into your circuit.
@@ -92,9 +102,6 @@ Jumperless V5 uses a string of 92 precision resistors in a huge voltage divider 
 
 If you misplace your probe, its design allows you to plug in any random 1/8-inch audio cable and poke out connections with the tip.
 
-### Serial/I²C/SPI/MIDI
-
-Jumperless V5 can sniff or write any UART, I²C, SPI, or MIDI signals on the board. It can be set to either print whatever it reads on the breadboard LEDs, turning the Jumperless into a serial monitor, or show up as two USB devices on your computer and give you bidirectional communication through that other port.
 
 
 ## Comparisons
@@ -184,5 +191,6 @@ Aside from some huge global catastrophe happening, you *will* get this and it'll
 If you don't love it, returns are always accepted for a full refund, and repairs are always free, regardless of the cause.
 
 
-![JumperlessV5back](https://github.com/user-attachments/assets/46948e94-cf79-4662-9bbe-b61d638dd225)
 
+
+![hero-1](https://github.com/user-attachments/assets/2cdd6212-2ef7-42cc-999f-4337693a6acc)
