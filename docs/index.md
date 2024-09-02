@@ -1,7 +1,8 @@
 
 ![hero](https://github.com/user-attachments/assets/38994585-8f21-4f8c-b38f-5f4ed03819de)
 
-![JumperlessV5halftonedText](https://github.com/user-attachments/assets/a652f61c-b2b8-423d-a2b5-5c1bc6b47fb9)
+
+![JNameLogo](https://github.com/user-attachments/assets/4f71138b-a656-4f00-a202-d9780bc17df5)
 
 **Jumperless V5** is a breadboard where any point can be connected to any other with software-defined jumpers. RGB LEDs under each hole turn the breadboard into a display; paired with its assortment of routable analog/digital I/O, Jumperless V5 gives you real-time information about everything happening in your circuit and the ability to change it at a whim.
 
@@ -145,7 +146,7 @@ The menus are handled on the Jumperless itself, so it can be controlled from any
 
 There is no "prescribed" use case for this thing. Every design decision was meant to keep it as general purpose as possible while staying easy and fun to use. Whether you're a hobbyist, musician, student, hacker, scientist, teacher, engineer, artist, or just want to be the first person to get Doom running on a breadboard, Jumperless was made to give you an entirely new tool for turning your ideas into rad stuff.
 
-
+The breadboard shells come off with just 4 through hole solder joints, so you can easily replace any bent spring clips (although in practice this has never been necessary, the high quality phosphor bronze clips are amazingly sturdy), or swap out the shell with one printed in your favorite color/material.
 
 ## Manufacturing Plan
 
@@ -164,9 +165,9 @@ After our production run is complete, we will package everything up and send it 
 
 ## Risks & Challenges
 
-The RP2350B is brand new, so there could be [more silicon errata](https://hackaday.com/2024/08/28/hardware-bug-in-raspberry-pis-rp2350-causes-faulty-pull-down-behavior/). Luckily, this is a friggin' Jumperless, the hardware *is* the firmware, so that one isn't an issue. It just checks for a lockup by connecting an ADC and breifly shorts that pin to ground to overpower the pullup and get out of that state. There's *always* a workaround.
+The RP2350B is brand new, so there could be [more silicon errata](https://hackaday.com/2024/08/28/hardware-bug-in-raspberry-pis-rp2350-causes-faulty-pull-down-behavior/). Luckily, this is a friggin' Jumperless, the hardware *is* the firmware, so that one isn't an issue. It just checks for a lockup by connecting an ADC and breifly shorts that pin to ground to overpower the pullup and get out of that state. There's *always* a workaround here.
 
-Aside from some huge global catastrophe happening, you *will* get this and it'll be awesome. 
+Aside from some huge global catastrophe happening, you *will* get this and it'll be awesome. If you don't love it, returns are always accepted for a full refund, and repairs are always free, regardless of the cause.
 
 
 ![JumperlessV5back](https://github.com/user-attachments/assets/46948e94-cf79-4662-9bbe-b61d638dd225)
