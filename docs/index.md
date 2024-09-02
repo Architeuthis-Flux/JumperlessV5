@@ -18,7 +18,7 @@ V5 is a significant redesign of the original [Jumperless](https://github.com/Arc
 
 This isn't just bolting on a bunch of new features you'll never use. The Prime Directive of V5 is to make getting a circuit from your brain into hardware completely frictionless, and once it's there, make understanding what's going on as simple as looking at it. The additions may seem minor, but they fundamentally change how using a Jumperless *feels*. It's intuitive enough that it quickly just becomes "part of your brain" in the same way your computer does. And it's easy to forget this isn't how prototyping stuff on a breadboard has always been.
 
-https://github.com/user-attachments/assets/723ba62c-1593-4311-ae09-2840a28bddf5
+![](https://github.com/user-attachments/assets/723ba62c-1593-4311-ae09-2840a28bddf5)
 
 ## Computer Optional
 
