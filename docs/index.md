@@ -25,9 +25,8 @@ This isn't just bolting on a bunch of new features you'll never use. The Prime D
 ## Computer Optional
 
 Jumperless V5 was designed to make using it with a computer completely optional. Anything you could do over the serial terminal can be done on the board itself, using the clickwheel, probe, and LEDs under the breadboard acting as a 14x30 display. Everything you do gets saved to its 16Mb of flash memory, so you can always just plug it into power and pick up where you left off.
-[![HandMenus](https://i.ytimg.com/vi/OTovQYVai6I/maxresdefault.jpg)](https://www.youtube.com/watch?v=OTovQYVai6I "HandMenus")
 
-[//]: # (https://github.com/user-attachments/assets/d15c155e-91ff-43bf-bdfb-77dca244222f)
+https://github.com/user-attachments/assets/d15c155e-91ff-43bf-bdfb-77dca244222f
 
 ## Programmable as Heck
 
@@ -59,6 +58,10 @@ while True:
 ```
 Drop those onto the Jumperless over USB, or live code from Thonny or whatever, and they'll be stored in your app library so you can run them whenever you like. 
 
+
+
+
+
 If Arduino-flavored C++ is more your style, it also accepts commands over the routable UART lines, so you can just plop down any vaguely Arduino Nano-shaped board and just control the Jumperless with the same API:
 ```
 Serial.println(jumperless.connect(row_4, row_20));
@@ -67,7 +70,6 @@ or just send it a whole netlist
 ```
 Serial.println("f 5-gnd, 23-adc_1, 4-20, gpio_2-nano_reset, ");
 ```
-
 
 
 ## Features & Specifications
@@ -134,6 +136,8 @@ Jumperless V5 can sniff or write any UART, I²C, SPI, or MIDI signals on the boa
 
 ## Openest Source 
 
+### [**Documentation, guides, and example projects can be found here**](https://jumperlessv5.readthedocs.io/en/latest/)
+
 Jumperless V5 is designed to be infinitely open-source and hackable. Want to make 10 of these with a mini USB port for you and your friends? Let me know, and I'll double-check everything when you're putting in the PCB order to make sure all the parts are placed correctly. I'll even send you the custom spring clips.
 
 Every single file that goes into this thing is available for anyone's viewing/modifying/cloning pleasure. I'm here to make awesome hardware, not keep secrets. The [schematic](https://github.com/Architeuthis-Flux/JumperlessV5/blob/main/Hardware/JumperlessV5hw/JumperlessV5hw.kicad_sch), [PCB design](https://github.com/Architeuthis-Flux/JumperlessV5/blob/main/Hardware/JumperlessV5hw/JumperlessV5hw.kicad_pcb), [firmware](https://github.com/Architeuthis-Flux/JumperlessV5/tree/main/JumperlessV5firmware), [breadboard shell models](https://github.com/Architeuthis-Flux/JumperlessV5/tree/main/Hardware/Board%20Shell), [spring clip models](https://github.com/Architeuthis-Flux/JumperlessV5/tree/main/Hardware/Spring%20Clips), [Jumperless app code](https://github.com/Architeuthis-Flux/Jumperless/tree/main/Jumperless_Wokwi_Bridge_App/JumperlessWokwiBridge), are  in [the GitHub repo](https://github.com/Architeuthis-Flux/JumperlessV5).
@@ -142,11 +146,16 @@ Every single file that goes into this thing is available for anyone's viewing/mo
 The menus are handled on the Jumperless itself, so it can be controlled from any terminal emulator like [PuTTY](https://www.putty.org/), xTerm, Serial, etc. Or use the [Jumperless desktop app](https://github.com/Architeuthis-Flux/JumperlessV5/releases/latest) to poll your [Wokwi](https://wokwi.com/) projects for changes and automatically update connections within half a second of clicking save. 
 
 
+
 ## Do Whatever You Want
 
 There is no "prescribed" use case for this thing. Every design decision was meant to keep it as general purpose as possible while staying easy and fun to use. Whether you're a hobbyist, musician, student, hacker, scientist, teacher, engineer, artist, or just want to be the first person to get Doom running on a breadboard, Jumperless was made to give you an entirely new tool for turning your ideas into rad stuff.
 
-The breadboard shells come off with just 4 through hole solder joints, so you can easily replace any bent spring clips (although in practice this has never been necessary, the high quality phosphor bronze clips are amazingly sturdy), or swap out the shell with one printed in your favorite color/material.
+https://github.com/user-attachments/assets/7d19e51f-89fc-406b-92fd-df228d750c85
+
+The breadboard shells come off with just 4 through hole solder joints, so you can easily customize your Jumperless by swapping out the shell with one printed in your favorite color/material. It also lets you replace any bent spring clips, although in practice this has never been necessary, the high quality phosphor bronze clips are amazingly sturdy (but I know this is a concern for people used to cheap breadboards.)
+
+
 
 ## Manufacturing Plan
 
@@ -154,9 +163,12 @@ The breadboard shells come off with just 4 through hole solder joints, so you ca
 
 The phosphor bronze spring clips are made by [Shenzhen Fulimei Technology](https://fulimei.en.made-in-china.com/) and the stamping/forming molds have already been made, fiddled with, and perfected. The breadboard shells are SLS printed in black PA-12 nylon by [JLC3DP](https://jlc3dp.com/). Packaging is made by [Shenzhen Zhibang Packaging and Printing](https://www.zhibangpackaging.com/).
 
+![boxMockupSm](https://github.com/user-attachments/assets/bbdbe2b4-47c8-4775-87e9-9dc950532440)
+
+
 All the parts get sent to Elecrow for final assembly and shipped to Henderson, NV where I will lovingly pack each one myself. They could totally do the packing for me, but I like to make sure each Jumperless V5 is absolutely perfect before it goes out to you. 
 
-![boxMockupSm](https://github.com/user-attachments/assets/bbdbe2b4-47c8-4775-87e9-9dc950532440)
+
 
 
 ## Fulfillment & Logistics
