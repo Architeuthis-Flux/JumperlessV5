@@ -17,4 +17,4 @@ site:
     html_logo: 'ColorJumpLogo200.png'
     bodyfont: 'Helvetica, sans-serif'
     headfont: 'Monaco, sans-serif'
-    allowDangerousHtml: 'true' 
+    #allowDangerousHtml: 'true' 
