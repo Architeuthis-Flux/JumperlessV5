@@ -11,7 +11,7 @@ project:
 site:
   template: book-theme
   options:
-    favicon: '/favicon.ico'
+    favicon: 'favicon.ico'
 
     logo: '_static/ColorJumpLogo200.png'
     logo_dark: '_static/ColorJumpLogo200.png'
