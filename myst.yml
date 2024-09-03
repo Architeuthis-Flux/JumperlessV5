@@ -12,10 +12,14 @@ site:
   template: book-theme
   options:
     favicon: favicon.ico
+
     logo: '_static/ColorJumpLogo200.png'
+    logo_dark: '_static/ColorJumpLogo200.png'
+    twitter: '@arabidsquid'
     #html_title: 'Jumperless V5'
     #html_logo: 'ColorJumpLogo200.png'
     bodyfont: 'Helvetica, sans-serif'
     headfont: 'Monaco, sans-serif'
+    hide_footer_links: 'true'
 
     #allowDangerousHtml: 'true' 

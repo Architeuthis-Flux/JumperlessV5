@@ -18,7 +18,7 @@ Jumperless V5 is like x-ray specs for electronics enthusiasts—it lets you see 
 ---
 ## Improving on the Original
 
-V5 is a significant redesign of the original [Jumperless](https://github.com/Architeuthis-Flux/Jumperless). Having a few hundred people out there using Jumperlesses, sharing ideas, and [writing their](https://github.com/nilclass/jlctl) [own apps](https://github.com/nilclass/jumperlab) gave us a long enough list of things to improve and upgrade. Now that the fundamentals are battle-tested, Jumperless V5 can add some even crazier new stuff like an ungodly number (451) of LEDs, a built-in rotary encoder/switch, daisy chain headers, individually programmable power rails, and an isolated, always-on probing system. 
+V5 is a significant redesign of the original [Jumperless](https://github.com/Architeuthis-Flux/Jumperless). Having a few hundred people out there using Jumperlesses, sharing ideas, and [writing their](https://github.com/nilclass/jlctl) [own apps](https://github.com/nilclass/jumperlab) gave us a long enough list of things to improve and upgrade. Now that the fundamentals are battle-tested, Jumperless V5 can add some even crazier new stuff like an ungodly number (451) of LEDs, a beefier bipolar power supply, a built-in rotary encoder/switch, daisy chain headers, individually programmable power rails, and an isolated, always-on probing system. 
 
 
 This isn't just bolting on a bunch of new features you'll never use. The Prime Directive of V5 is to make getting a circuit from your brain into hardware completely frictionless, and once it's there, make understanding what's going on as simple as looking at it. The additions may seem minor, but they fundamentally change how using a Jumperless *feels*. It's intuitive enough that it quickly just becomes "part of your brain" in the same way your computer does. And it's easy to forget this isn't how prototyping stuff on a breadboard has always been.
@@ -35,23 +35,25 @@ Jumperless V5 was designed to make using it with a computer completely optional.
 ---
 ## Features & Specifications
 
-- 4 x 12-bit DACs ([MCP4278](https://www.microchip.com/en-us/product/mcp4728)) buffered and shifted to ±8 V through high current op amps ([L272D](https://estore.st.com/en/l272d-cpn.html))
+- 4 x 12-bit DACs ([MCP4278](https://www.microchip.com/en-us/product/mcp4728)) shifted to ±8 V through high current op amps ([L272D](https://estore.st.com/en/l272d-cpn.html))
 - 7 x 12-bit ADCs (built into the RP2350) buffered and level shifted ([LM324](https://www.ti.com/product/LM324B)) to read ±8V
 - 2 x 12-bit current/voltage sensors ([INA219](https://www.ti.com/product/INA219)) which can also be used to measure resistance
 - 10 x Routable GPIO ([RP2350](https://www.raspberrypi.com/products/rp2350/)) which can also be hardware I²C, UART, or SPI
-- 2 x 14 pin daisy chain headers on either side to pass eight analog signals + SPI + Power to another Jumperless
+- 2 x 14 pin daisy chain headers to pass 8 analog + 4 SPI + 2 power to another Jumperless
 - A cool probe to connect and measure stuff (TRRRS jack)
 - A rotary encoder / switch ([SIQ-02FVS3](https://www.lcsc.com/product-detail/Rotary-Encoders_Mitsumi-Electric-SIQ-02FVS3_C2925423.html))
 - 451 addressable RGB LEDs ([XL-1010RGBC](https://www.lcsc.com/product-detail/Light-Emitting-Diodes-LED_XINGLIGHT-XL-1010RGBC-WS2812B_C5349953.html))
 
-![JumperlessV5back](https://github.com/user-attachments/assets/46948e94-cf79-4662-9bbe-b61d638dd225)
+![JumperlessV5back](_static/Back43.jpg)
+
+---
 
 ## Programmable as Heck
 
 What's the fun of having software-defined jumpers if we're just gonna use them like regular meatspace ones? The power of the shiny new RP2350B means all the housekeeping stuff runs on a single core, leaving the other core free to run a Python interpreter with a built-in module to control everything with simple calls.
 
 So you can write programs like:
-```{python}
+```python
 jumperless.setTopRail(5.00)
 jumperless.connect(top_rail, row_3)
 jumperless.connect(gnd, row_7)
@@ -68,7 +70,7 @@ while True:
     jumperless.textOnBreadboard(response)
 ```
 or (for people more into the analog stuff, a Voltage Controlled Oscillator)
-```{python}
+```python
 while True:
     measurement = jumperless.measure(row_10)
     jumperless.outputSine(row_20, 'freq': measurement*1000)
@@ -107,19 +109,19 @@ If you misplace your probe, its design allows you to plug in any random 1/8-inch
 ---
 ## Comparisons
 :::{table}
-|                                    | Jumperless V5                                                                   | [OG Jumperless][1]                                                  | [Sandwizz™ Breadboard][2]                                   | [Breadboard][6] + [Wires][7] + [Power Supply][8] +  [Multimeter][9] |
+|                                    | [Jumperless V5][15]                                                                   | [OG Jumperless][1]                                                  | [Sandwizz™ Breadboard][2]                                   | [Breadboard][6] + [Power Supply][8] +  [Multimeter][9] |
 |------------------------------|---------------------------------------------------------------------------------|---------------------------------------------------------------------|-------------------------------------------------------------|---------------------------------------------------------------------|
 |  **Manufacturer**         | Architeuthis Flux                                                                    | Architeuthis Flux                                                        | Microaware®                                                      | A bunch of companies                                                     |
 | **Microcontroller**               | [RP2350B][11]                                                                         | [RP2040][12]                                                            | [CY8C58LP PSoC][3]                                               | N/A                                                                      |
-| **Switching Method**              | Analog [Crossbar][13] [Matrix][14]                                                               | Analog [Crossbar][13] [Matrix][14]                                                   | PSoC Internal Mux                                  | Jumper wires                                                             |
+| **Switching Method**              | Analog [Crossbar][13] [Matrix][14]                                                               | Analog [Crossbar][13] [Matrix][14]                                                   | PSoC Internal Mux                                  | [Jumper wires ][7]                                                            |
 | **Resistance**               | ~ 85 Ω                                                                                  | ~ 85 Ω                                                                      | ~ 500 Ω                                                              | ~ 0 Ω                                                                       |
 | **Power Rails**              | Individually adjustable ±8V 300mA                                                             | 3.3V, 5V, ±8V Switch                                                        | 2-5V                                                                 | External                                                                 |
-| **Circuit Input**            | Always-on Probe, Wokwi, Thumbwheel, Terminal, Routable UART, Text file, Python                  | Scanning Probe, Wokwi, Terminal, Routable UART,  Text file                  | KiCad schematic capture then guided part placement                   | [🫰][10]                                                                 |
+| **Circuit Input**            | Always-on Probe, [Wokwi][16], Thumbwheel, Terminal, Routable UART, Text file, Python                  | Scanning Probe, [Wokwi][16], Terminal, Routable UART,  Text file                  | KiCad schematic capture then guided part placement                   | [🫰][10]                                                                 |
 | **Rewiring Time**            | < 2 milliseconds                                                                      | < 2 milliseconds                                                          | ~ 1-5 seconds                                                       | 5 - 30 minutes                                                               |
 | **Measurement**              | Voltage, current, resistance, frequency, digital data                                   | Voltage, current, frequency, digital data                                   | Voltage, frequency                                                   | Voltage, current, resistance, frequency                                     |
 | **On-board Display**         | 451 RGB LEDs (5 per row)                                                                | 111 RGBs (1 per row)                                                        | None                                                                 | None                                                                         |
-| **Daisy Chaining**           | 8 HW Analog connections + 4 Data lines + Power                                          | No                                                                           | 4 Data lines + Power                                                | Yes, with jumper wires                                                      |
-| **Max Voltage**              | -9V - +9V (with overvoltage protection)                                                 | -9V - +9V                                                                   | 0V - 5V                                                              | No Limit (depending on how brave you are)                                   |
+| **Daisy Chaining**           | 8 Analog connections + 4 Data lines + Power                                          | With jumper wires                                                                             | 4 Data lines + Power                                                | With jumper wires                                                      |
+| **Max Voltage**              | -9V - +9V (with OVP)                                                 | -9V - +9V                                                                   | 0V - 5V                                                              | N/A                                   |
 | **USB Port**                 | Type C                                                                                  | USB Mini **¹**                                                              | USB Micro                                                            | N/A                                                                      |
 | **Open Source**              | HW + SW                                                                                 | HW + SW                                                                     | No                                                                   | Interestingly, [n][4][o][5]                                                  |
 | **Price**                    | \$349                                                                                     | \$299                                                                        | \$99-\$299                                                            | \$5-\$500                                                                  |
@@ -140,9 +142,10 @@ If you misplace your probe, its design allows you to plug in any random 1/8-inch
 [12]:https://www.raspberrypi.com/products/rp2040/
 [13]:https://en.wikipedia.org/wiki/Crossbar_switch
 [14]:https://en.wikipedia.org/wiki/Clos_network
+[15]:(https://www.crowdsupply.com/architeuthis-flux/jumperless-v5)
 
 :::
-**¹** _I would argue that USB Mini is peak USB design, and I will gladly die on that hill._
+**¹** _{sub}`I would argue that USB Mini is peak USB design, and I will gladly die on that hill.`_
 
 ---
 ## Openest Source 
@@ -156,9 +159,9 @@ Jumperless V5 is designed to be infinitely open-source and hackable. Want to mak
 Every single file that goes into this thing is available for anyone's viewing/modifying/cloning pleasure. I'm here to make awesome hardware, not keep secrets. The [schematic](https://github.com/Architeuthis-Flux/JumperlessV5/blob/main/Hardware/JumperlessV5hw/JumperlessV5hw.kicad_sch), [PCB design](https://github.com/Architeuthis-Flux/JumperlessV5/blob/main/Hardware/JumperlessV5hw/JumperlessV5hw.kicad_pcb), [firmware](https://github.com/Architeuthis-Flux/JumperlessV5/tree/main/JumperlessV5firmware), [breadboard shell models](https://github.com/Architeuthis-Flux/JumperlessV5/tree/main/Hardware/Board%20Shell), [spring clip models](https://github.com/Architeuthis-Flux/JumperlessV5/tree/main/Hardware/Spring%20Clips), [Jumperless app code](https://github.com/Architeuthis-Flux/Jumperless/tree/main/Jumperless_Wokwi_Bridge_App/JumperlessWokwiBridge), are  in [the GitHub repo](https://github.com/Architeuthis-Flux/JumperlessV5).
 
 
-The menus are handled on the Jumperless itself, so it can be controlled from any terminal emulator like [PuTTY](https://www.putty.org/), xTerm, Serial, etc. Or use the [Jumperless desktop app](https://github.com/Architeuthis-Flux/JumperlessV5/releases/latest) to poll your [Wokwi](https://wokwi.com/) projects for changes and automatically update connections within half a second of clicking save. 
+The menus are handled on the Jumperless itself, so it can be controlled from any terminal emulator like [PuTTY](https://www.putty.org/), xTerm, Serial, etc. Or use the [Jumperless desktop app](https://github.com/Architeuthis-Flux/JumperlessV5/releases/latest) to poll your [Wokwi][16] projects for changes and automatically update connections within half a second of clicking save. 
 
-
+[16]: (https://wokwi.com/) 
 ---
 ## Do Whatever You Want
 
@@ -187,7 +190,7 @@ All the parts get sent to Elecrow for final assembly and shipped to Henderson, N
 
 
 ---
-## Fulfillment & Logistics
+### Fulfillment & Logistics
 
 After our production run is complete, we will package everything up and send it along to Crowd Supply's fulfillment partner, Mouser Electronics, who will handle distribution to backers worldwide. You can learn more about Crowd Supply's fulfillment service under [_Ordering, Paying, and Shipping_](https://www.crowdsupply.com/guide/ordering-paying-shipping-details) in their guide.
 
@@ -210,4 +213,9 @@ If you don't love it, returns are always accepted for a full refund, and repairs
  ---
  ---
 
-# [Subscribe for updates on Crowd Supply](https://www.crowdsupply.com/architeuthis-flux/jumperless-v5)
+# [Launching Soon on Crowd Supply!](https://www.crowdsupply.com/architeuthis-flux/jumperless-v5)
+Subscribe for updates so I know how many of these to make.
+
+---
+---
+
