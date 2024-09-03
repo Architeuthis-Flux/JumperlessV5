@@ -51,7 +51,7 @@ Jumperless V5 was designed to make using it with a computer completely optional.
 What's the fun of having software-defined jumpers if we're just gonna use them like regular meatspace ones? The power of the shiny new RP2350B means all the housekeeping stuff runs on a single core, leaving the other core free to run a Python interpreter with a built-in module to control everything with simple calls.
 
 So you can write programs like:
-```
+```{python}
 jumperless.setTopRail(5.00)
 jumperless.connect(top_rail, row_3)
 jumperless.connect(gnd, row_7)
@@ -68,7 +68,7 @@ while True:
     jumperless.textOnBreadboard(response)
 ```
 or (for people more into the analog stuff, a Voltage Controlled Oscillator)
-```
+```{python}
 while True:
     measurement = jumperless.measure(row_10)
     jumperless.outputSine(row_20, 'freq': measurement*1000)
@@ -205,3 +205,7 @@ If you don't love it, returns are always accepted for a full refund, and repairs
 
 
 ![hero-1](_static/hero-1.jpg)
+
+
+
+# [Subscribe for updates on Crowd Supply](https://www.crowdsupply.com/architeuthis-flux/jumperless-v5)
