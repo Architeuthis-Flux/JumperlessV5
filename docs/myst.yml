@@ -12,9 +12,9 @@ site:
   template: article-theme
   options:
     favicon: favicon.ico
-    logo: '../Images/ColorJumpLogo200.png'
-    html_title: 'Jumperless V5'
-    html_logo: 'ColorJumpLogo200.png'
+    logo: '_static/ColorJumpLogo200.png'
+    #html_title: 'Jumperless V5'
+    #html_logo: 'ColorJumpLogo200.png'
     bodyfont: 'Helvetica, sans-serif'
     headfont: 'Monaco, sans-serif'
     #allowDangerousHtml: 'true' 
