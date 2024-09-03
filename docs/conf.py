@@ -17,12 +17,15 @@ release = '5.0.0.2'
 
 extensions = [
     'myst_parser'
+    'sphinx.ext.autodoc',
     ]
 
 templates_path = ['_templates']
 exclude_patterns = ['_build', 'Thumbs.db', '.DS_Store']
 
 html_favicon = 'favicon.ico'
+html_title = 'Jumperless V5'
+html_logo = 'ColorJumpLogo200.png'
 bodyfont = 'Helvetica'
 headfont = 'Helvetica'
 
