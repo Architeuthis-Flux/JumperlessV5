@@ -6,12 +6,12 @@ project:
   description: 'The generation jumperless breadboard'
   # keywords: []
   # authors: []
-  github: https://github.com/jupyter-book/mystmd-quickstart
+  github: https://github.com/Architeuthis-Flux/JumperlessV5
   # To autogenerate a Table of Contents, run "myst init --write-toc"
 site:
   template: book-theme
   options:
-    favicon: '_static/favicon.ico'
+    favicon: favicon.ico
     logo: '_static/ColorJumpLogo200.png'
     #html_title: 'Jumperless V5'
     #html_logo: 'ColorJumpLogo200.png'
