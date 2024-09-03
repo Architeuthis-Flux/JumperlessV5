@@ -23,11 +23,8 @@ extensions = [
 templates_path = ['_templates']
 exclude_patterns = ['_build', 'Thumbs.db', '.DS_Store']
 
-html_favicon = 'favicon.ico'
-html_title = 'Jumperless V5'
-html_logo = 'ColorJumpLogo200.png'
-bodyfont = 'Helvetica, sans-serif'
-headfont = 'Helvetica, sans-serif' 
+html_favicon = '_static/favicon.ico'
+
 
 # -- Options for HTML output -------------------------------------------------
 # https://www.sphinx-doc.org/en/master/usage/configuration.html#options-for-html-output
