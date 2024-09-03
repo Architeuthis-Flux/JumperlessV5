@@ -1,8 +1,12 @@
 
-![hero](https://github.com/user-attachments/assets/38994585-8f21-4f8c-b38f-5f4ed03819de)
+![hero](_static/hero.jpg)
 
 
-![JNameLogo](https://github.com/user-attachments/assets/4f71138b-a656-4f00-a202-d9780bc17df5)
+
+
+---
+![JNameLogo](_static/JNameLogo.svg)
+--- 
 **Jumperless V5** is a breadboard where any point can be connected to any other with software-defined jumpers. RGB LEDs under each hole turn the breadboard into a display; paired with its assortment of routable analog/digital I/O, Jumperless V5 gives you real-time information about everything happening in your circuit and the ability to change it at a whim.
 
 The four individually programmable ±8 V power supplies, seven voltage/current/resistance measurement channels, and 10 GPIO can all be connected anywhere on the breadboard or the Arduino Nano header, it's pretty much every piece of equipment on an electronics workbench shoved inside a breadboard.
@@ -11,6 +15,7 @@ Jumperless V5 is like x-ray specs for electronics enthusiasts—it lets you see 
 
 ***Oh yeah, and it runs on the brand spankin' new [RP2350B](https://www.raspberrypi.com/products/rp2350/)!***
 
+---
 ## Improving on the Original
 
 V5 is a significant redesign of the original [Jumperless](https://github.com/Architeuthis-Flux/Jumperless). Having a few hundred people out there using Jumperlesses, sharing ideas, and [writing their](https://github.com/nilclass/jlctl) [own apps](https://github.com/nilclass/jumperlab) gave us a long enough list of things to improve and upgrade. Now that the fundamentals are battle-tested, Jumperless V5 can add some even crazier new stuff like an ungodly number (451) of LEDs, a built-in rotary encoder/switch, daisy chain headers, individually programmable power rails, and an isolated, always-on probing system. 
@@ -18,15 +23,16 @@ V5 is a significant redesign of the original [Jumperless](https://github.com/Arc
 
 This isn't just bolting on a bunch of new features you'll never use. The Prime Directive of V5 is to make getting a circuit from your brain into hardware completely frictionless, and once it's there, make understanding what's going on as simple as looking at it. The additions may seem minor, but they fundamentally change how using a Jumperless *feels*. It's intuitive enough that it quickly just becomes "part of your brain" in the same way your computer does. And it's easy to forget this isn't how prototyping stuff on a breadboard has always been.
 
+![](_static/V555.mp4)
 
-https://github.com/user-attachments/assets/723ba62c-1593-4311-ae09-2840a28bddf5
 
 
+ ---
 ## Computer Optional
 
 Jumperless V5 was designed to make using it with a computer completely optional. Anything you could do over the serial terminal can be done on the board itself, using the clickwheel, probe, and LEDs under the breadboard acting as a 14x30 display. Everything you do gets saved to its 16Mb of flash memory, so you can always just plug it into power and pick up where you left off.
 
-
+---
 ## Features & Specifications
 
 - 4 x 12-bit DACs ([MCP4278](https://www.microchip.com/en-us/product/mcp4728)) buffered and shifted to ±8 V through high current op amps ([L272D](https://estore.st.com/en/l272d-cpn.html))
@@ -83,11 +89,12 @@ or just send it a whole netlist
 Serial.println("f 5-gnd, 23-adc_1, 4-20, gpio_2-nano_reset, ");
 ```
 
-### Serial/I²C/SPI/MIDI
+## Serial/I²C/SPI/MIDI
 
 Jumperless V5 can sniff or write any UART, I²C, SPI, or MIDI signals on the board. It can be set to either print whatever it reads on the breadboard LEDs, turning the Jumperless into a serial monitor, or show up as two USB devices on your computer and give you bidirectional communication through that other port.
 
-### Included Probe
+---
+## Included Probe
 
 Jumperless V5 uses a string of 92 precision resistors in a huge voltage divider and an ADC channel to sense which number the probe is poking. The probe has LEDs to show you which mode you're in, 2 buttons to channge between adding or removing connections, and a switch to turn it into a routable analog IO to measure things or quickly inject signals into your circuit.
 
@@ -97,27 +104,27 @@ Jumperless V5 uses a string of 92 precision resistors in a huge voltage divider 
 If you misplace your probe, its design allows you to plug in any random 1/8-inch audio cable and poke out connections with the tip.
 
 
-
+---
 ## Comparisons
-
-|                              | Jumperless V5                                                                   | [OG Jumperless][1]                                                  | [Sandwizz™ Breadboard][2]                                   | [Breadboard][6] + [Wires][7] + [Power Supply][8] +  [Multimeter][9] |
+:::{table}
+|                                    | Jumperless V5                                                                   | [OG Jumperless][1]                                                  | [Sandwizz™ Breadboard][2]                                   | [Breadboard][6] + [Wires][7] + [Power Supply][8] +  [Multimeter][9] |
 |------------------------------|---------------------------------------------------------------------------------|---------------------------------------------------------------------|-------------------------------------------------------------|---------------------------------------------------------------------|
-| **Manufacturer** ~active     | Architeuthis Flux ~active                                                       | Architeuthis Flux ~active                                           | Microaware® ~active                                         | A bunch of companies ~active                                        |
-| **Microcontroller** ~active  | [RP2350B][11] ~active                                                            | [RP2040][12] ~active                                               | [CY8C58LP PSoC][3] ~active                                  | N/A  ~active                                                        |
-| **Switching Method** ~active | Analog [Crossbar][13] [Matrix][14] ~active                                                  | Analog [Crossbar][13] [Matrix][14] ~active                                      | PSoC Internal Mux ~active                     | Jumper wires  ~active                                               |
-| **Resistance**               | ~ 85 Ω ~warning                                                                 | ~ 85 Ω ~warning                                                     | ~ 500 Ω ~danger                                             | ~ 0 Ω ~success                                                      |
-| **Power Rails**              | Individually adjustable ±8V 300mA ~success                                            | 3.3V, 5V, ±8V Switch ~warning                                       | 2-5V ~danger                                                | External ~active                                                    |
-| **Circuit Input**            | Always-on Probe, Wokwi, Thumbwheel, Terminal, Routable UART, Text file, Python ~success | Scanning Probe, Wokwi, Terminal, Routable UART,  Text file ~warning | KiCad schematic capture then guided part placement  ~danger | [🫰][10] ~active                                                    |
-| **Rewiring Time**            | < 2 milliseconds ~success                                                     | < 2 milliseconds ~success                                         | ~ 1-5 seconds ~warning                                      | 5 - 30 minutes ~danger                                              |
-| **Measurement**              | Voltage, current, resistance, frequency, digital data ~success                  | Voltage, current, frequency, digital data ~warning                  | Voltage, frequency ~danger                                  | Voltage, current, resistance, frequency ~warning                    |
-| **On-board Display**         | 451 RGB LEDs (5 per row) ~success                                               | 111 RGBs (1 per row) ~warning                                       | None ~danger                                                | None ~danger                                                        |
-| **Daisy Chaining**           | 8 HW Analog connections + 4 Data lines + Power ~success                         | No ~danger                                                          | 4 Data lines + Power ~warning                               | Yes, with jumper wires ~warning                                     |
-| **Max Voltage**              | -9V - +9V (with overvoltage protection) ~success                                | -9V - +9V ~warning                                                  | 0V - 5V ~danger                                             | No Limit (depending on how brave you are) ~warning                  |
-| **USB Port**                 | Type C ~success                                                                 | USB Mini **¹** ~warning                                             | USB Micro ~danger                                           | N/A ~active                                                         |
-| **Open Source**              | HW + SW ~success                                                                | HW + SW ~success                                                    | No ~danger                                                  | Interestingly, [n][4][o][5] ~danger                                 |
-| **Price**                    | $349  ~danger                                                                   | $299 ~warning                                                       | $99-$299 ~success                                           | $5-$500 ~active                                                     |
+|  **Manufacturer**         | Architeuthis Flux                                                                    | Architeuthis Flux                                                        | Microaware®                                                      | A bunch of companies                                                     |
+| **Microcontroller**               | [RP2350B][11]                                                                         | [RP2040][12]                                                            | [CY8C58LP PSoC][3]                                               | N/A                                                                      |
+| **Switching Method**              | Analog [Crossbar][13] [Matrix][14]                                                               | Analog [Crossbar][13] [Matrix][14]                                                   | PSoC Internal Mux                                  | Jumper wires                                                             |
+| **Resistance**               | ~ 85 Ω                                                                                  | ~ 85 Ω                                                                      | ~ 500 Ω                                                              | ~ 0 Ω                                                                       |
+| **Power Rails**              | Individually adjustable ±8V 300mA                                                             | 3.3V, 5V, ±8V Switch                                                        | 2-5V                                                                 | External                                                                 |
+| **Circuit Input**            | Always-on Probe, Wokwi, Thumbwheel, Terminal, Routable UART, Text file, Python                  | Scanning Probe, Wokwi, Terminal, Routable UART,  Text file                  | KiCad schematic capture then guided part placement                   | [🫰][10]                                                                 |
+| **Rewiring Time**            | < 2 milliseconds                                                                      | < 2 milliseconds                                                          | ~ 1-5 seconds                                                       | 5 - 30 minutes                                                               |
+| **Measurement**              | Voltage, current, resistance, frequency, digital data                                   | Voltage, current, frequency, digital data                                   | Voltage, frequency                                                   | Voltage, current, resistance, frequency                                     |
+| **On-board Display**         | 451 RGB LEDs (5 per row)                                                                | 111 RGBs (1 per row)                                                        | None                                                                 | None                                                                         |
+| **Daisy Chaining**           | 8 HW Analog connections + 4 Data lines + Power                                          | No                                                                           | 4 Data lines + Power                                                | Yes, with jumper wires                                                      |
+| **Max Voltage**              | -9V - +9V (with overvoltage protection)                                                 | -9V - +9V                                                                   | 0V - 5V                                                              | No Limit (depending on how brave you are)                                   |
+| **USB Port**                 | Type C                                                                                  | USB Mini **¹**                                                              | USB Micro                                                            | N/A                                                                      |
+| **Open Source**              | HW + SW                                                                                 | HW + SW                                                                     | No                                                                   | Interestingly, [n][4][o][5]                                                  |
+| **Price**                    | \$349                                                                                     | \$299                                                                        | \$99-\$299                                                            | \$5-\$500                                                                  |
 
-**¹** _I would argue that USB Mini is peak USB design, and I will gladly die on that hill._
+
 
 [1]: https://www.tindie.com/products/architeuthisflux/jumperless/
 [2]: https://www.kickstarter.com/projects/sandwizz/the-sandwizz-breadboard-concept
@@ -134,10 +141,13 @@ If you misplace your probe, its design allows you to plug in any random 1/8-inch
 [13]:https://en.wikipedia.org/wiki/Crossbar_switch
 [14]:https://en.wikipedia.org/wiki/Clos_network
 
+:::
+**¹** _I would argue that USB Mini is peak USB design, and I will gladly die on that hill._
 
+---
 ## Openest Source 
 
-### [**Documentation, guides, and example projects can be found here**](https://jumperlessv5.readthedocs.io/en/latest/)
+[**Documentation, guides, and example projects can be found here**](https://jumperlessv5.readthedocs.io/en/latest/)
 
 Jumperless V5 is designed to be infinitely open-source and hackable. Want to make 10 of these with a mini USB port for you and your friends? Let me know, and I'll double-check everything when you're putting in the PCB order to make sure all the parts are placed correctly. I'll even send you the custom spring clips.
 
@@ -149,34 +159,39 @@ Every single file that goes into this thing is available for anyone's viewing/mo
 The menus are handled on the Jumperless itself, so it can be controlled from any terminal emulator like [PuTTY](https://www.putty.org/), xTerm, Serial, etc. Or use the [Jumperless desktop app](https://github.com/Architeuthis-Flux/JumperlessV5/releases/latest) to poll your [Wokwi](https://wokwi.com/) projects for changes and automatically update connections within half a second of clicking save. 
 
 
-
+---
 ## Do Whatever You Want
 
 There is no "prescribed" use case for this thing. Every design decision was meant to keep it as general purpose as possible while staying easy and fun to use. Whether you're a hobbyist, musician, student, hacker, scientist, teacher, engineer, artist, or just want to be the first person to get Doom running on a breadboard, Jumperless was made to give you an entirely new tool for turning your ideas into rad stuff.
 
-https://github.com/user-attachments/assets/7d19e51f-89fc-406b-92fd-df228d750c85
+![](_static/Apps2sm.mp4)
+
+
 
 The breadboard shells come off with just 4 through hole solder joints, so you can easily customize your Jumperless by swapping out the shell with one printed in your favorite color/material. It also lets you replace any bent spring clips, although in practice this has never been necessary, the high quality phosphor bronze clips are amazingly sturdy (but I know this is a concern for people used to cheap breadboards.)
+![](_static/JumperlessV5boardoff.jpg)
 
-
-
+---
 ## Manufacturing Plan
 
 [Elecrow](https://www.elecrow.com/) will be doing the PCB fabrication and final assembly. They already have experience from the OG Jumperless, so they know all the tricks (and there were quite a few things to get figured out, this is a *dense* board with 5 separate PCBs and a lot of weird fabrication steps to get them all together.) 
 
 The phosphor bronze spring clips are made by [Shenzhen Fulimei Technology](https://fulimei.en.made-in-china.com/) and the stamping/forming molds have already been made, fiddled with, and perfected. The breadboard shells are SLS printed in black PA-12 nylon by [JLC3DP](https://jlc3dp.com/). Packaging is made by [Shenzhen Zhibang Packaging and Printing](https://www.zhibangpackaging.com/).
 
-![boxMockupSm](https://github.com/user-attachments/assets/bbdbe2b4-47c8-4775-87e9-9dc950532440)
+
 
 
 All the parts get sent to Elecrow for final assembly and shipped to Henderson, NV where I will lovingly pack each one myself. They could totally do the packing for me, but I like to make sure each Jumperless V5 is absolutely perfect before it goes out to you. 
 
+![boxMockupLight](_static/boxMockuplight.png)
 
 
-
+---
 ## Fulfillment & Logistics
 
 After our production run is complete, we will package everything up and send it along to Crowd Supply's fulfillment partner, Mouser Electronics, who will handle distribution to backers worldwide. You can learn more about Crowd Supply's fulfillment service under [_Ordering, Paying, and Shipping_](https://www.crowdsupply.com/guide/ordering-paying-shipping-details) in their guide.
+
+---
 
 ## Risks & Challenges
 
@@ -189,4 +204,4 @@ If you don't love it, returns are always accepted for a full refund, and repairs
 
 
 
-![hero-1](https://github.com/user-attachments/assets/2cdd6212-2ef7-42cc-999f-4337693a6acc)
+![hero-1](_static/hero-1.jpg)

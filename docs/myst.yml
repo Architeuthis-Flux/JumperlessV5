@@ -1,0 +1,20 @@
+# See docs at: https://mystmd.org/guide/frontmatter
+version: 1
+project:
+  id: 617c4f09-8c77-4bd8-911d-897bcd7eebf2
+  title: 'Jumperless V5'
+  description: 'The generation jumperless breadboard'
+  # keywords: []
+  # authors: []
+  github: https://github.com/jupyter-book/mystmd-quickstart
+  # To autogenerate a Table of Contents, run "myst init --write-toc"
+site:
+  template: article-theme
+  options:
+    favicon: favicon.ico
+    logo: '../Images/ColorJumpLogo200.png'
+    html_title: 'Jumperless V5'
+    html_logo: 'ColorJumpLogo200.png'
+    bodyfont: 'Helvetica, sans-serif'
+    headfont: 'Monaco, sans-serif'
+    allowDangerousHtml: 'true' 
