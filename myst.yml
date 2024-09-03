@@ -9,12 +9,13 @@ project:
   github: https://github.com/jupyter-book/mystmd-quickstart
   # To autogenerate a Table of Contents, run "myst init --write-toc"
 site:
-  template: article-theme
+  template: book-theme
   options:
-    favicon: favicon.ico
+    favicon: '_static/favicon.ico'
     logo: '_static/ColorJumpLogo200.png'
     #html_title: 'Jumperless V5'
     #html_logo: 'ColorJumpLogo200.png'
     bodyfont: 'Helvetica, sans-serif'
     headfont: 'Monaco, sans-serif'
+
     #allowDangerousHtml: 'true' 
