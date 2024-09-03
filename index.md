@@ -76,7 +76,7 @@ while True:
     jumperless.outputSine(row_20, 'freq': measurement*1000)
     jumperless.textOnBreadboard(meaurement + "kHz")
 ```
-Drop those onto the Jumperless over USB, or live code from Thonny or whatever, and they'll be stored in your app library so you can run them whenever you like. 
+Drop those onto the Jumperless over USB, or live code from [Thonny](https://thonny.org/) or whatever, and they'll be stored in your app library so you can run them whenever you like. 
 
 
 
