@@ -42,6 +42,7 @@ waitCore2();
   netsUpdated = true;
   showLEDsCore2 = -1;
   sendAllPathsCore2 = 1;
+  chooseShownReadings();
   waitCore2();
   //sendPaths();
 }
@@ -58,6 +59,7 @@ waitCore2();
   netsUpdated = true;
   showLEDsCore2 = -1;
   sendAllPathsCore2 = 1;
+  chooseShownReadings();
   //sendPaths();
   waitCore2();
 }
@@ -70,6 +72,7 @@ waitCore2();
   getNodesToConnect();
   bridgesToPaths();
   sendAllPathsCore2 = 1;
+  chooseShownReadings();
   //sendPaths();
   waitCore2();
 }
@@ -194,9 +197,9 @@ waitCore2();
   //core1busy = true;
   float voltage = 0.0;
   if (adcDefine == ADC1) {
-    voltage = (float)((readAdc(adcNumber, 8) - 50) * (5.0 / 4096));
+    voltage = (float)((readAdc(adcNumber, 4) - 50) * (5.0 / 4096));
   } else {
-    voltage = (float)((readAdc(adcNumber, 8)) * (16.0 / 4096));
+    voltage = (float)((readAdc(adcNumber, 4)) * (16.0 / 4096));
     voltage -= 8.0;
   }
 

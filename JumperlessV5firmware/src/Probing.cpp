@@ -89,6 +89,7 @@ int nextIsGnd = 0;
 int justCleared = 1;
 
 int checkingPads = 0;
+int probeHighlight = -1;
 
 int justAttached = 0;
 uint32_t deleteFade[13] = {0x371f16, 0x28160b, 0x191307, 0x141005, 0x0f0901,
@@ -113,6 +114,7 @@ int probeMode(int pin, int setOrClear) {
   routableBufferPower(1);
 
 restartProbing:
+ probeHighlight = -1;
   saveLocalNodeFile();
 
   int numberOfLocalChanges = 0;
@@ -295,7 +297,7 @@ restartProbing:
       node1or2 = 0;
       nodesToConnect[0] = -1;
       nodesToConnect[1] = -1;
-
+ probeHighlight = -1;
       break;
     } else {
       // probingTimer = millis();
@@ -311,6 +313,9 @@ restartProbing:
         printNodeOrName(nodesToConnect[0]);
 
         Serial.print("\r\t");
+        probeHighlight = nodesToConnect[node1or2];
+        // Serial.print("probing Highlight: ");
+        // Serial.println(probeHighlight);
 
         if (nodesToConnect[node1or2] > 0 &&
             nodesToConnect[node1or2] <= NANO_RESET_1 && setOrClear == 1) {
@@ -335,13 +340,14 @@ restartProbing:
         probingTimer = millis();
         showLEDsCore2 = 1;
         doubleSelectTimeout = millis();
-        doubleSelectCountdown = 1500;
+        doubleSelectCountdown = 200;
         // delay(500);
 
         // delay(3);
       }
 
       if (node1or2 >= 2 || (setOrClear == 0 && node1or2 >= 1)) {
+        probeHighlight = -1;
 
         if (setOrClear == 1 && (nodesToConnect[0] != nodesToConnect[1]) &&
             nodesToConnect[0] > 0 && nodesToConnect[1] > 0) {
@@ -388,7 +394,7 @@ restartProbing:
           }
 
           doubleSelectTimeout = millis();
-          doubleSelectCountdown = 2000;
+          doubleSelectCountdown = 200;
 
           // delay(400);
         } else if (setOrClear == 0) {
@@ -480,15 +486,15 @@ restartProbing:
       justSelectedConnectedNodes = 0;
     }
 
-    // if (millis() - doubleSelectTimeout > 500) {
-    //   // Serial.println("doubleSelectCountdown");
-    //   row[1] = -2;
-    //   lastReadRaw = 0;
-    //   lastProbedRows[0] = 0;
-    //   lastProbedRows[1] = 0;
-    //   doubleSelectTimeout = millis();
-    //   doubleSelectCountdown = 1000;
-    // }
+    if (millis() - doubleSelectTimeout > 700) {
+      // Serial.println("doubleSelectCountdown");
+      row[1] = -2;
+      lastReadRaw = 0;
+      lastProbedRows[0] = 0;
+      lastProbedRows[1] = 0;
+      doubleSelectTimeout = millis();
+      doubleSelectCountdown = 700;
+    }
 
     // Serial.println(doubleSelectCountdown);
 
@@ -520,6 +526,7 @@ restartProbing:
   // rotaryEncoderMode = wasRotaryMode;
   // routableBufferPower(0);
   // delay(10);
+   probeHighlight = -1;
   return 1;
 }
 
@@ -1361,7 +1368,7 @@ float voltageSelect(int fiveOrEight) {
         showLEDsCore2 = 2;
         delay(10);
       }
-      if (checkProbeButton() == 1 || vSelected == 10) {
+      if (checkProbeButton() > 0 || vSelected == 10) {
         // Serial.println("button\n\r");
 
         rawSpecialNetColors[4] = color;
@@ -1610,18 +1617,6 @@ int checkProbeButton(void) {
   int buttonState2 = 0;
   checkingButton = 1;
 
-  //     probeLEDs.setPixelColor(0, 0x000000);
-  //   probeLEDs.show();
-  // probeLEDs.setPin(-1);
-  // delayMicroseconds(100);
-  // pinMode(2, OUTPUT);
-  // digitalWrite(2, HIGH);
-  //  pinMode(9, OUTPUT);
-  // digitalWrite(9, HIGH);
-  // delay(10);
-  // digitalWrite(9, LOW);
-  // delay(10);
-
   pinMode(9, INPUT_PULLDOWN);
   // pinMode(10, OUTPUT_12MA);
 
@@ -1642,39 +1637,13 @@ int checkProbeButton(void) {
   // pinMode(9, OUTPUT);
   pinMode(9, OUTPUT_12MA);
   digitalWrite(9, LOW);
-  // probeLEDs.setPin(9);
-  // probeLEDs.begin();
-  // probeLEDs.setPixelColor(0, 0x000000);
-  // probeLEDs.show();
-  // delayMicroseconds(300);
+
   checkingButton = 0;
-  // switch(countLED){
-  //   case 0:
-  //   probeLEDs.setPixelColor(0, 0x000008);
-  //   probeLEDs.show();
-  //   countLED ++;
-  //   break;
-  //   case 1:
-  //   probeLEDs.setPixelColor(0, 0x000800);
-  //   probeLEDs.show();
-  //   countLED ++;
-  //   break;
-  //   case 2:
-  //   probeLEDs.setPixelColor(0, 0x080000);
-  //   probeLEDs.show();
-  //   countLED = 0;
-  // }
 
-  // probeLEDs.begin();
-  // probeLEDs.clear();
-  delayMicroseconds(500);
-  probeLEDs.show();
+  // delayMicroseconds(500);
+  // probeLEDs.show();
 
-  // if (buttonState == 1) {
-  //      Serial.print("buttonState");
 
-  //    Serial.println(buttonState);
-  // }
   if (buttonState == 1 && buttonState2 == 0) { // disconnect Button
     //   Serial.print("buttonState ");
     // Serial.println(buttonState);

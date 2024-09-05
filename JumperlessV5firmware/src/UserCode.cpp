@@ -22,7 +22,7 @@ void sketchOne(void) {
 int countLoop = 0;
 int countMult = 18;
 while (Serial.available() == 0) {
-    
+    Serial.println(analogReadTemp()*1.8+32);
     for (int i = 1; i < 96; i++) {
       
       if (i == 84) {
@@ -49,7 +49,7 @@ while (Serial.available() == 0) {
         Serial.println(" V");
       }
 
-      delay(5);
+     // delay(5);
 
       setRowLEDdata(i, currentRow);
      // showLEDsCore2 = 2;
@@ -60,10 +60,10 @@ while (Serial.available() == 0) {
       countLoop = 0;
       countMult -= 2;
     }
-    connectNodes(TOP_RAIL, countLoop*countMult);
-   waitCore2();
-    printPathsCompact();
-    printChipStatus();
+    //connectNodes(TOP_RAIL, countLoop*countMult);
+   //waitCore2();
+    // printPathsCompact();
+    // printChipStatus();
 
 
 

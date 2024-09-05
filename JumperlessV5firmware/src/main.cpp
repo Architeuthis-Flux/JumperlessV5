@@ -66,7 +66,7 @@ bread b;
 
 // Adafruit_USBD_CDC USBSer1;
 
-bool core1_separate_stack = true;
+//bool core1_separate_stack = true;
 
 int supplySwitchPosition = 0;
 volatile bool core1busy = false;
@@ -94,7 +94,7 @@ void setup() {
 
   digitalWrite(RESETPIN, HIGH);
   /// multicore_lockout_victim_init();
-  delayMicroseconds(8000);
+  delayMicroseconds(800);
    //Serial.setTimeout(8000);
   //  USB_PID = 0xACAB;
   //  USB_VID = 0x1D50;
@@ -116,7 +116,7 @@ void setup() {
 
   delay(5);
 initGPIOex();
-  delay(5);
+ // delay(5);
   // Serial.setTimeout(500);
 
 
@@ -134,7 +134,7 @@ initGPIOex();
 
 
 
-  delay(10);
+  //delay(10);
 
   // delay(1);
 
@@ -150,7 +150,7 @@ initGPIOex();
   // setDac1_8Vvoltage(1.9);
 
   // createSlots(-1, 0);
-  delay(10);
+  //delay(10);
   clearAllNTCC();
 
   digitalWrite(RESETPIN, LOW);
@@ -233,7 +233,7 @@ int lastProbeButton = 0;
 
 void loop() {
 
-  delay(10);
+ // delay(10);
 
   
 
@@ -254,7 +254,7 @@ menu:
 
   if (firstLoop == 1) {
     firstLoop = 0;
-    delay(100);
+    //delay(100);
     // defconDisplay = 0;
 
     goto loadfile;
@@ -619,7 +619,7 @@ break;
     slotChanged = 0;
     loadingFile = 0;
     refreshConnections();
-    chooseShownReadings();
+    //chooseShownReadings();
     break;
   }
   case 'f':
@@ -888,10 +888,11 @@ void core2onCore1() // core 2 handles the LEDs and the CH446Q8
           }
           // Serial.println("showNets");
           // delay(100);
-
+showLEDmeasurements();
           showNets();
           core2busy = false;
           netUpdateRefreshCount = 0;
+          // showLEDmeasurements();
           // multicore_lockout_end_timeout_us(1000);
           // multicore_lockout_end_blocking();
 
@@ -1075,9 +1076,12 @@ void core2onCore1() // core 2 handles the LEDs and the CH446Q8
       rotaryEncoderStuff();
       core2busy = false;
       // multicore_lockout_end_blocking();
-      if (probeActive == 0) {
-        // showLEDmeasurements();
-      }
+
+     
+     // if (probeActive == 0) {
+         showLEDmeasurements();
+         
+     // }
     }
     schedulerTimer = micros();
   }

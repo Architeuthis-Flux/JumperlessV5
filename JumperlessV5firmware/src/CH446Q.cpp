@@ -62,7 +62,7 @@ void initCH446Q(void)
   // Serial.print("offset: ");
   // Serial.println(offset);
 
-  pio_spi_ch446_multi_cs_init(pio, sm, offset, 8, 16, 0, 1, clk, dat);
+  pio_spi_ch446_multi_cs_init(pio, sm, offset, 8, 32, 0, 1, clk, dat);
   // pio_spi_ch446_cs_handler_init(pio, smCS, offsetCS, 256, 1, 8, 20, 6);
   // pinMode(CS_A, OUTPUT);
   // digitalWrite(CS_A, HIGH);
@@ -93,7 +93,7 @@ void initCH446Q(void)
   // digitalWrite(CS_K, LOW);
   // digitalWrite(CS_L, LOW);
 
-  delay(3);
+ // delay(3);
   /// digitalWrite(RESETPIN, LOW);
 }
 

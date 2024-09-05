@@ -35,6 +35,7 @@
 #include "Probing.h"
 #include "hardware/adc.h"
 #include "Commands.h"
+#include "Graphics.h"
 #define CS_PIN 17
 
  //MCP23S17 MCPIO(17, 16, 19, 18, 0x27); //  SW SPI address 0x00
@@ -94,9 +95,9 @@ uint32_t halvePeriod[3] = {0, 0, 0};
 char mode[3] = {'z', 'z', 'z'};
 
 int dacOn[3] = {0, 0, 0};
-int amplitude[3] = {4095, 3763, 0};
-int offset[3] = {2047, 2380, 2047};
-int calib[3] = {-10, 0, 0};
+int amplitude[3] = {0, 0, 0};
+int offset[3] = {2048, 1650, 0};
+int calib[3] = {0, 0, 0};
 
 Adafruit_MCP4728 mcp;
 
@@ -121,7 +122,7 @@ void initGPIOex(void) {
   // pinMode(16, OUTPUT);
   // pinMode(19, OUTPUT);
   // pinMode(18, OUTPUT);
-delay(5);
+//delay(5);
   SPI.setRX(16);
   SPI.setTX(19);
   SPI.setSCK(18);
@@ -149,8 +150,8 @@ delay(2);
   }
 
 
-  Serial.println(MCPIO.getSPIspeed());
-  Serial.println(MCPIO.usesHWSPI());
+  // Serial.println(MCPIO.getSPIspeed());
+  // Serial.println(MCPIO.usesHWSPI());
 //MCPIO.isConnected();
   //   while (testConnection(MCPIO) != 0)
   // {
@@ -217,8 +218,9 @@ void initDAC(void) {
 
   Wire.setSDA(4);
   Wire.setSCL(5);
-
+Wire.setClock(1000000);
   Wire.begin();
+  
   delay(5);
   // Try to initialize!
   if (!mcp.begin()) {
@@ -641,9 +643,9 @@ void setDac1_8Vvoltage(float voltage) {
 }
 
 void setDac1_8VinputCode(uint16_t inputCode) {
-  digitalWrite(8, HIGH);
+  //digitalWrite(8, HIGH);
   mcp.setChannelValue(MCP4728_CHANNEL_B, inputCode);
-  digitalWrite(8, LOW);
+  //digitalWrite(8, LOW);
 }
 
 uint8_t csToPin[16] = {8, 9, 10, 11, 12, 13, 14, 15, 0, 1, 2, 3, 4, 5, 6, 7};
@@ -873,8 +875,10 @@ void showLEDmeasurements(void) {
   float adc3Reading;
   int bs = 0;
 
-  if (showADCreadings[0] != 0) {
+  int numReadings = 0;
 
+  if (showADCreadings[0] != 0) {
+    numReadings++;
     adc0ReadingUnscaled = readAdc(0, samples);
 
     adc0Reading = (adc0ReadingUnscaled) * (5.0 / 4095);
@@ -882,41 +886,63 @@ void showLEDmeasurements(void) {
     uint32_t color =
         logoColors8vSelect[(map(adc0ReadingUnscaled, 0, 4095, 0, 30) + 26) %
                            59];
-
-    lightUpNet(showADCreadings[0], -1, 1, mappedAdc0Reading, 0, 0, color);
-
+      if (displayMode == 0){
+    lightUpNet(showADCreadings[0], -1, 1, LEDbrightnessSpecial, 0, 0, color);
+      }
+netColors[showADCreadings[0]] = unpackRgb(color);
+    net[showADCreadings[0]].color = unpackRgb(color);
+    //drawWires(showADCreadings[0]);
     // showLEDsCore2 = 2;
   }
 
   if (showADCreadings[1] != 0) {
-
+    numReadings++;
     adc1ReadingUnscaled = readAdc(1, samples);
     adc1Reading = (adc1ReadingUnscaled) * (5.0 / 4095);
     int mappedAdc1Reading = map(adc1ReadingUnscaled, 0, 4095, 4, 45);
 
     uint32_t color =
-        logoColors8vSelect[(map(adc1ReadingUnscaled, 50, 4095, 0, 30) + 26) %
-                           59];
-
-    lightUpNet(showADCreadings[1], -1, 1, mappedAdc1Reading, 0, 0, color);
+        logoColors8vSelect[abs((map(adc1ReadingUnscaled, 50, 4095, 0, 30) + 26) %
+                           59)];
+    if (displayMode == 0){
+    lightUpNet(showADCreadings[1], -1, 1, LEDbrightnessSpecial, 0, 0, color);
+    }
+    netColors[showADCreadings[1]] = unpackRgb(color);
+    net[showADCreadings[1]].color = unpackRgb(color);
+    //drawWires(showADCreadings[1]);
     // showLEDsCore2 = 2;
   }
 
   if (showADCreadings[2] != 0) {
 
+    numReadings++;
     adc2ReadingUnscaled = readAdc(2, samples);
-    adc2Reading = (adc2ReadingUnscaled) * (5.0 / 4095);
+    adc2Reading = (adc2ReadingUnscaled) * (16.0 / 4010);
+    adc2Reading -= 8.1; // offset
+    int mappedAdc2Reading = map(adc2ReadingUnscaled, 0, 4095, -40, 40);
+    int hueShift = 0;
+    
 
-    int mappedAdc2Reading = map(adc2ReadingUnscaled, 0, 4095, 4, 40);
+    if (mappedAdc2Reading < 0) {
+      hueShift = map(mappedAdc2Reading, -40, 0, 0, 60);
+      mappedAdc2Reading = abs(mappedAdc2Reading) + 3;
+    } else {
+      hueShift = map(mappedAdc2Reading, 0, 40, 0, 60);
+      mappedAdc2Reading = abs(mappedAdc2Reading) + 3;
+    }
     uint32_t color =
-        logoColors8vSelect[map(adc2ReadingUnscaled, 0, 4095, 0, 30) + 28];
-
-    lightUpNet(showADCreadings[2], -1, 1, mappedAdc2Reading, 0, 0, color);
-    // showLEDsCore2 = 2;
+        logoColors8vSelect[abs(map(adc2ReadingUnscaled, 1000, 3000, 0, 59)%59)];
+//Serial.println(mappedAdc2Reading);
+if (displayMode == 0){
+    lightUpNet(showADCreadings[2], -1, 1, LEDbrightnessSpecial, 0, 0, color);
+}
+    netColors[showADCreadings[2]] =  unpackRgb(color);
+    net[showADCreadings[2]].color = unpackRgb(color);
+    //drawWires(showADCreadings[2]);
   }
 
   if (showADCreadings[3] != 0) {
-
+    numReadings++;
     adc3ReadingUnscaled = readAdc(3, samples);
     adc3Reading = (adc3ReadingUnscaled) * (16.0 / 4010);
     adc3Reading -= 8.1; // offset
@@ -931,11 +957,19 @@ void showLEDmeasurements(void) {
       mappedAdc3Reading = abs(mappedAdc3Reading) + 3;
     }
     uint32_t color =
-        logoColors8vSelect[map(adc3ReadingUnscaled, 1000, 3000, 0, 59)];
-
+        logoColors8vSelect[map(adc3ReadingUnscaled, 1000, 3000, 0, 59)%59];
+if (displayMode == 0){
     lightUpNet(showADCreadings[3], -1, 1, mappedAdc3Reading, 0, 0, color);
+}
+    netColors[showADCreadings[3]] =  unpackRgb(color);
+    net[showADCreadings[3]].color = unpackRgb(color);
+     // drawWires(showADCreadings[3]);
     // showLEDsCore2 = 2;
   }
+
+  if (numReadings > 0 && displayMode == 1) {
+    drawWires();
+  } 
 }
 
 void showMeasurements(int samples, int printOrBB) {
@@ -974,7 +1008,7 @@ void showMeasurements(int samples, int printOrBB) {
       // Serial.print("V\n\r");
       adc0Reading = (adc0ReadingUnscaled) * (5.0 / 4095);
       // adc0Reading -= 0.1; // offset
-      bs += Serial.print("D0: ");
+      bs += Serial.print("ADC 0: ");
       bs += Serial.print(adc0Reading);
       bs += Serial.print("V\t");
     }
@@ -984,7 +1018,7 @@ void showMeasurements(int samples, int printOrBB) {
       adc1ReadingUnscaled = readAdc(1, samples);
       adc1Reading = (adc1ReadingUnscaled) * (5.0 / 4095);
       // adc1Reading -= 0.1; // offset
-      bs += Serial.print("D1: ");
+      bs += Serial.print("ADC 1: ");
       bs += Serial.print(adc1Reading);
       bs += Serial.print("V\t");
     }
@@ -992,20 +1026,26 @@ void showMeasurements(int samples, int printOrBB) {
     if (showADCreadings[2] != 0) {
 
       adc2ReadingUnscaled = readAdc(2, samples);
-      adc2Reading = (adc2ReadingUnscaled) * (5.0 / 4095);
-      // adc2Reading -= 0.1; // offset
-
-      bs += Serial.print("D2: ");
+      adc2Reading = (adc2ReadingUnscaled) * (16.0 / 4010);
+      adc2Reading -= 8.2; // offset
+      bs += Serial.print("ADC 2: ");
       bs += Serial.print(adc2Reading);
       bs += Serial.print("V\t");
+      int mappedAdc2Reading = map(adc2ReadingUnscaled, 0, 4095, -40, 40);
+      int hueShift = 0;
+
+      if (mappedAdc2Reading < 0) {
+        hueShift = map(mappedAdc2Reading, -40, 0, 0, 200);
+        mappedAdc2Reading = abs(mappedAdc2Reading);
+      }
     }
 
     if (showADCreadings[3] != 0) {
 
       adc3ReadingUnscaled = readAdc(3, samples);
       adc3Reading = (adc3ReadingUnscaled) * (16.0 / 4010);
-      adc3Reading -= 8.1; // offset
-      bs += Serial.print("D3: ");
+      adc3Reading -= 8.2; // offset
+      bs += Serial.print("ADC 3: ");
       bs += Serial.print(adc3Reading);
       bs += Serial.print("V\t");
       int mappedAdc3Reading = map(adc3ReadingUnscaled, 0, 4095, -40, 40);
@@ -1101,13 +1141,15 @@ int waveGen(void) {
 
   setDac0_5Vvoltage(0.0);
 
-  setDac1_8VinputCode(offset[1] + calib[1]);
+  //setDac1_8VinputCode(offset[1] + calib[1]);
+  setDac1_8Vvoltage(0.0);
+  digitalWrite(8, HIGH);
   // setDac1_8VinputCode(8190);
   // Serial.println(dac_rev3.getGain());
 
   // Serial.println(dac_rev3.maxValue());
-  Serial.print("Revision = ");
-  Serial.println(revisionNumber);
+  // Serial.print("Revision = ");
+  // Serial.println(revisionNumber);
   Serial.println(
       "\n\r\t\t\t\t     waveGen\t\n\n\r\toptions\t\t\twaves\t\t\tadjust "
       "frequency\n\r");
@@ -1156,13 +1198,13 @@ int waveGen(void) {
         hueShift0 = map(adc0Reading, 0, 5000, -90, 0);
         brightness0 = map(adc0Reading, 0, 5000, 4, 100);
 
-        lightUpNet(4, -1, 1, brightness0, hueShift0);
+       // lightUpNet(4, -1, 1, brightness0, hueShift0);
         showLEDsCore2 = 1;
         firstCrossFreq0 = 1;
       }
     } else {
       if (firstCrossFreq0 == 1) {
-        lightUpNet(4);
+       // lightUpNet(4);
         showLEDsCore2 = 1;
         firstCrossFreq0 = 0;
       }
@@ -1181,13 +1223,14 @@ int waveGen(void) {
 
       brightness1 = map(adc1Reading, 0, 2050, 4, 100);
 
-      lightUpNet(5, -1, 1, brightness1, hueShift1);
-      showLEDsCore2 = 1;
+      //lightUpNet(5, -1, 1, brightness1, hueShift1);
+      //showLEDsCore2 = 1;
+      //showLEDmeasurements();
       firstCrossFreq1 = 1;
     } else {
       if (firstCrossFreq1 == 1) {
-        lightUpNet(5);
-        showLEDsCore2 = 1;
+        //lightUpNet(5);
+        //showLEDsCore2 = 1;
         firstCrossFreq1 = 0;
       }
     }
@@ -1489,14 +1532,29 @@ int waveGen(void) {
 
           input = a - 48;
           newAmplitude = input * 819;
+          unsigned long timeoutTimer = micros();
           Serial.print(".");
           while (Serial.available() == 0)
-            ;
+          {
+            if (micros() - timeoutTimer > 5000)
+            {
+              a = '0';
+              break;
+            }
+          }
+            
           a = Serial.read();
 
           if (a == '.') {
+            
             while (Serial.available() == 0)
-              ;
+            {
+              if (micros() - timeoutTimer > 5000)
+              {
+                break;
+              }
+            }
+              
 
             a = Serial.read();
           }
@@ -1554,7 +1612,7 @@ int waveGen(void) {
             Serial.print((char)a);
             input = a - 48;
             newAmplitude += input * 27.6;
-            newAmplitude *= 2;
+            //newAmplitude *= 2;
 
             amplitude[activeDac] = newAmplitude;
             Serial.print("\tamplitude: ");

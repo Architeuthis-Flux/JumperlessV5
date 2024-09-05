@@ -11,7 +11,7 @@ extern int buttonPin;
 
 extern int connectOrClearProbe;
 extern int node1or2;
-
+extern int probeHighlight;
 extern int logoTopSetting[2];
 extern int logoBottomSetting[2];
 extern int buildingTopSetting[2];
