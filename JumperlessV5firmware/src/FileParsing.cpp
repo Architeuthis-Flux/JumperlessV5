@@ -40,6 +40,8 @@ File wokwiFile;
 
 File nodeFileBuffer;
 
+File menuTreeFile;
+
 unsigned long timeToFP = 0;
 
 enum openType
@@ -117,7 +119,8 @@ default:
 if (!nodeFile)
 {
     //if (debugFP)
-        Serial.println("Failed to open nodeFile");
+        Serial.println("\n\n\rFailed to open nodeFile\n\n\r");
+        //openFileThreadSafe(w, slot);
     core1busy = false;
     return 0;
 }
@@ -140,10 +143,14 @@ void writeMenuTree(void) {
     // Serial.println("waiting for core2 to finish");
   }
   core1busy = true;
-  File menuTreeFile = FatFS.open("/MenuTree.txt", "w");
+  //FatFS.begin();
+  //delay(100);
+  //FatFS.remove("/MenuTree.txt");
+ //delay(100);
+ menuTreeFile = FatFS.open("/MenuTree.txt", "w");
   if (!menuTreeFile) {
 
-    // Serial.println("Failed to open menuTree.txt");
+     Serial.println("Failed to open menuTree.txt");
 
   } else {
     // if (debugFP)
@@ -1028,7 +1035,7 @@ void clearNodeFile(int slot, int flashOrLocal) {
     nodeFileString.clear();
   }
 }
-String slicedLines[120];
+String slicedLines[130];
 int slicedLinesIndex = 0;
 
 int removeBridgeFromNodeFile(int node1, int node2, int slot, int flashOrLocal) {
@@ -1081,7 +1088,8 @@ int removeBridgeFromNodeFile(int node1, int node2, int slot, int flashOrLocal) {
   int numberOfLines = 0;
   // nodeFileString.clear();
   String lineBufString = "";
-///nodeFileString.printTo(Serial);
+// nodeFileString.printTo(Serial);
+// Serial.println(" ");
   // Serial.print("nodeFileString = ");
   // Serial.println(nodeFileString);
   //core1busy = true;
@@ -1293,9 +1301,9 @@ void addBridgeToNodeFile(int node1, int node2, int slot, int flashOrLocal) {
     // Serial.print("Slot = ");
     // Serial.println(slot);
     if (!nodeFile) {
-      if (debugFP) {
+     // if (debugFP) {
         Serial.println("Failed to open nodeFile (addBridgeToNodeFile)");
-      }
+    //  }
       // reateSlots(slot, 0);
       //  delay(10);
       //  nodeFile = FatFS.open("nodeFileSlot" + String(slot) + ".txt",
@@ -1312,7 +1320,7 @@ void addBridgeToNodeFile(int node1, int node2, int slot, int flashOrLocal) {
     //     Serial.write(nodeFile.read());
     //   }
     //   nodeFile.seek(0);
-    nodeFile.setTimeout(5);
+    nodeFile.setTimeout(15);
   }
 
   // Serial.print("flashOrLocal = ");
@@ -1325,6 +1333,8 @@ void addBridgeToNodeFile(int node1, int node2, int slot, int flashOrLocal) {
   int numberOfLines = 0;
   // Serial.print("nodeFileString = ");
   // Serial.println(nodeFileString);
+  // nodeFileString.printTo(Serial);
+  // Serial.println(" ");
   String lineBufString = "";
 
   createSafeString(lineBufSafe, 30);

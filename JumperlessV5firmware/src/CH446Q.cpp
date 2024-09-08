@@ -233,11 +233,11 @@ void sendXYraw(int chip, int x, int y, int setOrClear)
 
   chAddress = chAddress << 24;
 
-  delayMicroseconds(100);
+  delayMicroseconds(50);
 
   pio_sm_put(pio, sm, chAddress);
 
-  delayMicroseconds(180);
+  delayMicroseconds(80);
   //isrFromPio();
 }
 

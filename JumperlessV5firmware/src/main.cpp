@@ -44,7 +44,7 @@ KevinC@ppucc.io
 #include "PersistentStuff.h"
 #include "Probing.h"
 #include "RotaryEncoder.h"
-#include "USBfs.h"
+//#include "USBfs.h"
 #include "UserCode.h"
 // #include <FreeRTOS.h>
 // #include <Adafruit_TinyUSB.h>
@@ -66,7 +66,7 @@ bread b;
 
 // Adafruit_USBD_CDC USBSer1;
 
-//bool core1_separate_stack = true;
+// bool core1_separate_stack = true;
 
 int supplySwitchPosition = 0;
 volatile bool core1busy = false;
@@ -95,7 +95,7 @@ void setup() {
   digitalWrite(RESETPIN, HIGH);
   /// multicore_lockout_victim_init();
   delayMicroseconds(800);
-   //Serial.setTimeout(8000);
+  // Serial.setTimeout(8000);
   //  USB_PID = 0xACAB;
   //  USB_VID = 0x1D50;
   //  USB_MANUFACTURER = "Architeuthis Flux";
@@ -110,15 +110,14 @@ void setup() {
   // USBDevice.addStringDescriptor("Jumperless");
   // USBDevice.addStringDescriptor("Architeuthis Flux");
 
-    EEPROM.begin(256);
+  EEPROM.begin(256);
 
   debugFlagInit();
 
   delay(5);
-initGPIOex();
- // delay(5);
+  initGPIOex();
+  // delay(5);
   // Serial.setTimeout(500);
-
 
   // delay(20);
   //  pinMode(buttonPin, INPUT_PULLDOWN);
@@ -132,9 +131,7 @@ initGPIOex();
 
   // USBSer1.begin(115200);
 
-
-
-  //delay(10);
+  // delay(10);
 
   // delay(1);
 
@@ -145,12 +142,13 @@ initGPIOex();
   delay(4);
 
   FatFS.begin();
+  //FatFS.format();
 
   // setDac0_5Vvoltage(0.0);
   // setDac1_8Vvoltage(1.9);
 
   // createSlots(-1, 0);
-  //delay(10);
+  // delay(10);
   clearAllNTCC();
 
   digitalWrite(RESETPIN, LOW);
@@ -163,8 +161,6 @@ initGPIOex();
 
   delay(10);
 
-  
-
   delay(4);
 
   // delay(100);
@@ -176,7 +172,7 @@ initGPIOex();
   //  showLEDsCore2 = 1;
   //
   setRailsAndDACs();
- routableBufferPower(1);
+  routableBufferPower(1);
   // fatFS
   //  multicore_lockout_victim_init();
 }
@@ -230,18 +226,17 @@ int tearDownToggle = 0;
 int tinyUSB = 0;
 unsigned long timer = 0;
 int lastProbeButton = 0;
+unsigned long waitTimer = 0;
+unsigned long switchTimer = 0;
 
 void loop() {
 
- // delay(10);
-
-  
+  // delay(10);
 
   if (PROTOTYPE_VERSION > 0) {
     getNothingTouched();
   }
 menu:
- 
 
   printMainMenu(showExtraMenu);
 
@@ -254,14 +249,14 @@ menu:
 
   if (firstLoop == 1) {
     firstLoop = 0;
-    //delay(100);
-    // defconDisplay = 0;
+    // delay(100);
+    //  defconDisplay = 0;
 
     goto loadfile;
   }
 
 dontshowmenu:
-if (debugNTCC > 0) {
+  if (debugNTCC > 0) {
     Serial.println(debugNTCC);
   }
   // Serial.print("core2busy = ");
@@ -280,7 +275,7 @@ if (debugNTCC > 0) {
     // pinMode(9, OUTPUT_8MA);
     // digitalWrite(9, HIGH);
     // Serial.println(defconDisplay);
-    //yield();
+    // yield();
 
     core1busy = false;
     if (clickMenu() >= 0) {
@@ -295,45 +290,51 @@ if (debugNTCC > 0) {
     }
     // Serial.println(digitalRead(buttonPin));
 
-    if ((millis() % 100) < 1) {
+    if ((millis() - waitTimer) > 100) {
+      waitTimer = millis();
 
       int probeButton = checkProbeButton();
 
       if (probeButton != lastProbeButton) {
         lastProbeButton = probeButton;
 
-        if (probeButton > 0) { 
-          //&& inPadMenu == 0) {
-          // Serial.print("probeButton = ");
-          // Serial.println(probeButton);
-          // calibrateProbe();
-          // int longShort = longShortPress(1000);
-          // defconDisplay = -1;
-          if (probeButton == 2) {
+        //if (switchPosition == 1) {
+          if (probeButton > 0) {
+            //&& inPadMenu == 0) {
+            // Serial.print("probeButton = ");
+            // Serial.println(probeButton);
+            // calibrateProbe();
+            // int longShort = longShortPress(1000);
+            // defconDisplay = -1;
+            if (probeButton == 2) {
 
-            input = 'p';
-            probingTimer = millis();
-            goto skipinput;
-          } else if (probeButton == 1) {
-            // getNothingTouched();
-            input = 'c';
-            probingTimer = millis();
-            // Serial.println("probing\n\r");
+              input = 'p';
+              probingTimer = millis();
+              goto skipinput;
+            } else if (probeButton == 1) {
+              // getNothingTouched();
+              input = 'c';
+              probingTimer = millis();
+              // Serial.println("probing\n\r");
 
-            goto skipinput;
+              goto skipinput;
+            }
           }
-        }
+        //} else {
+         // measureMode();
+        //}
       }
-
-      // pinMode(19, INPUT);
-    } else if ((millis() % 150) < 1) {
-      if (PROTOTYPE_VERSION > 0) {
-        // Serial.print("Prototype Version ");
-        // Serial.print(PROTOTYPE_VERSION);
-        // Serial.print("\n\r");
-        checkPads();
-      }
-      //
+    }
+    // pinMode(19, INPUT);
+    // } else if ((millis() - waitTimer) > 50) {
+    //   if (PROTOTYPE_VERSION > 0) {
+    //     // Serial.print("Prototype Version ");
+    //     // Serial.print(PROTOTYPE_VERSION);
+    //     // Serial.print("\n\r");
+    //     checkPads();
+    if ((millis() - switchTimer) > 250) {
+      switchTimer = millis();
+     // checkSwitchPosition();
     }
   }
 
@@ -357,9 +358,9 @@ skipinput:
     Serial.println(firmwareVersion);
     break;
   }
-  case '@':{
-  printWireStatus();
-  break;
+  case '@': {
+    printWireStatus();
+    break;
   }
   case '$': {
     // return current slot number
@@ -367,9 +368,9 @@ skipinput:
     break;
   }
   case 'u': {
-    //setRailVoltage(0, 2.0);
+    // setRailVoltage(0, 2.0);
     sketchOne();
-break;
+    break;
   }
 
   case '+': {
@@ -379,13 +380,13 @@ break;
 
     printNodeFile();
     delay(10);
-    usbFSbegin();
+   // usbFSbegin();
     delay(10);
     while (Serial.available() == 0) {
-      USBloop();
+    //  USBloop();
     }
     delay(10);
-    USBdisconnect();
+    //USBdisconnect();
     delay(10);
     goto loadfile;
     // refreshConnections();
@@ -619,7 +620,7 @@ break;
     slotChanged = 0;
     loadingFile = 0;
     refreshConnections();
-    //chooseShownReadings();
+    // chooseShownReadings();
     break;
   }
   case 'f':
@@ -818,12 +819,11 @@ int tempDD = 0;
 int clearBeforeSend = 0;
 
 void loop1() {
-  //int timer = micros();
+  // int timer = micros();
   core2onCore1();
-  // timer = micros() - timer; 
+  // timer = micros() - timer;
 
-
-  //yield();
+  // yield();
 }
 
 void core2onCore1() // core 2 handles the LEDs and the CH446Q8
@@ -878,7 +878,7 @@ void core2onCore1() // core 2 handles the LEDs and the CH446Q8
           // multicore_lockout_start_timeout_us(1000);
 
           while (core1busy == true) {
-            //core2busy = false;
+            // core2busy = false;
           }
           core2busy = true;
           if (clearBeforeSend == 1) {
@@ -888,7 +888,7 @@ void core2onCore1() // core 2 handles the LEDs and the CH446Q8
           }
           // Serial.println("showNets");
           // delay(100);
-showLEDmeasurements();
+          showLEDmeasurements();
           showNets();
           core2busy = false;
           netUpdateRefreshCount = 0;
@@ -897,8 +897,8 @@ showLEDmeasurements();
           // multicore_lockout_end_blocking();
 
         } else {
-          //netUpdateRefreshCount++;
-          // Serial.println(rails);
+          // netUpdateRefreshCount++;
+          //  Serial.println(rails);
         }
 
       } else {
@@ -918,26 +918,25 @@ showLEDmeasurements();
       core2busy = false;
       // probeLEDs.clear();
 
-
       if (checkingButton == 0) {
         // Serial.print("probeActive = ");
         // Serial.println(probeActive);
         // showProbeLEDs = probeCycle;
         switch (showProbeLEDs) {
         case 1:
-          probeLEDs.setPixelColor(0, 0x0000ff);
+          probeLEDs.setPixelColor(0, 0x0000ff); // connect
           // probeLEDs.show();
           break;
         case 2:
-          probeLEDs.setPixelColor(0, 0xff0000);
+          probeLEDs.setPixelColor(0, 0xff0000); // remove
           // probeLEDs.show();
           break;
         case 3:
-          probeLEDs.setPixelColor(0, 0x00ff00);
+          probeLEDs.setPixelColor(0, 0x00ff00); // measure
           // probeLEDs.show();
           break;
         case 4:
-          probeLEDs.setPixelColor(0, 0xffffff);
+          probeLEDs.setPixelColor(0, 0xff00ff);
           // probeLEDs.show();
           break;
 
@@ -972,37 +971,37 @@ showLEDmeasurements();
       }
       core2busy = false;
 
-     } else if (sendAllPathsCore2 == 1) {
+    } else if (sendAllPathsCore2 != 0) {
       sendPaths();
 
-//       // leds.show();
-//       // multicore_lockout_start_blocking();
-//       while (core1busy == true) {
-//         // Serial.println("core1busy");
-//         // delay(1);
-//       } // wait for core 1 to finish
-// core2busy = true;
-//       digitalWrite(RESETPIN, HIGH);
-//       delayMicroseconds(50);
-//       digitalWrite(RESETPIN, LOW);
-//       delayMicroseconds(2200);
-//       unsigned long pathTimer = micros();
-      
-//       sendAllPaths();
-//       core2busy = false;
-//       int pathTime = micros() - pathTimer;
-//       delayMicroseconds(2200);
-//       // multicore_lockout_end_blocking();
-//       //  showNets();
-//       //  leds.show();
-//       //  delayMicroseconds(7200);
-//       //  showLEDsCore2 = 1;
-//       //  chooseShownReadings();
+      //       // leds.show();
+      //       // multicore_lockout_start_blocking();
+      //       while (core1busy == true) {
+      //         // Serial.println("core1busy");
+      //         // delay(1);
+      //       } // wait for core 1 to finish
+      // core2busy = true;
+      //       digitalWrite(RESETPIN, HIGH);
+      //       delayMicroseconds(50);
+      //       digitalWrite(RESETPIN, LOW);
+      //       delayMicroseconds(2200);
+      //       unsigned long pathTimer = micros();
 
-//       // Serial.print("pathTime = ");
-//       // Serial.println(pathTime);
-//       sendAllPathsCore2 = 0;
-//       core2busy = false;
+      //       sendAllPaths();
+      //       core2busy = false;
+      //       int pathTime = micros() - pathTimer;
+      //       delayMicroseconds(2200);
+      //       // multicore_lockout_end_blocking();
+      //       //  showNets();
+      //       //  leds.show();
+      //       //  delayMicroseconds(7200);
+      //       //  showLEDsCore2 = 1;
+      //       //  chooseShownReadings();
+
+      //       // Serial.print("pathTime = ");
+      //       // Serial.println(pathTime);
+      //       sendAllPathsCore2 = 0;
+      //       core2busy = false;
     } else if (millis() - lastSwirlTime > 60 && loadingFile == 0 &&
                showLEDsCore2 == 0 && core1busy == false) {
       readcounter++;
@@ -1026,7 +1025,7 @@ showLEDmeasurements();
       // defconDisplay = 0;
       if (probeActive == 0) {
 
-        showProbeLEDs = 3;
+        // showProbeLEDs = 3;
         // Serial.print("showProbeLEDs = ");
         // Serial.println(showProbeLEDs);
       }
@@ -1077,35 +1076,40 @@ showLEDmeasurements();
       core2busy = false;
       // multicore_lockout_end_blocking();
 
-     
-     // if (probeActive == 0) {
-         showLEDmeasurements();
-         
-     // }
+      // if (probeActive == 0) {
+      showLEDmeasurements();
+
+      // }
     }
     schedulerTimer = micros();
   }
 }
 
 void sendPaths(void) {
-  //if (sendAllPathsCore2 == 1) {
-    while (core1busy == true) {
-    }
-     core2busy = true;
+  // if (sendAllPathsCore2 == 1) {
+  while (core1busy == true) {
+  }
+  core2busy = true;
+  if (sendAllPathsCore2 != -1) {
+
+    // Serial.println("sendPaths");
+    // multicore_lockout_start_blocking();
+    // multicore_lockout_start_timeout_us(1000);
     digitalWrite(RESETPIN, HIGH);
     delayMicroseconds(50);
     digitalWrite(RESETPIN, LOW);
     delayMicroseconds(2200);
-    unsigned long pathTimer = micros();
+  }
+  unsigned long pathTimer = micros();
 
-    sendAllPaths();
-    //core2busy = false;
-    unsigned long pathTime = micros() - pathTimer;
+  sendAllPaths();
+  // core2busy = false;
+  unsigned long pathTime = micros() - pathTimer;
 
-    delayMicroseconds(3200);
-       // Serial.print("pathTime = ");
-   // Serial.println(pathTime);
-    sendAllPathsCore2 = 0;
-    core2busy = false;
- // }
+  delayMicroseconds(3200);
+  // Serial.print("pathTime = ");
+  // Serial.println(pathTime);
+  sendAllPathsCore2 = 0;
+  core2busy = false;
+  // }
 }

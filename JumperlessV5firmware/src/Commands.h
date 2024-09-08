@@ -10,7 +10,7 @@ struct rowLEDs {
   uint32_t color[5];
 
 };
-
+void refreshBlind(int disconnectFirst = 1);
 void waitCore2(void);
 void refreshConnections(int ledShowOption = 1);
 void refreshLocalConnections(int ledShowOption = 1);

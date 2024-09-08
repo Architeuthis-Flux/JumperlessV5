@@ -35,6 +35,8 @@ enum measuredState
 
 };
 
+extern int switchPosition;
+float measureMode(int updateSpeed = 150);
 void checkPads(void);
 int delayWithButton(int delayTime = 1000);
 
@@ -53,6 +55,10 @@ void clearLastFound(void);
 int probeMode(int pin = 19, int setOrClear = 1);
 int checkProbeButton(void);
 int readFloatingOrState (int pin = 0, int row = 0);
+
+int checkSwitchPosition(void);
+float checkProbeCurrent(void);
+
 void routableBufferPower (int offOn);
 
 void startProbe (long probeSpeed = 25000);

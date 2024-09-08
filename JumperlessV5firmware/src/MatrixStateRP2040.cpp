@@ -25,7 +25,7 @@ char *netNameConstants[MAX_NETS] = {(char*)"Net 0",(char*)"Net 1",(char*)"Net 2"
 
 
 //note that the bottom row is shifted from the schematic by one, so the nodes are what's written on the board
-const int bbNodesToChip[62] = {-1,CHIP_K,           //0,1
+const int bbNodesToChip[62] = {0,CHIP_K,           //0,1
 CHIP_A,CHIP_A,CHIP_A,CHIP_A,CHIP_A,CHIP_A,CHIP_A,  // 2, 3, 4, 5, 6, 7, 8
 CHIP_B,CHIP_B,CHIP_B,CHIP_B,CHIP_B,CHIP_B,CHIP_B,  // 9,10,11,12,13,14,15
 CHIP_C,CHIP_C,CHIP_C,CHIP_C,CHIP_C,CHIP_C,CHIP_C,  //16,17,18,19,20,21,22

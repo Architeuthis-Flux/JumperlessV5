@@ -693,6 +693,13 @@ void bread::printRawRow(uint8_t data, int row, uint32_t color, uint32_t bg) {
     }
   }
 }
+
+
+
+void bread::barGraph(int position, int value, int maxValue, int leftRight,
+                     uint32_t color, uint32_t bg) {
+
+}
 /*
 
 ||||||||||||||||||||||||||||||

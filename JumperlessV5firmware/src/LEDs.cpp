@@ -882,6 +882,36 @@ void turnOffSkippedNodes(void) {
     }
   }
 }
+
+uint32_t scaleBrightness(uint32_t hexColor, int scaleFactor) {
+
+float scaleFactorF = scaleFactor / 100.0;
+
+// if (scaleFactor > 0) {
+  scaleFactorF += 1.0;
+//}
+// Serial.print("scaleFactorF: ");
+// Serial.println(scaleFactorF);
+// Serial.print("hexColor: ");
+// Serial.println(hexColor, HEX);
+
+hsvColor colorToShiftHsv = RgbToHsv(unpackRgb(hexColor));
+
+float  hsvF = colorToShiftHsv.v * scaleFactorF;
+
+ 
+
+  colorToShiftHsv.v = (unsigned char)hsvF;
+
+rgbColor colorToShiftRgb = HsvToRgb(colorToShiftHsv);
+// Serial.print("shifted: ");
+// Serial.println(packRgb(colorToShiftRgb.r, colorToShiftRgb.g, colorToShiftRgb.b), HEX);
+  return packRgb(colorToShiftRgb.r, colorToShiftRgb.g, colorToShiftRgb.b);
+
+  
+}
+
+
 uint32_t scaleDownBrightness(uint32_t hexColor, int scaleFactor,
                              int maxBrightness) {
   int maxR = maxBrightness;

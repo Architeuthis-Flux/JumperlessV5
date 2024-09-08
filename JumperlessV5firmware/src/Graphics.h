@@ -38,7 +38,8 @@ class bread {
     void print(int i, uint32_t color, int position, int topBottom, int nudge, int lowercase);
     void print(int i, uint32_t color, uint32_t backgroundColor);
 
-
+void barGraph(int position, int value, int maxValue, int leftRight,
+                     uint32_t color, uint32_t bg);
 
 void printMenuReminder(int menuDepth, uint32_t color);
 void printRawRow(uint8_t data, int row, uint32_t color, uint32_t bg);

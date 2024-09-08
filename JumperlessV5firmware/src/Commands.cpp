@@ -1,26 +1,25 @@
 #include "Commands.h"
+#include "CH446Q.h"
 #include "FileParsing.h"
 #include "Graphics.h"
 #include "JumperlessDefinesRP2040.h"
 #include "LEDs.h"
+#include "MatrixStateRP2040.h"
 #include "Menus.h"
 #include "NetManager.h"
 #include "NetsToChipConnections.h"
 #include "Peripherals.h"
 #include "Probing.h"
 #include "RotaryEncoder.h"
-#include "MatrixStateRP2040.h"
-#include "CH446Q.h" 
 volatile int sendAllPathsCore2 =
     0; // this signals the core 2 to send all the paths to the CH446Q
 volatile int showLEDsCore2 = 0; // this signals the core 2 to show the LEDs
 volatile int showProbeLEDs =
     0; // this signals the core 2 to show the probe LEDs
 
-
 void waitCore2() {
 
-  delayMicroseconds(600);
+  delayMicroseconds(60);
   unsigned long timeout = micros();
   while (core2busy || sendAllPathsCore2 != 0) {
     if (micros() - timeout > 1000000) {
@@ -33,7 +32,7 @@ void waitCore2() {
 
 void refreshConnections(int ledShowOption) {
 
-waitCore2();
+  waitCore2();
   clearAllNTCC();
   openNodeFile(netSlot, 0);
   getNodesToConnect();
@@ -44,12 +43,12 @@ waitCore2();
   sendAllPathsCore2 = 1;
   chooseShownReadings();
   waitCore2();
-  //sendPaths();
+  // sendPaths();
 }
 
 void refreshLocalConnections(int ledShowOption) {
 
-waitCore2();
+  waitCore2();
 
   clearAllNTCC();
   openNodeFile(netSlot, 1);
@@ -60,31 +59,33 @@ waitCore2();
   showLEDsCore2 = -1;
   sendAllPathsCore2 = 1;
   chooseShownReadings();
-  //sendPaths();
+  // sendPaths();
   waitCore2();
 }
 
-void refreshBlind() {
-waitCore2();
+void refreshBlind(int disconnectFirst) {
+  waitCore2();
 
   clearAllNTCC();
   openNodeFile(netSlot, 1);
+  core1busy = true;
   getNodesToConnect();
   bridgesToPaths();
-  sendAllPathsCore2 = 1;
-  chooseShownReadings();
-  //sendPaths();
+  core1busy = false;
+  sendAllPathsCore2 = disconnectFirst;
+  //chooseShownReadings();
+  // sendPaths();
   waitCore2();
 }
 
 struct rowLEDs getRowLEDdata(int row) {
-  
+
   struct rowLEDs rowLEDs = {0, 0, 0, 0, 0};
-  //uint8_t *pixelPointer = leds.getPixels();
+  // uint8_t *pixelPointer = leds.getPixels();
   if (row < 1) {
     return rowLEDs;
   } else if (row >= 70 && row < 125) {
-    //row = row - 1;
+    // row = row - 1;
     for (int i = 0; i < 35; i++) { // stored in GRB order
       if (bbPixelToNodesMapV5[i][0] == row) {
         rowLEDs.color[0] = leds.getPixelColor(bbPixelToNodesMapV5[i][1]);
@@ -92,15 +93,15 @@ struct rowLEDs getRowLEDdata(int row) {
       }
     }
 
-                Serial.print(row);
-                Serial.print(" ");
-                Serial.println(rowLEDs.color[0]);
+    Serial.print(row);
+    Serial.print(" ");
+    Serial.println(rowLEDs.color[0]);
 
     return rowLEDs;
   }
-row = row - 1;
+  row = row - 1;
   for (int i = 0; i < 5; i++) { // stored in GRB order
-  rowLEDs.color[i] = leds.getPixelColor(row * 5 + i);
+    rowLEDs.color[i] = leds.getPixelColor(row * 5 + i);
     // rowLEDs.color[i] = packRgb(pixelPointer[15 * row + (3 * i) + 1],
     //                            pixelPointer[15 * row + (3 * i)],
     //                            pixelPointer[15 * row + (3 * i) + 2]);
@@ -113,26 +114,26 @@ row = row - 1;
 }
 
 void setRowLEDdata(int row, struct rowLEDs rowLEDcolors) {
-  
 
-  //uint8_t *pixelPointer = leds.getPixels();
+  // uint8_t *pixelPointer = leds.getPixels();
   if (row < 1 || row > 125) {
     return;
   } else if (row >= 70 && row < 125) {
-    //row = row - 1;
+    // row = row - 1;
     rgbColor colorrgb = unpackRgb(rowLEDcolors.color[0]);
     for (int i = 0; i < 35; i++) { // stored in GRB order
       if (bbPixelToNodesMapV5[i][0] == row) {
-        leds.setPixelColor(bbPixelToNodesMapV5[i][1], colorrgb.r, colorrgb.g, colorrgb.b);
+        leds.setPixelColor(bbPixelToNodesMapV5[i][1], colorrgb.r, colorrgb.g,
+                           colorrgb.b);
         return;
       }
     }
     return;
   }
-row = row - 1;
+  row = row - 1;
   for (int i = 0; i < 5; i++) { // stored in GRB order
 
-  leds.setPixelColor(row * 5 + i, rowLEDcolors.color[i]);
+    leds.setPixelColor(row * 5 + i, rowLEDcolors.color[i]);
     // rgbColor colorrgb = unpackRgb(rowLEDcolors.color[i]);
     // pixelPointer[15 * row + (3 * i) + 1] = colorrgb.r;
     // pixelPointer[15 * row + (3 * i)] = colorrgb.g;
@@ -150,19 +151,17 @@ void connectNodes(int node1, int node2) {
     return;
   }
 
-
   addBridgeToNodeFile(node1, node2, netSlot, 0);
-  
+
   refreshConnections();
-waitCore2();
-  //createLocalNodeFile(netSlot);
+  waitCore2();
+  // createLocalNodeFile(netSlot);
 }
 
 void disconnectNodes(int node1, int node2) {
   removeBridgeFromNodeFile(node1, node2, netSlot, 0);
   refreshConnections();
   waitCore2();
-
 }
 
 float measureVoltage(int adcNumber, int node, bool checkForFloating) {
@@ -187,14 +186,13 @@ float measureVoltage(int adcNumber, int node, bool checkForFloating) {
 
   // removeBridgeFromNodeFile(adcDefine, -1, netSlot, 0);
 
-  //delay(2);
-waitCore2();
+  // delay(2);
+  waitCore2();
   addBridgeToNodeFile(node, adcDefine, netSlot, 1);
   refreshBlind();
 
-
   // Serial.println(readAdc(adcNumber, 32) * (5.0 / 4095));
-  //core1busy = true;
+  // core1busy = true;
   float voltage = 0.0;
   if (adcDefine == ADC1) {
     voltage = (float)((readAdc(adcNumber, 4) - 50) * (5.0 / 4096));
@@ -203,46 +201,47 @@ waitCore2();
     voltage -= 8.0;
   }
 
-int floating = 0;
-if (checkForFloating == true) {
-  if (voltage < 0.8 && voltage > -0.8) {
+  int floating = 0;
+  if (checkForFloating == true) {
+    if (voltage < 0.8 && voltage > -0.8) {
 
-    if (checkFloating(node) == true) {
-      floating = 1;
+      if (checkFloating(node) == true) {
+        floating = 1;
+      }
     }
+    waitCore2();
   }
-waitCore2();
-}
   removeBridgeFromNodeFile(node, adcDefine, netSlot, 1);
   refreshBlind();
 
-
   if (floating == 1) {
-    
+
     return 0xFFFFFFFF;
   }
-  
+
   return voltage;
 }
 
 bool checkFloating(int node) {
- // delay(2);
- int gpioNumber = RP_GPIO_1;
- int gpioPin = GPIO_1_PIN;
+  // delay(2);
+  // Serial.print("node = ");
+  // Serial.println(node);
+  int gpioNumber = RP_GPIO_1;
+  int gpioPin = GPIO_1_PIN;
 
   switch (node) {
 
-  case 1 ... 60:
-
-  for (int i = 0; i < 4; i++) {
-    if (ch[11].xStatus[i+4] == -1) {
-      gpioNumber = RP_GPIO_1+i;
-      break;
+  case 1 ... 60: {
+    for (int i = 0; i < 4; i++) {
+      if (ch[11].xStatus[i + 4] == -1) {
+        gpioNumber = RP_GPIO_1 + i;
+        break;
+      }
     }
+    break;
   }
 
-  case 61 ... 120:
-    
+  case 70 ... 120: {
     for (int i = 0; i < 12; i++) {
       if (ch[8].xMap[i] == node) {
         gpioNumber = RP_UART_RX;
@@ -253,10 +252,16 @@ bool checkFloating(int node) {
         break;
       }
     }
+
     break;
   }
+  default:
+    return true;
+  }
+  // Serial.print("gpioNumber = ");
+  // Serial.println(gpioNumber);
 
-switch (gpioNumber) {
+  switch (gpioNumber) {
   case RP_GPIO_1:
     gpioPin = GPIO_1_PIN;
     break;
@@ -265,9 +270,9 @@ switch (gpioNumber) {
     gpioPin = GPIO_2_PIN;
     break;
   case RP_GPIO_3:
-  
-      gpioPin = GPIO_3_PIN;
-      break;
+
+    gpioPin = GPIO_3_PIN;
+    break;
   case RP_GPIO_4:
     gpioPin = GPIO_4_PIN;
     break;
@@ -277,9 +282,11 @@ switch (gpioNumber) {
   case RP_UART_TX:
     gpioPin = GPIO_TX_PIN;
     break;
-}
+  }
+  // Serial.print("gpioPin = "); 
+  // Serial.println(gpioPin);
 
-
+  // removeBridgeFromNodeFile(gpioNumber, -1, netSlot, 1);
   addBridgeToNodeFile(node, gpioNumber, netSlot, 1);
   refreshBlind();
 
@@ -287,14 +294,14 @@ switch (gpioNumber) {
   delayMicroseconds(30);
   int reading = digitalRead(gpioPin);
 
-waitCore2();
+  waitCore2();
   if (reading == HIGH) {
 
     removeBridgeFromNodeFile(node, gpioNumber, netSlot, 1);
 
     return true;
   } else {
-    removeBridgeFromNodeFile(node,gpioNumber, netSlot, 1);
+    removeBridgeFromNodeFile(node, gpioNumber, netSlot, 1);
     return false;
   }
 }

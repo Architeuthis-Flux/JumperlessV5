@@ -8,7 +8,8 @@
 #include <Wire.h>
 #include "MCP23S17.h"
 
-
+extern INA219 INA0;
+extern INA219 INA1;
 extern int showReadings;
 
 

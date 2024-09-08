@@ -33,6 +33,7 @@
     "cortex-debug.registerUseNaturalFormat": false,
     "C_Cpp.errorSquiggles": "disabled",
     "clang-format.language.cpp.style": "file",
-    "C_Cpp.clang_format_style": "file : /Users/kevinsanto/Documents/GitHub/JumperlessV5/JumperlessV5firmware/.vscode/.clang-format"
+    "C_Cpp.clang_format_style": "file : /Users/kevinsanto/Documents/GitHub/JumperlessV5/JumperlessV5firmware/.vscode/.clang-format",
+    "cortex-debug.variableUseNaturalFormat": false
 
 }
