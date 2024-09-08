@@ -1,0 +1,302 @@
+(footprint "MSOP-10_3x3mm_P0.5mm"
+	(version 20240108)
+	(generator "pcbnew")
+	(generator_version "8.0")
+	(layer "F.Cu")
+	(descr "MSOP, 10 Pin (https://www.jedec.org/system/files/docs/mo-187F.pdf variant BA), generated with kicad-footprint-generator ipc_gullwing_generator.py")
+	(tags "MSOP SO")
+	(property "Reference" "REF**"
+		(at 0 -2.45 180)
+		(layer "F.SilkS")
+		(hide yes)
+		(uuid "464e23b7-30ca-4feb-b076-d12f7d5a9ce9")
+		(effects
+			(font
+				(size 1 1)
+				(thickness 0.15)
+			)
+		)
+	)
+	(property "Value" "MCP4728"
+		(at 0 2.45 180)
+		(layer "F.Fab")
+		(uuid "5aeaf1b2-ae5f-4587-ad44-175cd6b659cf")
+		(effects
+			(font
+				(size 1 1)
+				(thickness 0.15)
+			)
+		)
+	)
+	(property "Footprint" "Package_SO:MSOP-10_3x3mm_P0.5mm"
+		(at 0 0 180)
+		(unlocked yes)
+		(layer "F.Fab")
+		(hide yes)
+		(uuid "f1fc4109-a8fe-447b-a178-62520c766eb7")
+		(effects
+			(font
+				(size 1.27 1.27)
+			)
+		)
+	)
+	(property "Datasheet" "http://ww1.microchip.com/downloads/en/DeviceDoc/22187E.pdf"
+		(at 0 0 180)
+		(unlocked yes)
+		(layer "F.Fab")
+		(hide yes)
+		(uuid "c0b1faac-b6a3-459e-95c2-66b4609d1a30")
+		(effects
+			(font
+				(size 1.27 1.27)
+			)
+		)
+	)
+	(property "Description" "12-bit digital to analog converter, quad output, 2.048V internal reference, integrated EEPROM, I2C interface"
+		(at 0 0 180)
+		(unlocked yes)
+		(layer "F.Fab")
+		(hide yes)
+		(uuid "c6ce6bdb-c2c6-43db-88bd-4f9944648d1a")
+		(effects
+			(font
+				(size 1.27 1.27)
+			)
+		)
+	)
+	(attr smd)
+	(fp_line
+		(start 0 1.61)
+		(end 1.5 1.61)
+		(stroke
+			(width 0.12)
+			(type solid)
+		)
+		(layer "F.SilkS")
+		(uuid "e869c2c7-ba28-4c0e-a72f-add39c7b937f")
+	)
+	(fp_line
+		(start 0 1.61)
+		(end -1.5 1.61)
+		(stroke
+			(width 0.12)
+			(type solid)
+		)
+		(layer "F.SilkS")
+		(uuid "e753f2ac-8cd6-4c24-ae88-743a4d6118ca")
+	)
+	(fp_line
+		(start 0 -1.61)
+		(end 1.5 -1.61)
+		(stroke
+			(width 0.12)
+			(type solid)
+		)
+		(layer "F.SilkS")
+		(uuid "188e0424-f21d-4d0d-a9bd-44e0cdd4718c")
+	)
+	(fp_line
+		(start 0 -1.61)
+		(end -1.5 -1.61)
+		(stroke
+			(width 0.12)
+			(type solid)
+		)
+		(layer "F.SilkS")
+		(uuid "be5544eb-9040-417a-b97d-607243922ce1")
+	)
+	(fp_poly
+		(pts
+			(xy -2.2125 -1.435) (xy -2.4525 -1.765) (xy -1.9725 -1.765) (xy -2.2125 -1.435)
+		)
+		(stroke
+			(width 0.12)
+			(type solid)
+		)
+		(fill solid)
+		(layer "F.SilkS")
+		(uuid "7aaef306-9fa2-4d00-a018-13effbf7e83b")
+	)
+	(fp_line
+		(start 3.18 1.75)
+		(end 3.18 -1.75)
+		(stroke
+			(width 0.05)
+			(type solid)
+		)
+		(layer "F.CrtYd")
+		(uuid "699a8345-1329-4612-be80-1da3e058a9ec")
+	)
+	(fp_line
+		(start 3.18 -1.75)
+		(end -3.18 -1.75)
+		(stroke
+			(width 0.05)
+			(type solid)
+		)
+		(layer "F.CrtYd")
+		(uuid "6a6140e6-6f41-4a41-b197-f2f8866c811d")
+	)
+	(fp_line
+		(start -3.18 1.75)
+		(end 3.18 1.75)
+		(stroke
+			(width 0.05)
+			(type solid)
+		)
+		(layer "F.CrtYd")
+		(uuid "81483c61-09fd-4e43-bc40-9a74e928247b")
+	)
+	(fp_line
+		(start -3.18 -1.75)
+		(end -3.18 1.75)
+		(stroke
+			(width 0.05)
+			(type solid)
+		)
+		(layer "F.CrtYd")
+		(uuid "0842ba37-934c-4f33-989d-9236cdbc3379")
+	)
+	(fp_line
+		(start 1.5 1.5)
+		(end -1.5 1.5)
+		(stroke
+			(width 0.1)
+			(type solid)
+		)
+		(layer "F.Fab")
+		(uuid "4ba403f6-8b88-485c-b865-b6f8c808ee35")
+	)
+	(fp_line
+		(start 1.5 -1.5)
+		(end 1.5 1.5)
+		(stroke
+			(width 0.1)
+			(type solid)
+		)
+		(layer "F.Fab")
+		(uuid "478a0060-6927-4e1b-8485-2582574830de")
+	)
+	(fp_line
+		(start -0.75 -1.5)
+		(end 1.5 -1.5)
+		(stroke
+			(width 0.1)
+			(type solid)
+		)
+		(layer "F.Fab")
+		(uuid "fe157f55-d34d-4bb9-8f7a-fd3bc8037b33")
+	)
+	(fp_line
+		(start -1.5 1.5)
+		(end -1.5 -0.75)
+		(stroke
+			(width 0.1)
+			(type solid)
+		)
+		(layer "F.Fab")
+		(uuid "d703ebc5-6161-40c7-9f88-7be7248e194b")
+	)
+	(fp_line
+		(start -1.5 -0.75)
+		(end -0.75 -1.5)
+		(stroke
+			(width 0.1)
+			(type solid)
+		)
+		(layer "F.Fab")
+		(uuid "d9e41d5c-abfe-4f28-bd5a-a17b10b3195f")
+	)
+	(fp_text user "${REFERENCE}"
+		(at 0 0 180)
+		(layer "F.Fab")
+		(uuid "53b06b24-c26d-44bd-a387-5a6b883212d1")
+		(effects
+			(font
+				(size 0.75 0.75)
+				(thickness 0.11)
+			)
+		)
+	)
+	(pad "1" smd roundrect
+		(at -2.1125 -1 180)
+		(size 1.625 0.35)
+		(layers "F.Cu" "F.Paste" "F.Mask")
+		(roundrect_rratio 0.25)
+		(uuid "522f7595-00bd-4bf4-a8b9-2a1f20dff532")
+	)
+	(pad "2" smd roundrect
+		(at -2.1125 -0.5 180)
+		(size 1.625 0.35)
+		(layers "F.Cu" "F.Paste" "F.Mask")
+		(roundrect_rratio 0.25)
+		(uuid "3b8dc1a6-c8b9-4a92-918b-2436a1fee9ba")
+	)
+	(pad "3" smd roundrect
+		(at -2.1125 0 180)
+		(size 1.625 0.35)
+		(layers "F.Cu" "F.Paste" "F.Mask")
+		(roundrect_rratio 0.25)
+		(uuid "0ded549a-b20d-4916-a986-044ea345dcb0")
+	)
+	(pad "4" smd roundrect
+		(at -2.1125 0.5 180)
+		(size 1.625 0.35)
+		(layers "F.Cu" "F.Paste" "F.Mask")
+		(roundrect_rratio 0.25)
+		(uuid "416dd982-1df0-461a-b63f-f557f6b75138")
+	)
+	(pad "5" smd roundrect
+		(at -2.1125 1 180)
+		(size 1.625 0.35)
+		(layers "F.Cu" "F.Paste" "F.Mask")
+		(roundrect_rratio 0.25)
+		(uuid "0fcd24a8-8d8c-492f-8205-9c0b3c4184f5")
+	)
+	(pad "6" smd roundrect
+		(at 2.1125 1 180)
+		(size 1.625 0.35)
+		(layers "F.Cu" "F.Paste" "F.Mask")
+		(roundrect_rratio 0.25)
+		(uuid "15832c37-99a7-4ccf-a6d0-16ded3974cde")
+	)
+	(pad "7" smd roundrect
+		(at 2.1125 0.5 180)
+		(size 1.625 0.35)
+		(layers "F.Cu" "F.Paste" "F.Mask")
+		(roundrect_rratio 0.25)
+		(uuid "15488215-ba8e-43bd-aa94-229859c1e428")
+	)
+	(pad "8" smd roundrect
+		(at 2.1125 0 180)
+		(size 1.625 0.35)
+		(layers "F.Cu" "F.Paste" "F.Mask")
+		(roundrect_rratio 0.25)
+		(uuid "7a815854-7b63-4ddf-9bb0-404f249f41e9")
+	)
+	(pad "9" smd roundrect
+		(at 2.1125 -0.5 180)
+		(size 1.625 0.35)
+		(layers "F.Cu" "F.Paste" "F.Mask")
+		(roundrect_rratio 0.25)
+		(uuid "33d9eadd-8bb2-41c1-b7ea-1eb4107580ab")
+	)
+	(pad "10" smd roundrect
+		(at 2.1125 -1 180)
+		(size 1.625 0.35)
+		(layers "F.Cu" "F.Paste" "F.Mask")
+		(roundrect_rratio 0.25)
+		(uuid "2c973a7f-bff7-4006-9bc8-547570bb767a")
+	)
+	(model "${KICAD8_3DMODEL_DIR}/Package_SO.3dshapes/MSOP-10_3x3mm_P0.5mm.wrl"
+		(offset
+			(xyz 0 0 0)
+		)
+		(scale
+			(xyz 1 1 1)
+		)
+		(rotate
+			(xyz 0 0 0)
+		)
+	)
+)

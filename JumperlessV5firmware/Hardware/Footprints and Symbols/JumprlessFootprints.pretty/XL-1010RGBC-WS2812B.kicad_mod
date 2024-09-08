@@ -1,0 +1,136 @@
+(footprint "XL-1010RGBC-WS2812B"
+	(version 20240108)
+	(generator "pcbnew")
+	(generator_version "8.0")
+	(layer "F.Cu")
+	(property "Reference" "REF**"
+		(at 0.07 0.02 0)
+		(unlocked yes)
+		(layer "F.Fab")
+		(uuid "87770b3a-f1ed-4846-82e0-8af1315fd8ba")
+		(effects
+			(font
+				(size 0.3 0.3)
+				(thickness 0.0375)
+			)
+		)
+	)
+	(property "Value" "WS2812B"
+		(at -0.005 1.205 0)
+		(unlocked yes)
+		(layer "F.Fab")
+		(hide yes)
+		(uuid "ed479c62-d073-4bc0-a525-d95adcb768e9")
+		(effects
+			(font
+				(size 0.3 0.3)
+				(thickness 0.075)
+				(bold yes)
+			)
+		)
+	)
+	(property "Footprint" "JumperlessFootprints:XL-1010RGBC-WS2812B"
+		(at 0 0 0)
+		(unlocked yes)
+		(layer "F.Fab")
+		(hide yes)
+		(uuid "81ebbbfa-ce0a-4253-8f41-296ebbcb5f95")
+		(effects
+			(font
+				(size 1 1)
+				(thickness 0.15)
+			)
+		)
+	)
+	(property "Datasheet" "https://cdn-shop.adafruit.com/datasheets/WS2812B.pdf"
+		(at 0 0 0)
+		(unlocked yes)
+		(layer "F.Fab")
+		(hide yes)
+		(uuid "a23c041d-3953-4660-a9d3-875f0d15c96b")
+		(effects
+			(font
+				(size 1 1)
+				(thickness 0.15)
+			)
+		)
+	)
+	(property "Description" ""
+		(at 0 0 0)
+		(unlocked yes)
+		(layer "F.Fab")
+		(hide yes)
+		(uuid "cbae726c-ce2a-4321-97dd-18527c2377f4")
+		(effects
+			(font
+				(size 1 1)
+				(thickness 0.15)
+			)
+		)
+	)
+	(property "LCSC" "C5349953"
+		(at 0 0 0)
+		(unlocked yes)
+		(layer "F.Fab")
+		(hide yes)
+		(uuid "52c3c9cd-247e-4958-8670-c03df27e1670")
+		(effects
+			(font
+				(size 1 1)
+				(thickness 0.15)
+			)
+		)
+	)
+	(attr smd)
+	(pad "1" smd rect
+		(at -0.425 -0.425)
+		(size 0.45 0.45)
+		(layers "F.Cu" "F.Paste" "F.Mask")
+		(thermal_bridge_angle 45)
+		(uuid "3e5eabdb-7298-43e4-9061-c53d3d35b08d")
+	)
+	(pad "2" smd rect
+		(at 0.425 -0.425)
+		(size 0.45 0.45)
+		(layers "F.Cu" "F.Paste" "F.Mask")
+		(thermal_bridge_angle 45)
+		(uuid "9a649b7f-46cc-492f-9e98-256e6becc48c")
+	)
+	(pad "3" smd rect
+		(at -0.425 0.425)
+		(size 0.45 0.45)
+		(layers "F.Cu" "F.Paste" "F.Mask")
+		(thermal_bridge_angle 45)
+		(uuid "5705fb2c-789b-460b-9960-7a3a61fc6db5")
+	)
+	(pad "4" smd rect
+		(at 0.425 0.425)
+		(size 0.45 0.45)
+		(layers "F.Cu" "F.Paste" "F.Mask")
+		(thermal_bridge_angle 45)
+		(uuid "eb24bfd8-8c6e-473a-a8dd-cc11c652b2f9")
+	)
+	(model "${KICAD8_3DMODEL_DIR}/LED_SMD.3dshapes/LED_0201_0603Metric.wrl"
+		(hide yes)
+		(offset
+			(xyz 0 0 -0.01)
+		)
+		(scale
+			(xyz 1.9 3.5 2.2)
+		)
+		(rotate
+			(xyz 0 0 0)
+		)
+	)
+	(model "/Users/kevinsanto/Documents/KiCad/7.0/3dmodels/Xl1010 v1.iges"
+		(offset
+			(xyz 0 0 0)
+		)
+		(scale
+			(xyz 1 1 1)
+		)
+		(rotate
+			(xyz 0 0 0)
+		)
+	)
+)
