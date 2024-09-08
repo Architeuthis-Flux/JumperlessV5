@@ -11,7 +11,7 @@ extern int buttonPin;
 
 extern int connectOrClearProbe;
 extern int node1or2;
-
+extern int probeHighlight;
 extern int logoTopSetting[2];
 extern int logoBottomSetting[2];
 extern int buildingTopSetting[2];
@@ -20,6 +20,8 @@ extern int buildingBottomSetting[2];
 extern volatile int probeActive;
 extern volatile int inPadMenu;
 extern volatile int checkingButton;
+
+extern volatile bool bufferPowerConnected;
 
 extern int debugProbing;
 
@@ -33,6 +35,8 @@ enum measuredState
 
 };
 
+extern int switchPosition;
+float measureMode(int updateSpeed = 150);
 void checkPads(void);
 int delayWithButton(int delayTime = 1000);
 
@@ -51,6 +55,10 @@ void clearLastFound(void);
 int probeMode(int pin = 19, int setOrClear = 1);
 int checkProbeButton(void);
 int readFloatingOrState (int pin = 0, int row = 0);
+
+int checkSwitchPosition(void);
+float checkProbeCurrent(void);
+
 void routableBufferPower (int offOn);
 
 void startProbe (long probeSpeed = 25000);

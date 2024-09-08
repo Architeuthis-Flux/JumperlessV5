@@ -8,7 +8,8 @@
 #include <Wire.h>
 #include "MCP23S17.h"
 
-
+extern INA219 INA0;
+extern INA219 INA1;
 extern int showReadings;
 
 
@@ -29,6 +30,8 @@ extern uint8_t gpioReading[10];
 extern int gpioNet[10];
 
 extern int revisionNumber;
+
+
 
 void setGPIO(void);
 void readGPIO(void);

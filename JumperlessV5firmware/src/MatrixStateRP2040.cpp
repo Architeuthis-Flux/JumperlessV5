@@ -25,7 +25,7 @@ char *netNameConstants[MAX_NETS] = {(char*)"Net 0",(char*)"Net 1",(char*)"Net 2"
 
 
 //note that the bottom row is shifted from the schematic by one, so the nodes are what's written on the board
-const int bbNodesToChip[62] = {-1,CHIP_K,           //0,1
+const int bbNodesToChip[62] = {0,CHIP_K,           //0,1
 CHIP_A,CHIP_A,CHIP_A,CHIP_A,CHIP_A,CHIP_A,CHIP_A,  // 2, 3, 4, 5, 6, 7, 8
 CHIP_B,CHIP_B,CHIP_B,CHIP_B,CHIP_B,CHIP_B,CHIP_B,  // 9,10,11,12,13,14,15
 CHIP_C,CHIP_C,CHIP_C,CHIP_C,CHIP_C,CHIP_C,CHIP_C,  //16,17,18,19,20,21,22
@@ -96,13 +96,13 @@ struct chipStatus ch[12] = {
   {8,'I',
   {-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1}, // x status
   {-1,-1,-1,-1,-1,-1,-1,-1}, //y status
-  {NANO_A0, NANO_D1, NANO_A2, NANO_D3, NANO_A4, NANO_D5, NANO_A6, NANO_D7, NANO_D11, NANO_D9, NANO_D13,ISENSE_PLUS , CHIP_L, CHIP_J, CHIP_K,UART0_RX }, //this is for V5r1 change this for V5r2
+  {NANO_A0, NANO_D1, NANO_A2, NANO_D3, NANO_A4, NANO_D5, NANO_A6, NANO_D7, NANO_D11, NANO_D9, NANO_D13,ISENSE_PLUS , CHIP_L, CHIP_J, CHIP_K,RP_UART_RX }, //this is for V5r1 change this for V5r2
   {CHIP_A,CHIP_B,CHIP_C,CHIP_D,CHIP_E,CHIP_F,CHIP_G,CHIP_H}},
 
   {9,'J',
   {-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1}, // x status
   {-1,-1,-1,-1,-1,-1,-1,-1}, //y status
-  {NANO_D0, NANO_A1, NANO_D2, NANO_A3, NANO_D4, NANO_A5, NANO_D6, NANO_A7, NANO_D8, NANO_D10, NANO_D12, NANO_AREF , CHIP_L, CHIP_I, CHIP_K, UART0_TX},  //this is for V5r1 change this for V5r2
+  {NANO_D0, NANO_A1, NANO_D2, NANO_A3, NANO_D4, NANO_A5, NANO_D6, NANO_A7, NANO_D8, NANO_D10, NANO_D12, NANO_AREF , CHIP_L, CHIP_I, CHIP_K, RP_UART_TX},  //this is for V5r1 change this for V5r2
   {CHIP_A,CHIP_B,CHIP_C,CHIP_D,CHIP_E,CHIP_F,CHIP_G,CHIP_H}},
 
   {10,'K',

@@ -38,8 +38,8 @@ void debugFlagInit(int forceDefaults) {
   debugNM = EEPROM.read(DEBUG_NETMANAGERADDRESS);
   debugNMtime = EEPROM.read(TIME_NETMANAGERADDRESS);
 
-  debugNTCC = EEPROM.read(DEBUG_NETTOCHIPCONNECTIONSADDRESS);
-  debugNTCC2 = EEPROM.read(DEBUG_NETTOCHIPCONNECTIONSALTADDRESS);
+   debugNTCC = EEPROM.read(DEBUG_NETTOCHIPCONNECTIONSADDRESS);
+   debugNTCC2 = EEPROM.read(DEBUG_NETTOCHIPCONNECTIONSALTADDRESS);
 
   LEDbrightnessRail = EEPROM.read(RAILBRIGHTNESSADDRESS);
   LEDbrightness = EEPROM.read(LEDBRIGHTNESSADDRESS);
@@ -68,25 +68,47 @@ void debugFlagInit(int forceDefaults) {
 
 
   if (debugFP != 0 && debugFP != 1)
+  {
     EEPROM.write(DEBUG_FILEPARSINGADDRESS, 0);
 
+debugFP = false;
+  }
   if (debugFPtime != 0 && debugFPtime != 1)
+  {
     EEPROM.write(TIME_FILEPARSINGADDRESS, 0);
+    debugFPtime = false;
+  }
 
   if (debugNM != 0 && debugNM != 1)
+  {
     EEPROM.write(DEBUG_NETMANAGERADDRESS, 0);
+    debugNM = false;
+  }
 
   if (debugNMtime != 0 && debugNMtime != 1)
+  {
     EEPROM.write(TIME_NETMANAGERADDRESS, 0);
+    debugNMtime = false;
+  }
 
   if (debugNTCC != 0 && debugNTCC != 1)
+  {
     EEPROM.write(DEBUG_NETTOCHIPCONNECTIONSADDRESS, 0);
+    debugNTCC = false;
+  }
 
   if (debugNTCC2 != 0 && debugNTCC2 != 1)
+  {
     EEPROM.write(DEBUG_NETTOCHIPCONNECTIONSALTADDRESS, 0);
+    debugNTCC2 = false;
+  }
 
   if (debugLEDs != 0 && debugLEDs != 1)
+  {
+
     EEPROM.write(DEBUG_LEDSADDRESS, 0);
+    debugLEDs = false;
+  }
 
   if (LEDbrightnessRail < 0 || LEDbrightnessRail > 200) {
     EEPROM.write(RAILBRIGHTNESSADDRESS, DEFAULTRAILBRIGHTNESS);

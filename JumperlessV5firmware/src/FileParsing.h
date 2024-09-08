@@ -9,8 +9,12 @@
 
 //extern File nodeFile;  
 extern volatile bool core1busy;
+extern volatile bool netsUpdated;
 
-
+void clearNodeFileString(void);
+void closeAllFiles(void);
+void usbFSbegin(void);
+int openFileThreadSafe(int openTypeEnum, int slot = 0, int flashOrLocal = 0);
 void createLocalNodeFile(int slot = 0);
 void saveLocalNodeFile(int slot = 0);   
 void writeMenuTree(void);

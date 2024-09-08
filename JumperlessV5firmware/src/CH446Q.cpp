@@ -9,8 +9,8 @@
 
 #include "hardware/pio.h"
 
-#include "spi.pio.h"
-#include "pio_spi.h"
+#include "ch446.pio.h"
+//#include "pio_spi.h"
 
 #define MYNAMEISERIC 0 // on the board I sent to eric, the data and clock lines are bodged to GPIO 18 and 19. To allow for using hardware SPI
 
@@ -43,6 +43,8 @@ void isrFromPio(void)
 
 }
 
+
+
 void initCH446Q(void)
 {
 
@@ -60,7 +62,7 @@ void initCH446Q(void)
   // Serial.print("offset: ");
   // Serial.println(offset);
 
-  pio_spi_ch446_multi_cs_init(pio, sm, offset, 8, 16, 0, 1, clk, dat);
+  pio_spi_ch446_multi_cs_init(pio, sm, offset, 8, 32, 0, 1, clk, dat);
   // pio_spi_ch446_cs_handler_init(pio, smCS, offsetCS, 256, 1, 8, 20, 6);
   // pinMode(CS_A, OUTPUT);
   // digitalWrite(CS_A, HIGH);
@@ -91,7 +93,7 @@ void initCH446Q(void)
   // digitalWrite(CS_K, LOW);
   // digitalWrite(CS_L, LOW);
 
-  delay(3);
+ // delay(3);
   /// digitalWrite(RESETPIN, LOW);
 }
 
@@ -231,11 +233,11 @@ void sendXYraw(int chip, int x, int y, int setOrClear)
 
   chAddress = chAddress << 24;
 
-  delayMicroseconds(100);
+  delayMicroseconds(50);
 
   pio_sm_put(pio, sm, chAddress);
 
-  delayMicroseconds(180);
+  delayMicroseconds(80);
   //isrFromPio();
 }
 

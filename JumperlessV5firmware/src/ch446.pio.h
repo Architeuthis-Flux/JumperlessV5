@@ -59,7 +59,7 @@ static inline void pio_spi_ch446_multi_cs_init(PIO pio, uint sm, uint prog_offs,
 pio_sm_set_consecutive_pindirs	(pio, sm, pin_mosi, 2, true);
     pio_gpio_init(pio, pin_mosi);
     pio_gpio_init(pio, pin_sck);
-   // pio_set_irqn_source_enabled	(pio,0,pis_sm0_tx_fifo_not_full,true);
+    //pio_set_irqn_source_enabled	(pio,0,pis_sm0_tx_fifo_not_full,true);
            // The reason for doing interrupt0 + sm:
         // IRQ sources are enabled per irq flag. Since the irq flag being set depends on the state
         // machine because of the "0 rel", we want to make sure we're enabling the correct interrupt
@@ -70,7 +70,7 @@ pio_sm_set_consecutive_pindirs	(pio, sm, pin_mosi, 2, true);
         pio_interrupt_clear(pio, sm);
         // Build the configuration for the state machine
 //pio_set_irq0_source_enabled(pio, pis_interrupt0, true);
-//irq_set_enabled(PIO0_IRQ_0, true);
+irq_set_enabled(PIO0_IRQ_0, true);
     uint entry_point = prog_offs;
     pio_sm_init(pio, sm, entry_point, &c);
     pio_sm_exec(pio, sm, pio_encode_set(pio_x, n_bits - 2));

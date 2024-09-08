@@ -237,6 +237,7 @@ extern rgbColor specialNetColors[8];
 void printColorName(uint32_t color);
 void printColorName(int hue);
 
+
 struct rgbColor shiftHue(struct rgbColor colorToShift, int hueShift = 0,
                          int brightnessShift = 0, int saturationShift = 0,
                          int specialFunction = -1);
@@ -276,4 +277,9 @@ uint32_t packRgb(uint8_t r, uint8_t g, uint8_t b);
 void startupColors(void);
 void startupColorsV5(void);
 void rainbowBounce(int wait, int logo = 0);
+uint32_t scaleBrightness(uint32_t color, int scaleFactor);
+
+
+void clearLEDsExceptMiddle(int start = 1, int end = 60);
+void clearLEDsMiddle(int start = 1, int end = 60);
 #endif
