@@ -21,6 +21,8 @@ extern int showDAC0;
 extern int showDAC1;
 
 extern int showADCreadings[4];
+extern uint32_t adcReadingColors[4];
+extern float adcReadingRanges[4][2];
 
 extern float adcRange[4][2];
 extern float dacOutput[2];
@@ -28,6 +30,7 @@ extern float railVoltage[2];
 extern uint8_t gpioState[10];
 extern uint8_t gpioReading[10];
 extern int gpioNet[10];
+
 
 extern int revisionNumber;
 

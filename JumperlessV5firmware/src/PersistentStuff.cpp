@@ -25,6 +25,7 @@ void debugFlagInit(int forceDefaults) {
     EEPROM.write(PROBESWAPADDRESS, 0);
     EEPROM.write(ROTARYENCODER_MODE_ADDRESS, 0);
     EEPROM.write(DISPLAYMODE_ADDRESS, 1);
+    EEPROM.write(NETCOLORMODE_ADDRESS, 0);
     saveVoltages(0.0f, 0.0f, 0.0f, 0.0f);
 
     EEPROM.commit();
@@ -52,6 +53,7 @@ void debugFlagInit(int forceDefaults) {
   displayMode = EEPROM.read(DISPLAYMODE_ADDRESS);
 
   probeSwap = EEPROM.read(PROBESWAPADDRESS);
+  netColorMode = EEPROM.read(NETCOLORMODE_ADDRESS);
 
 
 
@@ -131,6 +133,10 @@ debugFP = false;
   if (displayMode != 0 && displayMode != 1) {
     EEPROM.write(DISPLAYMODE_ADDRESS, 1);
     displayMode = 0;
+  }
+  if (netColorMode != 0 && netColorMode != 1) {
+    EEPROM.write(NETCOLORMODE_ADDRESS, 0);
+    netColorMode = 0;
   }
 
 
@@ -296,6 +302,13 @@ void debugFlagSet(int flag) {
     
     break;
   }
+  case 13: 
+    {
+      EEPROM.write(NETCOLORMODE_ADDRESS, netColorMode);
+
+      
+    }
+    break;
   }
   delay(4);
   EEPROM.commit();

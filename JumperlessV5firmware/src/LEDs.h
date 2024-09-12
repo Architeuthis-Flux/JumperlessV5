@@ -42,10 +42,12 @@ extern volatile uint8_t pauseCore2;
 extern Adafruit_NeoPixel leds;
 extern Adafruit_NeoPixel probeLEDs;
 extern Adafruit_NeoMatrix matrix;
-extern bool debugLEDs;
+//extern bool debugLEDs;
 
+
+extern int netColorMode; // 0 = rainbow, 1 = shuffle
 extern int displayMode;
-
+extern int numberOfShownNets;
 //extern int showLEDsCore2;
 extern int logoFlash;
 
@@ -237,6 +239,7 @@ extern rgbColor specialNetColors[8];
 void printColorName(uint32_t color);
 void printColorName(int hue);
 
+int brightenNet(int node, int addBrightness = 5);
 
 struct rgbColor shiftHue(struct rgbColor colorToShift, int hueShift = 0,
                          int brightnessShift = 0, int saturationShift = 0,
@@ -252,7 +255,7 @@ void rainbowy(int, int, int wait);
 void showNets(void);
 void assignNetColors();
 void lightUpRail(int logo = -1, int railNumber = -1, int onOff = 1,
-                 int brightness = DEFAULTRAILBRIGHTNESS,
+                 int brightness = -1,
                  int supplySwitchPosition = 0);
 void setupSwirlColors(void);
 void logoSwirl(int start = 0, int spread = 5, int probe = 0);

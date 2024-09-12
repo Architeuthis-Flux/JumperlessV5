@@ -560,8 +560,58 @@ int getMenuSelection(void) {
       return -2;
     }
     delayMicroseconds(4000);
+        if (encoderButtonState == RELEASED && lastButtonEncoderState == PRESSED) {
 
-    if (encoderDirectionState == UP || firstTime == 1 || force == 1) { // ||
+      lastMenuLevel = menuLevel;
+      noInputTimer = millis();
+
+      // chosen[chosenIndex] = menuPosition;
+      // chosenType[chosenIndex] = 3;
+      // chosenIndex++;
+
+      if (stayOnTop[menuPosition] == 1) {
+        stayOnTopLevel = menuLevel;
+        stayOnTopIndex = menuPosition;
+      }
+
+      previousMenuSelection[menuLevel] = menuPosition;
+
+      // Serial.print("[ ");
+      // for (int i = 0; i < 10; i++) {
+      //   if (previousMenuSelection[i] != -1) {
+      //   Serial.print(menuLines[previousMenuSelection[i]]);
+      //   Serial.print(", ");
+      //   }
+      // }
+
+      // Serial.print(" ]\n\r");
+      // Serial.println(menuPosition);
+
+      menuLevel++;
+
+      if (menuLevel > numberOfLevels + 1) {
+        menuLevel = numberOfLevels;
+      }
+
+      for (int i = menuPosition + 1; i < menuLineIndex; i++) {
+
+        if (menuLevels[i] < menuLevel) {
+          subMenuEndIndex = i;
+          break;
+        }
+      }
+
+      for (int i = subMenuEndIndex - 1; i > 0; i--) {
+        if (menuLevels[i] < menuLevel) {
+          subMenuStartIndex = i;
+          break;
+        }
+      }
+
+      // Serial.println();
+      while (encoderButtonState == RELEASED)
+        ;
+    } else if (encoderDirectionState == UP || firstTime == 1 || force == 1) { // ||
       // lastMenuLevel > menuLevel) {
       encoderDirectionState = NONE;
       firstTime = 0;
@@ -883,58 +933,7 @@ int getMenuSelection(void) {
 
     delayMicroseconds(80);
 
-    if (encoderButtonState == RELEASED && lastButtonEncoderState == PRESSED) {
 
-      lastMenuLevel = menuLevel;
-      noInputTimer = millis();
-
-      // chosen[chosenIndex] = menuPosition;
-      // chosenType[chosenIndex] = 3;
-      // chosenIndex++;
-
-      if (stayOnTop[menuPosition] == 1) {
-        stayOnTopLevel = menuLevel;
-        stayOnTopIndex = menuPosition;
-      }
-
-      previousMenuSelection[menuLevel] = menuPosition;
-
-      // Serial.print("[ ");
-      // for (int i = 0; i < 10; i++) {
-      //   if (previousMenuSelection[i] != -1) {
-      //   Serial.print(menuLines[previousMenuSelection[i]]);
-      //   Serial.print(", ");
-      //   }
-      // }
-
-      // Serial.print(" ]\n\r");
-      // Serial.println(menuPosition);
-
-      menuLevel++;
-
-      if (menuLevel > numberOfLevels + 1) {
-        menuLevel = numberOfLevels;
-      }
-
-      for (int i = menuPosition + 1; i < menuLineIndex; i++) {
-
-        if (menuLevels[i] < menuLevel) {
-          subMenuEndIndex = i;
-          break;
-        }
-      }
-
-      for (int i = subMenuEndIndex - 1; i > 0; i--) {
-        if (menuLevels[i] < menuLevel) {
-          subMenuStartIndex = i;
-          break;
-        }
-      }
-
-      // Serial.println();
-      while (encoderButtonState == RELEASED)
-        ;
-    }
 
     if (encoderButtonState == HELD) {
       noInputTimer = millis();
@@ -1227,24 +1226,7 @@ int selectSubmenuOption(int menuPosition, int menuLevel) {
       b.clear();
       return -1;
     }
-
-    if (encoderDirectionState == UP) {
-      encoderDirectionState = NONE;
-      highlightedOption += 1;
-      if (highlightedOption > numberOfChoices[menuPosition] - 1) {
-        highlightedOption = 0;
-      }
-      changed = 1;
-
-    } else if (encoderDirectionState == DOWN || firstTime == 1) {
-      encoderDirectionState = NONE;
-      highlightedOption -= 1;
-      if (highlightedOption < 0) {
-        highlightedOption = numberOfChoices[menuPosition] - 1;
-      }
-      firstTime = 0;
-      changed = 1;
-    } else if (encoderButtonState == RELEASED &&
+    if (encoderButtonState == RELEASED &&
                lastButtonEncoderState == PRESSED) {
 
       encoderButtonState = IDLE;
@@ -1290,7 +1272,23 @@ int selectSubmenuOption(int menuPosition, int menuLevel) {
 
       return optionSelected;
       changed = 1;
-    }
+    } else if (encoderDirectionState == UP) {
+      encoderDirectionState = NONE;
+      highlightedOption += 1;
+      if (highlightedOption > numberOfChoices[menuPosition] - 1) {
+        highlightedOption = 0;
+      }
+      changed = 1;
+
+    } else if (encoderDirectionState == DOWN || firstTime == 1) {
+      encoderDirectionState = NONE;
+      highlightedOption -= 1;
+      if (highlightedOption < 0) {
+        highlightedOption = numberOfChoices[menuPosition] - 1;
+      }
+      firstTime = 0;
+      changed = 1;
+    }  
     if (changed == 1) {
 
       b.clear(1);
@@ -2353,7 +2351,15 @@ int doMenuAction(int menuPosition, int selection) {
         defconDisplay = 0;
       }
 
-                   }
+                   }   else if (menuLines[currentAction.previousMenuPositions[1]].indexOf("Colors") !=
+        -1) {
+      if (currentAction.from[0] == 0) {
+        netColorMode = 0;
+      } else {
+        netColorMode = 1;
+      }
+      debugFlagSet(13);
+        }
     Serial.print("Display Action\n\r");
 
   } else if (currentCategory == NOCATEGORY) {
@@ -2648,12 +2654,12 @@ char LEDbrightnessMenu(void) {
       } else {
       }
 
-      for (int i = 8; i <= numberOfNets; i++) {
+      for (int i = 6; i <= numberOfNets; i++) {
         lightUpNet(i, -1, 1, LEDbrightness, 0);
       }
 
       lightUpRail(-1, -1, 1, LEDbrightnessRail);
-      for (int i = 0; i < 8; i++) {
+      for (int i = 0; i < 6; i++) {
         lightUpNet(i, -1, 1, LEDbrightnessSpecial, 0);
       }
       showLEDsCore2 = 1;

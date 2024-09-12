@@ -20,6 +20,7 @@ extern int buildingBottomSetting[2];
 extern volatile int probeActive;
 extern volatile int inPadMenu;
 extern volatile int checkingButton;
+extern volatile int measureModeActive;
 
 extern volatile bool bufferPowerConnected;
 

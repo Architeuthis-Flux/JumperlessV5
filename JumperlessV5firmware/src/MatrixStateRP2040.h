@@ -23,7 +23,7 @@ int16_t intersections[8]; //if this net shares a node with another net, store th
 
 int16_t doNotIntersectNodes[8]; //if the net tries to share a node with a net that contains any #defined nodes here, it won't connect and throw an error (SUPPLY to GND)
 
-int8_t priority = 0; //this isn't implemented - priority = 1 means it will move connections to take the most direct path, priority = 2 means connections will be doubled up when possible, priority = 3 means both
+int8_t visible = 0; //this isn't implemented - priority = 1 means it will move connections to take the most direct path, priority = 2 means connections will be doubled up when possible, priority = 3 means both
 
 rgbColor color; //color of the net in hex
 

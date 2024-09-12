@@ -3,8 +3,9 @@
 #include "JumperlessDefinesRP2040.h"
 #include "MatrixStateRP2040.h"
 #include "Peripherals.h"
+#include "PersistentStuff.h"
+#include "Probing.h"
 #include "leds.h"
-#include "Probing.h"  
 
 /* clang-format off */
 
@@ -229,23 +230,55 @@ void defcon(int start, int spread, int color) {
   // 11) % (LOGO_COLOR_LENGTH - 1)], 12,1); b.print('5', logoColors[(start +
   // spread * 12) % (LOGO_COLOR_LENGTH - 1)], 13,1);
 }
-
+int filledPaths[64][4] = {-1}; // node1 node2 rowfilled
 void drawWires(int net) {
   // int fillSequence[6] = {0,2,4,1,3,};
-  // assignNetColors();
+  // debugLEDs = 0;
+  // Serial.print("c2debugLEDs = ");
+  // Serial.println(debugLEDs);
+  assignNetColors();
 
-  int fillSequence[6] = {0, 1, 2, 3, 4};
+  // Serial.println("drawWires");
+  // Serial.print("numberOfNets = ");
+
+  // Serial.println(numberOfNets);
+  // Serial.print("probeActive = ");
+  // Serial.println(probeActive);
+  // Serial.print("numberOfShownNets = ");
+  // Serial.println(numberOfShownNets);
+
+  int fillSequence[6] = {0, 1, 2, 3, 4, 0};
   int fillIndex = 0;
-  int filledPaths[60][3] = {-1}; // node1 node2 rowfilled
+
+  for (int i = 0; i < 64; i++) {
+    for (int j = 0; j < 4; j++) {
+      filledPaths[i][j] = -1;
+    }
+  }
 
   for (int i = 0; i < 62; i++) {
     for (int j = 0; j < 5; j++) {
       wireStatus[i][j] = 0;
     }
   }
+
+  // for (int i = 0; i < numberOfNets; i++) {
+  //   // Serial.print(i);
+  //   Serial.print("netColors[");
+  //   Serial.print(i);
+  //   Serial.print("] = ");
+  //   Serial.print(netColors[i].r, HEX);
+  //   Serial.print(" ");
+  //   Serial.print(netColors[i].g, HEX);
+  //   Serial.print(" ");
+  //   Serial.println(netColors[i].b, HEX);
+  // }
   if (net == -1) {
 
-    for (int i = 0; i <= numberOfNets+1; i++) {
+    for (int i = 0; i < numberOfNets; i++) {
+      // Serial.print(i);
+      // Serial.print(" c3debugLEDs = ");
+      // Serial.println(debugLEDs);
 
       int sameLevel = 0;
       int bothOnTop = 0;
@@ -255,8 +288,10 @@ void drawWires(int net) {
 
       if (path[i].node1 != -1 && path[i].node2 != -1 &&
           path[i].node1 != path[i].node2) {
-        if ((path[i].node1 <= 60 && path[i].node2 <= 60) ){//|| (path[i].node1 >= 110 &&
-           // path[i].node1 <= 113) || (path[i].node2 >= 110 && path[i].node2 <= 113)) {
+        if ((path[i].node1 <= 60 &&
+             path[i].node2 <= 60)) { //|| (path[i].node1 >= 110 &&
+          // path[i].node1 <= 113) || (path[i].node2 >= 110 && path[i].node2 <=
+          // 113)) {
           bothOnBB = 1;
           if (path[i].node1 > 0 && path[i].node1 <= 30 && path[i].node2 > 0 &&
               path[i].node2 <= 30) {
@@ -278,11 +313,16 @@ void drawWires(int net) {
             }
           }
         } else {
-          //Serial.println("else ");
+          // Serial.println("else ");
+          // Serial.print("path[");
+          // Serial.print(i);
+          // Serial.print("] = ");
+
           lightUpNet(path[i].net);
         }
 
-        // if (sameLevel == 0 && ((path[i].node1 >= 110 && path[i].node1 <= 113) || (path[i].node2 >= 110 && path[i].node2 <= 113)))
+        // if (sameLevel == 0 && ((path[i].node1 >= 110 && path[i].node1 <= 113)
+        // || (path[i].node2 >= 110 && path[i].node2 <= 113)))
         // {
         //   sameLevel = 1;
 
@@ -358,15 +398,35 @@ void drawWires(int net) {
           filledPaths[i][0] = first;
           filledPaths[i][1] = last;
           filledPaths[i][2] = fillSequence[fillIndex];
+
           // showLEDsCore2 = 1;
         } else {
           for (int j = 0; j < 5; j++) {
 
-            wireStatus[path[i].node1][j] = path[i].net;
-            wireStatus[path[i].node2][j] = path[i].net;
+            if (path[i].node1 > 0 && path[i].node1 <= 60) {
+              if (wireStatus[path[i].node1][j] == 0) {
+                wireStatus[path[i].node1][j] = path[i].net;
+              } 
+        
+              
+              // Serial.print("path[i].node1 = ");
+              // Serial.println(path[i].node1);
+
+            } 
+            if (path[i].node2 > 0 && path[i].node2 <= 60) {
+              if (wireStatus[path[i].node2][j] == 0) {
+              wireStatus[path[i].node2][j] = path[i].net;
+              }
+              // Serial.print("path[i].node2 = ");
+              // Serial.println(path[i].node2);
+
+            } 
+
           }
+          //lightUpNet(path[i].net);
         }
       } else {
+
         lightUpNet(path[i].net);
       }
     }
@@ -384,7 +444,7 @@ void drawWires(int net) {
         }
       }
     }
-   
+
     for (int i = 1; i <= 60; i++) {
       if (i <= 30) {
 
@@ -414,6 +474,16 @@ void drawWires(int net) {
           uint32_t color3 = 0x100010;
 
           rgbColor colorRGB = netColors[wireStatus[i][j]];
+          // Serial.print("netColors[wireStatus[");
+          // Serial.print(i);
+          // Serial.print("][");
+          // Serial.print(j);
+          // Serial.print("] = ");
+          // Serial.print(netColors[wireStatus[i][j]].r, HEX);
+          // Serial.print(" ");
+          // Serial.print(netColors[wireStatus[i][j]].g, HEX);
+          // Serial.print(" ");
+          // Serial.println(netColors[wireStatus[i][j]].b, HEX);
 
           int adcShow = 0;
 
@@ -424,15 +494,21 @@ void drawWires(int net) {
           // colorRGB = HsvToRgb(colorHSV);
 
           uint32_t color = packRgb(colorRGB.r, colorRGB.g, colorRGB.b);
+          // Serial.print("color = ");
+          // Serial.println(color);
 
           if (wireStatus[i][j] == 0) {
             // leds.setPixelColor((i * 5) + fillSequence[j], 0x000000);
           } else if (probeHighlight != i) {
             leds.setPixelColor((((i - 1) * 5) + (4 - j)), color);
+            // Serial.print((((i - 1) * 5) + (4 - j)));
+            // Serial.print(" ");
           }
         }
       }
     }
+  } else {
+    // lightUpNet(net);
   }
 }
 void printWireStatus(void) {
@@ -694,12 +770,8 @@ void bread::printRawRow(uint8_t data, int row, uint32_t color, uint32_t bg) {
   }
 }
 
-
-
 void bread::barGraph(int position, int value, int maxValue, int leftRight,
-                     uint32_t color, uint32_t bg) {
-
-}
+                     uint32_t color, uint32_t bg) {}
 /*
 
 ||||||||||||||||||||||||||||||

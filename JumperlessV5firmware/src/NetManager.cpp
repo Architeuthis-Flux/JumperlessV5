@@ -219,7 +219,7 @@ void combineNets(int foundNode1Net, int foundNode2Net) {
 
   if (checkDoNotIntersectsByNet(foundNode1Net, foundNode2Net) == 1) {
     int swap = 0;
-    if ((foundNode2Net <= 7 && foundNode1Net <= 7)) {
+    if ((foundNode2Net <= 5 && foundNode1Net <= 5)) {
       for (int i = 0; i < MAX_DNI; i++) {
         for (int j = 0; j < MAX_DNI; j++) {
           if ((net[foundNode1Net].doNotIntersectNodes[i] == foundNode1Net ||
@@ -251,7 +251,7 @@ void combineNets(int foundNode1Net, int foundNode2Net) {
       path[newBridgeIndex].net = -1;
     } else {
 
-      if (foundNode2Net <= 7) {
+      if (foundNode2Net <= 5) {
         swap = foundNode1Net;
         foundNode1Net = foundNode2Net;
         foundNode2Net = swap;
@@ -353,7 +353,7 @@ int shiftNets(
 
   net[lastNet].number = 0;
   net[lastNet].name = "       "; // netNameConstants[lastNet];
-  net[lastNet].priority = 0;
+  net[lastNet].visible = 0;
   net[lastNet].specialFunction = -1;
 
   for (int i = 0; i < 6; i++) {

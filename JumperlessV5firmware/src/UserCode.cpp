@@ -21,11 +21,12 @@ void sketchOne(void) {
 
 int countLoop = 0;
 int countMult = 18;
+measureModeActive = 1;
 while (Serial.available() == 0) {
    // Serial.println(analogReadTemp()*1.8+32);
     for (int i = 1; i < 96; i++) {
       
-      if (i == 84) {
+      if (i == 84 || i == NANO_RESET_0 || i == NANO_RESET_1 ) {
         continue;
       }
       if (i > 60 && i < 70) {
@@ -49,9 +50,8 @@ while (Serial.available() == 0) {
         Serial.println(" V");
       }
 //
-      delay(50);
-      //printPathsCompact();
-//printChipStatus();
+      //delay(50);
+
       setRowLEDdata(i, currentRow);
      // showLEDsCore2 = 2;
     }
@@ -61,6 +61,7 @@ while (Serial.available() == 0) {
       countLoop = 0;
       countMult -= 2;
     }
+    //Serial.println("\n\r");
     //connectNodes(TOP_RAIL, countLoop*countMult);
    //waitCore2();
     // printPathsCompact();
@@ -69,6 +70,15 @@ while (Serial.available() == 0) {
 
 
 }
+
+measureModeActive = 0;
+}
+
+void sketchTwo(void)
+{
+
+
+
 
 
 }

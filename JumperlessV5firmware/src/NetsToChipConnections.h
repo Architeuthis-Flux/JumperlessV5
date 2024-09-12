@@ -66,7 +66,7 @@ int printPathType (int pathIndex);
 void swapNodes (int);
 
 void commitPaths(void);
-
+int checkForOverlappingPaths(void);
 void printPathsCompact(void);
 
 void resolveAltPaths(void);

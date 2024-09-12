@@ -66,6 +66,8 @@ int revisionNumber = 0;
 int showReadings = 0;
 
 int showADCreadings[4] = {1, 1, 1, 1};
+ uint32_t adcReadingColors[4] = {0x010101, 0x010101, 0x010101, 0x010101};
+ float adcReadingRanges[4][2] = {{0.0, 5.0}, {0.0, 5.0}, {-8.0, 8.0}, {-8.0, 8.0}};
 
 int inaConnected = 0;
 int showINA0[3] = {1, 1, 1}; // 0 = current, 1 = voltage, 2 = power
@@ -859,6 +861,8 @@ void chooseShownReadings(void) {
   }
 }
 
+
+
 void showLEDmeasurements(void) {
   int samples = 8;
 
@@ -877,29 +881,37 @@ void showLEDmeasurements(void) {
 
   int numReadings = 0;
 
-  if (showADCreadings[0] != 0) {
+  if (showADCreadings[0] > 0 && showADCreadings[0] <= numberOfNets) {
     numReadings++;
     adc0ReadingUnscaled = readAdc(0, samples);
 
     adc0Reading = (adc0ReadingUnscaled) * (5.0 / 4095);
     int mappedAdc0Reading = map(adc0ReadingUnscaled, 0, 4095, 4, 30);
+
+
     uint32_t color =
         logoColors8vSelect[(map(adc0ReadingUnscaled, 0, 4095, 0, 30) + 26) %
                            59];
+
+
       if (displayMode == 0){
     lightUpNet(showADCreadings[0], -1, 1, LEDbrightnessSpecial, 0, 0, color);
       }
 netColors[showADCreadings[0]] = unpackRgb(color);
+adcReadingColors[0] = color;
+    // Serial.print("showADCreadings[0]: ");
+    // Serial.println(showADCreadings[0]);
+
     net[showADCreadings[0]].color = unpackRgb(color);
     //drawWires(showADCreadings[0]);
     // showLEDsCore2 = 2;
   }
 
-  if (showADCreadings[1] != 0) {
+  if (showADCreadings[1] > 0 && showADCreadings[1] <= numberOfNets) {
     numReadings++;
     adc1ReadingUnscaled = readAdc(1, samples);
     adc1Reading = (adc1ReadingUnscaled) * (5.0 / 4095);
-    int mappedAdc1Reading = map(adc1ReadingUnscaled, 0, 4095, 4, 45);
+    int mappedAdc1Reading = map(adc1ReadingUnscaled, 0, 4095, 0, 65);
 
     uint32_t color =
         logoColors8vSelect[abs((map(adc1ReadingUnscaled, 50, 4095, 0, 30) + 26) %
@@ -908,12 +920,15 @@ netColors[showADCreadings[0]] = unpackRgb(color);
     lightUpNet(showADCreadings[1], -1, 1, LEDbrightnessSpecial, 0, 0, color);
     }
     netColors[showADCreadings[1]] = unpackRgb(color);
+    adcReadingColors[1] = color;
+    // Serial.print("showADCreadings[1]: ");
+    // Serial.println(showADCreadings[1]);
     net[showADCreadings[1]].color = unpackRgb(color);
     //drawWires(showADCreadings[1]);
     // showLEDsCore2 = 2;
   }
 
-  if (showADCreadings[2] != 0) {
+  if (showADCreadings[2] > 0 && showADCreadings[2] <= numberOfNets) {
 
     numReadings++;
     adc2ReadingUnscaled = readAdc(2, samples);
@@ -937,11 +952,14 @@ if (displayMode == 0){
     lightUpNet(showADCreadings[2], -1, 1, LEDbrightnessSpecial, 0, 0, color);
 }
     netColors[showADCreadings[2]] =  unpackRgb(color);
+    adcReadingColors[2] = color;
+    // Serial.print("showADCreadings[2]: ");
+    // Serial.println(showADCreadings[2]);
     net[showADCreadings[2]].color = unpackRgb(color);
     //drawWires(showADCreadings[2]);
   }
 
-  if (showADCreadings[3] != 0) {
+  if (showADCreadings[3] > 0 && showADCreadings[3] <= numberOfNets) {
     numReadings++;
     adc3ReadingUnscaled = readAdc(3, samples);
     adc3Reading = (adc3ReadingUnscaled) * (16.0 / 4010);
@@ -962,13 +980,20 @@ if (displayMode == 0){
     lightUpNet(showADCreadings[3], -1, 1, mappedAdc3Reading, 0, 0, color);
 }
     netColors[showADCreadings[3]] =  unpackRgb(color);
-    net[showADCreadings[3]].color = unpackRgb(color);
+    adcReadingColors[3] = color;
+    // Serial.print("showADCreadings[3]: ");
+    // Serial.println(showADCreadings[3]);
+
+  net[showADCreadings[3]].color = unpackRgb(color);
      // drawWires(showADCreadings[3]);
     // showLEDsCore2 = 2;
   }
 
   if (numReadings > 0 && displayMode == 1) {
-    drawWires();
+    showLEDsCore2 = 1;
+    //assignNetColors();
+    //drawWires();
+    //delay(100);
   } 
 }
 

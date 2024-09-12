@@ -11,6 +11,7 @@
 #include "Peripherals.h"
 #include "Probing.h"
 #include "RotaryEncoder.h"
+#include "PersistentStuff.h"  
 volatile int sendAllPathsCore2 =
     0; // this signals the core 2 to send all the paths to the CH446Q
 volatile int showLEDsCore2 = 0; // this signals the core 2 to show the LEDs
@@ -34,14 +35,23 @@ void refreshConnections(int ledShowOption) {
 
   waitCore2();
   clearAllNTCC();
+
+  //return;
   openNodeFile(netSlot, 0);
+
   getNodesToConnect();
+
   bridgesToPaths();
+ chooseShownReadings();
   assignNetColors();
+
   netsUpdated = true;
-  showLEDsCore2 = -1;
+  if (ledShowOption != 0) {
+
+  showLEDsCore2 = ledShowOption;
+  }
   sendAllPathsCore2 = 1;
-  chooseShownReadings();
+ 
   waitCore2();
   // sendPaths();
 }
@@ -51,14 +61,22 @@ void refreshLocalConnections(int ledShowOption) {
   waitCore2();
 
   clearAllNTCC();
+
   openNodeFile(netSlot, 1);
+
   getNodesToConnect();
+
   bridgesToPaths();
+chooseShownReadings();
   assignNetColors();
+ 
   netsUpdated = true;
-  showLEDsCore2 = -1;
+  if (ledShowOption != 0) {
+
+  showLEDsCore2 = ledShowOption;
+  }
   sendAllPathsCore2 = 1;
-  chooseShownReadings();
+
   // sendPaths();
   waitCore2();
 }
@@ -71,9 +89,10 @@ void refreshBlind(int disconnectFirst) {
   core1busy = true;
   getNodesToConnect();
   bridgesToPaths();
+  assignNetColors();
   core1busy = false;
   sendAllPathsCore2 = disconnectFirst;
-  //chooseShownReadings();
+  chooseShownReadings();
   // sendPaths();
   waitCore2();
 }
@@ -93,9 +112,9 @@ struct rowLEDs getRowLEDdata(int row) {
       }
     }
 
-    Serial.print(row);
-    Serial.print(" ");
-    Serial.println(rowLEDs.color[0]);
+    // Serial.print(row);
+    // Serial.print(" ");
+    // Serial.println(rowLEDs.color[0]);
 
     return rowLEDs;
   }
@@ -189,7 +208,9 @@ float measureVoltage(int adcNumber, int node, bool checkForFloating) {
   // delay(2);
   waitCore2();
   addBridgeToNodeFile(node, adcDefine, netSlot, 1);
-  refreshBlind();
+  refreshBlind(-1);
+//         printPathsCompact();
+// printChipStatus();
 
   // Serial.println(readAdc(adcNumber, 32) * (5.0 / 4095));
   // core1busy = true;

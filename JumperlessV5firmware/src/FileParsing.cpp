@@ -23,10 +23,10 @@ volatile bool netsUpdated = true;
 bool debugFP = EEPROM.read(DEBUG_FILEPARSINGADDRESS);
 bool debugFPtime = EEPROM.read(TIME_FILEPARSINGADDRESS);
 
-createSafeString(nodeFileString, 1400);
+createSafeString(nodeFileString, 1800);
 
 int numConnsJson = 0;
-createSafeString(specialFunctionsString, 800);
+createSafeString(specialFunctionsString, 1400);
 
 char inputBuffer[INPUTBUFFERLENGTH] = {0};
 
@@ -228,6 +228,8 @@ void saveLocalNodeFile(int slot) {
   // Serial.println(nodeFileString);
    
    long count = 0;
+     removeBridgeFromNodeFile(RP_UART_RX, ISENSE_PLUS, netSlot, 1);
+  removeBridgeFromNodeFile(ROUTABLE_BUFFER_IN, ISENSE_MINUS, netSlot, 1);
 //   while (core2busy == true) {
 //     // delay(1);
 //     //  Serial.print("core2");
@@ -1699,80 +1701,157 @@ void replaceNanoNamesWithDefinedInts(
   if (debugFP)
     Serial.println("replacing special function names with defined ints\n\r");
 
-  char nanoName[5];
+  char nanoName[10];
+    for(int i = 0; i < 10; i++)
+  {
+    nanoName[i] = ' ';
+  }
 
   itoa(NANO_D10, nanoName, 10);
   specialFunctionsString.replace("D10", nanoName);
+  for(int i = 0; i < 10; i++)
+  {
+    nanoName[i] = ' ';
+  }
 
   itoa(NANO_D11, nanoName, 10);
   specialFunctionsString.replace("D11", nanoName);
-
+  for(int i = 0; i < 10; i++)
+  {
+    nanoName[i] = ' ';
+  }
   itoa(NANO_D12, nanoName, 10);
   specialFunctionsString.replace("D12", nanoName);
-
+  for(int i = 0; i < 10; i++)
+  {
+    nanoName[i] = ' ';
+  }
   itoa(NANO_D13, nanoName, 10);
   specialFunctionsString.replace("D13", nanoName);
-
+  for(int i = 0; i < 10; i++)
+  {
+    nanoName[i] = ' ';
+  }
   itoa(NANO_D0, nanoName, 10);
   specialFunctionsString.replace("D0", nanoName);
-
+  for(int i = 0; i < 10; i++)
+  {
+    nanoName[i] = ' ';
+  }
   itoa(NANO_D1, nanoName, 10);
   specialFunctionsString.replace("D1", nanoName);
-
+  for(int i = 0; i < 10; i++)
+  {
+    nanoName[i] = ' ';
+  }
   itoa(NANO_D2, nanoName, 10);
   specialFunctionsString.replace("D2", nanoName);
-
+  for(int i = 0; i < 10; i++)
+  {
+    nanoName[i] = ' ';
+  }
   itoa(NANO_D3, nanoName, 10);
   specialFunctionsString.replace("D3", nanoName);
-
+  for(int i = 0; i < 10; i++)
+  {
+    nanoName[i] = ' ';
+  }
   itoa(NANO_D4, nanoName, 10);
   specialFunctionsString.replace("D4", nanoName);
-
+  for(int i = 0; i < 10; i++)
+  {
+    nanoName[i] = ' ';
+  }
   itoa(NANO_D5, nanoName, 10);
   specialFunctionsString.replace("D5", nanoName);
-
+  for(int i = 0; i < 10; i++)
+  {
+    nanoName[i] = ' ';
+  }
   itoa(NANO_D6, nanoName, 10);
   specialFunctionsString.replace("D6", nanoName);
-
+  for(int i = 0; i < 10; i++)
+  {
+    nanoName[i] = ' ';
+  }
   itoa(NANO_D7, nanoName, 10);
   specialFunctionsString.replace("D7", nanoName);
-
+  for(int i = 0; i < 10; i++)
+  {
+    nanoName[i] = ' ';
+  }
   itoa(NANO_D8, nanoName, 10);
   specialFunctionsString.replace("D8", nanoName);
-
+  for(int i = 0; i < 10; i++)
+  {
+    nanoName[i] = ' ';
+  }
   itoa(NANO_D9, nanoName, 10);
   specialFunctionsString.replace("D9", nanoName);
-
+  for(int i = 0; i < 10; i++)
+  {
+    nanoName[i] = ' ';
+  }
   itoa(NANO_RESET, nanoName, 10);
   specialFunctionsString.replace("RESET", nanoName);
-
+  for(int i = 0; i < 10; i++)
+  {
+    nanoName[i] = ' ';
+  }
   itoa(NANO_AREF, nanoName, 10);
   specialFunctionsString.replace("AREF", nanoName);
-
+  for(int i = 0; i < 10; i++)
+  {
+    nanoName[i] = ' ';
+  }
   itoa(NANO_A0, nanoName, 10);
   specialFunctionsString.replace("A0", nanoName);
-
+  for(int i = 0; i < 10; i++)
+  {
+    nanoName[i] = ' ';
+  }
   itoa(NANO_A1, nanoName, 10);
   specialFunctionsString.replace("A1", nanoName);
-
+  for(int i = 0; i < 10; i++)
+  {
+    nanoName[i] = ' ';
+  }
   itoa(NANO_A2, nanoName, 10);
   specialFunctionsString.replace("A2", nanoName);
-
+  for(int i = 0; i < 10; i++)
+  {
+    nanoName[i] = ' ';
+  }
   itoa(NANO_A3, nanoName, 10);
   specialFunctionsString.replace("A3", nanoName);
-
+  for(int i = 0; i < 10; i++)
+  {
+    nanoName[i] = ' ';
+  }
   itoa(NANO_A4, nanoName, 10);
   specialFunctionsString.replace("A4", nanoName);
-
+  for(int i = 0; i < 10; i++)
+  {
+    nanoName[i] = ' ';
+  }
   itoa(NANO_A5, nanoName, 10);
   specialFunctionsString.replace("A5", nanoName);
-
+  for(int i = 0; i < 10; i++)
+  {
+    nanoName[i] = ' ';
+  }
   itoa(NANO_A6, nanoName, 10);
   specialFunctionsString.replace("A6", nanoName);
-
+  for(int i = 0; i < 10; i++)
+  {
+    nanoName[i] = ' ';
+  }
   itoa(NANO_A7, nanoName, 10);
   specialFunctionsString.replace("A7", nanoName);
-
+  for(int i = 0; i < 10; i++)
+  {
+    nanoName[i] = ' ';
+  }
   // if(debugFP)Serial.println(bridgeString);
   if (debugFP)
     Serial.println(specialFunctionsString);
