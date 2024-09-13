@@ -2035,7 +2035,8 @@ int doMenuAction(int menuPosition, int selection) {
 
   populateAction();
   printActionStruct();
-
+  clearLEDsExceptRails();
+showLEDsCore2 = -1;
   actionCategories currentCategory;
 
   if (menuLines[currentAction.previousMenuPositions[0]].indexOf("Slots") !=

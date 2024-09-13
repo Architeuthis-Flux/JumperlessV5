@@ -55,11 +55,32 @@ void printRawRow(uint8_t data, int row, uint32_t color, uint32_t bg);
 
 };
 
+
+    struct specialRowAnimation{
+        int index;
+        int net;
+        unsigned long currentFrame;
+        int direction;
+        int numberOfFrames = 8;
+        uint32_t frames[15] = {0xffffff};
+        unsigned long lastFrameTime;
+        unsigned long frameInterval = 100;
+
+        
+    };
+    
+extern specialRowAnimation rowAnimations[26];
+
+extern bool animationsEnabled;
 extern char defconString[16];
 extern uint8_t font[][3];
 
 extern bread b;
 
+
+void initRowAnimations (void);
+void showAllRowAnimations(void);
+void showRowAnimation(int row, int net);
 void printGraphicsRow(uint8_t data, int row, uint32_t color = 0xFFFFFF, uint32_t bg = 0xFFFFFF);
 
 void scrollFont(void);

@@ -1,7 +1,9 @@
 #include "Graphics.h"
 #include "Adafruit_NeoPixel.h"
+#include "Commands.h"
 #include "JumperlessDefinesRP2040.h"
 #include "MatrixStateRP2040.h"
+#include "NetManager.h"
 #include "Peripherals.h"
 #include "PersistentStuff.h"
 #include "Probing.h"
@@ -128,6 +130,33 @@ uint8_t font[][3] = // 'JumperlessFontmap', 500x5px
 };
 
 
+//0=top rail, 1= gnd, 2 = bottom rail, 3 = gnd again, 4 = adc 1, 5 = adc 2, 6 = adc 3, 7 = adc 4, 8 = adc 5, 9 = adc 6, 10 = dac 0, 11 = dac 1, 12 = routable buffer in, 13 = routable buffer out, 14 = i sense +, 15 = isense -, 16 = gpio Tx, 17 = gpio Rx, 
+uint32_t specialColors[13][5] = {
+    {0x000000, 0x000000, 0x000000, 0x000000, 0x000000},
+    {0x000000, 0x000000, 0x000000, 0x000000, 0x000000},
+    {0x000000, 0x000000, 0x000000, 0x000000, 0x000000},
+    {0x000000, 0x000000, 0x000000, 0x000000, 0x000000},
+    {0x000000, 0x000000, 0x000000, 0x000000, 0x000000},
+    {0x000000, 0x000000, 0x000000, 0x000000, 0x000000},
+    {0x000000, 0x000000, 0x000000, 0x000000, 0x000000},
+    {0x000000, 0x000000, 0x000000, 0x000000, 0x000000},
+    {0x000000, 0x000000, 0x000000, 0x000000, 0x000000},
+    {0x000000, 0x000000, 0x000000, 0x000000, 0x000000}};
+
+
+    // struct specialRowAnimation{
+    //     int net;
+    //     int currentFrame;
+    //     int numberOfFrames = 8;
+    //     uint32_t frames[8][5] = {0xffffff};
+
+        
+    // };
+
+    bool animationsEnabled = true;
+specialRowAnimation rowAnimations[26];
+
+
 int wireStatus[64][5]; // row, led (net stored)
 char defconString[16] = " Fuck    You   ";
 /* clang-format on */
@@ -230,7 +259,9 @@ void defcon(int start, int spread, int color) {
   // 11) % (LOGO_COLOR_LENGTH - 1)], 12,1); b.print('5', logoColors[(start +
   // spread * 12) % (LOGO_COLOR_LENGTH - 1)], 13,1);
 }
+
 int filledPaths[64][4] = {-1}; // node1 node2 rowfilled
+
 void drawWires(int net) {
   // int fillSequence[6] = {0,2,4,1,3,};
   // debugLEDs = 0;
@@ -275,10 +306,24 @@ void drawWires(int net) {
   // }
   if (net == -1) {
 
-    for (int i = 0; i < numberOfNets; i++) {
+    for (int i = 0; i <= numberOfPaths; i++) {
       // Serial.print(i);
       // Serial.print(" c3debugLEDs = ");
       // Serial.println(debugLEDs);
+      // Serial.print("\n\n\rpath[");
+      // Serial.print(i);
+      // Serial.print("].net = ");
+      // Serial.print(path[i].net);
+      // Serial.print(" path[");
+      // Serial.print(i);
+      // Serial.print("].node1 = ");
+      // Serial.print(path[i].node1);
+      // Serial.print(" path[");
+      // Serial.print(i);
+      // Serial.print("].node2 = ");
+      // Serial.println(path[i].node2);
+      // Serial.print("number of paths = ");
+      // Serial.println(numberOfPaths);
 
       int sameLevel = 0;
       int bothOnTop = 0;
@@ -316,7 +361,8 @@ void drawWires(int net) {
           // Serial.println("else ");
           // Serial.print("path[");
           // Serial.print(i);
-          // Serial.print("] = ");
+          // Serial.print("].net = ");
+          // Serial.print(path[i].net);
 
           lightUpNet(path[i].net);
         }
@@ -406,24 +452,20 @@ void drawWires(int net) {
             if (path[i].node1 > 0 && path[i].node1 <= 60) {
               if (wireStatus[path[i].node1][j] == 0) {
                 wireStatus[path[i].node1][j] = path[i].net;
-              } 
-        
-              
+              }
+
               // Serial.print("path[i].node1 = ");
               // Serial.println(path[i].node1);
-
-            } 
+            }
             if (path[i].node2 > 0 && path[i].node2 <= 60) {
               if (wireStatus[path[i].node2][j] == 0) {
-              wireStatus[path[i].node2][j] = path[i].net;
+                wireStatus[path[i].node2][j] = path[i].net;
               }
               // Serial.print("path[i].node2 = ");
               // Serial.println(path[i].node2);
-
-            } 
-
+            }
           }
-          //lightUpNet(path[i].net);
+          // lightUpNet(path[i].net);
         }
       } else {
 
@@ -445,8 +487,19 @@ void drawWires(int net) {
       }
     }
 
+    for (int i = 30; i <= 60; i++) { // reverse the bottom row
+
+      int tempRow[5] = {wireStatus[i][0], wireStatus[i][1], wireStatus[i][2],
+                        wireStatus[i][3], wireStatus[i][4]};
+      wireStatus[i][0] = tempRow[4];
+      wireStatus[i][1] = tempRow[3];
+      wireStatus[i][2] = tempRow[2];
+      wireStatus[i][3] = tempRow[1];
+      wireStatus[i][4] = tempRow[0];
+    }
+
     for (int i = 1; i <= 60; i++) {
-      if (i <= 30) {
+      if (i <= 60) {
 
         for (int j = 0; j < 5; j++) {
 
@@ -485,7 +538,7 @@ void drawWires(int net) {
           // Serial.print(" ");
           // Serial.println(netColors[wireStatus[i][j]].b, HEX);
 
-          int adcShow = 0;
+          // int adcShow = 0;
 
           // hsvColor colorHSV = RgbToHsv(colorRGB);
 
@@ -511,6 +564,255 @@ void drawWires(int net) {
     // lightUpNet(net);
   }
 }
+
+int animationOrder[26] = {TOP_RAIL,
+                          GND,
+                          BOTTOM_RAIL,
+                          GND,
+                          ADC1,
+                          ADC2,
+                          ADC3,
+                          ADC4,
+                          ADC5,
+                          ADC6,
+                          DAC0,
+                          DAC1,
+                          ROUTABLE_BUFFER_IN,
+                          ROUTABLE_BUFFER_OUT,
+                          ISENSE_PLUS,
+                          ISENSE_MINUS,
+                          RP_UART_TX,
+                          RP_UART_RX,
+                          RP_GPIO_1,
+                          RP_GPIO_2,
+                          RP_GPIO_3,
+                          RP_GPIO_4,
+                          MCP_GPIO_0,
+                          MCP_GPIO_1,
+                          MCP_GPIO_2,
+                          MCP_GPIO_3};
+
+/* clang-format off */
+
+uint32_t animations[10][15] = {
+
+    {0x080001, 0x080002, 0x070003, 0x080002, 0x080001, 
+     0x090000, 0x090000, 0x080100, 0x070200, 0x060300, 
+     0x070200, 0x080100, 0x080000, 0x090000, 0x080000},
+
+    {0x000900, 0x000a00, 0x020b00, 0x000a00, 0x000900, 
+     0x000901, 0x000702, 0x000603, 0x000702, 0x000801, 
+     0x000800, 0x010800, 0x020800, 0x020800, 0x010800},
+
+    {0x080001, 0x080002, 0x070003, 0x080002, 0x080001, 
+     0x090000, 0x090000, 0x080100, 0x070200, 0x060300, 
+     0x070200, 0x080100, 0x080000, 0x090000, 0x080000},
+
+};
+
+/* clang-format on */
+
+unsigned long lastRowAnimationTime = 0;
+unsigned long rowAnimationInterval = 150;
+
+void initRowAnimations() {
+  // 0=top rail, 1= gnd, 2 = bottom rail, 3 = gnd again, 4 = adc 1, 5 = adc 2, 6
+  // = adc 3, 7 = adc 4, 8 = adc 5, 9 = adc 6, 10 = dac 0, 11 = dac 1, 12 =
+  // routable buffer in, 13 = routable buffer out, 14 = i sense +, 15 = isense
+  // -, 16 = gpio Tx, 17 = gpio Rx,
+
+  for (int i = 0; i < 3; i++) {
+    rowAnimations[i].index = i;
+    rowAnimations[i].net = animationOrder[i];
+    rowAnimations[i].currentFrame = 0;
+    rowAnimations[i].numberOfFrames = 8;
+    for (int j = 0; j < 15; j++) {
+      rowAnimations[i].frames[j] = animations[i][j];
+    }
+  }
+  rowAnimations[0].direction = 1;
+  rowAnimations[0].frameInterval = 160;
+  rowAnimations[1].direction = 0;
+  rowAnimations[1].frameInterval = 100;
+  rowAnimations[2].direction = 0;
+  rowAnimations[2].frameInterval = 160;
+}
+
+void showRowAnimation(int index, int net) {
+
+  // net = 0;
+
+  int structIndex = -1;
+  int actualNet = -1;
+  if (inPadMenu == 1) {
+    return;
+  }
+  for (int i = 0; i < 27; i++) {
+    if (rowAnimations[i].net == net) {
+      structIndex = i;
+
+      break;
+    }
+  }
+
+  if (structIndex == -1) {
+    return;
+  }
+
+  actualNet = findNodeInNet(net);
+  net = structIndex;
+
+  //    Serial.print("net = ");
+  //  Serial.println(net);
+  // Serial.print("actualNet = ");
+  // Serial.println(actualNet);
+  uint32_t frameColors[5];
+
+  if (millis() - rowAnimations[net].lastFrameTime >
+      rowAnimations[net].frameInterval) {
+    rowAnimations[net].currentFrame++;
+    rowAnimations[net].lastFrameTime = millis();
+  } else {
+    //return;
+  }
+
+  // if (rowAnimations[net].currentFrame >=
+  //     rowAnimations[net].numberOfFrames + 5) {
+  //       Serial.print("rowAnimations[net].currentFrame = ");
+  //       Serial.println(rowAnimations[net].currentFrame);
+  //   rowAnimations[net].currentFrame = 0;
+  // }
+
+  for (int i = 0; i < 5; i++) {
+
+    // frameColors[i] =
+    // rowAnimations[net].frames[(rowAnimations[net].currentFrame + i) %
+    // (rowAnimations[net].numberOfFrames-1)];
+    if (brightenedNet == actualNet) {
+      // Serial.print("brightenedNet = ");
+      // Serial.println(brightenedNet);
+
+      frameColors[i] = scaleBrightness(
+          rowAnimations[net].frames[(rowAnimations[net].currentFrame + i) % 15],
+          brightenedAmount * 8);
+    } else {
+      frameColors[i] =
+          rowAnimations[net].frames[(rowAnimations[net].currentFrame + i) % 15];
+    }
+
+    // Serial.print("frameColors[");
+    // Serial.print(i);
+    // Serial.print("] = ");
+    // Serial.print(frameColors[i], HEX);
+    // Serial.print(" ");
+    // Serial.println((rowAnimations[net].currentFrame + i) % 15);
+  }
+  // Serial.println(" ");
+  int row = 2;
+
+  if (rowAnimations[net].direction == 0) {
+
+    uint32_t tempFrame[5] = {frameColors[0], frameColors[1], frameColors[2],
+                             frameColors[3], frameColors[4]};
+    frameColors[0] = tempFrame[4];
+    frameColors[1] = tempFrame[3];
+    frameColors[2] = tempFrame[2];
+    frameColors[3] = tempFrame[1];
+    frameColors[4] = tempFrame[0];
+  }
+// Serial.print("\n\n\rnet = ");
+// Serial.print(net);
+// Serial.print("   actualNet = "); 
+// Serial.print(actualNet);
+// Serial.print("   direction = ");
+// Serial.println(rowAnimations[net].direction);
+
+
+  if (displayMode == 0) {
+    for (int i = 0; i <= numberOfPaths; i++) {
+      if (path[i].net == actualNet) {
+
+        if (path[i].node1 > 0 && path[i].node1 <= 60 &&
+            path[i].node1 != probeHighlight) {
+          for (int j = 0; j < 5; j++) {
+
+            b.printRawRow(0b00010000 >> j, path[i].node1 - 1, frameColors[j],
+                          0xfffffe);
+          }
+        }
+        if (path[i].node2 > 0 && path[i].node2 <= 60 &&
+            path[i].node2 != probeHighlight) {
+          for (int j = 0; j < 5; j++) {
+
+            b.printRawRow(0b00010000 >> j, path[i].node2 - 1, frameColors[j],
+                          0xfffffe);
+          }
+        }
+      }
+    }
+
+    // for (int i = 0; i < 5; i++) {
+    //   b.printRawRow(0b00000001 << i, row, frameColors[i], 0xfffffe);
+    // }
+  } else {
+
+    for (int i = 0; i <= 60; i++) {
+      for (int j = 0; j < 5; j++) {
+        if (wireStatus[i][j] == actualNet) {
+            if (i == probeHighlight) {
+
+            } else {
+          leds.setPixelColor(((i - 1) * 5) + j, frameColors[j]);
+            }
+        }
+      }
+    }
+  }
+
+      for (int i = 0; i <= numberOfPaths; i++) {
+        if (path[i].net == actualNet) {
+
+          if (path[i].node1 > NANO_D0 && path[i].node1 <= NANO_GND_1) {
+            for (int j = 0; j < 35; j++) {
+              if (bbPixelToNodesMapV5[j][0] == path[i].node1) {
+                
+                  leds.setPixelColor(bbPixelToNodesMapV5[j][1], scaleBrightness(frameColors[0], 200));
+                }
+              }
+          }
+          if (path[i].node2 > NANO_D0 && path[i].node2 <= NANO_GND_1) {
+            for (int j = 0; j < 35; j++) {
+              if (bbPixelToNodesMapV5[j][0] == path[i].node2) {
+                
+                  leds.setPixelColor(bbPixelToNodesMapV5[j][1], scaleBrightness(frameColors[0], 200));
+                }
+              }
+
+             
+            }
+          }
+        
+      
+    
+  }
+
+  // b.printRawRow(0b00000001, row, frameColors[0], 0xfffffe);
+  // b.printRawRow(0b00000010, row, frameColors[1], 0xfffffe);
+  // b.printRawRow(0b00000100, row, frameColors[2], 0xfffffe);
+  // b.printRawRow(0b00001000, row, frameColors[3], 0xfffffe);
+  // b.printRawRow(0b00010000, row, frameColors[4], 0xfffffe);
+
+  // showLEDsCore2 = 2;
+}
+
+void showAllRowAnimations() {
+  // showRowAnimation(2, rowAnimations[1].net);
+  // showRowAnimation(2, rowAnimations[2].net);
+  for (int i = 0; i < 3; i++) {
+    showRowAnimation(i, rowAnimations[i].net);
+  }
+}
+
 void printWireStatus(void) {
 
   for (int s = 1; s <= 30; s++) {

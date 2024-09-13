@@ -15,6 +15,7 @@ extern bool debugNMtime;
 
 
 
+int findNodeInNet(uint16_t node);
 
 void writeJSONtoFile();
 

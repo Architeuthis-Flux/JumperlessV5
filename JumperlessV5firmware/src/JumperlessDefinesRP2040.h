@@ -267,6 +267,9 @@ extern volatile int sendAllPathsCore2;
 #define ADC1 111
 #define ADC2 112
 #define ADC3 113
+#define ADC4 114
+#define ADC5 115
+#define ADC6 116
 
 #define RP_GPIO_0 114
 

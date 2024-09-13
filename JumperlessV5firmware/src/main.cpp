@@ -183,6 +183,7 @@ void setupCore2stuff() {
   delay(1);
 
   initLEDs();
+  initRowAnimations();
   setupSwirlColors();
   //delay(4);
 }
@@ -283,6 +284,68 @@ dontshowmenu:
       // defconDisplay = -1;
       goto loadfile;
     }
+int probeReading = justReadProbe(); 
+    if (probeReading > 0) {
+      // Serial.print("justReadProbe = ");
+      // Serial.println(probeReading);
+
+      int netHighlighted = brightenNet(probeReading);
+      // Serial.print("netHighlighted = ");
+      // Serial.println(netHighlighted);
+      if (netHighlighted != -1) {
+
+Serial.print("\r                                               \r");
+      switch (netHighlighted) {
+        case 0:
+        break;
+      case 1:
+        Serial.print("Net Highlighted = GND");
+        break;
+      case 2:
+        Serial.print("Net Highlighted = Top Rail  ");
+    
+        Serial.print(railVoltage[0]);
+        break;
+      case 3:
+        Serial.print("Net Highlighted = Bottom Rail  ");
+      
+        Serial.print(railVoltage[1]);
+        break;
+      case 4:
+        Serial.print("Net Highlighted = DAC 0  ");
+        Serial.print(dacOutput[0]);
+        break;
+      case 5:
+        Serial.print("Net Highlighted = DAC 1  ");
+        Serial.print(dacOutput[1]);
+        break;  
+        default:
+        Serial.print("Net Highlighted = ");
+        Serial.print(netHighlighted);
+      }
+      showLEDsCore2 = 1;
+      } else {
+        
+        //brightenNet(-1);
+      }
+      
+     // showLEDsCore2 = 1;
+    }
+    //   int netFound = findNodeInNet(probeReading);
+    // if (netFound != -1) {
+    //   Serial.print("findNodeInNet = ");
+    //   Serial.println(netFound);
+    //   brightenNet(netFound);
+    //   showLEDsCore2 = 1;
+    //   //brightenedNet = netFound;
+    // } else {
+    //  brightenNet(-1);
+    // }
+
+
+
+
+   // }
     // Serial.println(digitalRead(11));
     // delay(300);
 
@@ -792,7 +855,7 @@ skipinput:
   default:
     while (Serial.available() > 0) {
       int f = Serial.read();
-      delayMicroseconds(30);
+      //delayMicroseconds(30);
     }
 
     break;
@@ -894,7 +957,8 @@ if (showProbeLEDs != lastProbeLEDs) {
           defcon(swirlCount, spread, defconDisplay);
           core2busy = false;
         }
-        if (rails == 1 || probeActive == 1) {
+        if ((rails == 1 || probeActive == 1 || true) && inClickMenu == 0 &&
+            inPadMenu == 0) {
           // multicore_lockout_start_blocking();
           // multicore_lockout_start_timeout_us(1000);
 
@@ -910,8 +974,12 @@ if (showProbeLEDs != lastProbeLEDs) {
           // Serial.println("showNets");
           // delay(100);
           showLEDmeasurements();
+          //showAllRowAnimations();
 
           showNets();
+          if (inClickMenu == 0) {
+            showAllRowAnimations();
+          }
 
           core2busy = false;
           netUpdateRefreshCount = 0;
@@ -974,16 +1042,7 @@ if (showProbeLEDs != lastProbeLEDs) {
         probeLEDs.show();
         core2busy = false;
 
-        // } else {
-        //   while (checkingButton == 1) {
 
-        //   }
-        //   probeLEDs.show();
-      //}
-
-      // probeLEDs.setPixelColor(0, 0x000005);
-
-      // probeLEDs.show();
 
       if (rails != 3 && swirled == 0) {
         showLEDsCore2 = 0;
@@ -1009,6 +1068,7 @@ if (showProbeLEDs != lastProbeLEDs) {
 
       lastSwirlTime = millis();
 
+
       if (swirlCount >= LOGO_COLOR_LENGTH - 1) {
         swirlCount = 0;
 
@@ -1017,8 +1077,11 @@ if (showProbeLEDs != lastProbeLEDs) {
         swirlCount++;
       }
 
-      if (swirlCount % 10 == 0) {
+
+      if (swirlCount % 3 == 0) {
         countsss++;
+
+      //showAllRowAnimations();
       }
 
 
@@ -1073,6 +1136,10 @@ if (showProbeLEDs != lastProbeLEDs) {
       showLEDmeasurements();
         }
        }
+                     if (inClickMenu == 0&& loadingFile == 0 &&
+               showLEDsCore2 == 0 && core1busy == false) {
+          //showAllRowAnimations();
+        }
     }
     schedulerTimer = micros();
   }

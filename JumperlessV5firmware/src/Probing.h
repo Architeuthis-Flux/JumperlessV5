@@ -71,7 +71,7 @@ int getNothingTouched(int samples = 8);
 int scanRows(int pin = 0);
 
 int readRails(int pin = 0);
-
+int justReadProbe(void);
 int readProbe(void);
 
 int readProbeRaw(int readNothingTouched = 0); 

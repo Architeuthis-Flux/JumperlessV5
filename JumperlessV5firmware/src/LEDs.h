@@ -44,6 +44,10 @@ extern Adafruit_NeoPixel probeLEDs;
 extern Adafruit_NeoMatrix matrix;
 //extern bool debugLEDs;
 
+extern int brightenedNet;
+extern int brightenedRail;
+extern int brightenedAmount;
+
 
 extern int netColorMode; // 0 = rainbow, 1 = shuffle
 extern int displayMode;
@@ -225,6 +229,8 @@ const int railsToPixelMap[4][25] = {
      388, 389, 390, 391, 392, 393, 394, 395, 396, 397, 398, 399}};
 
 // int nodeColors[MAX_PATHS] = {0};
+
+
 
 const int pixelsToRails[20] = {B_RAIL_NEG, B_RAIL_POS, B_RAIL_POS, B_RAIL_NEG,
                                B_RAIL_NEG, B_RAIL_POS, B_RAIL_POS, B_RAIL_NEG,

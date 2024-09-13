@@ -379,6 +379,32 @@ int shiftNets(
   return lastNet;
 }
 
+int findNodeInNet(uint16_t node) {
+// Serial.println("findNodeInNet");
+// Serial.print("node = ");
+//     Serial.println(node);
+for (int i = 1; i < MAX_NETS; i++) {
+
+    for (int j = 0; j < MAX_NODES; j++) {
+      if (net[i].nodes[j] == -1) {
+       // continue; 
+      break;
+      }
+
+      if (net[i].nodes[j] == node) {
+        // Serial.print("found node ");
+        // Serial.print(node);
+        // Serial.print(" in net ");
+        // Serial.println(net[i].number);
+        return net[i].number;
+      }
+    }
+  }
+
+
+  return -1;
+}
+
 void createNewNet() // add those nodes to a new net
 {
   int newNetNumber = findFirstUnusedNetIndex();

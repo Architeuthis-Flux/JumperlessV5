@@ -990,7 +990,7 @@ if (displayMode == 0){
   }
 
   if (numReadings > 0 && displayMode == 1) {
-    showLEDsCore2 = 1;
+   // showLEDsCore2 = 1;
     //assignNetColors();
     //drawWires();
     //delay(100);

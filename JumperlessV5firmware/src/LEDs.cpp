@@ -64,12 +64,9 @@ int brightnessC2 = 0;
 int hueShiftC2 = 0;
 int lightUpNetCore2 = 0;
 
-
 int brightenedNet = 0;
 int brightenedRail = -1;
 int brightenedAmount = 20;
-
-
 
 int logoFlash = 0;
 int numberOfShownNets = 0;
@@ -347,9 +344,14 @@ void showSavedColors(int slot) {
 }
 
 void assignNetColors() {
-  // numberOfNets = 60;
+  // numberOfNets = 60;\
 
-  uint16_t colorDistance = (254 / (numberOfShownNets + 1));
+
+  uint16_t colorDistance = (254 / (numberOfShownNets ));
+if (numberOfShownNets < 4) {
+    colorDistance = (254 / (4));
+  }
+ 
 
   /* rgbColor specialNetColors[8] =
        {0x000000,
@@ -396,21 +398,19 @@ void assignNetColors() {
         netHsv.v = LEDbrightnessSpecial;
       }
 
-      
       uint32_t railColor;
-      
+
       switch (i) {
       case 1:
-railColor = 0x000801;
-      if (brightenedRail == 1|| brightenedRail == 3) {
-        rgbColor railRgb = unpackRgb(railColor);
-        hsvColor railHsv = RgbToHsv(railRgb);
-        railHsv.v += brightenedAmount;
-        railRgb = HsvToRgb(railHsv);
-        railColor = packRgb(railRgb.r, railRgb.g, railRgb.b);
-      }
+        railColor = 0x000801;
+        if (brightenedRail == 1 || brightenedRail == 3) {
+          rgbColor railRgb = unpackRgb(railColor);
+          hsvColor railHsv = RgbToHsv(railRgb);
+          railHsv.v += brightenedAmount;
+          railRgb = HsvToRgb(railHsv);
+          railColor = packRgb(railRgb.r, railRgb.g, railRgb.b);
+        }
 
-        
         netColors[i] = unpackRgb(railColor);
         net[i].color = netColors[i];
         specialNetColors[i] = netColors[i];
@@ -506,8 +506,10 @@ railColor = 0x000801;
   int colorSlots3[20] = {-1};
   // Serial.print("number of nets: ");
   // Serial.println(numberOfNets);
+  // Serial.print("number of shown nets: ");
+  // Serial.println(numberOfShownNets);
   if (numberOfNets < 60 && numberOfShownNets > 0) {
-    for (int i = 0; i < numberOfShownNets; i++) {
+    for (int i = 0; i <= numberOfShownNets; i++) {
 
       colorSlots[i] = abs(224 - ((((i)*colorDistance)))) % 254;
     }
@@ -519,7 +521,7 @@ railColor = 0x000801;
     int index3 = 0;
     //   int third = (numberOfNets - 8) / 3;
 
-    for (int i = 0; i < (numberOfShownNets); i++) {
+    for (int i = 0; i <= (numberOfShownNets); i++) {
       // Serial.print(colorSlots[i]);
       // Serial.print(" ");
       switch (i % 3) {
@@ -643,7 +645,7 @@ railColor = 0x000801;
   // }
   int frontIndex = 0;
   for (int i = 6; i <= numberOfNets; i++) {
-    if (net[i].visible != 1) {
+    if (net[i].visible == 0) {
       // Serial.print("net ");
       // Serial.print(i);
       // Serial.println(" is not visible");
@@ -737,7 +739,6 @@ void lightUpNet(int netNumber, int node, int onOff, int brightness2,
   //     Serial.print(" onOff: ");
   //     Serial.print(onOff);
   // return;
-
   if (netNumber <= 0 || netNumber >= MAX_NETS) {
     return;
   }
@@ -877,7 +878,7 @@ void lightUpNet(int netNumber, int node, int onOff, int brightness2,
                 rgbColor colorToShift = unpackRgb(color);
                 // colorToShift = shiftHue(colorToShift, hueShift);
                 hsvColor brighterColor = RgbToHsv(colorToShift);
-                                if (brightenedNet == netNumber) {
+                if (brightenedNet == netNumber) {
                   shiftedColorHsv.v += brightenedAmount;
                 }
                 brighterColor.v += PCBEXTINCTION;
@@ -903,9 +904,9 @@ void lightUpNet(int netNumber, int node, int onOff, int brightness2,
                   (nodesToPixelMap[net[netNumber].nodes[j]])) {
                 // Serial.print("nodesToPixelMap[net[netNumber].nodes[j]] = ");
                 // Serial.println(nodesToPixelMap[net[netNumber].nodes[j]]);
-                if (net[netNumber].nodes[j] >= NANO_D0) { 
+                if (net[netNumber].nodes[j] >= NANO_D0) {
                   if (brightenedNet == netNumber) {
-                    color = scaleBrightness(color, brightenedAmount*5);
+                    color = scaleBrightness(color, brightenedAmount * 5);
                   }
                   leds.setPixelColor(
                       (nodesToPixelMap[net[netNumber].nodes[j]]) + 320, color);
@@ -995,7 +996,8 @@ void lightUpNet(int netNumber, int node, int onOff, int brightness2,
                                                         Serial.print("
        brightness2: "); Serial.println(brightness2);*/
   }
-  // showLEDsCore2 = 1;
+  // showRowAnimation(-1, GND);
+  //  showLEDsCore2 = 1;
 }
 
 void turnOffSkippedNodes(void) {
@@ -1663,97 +1665,74 @@ void logoSwirl(int start, int spread, int probe) {
   //  showLEDsCore2 = 1;
 }
 
-
 int brightenNet(int node, int addBrightness) {
+  brightenedNet = 0;
+  brightenedRail = -1;
+
   if (node == -1) {
-    brightenedNet = 0;
-    brightenedRail = -1;
-    return 0;
+    return -1;
   }
-addBrightness = 230;
+  addBrightness = 00;
 
-
-for (int i = 0; i < numberOfPaths; i++) {
+  for (int i = 0; i <= numberOfPaths; i++) {
 
     if (node == path[i].node1 || node == path[i].node2) {
-     /// if (brightenedNet != i) {
-        brightenedNet = path[i].net;
-        // Serial.print("\n\n\rbrightenedNet: ");
-        // Serial.println(brightenedNet);
-        // Serial.print("net ");
-        // Serial.print(path[i].net);
-        if (brightenedNet == 1)
-        {
-          brightenedRail = 1;
-          lightUpRail(-1, 1, 1, addBrightness);
-        } else if (brightenedNet == 2)
-        {
-          brightenedRail = 0;
-          lightUpRail(-1, 0, 1, addBrightness);
-        } else if (brightenedNet == 3) {
-          brightenedRail = 2;
-          lightUpRail(-1, 2, 1, addBrightness); 
-        }
+      /// if (brightenedNet != i) {
+      brightenedNet = path[i].net;
+      // Serial.print("\n\n\rbrightenedNet: ");
+      // Serial.println(brightenedNet);
+      // Serial.print("net ");
+      // Serial.print(path[i].net);
+      if (brightenedNet == 1) {
+        brightenedRail = 1;
+        // lightUpRail(-1, 1, 1, addBrightness);
+      } else if (brightenedNet == 2) {
+        brightenedRail = 0;
+        // lightUpRail(-1, 0, 1, addBrightness);
+      } else if (brightenedNet == 3) {
+         brightenedRail = 2;
+        // lightUpRail(-1, 2, 1, addBrightness);
+      }
 
-
-
-        //net[path[i].net].color =  unpackRgb(0x303030);//unpackRgb(scaleBrightness(packRgb(net[path[i].net].color.r,net[path[i].net].color.g,net[path[i].net].color.b ), addBrightness));
-
-        // brightenedRail = -1;
-        // lightUpNet(i);
-        //showLEDsCore2 = 2;
-        assignNetColors();
-        return 1;
-      
+      assignNetColors();
+      return brightenedNet;
     }
   }
-switch (node)
-{ 
-  case (GND):
-{
-  brightenedNet = 0;
-  brightenedRail = 1;
-  lightUpRail(-1, 1, 1, addBrightness);
-  return 1;
-}
-case (TOP_RAIL):
-{
-  brightenedNet = 0;
-  brightenedRail = 0;
-  lightUpRail(-1, 0, 1, addBrightness);
-  return 1;
-}
-case (BOTTOM_RAIL):
-{
-  brightenedNet = 0;
-  brightenedRail = 2;
-  lightUpRail(-1, 2, 1, addBrightness);
-  return 1;
-}
-}
+  switch (node) {
+  case (GND): {
+    brightenedNet = 1;
+    brightenedRail = 1;
+    // lightUpRail(-1, 1, 1, addBrightness);
+    return 1;
+  }
+  case (TOP_RAIL): {
+    brightenedNet = 2;
+    brightenedRail = 0;
+    // lightUpRail(-1, 0, 1, addBrightness);
+    return 2;
+  }
+  case (BOTTOM_RAIL): {
+    brightenedNet = 3;
+    brightenedRail = 2;
+    // lightUpRail(-1, 2, 1, addBrightness);
+    return 3;
+  }
+  }
 
+  // for (int i = 0; i < numberOfNets; i++) {
+  //     if (node == net[i].node1 || node == net[i].node2) {
+  //       if (brightenedNet != i) {
+  //         brightenedNet = i;
+  //         net[i].color = unpackRgb(scaleBrightness(packRgb(net[i].color),
+  //         addBrightness));
+  //         // brightenedRail = -1;
+  //        // lightUpNet(i, addBrightness);
+  //         return 1;
+  //       }
+  //     }
+  //   }
 
-
-// for (int i = 0; i < numberOfNets; i++) {
-//     if (node == net[i].node1 || node == net[i].node2) {
-//       if (brightenedNet != i) {
-//         brightenedNet = i;
-//         net[i].color = unpackRgb(scaleBrightness(packRgb(net[i].color), addBrightness));
-//         // brightenedRail = -1;
-//        // lightUpNet(i, addBrightness);
-//         return 1;
-//       }
-//     }
-//   }
-
-
-
-
-
-
-
-  
- // brightenedNet = 0;
+  // brightenedNet = 0;
   // brightenedRail = 1;
   // lightUpRail(-1, 0, 1, addBrightness);
   // showLEDsCore2 = 2;
@@ -1872,7 +1851,8 @@ void lightUpRail(int logo, int rail, int onOff, int brightness2,
           // Serial.print("brightenedRail ");
           // Serial.println(brightenedRail);
           if (brightenedRail == j ||
-              ((j == 1 || j == 3) && (brightenedRail == 1 || brightenedRail == 3))) {
+              ((j == 1 || j == 3) &&
+               (brightenedRail == 1 || brightenedRail == 3))) {
             // color = scaleBrightness(color, brightness2);
 
             if (j % 2 == 0) {
@@ -1908,8 +1888,9 @@ void lightUpRail(int logo, int rail, int onOff, int brightness2,
                 // scaleDownBrightness(color, 10, 195));
               }
             } else {
-              leds.setPixelColor(railsToPixelMap[j][i], scaleBrightness(color, -30));
-              
+              leds.setPixelColor(railsToPixelMap[j][i],
+                                 scaleBrightness(color, -30));
+
               //  scaleDownBrightness(color, 5, 55));
             }
 
@@ -1995,6 +1976,9 @@ void showNets(void) {
       lightUpNet(i);
     }
   } else if (displayMode == 1) {
+    // if (i==1){
+    //   continue;
+    // }
     drawWires();
   }
   //               if (debugNTCC > 0) {
