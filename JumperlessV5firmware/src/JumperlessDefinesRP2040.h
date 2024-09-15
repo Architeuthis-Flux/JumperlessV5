@@ -64,8 +64,8 @@ extern volatile int sendAllPathsCore2;
 #define MAX_NODES 64
 #define MAX_DNI 8 // max number of doNotIntersect rules
 
-#define MAX_NETS_FOR_WIRES 20
-#define MAX_PATHS_FOR_WIRES 23
+#define MAX_NETS_FOR_WIRES 29
+#define MAX_PATHS_FOR_WIRES 38
 #define LASTCOMMANDADDRESS 1
 #define CLEARBEFORECOMMANDADDRESS 4
 

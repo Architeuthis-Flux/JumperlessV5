@@ -338,7 +338,7 @@ void drawWires(int net) {
           // path[i].node1 <= 113) || (path[i].node2 >= 110 && path[i].node2 <=
           // 113)) {
           bothOnBB = 1;
-          if (path[i].node1 > 0 && path[i].node1 <= 30 && path[i].node2 > 0 &&
+          if (path[i].node1 > 0 && path[i].node1 < 30 && path[i].node2 > 0 &&
               path[i].node2 <= 30) {
             bothOnTop = 1;
             sameLevel = 1;
@@ -487,7 +487,7 @@ void drawWires(int net) {
       }
     }
 
-    for (int i = 30; i <= 60; i++) { // reverse the bottom row
+    for (int i = 31; i <= 60; i++) { // reverse the bottom row
 
       int tempRow[5] = {wireStatus[i][0], wireStatus[i][1], wireStatus[i][2],
                         wireStatus[i][3], wireStatus[i][4]};

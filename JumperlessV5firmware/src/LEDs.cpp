@@ -66,7 +66,7 @@ int lightUpNetCore2 = 0;
 
 int brightenedNet = 0;
 int brightenedRail = -1;
-int brightenedAmount = 20;
+int brightenedAmount = 80;
 
 int logoFlash = 0;
 int numberOfShownNets = 0;
@@ -906,7 +906,7 @@ void lightUpNet(int netNumber, int node, int onOff, int brightness2,
                 // Serial.println(nodesToPixelMap[net[netNumber].nodes[j]]);
                 if (net[netNumber].nodes[j] >= NANO_D0) {
                   if (brightenedNet == netNumber) {
-                    color = scaleBrightness(color, brightenedAmount * 5);
+                    color = scaleBrightness(color, brightenedAmount * 3);
                   }
                   leds.setPixelColor(
                       (nodesToPixelMap[net[netNumber].nodes[j]]) + 320, color);
@@ -1666,10 +1666,11 @@ void logoSwirl(int start, int spread, int probe) {
 }
 
 int brightenNet(int node, int addBrightness) {
-  brightenedNet = 0;
-  brightenedRail = -1;
+
 
   if (node == -1) {
+      brightenedNet = 0;
+  brightenedRail = -1;
     return -1;
   }
   addBrightness = 00;

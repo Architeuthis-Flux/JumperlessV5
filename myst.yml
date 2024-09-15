@@ -22,4 +22,5 @@ site:
     headfont: 'Monaco, sans-serif'
     hide_footer_links: 'true'
 
+    analytics_google: G-FTTLGDP191 # Measurement ID or Tracking ID
     #allowDangerousHtml: 'true' 

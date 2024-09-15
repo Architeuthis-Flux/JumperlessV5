@@ -53,8 +53,7 @@ float adcRange[4][2] = {{0, 5}, {0, 5}, {0, 5}, {-8, 8}};
 float dacOutput[2] = {0, 0};
 float railVoltage[2] = {0, 0};
 uint8_t gpioState[10] = {
-    2, 2, 2, 2, 2,
-    2, 2, 2, 2, 2}; // 0 = output low, 1 = output high, 2 = input, 3 = input
+    0xff, 0xff, 0xff, 0xff,0xff, 0xff, 0xff, 0xff,0xff, 0xff,}; // 0 = output low, 1 = output high, 2 = input, 3 = input
                     // pullup, 4 = input pulldown
 uint8_t gpioReading[10] = {
     3, 3, 3, 3, 3, 3, 3, 3, 3, 3}; // 0 = low, 1 = high 2 = floating 3 = unknown
@@ -362,28 +361,31 @@ void setGPIO(void) {
 //     Serial.println("\n\n\n\rsetGPIO\n\n\n\n\n\r");
 // return;
   for (int i = 0; i < 4; i++) {
+    Serial.println(gpioState[i]);
+
     switch (gpioState[i]) {
     case 0:
-      pinMode(19 + i, OUTPUT);
-      digitalWrite(19 + i, LOW);
+      pinMode(20 + i, OUTPUT);
+      digitalWrite(20 + i, LOW);
       break;
     case 1:
-      pinMode(19 + i, OUTPUT);
+      pinMode(20 + i, OUTPUT);
       digitalWrite(19 + i, HIGH);
 
       break;
     case 2:
-      pinMode(19 + i, INPUT);
+      pinMode(20 + i, INPUT);
       break;
     case 3:
-      pinMode(19 + i, INPUT_PULLUP);
+      pinMode(20 + i, INPUT_PULLUP);
       break;
     case 4:
-      pinMode(19 + i, INPUT_PULLDOWN);
+      pinMode(20 + i, INPUT_PULLDOWN);
       break;
     }
 
   }
+  Serial.println(" ");
 
   // for (int i = 4; i <= 8; i++) {
   //   switch (gpioState[i]) {
@@ -412,7 +414,7 @@ void setGPIO(void) {
         gpioState[i] != 4) {
 
       net[gpioNet[i]].color = (gpioState[i] == 1 ? onColor : offColor);
-      net[gpioNet[i]].machine = 1;
+      //net[gpioNet[i]].machine = 1;
       //net[gpioNet[i]].color = (gpioState[i] == 1 ? onColor : offColor);
       lightUpNet(gpioNet[i], -1, 1, 05, 0, 0,
                  packRgb(net[gpioNet[i]].color.r, net[gpioNet[i]].color.g,
@@ -427,7 +429,7 @@ void readGPIO(void) {
   for (int i = 0; i < 4; i++) {
     if (gpioNet[i] != -1 &&
         (gpioState[i] == 2 || gpioState[i] == 3 || gpioState[i] == 4)) {
-      int reading = 0;//readFloatingOrState(20 + i);
+      int reading = readFloatingOrState(20 + i);
       switch (reading) {
 
       case 0:
@@ -448,30 +450,30 @@ void readGPIO(void) {
     // gpioReading[i] = digitalRead(20 + i);
   }
 
-  for (int i = 0; i < 4; i++) {
+  // for (int i = 0; i < 4; i++) {
 
-    if (gpioNet[i + 4] != -1 &&
-        (gpioState[i + 4] == 2 || gpioState[i + 4] == 3 ||
-         gpioState[i + 4] == 4)) {
-      int reading = 0;//readFloatingOrStateMCP(i);
-      switch (reading) {
+  //   if (gpioNet[i + 4] != -1 &&
+  //       (gpioState[i + 4] == 2 || gpioState[i + 4] == 3 ||
+  //        gpioState[i + 4] == 4)) {
+  //     int reading = 0;//readFloatingOrStateMCP(i);
+  //     switch (reading) {
 
-      case 0:
-        gpioReading[i + 4] = 2;
-        break;
-      case 1:
+  //     case 0:
+  //       gpioReading[i + 4] = 2;
+  //       break;
+  //     case 1:
 
-        gpioReading[i + 4] = 1;
-        break;
-      case 2:
+  //       gpioReading[i + 4] = 1;
+  //       break;
+  //     case 2:
 
-        gpioReading[i + 4] = 0;
-        break;
-      }
-    } else {
-      gpioReading[i + 4] = 3;
-    }
-  }
+  //       gpioReading[i + 4] = 0;
+  //       break;
+  //     }
+  //   } else {
+  //     gpioReading[i + 4] = 3;
+  //   }
+  // }
 
   for (int i = 0; i < 8; i++) {
 
@@ -485,11 +487,11 @@ void readGPIO(void) {
         lightUpNet(gpioNet[i]);
       }
     }
-    // Serial.print(gpioReading[i]);
-    // Serial.print(" ");
+    Serial.print(gpioReading[i]);
+    Serial.print(" ");
   }
   showLEDsCore2 = 2;
-  // Serial.println();
+  Serial.println();
 }
 
 int readFloatingOrStateMCP(int pin) {

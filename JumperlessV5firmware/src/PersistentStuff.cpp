@@ -143,7 +143,7 @@ debugFP = false;
 readVoltages();
 readLogoBindings();
   EEPROM.commit();
-  delay(5);
+  delay(2);
 }
 
 
@@ -340,16 +340,16 @@ void saveVoltages(float top, float bot, float dac0, float dac1) {
 void readVoltages(void) {
 
 
-delay(1000);
+//delay(1000);
 
-
+ delayMicroseconds(200);
    EEPROM.get(TOP_RAIL_ADDRESS0, railVoltage[0]);
 
 
    EEPROM.get(BOTTOM_RAIL_ADDRESS0, railVoltage[1]);
    EEPROM.get(DAC0_ADDRESS0, dacOutput[0]);
    EEPROM.get(DAC1_ADDRESS0, dacOutput[1]);
-   delayMicroseconds(2000);
+   delayMicroseconds(200);
 
 int needsInit = 0;
 if (railVoltage[0] > 8.0f || railVoltage[0] < -8.0f ){//|| (uint32_t)railVoltage[0] == 0x00000000 || (uint32_t)railVoltage[0] == 0xFFFFFFFF) {
@@ -416,23 +416,23 @@ void readLogoBindings(void) {
 
   EEPROM.get(LOGO_TOP_ADDRESS1, logoTopSetting[1]);
   if (logoTopSetting[0] == 2) {
-    gpioState[logoTopSetting[1]] = 0;
+    //gpioState[logoTopSetting[1]] = 0;
   }
   EEPROM.get(LOGO_BOTTOM_ADDRESS0, logoBottomSetting[0]);
   EEPROM.get(LOGO_BOTTOM_ADDRESS1, logoBottomSetting[1]);
   if (logoBottomSetting[0] == 2) {
-    gpioState[logoBottomSetting[1]] = 0;
+   // gpioState[logoBottomSetting[1]] = 0;
   }
   EEPROM.get(BUILDING_TOP_ADDRESS0, buildingTopSetting[0]);
   EEPROM.get(BUILDING_TOP_ADDRESS1, buildingTopSetting[1]);
 
   if (buildingTopSetting[0] == 2) {
-    gpioState[buildingTopSetting[1]] = 0;
+    //gpioState[buildingTopSetting[1]] = 0;
   }
   EEPROM.get(BUILDING_BOTTOM_ADDRESS0, buildingBottomSetting[0]);
   EEPROM.get(BUILDING_BOTTOM_ADDRESS1, buildingBottomSetting[1]);
   if (buildingBottomSetting[0] == 2) {
-    gpioState[buildingBottomSetting[1]] = 0;
+    //gpioState[buildingBottomSetting[1]] = 0;
   }
   return;
 } 

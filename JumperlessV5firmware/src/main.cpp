@@ -215,7 +215,7 @@ int baudRate = 115200;
 
 int restoredNodeFile = 0;
 
-const char firmwareVersion[] = "5.0.0.2"; // remember to update this
+const char firmwareVersion[] = "5.0.0.3"; // remember to update this
 
 int firstLoop = 1;
 
@@ -402,9 +402,10 @@ Serial.print("\r                                               \r");
     //     // Serial.print("Prototype Version ");
     //     // Serial.print(PROTOTYPE_VERSION);
     //     // Serial.print("\n\r");
-    //     checkPads();
-    if ((millis() - switchTimer) > 450) {
+        // checkPads();
+    if ((millis() - switchTimer) > 20) {
       switchTimer = millis();
+     // checkPads();
     //checkSwitchPosition();
     }
   }
@@ -1120,7 +1121,7 @@ if (showProbeLEDs != lastProbeLEDs) {
         // setGPIO();
         // showLEDsCore2 = 1;
 
-        // readGPIO();
+       //  readGPIO();
       }
 
       // readGPIO();
