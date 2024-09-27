@@ -172,13 +172,13 @@ const int nodesToPixelMap[120] = {
 
 #define LOGO_COLOR_LENGTH 60
 
-extern uint32_t logoColors[LOGO_COLOR_LENGTH+1];
+extern uint32_t logoColors[LOGO_COLOR_LENGTH+11];
 extern uint32_t logoColorsHot[LOGO_COLOR_LENGTH+1];
 extern uint32_t logoColorsCold[LOGO_COLOR_LENGTH+1];
 extern uint32_t logoColorsYellow[LOGO_COLOR_LENGTH+1];
 extern uint32_t logoColorsPink[LOGO_COLOR_LENGTH+1];
-extern uint32_t logoColors8vSelect[LOGO_COLOR_LENGTH+1];
-extern uint32_t logoColorsAll[8][LOGO_COLOR_LENGTH + 1];
+extern uint32_t logoColors8vSelect[LOGO_COLOR_LENGTH+11];
+extern uint32_t logoColorsAll[8][LOGO_COLOR_LENGTH + 11];
 
 
 const int bbPixelToNodesMap[120] = {

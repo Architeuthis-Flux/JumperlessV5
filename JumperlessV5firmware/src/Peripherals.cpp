@@ -422,6 +422,7 @@ void setGPIO(void) {
     }
   }
 }
+uint32_t gpioReadingColors[10] = {0x010101, 0x010101, 0x010101, 0x010101, 0x010101, 0x010101, 0x010101, 0x010101, 0x010101, 0x010101};
 
 void readGPIO(void) {
       // Serial.println("\n\n\n\rreadGPIO\n\n\n\n\n\r");
@@ -429,11 +430,11 @@ void readGPIO(void) {
   for (int i = 0; i < 4; i++) {
     if (gpioNet[i] != -1 &&
         (gpioState[i] == 2 || gpioState[i] == 3 || gpioState[i] == 4)) {
-      int reading = readFloatingOrState(20 + i);
+      int reading = digitalRead(GPIO_1_PIN+i);     //readFloatingOrState(20 + i);
       switch (reading) {
 
       case 0:
-        gpioReading[i] = 2;
+        gpioReading[i] = 0;
         break;
       case 1:
 
@@ -441,7 +442,7 @@ void readGPIO(void) {
         break;
       case 2:
 
-        gpioReading[i] = 0;
+        gpioReading[i] = 2;
         break;
       }
     } else {
@@ -479,12 +480,25 @@ void readGPIO(void) {
 
     if (gpioNet[i] != -1) {
       if (gpioReading[i] == 0) {
-        lightUpNet(gpioNet[i], -1, 1, 5, 0, 0, 0x000f05);
+        //lightUpNet(gpioNet[i], -1, 1, 5, 0, 0, 0x000f05);
+//         net[gpioNet[i]].color = {0x00, 0x0f, 0x05};
+//         netColors[gpioNet[i]] = {0x00, 0x0f, 0x05};
+// lightUpNet(gpioNet[i], -1, 1, 22, 0, 0, 0x000f05);
 
+gpioReadingColors[i] = 0x000f05;
       } else if (gpioReading[i] == 1) {
-        lightUpNet(gpioNet[i], -1, 1, 22, 0, 0, 0x220005);
+        //lightUpNet(gpioNet[i], -1, 1, 22, 0, 0, 0x220005);
+//         net[gpioNet[i]].color = {0x22, 0x00, 0x05};
+//         netColors[gpioNet[i]] = {0x22, 0x00, 0x05};
+// lightUpNet(gpioNet[i], -1, 1, 22, 0, 0, 0x220005);
+gpioReadingColors[i] = 0x220005;
+
       } else {
-        lightUpNet(gpioNet[i]);
+        //lightUpNet(gpioNet[i], -1, 1, 5, 0, 0, 0x000005);
+        // net[gpioNet[i]].color = {0x00, 0x00, 0x05};
+        // netColors[gpioNet[i]] = {0x00, 0x00, 0x05};
+        // lightUpNet(gpioNet[i]);
+        gpioReadingColors[i] = 0x000005;
       }
     }
     Serial.print(gpioReading[i]);
@@ -917,7 +931,7 @@ adcReadingColors[0] = color;
 
     uint32_t color =
         logoColors8vSelect[abs((map(adc1ReadingUnscaled, 50, 4095, 0, 30) + 26) %
-                           59)];
+                           70)];
     if (displayMode == 0){
     lightUpNet(showADCreadings[1], -1, 1, LEDbrightnessSpecial, 0, 0, color);
     }
@@ -948,7 +962,7 @@ adcReadingColors[0] = color;
       mappedAdc2Reading = abs(mappedAdc2Reading) + 3;
     }
     uint32_t color =
-        logoColors8vSelect[abs(map(adc2ReadingUnscaled, 1000, 3000, 0, 59)%59)];
+        logoColors8vSelect[abs(map(adc2ReadingUnscaled, 1000, 3000, -10, 55)%70)];
 //Serial.println(mappedAdc2Reading);
 if (displayMode == 0){
     lightUpNet(showADCreadings[2], -1, 1, LEDbrightnessSpecial, 0, 0, color);
@@ -977,7 +991,7 @@ if (displayMode == 0){
       mappedAdc3Reading = abs(mappedAdc3Reading) + 3;
     }
     uint32_t color =
-        logoColors8vSelect[map(adc3ReadingUnscaled, 1000, 3000, 0, 59)%59];
+        logoColors8vSelect[map(adc3ReadingUnscaled, 1000, 3000, 0, 70)%70];
 if (displayMode == 0){
     lightUpNet(showADCreadings[3], -1, 1, mappedAdc3Reading, 0, 0, color);
 }

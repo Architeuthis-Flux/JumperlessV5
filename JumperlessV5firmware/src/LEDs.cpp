@@ -664,6 +664,15 @@ if (numberOfShownNets < 4) {
         // Serial.println(i);
         break;
       }
+      if(i == gpioNet[a]){
+        net[i].color = unpackRgb(gpioReadingColors[a]);
+        netColors[i] = net[i].color;
+        // Serial.print("showing gpio: ");
+        // Serial.println(i);
+
+        showingReading = 1;
+        break;
+      }
     }
 
     if (showingReading == 0) {
@@ -1319,7 +1328,7 @@ uint32_t dimLogoColor(uint32_t color, int brightness) {
   }
 }
 
-uint32_t logoColors[LOGO_COLOR_LENGTH + 1] = {
+uint32_t logoColors[LOGO_COLOR_LENGTH + 11] = {
     0x800058, 0x750053, 0x700068, 0x650063, 0x600078, 0x550073, 0x500088,
     0x450083, 0x400098, 0x350093, 0x3000A8, 0x2500A3, 0x2000B8, 0x1500B3,
     0x1000C8, 0x0502C3, 0x0204D8, 0x0007E3, 0x0010E8, 0x0015F3, 0x0020F8,
@@ -1338,18 +1347,19 @@ uint32_t logoColorsGreen[LOGO_COLOR_LENGTH + 1];
 
 uint32_t logoColorsYellow[LOGO_COLOR_LENGTH + 1];
 
-uint32_t logoColors8vSelect[LOGO_COLOR_LENGTH + 1];
+uint32_t logoColors8vSelect[LOGO_COLOR_LENGTH + 11];
 
-uint32_t logoColorsAll[8][LOGO_COLOR_LENGTH + 1];
+uint32_t logoColorsAll[8][LOGO_COLOR_LENGTH + 11];
 
-uint8_t eightSelectHues[LOGO_COLOR_LENGTH + 1] = {
+uint8_t eightSelectHues[LOGO_COLOR_LENGTH + 11] = {
     195, 191, 187, 183, 179, 175, 171, 168, 166, 164, 162, 160, 158, 156, 153,
     148, 140, 130, 120, 111, 104, 99,  96,  93,  91,  89,  87,  85,  83,  81,
     80,  79,  78,  76,  73,  70,  67,  64,  59,  54,  49,  44,  39,  35,  31,
-    27,  23,  19,  16,  13,  10,  7,   4,   3,   2,   1,   0,   254, 253, 251};
+    27,  23,  19,  16,  13,  10,  7,   4,   3,   2,   1,   0,   254, 253, 251,
+    248, 242, 236, 230, 224, 218, 212, 207, 202, 199, 197 };
 
 void setupSwirlColors(void) {
-  rgbColor logoColorsRGB[LOGO_COLOR_LENGTH + 1];
+  rgbColor logoColorsRGB[LOGO_COLOR_LENGTH + 12];
   int fudgeMult = 1;
 
   for (int i = 0; i < (LOGO_COLOR_LENGTH / 2) + 1; i++) {
@@ -1417,7 +1427,7 @@ void setupSwirlColors(void) {
     logoColorsAll[5][i] = logoColorsGreen[i];
   }
 
-  for (int i = 0; i <= LOGO_COLOR_LENGTH; i++) {
+  for (int i = 0; i <= LOGO_COLOR_LENGTH+10; i++) {
 
     hsvColor connectHSV;
     connectHSV.h = i * (255 / LOGO_COLOR_LENGTH);
@@ -1441,7 +1451,7 @@ void setupSwirlColors(void) {
     logoColors8vSelect[i] = packRgb(
         logoColorsRGB[i].r / 8, logoColorsRGB[i].g / 8, logoColorsRGB[i].b / 8);
 
-    logoColorsAll[6][LOGO_COLOR_LENGTH - i] = logoColors8vSelect[i];
+    logoColorsAll[6][(LOGO_COLOR_LENGTH+10) - i] = logoColors8vSelect[i];
     //  logoColors8vSelect[LOGO_COLOR_LENGTH - i] =   logoColors8vSelect[i];
   }
 
