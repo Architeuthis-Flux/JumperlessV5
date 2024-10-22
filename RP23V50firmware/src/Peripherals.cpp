@@ -27,7 +27,7 @@
 //#include "pio_spi.h"
 
 #include "PersistentStuff.h"
-#include <Adafruit_MCP23X17.h>
+//#include <Adafruit_MCP23X17.h>
 #include <Wire.h>
 #include "FileParsing.h"
 
@@ -194,6 +194,18 @@ uint16_t sine1[360];
 //   // MCPIO.pinMode8(1, 0x00);
 // }
 
+
+void initGPIO(void)
+{
+for (int i = 0; i < 20; i++)
+{
+  pinMode(20 + i, OUTPUT);
+  //digitalWrite(20 + i, LOW);
+
+
+
+}
+}
 int reads2[30][2];
 int readIndex2 = 0;
 
@@ -206,17 +218,25 @@ int readIndex = 0;
 
 void initADC(void) {
 
-  pinMode(ADC0_PIN, INPUT);
-  pinMode(ADC1_PIN, INPUT);
-  pinMode(ADC2_PIN, INPUT);
-  pinMode(ADC3_PIN, INPUT);
+  // pinMode(ADC0_PIN, INPUT);
+  // pinMode(ADC1_PIN, INPUT);
+  // pinMode(ADC2_PIN, INPUT);
+  // pinMode(ADC3_PIN, INPUT);
+  // pinMode(ADC4_PIN, INPUT);
+  // pinMode(ADC5_PIN, INPUT);
+  // pinMode(ADC6_PIN, INPUT);
+  // pinMode(ADC7_PIN, INPUT);
+
 
   analogReadResolution(12);
+  
+
+
 }
 
 
 void initDAC(void) {
-
+initGPIO();
   Wire.setSDA(4);
   Wire.setSCL(5);
 Wire.setClock(1000000);
@@ -248,7 +268,7 @@ Wire.setClock(1000000);
   pinMode(8, OUTPUT);
 
   // saveVoltages(railVoltage[0], railVoltage[1], dacOutput[0], dacOutput[1]);
-  //  digitalWrite(8, HIGH);
+    digitalWrite(8, HIGH);
 
   // // Vref = MCP_VREF_VDD, value = 0, 0V
   mcp.setChannelValue(MCP4728_CHANNEL_A, 1650);
@@ -257,23 +277,34 @@ Wire.setClock(1000000);
   mcp.setChannelValue(MCP4728_CHANNEL_D, 1641); // 1650 is roughly 0V
   digitalWrite(8, LOW);
 
-  mcp.saveToEEPROM();
+
+delay(10);
+
+
+if (  mcp.saveToEEPROM() == false)
+{
+  delay(3000);
+  Serial.println("Failed to save DAC settings to EEPROM");
+}
+//delay(100);
+ setRailsAndDACs();
+  delay(50);
 }
 
 void initI2C(void) {
   return;
-  pinMode(22, INPUT_PULLUP);
-  pinMode(23, INPUT_PULLUP);
-  Wire1.setSDA(22);
-  Wire1.setSCL(23);
-  Wire1.begin();
+  // pinMode(22, INPUT_PULLUP);
+  // pinMode(23, INPUT_PULLUP);
+  // Wire1.setSDA(22);
+  // Wire1.setSCL(23);
+  // Wire1.begin();
 }
 
 
 
 int i2cScan(int sdaRow, int sclRow)
 {
-  //return 0;
+  return 0;
 initI2C();
 removeBridgeFromNodeFile(RP_GPIO_22, -1, netSlot);
 removeBridgeFromNodeFile(RP_GPIO_23, -1, netSlot);
@@ -358,10 +389,11 @@ void setGPIO(void) {
 //     // Serial.print(19+i);
 //     // Serial.print(" ");
 //     // Serial.println(gpioState[i]);
+return;
 //     Serial.println("\n\n\n\rsetGPIO\n\n\n\n\n\r");
 // return;
   for (int i = 0; i < 4; i++) {
-    Serial.println(gpioState[i]);
+   // Serial.println(gpioState[i]);
 
     switch (gpioState[i]) {
     case 0:
@@ -560,7 +592,7 @@ void setRailsAndDACs(void) {
 }
 void setTopRail(float value, int save) {
 
-  int dacValue = (value * 4095 / 19.8) + 1660;
+  int dacValue = (value * 4095 / 20.2) + 1650;
 
   // if (value < 0)
   // {
@@ -590,7 +622,7 @@ void setTopRail(float value, int save) {
 
 void setBotRail(float value, int save) {
 
-  int dacValue = (value * 4095 / 19.8) + 1641;
+  int dacValue = (value * 4095 / 20.2) + 1650;
 
   if (dacValue > 4095) {
     dacValue = 4095;
@@ -695,8 +727,10 @@ void setCSex(int chip, int value) {
 
   if (value > 0) {
     digitalWrite(chip+28, HIGH);
+   // Serial.println(chip+28);
   } else {
     digitalWrite(chip+28, LOW);
+    //Serial.println(chip+28);
   }
 
 }
@@ -1084,7 +1118,7 @@ void showMeasurements(int samples, int printOrBB) {
       bs += Serial.print(INA0.getPower_mW());
       bs += Serial.print("mW\t");
     }
-    Serial.print(digitalRead(buttonPin));
+   // Serial.print(digitalRead(buttonPin));
     bs += Serial.print("      \r");
     rotaryEncoderStuff();
     if (encoderButtonState != IDLE) {
@@ -1122,13 +1156,14 @@ unsigned long timeoutTimer = micros();
   }
 
   int adcReading = adcReadingAverage / samples;
-  // Serial.print(adc3Reading);
+   
 
   // float adc3Voltage = (adc3Reading - 2528) / 220.0; // painstakingly measured
 
-  if (channel == 0) {
-    pinMode(ADC1_PIN, INPUT);
-  }
+  // if (channel == 0) {
+  //   pinMode(ADC1_PIN, INPUT);
+  // }
+  //Serial.println(adcReading);
   return adcReading;
 }
 

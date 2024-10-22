@@ -332,7 +332,7 @@ void saveVoltages(float top, float bot, float dac0, float dac1) {
   EEPROM.put(DAC0_ADDRESS0, dac0);
   EEPROM.put(DAC1_ADDRESS0, dac1);
   EEPROM.commit();
-  delay(2);
+  delay(1);
 
 
 }
@@ -377,6 +377,7 @@ Serial.println(railVoltage[0]);
   }
   if (needsInit == 1)
   {
+    //Serial.println("needs init");
 saveVoltages(railVoltage[0],railVoltage[1],dacOutput[0],dacOutput[1]);
   }
 //Serial.println(sizeof(float));

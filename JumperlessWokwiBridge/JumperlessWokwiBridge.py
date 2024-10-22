@@ -1333,7 +1333,7 @@ def serialTermIn():
         
         while menuEntered == 0:
             time.sleep(0.15)
-        #while True:
+            #while True:
             try:
                 if (ser.in_waiting > 0):
                     #justChecked = 0
@@ -1424,7 +1424,7 @@ def serialTermIn():
                         portNotFound = 1
                         time.sleep(.1)
         else:
-            time.sleep(0.75)
+            time.sleep(0.15)
 
 
 port_controller = threading.Thread(target=serialTermIn, daemon=True)
@@ -1536,7 +1536,7 @@ def serialTermOut():
                             print("reset")
                             justreconnected = 1
         else:
-            time.sleep(0.5)
+            time.sleep(0.15)
 
         #time.sleep(.5)
     
@@ -1982,7 +1982,7 @@ while (noWokwiStuff == False):
                     elif conn1 == "5V":
                         conn1 = "105"
 
-                    elif conn1.startswith("A") == True and conn2 != "AREF":
+                    elif conn1.startswith("A") == True and conn1 != "AREF":
                         conn1 = conn1[1:(len(conn1))]
                         conn1 = int(conn1)
                         conn1 = conn1 + 86

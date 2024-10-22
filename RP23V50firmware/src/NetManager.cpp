@@ -666,7 +666,7 @@ void listNets(void) // list nets doesnt care about debugNM, don't call it if you
     // Serial.print("No nets to list\n\r");
     // return;
   } else {
-    Serial.print("\n\rIndex\tName\t\tVoltage\t     Nodes\t");
+    Serial.print("\n\rIndex\tName\t\t\t    Nodes\t");
 
     int tabs = 0;
     for (int i = 6; i < MAX_NETS; i++) {
@@ -678,16 +678,16 @@ void listNets(void) // list nets doesnt care about debugNM, don't call it if you
         break;
       }
 
-      Serial.print("\n\r");
+      Serial.print("\n\r ");
       Serial.print(i);
-      Serial.print("\t");
+      Serial.print("\t ");
       int netNameLength = Serial.print(net[i].name);
       if (netNameLength < 8) {
         Serial.print("\t");
       }
       Serial.print("\t");
-      Serial.print(net[i].number);
-      Serial.print("\t   ");
+     // Serial.print(net[i].number);
+      Serial.print("\t     ");
 
       // hsvColor color = RgbToHsv(net[i].color);
 
@@ -797,7 +797,7 @@ Serial.print("\t\t");
 
 void listSpecialNets() {
   Serial.print(
-      "\n\rIndex\tName\t\tVoltage\t   Color\t    Nodes\t"); //\t\t\t\tColor\t\tDo
+      "\n\rIndex\tName\t\tVoltage\t    Nodes\t"); //\t\t\t\tColor\t\tDo
                                                             //Not Intersects");
   int tabs = 0;
 
@@ -809,9 +809,9 @@ void listSpecialNets() {
       break;
     }
 
-    Serial.print("\n\r");
+    Serial.print("\n\r ");
     Serial.print(net[i].number);
-    Serial.print("\t");
+    Serial.print("\t ");
 
     int netNameLength = Serial.print(net[i].name);
     // if (netNameLength < 8)
@@ -822,7 +822,7 @@ void listSpecialNets() {
       Serial.print(" ");
     }
 
-    Serial.print("\t");
+    Serial.print("\t ");
 
     switch (i) {
     case 1:
@@ -854,34 +854,34 @@ void listSpecialNets() {
       // Serial.print("V");
       break;
     }
-    for (int i = 0; i < 8 - spaces; i++) {
-      Serial.print(" ");
-    }
-    Serial.print("   ");
+    // for (int i = 0; i < 8 - spaces; i++) {
+    //   Serial.print(" ");
+    // }
+    // Serial.print("   ");
 
-    Serial.print("r");
-    if (net[i].color.r < 16) {
-      Serial.print("0");
-    }
-    netNameLength = Serial.print(net[i].color.r, HEX);
+    // Serial.print("r");
+    // if (net[i].color.r < 16) {
+    //   Serial.print("0");
+    // }
+    // netNameLength = Serial.print(net[i].color.r, HEX);
 
-    Serial.print(" g");
-    if (net[i].color.g < 16) {
-      Serial.print("0");
-    }
-    netNameLength = Serial.print(net[i].color.g, HEX);
+    // Serial.print(" g");
+    // if (net[i].color.g < 16) {
+    //   Serial.print("0");
+    // }
+    // netNameLength = Serial.print(net[i].color.g, HEX);
 
-    Serial.print(" b");
-    if (net[i].color.b < 16) {
-      Serial.print("0");
-    }
-    netNameLength = Serial.print(net[i].color.b, HEX);
+    // Serial.print(" b");
+    // if (net[i].color.b < 16) {
+    //   Serial.print("0");
+    // }
+    // netNameLength = Serial.print(net[i].color.b, HEX);
 
     // if (netNameLength < 6)
     // {
     //     Serial.print("\t");
     // }
-    Serial.print("\t    ");
+    Serial.print("\t     ");
 
     tabs = 0;
     for (int j = 0; j < MAX_NODES; j++) {

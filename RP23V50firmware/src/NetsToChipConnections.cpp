@@ -764,7 +764,8 @@ int ijklPaths(int pathNumber) {
 
   int x0 = -1;
   int x1 = -1;
-
+    //  printPathsCompact();
+    //  printChipStatus();
   for (int i = 12; i < 15; i++) {
     if (ch[chip0].xMap[i] == chip1) {
       x0 = i;
@@ -779,8 +780,14 @@ int ijklPaths(int pathNumber) {
        ch[chip1].xStatus[x1] == path[pathNumber].net)) {
     ch[chip0].xStatus[x0] = path[pathNumber].net;
     ch[chip1].xStatus[x1] = path[pathNumber].net;
-    path[pathNumber].x[0] = x0;
-    path[pathNumber].x[1] = x1;
+    path[pathNumber].x[0] = xMapForNode(path[pathNumber].node1, chip0);
+    path[pathNumber].x[1] = xMapForNode(path[pathNumber].node2, chip1);
+    if (path[pathNumber].x[0] != -1 && path[pathNumber].x[1] != -1) {
+
+    ch[chip0].xStatus[path[pathNumber].x[0]] = path[pathNumber].net;
+    ch[chip1].xStatus[path[pathNumber].x[1]] = path[pathNumber].net;
+    }
+
     path[pathNumber].y[0] = -2;
     path[pathNumber].y[1] = -2;
     path[pathNumber].sameChip = true;
@@ -792,8 +799,8 @@ int ijklPaths(int pathNumber) {
     path[pathNumber].x[3] = x1;
     path[pathNumber].y[2] = -2;
     path[pathNumber].y[3] = -2;
-    // printPathsCompact();
-    // printChipStatus();
+    //  printPathsCompact();
+    //  printChipStatus();
 
     return 1;
   } else {
@@ -2207,8 +2214,8 @@ int checkForOverlappingPaths() {
           if (fchip[f] == schip[s] && fchip[f] != -1) {
 
             if (path[i].x[f] == path[j].x[s]) {
-              // if (debugNTCC2)
-              // {
+              if (debugNTCC3)
+              {
               Serial.print("Path ");
               Serial.print(i);
               Serial.print(" and ");
@@ -2224,12 +2231,12 @@ int checkForOverlappingPaths() {
 
               printPathsCompact();
               printChipStatus();
-              //  }
+               }
               return 1;
               found = 1;
             } else if (path[i].y[f] == path[j].y[s]) {
-              // if (debugNTCC2)
-              // {
+              if (debugNTCC3)
+              {
               Serial.print("Path ");
               Serial.print(i);
               Serial.print(" and ");
@@ -2245,7 +2252,7 @@ int checkForOverlappingPaths() {
 
               printPathsCompact();
               printChipStatus();
-              //  }
+               }
               return 1;
               found = 1;
             }
@@ -2397,11 +2404,19 @@ void findStartAndEndChips(int node1, int node2, int pathIdx) {
     int candidatesFound = 0;
 
     switch (bothNodes[twice]) {
-
-    case 1:
     case 30:
-    case 31:
     case 60: {
+
+      path[pathIdx].chip[twice] = CHIP_L;
+      if (debugNTCC) {
+        Serial.print("chip: ");
+        Serial.println(chipNumToChar(path[pathIdx].chip[twice]));
+      }
+      break;
+    }
+
+    case 29:
+    case 59: {
 
       path[pathIdx].chip[twice] = CHIP_K;
       if (debugNTCC) {
@@ -2411,8 +2426,8 @@ void findStartAndEndChips(int node1, int node2, int pathIdx) {
       break;
     }
 
-    case 2 ... 29: // on the breadboard
-    case 32 ... 59: {
+    case 1 ... 28: // on the breadboard
+    case 31 ... 58: {
 
       path[pathIdx].chip[twice] = bbNodesToChip[bothNodes[twice]];
       if (debugNTCC) {
@@ -2591,22 +2606,38 @@ void assignPathType(int pathIndex) {
     path[pathIndex].sameChip = false;
   }
 
-  if ((path[pathIndex].node1 == 1 || path[pathIndex].node1 == 30 ||
-       path[pathIndex].node1 == 31 || path[pathIndex].node1 == 60) ||
+  if ((path[pathIndex].node1 == 29 || path[pathIndex].node1 == 59 ||
+       path[pathIndex].node1 == 30 || path[pathIndex].node1 == 60) ||
       path[pathIndex].node1 == 114 || path[pathIndex].node1 == 116 ||
-      path[pathIndex].node1 == 117 || path[pathIndex].chip[0] == CHIP_K) {
+      path[pathIndex].node1 == 117 ) {
     // Serial.print("\n\n\rthis should be a bb to sf connection\n\n\n\r
     // ");
     //  path[pathIndex].altPathNeeded = true;
+    // Serial.print("path ");
+    // Serial.print(pathIndex);
+    // Serial.print(" is a bb to sf connection, swapping\n\r");
+    // Serial.print("node1: ");
+    // Serial.print(path[pathIndex].node1);
+    // Serial.print("\tnode2: ");
+    // Serial.print(path[pathIndex].node2);
+    // Serial.println("\n\r");
     swapNodes(pathIndex);
+    //     Serial.print("path ");
+    // Serial.print(pathIndex);
+    // Serial.print(" is a bb to sf connection, swapping\n\r");
+    // Serial.print("node1: ");
+    // Serial.print(path[pathIndex].node1);
+    // Serial.print("\tnode2: ");
+    // Serial.print(path[pathIndex].node2);
+    // Serial.println("\n\r");
     // path[pathIndex].Lchip = true;
 
     path[pathIndex].nodeType[0] = SF; // maybe have a separate type for ChipL
                                       // connected nodes, but not now
   }
 
-  if ((path[pathIndex].node1 >= 2 && path[pathIndex].node1 <= 29) ||
-      (path[pathIndex].node1 >= 32 && path[pathIndex].node1 <= 59)) {
+  if ((path[pathIndex].node1 >= 1 && path[pathIndex].node1 <= 28) ||
+      (path[pathIndex].node1 >= 31 && path[pathIndex].node1 <= 58)) {
     path[pathIndex].nodeType[0] = BB;
   } else if (path[pathIndex].node1 >= NANO_D0 &&
              path[pathIndex].node1 <= NANO_A7) {
@@ -2615,16 +2646,16 @@ void assignPathType(int pathIndex) {
     path[pathIndex].nodeType[0] = SF;
   }
 
-  if ((path[pathIndex].node2 == 1 || path[pathIndex].node2 == 30 ||
-       path[pathIndex].node2 == 31 || path[pathIndex].node2 == 60) ||
+  if ((path[pathIndex].node2 == 29 || path[pathIndex].node2 == 59 ||
+       path[pathIndex].node2 == 30 || path[pathIndex].node2 == 60) ||
       path[pathIndex].node2 == 114 || path[pathIndex].node2 == 116 ||
       path[pathIndex].node2 == 117 || path[pathIndex].chip[1] == CHIP_K) {
     // Serial.print("\n\n\rthis should be a bb to sf connection 2\n\n\n\r
     // "); path[pathIndex].altPathNeeded = true; path[pathIndex].Lchip =
     // true;
     path[pathIndex].nodeType[1] = SF;
-  } else if ((path[pathIndex].node2 >= 2 && path[pathIndex].node2 <= 29) ||
-             (path[pathIndex].node2 >= 32 && path[pathIndex].node2 <= 59)) {
+  } else if ((path[pathIndex].node2 >= 1 && path[pathIndex].node2 <= 28) ||
+             (path[pathIndex].node2 >= 31 && path[pathIndex].node2 <= 58)) {
     path[pathIndex].nodeType[1] = BB;
   } else if (path[pathIndex].node2 >= NANO_D0 &&
              path[pathIndex].node2 <= NANO_A7) {
@@ -2739,6 +2770,15 @@ int xMapForNode(int node, int chip) {
       nodeFound = i;
       break;
     }
+  }
+  if (nodeFound == -1) {
+    if (debugNTCC) {
+    Serial.print("xMapForNode: \n\rnode ");
+    Serial.print(node);
+    Serial.print(" not found on chip ");
+    Serial.println(chipNumToChar(chip));
+    }
+
   }
 
   return nodeFound;

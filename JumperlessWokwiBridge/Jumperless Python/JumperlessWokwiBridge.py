@@ -292,26 +292,26 @@ def chooseJumperlessPort(sortedports):
                         jumperlessFirmwareString = inputBuffer2.split('\\r\\n')[0]
                         
                         #print (inputBuffer2)
-                        #print (jumperlessFirmwareString)
+                        print (jumperlessFirmwareString)
                         
                         if (jumperlessFirmwareString.startswith("Jumperless firmware version:") == True):
                             
-                            #print(jumperlessFirmwareString[29:39])
+                            print(jumperlessFirmwareString[29:39])
                             
                             
                             jumperlessFirmwareNumber = jumperlessFirmwareString[29:39].split('.')
 
                             
-                            # print (jumperlessFirmwareNumber[0])
-                            # print (jumperlessFirmwareNumber[1])
-                            # print (jumperlessFirmwareNumber[2])
-                            # if (int(jumperlessFirmwareNumber[2]) < 10):
-                            #     jumperlessFirmwareNumber[2] = '0' + jumperlessFirmwareNumber[2]
-                            # print (jumperlessFirmwareNumber[2])
+                            print (jumperlessFirmwareNumber[0])
+                            print (jumperlessFirmwareNumber[1])
+                            print (jumperlessFirmwareNumber[2])
+                            if (int(jumperlessFirmwareNumber[2]) < 10):
+                                jumperlessFirmwareNumber[2] = '0' + jumperlessFirmwareNumber[2]
+                            print (jumperlessFirmwareNumber[2])
                             
                             if (int(jumperlessFirmwareNumber[0]) >= 5):
                                 jumperlessV5 = True
-                            #     print ("Jumperless V5 detected")
+                                print ("Jumperless V5 detected")
                            
                             # print (jumperlessFirmwareNumber)
                             #print ("found a match!")
@@ -336,6 +336,7 @@ reading = 0
 
 
 latestFirmwareAddress = "https://github.com/Architeuthis-Flux/Jumperless/releases/latest/download/firmware.uf2"
+latestFirmwareAddressV5 = "https://github.com/Architeuthis-Flux/JumperlessV5/releases/latest/download/firmware.uf2"
 
 url_link = 0
 
@@ -353,7 +354,7 @@ def checkIfFWisOld ():
     
     splitIndex = jumperlessFirmwareString.rfind(':')
 
-    #print(jumperlessFirmwareString)
+    print(jumperlessFirmwareString)
     currentString = jumperlessFirmwareString[splitIndex+2:]
     
 
@@ -370,13 +371,13 @@ def checkIfFWisOld ():
         print('\nCouldn\'t read FW version from the Jumperless\n\nMake sure you don\'t have this app running in \nanother window. Or if the firmware is really \nold, just enter \'Y\' to auto update from here\n')
         return
 
-    if (int(currentList[0])>5):
+    if (int(currentList[0])>=5):
         jumperlessV5 = True
 
     try:
         if (jumperlessV5 is True):#Change this to the new repo when you have releases
             print('Jumperless V5')
-            response = requests.get("https://github.com/Architeuthis-Flux/Jumperless/releases/latest")
+            response = requests.get("https://github.com/Architeuthis-Flux/JumperlessV5/releases/latest")
         else:
             response = requests.get("https://github.com/Architeuthis-Flux/Jumperless/releases/latest")
 
@@ -481,7 +482,7 @@ def updateJumperlessFirmware(force):
                         break
 
                 else:
-                    if (p.mountpoint.endswith("RPI-RP2") == True):
+                    if (p.mountpoint.endswith("RPI-RP2") == True or p.mountpoint.endswith("RP2350") == True):
                         foundVolume = p.mountpoint
                         print("Found Jumperless at " + foundVolume + "...")
                         break
@@ -1980,7 +1981,7 @@ while (noWokwiStuff == False):
                     elif conn1 == "5V":
                         conn1 = "105"
 
-                    elif conn1.startswith("A") == True and conn2 != "AREF":
+                    elif conn1.startswith("A") == True and conn1 != "AREF":
                         conn1 = conn1[1:(len(conn1))]
                         conn1 = int(conn1)
                         conn1 = conn1 + 86

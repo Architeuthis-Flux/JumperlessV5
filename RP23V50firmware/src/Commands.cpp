@@ -93,7 +93,7 @@ void refreshBlind(int disconnectFirst) {
   core1busy = false;
   sendAllPathsCore2 = disconnectFirst;
   chooseShownReadings();
-  // sendPaths();
+   //sendPaths();
   waitCore2();
 }
 

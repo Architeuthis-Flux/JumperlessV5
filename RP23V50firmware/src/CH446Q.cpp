@@ -25,22 +25,22 @@ volatile uint32_t irq_flags = 0;
 void isrFromPio(void)
 {
 
-    irq_flags = pio0_hw->irq;
-  pio_interrupt_clear(pio, PIO0_IRQ_0);
-  hw_clear_bits(&pio0_hw->irq, irq_flags);
 
   //delayMicroseconds(500);
   setCSex(chipSelect, 1);
   //  Serial.println("interrupt from pio  ");
   // Serial.print(chipSelect);
   // Serial.print(" \n\r");
-   delayMicroseconds(30);
+   delayMicroseconds(10);
 
   setCSex(chipSelect, 0);
 
    //delayMicroseconds(40);
 
 
+    irq_flags = pio0_hw->irq;
+  pio_interrupt_clear(pio, PIO0_IRQ_0);
+  hw_clear_bits(&pio0_hw->irq, irq_flags);
 }
 
 
@@ -51,7 +51,7 @@ void initCH446Q(void)
   uint dat = 14;
   uint clk = 15;
 
-  uint cs = 7;
+  //uint cs = 7;
 
   irq_add_shared_handler(PIO0_IRQ_0, isrFromPio, PICO_SHARED_IRQ_HANDLER_DEFAULT_ORDER_PRIORITY);
   irq_set_enabled(PIO0_IRQ_0, true);
@@ -62,7 +62,13 @@ void initCH446Q(void)
   // Serial.print("offset: ");
   // Serial.println(offset);
 
-  pio_spi_ch446_multi_cs_init(pio, sm, offset, 8, 32, 0, 1, clk, dat);
+  pio_spi_ch446_multi_cs_init(pio, sm, offset, 8, 16, 0, 1, clk, dat);
+
+  for (int i = 0; i < 12; i++)
+  {
+    pinMode(28+i, OUTPUT);
+    //digitalWrite(28+i, LOW);
+  }
   // pio_spi_ch446_cs_handler_init(pio, smCS, offsetCS, 256, 1, 8, 20, 6);
   // pinMode(CS_A, OUTPUT);
   // digitalWrite(CS_A, HIGH);

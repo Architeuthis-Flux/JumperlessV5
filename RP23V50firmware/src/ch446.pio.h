@@ -52,11 +52,13 @@ static inline void pio_spi_ch446_multi_cs_init(PIO pio, uint sm, uint prog_offs,
         uint pin_sck, uint pin_mosi) {
     pio_sm_config c = spi_ch446_multi_cs_program_get_default_config(prog_offs);
     sm_config_set_out_pins(&c, pin_mosi, 1);
-    sm_config_set_set_pins(&c, pin_mosi, 1);
+   sm_config_set_set_pins(&c, pin_sck, 1);
     sm_config_set_sideset_pins(&c, pin_sck);
     sm_config_set_out_shift(&c, false, true, n_bits);
     sm_config_set_clkdiv(&c, clkdiv);
 pio_sm_set_consecutive_pindirs	(pio, sm, pin_mosi, 2, true);
+//pio_sm_set_out_pins(pio, sm, pin_mosi, 2);
+
     pio_gpio_init(pio, pin_mosi);
     pio_gpio_init(pio, pin_sck);
     //pio_set_irqn_source_enabled	(pio,0,pis_sm0_tx_fifo_not_full,true);

@@ -20,13 +20,13 @@
 void initArduino(void) // if the UART is set up, the Arduino won't flash from it's own USB port
 {
 
-        Serial1.setRX(17);
+        // Serial1.setRX(17);
 
-        Serial1.setTX(16);
+        // Serial1.setTX(16);
 
-        Serial1.begin(115200);
+        // Serial1.begin(115200);
 
-        delay(1);
+        // delay(1);
 }
 
 void setBaudRate(int baudRate)

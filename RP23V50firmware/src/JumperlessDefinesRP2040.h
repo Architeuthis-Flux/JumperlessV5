@@ -137,6 +137,10 @@ extern volatile int sendAllPathsCore2;
 #define ADC1_PIN 41
 #define ADC2_PIN 42
 #define ADC3_PIN 43
+#define ADC4_PIN 44
+#define ADC5_PIN 45
+#define ADC6_PIN 46
+#define ADC7_PIN 47
 
 #define T_RAIL_POS 31
 #define T_RAIL_NEG 0
@@ -268,8 +272,11 @@ extern volatile int sendAllPathsCore2;
 #define ADC2 112
 #define ADC3 113
 #define ADC4 114
+#define ADC4_5V 114
 #define ADC5 115
+#define ADC5_POWER_MONITOR 115
 #define ADC6 116
+#define ADC6_PROBE 116
 
 #define RP_GPIO_0 114
 
@@ -295,16 +302,29 @@ extern volatile int sendAllPathsCore2;
 #define RP_GPIO_21 136
 #define RP_GPIO_22 137
 #define RP_GPIO_23 138
+#define RP_GPIO_24 139
+#define RP_GPIO_25 140
+#define RP_GPIO_26 141
+#define RP_GPIO_27 142
+
 
 #define RP_GPIO_1 135
 #define RP_GPIO_2 136
 #define RP_GPIO_3 137
 #define RP_GPIO_4 138
+#define RP_GPIO_5 122
+#define RP_GPIO_6 123
+#define RP_GPIO_7 124
+#define RP_GPIO_8 125
 
 #define GPIO_1_PIN 20
 #define GPIO_2_PIN 21
 #define GPIO_3_PIN 22
 #define GPIO_4_PIN 23
+#define GPIO_5_PIN 24
+#define GPIO_6_PIN 25
+#define GPIO_7_PIN 26
+#define GPIO_8_PIN 27
 
 
 

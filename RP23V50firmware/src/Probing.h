@@ -9,7 +9,7 @@ extern long probeFrequency;
 extern int probePin;
 extern int buttonPin;
 
-extern int connectOrClearProbe;
+extern volatile int connectOrClearProbe;
 extern int node1or2;
 extern int probeHighlight;
 extern int logoTopSetting[2];
@@ -35,7 +35,7 @@ enum measuredState
   unknownState = 4 
 
 };
-
+extern volatile int showingProbeLEDs;
 extern int switchPosition;
 float measureMode(int updateSpeed = 150);
 void checkPads(void);

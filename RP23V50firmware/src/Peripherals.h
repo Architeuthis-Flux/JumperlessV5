@@ -6,7 +6,7 @@
 #include <Arduino.h>
 #include "INA219.h"
 #include <Wire.h>
-#include "MCP23S17.h"
+//#include "MCP23S17.h"
 
 extern INA219 INA0;
 extern INA219 INA1;

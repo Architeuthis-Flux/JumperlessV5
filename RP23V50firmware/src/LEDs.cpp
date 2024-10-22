@@ -9,43 +9,23 @@
 #include "Peripherals.h"
 #include "Probing.h"
 #include <Adafruit_GFX.h>
-#include <Adafruit_NeoMatrix.h>
+// #include <Adafruit_NeoMatrix.h>
 #include <Adafruit_NeoPixel.h>
-// MATRIX DECLARATION:
-// Parameter 1 = width of NeoPixel matrix
-// Parameter 2 = height of matrix
-// Parameter 3 = pin number (most are valid)
-// Parameter 4 = matrix layout flags, add together as needed:
-//   NEO_MATRIX_TOP, NEO_MATRIX_BOTTOM, NEO_MATRIX_LEFT, NEO_MATRIX_RIGHT:
-//     Position of the FIRST LED in the matrix; pick two, e.g.
-//     NEO_MATRIX_TOP + NEO_MATRIX_LEFT for the top-left corner.
-//   NEO_MATRIX_ROWS, NEO_MATRIX_COLUMNS: LEDs are arranged in horizontal
-//     rows or in vertical columns, respectively; pick one or the other.
-//   NEO_MATRIX_PROGRESSIVE, NEO_MATRIX_ZIGZAG: all rows/columns proceed
-//     in the same order, or alternate lines reverse direction; pick one.
-//   See example below for these values in action.
-// Parameter 5 = pixel type flags, add together as needed:
-//   NEO_KHZ800  800 KHz bitstream (most NeoPixel products w/WS2812 LEDs)
-//   NEO_KHZ400  400 KHz (classic 'v1' (not v2) FLORA pixels, WS2811 drivers)
-//   NEO_GRB     Pixels are wired for GRB bitstream (most NeoPixel products)
-//   NEO_GRBW    Pixels are wired for GRBW bitstream (RGB+W NeoPixel products)
-//   NEO_RGB     Pixels are wired for RGB bitstream (v1 FLORA pixels, not v2)
 
-// Example for NeoPixel Shield.  In this application we'd like to use it
-// as a 5x8 tall matrix, with the USB port positioned at the top of the
-// Arduino.  When held that way, the first pixel is at the top right, and
-// lines are arranged in columns, progressive order.  The shield uses
-// 800 KHz (v2) pixels that expect GRB color data.
+//#include <FastLED.h>
 
-Adafruit_NeoPixel leds(LED_COUNT, LED_PIN, NEO_GRB + NEO_KHZ800);
+// CRGB probeLEDs[1];
+
+Adafruit_NeoPixel leds(LED_COUNT, 17, NEO_GRB + NEO_KHZ800);
 
 Adafruit_NeoPixel probeLEDs(1, PROBE_LED_PIN, NEO_GRB + NEO_KHZ800);
 
 // Adafruit_NeoMatrix matrix =
 //     Adafruit_NeoMatrix(30, 5, LED_PIN,
-//                        NEO_MATRIX_TOP + NEO_MATRIX_LEFT + NEO_MATRIX_COLUMNS +
+//                        NEO_MATRIX_TOP + NEO_MATRIX_LEFT + NEO_MATRIX_COLUMNS
+//                        +
 //                            NEO_MATRIX_PROGRESSIVE,
-                      //  NEO_GRB + NEO_KHZ800);
+//  NEO_GRB + NEO_KHZ800);
 
 // const uint16_t colors[] = {matrix.Color(70, 0, 50), matrix.Color(0, 30, 0),
 //                            matrix.Color(0, 0, 8)};
@@ -118,28 +98,60 @@ uint32_t rawRailColors[3][4] = // depends on supplySwitchPosition 0 = 3.3V, 1 =
 
 // int x = matrix.width();
 int pass = 0;
-
+// #define DATA_PIN 2
 void initLEDs(void) {
   // debugLEDs = EEPROM.read(DEBUG_LEDSADDRESS);
   //  if (debugLEDs != 0 && debugLEDs != 1) {
   //    debugLEDs = 1;
   //  }
   //  EEPROM.write(DEBUG_LEDSADDRESS, debugLEDs);
+  // gpio_set_function(LED_PIN, GPIO_FUNC_PIO0);
+  // pinMode(DATA_PIN, OUTPUT);
+  // FastLED.addLeds<WS2811, DATA_PIN, RGB> (probeLEDs, 1);
 
-  //pinMode(LED_PIN, OUTPUT);
-  // delay(1);
+  // pinMode(LED_PIN, OUTPUT);
+
   leds.begin(); // INITIALIZE NeoPixel strip object (REQUIRED)
                 // delay(1);
-                // leds.show();
-                // delay(2);
-                //  leds.setBrightness(100);
-                // delay(2);
+  leds.show();
+  // delay(2);
+  //  leds.setBrightness(100);
+  // delay(2);
+  //delay(1000);
+  // pinMode(2, OUTPUT);
+  //  probeLEDs.begin();
+  //  probeLEDs.setBrightness(254);
+  //  probeLEDs.setPixelColor(0, 0xffffff);
+  // FastLED.show();
 
-  pinMode(2, OUTPUT);
+
+  int claimedSms[2][4] = {{0, 0, 0, 0}, {0, 0, 0, 0}};
+
+  for (int i = 0; i < 4; i++) {
+    if (pio_sm_is_claimed(pio0, i)) {
+      claimedSms[0][i] = 1;
+    }
+    Serial.print("SM ");
+    Serial.print(i);
+    Serial.print(" is claimed: ");
+    Serial.println(claimedSms[0][i]);
+  }
+
   probeLEDs.begin();
-  probeLEDs.setBrightness(254);
-  probeLEDs.setPixelColor(0, 0xffffff);
+  probeLEDs.setPixelColor(0, 0x111111);
   probeLEDs.show();
+
+  Serial.println("\n\rprobeLEDs.begin()\n\r");
+
+    for (int i = 0; i < 4; i++) {
+    if (pio_sm_is_claimed(pio0,i)) {
+      claimedSms[1][i] = 1;
+    }
+    Serial.print("SM ");
+    Serial.print(i);
+    Serial.print(" is claimed: ");
+    Serial.println(claimedSms[1][i]);
+  }
 
   // EEPROM.commit();
   // delay(20);
@@ -347,11 +359,10 @@ void assignNetColors() {
   // numberOfNets = 60;\
 
 
-  uint16_t colorDistance = (254 / (numberOfShownNets ));
-if (numberOfShownNets < 4) {
+  uint16_t colorDistance = (254 / (numberOfShownNets));
+  if (numberOfShownNets < 4) {
     colorDistance = (254 / (4));
   }
- 
 
   /* rgbColor specialNetColors[8] =
        {0x000000,
@@ -664,7 +675,7 @@ if (numberOfShownNets < 4) {
         // Serial.println(i);
         break;
       }
-      if(i == gpioNet[a]){
+      if (i == gpioNet[a]) {
         net[i].color = unpackRgb(gpioReadingColors[a]);
         netColors[i] = net[i].color;
         // Serial.print("showing gpio: ");
@@ -809,7 +820,7 @@ void lightUpNet(int netNumber, int node, int onOff, int brightness2,
 
                 // Serial.println (brightness2);
                 // hueShift += PCBHUESHIFT;
-                // colorCorrection = 1;
+                colorCorrection = 1;
               }
               // pcbExtinction += (brightness2-DEFAULTBRIGHTNESS);
 
@@ -825,7 +836,12 @@ void lightUpNet(int netNumber, int node, int onOff, int brightness2,
                   shiftHue(colorToShift, hueShift, pcbExtinction, 254);
 
               if (colorCorrection != 0) {
-                shiftedColor = pcbColorCorrect(shiftedColor);
+                // shiftedColor = pcbColorCorrect(shiftedColor);
+
+                uint32_t correctedColor =
+                    packRgb(shiftedColor.r, shiftedColor.g, shiftedColor.b);
+
+                shiftedColor = unpackRgb(scaleBrightness(correctedColor, 100));
               }
 
               hsvColor shiftedColorHsv = RgbToHsv(shiftedColor);
@@ -888,7 +904,7 @@ void lightUpNet(int netNumber, int node, int onOff, int brightness2,
                 // colorToShift = shiftHue(colorToShift, hueShift);
                 hsvColor brighterColor = RgbToHsv(colorToShift);
                 if (brightenedNet == netNumber) {
-                  shiftedColorHsv.v += brightenedAmount;
+                  shiftedColorHsv.v += brightenedAmount * 1;
                 }
                 brighterColor.v += PCBEXTINCTION;
                 rgbColor bright = HsvToRgb(brighterColor);
@@ -916,8 +932,11 @@ void lightUpNet(int netNumber, int node, int onOff, int brightness2,
                 if (net[netNumber].nodes[j] >= NANO_D0) {
                   if (brightenedNet == netNumber) {
                     color = scaleBrightness(color, brightenedAmount * 3);
+                  } else {
+                    color = scaleBrightness(color, brightenedAmount * 2);
                   }
                   leds.setPixelColor(
+
                       (nodesToPixelMap[net[netNumber].nodes[j]]) + 320, color);
                 } else {
 
@@ -1356,7 +1375,7 @@ uint8_t eightSelectHues[LOGO_COLOR_LENGTH + 11] = {
     148, 140, 130, 120, 111, 104, 99,  96,  93,  91,  89,  87,  85,  83,  81,
     80,  79,  78,  76,  73,  70,  67,  64,  59,  54,  49,  44,  39,  35,  31,
     27,  23,  19,  16,  13,  10,  7,   4,   3,   2,   1,   0,   254, 253, 251,
-    248, 242, 236, 230, 224, 218, 212, 207, 202, 199, 197 };
+    248, 242, 236, 230, 224, 218, 212, 207, 202, 199, 197};
 
 void setupSwirlColors(void) {
   rgbColor logoColorsRGB[LOGO_COLOR_LENGTH + 12];
@@ -1427,7 +1446,7 @@ void setupSwirlColors(void) {
     logoColorsAll[5][i] = logoColorsGreen[i];
   }
 
-  for (int i = 0; i <= LOGO_COLOR_LENGTH+10; i++) {
+  for (int i = 0; i <= LOGO_COLOR_LENGTH + 10; i++) {
 
     hsvColor connectHSV;
     connectHSV.h = i * (255 / LOGO_COLOR_LENGTH);
@@ -1451,7 +1470,7 @@ void setupSwirlColors(void) {
     logoColors8vSelect[i] = packRgb(
         logoColorsRGB[i].r / 8, logoColorsRGB[i].g / 8, logoColorsRGB[i].b / 8);
 
-    logoColorsAll[6][(LOGO_COLOR_LENGTH+10) - i] = logoColors8vSelect[i];
+    logoColorsAll[6][(LOGO_COLOR_LENGTH + 10) - i] = logoColors8vSelect[i];
     //  logoColors8vSelect[LOGO_COLOR_LENGTH - i] =   logoColors8vSelect[i];
   }
 
@@ -1677,10 +1696,9 @@ void logoSwirl(int start, int spread, int probe) {
 
 int brightenNet(int node, int addBrightness) {
 
-
   if (node == -1) {
-      brightenedNet = 0;
-  brightenedRail = -1;
+    brightenedNet = 0;
+    brightenedRail = -1;
     return -1;
   }
   addBrightness = 00;
@@ -1701,7 +1719,7 @@ int brightenNet(int node, int addBrightness) {
         brightenedRail = 0;
         // lightUpRail(-1, 0, 1, addBrightness);
       } else if (brightenedNet == 3) {
-         brightenedRail = 2;
+        brightenedRail = 2;
         // lightUpRail(-1, 2, 1, addBrightness);
       }
 
@@ -1966,9 +1984,9 @@ void showNets(void) {
   core2busy = true;
   int skipShow = 0;
   //}
-  if (debugNTCC > 0) {
-    Serial.println(debugNTCC);
-  }
+  // if (debugNTCC > 0) {
+  //   Serial.println(debugNTCC);
+  // }
 
   if (displayMode == 0 || numberOfPaths > MAX_PATHS_FOR_WIRES) {
     for (int i = 0; i <= numberOfNets; i++) {

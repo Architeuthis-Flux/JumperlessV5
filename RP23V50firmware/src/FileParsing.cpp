@@ -405,7 +405,7 @@ void inputNodeFileList(int addRotaryConnections) {
     return;
   }
 
-  //  Serial.println(nodeFileString);
+   // Serial.println(nodeFileString);
   nodeFileString.printTo(nodeFileBuffer);
 
   int index = 0;
@@ -588,7 +588,7 @@ void savePreformattedNodeFile(int source, int slot, int keepEncoder) {
   if (source == 0) {
     while (Serial.available() == 0 || Serial.read() == 'f') {
     }
-
+    nodeFile.print("{");
     while (Serial.available() > 0) {
       // nodeFile.write(Serial.read());
       uint8_t c = Serial.read();
@@ -1081,6 +1081,9 @@ int removeBridgeFromNodeFile(int node1, int node2, int slot, int flashOrLocal) {
     nodeFile.seek(0);
     nodeFile.setTimeout(8);
   }
+
+
+
   timerEnd[0] = millis() - timerStart;
 
   for (int i = 0; i < 120; i++) {
@@ -1184,6 +1187,8 @@ int removeBridgeFromNodeFile(int node1, int node2, int slot, int flashOrLocal) {
   // nodeFile.truncate(0);
 
   timerEnd[2] = millis() - timerStart;
+
+
   if (flashOrLocal == 0) {
     nodeFile.close();
     openFileThreadSafe(w, slot);
@@ -1205,6 +1210,7 @@ int removeBridgeFromNodeFile(int node1, int node2, int slot, int flashOrLocal) {
     // Serial.print("] = ");
     // Serial.println(slicedLines[i]);
     //delay(10);
+    // Serial.println(millis()-timerStart);
 
     if (node2 == -1 && slicedLines[i].indexOf(paddedNode1) != -1)
     {
@@ -1290,6 +1296,13 @@ int removeBridgeFromNodeFile(int node1, int node2, int slot, int flashOrLocal) {
   core1busy = false;
 
   timerEnd[3] = millis() - timerStart;
+// Serial.print("timerEnd[0] = ");
+
+//   Serial.println(timerEnd[0]);
+//   Serial.print("timerEnd[1] = ");
+//   Serial.println(timerEnd[1]);
+//   Serial.print("timerEnd[3] = ");
+//   Serial.println(timerEnd[3]);
   return removedLines;
 }
 
@@ -1653,6 +1666,12 @@ void replaceSFNamesWithDefinedInts(void) {
 
   specialFunctionsString.replace("GND", "100");
   specialFunctionsString.replace("GROUND", "100");
+  specialFunctionsString.replace("TOP_RAIL", "101");
+  specialFunctionsString.replace("TOPRAIL", "101");
+  specialFunctionsString.replace("BOTTOM_RAIL", "102");
+  specialFunctionsString.replace("BOT_RAIL", "102");
+  specialFunctionsString.replace("BOTTOMRAIL", "102");
+    specialFunctionsString.replace("BOTRAIL", "102");
   specialFunctionsString.replace("SUPPLY_5V", "105");
   specialFunctionsString.replace("SUPPLY_3V3", "103");
 

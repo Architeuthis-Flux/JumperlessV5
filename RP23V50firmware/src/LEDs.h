@@ -8,6 +8,7 @@
 #include "NetsToChipConnections.h"
 #include "RotaryEncoder.h"
 #include <Arduino.h>
+//#include <FastLED.h>
 
 #define LED_PIN 17
 
@@ -40,6 +41,9 @@ extern volatile uint8_t LEDbrightnessSpecial;
 extern volatile uint8_t pauseCore2;
 extern Adafruit_NeoPixel leds;
 extern Adafruit_NeoPixel probeLEDs;
+extern uint8_t probeLEDstateMachine;
+
+//extern CRGB probeLEDs[1];
 extern Adafruit_NeoMatrix matrix;
 //extern bool debugLEDs;
 

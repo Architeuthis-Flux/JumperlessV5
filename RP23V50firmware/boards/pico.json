@@ -13,7 +13,7 @@
         "core": "earlephilhower",
         "cpu": "cortex-m33",
         "extra_flags": "-DARDUINO_RASPBERRY_PI_PICO -DARDUINO_ARCH_RP2350 -DUSBD_MAX_POWER_MA=500 ",
-        "f_cpu": "133000000L",
+        "f_cpu": "150000000L",
         "hwids": [
             [
                 "0x1D50",
