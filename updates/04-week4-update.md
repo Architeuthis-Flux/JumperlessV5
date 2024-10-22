@@ -32,18 +32,18 @@ Another nice thing is if you send it something that would obviously cause proble
 Here's what it shows when you type ```n``` to show them all sorted into their own nets. 
 
 
-![](/images/UpdateImages/04-week4-images/Netlist.png)
+![](/Images/UpdateImages/04-week4-images/Netlist.png)
 
 
 Just for fun, this is what it shows when you enter ```b``` to show all the 16 X and 8 Y connections made by each of the 12 crossbars to make that happen.
 
 
-![](/images/UpdateImages/04-week4-images/ChipStatus.png)
+![](/Images/UpdateImages/04-week4-images/ChipStatus.png)
 
 
 If you're wondering how that table corresponds to the hardware, hopefully this clears it up a bit. Basically it's keeping track of what paths are used so it won't "cross the streams" and connect things that shouldn't be.
 
-![](/images/UpdateImages/04-week4-images/StatToSchem.png)
+![](/Images/UpdateImages/04-week4-images/StatToSchem.png)
 
 
 \<\/tangent\>
@@ -58,10 +58,10 @@ There are sooo many ways, dear reader, but let's start with the most stupidly si
 #### Copy / Paste
 From the Jumperless App (or any other serial terminal app), type ```s```
 
-![](/images/UpdateImages/04-week4-images/SlotsNoHighlight.png)
+![](/Images/UpdateImages/04-week4-images/SlotsNoHighlight.png)
 
 Then just copy this chunk
-![](/images/UpdateImages/04-week4-images/SlotsHighlight.png)
+![](/Images/UpdateImages/04-week4-images/SlotsHighlight.png)
 
 Text, email, fax, telegram, carrier pigeon, Vulcan mind-meld, or semaphore it to someone else with a Jumperless, and they can just paste it into the main menu and that setup will be connected and saved to the currently active slot.
 
@@ -74,8 +74,8 @@ What are these slots I speak of? Well, each slot is a .txt file on the Jumperles
 
 You can tell the Jumperless V5 to mount as an external drive by entering ```+``` in the menu, or double-tapping the BOOT button (on the underside of the USB-C port) and drag and drop whatever circuits you like.
 
-![](/images/UpdateImages/04-week4-images/DriveDesktop.png)
-![](/images/UpdateImages/04-week4-images/JumperlessDrive.png)
+![](/Images/UpdateImages/04-week4-images/DriveDesktop.png)
+![](/Images/UpdateImages/04-week4-images/JumperlessDrive.png)
 
 
 Then you can cycle between slots either by the onboard menus and click wheel, sending ```x``` (next slot) or ```z```(previous slot) over serial, or something even crazier like setting an ADC to switch slots based on a control voltage or pulses from a button. 
@@ -87,16 +87,16 @@ It defaults to setting up 8 slots to give you some room to store different proje
 I haven't really talked about it much (because let's face it, using the probe is so much cooler), but just like the OG Jumperless, you can give the Jumperless App a [Wokwi](https://docs.wokwi.com/) project link and it will update every connection you make in the browser-based breadboard simulator in in hardware, in real time.
 
 
-![](/images/UpdateImages/04-week4-images/AppLink.png)
+![](/Images/UpdateImages/04-week4-images/AppLink.png)
 
 
-![](/images/UpdateImages/04-week4-images/Wokwi.png)
+![](/Images/UpdateImages/04-week4-images/Wokwi.png)
 
-![](/images/UpdateImages/04-week4-images/WokwiNetlist.png)
+![](/Images/UpdateImages/04-week4-images/WokwiNetlist.png)
 
 It'll even automatically flash the Arduino you plug into your Jumperless's Nano header with any code you write in Wokwi
 
-![](/images/UpdateImages/04-week4-images/WokwiFlash.png)
+![](/Images/UpdateImages/04-week4-images/WokwiFlash.png)
 
 
 #### UART Lines
@@ -118,7 +118,7 @@ This all may seem like a lot, but really the reason I added most of these things
 So feel free to ask me for anything you want, either on the [Jumperless Discord](https://discord.gg/CKP2chvcUt), [Forums](https://forum.jumperless.org/), [GitHub](https://github.com/Architeuthis-Flux/JumperlessV5), [Twitter/X](https://x.com/arabidsquid), [Bluesky](https://bsky.app/profile/architeuthisflux.bsky.social), [Mastodon](https://hackaday.social/@ArchiteuthisFlux), whatever.   
 All feature requests go to the same place anyway, on a piece of gaffer tape in metallic sharpie stuck to my desk. 
 
-![](/images/UpdateImages/04-week4-images/FeatureRequests.jpeg)
+![](/Images/UpdateImages/04-week4-images/FeatureRequests.jpeg)
 
 Cordially,
 Kevin
