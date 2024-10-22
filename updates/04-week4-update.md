@@ -21,7 +21,7 @@ It's whitespace and case insensitive, and will accept most reasonable alternate 
 To tell the Jumperless that you're about to send it a netlist and it should make those connections and store it in the current slot (I'll get to those in a bit), you just preface the netlist with an ``` f ```
 
 Like this:
-![](/images/UpdateImages/04-week4-images/fconnections.png)
+![](/Images/UpdateImages/04-week4-images/fconnections.png)
 
 After the connections are sent, the Jumperless will parse them, clean up the whitespace and stuff, store them in nonvolatile flash, sort them so any connections that share a node are combined into a single net, figure out which connections each of the crossbar switches need to make, and then send that data to the crossbars to ultimately make the connections.
 
