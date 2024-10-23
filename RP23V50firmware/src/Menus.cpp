@@ -4,17 +4,17 @@
 #include <Arduino.h>
 
 #include "ArduinoStuff.h"
+#include "CH446Q.h"
+#include "Commands.h"
+#include "FatFS.h"
 #include "FileParsing.h"
 #include "Graphics.h"
 #include "JumperlessDefinesRP2040.h"
 #include "LEDs.h"
-#include "FatFS.h"
 #include "Peripherals.h"
 #include "PersistentStuff.h"
-#include "RotaryEncoder.h"
 #include "Probing.h"
-#include "Commands.h"
-#include "CH446Q.h" 
+#include "RotaryEncoder.h"
 
 int inClickMenu = 0;
 
@@ -101,14 +101,13 @@ struct action {
 // };
 
 void readMenuFile(void) {
- // FatFS.begin();
-  //delay(10);
+  // FatFS.begin();
+  // delay(10);
   writeMenuTree();
-while(core2busy == true)
-{
- // Serial.println("waiting for core2 to finish");
-}
-core1busy = true;
+  while (core2busy == true) {
+    // Serial.println("waiting for core2 to finish");
+  }
+  core1busy = true;
   File menuFile = FatFS.open("/MenuTree.txt", "r");
   if (!menuFile) {
     Serial.println("Failed to open menu file");
@@ -332,7 +331,7 @@ int previousMenuSelection[10] = {-1, -1, -1, -1, -1, -1, -1, -1, -1, -1};
 
 int clickMenu(int menuType, int menuOption, int extraOptions) {
   if (menuLineIndex < 2) {
-    //b.clear();
+    // b.clear();
     b.print("No menu file", 0x0f0400, 0xFFFFFF, 0, -1, 0);
     inClickMenu = 0;
     return -1;
@@ -369,9 +368,9 @@ int clickMenu(int menuType, int menuOption, int extraOptions) {
       return -2;
     }
 
-    //showLEDsCore2 = 1;
+    // showLEDsCore2 = 1;
 
-     Serial.print("returnedMenuPosition: ");
+    Serial.print("returnedMenuPosition: ");
     // Serial.println(returnedMenuPosition);
     // Serial.print("subSelection: ");
     // Serial.println(subSelection);
@@ -560,7 +559,7 @@ int getMenuSelection(void) {
       return -2;
     }
     delayMicroseconds(4000);
-        if (encoderButtonState == RELEASED && lastButtonEncoderState == PRESSED) {
+    if (encoderButtonState == RELEASED && lastButtonEncoderState == PRESSED) {
 
       lastMenuLevel = menuLevel;
       noInputTimer = millis();
@@ -611,7 +610,8 @@ int getMenuSelection(void) {
       // Serial.println();
       while (encoderButtonState == RELEASED)
         ;
-    } else if (encoderDirectionState == UP || firstTime == 1 || force == 1) { // ||
+    } else if (encoderDirectionState == UP || firstTime == 1 ||
+               force == 1) { // ||
       // lastMenuLevel > menuLevel) {
       encoderDirectionState = NONE;
       firstTime = 0;
@@ -933,8 +933,6 @@ int getMenuSelection(void) {
 
     delayMicroseconds(80);
 
-
-
     if (encoderButtonState == HELD) {
       noInputTimer = millis();
       lastMenuLevel = menuLevel;
@@ -1226,8 +1224,7 @@ int selectSubmenuOption(int menuPosition, int menuLevel) {
       b.clear();
       return -1;
     }
-    if (encoderButtonState == RELEASED &&
-               lastButtonEncoderState == PRESSED) {
+    if (encoderButtonState == RELEASED && lastButtonEncoderState == PRESSED) {
 
       encoderButtonState = IDLE;
       optionSelected = highlightedOption;
@@ -1288,7 +1285,7 @@ int selectSubmenuOption(int menuPosition, int menuLevel) {
       }
       firstTime = 0;
       changed = 1;
-    }  
+    }
     if (changed == 1) {
 
       b.clear(1);
@@ -1829,9 +1826,9 @@ float getActionFloat(int menuPosition, int rail) {
   tempRailVoltage[0] = railVoltage[0];
   tempRailVoltage[1] = railVoltage[1];
 
-switch (rail) {
+  switch (rail) {
   case 0:
-    currentChoice = ((railVoltage[0] + railVoltage[1] )/ 2.0)-0.1;
+    currentChoice = ((railVoltage[0] + railVoltage[1]) / 2.0) - 0.1;
     Serial.print("[0] ");
     Serial.println(railVoltage[0]);
     Serial.print("[1] ");
@@ -1839,12 +1836,12 @@ switch (rail) {
     Serial.println(currentChoice);
     break;
   case 1:
-    currentChoice = railVoltage[0]-0.1;//it adds 0.1 on the first loop
+    currentChoice = railVoltage[0] - 0.1; // it adds 0.1 on the first loop
     break;
   case 2:
-    currentChoice = railVoltage[1]-0.1;
+    currentChoice = railVoltage[1] - 0.1;
     break;
-}
+  }
 
   if (currentAction.optionVoltage == 5) {
     min = 0.0;
@@ -1930,7 +1927,7 @@ switch (rail) {
       } else if (rail == 2) {
         railVoltage[1] = currentChoice;
       }
-      
+
       showLEDsCore2 = 2;
       // Serial.println(floatString);
 
@@ -1988,7 +1985,7 @@ switch (rail) {
       Serial.print("\r                        \r");
       Serial.print(floatString);
       // Serial.println(currentChoice);
-            if (rail == 0) {
+      if (rail == 0) {
         railVoltage[0] = currentChoice;
         railVoltage[1] = currentChoice;
       } else if (rail == 1) {
@@ -2036,7 +2033,7 @@ int doMenuAction(int menuPosition, int selection) {
   populateAction();
   printActionStruct();
   clearLEDsExceptRails();
-showLEDsCore2 = -1;
+  showLEDsCore2 = -1;
   actionCategories currentCategory;
 
   if (menuLines[currentAction.previousMenuPositions[0]].indexOf("Slots") !=
@@ -2075,7 +2072,7 @@ showLEDsCore2 = -1;
     if (menuLines[currentAction.previousMenuPositions[1]].indexOf("Voltage") !=
         -1) {
 
-     // printActionStruct();
+      // printActionStruct();
 
       for (int i = 0; i < 10; i++) {
         if (currentAction.from[i] != -1) {
@@ -2174,30 +2171,28 @@ showLEDsCore2 = -1;
     if (menuLines[currentAction.previousMenuPositions[1]].indexOf("Save") !=
         -1) {
 
-        if (currentAction.from[0] > 0 && currentAction.from[0] < NUM_SLOTS) {
-          saveCurrentSlotToSlot(netSlot, currentAction.from[0]);
-          netSlot = currentAction.from[0];
-        }
-
+      if (currentAction.from[0] > 0 && currentAction.from[0] < NUM_SLOTS) {
+        saveCurrentSlotToSlot(netSlot, currentAction.from[0]);
+        netSlot = currentAction.from[0];
+      }
 
     } else if (menuLines[currentAction.previousMenuPositions[1]].indexOf(
                    "Load") != -1) {
-        if (currentAction.from[0] > 0 && currentAction.from[0] < NUM_SLOTS) {
-          //saveCurrentSlotToSlot(netSlot, currentAction.from[0]);
+      if (currentAction.from[0] > 0 && currentAction.from[0] < NUM_SLOTS) {
+        // saveCurrentSlotToSlot(netSlot, currentAction.from[0]);
 
-          netSlot = currentAction.from[0];
-          refreshConnections(-1);
-          chooseShownReadings();
-
-        }
-     // netSlot = currentAction.from[0];
+        netSlot = currentAction.from[0];
+        refreshConnections(-1);
+        chooseShownReadings();
+      }
+      // netSlot = currentAction.from[0];
       return currentAction.from[0];
     } else if (menuLines[currentAction.previousMenuPositions[1]].indexOf(
                    "Clear") != -1) {
       createSlots(currentAction.from[0], 0);
       refreshConnections();
-     
-    //  sendAllPathsCore2 = 1;
+
+      //  sendAllPathsCore2 = 1;
       chooseShownReadings();
       return 10;
     }
@@ -2210,109 +2205,120 @@ showLEDsCore2 = -1;
         -1) {
 
       printActionStruct();
-      if (currentAction.optionVoltage == 3)
-      {
-      for (int i = 0; i < 10; i++) {
-        if (currentAction.from[i] != -1) {
-          switch (currentAction.from[i]) {
-          case 0:
-            addBridgeToNodeFile(RP_GPIO_1, currentAction.to[i], netSlot);
-            break;
-          case 1:
+      if (currentAction.optionVoltage == 3) {
+        for (int i = 0; i < 10; i++) {
+          if (currentAction.from[i] != -1) {
+            switch (currentAction.from[i]) {
+            case 0:
+              addBridgeToNodeFile(RP_GPIO_1, currentAction.to[i], netSlot);
+              break;
+            case 1:
 
-            addBridgeToNodeFile(RP_GPIO_2, currentAction.to[i], netSlot);
-            break;
-            // break;
-          case 2:
+              addBridgeToNodeFile(RP_GPIO_2, currentAction.to[i], netSlot);
+              break;
+              // break;
+            case 2:
 
-            addBridgeToNodeFile(RP_GPIO_3, currentAction.to[i], netSlot);
-            break;
-          case 3:
-            
+              addBridgeToNodeFile(RP_GPIO_3, currentAction.to[i], netSlot);
+              break;
+            case 3:
+
               addBridgeToNodeFile(RP_GPIO_4, currentAction.to[i], netSlot);
               break;
-          default:
-            break;
-          }
+            default:
+              break;
+            }
 
-          // break;
-        }
-      }
-      }
-      else if (currentAction.optionVoltage == 5)
-      {
-        for (int i = 0; i < 10; i++) {
-        if (currentAction.from[i] != -1 && currentAction.to[i] != -1) {
-          switch (currentAction.from[i]) {
-          case 0:
-            addBridgeToNodeFile(MCP_GPIO_0, currentAction.to[i], netSlot);
-            break;
-          case 1:
-
-            addBridgeToNodeFile(MCP_GPIO_1, currentAction.to[i], netSlot);
-            break;
             // break;
-          case 2:
+          }
+        }
+      } else if (currentAction.optionVoltage == 5) {
+        for (int i = 0; i < 10; i++) {
+          if (currentAction.from[i] != -1 && currentAction.to[i] != -1) {
+            switch (currentAction.from[i]) {
+            case 0:
+              addBridgeToNodeFile(MCP_GPIO_0, currentAction.to[i], netSlot);
+              break;
+            case 1:
 
-            addBridgeToNodeFile(MCP_GPIO_2, currentAction.to[i], netSlot);
-            break;
-          case 3:
-            
+              addBridgeToNodeFile(MCP_GPIO_1, currentAction.to[i], netSlot);
+              break;
+              // break;
+            case 2:
+
+              addBridgeToNodeFile(MCP_GPIO_2, currentAction.to[i], netSlot);
+              break;
+            case 3:
+
               addBridgeToNodeFile(MCP_GPIO_3, currentAction.to[i], netSlot);
               break;
-          default:
-            break;
-          }
+            default:
+              break;
+            }
 
-          // break;
+            // break;
+          }
         }
-      }
       }
 
     } else if (menuLines[currentAction.previousMenuPositions[1]].indexOf(
                    "Voltage") != -1) {
 
-       printActionStruct();
+      printActionStruct();
 
       for (int i = 0; i < 10; i++) {
         if (currentAction.from[i] != -1 && currentAction.to[i] != -1) {
           switch (currentAction.from[i]) {
           case 0:
             addBridgeToNodeFile(DAC0, currentAction.to[i], netSlot);
-            //setDac0_5Vvoltage(currentAction.analogVoltage);
+            // setDac0_5Vvoltage(currentAction.analogVoltage);
             dacOutput[0] = currentAction.analogVoltage;
             break;
           case 1:
 
             addBridgeToNodeFile(DAC1, currentAction.to[i], netSlot);
             dacOutput[1] = currentAction.analogVoltage;
-            //setDac1_8Vvoltage(currentAction.analogVoltage);
+            // setDac1_8Vvoltage(currentAction.analogVoltage);
             break;
             // break;
 
           default:
             break;
           }
-
-         
         }
       }
       setRailsAndDACs();
-                   }
-    
-        } else if (currentCategory == APPSACTION) {
+    } else if (menuLines[currentAction.previousMenuPositions[1]].indexOf(
+                   "UART") != -1) {
+      for (int i = 0; i < 10; i++) {
+        if (currentAction.from[i] != -1 && currentAction.to[i] != -1) {
+          switch (currentAction.from[i]) {
+          case 0:
+            addBridgeToNodeFile(RP_UART_TX, currentAction.to[i], netSlot);
+            break;
+          case 1:
+
+            addBridgeToNodeFile(RP_UART_RX, currentAction.to[i], netSlot);
+            break;
+            // break;
+          default:
+            break;
+          }
+
+          // break;
+        }
+      }
+    }
+
+  } else if (currentCategory == APPSACTION) {
 
     Serial.print("Apps Action\n\r");
 
     if (menuLines[currentAction.previousMenuPositions[1]].indexOf("Games") !=
         -1) {
-doomOn = 1;
-            Serial.println("\n\n\n\rGames\n\r");
-
-
-
-
-    } 
+      doomOn = 1;
+      Serial.println("\n\n\n\rGames\n\r");
+    }
     digitalWrite(RESETPIN, HIGH);
 
     delayMicroseconds(200);
@@ -2354,30 +2360,28 @@ doomOn = 1;
       showNets();
       showLEDsCore2 = 2;
     } else if (menuLines[currentAction.previousMenuPositions[1]].indexOf(
-                   "DEFCON") != -1) 
-                   {
+                   "DEFCON") != -1) {
 
-
-      if (currentAction.from[0] == 0) { 
+      if (currentAction.from[0] == 0) {
         strcpy(defconString, "Jumper less V5");
         defconDisplay = 0;
       } else if (currentAction.from[0] == 1) {
         defconDisplay = -1;
       } else if (currentAction.from[0] == 2) {
         strcpy(defconString, " Fuck    You   ");
-        //defconString[0] = "  Fuck   You";
+        // defconString[0] = "  Fuck   You";
         defconDisplay = 0;
       }
 
-                   }   else if (menuLines[currentAction.previousMenuPositions[1]].indexOf("Colors") !=
-        -1) {
+    } else if (menuLines[currentAction.previousMenuPositions[1]].indexOf(
+                   "Colors") != -1) {
       if (currentAction.from[0] == 0) {
         netColorMode = 0;
       } else {
         netColorMode = 1;
       }
       debugFlagSet(13);
-        }
+    }
     Serial.print("Display Action\n\r");
 
   } else if (currentCategory == NOCATEGORY) {
@@ -2388,8 +2392,8 @@ doomOn = 1;
   return 1;
 }
 
-String categoryNames[] = {"Show",    "Rails", "Slots",     "Output",
-                          "Arduino", "Probe", "Apps", "NoCategory"};
+String categoryNames[] = {"Show",    "Rails", "Slots", "Output",
+                          "Arduino", "Probe", "Apps",  "NoCategory"};
 
 actionCategories getActionCategory(int menuPosition) {
 
@@ -2430,7 +2434,7 @@ char printMainMenu(int extraOptions) {
     Serial.print("\tp = probe connections\n\r");
     Serial.print("\tw = waveGen\n\r");
     Serial.print("\tv = toggle show current/voltage\n\r");
-   // Serial.print("\tu = set baud rate for USB-Serial\n\r");
+    // Serial.print("\tu = set baud rate for USB-Serial\n\r");
     Serial.print("\tl = LED brightness / test\n\r");
     Serial.print("\td = toggle debug flags\n\r");
   }

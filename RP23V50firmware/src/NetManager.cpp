@@ -216,20 +216,25 @@ int searchExistingNets(
 }
 
 void combineNets(int foundNode1Net, int foundNode2Net) {
+  Serial.println("combineNets");
+  Serial.println(foundNode1Net);
+  Serial.println(foundNode2Net);
+  
 
   if (checkDoNotIntersectsByNet(foundNode1Net, foundNode2Net) == 1) {
     int swap = 0;
     if ((foundNode2Net <= 5 && foundNode1Net <= 5)) {
+
       for (int i = 0; i < MAX_DNI; i++) {
         for (int j = 0; j < MAX_DNI; j++) {
           if ((net[foundNode1Net].doNotIntersectNodes[i] == foundNode1Net ||
-               net[foundNode2Net].doNotIntersectNodes[j] == foundNode2Net) &&
-              (net[foundNode1Net].doNotIntersectNodes[i] != -1 &&
-               net[foundNode2Net].doNotIntersectNodes[j] != -1)) {
+               net[foundNode2Net].doNotIntersectNodes[j] == foundNode2Net) ){//&&
+              //(net[foundNode1Net].doNotIntersectNodes[i] != -1 &&
+              // net[foundNode2Net].doNotIntersectNodes[j] != -1)) {
 
             if (debugNM)
               Serial.print(
-                  "can't combine Special Nets\n\r"); // maybe have it add a
+                  "can't combine Speeeeeeeecial Nets\n\r"); // maybe have it add a
                                                      // bridge between them if
                                                      // it's allowed?
 
@@ -245,7 +250,7 @@ void combineNets(int foundNode1Net, int foundNode2Net) {
 
       if (debugNM)
         Serial.print(
-            "can't combine Special Nets\n\r"); // maybe have it add a bridge
+            "can't combine Specccccccial Nets\n\r"); // maybe have it add a bridge
                                                // between them if it's allowed?
 
       path[newBridgeIndex].net = -1;
@@ -570,10 +575,12 @@ int checkDoNotIntersectsByNet(
     }
 
     for (int j = 0; j <= MAX_NODES;
-         j++) { // if(debugNM) Serial.print
-                // (net[netToCheck1].doNotIntersectNodes[i]);
-      // if(debugNM) Serial.print ("-");
-      // if(debugNM) Serial.println (net[netToCheck2].nodes[j]);
+         j++) { 
+          
+          if(debugNM) Serial.print
+                (net[netToCheck1].doNotIntersectNodes[i]);
+      if(debugNM) Serial.print ("-");
+      if(debugNM) Serial.println (net[netToCheck2].nodes[j]);
 
       if (net[netToCheck2].nodes[j] == 0) {
         break;
