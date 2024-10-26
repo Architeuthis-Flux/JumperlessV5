@@ -1122,9 +1122,12 @@ int chooseADC(void) {
   // sfProbeMenu = 1;
   //  delay(1000);
   //  function = 111;
-  b.print("1", sfOptionColors[0], 0xFFFFFF, 0, 1, 3);
-  b.print("2", sfOptionColors[1], 0xFFFFFF, 2, 1, 3);
-  b.print("3", sfOptionColors[2], 0xFFFFFF, 4, 1, 3);
+  b.print("0", sfOptionColors[0], 0xFFFFFF, 0, 1, -1);
+  b.print("1", sfOptionColors[1], 0xFFFFFF, 1, 1, 0);
+  b.print("2", sfOptionColors[2], 0xFFFFFF, 2, 1, 1);
+  b.print("3", sfOptionColors[3], 0xFFFFFF, 3, 1, 2);
+  b.print("4", sfOptionColors[4], 0xFFFFFF, 4, 1, 3);
+  b.print("P", sfOptionColors[5], 0xFFFFFF, 5, 1, 4);
   int selected = -1;
   while (selected == -1 && longShortPress(500) != 1) {
     int reading = justReadProbe();
@@ -1132,37 +1135,68 @@ int chooseADC(void) {
     // Serial.println(reading);
     if (reading != -1) {
       switch (reading) {
-      case 34 ... 40: {
-        selected = 111;
-        function = 111;
-        while (justReadProbe() == reading) {
-          // Serial.print("reading: ");
-          // Serial.println(justReadProbe());
-          delay(1);
+        case 31 ... 35: {
+          selected = ADC0;
+          function = ADC0;
+          while (justReadProbe() == reading) {
+            // Serial.print("reading: ");
+            // Serial.println(justReadProbe());
+            delay(10);
+          }
+          break;
         }
-
-        break;
-      }
-      case 41 ... 48: {
-        selected = 112;
-        function = 112;
-        while (justReadProbe() == reading) {
-          //           Serial.print("reading: ");
-          // Serial.println(justReadProbe());
-          delay(1);
+        case 36 ... 40: {
+          selected = ADC1;
+          function = ADC1;
+          while (justReadProbe() == reading) {
+            // Serial.print("reading: ");
+            // Serial.println(justReadProbe());
+            delay(10);
+          }
+          break;
         }
-        break;
-      }
-      case 50 ... 56: {
-        selected = 113;
-        function = 113;
-        while (justReadProbe() == reading) {
-          //           Serial.print("reading: ");
-          // Serial.println(justReadProbe());
-          delay(1);
+        case 41 ... 45: {
+          selected = ADC2;
+          function = ADC2;
+          while (justReadProbe() == reading) {
+            // Serial.print("reading: ");
+            // Serial.println(justReadProbe());
+            delay(10);
+          }
+          break;
         }
-        break;
-      }
+        case 46 ... 50: {
+          selected = ADC3;
+          function = ADC3;
+          while (justReadProbe() == reading) {
+            // Serial.print("reading: ");
+            // Serial.println(justReadProbe());
+            delay(10);
+          }
+          break;
+        }
+        case 51 ... 55: {
+          selected = ADC4;
+          function = ADC4;
+          while (justReadProbe() == reading) {
+            // Serial.print("reading: ");
+            // Serial.println(justReadProbe());
+            delay(10);
+          }
+          break;
+        }
+                case 56 ... 60: {
+          selected = ADC7;
+          function = ADC7;
+          while (justReadProbe() == reading) {
+            // Serial.print("reading: ");
+            // Serial.println(justReadProbe());
+            delay(10);
+          }
+          break;
+        }
+        
+      
       }
     }
   }

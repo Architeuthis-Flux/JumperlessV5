@@ -523,10 +523,7 @@ dontshowmenu:
     // Serial.println(digitalRead(11));
     // delay(300);
 
-    if (showReadings >= 1) {
-      chooseShownReadings();
-      showMeasurements();
-    }
+
     // Serial.println(digitalRead(buttonPin));
 
     if ((millis() - waitTimer) > 100) {
@@ -539,6 +536,12 @@ dontshowmenu:
       //     Serial.println(probeButton);
 
       if (probeButton != lastProbeButton) {
+
+        // Serial.print("probeButton = ");
+        // Serial.println(probeButton);
+        // Serial.print("lastProbeButton = ");
+        // Serial.println(lastProbeButton);
+
         lastProbeButton = probeButton;
 
         // if (switchPosition == 1) {
@@ -571,11 +574,6 @@ dontshowmenu:
           }
         }
 
-        // if (switchPosition == 1) {
-        //   showProbeLEDs = 3;
-        // } else if (switchPosition == 0) {
-        //   showProbeLEDs = 5;
-        // }
         //   } else {
         //    measureMode();
         //  }
@@ -588,11 +586,28 @@ dontshowmenu:
     //     // Serial.print(PROTOTYPE_VERSION);
     //     // Serial.print("\n\r");
     // checkPads();
-    if ((millis() - switchTimer) > 20) {
-      switchTimer = millis();
-      // checkPads();
-      // checkSwitchPosition();
+
+    
+    // if ((millis() - switchTimer) > 1000) {
+    //   switchTimer = millis();
+    //   // checkPads();
+    //   checkSwitchPosition();
+    //   // Serial.print("switchPosition = ");
+    //   // Serial.println(switchPosition);
+
+    //     if (switchPosition == 1) {
+    //       showProbeLEDs = 4;
+    //     } else if (switchPosition == 0) {
+    //       showProbeLEDs = 6;
+    //     }
+       
+    // }
+
+        if (showReadings >= 1) {
+      chooseShownReadings();
+      showMeasurements();
     }
+
   }
 
   if (slotChanged == 1) {
@@ -1266,7 +1281,7 @@ void core2stuff() // core 2 handles the LEDs and the CH446Q8
           break;
         case 4:
 
-          probeLEDs.setPixelColor(0, 0x150c15);
+          probeLEDs.setPixelColor(0, 0x170c17); // select idle
           // probeLEDs[0].setColorCode(0x110011);
           //  probeLEDs.show();
           //  Serial.println(showProbeLEDs);
@@ -1277,7 +1292,7 @@ void core2stuff() // core 2 handles the LEDs and the CH446Q8
           //  Serial.println(showProbeLEDs);
           break;
         case 6:
-          probeLEDs.setPixelColor(0, 0x0c160c); // measure dim
+          probeLEDs.setPixelColor(0, 0x0c190c); // measure dim
           break;
 
         default:

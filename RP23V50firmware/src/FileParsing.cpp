@@ -1691,24 +1691,28 @@ void replaceSFNamesWithDefinedInts(void) {
 
   specialFunctionsString.replace("EMPTY_NET", "127");
 
-  specialFunctionsString.replace("ADC0_5V", "110");
-  specialFunctionsString.replace("ADC1_5V", "111");
-  specialFunctionsString.replace("ADC2_5V", "112");
+  specialFunctionsString.replace("ADC0_8V", "110");
+  specialFunctionsString.replace("ADC1_8V", "111");
+  specialFunctionsString.replace("ADC2_8V", "112");
   specialFunctionsString.replace("ADC3_8V", "113");
+  specialFunctionsString.replace("ADC4_5V", "114");
+  specialFunctionsString.replace("ADC7_PROBE", "115");
   specialFunctionsString.replace("ADC0", "110");
   specialFunctionsString.replace("ADC1", "111");
   specialFunctionsString.replace("ADC2", "112");
   specialFunctionsString.replace("ADC3", "113");
+  specialFunctionsString.replace("ADC4", "114");
+  specialFunctionsString.replace("ADC7", "115");
+
 
   specialFunctionsString.replace("+5V", "105");
   specialFunctionsString.replace("5V", "105");
   specialFunctionsString.replace("3.3V", "103");
   specialFunctionsString.replace("3V3", "103");
 
-  specialFunctionsString.replace("RP_GPIO_0", "114");
   specialFunctionsString.replace("RP_UART_TX", "116");
   specialFunctionsString.replace("RP_UART_RX", "117");
-  specialFunctionsString.replace("GPIO_0", "114");
+
   specialFunctionsString.replace("UART_TX", "116");
   specialFunctionsString.replace("UART_RX", "117");
 }

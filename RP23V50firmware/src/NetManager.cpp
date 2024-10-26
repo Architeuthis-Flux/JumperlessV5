@@ -44,8 +44,16 @@ void getNodesToConnect() // read in the nodes you'd like to connect
   // newBridgeIndex = 0;
   for (int i = 0; i < newBridgeLength; i++) {
     newNode1 = path[i].node1;
+    // if (newNode1 == 115)
+    // {
+    //   newNode1 = 139;
+    // }
 
     newNode2 = path[i].node2;
+    // if (newNode2 == 115)
+    // {
+    //   newNode2 = 139;
+    // }
     // debugNM = true;
     if (debugNM)
       printNodeOrName(newNode1);
@@ -1038,7 +1046,7 @@ definesToChar(int defined,
   const char *defSpecialToCharShort[49] = {
       "GND",      "TOP_R",   "BOT_R",   "3V3",         "TOP_GND",  "5V",
       "DAC_0",    "DAC_1",   "I_POS",   "I_NEG",       "ADC_0",    "ADC_1",
-      "ADC_2",    "ADC_3",   "GP_0",    "NOT_DEFINED", "UART_Tx",  "UART_Rx",
+      "ADC_2",    "ADC_3",   "ADC_4",    "ADC_7", "UART_Tx",  "UART_Rx",
       "GP_18",    "GP_19",   "8V_P",    "8V_N",        "GP_5",     "GP_6",
       "GP_7",     "GP_8",    "BOT_GND", "EMPTY",       "LOGO_T",   "LOGO_B",
       "GPIO_PAD", "DAC_PAD", "ADC_PAD", "BLDG_TOP",    "BLDG_BOT", "GP_1",
@@ -1058,7 +1066,7 @@ definesToChar(int defined,
       "GND",         "TOP_RAIL",     "BOTTOM_RAIL",  "SUPPLY_3V3",
       "TOP_GND",     "SUPPLY_5V",    "DAC0",         "DAC1",
       "ISENSE_PLUS", "ISENSE_MINUS", "ADC0",         "ADC1",
-      "ADC2",        "ADC3",         "RP_GPIO_0",    "NOT_DEFINED",
+      "ADC2",        "ADC3",         "ADC4",    "PROBE",
       "RP_UART_Tx",  "RP_UART_Rx",   "RP_GPIO_18",   "RP_GPIO_19",
       "8V_POS",      "8V_NEG",       "GPIO_5",       "GPIO_6",
       "GPIO_7",      "GPIO_8",       "BOTTOM_GND",   "EMPTY_NET",

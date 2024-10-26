@@ -273,10 +273,12 @@ extern volatile int sendAllPathsCore2;
 #define ADC3 113
 #define ADC4 114
 #define ADC4_5V 114
-#define ADC5 115
-#define ADC5_POWER_MONITOR 115
-#define ADC6 116
-#define ADC6_PROBE 116
+// #define ADC5 115
+// #define ADC5_PROBE_SENSE 115
+// #define ADC6 115
+// #define ADC6_POWER_MONITOR 115
+#define ADC7 115
+#define ADC7_PROBE 115
 
 #define RP_GPIO_0 114
 

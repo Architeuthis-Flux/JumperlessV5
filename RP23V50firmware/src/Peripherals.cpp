@@ -49,7 +49,7 @@
 
 #define DAC_RESOLUTION 9
 
-float adcRange[6][2] = {{-8, 8}, {-8, 8}, {-8, 8}, {-8, 8}, {0, 5}};
+float adcRange[8][2] = {{-8, 8}, {-8, 8}, {-8, 8}, {-8, 8}, {0, 5}};
 float dacOutput[2] = {0, 0};
 float railVoltage[2] = {0, 0};
 uint8_t gpioState[10] = {
@@ -65,10 +65,10 @@ int revisionNumber = 0;
 
 int showReadings = 0;
 
-int showADCreadings[6] = {1, 1, 1, 1};
-uint32_t adcReadingColors[6] = {0x010101, 0x010101, 0x010101,
+int showADCreadings[8] = {1, 1, 1, 1};
+uint32_t adcReadingColors[8] = {0x010101, 0x010101, 0x010101,
                                 0x010101, 0x010101, 0x010101};
-float adcReadingRanges[6][2] = {
+float adcReadingRanges[8][2] = {
     {-8.0, 8.0}, {-8.0, 8.0}, {-8.0, 8.0}, {-8.0, 8.0}, {0.0, 5.0},
 };
 
@@ -760,6 +760,11 @@ void chooseShownReadings(void) {
   showADCreadings[1] = 0;
   showADCreadings[2] = 0;
   showADCreadings[3] = 0;
+  showADCreadings[4] = 0;
+  showADCreadings[5] = 0;
+  showADCreadings[6] = 0;
+  showADCreadings[7] = 0;
+
 
   showINA0[0] = 0;
   showINA0[1] = 0;
@@ -784,6 +789,18 @@ void chooseShownReadings(void) {
     if (path[i].node1 == ADC3 || path[i].node2 == ADC3) {
       showADCreadings[3] = path[i].net;
     }
+
+    if (path[i].node1 == ADC4 || path[i].node2 == ADC4) {
+      showADCreadings[4] = path[i].net;
+    }
+
+    if (path[i].node1 == ADC7 || path[i].node2 == ADC7) {
+      showADCreadings[7] = path[i].net;
+    }
+        if (path[i].node1 == ROUTABLE_BUFFER_IN || path[i].node2 == ROUTABLE_BUFFER_IN) {
+      showADCreadings[7] = path[i].net;
+    }
+
     // Serial.println(newBridgeIndex);
     //     for (int j = 0; j < 4; j++)
     //     {
@@ -856,6 +873,9 @@ void showLEDmeasurements(void) {
 
   int adc4ReadingUnscaled;
   float adc4Reading;
+
+  int adc7ReadingUnscaled;
+  float adc7Reading;
 
   int bs = 0;
 
@@ -1001,6 +1021,39 @@ void showLEDmeasurements(void) {
     //  showLEDsCore2 = 2;
   }
 
+  if (showADCreadings[7] > 0 && showADCreadings[7] <= numberOfNets) {
+    numReadings++;
+    adc7ReadingUnscaled = readAdc(7, samples);
+    adc7Reading = (adc7ReadingUnscaled) * (railSpread / 4095);
+    adc7Reading -= railSpread/2; // offset
+    int mappedAdc7Reading = map(adc7ReadingUnscaled, 0, 4095, -40, 40);
+    int hueShift = 0;
+
+    if (mappedAdc7Reading < 0) {
+      hueShift = map(mappedAdc7Reading, -40, 0, 0, 60);
+      mappedAdc7Reading = abs(mappedAdc7Reading) + 3;
+    } else {
+      hueShift = map(mappedAdc7Reading, 0, 40, 0, 60);
+      mappedAdc7Reading = abs(mappedAdc7Reading) + 3;
+    }
+    uint32_t color =
+        logoColors8vSelect[map(adc7ReadingUnscaled, 1000, 3000, 0, 70) % 70];
+    if (displayMode == 0) {
+      lightUpNet(showADCreadings[7], -1, 1, mappedAdc7Reading, 0, 0, color);
+    }
+    netColors[showADCreadings[7]] = unpackRgb(color);
+    adcReadingColors[7] = color;
+    // Serial.print("showADCreadings[3]: ");
+    // Serial.println(showADCreadings[3]);
+
+    net[showADCreadings[7]].color = unpackRgb(color);
+    // drawWires(showADCreadings[3]);
+    // showLEDsCore2 = 2;
+  }
+
+
+  
+
   if (numReadings > 0 && displayMode == 1) {
     // showLEDsCore2 = 1;
     // assignNetColors();
@@ -1033,6 +1086,9 @@ void showMeasurements(int samples, int printOrBB) {
 
     int adc4ReadingUnscaled;
     float adc4Reading;
+
+    int adc7ReadingUnscaled;
+    float adc7Reading;
 
     int bs = 0;
 
@@ -1114,6 +1170,25 @@ void showMeasurements(int samples, int printOrBB) {
         mappedAdc3Reading = abs(mappedAdc3Reading);
       }
     }
+
+    if (showADCreadings[7] != 0) {
+
+      adc7ReadingUnscaled = readAdc(7, samples);
+      adc7Reading = (adc7ReadingUnscaled) * (railSpread / 4095);
+      adc7Reading -= railSpread/2; // offset
+      bs += Serial.print("ADC 7: ");
+      bs += Serial.print(adc7Reading);
+      bs += Serial.print("V\t");
+      int mappedAdc7Reading = map(adc7ReadingUnscaled, 0, 4095, -40, 40);
+      int hueShift = 0;
+
+      if (mappedAdc7Reading < 0) {
+        hueShift = map(mappedAdc7Reading, -40, 0, 0, 200);
+        mappedAdc7Reading = abs(mappedAdc7Reading);
+      }
+    }
+
+
     if (showADCreadings[4] != 0) {
 
       adc4ReadingUnscaled = readAdc(4, samples);
@@ -1151,7 +1226,7 @@ void showMeasurements(int samples, int printOrBB) {
       return;
     }
     while (millis() - startMillis < printInterval &&
-           (Serial.available() == 0 && Serial1.available() == 0 &&
+           (Serial.available() == 0 &&
             checkProbeButton() == 0)) {
 
       showLEDmeasurements();
