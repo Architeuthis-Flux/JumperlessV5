@@ -162,7 +162,7 @@ int searchExistingNets(
              (foundNode1Net != foundNode2Net)) // if both nodes are in different
                                                // nets, combine them
   { 
-    if (foundNode1Net > 5 && foundNode2Net > 5) {
+    if (foundNode1Net > 5 || foundNode2Net > 5) {
     combineNets(foundNode1Net, foundNode2Net);
     }
     return 2;
