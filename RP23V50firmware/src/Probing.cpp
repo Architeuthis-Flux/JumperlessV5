@@ -121,7 +121,7 @@ int probeMode(int pin, int setOrClear) {
 
   if (checkSwitchPosition() == 1) {
     routableBufferPower(1);
-    Serial.println("Select");
+    //Serial.println("Select");
   } else {
     showProbeLEDs = 3;
     probeActive = 0;
@@ -166,20 +166,20 @@ restartProbing:
 
   // Serial.print("Press any key to exit and commit paths (or touch probe to
   // gpio 18)   ");
-  Serial.print("\n\r\t  Probing mode\n\n\r");
-  Serial.print("   long press  = connect (blue) / clear (red)\n\r");
-  Serial.println("   short press = commit");
+ // Serial.print("\n\r\t  Probe Active\n\r");
+  //Serial.print("   long press  = connect (blue) / clear (red)\n\r");
+  //Serial.println("   short press = commit");
 
   if (setOrClear == 1) {
     // sprintf(oledBuffer, "connect  ");
     // drawchar();
-    Serial.println("\n\r\t  connect nodes\n\n\r");
+    Serial.println("\r\t connect nodes (blue)\n\r");
     rawOtherColors[1] = 0x4500e8;
     rainbowIndex = 0;
   } else {
     // sprintf(oledBuffer, "clear");
     // drawchar();
-    Serial.println("\n\r\t  clear nodes\n\n\r");
+    Serial.println("\r\t clear nodes (red)\n\r");
     rawOtherColors[1] = 0x6644A8;
     rainbowIndex = 12;
   }
@@ -596,7 +596,7 @@ float measureMode(int updateSpeed) {
     delay(1);
   }
   removeBridgeFromNodeFile(ROUTABLE_BUFFER_IN, -1, netSlot, 1);
-
+removeBridgeFromNodeFile(ROUTABLE_BUFFER_OUT, -1, netSlot, 1);
   addBridgeToNodeFile(ROUTABLE_BUFFER_OUT, ADC3, netSlot, 1);
 
   refreshLocalConnections();
@@ -683,8 +683,8 @@ int selectSFprobeMenu(int function) {
     switch (function) {
     case 128: {
       inPadMenu = 1;
-      b.print("Logo", sfOptionColors[3], 0xFFFFFF, 0, 1, 0);
-      b.print("Top", sfOptionColors[7], 0xFFFFFF, 0, 0, 0);
+      b.print("UART", sfOptionColors[3], 0xFFFFFF, 0, 0, 0);
+      b.print("Tx", sfOptionColors[7], 0xFFFFFF, 0, 1, 0);
       b.printRawRow(0b00000001, 23, 0x400014, 0xffffff);
       b.printRawRow(0b00000011, 24, 0x400014, 0xffffff);
       b.printRawRow(0b00011111, 25, 0x400014, 0xffffff);
@@ -694,12 +694,13 @@ int selectSFprobeMenu(int function) {
       b.printRawRow(0b00011100, 53, 0x400014, 0xffffff);
       b.printRawRow(0b00011000, 54, 0x400014, 0xffffff);
       b.printRawRow(0b00010000, 55, 0x400014, 0xffffff);
+      function = RP_UART_TX;
       break;
     }
     case 129: {
       inPadMenu = 1;
-      b.print("Logo", sfOptionColors[3], 0xFFFFFF, 0, 1, -1);
-      b.print("Bottom", sfOptionColors[5], 0xFFFFFF, 0, 0, -1);
+      b.print("UART", sfOptionColors[3], 0xFFFFFF, 0, 0, -1);
+      b.print("Rx", sfOptionColors[5], 0xFFFFFF, 0, 1, -1);
 
       b.printRawRow(0b00000000, 25, 0x280032, 0xffffff);
       b.printRawRow(0b00000001, 26, 0x280032, 0xffffff);
@@ -717,7 +718,7 @@ int selectSFprobeMenu(int function) {
       b.printRawRow(0b00000001, 54, 0x050500, 0xfffffe);
       b.printRawRow(0b00000001, 55, 0x050500, 0xfffffe);
       b.printRawRow(0b00000001, 59, 0x050500, 0xfffffe);
-
+function = RP_UART_RX;
       break;
     }
     case 133: {
@@ -755,28 +756,28 @@ int selectSFprobeMenu(int function) {
     }
     }
     // showLEDsCore2 = 2;
-    delayWithButton(800);
+    delayWithButton(900);
 
     // b.clear();
     clearLEDsExceptRails();
 
     // lastReadRaw = 0;
-    b.print("Attach", sfOptionColors[0], 0xFFFFFF, 0, 0, -1);
-    b.print("to Pad", sfOptionColors[2], 0xFFFFFF, 0, 1, -1);
+    // b.print("Attach", sfOptionColors[0], 0xFFFFFF, 0, 0, -1);
+    // b.print("to Pad", sfOptionColors[2], 0xFFFFFF, 0, 1, -1);
     // showLEDsCore2 = 2;
 
-    delayWithButton(800);
+   // delayWithButton(800);
 
     // delay(800);
 
-    function = attachPadsToSettings(function);
+    //function = attachPadsToSettings(function);
     // node1or2 = 0;
     // nodesToConnect[0] = function;
     // nodesToConnect[1] = -1;
     // connectedRowsIndex = 1;
 
     // Serial.print("function!!!!!: ");
-    printNodeOrName(function, 1);
+   // printNodeOrName(function, 1);
     showLEDsCore2 = 1;
     lightUpRail();
     delay(200);
@@ -2844,15 +2845,15 @@ int readProbe() {
   }
   doubleTimeout = millis();
   if (debugProbing == 1) {
-    Serial.print("probeRead: ");
-    Serial.println(probeRead);
+    // Serial.print("probeRead: ");
+    // Serial.println(probeRead);
   }
   if (probeRead == -1) {
     return -1;
   }
   int rowProbed = map(probeRead, mapFrom, 4040, 101, 0);
-  Serial.print("probeRead: ");
-  Serial.println(probeRead);
+  // Serial.print("probeRead: ");
+  // Serial.println(probeRead);
 
   if (rowProbed <= 0 || rowProbed >= sizeof(probeRowMap)) {
     if (debugProbing == 1) {

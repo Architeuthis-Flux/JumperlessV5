@@ -22,6 +22,8 @@
    IN THE SOFTWARE.
 */
 
+
+
 #ifndef _TUSB_CONFIG_RP2040_H_
 #define _TUSB_CONFIG_RP2040_H_
 
@@ -65,7 +67,7 @@ extern "C" {
 
 #define CFG_TUD_ENDOINT0_SIZE 64
 
-#define CFG_TUD_CDC 1
+#define CFG_TUD_CDC 3
 
 #define CFG_TUD_MSC 1
 #define CFG_TUD_HID 2
@@ -115,7 +117,7 @@ extern "C" {
 
 // Number of CDC interfaces
 // FTDI and CP210x are not part of CDC class, only to re-use CDC driver API
-#define CFG_TUH_CDC 1
+#define CFG_TUH_CDC 3
 #define CFG_TUH_CDC_FTDI 1
 #define CFG_TUH_CDC_CP210X 1
 

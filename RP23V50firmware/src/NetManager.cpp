@@ -161,8 +161,10 @@ int searchExistingNets(
   } else if ((foundNode1Net > 0 && foundNode2Net > 0) &&
              (foundNode1Net != foundNode2Net)) // if both nodes are in different
                                                // nets, combine them
-  {
+  { 
+    if (foundNode1Net > 5 && foundNode2Net > 5) {
     combineNets(foundNode1Net, foundNode2Net);
+    }
     return 2;
   } else if (foundNode1Net > 0 && node2 > 0) // if node1 is in a net and node2
                                              // is not, add node2 to node1's net
@@ -216,9 +218,9 @@ int searchExistingNets(
 }
 
 void combineNets(int foundNode1Net, int foundNode2Net) {
-  Serial.println("combineNets");
-  Serial.println(foundNode1Net);
-  Serial.println(foundNode2Net);
+  // Serial.println("combineNets");
+  // Serial.println(foundNode1Net);
+  // Serial.println(foundNode2Net); ///still need to fix this
   
 
   if (checkDoNotIntersectsByNet(foundNode1Net, foundNode2Net) == 1) {

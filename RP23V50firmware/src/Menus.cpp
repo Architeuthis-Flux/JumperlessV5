@@ -110,6 +110,7 @@ void readMenuFile(void) {
   core1busy = true;
   File menuFile = FatFS.open("/MenuTree.txt", "r");
   if (!menuFile) {
+    delay(1000);
     Serial.println("Failed to open menu file");
     return;
     core1busy = false;
@@ -296,7 +297,7 @@ uint32_t menuColors[10] = {0x09000a, 0x0f0004, 0x080800, 0x010f00,
                            0x000a03, 0x00030a, 0x040010, 0x070006};
 
 void initMenu(void) {
-
+FatFS.begin();
   delay(10);
   if (menuRead == 0) {
     // Serial.println(menuLines);

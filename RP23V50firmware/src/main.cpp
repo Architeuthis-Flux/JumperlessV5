@@ -12,7 +12,7 @@ KevinC@ppucc.io
 
 #define PICO_RP2350B 1
 #include <Arduino.h>
-// #define USE_TINYUSB 1
+
 //  #define LED LED_BUILTIN
 //  #ifdef USE_TINYUSB
 //  #include
@@ -20,6 +20,13 @@ KevinC@ppucc.io
 //  #include
 //  "../lib/Adafruit_TinyUSB_Arduino_changed/src/Adafruit_TinyUSB_changed.h"
 //  #endif
+
+// #include <Adafruit_TinyUSB.h>
+
+#ifdef USE_TINYUSB
+#include <Adafruit_TinyUSB.h>
+#endif
+
 #include <Adafruit_NeoPixel.h>
 #include <EEPROM.h>
 #include <SPI.h>
@@ -32,7 +39,7 @@ KevinC@ppucc.io
 #include "ArduinoStuff.h"
 #include "CH446Q.h"
 #include "Commands.h"
-#include "FatFS.h"
+
 #include "FileParsing.h"
 #include "Graphics.h"
 #include "JumperlessDefinesRP2040.h"
@@ -46,10 +53,16 @@ KevinC@ppucc.io
 #include "PersistentStuff.h"
 #include "Probing.h"
 #include "RotaryEncoder.h"
- #include "USBfs.h"
+
+#ifdef USE_FATFS
+#include "FatFS.h"
+#include "USBfs.h"
+#endif
 #include "UserCode.h"
-// #include <FreeRTOS.h>
-// #include <Adafruit_TinyUSB.h>
+
+// #include <usb-descriptors.c>
+//  #include <FreeRTOS.h>
+
 //  #include "hardware/flash.h"
 //   #include "pico/multicore.h"
 //   #include <picosdk/src/rp2_common/hardware_flash.h>
@@ -66,9 +79,24 @@ KevinC@ppucc.io
 
 bread b;
 
-// Adafruit_USBD_CDC USBSer1;
-
+#ifdef USE_TINYUSB
+Adafruit_USBD_CDC USBSer1;
+#endif
 // bool core1_separate_stack = true;
+
+// SerialUSB Serial;
+//  SerialUSB Serial5;
+// SerialUSB Serial3;
+
+// PluggableUSBModule PluggableUSB(2, 2, 0);
+
+// RawHID_::RawHID_(void) : PluggableUSBModule(1, 1, epType),
+// protocol(HID_REPORT_PROTOCOL), idle(1), dataLength(0), dataAvailable(0),
+// featureReport(NULL), featureLength(0)
+// {
+// 	epType[0] = EP_TYPE_INTERRUPT_IN;
+
+// }
 
 int supplySwitchPosition = 0;
 volatile bool core1busy = false;
@@ -111,7 +139,17 @@ void setup() {
   // USBDevice.setID(0x1D50, 0xACAB);
   // USBDevice.addStringDescriptor("Jumperless");
   // USBDevice.addStringDescriptor("Architeuthis Flux");
+  // USBDevice.begin();
+  // stdio_usb_init();
 
+  // Serial2.begin(115200);
+  // SerialUSB
+  // usbd_serial_init();
+
+  // for (int itf = 0; itf < CFG_TUD_CDC; itf++)
+  // init_uart_data(itf);
+
+  // PluggableUSB().plug(Serial3);
   EEPROM.begin(512);
 
   debugFlagInit();
@@ -129,10 +167,6 @@ void setup() {
 
   digitalWrite(10, HIGH);
 
-  // USBSer1.setStringDescriptor("Jumperless USB Serial");
-
-  // USBSer1.begin(115200);
-
   // delay(10);
 
   // delay(1);
@@ -142,9 +176,10 @@ void setup() {
   initArduino();
 
   delay(4);
-
-  FatFS.begin();
-  // FatFS.format();
+  // #ifdef USE_FATFS
+  //  FatFS.begin();
+  // #endif
+  //  FatFS.format();
 
   // setDac0_5Vvoltage(0.0);
   // setDac1_8Vvoltage(1.9);
@@ -171,8 +206,13 @@ void setup() {
   initMenu();
   initADC();
   initDAC(); // also sets revisionNumber
+  pinMode(18, INPUT);
+  pinMode(19, INPUT);
+  //  pinMode(18, OUTPUT);
+  //   pinMode(19, OUTPUT);
+  //   digitalWrite(18, HIGH);
+  //   digitalWrite(19, HIGH);
 
- 
   //  showLEDsCore2 = 1;
   //
   // setRailsAndDACs();
@@ -192,6 +232,13 @@ void setupCore2stuff() {
   initLEDs();
   initRowAnimations();
   setupSwirlColors();
+#ifdef USE_TINYUSB
+  USBSer1.setStringDescriptor("Jumperless USB Serial");
+  
+
+  USBSer1.begin(115200);
+  Serial1.begin(115200);
+#endif
   // delay(4);
 }
 
@@ -222,7 +269,7 @@ int baudRate = 115200;
 
 int restoredNodeFile = 0;
 
-const char firmwareVersion[] = "5.1.0.1"; // remember to update this
+const char firmwareVersion[] = "5.1.0.2"; // remember to update this
 
 int firstLoop = 1;
 
@@ -236,20 +283,19 @@ unsigned long timer = 0;
 int lastProbeButton = 0;
 unsigned long waitTimer = 0;
 unsigned long switchTimer = 0;
-
+int flashingArduino = 0;
 int attractMode = 0;
 void loop() {
 
-  //delay(100);
-//setRailsAndDACs();
- // if (PROTOTYPE_VERSION > 0) {
-    
+  // delay(100);
+  // setRailsAndDACs();
+  //  if (PROTOTYPE_VERSION > 0) {
 
- //}
+  //}
 menu:
-getNothingTouched();
-// Serial.print("nothing touched reading = ");
-// Serial.println(getNothingTouched());
+  getNothingTouched();
+  // Serial.print("nothing touched reading = ");
+  // Serial.println(getNothingTouched());
 
   // pinMode(A0, INPUT);
   // pinMode(A1, INPUT);
@@ -292,6 +338,14 @@ getNothingTouched();
   //   delay(10);
   // }
   Serial.println();
+
+  //   while(1)
+  // {
+  //   Serial3.println("Hello");
+  //   delay(1000);
+  //   Serial5.println("Fuck");
+  //   delay(1000);
+  // }
 
   int toggg = 0;
 
@@ -336,6 +390,25 @@ dontshowmenu:
   while (Serial.available() == 0 && connectFromArduino == '\0' &&
          slotChanged == 0) {
     // digitalWrite(RESETPIN, HIGH);
+
+    // if (digitalRead(18) == 0 || digitalRead(19) == 0) {
+    //   Serial.println("switching");
+    //   flashingArduino = 1;
+    //   removeBridgeFromNodeFile(NANO_D0, -1, netSlot, 0);
+    //   removeBridgeFromNodeFile(NANO_D1,  -1, netSlot, 0);
+
+    //   refreshConnections(1);
+    //   delay(1000);
+    //   printNodeFile(netSlot, 0, 1);
+    //   printNodeFile(netSlot, 0, 0);
+      
+    //  //refreshConnections();
+    //   refreshLocalConnections(-1);
+
+    //   //delay(3000);
+    //   //refreshConnections();
+    //   //flashingArduino = 0;
+    // }
 
     if (attractMode == 1) {
       // rotaryEncoderStuff();
@@ -565,22 +638,23 @@ skipinput:
   }
 
   case '+': {
-
+#ifdef USE_FATFS
     refreshConnections();
     saveLocalNodeFile();
 
     printNodeFile();
     delay(10);
-     usbFSbegin();
+    usbFSbegin();
     delay(10);
     while (Serial.available() == 0) {
-        USBloop();
+      USBloop();
     }
     delay(10);
-     USBdisconnect();
+    USBdisconnect();
     delay(10);
     goto loadfile;
-     refreshConnections();
+    refreshConnections();
+#endif
     break;
   }
 
@@ -696,9 +770,9 @@ skipinput:
       // break;
     }
   case 'p': {
-    //probeActive = 1;
-    //  Serial.print("pdebugLEDs = ");
-    // Serial.println(debugLEDs);
+    // probeActive = 1;
+    //   Serial.print("pdebugLEDs = ");
+    //  Serial.println(debugLEDs);
     delayMicroseconds(5);
     probeMode(10, 1);
     //      Serial.print("apdebugLEDs = ");
@@ -713,7 +787,7 @@ skipinput:
   }
   case 'c': {
     // removeBridgeFromNodeFile(19, 1);
-    //probeActive = 1;
+    // probeActive = 1;
     delayMicroseconds(5);
     probeMode(19, 0);
     delayMicroseconds(5);
@@ -1016,6 +1090,8 @@ int clearBeforeSend = 0;
 unsigned long measureLEDTimer = 0;
 int lastProbeLEDs = -1;
 volatile int showingProbeLEDs = 0;
+
+unsigned long ardTimer = 0;
 void loop1() {
   // int timer = micros();
 
@@ -1025,9 +1101,30 @@ void loop1() {
   } else {
     core2stuff();
   }
-  // timer = micros() - timer;
 
-  // yield();
+  if (USBSer1.available()) {
+    char c = USBSer1.read();
+    Serial1.write(c);
+    //Serial.print(c);
+  }
+
+
+  if (Serial1.available() && flashingArduino == 0) {
+    char c = Serial1.read();
+
+
+    USBSer1.write(c);
+
+  }
+
+  // if (millis() - ardTimer == 2000) {
+  //   Serial1.begin(115200);
+  // }
+//}
+
+// timer = micros() - timer;
+
+// yield();
 }
 
 void core2stuff() // core 2 handles the LEDs and the CH446Q8
@@ -1136,74 +1233,73 @@ void core2stuff() // core 2 handles the LEDs and the CH446Q8
       // probeLEDs.clear();
 
       if (checkingButton == 0) {
-      //   Serial.print("probeActive = ");
-      //   Serial.println(probeActive);
-      // showProbeLEDs = probeCycle;
-      // while(checkingButton == 1) {
-      //   //Serial.println("checkingButton");
-      // }
-      core2busy = true;
-      // pinMode(2, OUTPUT);
-      // pinMode(9, INPUT);
-      showingProbeLEDs = 1;
-      //         Serial.print("showProbeLEDs = ");
-      // Serial.println(showProbeLEDs);
-      switch (showProbeLEDs) {
-      case 1:
-        probeLEDs.setPixelColor(0, 0x000031); // connect
-        // probeLEDs[0].setColorCode(0x000011);
-        //  Serial.println(showProbeLEDs);
-        //   probeLEDs.show();
-        break;
-      case 2:
-        probeLEDs.setPixelColor(0, 0x310000); // remove
-        // probeLEDs[0].setColorCode(0x110000);
-        //  probeLEDs.show();
-        //  Serial.println(showProbeLEDs);
-        break;
-      case 3:
-        probeLEDs.setPixelColor(0, 0x003100); // measure
-        // probeLEDs[0].setColorCode(0x001100);
-        //  probeLEDs.show();
-        //  Serial.println(showProbeLEDs);
-        break;
-      case 4:
+        //   Serial.print("probeActive = ");
+        //   Serial.println(probeActive);
+        // showProbeLEDs = probeCycle;
+        // while(checkingButton == 1) {
+        //   //Serial.println("checkingButton");
+        // }
+        core2busy = true;
+        // pinMode(2, OUTPUT);
+        // pinMode(9, INPUT);
+        showingProbeLEDs = 1;
+        //         Serial.print("showProbeLEDs = ");
+        // Serial.println(showProbeLEDs);
+        switch (showProbeLEDs) {
+        case 1:
+          probeLEDs.setPixelColor(0, 0x000036); // connect
+          // probeLEDs[0].setColorCode(0x000011);
+          //  Serial.println(showProbeLEDs);
+          //   probeLEDs.show();
+          break;
+        case 2:
+          probeLEDs.setPixelColor(0, 0x360000); // remove
+          // probeLEDs[0].setColorCode(0x110000);
+          //  probeLEDs.show();
+          //  Serial.println(showProbeLEDs);
+          break;
+        case 3:
+          probeLEDs.setPixelColor(0, 0x003600); // measure
+          // probeLEDs[0].setColorCode(0x001100);
+          //  probeLEDs.show();
+          //  Serial.println(showProbeLEDs);
+          break;
+        case 4:
 
-        probeLEDs.setPixelColor(0, 0x210021);
-        // probeLEDs[0].setColorCode(0x110011);
-        //  probeLEDs.show();
-        //  Serial.println(showProbeLEDs);
-        break;
-      case 5:
-        probeLEDs.setPixelColor(0, 0x111111); // all
-        // probeLEDs[0].setColorCode(0x111111);
-        //  Serial.println(showProbeLEDs);
-        break;
+          probeLEDs.setPixelColor(0, 0x150c15);
+          // probeLEDs[0].setColorCode(0x110011);
+          //  probeLEDs.show();
+          //  Serial.println(showProbeLEDs);
+          break;
+        case 5:
+          probeLEDs.setPixelColor(0, 0x111111); // all
+          // probeLEDs[0].setColorCode(0x111111);
+          //  Serial.println(showProbeLEDs);
+          break;
         case 6:
-        probeLEDs.setPixelColor(0, 0x001500); // measure dim
-        break;
+          probeLEDs.setPixelColor(0, 0x0c160c); // measure dim
+          break;
 
-      default:
-        break;
-      }
-      lastProbeLEDs = showProbeLEDs;
+        default:
+          break;
+        }
+        lastProbeLEDs = showProbeLEDs;
 
-      // while(checkingButton == 1) {
-      //   //Serial.println("checkingButton");
-      // }
+        // while(checkingButton == 1) {
+        //   //Serial.println("checkingButton");
+        // }
 
-      // FastLED.show();
-      //delay(1);
-      /// pinMode(2, INPUT);
-      // pinMode(9, OUTPUT);
+        // FastLED.show();
+        // delay(1);
+        /// pinMode(2, INPUT);
+        // pinMode(9, OUTPUT);
         //       Serial.print("showProbeLEDs = ");
         // Serial.println(showProbeLEDs);
 
-      probeLEDs.show();
-      showingProbeLEDs = 0;
-      core2busy = false;
-        
-       }
+        probeLEDs.show();
+        showingProbeLEDs = 0;
+        core2busy = false;
+      }
       if (rails != 3 && swirled == 0) {
         showLEDsCore2 = 0;
 

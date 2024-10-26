@@ -143,10 +143,10 @@ void writeMenuTree(void) {
     // Serial.println("waiting for core2 to finish");
   }
   core1busy = true;
-  //FatFS.begin();
-  //delay(100);
-  //FatFS.remove("/MenuTree.txt");
- //delay(100);
+  FatFS.begin();
+//   delay(100);
+//   FatFS.remove("/MenuTree.txt");
+//  delay(100);
  menuTreeFile = FatFS.open("/MenuTree.txt", "w");
   if (!menuTreeFile) {
 
