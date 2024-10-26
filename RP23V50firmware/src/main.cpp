@@ -269,7 +269,7 @@ int baudRate = 115200;
 
 int restoredNodeFile = 0;
 
-const char firmwareVersion[] = "5.1.0.2"; // remember to update this
+const char firmwareVersion[] = "5.1.0.3"; // remember to update this
 
 int firstLoop = 1;
 
@@ -587,7 +587,7 @@ dontshowmenu:
     //     // Serial.print("\n\r");
     // checkPads();
 
-    
+
     // if ((millis() - switchTimer) > 1000) {
     //   switchTimer = millis();
     //   // checkPads();
