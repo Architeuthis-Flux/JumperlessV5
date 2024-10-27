@@ -53,6 +53,7 @@ KevinC@ppucc.io
 #include "PersistentStuff.h"
 #include "Probing.h"
 #include "RotaryEncoder.h"
+#include "ArduinoStuff.h"
 
 #ifdef USE_FATFS
 #include "FatFS.h"
@@ -79,9 +80,7 @@ KevinC@ppucc.io
 
 bread b;
 
-#ifdef USE_TINYUSB
-Adafruit_USBD_CDC USBSer1;
-#endif
+
 // bool core1_separate_stack = true;
 
 // SerialUSB Serial;
@@ -119,8 +118,6 @@ int rotEncInit = 0;
 
 int core2initFinished = 0;
 
-
-int baudRate = 115200; //for routable USB-serial
 
 
 void setup() {
@@ -218,8 +215,8 @@ void setup() {
   //   digitalWrite(19, HIGH);
 
   //  showLEDsCore2 = 1;
- //delay(1000);
-   //setRailsAndDACs();
+  // delay(1000);
+  // setRailsAndDACs();
 
   routableBufferPower(1);
   // fatFS
@@ -236,13 +233,7 @@ void setupCore2stuff() {
   initLEDs();
   initRowAnimations();
   setupSwirlColors();
-#ifdef USE_TINYUSB
-  USBSer1.setStringDescriptor("Jumperless USB Serial");
-  
-
-  USBSer1.begin(baudRate);
-  Serial1.begin(baudRate);
-#endif
+initSecondSerial();
   // delay(4);
 }
 
@@ -272,7 +263,6 @@ char input;
 
 int serSource = 0;
 int readInNodesArduino = 0;
-
 
 int restoredNodeFile = 0;
 
@@ -409,7 +399,7 @@ dontshowmenu:
     //   delay(1000);
     //   printNodeFile(netSlot, 0, 1);
     //   printNodeFile(netSlot, 0, 0);
-      
+
     //  //refreshConnections();
     //   refreshLocalConnections(-1);
 
@@ -531,7 +521,6 @@ dontshowmenu:
     // Serial.println(digitalRead(11));
     // delay(300);
 
-
     // Serial.println(digitalRead(buttonPin));
 
     if ((millis() - waitTimer) > 100) {
@@ -595,7 +584,6 @@ dontshowmenu:
     //     // Serial.print("\n\r");
     // checkPads();
 
-
     // if ((millis() - switchTimer) > 1000) {
     //   switchTimer = millis();
     //   // checkPads();
@@ -608,14 +596,13 @@ dontshowmenu:
     //     } else if (switchPosition == 0) {
     //       showProbeLEDs = 6;
     //     }
-       
+
     // }
 
-        if (showReadings >= 1) {
+    if (showReadings >= 1) {
       chooseShownReadings();
       showMeasurements();
     }
-
   }
 
   if (slotChanged == 1) {
@@ -1116,100 +1103,8 @@ volatile int showingProbeLEDs = 0;
 
 unsigned long ardTimer = 0;
 
-int dtrFire = 0;
-uint8_t numbits = 8;
-uint8_t paritytype = 0;
-uint8_t stopbits = 1;
-
-uint16_t makeSerialConfig(uint8_t numbits, uint8_t paritytype,
-                          uint8_t stopbits) {
-  uint16_t config = 0;
-
-//   #define SERIAL_PARITY_EVEN   (0x1ul)
-// #define SERIAL_PARITY_ODD    (0x2ul)
-// #define SERIAL_PARITY_NONE   (0x3ul)
-// #define SERIAL_PARITY_MARK   (0x4ul)
-// #define SERIAL_PARITY_SPACE  (0x5ul)
-// #define SERIAL_PARITY_MASK   (0xFul)
-
-// #define SERIAL_STOP_BIT_1    (0x10ul)
-// #define SERIAL_STOP_BIT_1_5  (0x20ul)
-// #define SERIAL_STOP_BIT_2    (0x30ul)
-// #define SERIAL_STOP_BIT_MASK (0xF0ul)
-
-// #define SERIAL_DATA_5        (0x100ul)
-// #define SERIAL_DATA_6        (0x200ul)
-// #define SERIAL_DATA_7        (0x300ul)
-// #define SERIAL_DATA_8        (0x400ul)
-// #define SERIAL_DATA_MASK     (0xF00ul)
-//#define SERIAL_5N1           (SERIAL_STOP_BIT_1 | SERIAL_PARITY_NONE  | SERIAL_DATA_5)
-  
-
-  unsigned long parity = 0x3ul;
-  unsigned long stop = 0x10ul;
-  unsigned long data = 0x400ul;
 
 
-  switch (numbits) {
-  case 5:
-    data = 0x100ul;
-    break;
-  case 6:
-    data = 0x200ul;
-    break;
-  case 7:
-    data = 0x300ul;
-    break;
-  case 8:
-    data = 0x400ul;
-    break;
-  default:
-    data = 0x400ul;
-    break;
-  }
-
-  switch (paritytype) {
-  case 0:
-    parity = 0x3ul;
-    break;
-  case 1:
-    parity = 0x1ul;
-    break;
-  case 2:
-    parity = 0x2ul;
-    break;
-  case 3:
-    parity = 0x3ul;
-    break;
-  case 4:
-    parity = 0x4ul;
-    break;
-  case 5:
-    parity = 0x5ul;
-    break;
-  default:
-    parity = 0x3ul;
-    break;
-  }
-
-  switch (stopbits) {
-  case 1:
-    stop = 0x10ul;
-    break;
-  case 2:
-    stop = 0x30ul;
-    break;
-  default:
-    stop = 0x10ul;
-    break;
-  }
-
-  config = data | parity | stop;
-
-  return config;
-}
-
-bool serConfigChanged = false;
 
 
 void loop1() {
@@ -1222,112 +1117,17 @@ void loop1() {
     core2stuff();
   }
 
+secondSerialHandler();
 
-
-
-if (USBSer1.baud() != baudRate) {
-    baudRate = USBSer1.baud();
-    USBSer1.begin(baudRate);
-    serConfigChanged = true;
-
-  }
-
-  if (USBSer1.numbits() != numbits) {
-    numbits = USBSer1.numbits();
-    serConfigChanged = true;
-
-  }
-
-  if (USBSer1.paritytype() != paritytype) {
-    paritytype = USBSer1.paritytype();
-    serConfigChanged = true;
-
-  }
-
-  if (USBSer1.stopbits() != stopbits) {
-    stopbits = USBSer1.stopbits();
-    serConfigChanged = true;
-
-  }
-
-  if (serConfigChanged) {
-
-    Serial1.begin(baudRate, makeSerialConfig(numbits, paritytype, stopbits));
-    serConfigChanged = false;
-
-    Serial.print("Serial1 config changed to ");
-Serial.print(baudRate);
-Serial.print(" ");
-
-    Serial.print(numbits);
-    switch (paritytype) {
-    case 0:
-      Serial.print("N");
-      break;
-    case 1:
-      Serial.print("O");
-      break;
-    case 2:
-      Serial.print("E");
-      break;
-    case 3:
-      Serial.print("M");
-      break;
-    case 4:
-      Serial.print("S");
-      break;
-    default:
-      Serial.print("N");
-      break;
-    }
-    Serial.println(stopbits);
-  }
-
-
-
-
-  if (USBSer1.dtr() == 0 && dtrFire == 0) {
-    //Serial.println("DTR");
-    dtrFire = 1;
-    digitalWrite(GPIO_2_PIN, LOW);
-    digitalWrite(18, LOW);
-    digitalWrite(19, LOW);
-
-   //Serial1.print('U');
-
-  } else if (USBSer1.dtr() != 0 && dtrFire == 1) {
-    digitalWrite(GPIO_2_PIN, HIGH);
-    digitalWrite(18, HIGH);
-    //pinMode(18, INPUT_PULLUP);
-    digitalWrite(19, HIGH);
-    //pinMode(19, INPUT_PULLUP);
-    dtrFire = 0;
-  } else {
-    pinMode(18, INPUT_PULLUP);
-    pinMode(19, INPUT_PULLUP);
-    //  digitalWrite(GPIO_2_PIN, LOW);
-  }
-
-  if (USBSer1.available()) {
-    char c = USBSer1.read();
-    Serial1.write(c);
-   // Serial1.print(c);
-  }
-  if (Serial1.available()) {
-    char c = Serial1.read();
-    USBSer1.write(c);
-  //  Serial.print(c);
-
-  }
 
   // if (millis() - ardTimer == 2000) {
   //   Serial1.begin(115200);
   // }
-//}
+  //}
 
-// timer = micros() - timer;
+  // timer = micros() - timer;
 
-// yield();
+  // yield();
 }
 
 void core2stuff() // core 2 handles the LEDs and the CH446Q8
