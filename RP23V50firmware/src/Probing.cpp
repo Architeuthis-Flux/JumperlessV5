@@ -1578,6 +1578,7 @@ int checkSwitchPosition() { // 0 = measure, 1 = select
     // }
     timer = micros();
     switchPosition = 1;
+    Serial1.begin(115200);
     return 1;
   } else {
     if (bufferPowerConnected == true) {
@@ -1588,6 +1589,7 @@ int checkSwitchPosition() { // 0 = measure, 1 = select
     // refreshLocalConnections();
     // showProbeLEDs = 3;
     switchPosition = 0;
+    Serial1.begin(115200);
     return 0;
   }
 }

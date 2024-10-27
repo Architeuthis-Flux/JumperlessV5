@@ -206,8 +206,8 @@ void setup() {
   initMenu();
   initADC();
   initDAC(); // also sets revisionNumber
-  pinMode(18, INPUT);
-  pinMode(19, INPUT);
+  pinMode(18, INPUT_PULLUP);
+  pinMode(19, INPUT_PULLUP);
   //  pinMode(18, OUTPUT);
   //   pinMode(19, OUTPUT);
   //   digitalWrite(18, HIGH);
@@ -1119,16 +1119,15 @@ void loop1() {
 
   if (USBSer1.available()) {
     char c = USBSer1.read();
-    Serial1.write(c);
-    //Serial.print(c);
+    //Serial1.write(c);
+    Serial1.print(c);
   }
 
 
-  if (Serial1.available() && flashingArduino == 0) {
+  if (Serial1.available()) {
     char c = Serial1.read();
-
-
-    USBSer1.write(c);
+    USBSer1.print(c);
+  //  Serial.print(c);
 
   }
 
