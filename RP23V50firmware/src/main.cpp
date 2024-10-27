@@ -165,7 +165,7 @@ void setup() {
 
   // delay(20);
   //  pinMode(buttonPin, INPUT_PULLDOWN);
-
+  initDAC(); // also sets revisionNumber
   pinMode(probePin, OUTPUT_8MA);
   pinMode(10, OUTPUT_8MA);
 
@@ -209,7 +209,7 @@ void setup() {
   // delay(100);
   initMenu();
   initADC();
-  initDAC(); // also sets revisionNumber
+
   pinMode(18, INPUT_PULLUP);
   pinMode(19, INPUT_PULLUP);
   //  pinMode(18, OUTPUT);
@@ -218,8 +218,8 @@ void setup() {
   //   digitalWrite(19, HIGH);
 
   //  showLEDsCore2 = 1;
-  //
-  // setRailsAndDACs();
+ //delay(1000);
+   //setRailsAndDACs();
 
   routableBufferPower(1);
   // fatFS
@@ -251,6 +251,9 @@ void setup1() {
   setupCore2stuff();
 
   core2initFinished = 1;
+
+  digitalWrite(GPIO_2_PIN, HIGH);
+
   // delay(4);
   // multicore_lockout_victim_init();
   //  lightUpRail();
@@ -359,6 +362,7 @@ menu:
   if (firstLoop == 1) {
     firstLoop = 0;
     // delay(100);
+    setRailsAndDACs();
     if (attractMode == 1) {
       defconDisplay = 0;
       netSlot = -1;
@@ -1111,6 +1115,9 @@ int lastProbeLEDs = -1;
 volatile int showingProbeLEDs = 0;
 
 unsigned long ardTimer = 0;
+
+int dtrFire = 0;
+
 void loop1() {
   // int timer = micros();
 
@@ -1134,6 +1141,30 @@ if (USBSer1.baud() != baudRate) {
     char c = USBSer1.read();
     Serial1.write(c);
    // Serial1.print(c);
+  }
+  if (USBSer1.dtr() == 0 && dtrFire == 0) {
+    //Serial.println("DTR");
+    dtrFire = 1;
+    digitalWrite(GPIO_2_PIN, HIGH);
+    digitalWrite(18, LOW);
+    digitalWrite(19, LOW);
+    //  delay(100);
+    //  USBSer1.end();
+    //  Serial1.end();
+    //  delay(100);
+    //  USBSer1.begin(115200);
+    //  Serial1.begin(115200);
+  } else if (USBSer1.dtr() != 0 && dtrFire == 1) {
+    digitalWrite(GPIO_2_PIN, LOW);
+    digitalWrite(18, HIGH);
+    //pinMode(18, INPUT_PULLUP);
+    digitalWrite(19, HIGH);
+    //pinMode(19, INPUT_PULLUP);
+    dtrFire = 0;
+  } else {
+    pinMode(18, INPUT_PULLUP);
+    pinMode(19, INPUT_PULLUP);
+    //  digitalWrite(GPIO_2_PIN, LOW);
   }
 
 

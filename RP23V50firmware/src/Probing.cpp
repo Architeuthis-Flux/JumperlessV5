@@ -1085,7 +1085,7 @@ int chooseDAC(int justPickOne) {
         if (justPickOne == 1) {
           return function;
         }
-        setDac0_5Vvoltage(voltageSelect(5));
+        setDac0voltage(voltageSelect(5));
         // showNets();
         showLEDsCore2 = -1;
         delay(100);
@@ -1099,7 +1099,7 @@ int chooseDAC(int justPickOne) {
           return function;
           // break;
         }
-        setDac1_8Vvoltage(voltageSelect(8));
+        setDac1voltage(voltageSelect(8));
         // showNets();
         showLEDsCore2 = -1;
         delay(100);
