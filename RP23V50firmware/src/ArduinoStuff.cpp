@@ -29,8 +29,10 @@ void initSecondSerial(void)
  #ifdef USE_TINYUSB
   USBSer1.setStringDescriptor("Jumperless USB Serial");
 
-  USBSer1.begin(baudRate);
-  Serial1.begin(baudRate);
+
+  USBSer1.begin(baudRate, getSerialConfig());
+
+  Serial1.begin(baudRate, getSerialConfig());
 #endif
 
 }
@@ -128,10 +130,22 @@ uint16_t makeSerialConfig(uint8_t numbits, uint8_t paritytype,
 
   return config;
 }
+uint16_t getSerialConfig(void) {
 
-void checkForConfigChanges(void)
+        uint8_t numbits = USBSer1.numbits();
+        uint8_t paritytype = USBSer1.paritytype();
+        uint8_t stopbits = USBSer1.stopbits();
+
+
+
+
+  return makeSerialConfig(numbits, paritytype, stopbits);
+}
+
+void checkForConfigChanges(bool print)
 {
-         if (USBSer1.numbits() != numbits) {
+        
+if (USBSer1.numbits() != numbits) {
     numbits = USBSer1.numbits();
     serConfigChanged = 1;
   }
@@ -203,10 +217,13 @@ void secondSerialHandler(void)
   if (USBSer1.dtr() == 0 && dtrFire == 0) {
     // Serial.println("DTR");
     dtrFire = 1;
+    pinMode(GPIO_2_PIN, OUTPUT);
     digitalWrite(GPIO_2_PIN, LOW);
+    pinMode(18, OUTPUT_8MA);
+    pinMode(19, OUTPUT_8MA);
     digitalWrite(18, LOW);
     digitalWrite(19, LOW);
-
+delay(1);
     // Serial1.print('U');
 
   } else if (USBSer1.dtr() != 0 && dtrFire == 1) {
@@ -217,8 +234,8 @@ void secondSerialHandler(void)
     // pinMode(19, INPUT_PULLUP);
     dtrFire = 0;
   } else {
-    pinMode(18, INPUT_PULLUP);
-    pinMode(19, INPUT_PULLUP);
+    pinMode(18, INPUT);
+    pinMode(19, INPUT);
     //  digitalWrite(GPIO_2_PIN, LOW);
   }
 

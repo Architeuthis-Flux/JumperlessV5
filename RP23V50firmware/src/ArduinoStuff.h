@@ -20,8 +20,9 @@ extern Adafruit_USBD_CDC USBSer1;
 void initArduino(void);
 
 void initSecondSerial(void);
+uint16_t getSerialConfig(void);
 
-void checkForConfigChanges(void);
+void checkForConfigChanges(bool print = true);
 void secondSerialHandler(void);
 uint16_t makeSerialConfig(uint8_t numbits = 8, uint8_t paritytype = 0,
                           uint8_t stopbits = 1);
