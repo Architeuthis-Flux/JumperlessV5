@@ -227,7 +227,7 @@ void initDAC(void) {
   initGPIO();
   Wire.setSDA(4);
   Wire.setSCL(5);
-  Wire.setClock(400000);
+  Wire.setClock(1000000);
   Wire.begin();
 
   delay(5);
@@ -1278,676 +1278,676 @@ int readAdc(int channel, int samples) {
 }
 
 int waveGen(void) {
-  Serial.println("\n\n\rComing back soon in a less janky way!\n\r");
-  return 1;
-//   int loopCounter = 0;
-//   int c = 0;
-//   listSpecialNets();
-//   listNets();
-
-//   int activeDac = 3;
-
-//   mode[0] = 's';
-//   mode[1] = 's';
-//   mode[2] = 's';
-
-//   refillTable(amplitude[0], offset[0] + calib[0], 0);
-//   refillTable(amplitude[1], offset[1] + calib[1], 1);
-
-//   setDac0voltage((float)0.0);
-
-//   // setDac1voltage(offset[1] + calib[1]);
-//   setDac1voltage((float)0.0);
-//   digitalWrite(8, HIGH);
-//   // setDac1voltage(8190);
-//   // Serial.println(dac_rev3.getGain());
-
-//   // Serial.println(dac_rev3.maxValue());
-//   // Serial.print("Revision = ");
-//   // Serial.println(revisionNumber);
-//   Serial.println(
-//       "\n\r\t\t\t\t     waveGen\t\n\n\r\toptions\t\t\twaves\t\t\tadjust "
-//       "frequency\n\r");
-//   Serial.println(
-//       "\t5/0 = dac 0 0-5V (togg)\tq = square\t\t+ = frequency++\n\r");
-//   Serial.println("\t8/1 = dac 1 +-8V (togg)\ts = sine\t\t- = frequency--\n\r");
-//   Serial.println(
-//       "\ta = set amplitude (p-p)\tw = sawtooth\t\t* = frequency*2\n\r");
-//   Serial.println("\to = set offset\t\tt = triangle\t\t/ = frequency/2\n\r");
-//   Serial.println("\tv = voltage\t\tr = random\t\t \n\r");
-//   Serial.println("\th = show this menu\tx = exit\t\t \n\r");
-
-//   period[activeDac] = 1e6 / (freq[activeDac] / 10);
-//   halvePeriod[activeDac] = period[activeDac] / 2;
-//   int chars = 0;
-
-//   chars = 0;
-
-//   int firstCrossFreq0 = 0;
-//   int firstCrossFreq1 = 0;
-
-//   while (1) {
-//     yield();
-//     uint32_t now = micros();
-
-//     count++;
-
-//     // float adc3Voltage = (adc3Reading - 2528) / 220.0; //painstakingly
-//     // measured float adc0Voltage = ((adc0Reading) / 400.0) - 0.69; //- 0.93;
-//     // //painstakingly measured
-
-//     int adc0Reading = 0;
-//     int brightness0 = 0;
-//     int hueShift0 = 0;
-//     // firstCrossFreq0 = 1;
-
-//     if (dacOn[0] == 1 && freq[0] < 33) {
-//       // adc0Reading = INA1.getBusVoltage_mV();
-//       //  adc0Reading = dac0_5V.getInputCode();
-
-//       if (c == 'q') {
-//       } else {
-
-//         adc0Reading = readAdc(26, 1);
-//         adc0Reading = abs(adc0Reading);
-//         hueShift0 = map(adc0Reading, 0, 5000, -90, 0);
-//         brightness0 = map(adc0Reading, 0, 5000, 4, 100);
-
-//         // lightUpNet(4, -1, 1, brightness0, hueShift0);
-//         showLEDsCore2 = 1;
-//         firstCrossFreq0 = 1;
-//       }
-//     } else {
-//       if (firstCrossFreq0 == 1) {
-//         // lightUpNet(4);
-//         showLEDsCore2 = 1;
-//         firstCrossFreq0 = 0;
-//       }
-//     }
-
-//     int adc1Reading = 0;
-//     int brightness1 = 0;
-//     int hueShift1 = 0;
-
-//     if (dacOn[1] == 1 && freq[1] < 17) {
-//       adc1Reading = readAdc(29, 1);
-//       hueShift1 = map(adc1Reading, -2048, 2048, -50, 45);
-//       adc1Reading = adc1Reading - 2048;
-
-//       adc1Reading = abs(adc1Reading);
-
-//       brightness1 = map(adc1Reading, 0, 2050, 4, 100);
-
-//       // lightUpNet(5, -1, 1, brightness1, hueShift1);
-//       // showLEDsCore2 = 1;
-//       // showLEDmeasurements();
-//       firstCrossFreq1 = 1;
-//     } else {
-//       if (firstCrossFreq1 == 1) {
-//         // lightUpNet(5);
-//         // showLEDsCore2 = 1;
-//         firstCrossFreq1 = 0;
-//       }
-//     }
-
-//     if (now - lastTime > 100000) {
-//       loopCounter++;
-//       //
-//       // int adc0Reading = analogRead(26);
-//       // if (activeDac == 0)
-//       // {
-//       // for (int i = 0; i < (analogRead(27)/100); i++)
-//       // {
-//       // Serial.print('.');
-
-//       // }
-//       // Serial.println(' ');
-//       // }
-//       // else if (activeDac == 1)
-//       // {
-
-//       // for (int i = 0; i < (analogRead(29)/100); i++)
-//       // {
-//       // Serial.print('.');
-
-//       // }
-//       // Serial.println(' ');
-//       // }
-
-//       lastTime = now;
-//       // Serial.println(count); // show # updates per 0.1 second
-//       count = 0;
-
-//       if (Serial.available() == 0) {
-//         // break;
-//       } else {
-//         c = Serial.read();
-//         switch (c) {
-//         case '+':
-//           if (freq[activeDac] >= 1.0) {
-
-//             freq[activeDac]++;
-//           } else {
-//             freq[activeDac] += 0.1;
-//           }
-//           break;
-//         case '-':
-
-//           if (freq[activeDac] > 1.0) {
-//             freq[activeDac]--;
-//           } else if (freq[activeDac] > 0.1) {
-//             freq[activeDac] -= 0.1;
-//           } else {
-//             freq[activeDac] = 0.0;
-//           }
-
-//           break;
-//         case '*':
-//           freq[activeDac] *= 2;
-//           break;
-//         case '/':
-//           freq[activeDac] /= 2;
-//           break;
-//         case '8':
-//           if (activeDac == 0) {
-//             setDac0voltage((float) 0.0);
-//             dacOn[0] = 0;
-//           }
-
-//           if (activeDac != 3)
-//             dacOn[1] = !dacOn[1];
-
-//           activeDac = 1;
-
-//           if (dacOn[1] == 0) {
-//             setDac1voltage((uint16_t) (offset[1] + calib[1]));
-//           }
-
-//           break;
-//         case '5':
-//           if (activeDac == 1) {
-//             setDac1voltage((uint16_t) (offset[1] + calib[1]});
-//             dacOn[1] = 0;
-//           }
-
-//           if (activeDac != 3)
-//             dacOn[0] = !dacOn[0];
-
-//           activeDac = 0;
-//           if (dacOn[activeDac] == 0) {
-//             setDac0voltage((float)0.0);
-//           }
-//           break;
-//         case 'c':
-//           // freq[activeDac] = 0;
-//           break;
-
-//         case 's': {
-//           if (mode[2] == 'v') {
-//             refillTable(amplitude[activeDac], offset[activeDac] + calib[1], 1);
-//             mode[2] = 's';
-//           }
-
-//           mode[activeDac] = c;
-//           break;
-//         }
-
-//         case 'q':
-
-//         case 'w':
-//         case 't':
-//         case 'r':
-//         case 'z':
-//         case 'm':
-
-//           //
-//           mode[2] = mode[activeDac];
-//           mode[activeDac] = c;
-//           break;
-
-//         case 'v':
-//         case 'h':
-//         case 'a':
-//         case 'o':
-
-//           mode[2] = mode[activeDac];
-
-//           mode[activeDac] = c;
-//           break;
-//         case '{':
-//         case 'f': {
-//           if (mode[0] != 'v') {
-//             setDac0voltage((float)0.0);
-//           }
-//           if (mode[1] != 'v') {
-//             setDac1voltage((uint16_t) offset[1]);
-//           }
-//           return 0;
-//         }
-
-//         case 'x': {
-//           if (mode[0] != 'v') {
-//             setDac0voltage((float)0.0);
-//           }
-//           if (mode[1] != 'v') {
-
-//             setDac1voltage((uint16_t) offset[1]);
-//           }
-
-//           return 1;
-//         }
-//         default:
-//           break;
-//         }
-//         period[activeDac] = 1e6 / freq[activeDac];
-//         halvePeriod[activeDac] = period[activeDac] / 2;
-//         if (activeDac == 0) {
-//           Serial.print("dac 0:   ");
-//           Serial.print("ampl: ");
-//           Serial.print((float)(amplitude[activeDac]) / 819);
-//           Serial.print("V\t");
-//           Serial.print("offset: ");
-//           Serial.print((float)(offset[activeDac]) / 819);
-//           Serial.print("V\t\t");
-//           Serial.print("mode: ");
-//           Serial.print(mode[activeDac]);
-//           Serial.print("\t\t");
-//           Serial.print("freq: ");
-//           Serial.print(freq[activeDac]);
-
-//           // Serial.print("\t\n\r");
-//         } else if (activeDac == 1) {
-//           Serial.print("dac 1:   ");
-//           Serial.print("ampl: ");
-//           Serial.print((float)(amplitude[activeDac]) / 276);
-//           Serial.print("V\t");
-//           Serial.print("offset: ");
-//           Serial.print(((float)(offset[activeDac]) / 276) - 7);
-//           Serial.print("V\t\t");
-//           Serial.print("mode: ");
-//           Serial.print(mode[activeDac]);
-//           Serial.print("\t\t");
-//           Serial.print("freq: ");
-//           Serial.print(freq[activeDac]);
-//           // Serial.print("\t\n\r");
-//         }
-//         /*
-//         Serial.print("\tdacon");
-//         for (int i = 0; i < 3; i++)
-//         {
-//           Serial.print("\t");
-
-//           Serial.print(dacOn[i]);
-//         }*/
-//         Serial.println();
-//       }
-//     }
-
-//     uint32_t t = now % period[activeDac];
-//     // if (dacOn[activeDac] == 1 )
-//     //{
-//     switch (mode[activeDac]) {
-//     case 'q':
-//       if (t < halvePeriod[activeDac]) {
-//         if (activeDac == 0 && dacOn[activeDac] == 1) {
-//           setDac0voltage((uint16_t) amplitude[activeDac]);
-//           lightUpNet(4, -1, 1, DEFAULTSPECIALNETBRIGHTNESS, 12);
-//           showLEDsCore2 = 1;
-//         } else if (activeDac == 1 && dacOn[activeDac] == 1) {
-//           setDac1voltage((uint16_t) amplitude[activeDac]);
-
-//           showLEDsCore2 = 1;
-//         }
-//       } else {
-//         if (activeDac == 0 && dacOn[activeDac] == 1) {
-//           setDac0voltage((float)0.0);
-//           lightUpNet(4, -1, 1, 2, 12);
-//         }
-
-//         else if (activeDac == 1 && dacOn[activeDac] == 1) {
-//           setDac1voltage((uint16_t) offset[activeDac]);
-//         }
-//       }
-//       break;
-//     case 'w':
-//       if (activeDac == 0 && dacOn[activeDac] == 1)
-//         setDac0voltage((uint16_t) t * amplitude[activeDac] / period[activeDac]);
-//       else if (activeDac == 1 && dacOn[activeDac] == 1)
-//         setDac1voltage((uint16_t) t * amplitude[activeDac] / period[activeDac]);
-//       break;
-//     case 't':
-//       if (activeDac == 0 && dacOn[activeDac] == 1) {
-
-//         if (t < halvePeriod[activeDac])
-//           setDac0voltage((uint16_t) 
-//               ((t * amplitude[activeDac]) / halvePeriod[activeDac]));
-//         else
-//           setDac0voltage((uint16_t) 
-//               (((period[activeDac] - t) * (amplitude[activeDac]) /
-//                 halvePeriod[activeDac])));
-//       } else if (activeDac == 1 && dacOn[activeDac] == 1) {
-//         if (t < halvePeriod[activeDac])
-//           setDac1voltage((uint16_t) (t * amplitude[activeDac] /
-//                               halvePeriod[activeDac]));
-//         else
-//           setDac1voltage((uint16_t) ((period[activeDac] - t) * amplitude[activeDac] /
-//                               halvePeriod[activeDac]));
-//       }
-//       break;
-//     case 'r':
-//       if (activeDac == 0 && dacOn[activeDac] == 1)
-//         setDac0voltage((uint16_t) random(amplitude[activeDac]));
-//       else if (activeDac == 1 && dacOn[activeDac] == 1) {
-//         setDac1voltage((uint16_t) random(amplitude[activeDac]));
-//       }
-//       break;
-//     case 'z': // zero
-//       if (activeDac == 0)
-//         setDac0voltage((float)0.0);
-//       else if (activeDac == 1)
-//         setDac1voltage((uint16_t) (offset[activeDac]));
-//       break;
-//     case 'h': // high
-//       Serial.println(
-//           "\n\r\t\t\t\t     waveGen\t\n\n\r\toptions\t\t\twaves\t\t\tadjust "
-//           "frequency\n\r");
-//       Serial.println(
-//           "\t5/0 = dac 0 0-5V (togg)\tq = square\t\t+ = frequency++\n\r");
-//       Serial.println(
-//           "\t8/1 = dac 1 +-8V (togg)\ts = sine\t\t- = frequency--\n\r");
-//       Serial.println(
-//           "\ta = set amplitude (p-p)\tw = sawtooth\t\t* = frequency*2\n\r");
-//       Serial.println("\to = set offset\t\tt = triangle\t\t/ = frequency/2\n\r");
-//       Serial.println("\tv = voltage\t\tr = random\t\t \n\r");
-//       Serial.println("\th = show this menu\tx = exit\t\t \n\r");
-//       mode[activeDac] = mode[2];
-//       break;
-//     case 'm': // mid
-//       // setDac1voltage(2047);
-//       break;
-//     case 'a': {
-//       float newAmplitudeF = 0;
-//       int newAmplitude = 0;
-//       int input = 0;
-//       char aC = 0;
-//       int a = 0;
-//       if (activeDac == 0) {
-
-//         Serial.print("\n\renter amplitude (0-5): ");
-//         while (Serial.available() == 0)
-//           ;
-//         aC = Serial.read();
-//         if (aC == 'a')
-//           aC = Serial.read();
-//         a = aC;
-
-//         Serial.print(aC);
-
-//         if (a >= 48 && a <= 53) {
-
-//           input = a - 48;
-//           newAmplitude = input * 819;
-//           unsigned long timeoutTimer = micros();
-//           Serial.print(".");
-//           while (Serial.available() == 0) {
-//             if (micros() - timeoutTimer > 5000) {
-//               a = '0';
-//               break;
-//             }
-//           }
-
-//           a = Serial.read();
-
-//           if (a == '.') {
-
-//             while (Serial.available() == 0) {
-//               if (micros() - timeoutTimer > 5000) {
-//                 break;
-//               }
-//             }
-
-//             a = Serial.read();
-//           }
-
-//           if (a >= 48 && a <= 57) {
-//             Serial.print((char)a);
-//             input = a - 48;
-//             newAmplitude += input * 81.9;
-
-//             amplitude[activeDac] = newAmplitude;
-//             Serial.print("\tamplitude: ");
-//             Serial.print((float)(amplitude[activeDac]) / 819);
-//             Serial.println("V");
-//             if ((offset[activeDac] - (amplitude[activeDac] / 2)) < 10 ||
-//                 ((amplitude[activeDac] / 2) - offset[activeDac]) < 10) {
-//               offset[activeDac] = (amplitude[activeDac] / 2) - 1;
-//             }
-//             { offset[activeDac] = (amplitude[activeDac] / 2) - 2; }
-//             refillTable(amplitude[activeDac], offset[activeDac], 0);
-
-//             mode[activeDac] = mode[2];
-//             mode[2] = '0';
-//             break;
-//           }
-//         }
-//       } else if (activeDac == 1) {
-
-//         Serial.print("\n\renter peak amplitude (0-7.5): ");
-//         while (Serial.available() == 0)
-//           ;
-//         aC = Serial.read();
-//         if (aC == 'o')
-//           aC = Serial.read();
-//         a = aC;
-
-//         Serial.print(aC);
-
-//         if (a >= 48 && a <= 55) {
-
-//           input = a - 48;
-//           newAmplitude = input * 276;
-//           Serial.print(".");
-//           while (Serial.available() == 0)
-//             ;
-//           a = Serial.read();
-
-//           if (a == '.') {
-//             while (Serial.available() == 0)
-//               ;
-
-//             a = Serial.read();
-//           }
-
-//           if (a >= 48 && a <= 57) {
-//             Serial.print((char)a);
-//             input = a - 48;
-//             newAmplitude += input * 27.6;
-//             // newAmplitude *= 2;
-
-//             amplitude[activeDac] = newAmplitude;
-//             Serial.print("\tamplitude: ");
-//             Serial.print((amplitude[activeDac]));
-//             Serial.println(" ");
-//             Serial.print((float)(amplitude[activeDac]) / 276);
-//             Serial.println("V");
-
-//             refillTable(amplitude[activeDac], offset[activeDac] + calib[1], 1);
-
-//             mode[activeDac] = mode[2];
-//             mode[2] = '0';
-//             break;
-//           }
-//         }
-//       }
-//     }
-//     case 'o': {
-
-//       int newOffset = 0;
-//       int input = 0;
-//       char aC = 0;
-//       int o = 0;
-//       if (activeDac == 0) {
-
-//         Serial.print("\n\renter offset (0-5): ");
-//         while (Serial.available() == 0)
-//           ;
-//         aC = Serial.read();
-//         if (aC == 'o')
-//           aC = Serial.read();
-
-//         o = aC;
-
-//         Serial.print(aC);
-
-//         if (o >= 48 && o <= 53) {
-
-//           input = o - 48;
-//           newOffset = input * 819;
-//           Serial.print(".");
-//           while (Serial.available() == 0)
-//             ;
-//           o = Serial.read();
-
-//           if (o == '.') {
-//             while (Serial.available() == 0)
-//               ;
-
-//             o = Serial.read();
-//           }
-
-//           if (o >= 48 && o <= 57) {
-//             Serial.print((char)o);
-//             input = o - 48;
-//             newOffset += input * 81.9;
-
-//             offset[activeDac] = newOffset;
-//             Serial.print("\toffset: ");
-//             Serial.print((float)(offset[activeDac]) / 819);
-//             Serial.println("V");
-
-//             refillTable(amplitude[activeDac], offset[activeDac], 0);
-
-//             mode[activeDac] = mode[2];
-//             break;
-//           }
-//         }
-//       } else if (activeDac == 1) {
-//         int negative = 0;
-
-//         Serial.print("\n\rEnter offset (-7 - 7): ");
-//         while (Serial.available() == 0)
-//           ;
-//         aC = Serial.read();
-//         if (aC == '-') {
-//           Serial.print('-');
-//           negative = 1;
-//           while (Serial.available() == 0)
-//             ;
-//           aC = Serial.read();
-//         }
-
-//         o = aC;
-
-//         Serial.print(aC);
-
-//         if (o >= 48 && o <= 55) {
-
-//           input = o - 48;
-//           newOffset = input * 276;
-
-//           if (input == '7') {
-//             Serial.print(".00");
-//           } else {
-
-//             Serial.print(".");
-//             while (Serial.available() == 0)
-//               ;
-//             o = Serial.read();
-//             if (o == '.') {
-//               while (Serial.available() == 0)
-//                 ;
-//               o = Serial.read();
-//             }
-
-//             if (o >= 48 && o <= 57) {
-//               Serial.print((char)o);
-//               input = o - 48;
-//               newOffset += input * 27.6;
-//             }
-//           }
-
-//           if (negative == 1)
-//             newOffset *= -1;
-
-//           newOffset += (7 * 276);
-
-//           offset[activeDac] = newOffset;
-//           Serial.print("\toffset: ");
-//           Serial.print(((float)(offset[activeDac]) / 276) - 7);
-//           Serial.print("  ");
-//           Serial.print(offset[activeDac]);
-//           Serial.println("V");
-
-//           refillTable(amplitude[activeDac], offset[activeDac] + calib[1], 1);
-
-//           mode[activeDac] = mode[2];
-//           break;
-//         }
-//       }
-//     }
-//     case 'v': {
-//       if (activeDac == 0 && mode[2] != 'v') {
-//         // freq[activeDac] = 0;
-//         setDac0voltage((uint16_t) (amplitude[activeDac] / 819));
-//         mode[2] = 'v';
-//       } else if (activeDac == 1 && mode[2] != 'v') {
-//         // freq[activeDac] = 0;
-//         // refillTable(0, offset[activeDac] + calib[1], 1);
-//         setDac1voltage((uint16_t) (((amplitude[activeDac] + calib[1]) / 276) -
-//                           ((offset[activeDac] / 276) - 7)));
-//         mode[2] = 'v';
-//       } else if (mode[2] == 'v') {
-//         // mode[2] = 's';
-//       }
-
-//       break;
-//     }
-
-//     default:
-//     case 's':
-//       // reference
-//       // float f = ((PI * 2) * t)/period;
-//       // setDac1voltage(2047 + 2047 * sin(f));
-//       //
-//       if (mode[activeDac] != 'v') {
-//         int idx = (360 * t) / period[activeDac];
-//         if (activeDac == 0 && dacOn[activeDac] == 1)
-//           setDac0voltage(sine0[idx]); // lookuptable
-//         else if (activeDac == 1 && dacOn[activeDac] == 1)
-//           setDac1voltage(sine1[idx]); // lookuptable
-//       }
-//       break;
-//     }
-//   }
-// }
-
-// void refillTable(int amplitude, int offset, int dac) {
-//   // int offsetCorr = 0;
-//   if (dac == 0) {
-//     // offset = amplitude / 2;
-//   }
-
-//   for (int i = 0; i < 360; i++) {
-//     if (dac == 0) {
-//       sine0[i] = offset + round(amplitude / 2 * sin(i * PI / 180));
-//     } else if (dac == 1) {
-//       sine1[i] =
-//           offset + round((amplitude - (offset - 2047)) / 2 * sin(i * PI / 180));
-//     } else if (dac == 2) {
-//       sine0[i] = offset + round(amplitude / 2 * sin(i * PI / 180));
-//       sine1[i] = offset + round(amplitude / 2 * sin(i * PI / 180));
-//     }
-//   }
+  // Serial.println("\n\n\rComing back soon in a less janky way!\n\r");
+  // return 1;
+  int loopCounter = 0;
+  int c = 0;
+  listSpecialNets();
+  listNets();
+
+  int activeDac = 3;
+
+  mode[0] = 's';
+  mode[1] = 's';
+  mode[2] = 's';
+
+  refillTable(amplitude[0], offset[0] + calib[0], 0);
+  refillTable(amplitude[1], offset[1] + calib[1], 1);
+
+  setDac0voltage((float)0.0);
+
+  // setDac1voltage(offset[1] + calib[1]);
+  setDac1voltage((float)0.0);
+  digitalWrite(8, HIGH);
+  // setDac1voltage(8190);
+  // Serial.println(dac_rev3.getGain());
+
+  // Serial.println(dac_rev3.maxValue());
+  // Serial.print("Revision = ");
+  // Serial.println(revisionNumber);
+  Serial.println(
+      "\n\r\t\t\t\t     waveGen\t\n\n\r\toptions\t\t\twaves\t\t\tadjust "
+      "frequency\n\r");
+  Serial.println(
+      "\t5/0 = dac 0 0-5V (togg)\tq = square\t\t+ = frequency++\n\r");
+  Serial.println("\t8/1 = dac 1 +-8V (togg)\ts = sine\t\t- = frequency--\n\r");
+  Serial.println(
+      "\ta = set amplitude (p-p)\tw = sawtooth\t\t* = frequency*2\n\r");
+  Serial.println("\to = set offset\t\tt = triangle\t\t/ = frequency/2\n\r");
+  Serial.println("\tv = voltage\t\tr = random\t\t \n\r");
+  Serial.println("\th = show this menu\tx = exit\t\t \n\r");
+
+  period[activeDac] = 1e6 / (freq[activeDac] / 10);
+  halvePeriod[activeDac] = period[activeDac] / 2;
+  int chars = 0;
+
+  chars = 0;
+
+  int firstCrossFreq0 = 0;
+  int firstCrossFreq1 = 0;
+
+  while (1) {
+    yield();
+    uint32_t now = micros();
+
+    count++;
+
+    // float adc3Voltage = (adc3Reading - 2528) / 220.0; //painstakingly
+    // measured float adc0Voltage = ((adc0Reading) / 400.0) - 0.69; //- 0.93;
+    // //painstakingly measured
+
+    int adc0Reading = 0;
+    int brightness0 = 0;
+    int hueShift0 = 0;
+    // firstCrossFreq0 = 1;
+
+    if (dacOn[0] == 1 && freq[0] < 33) {
+      // adc0Reading = INA1.getBusVoltage_mV();
+      //  adc0Reading = dac0_5V.getInputCode();
+
+      if (c == 'q') {
+      } else {
+
+        adc0Reading = readAdc(26, 1);
+        adc0Reading = abs(adc0Reading);
+        hueShift0 = map(adc0Reading, 0, 5000, -90, 0);
+        brightness0 = map(adc0Reading, 0, 5000, 4, 100);
+
+        // lightUpNet(4, -1, 1, brightness0, hueShift0);
+        showLEDsCore2 = 1;
+        firstCrossFreq0 = 1;
+      }
+    } else {
+      if (firstCrossFreq0 == 1) {
+        // lightUpNet(4);
+        showLEDsCore2 = 1;
+        firstCrossFreq0 = 0;
+      }
+    }
+
+    int adc1Reading = 0;
+    int brightness1 = 0;
+    int hueShift1 = 0;
+
+    if (dacOn[1] == 1 && freq[1] < 17) {
+      adc1Reading = readAdc(29, 1);
+      hueShift1 = map(adc1Reading, -2048, 2048, -50, 45);
+      adc1Reading = adc1Reading - 2048;
+
+      adc1Reading = abs(adc1Reading);
+
+      brightness1 = map(adc1Reading, 0, 2050, 4, 100);
+
+      // lightUpNet(5, -1, 1, brightness1, hueShift1);
+      // showLEDsCore2 = 1;
+      // showLEDmeasurements();
+      firstCrossFreq1 = 1;
+    } else {
+      if (firstCrossFreq1 == 1) {
+        // lightUpNet(5);
+        // showLEDsCore2 = 1;
+        firstCrossFreq1 = 0;
+      }
+    }
+
+    if (now - lastTime > 100000) {
+      loopCounter++;
+      //
+      // int adc0Reading = analogRead(26);
+      // if (activeDac == 0)
+      // {
+      // for (int i = 0; i < (analogRead(27)/100); i++)
+      // {
+      // Serial.print('.');
+
+      // }
+      // Serial.println(' ');
+      // }
+      // else if (activeDac == 1)
+      // {
+
+      // for (int i = 0; i < (analogRead(29)/100); i++)
+      // {
+      // Serial.print('.');
+
+      // }
+      // Serial.println(' ');
+      // }
+
+      lastTime = now;
+      // Serial.println(count); // show # updates per 0.1 second
+      count = 0;
+
+      if (Serial.available() == 0) {
+        // break;
+      } else {
+        c = Serial.read();
+        switch (c) {
+        case '+':
+          if (freq[activeDac] >= 1.0) {
+
+            freq[activeDac]++;
+          } else {
+            freq[activeDac] += 0.1;
+          }
+          break;
+        case '-':
+
+          if (freq[activeDac] > 1.0) {
+            freq[activeDac]--;
+          } else if (freq[activeDac] > 0.1) {
+            freq[activeDac] -= 0.1;
+          } else {
+            freq[activeDac] = 0.0;
+          }
+
+          break;
+        case '*':
+          freq[activeDac] *= 2;
+          break;
+        case '/':
+          freq[activeDac] /= 2;
+          break;
+        case '8':
+          if (activeDac == 0) {
+            setDac0voltage((float) 0.0);
+            dacOn[0] = 0;
+          }
+
+          if (activeDac != 3)
+            dacOn[1] = !dacOn[1];
+
+          activeDac = 1;
+
+          if (dacOn[1] == 0) {
+            setDac1voltage((uint16_t) (offset[1] + calib[1]));
+          }
+
+          break;
+        case '5':
+          if (activeDac == 1) {
+            setDac1voltage((uint16_t) (offset[1] + calib[1]));
+            dacOn[1] = 0;
+          }
+
+          if (activeDac != 3)
+            dacOn[0] = !dacOn[0];
+
+          activeDac = 0;
+          if (dacOn[activeDac] == 0) {
+            setDac0voltage((float)0.0);
+          }
+          break;
+        case 'c':
+          // freq[activeDac] = 0;
+          break;
+
+        case 's': {
+          if (mode[2] == 'v') {
+            refillTable(amplitude[activeDac], offset[activeDac] + calib[1], 1);
+            mode[2] = 's';
+          }
+
+          mode[activeDac] = c;
+          break;
+        }
+
+        case 'q':
+
+        case 'w':
+        case 't':
+        case 'r':
+        case 'z':
+        case 'm':
+
+          //
+          mode[2] = mode[activeDac];
+          mode[activeDac] = c;
+          break;
+
+        case 'v':
+        case 'h':
+        case 'a':
+        case 'o':
+
+          mode[2] = mode[activeDac];
+
+          mode[activeDac] = c;
+          break;
+        case '{':
+        case 'f': {
+          if (mode[0] != 'v') {
+            setDac0voltage((float)0.0);
+          }
+          if (mode[1] != 'v') {
+            setDac1voltage((uint16_t) offset[1]);
+          }
+          return 0;
+        }
+
+        case 'x': {
+          if (mode[0] != 'v') {
+            setDac0voltage((float)0.0);
+          }
+          if (mode[1] != 'v') {
+
+            setDac1voltage((uint16_t) offset[1]);
+          }
+
+          return 1;
+        }
+        default:
+          break;
+        }
+        period[activeDac] = 1e6 / freq[activeDac];
+        halvePeriod[activeDac] = period[activeDac] / 2;
+        if (activeDac == 0) {
+          Serial.print("dac 0:   ");
+          Serial.print("ampl: ");
+          Serial.print((float)(amplitude[activeDac]) / 819);
+          Serial.print("V\t");
+          Serial.print("offset: ");
+          Serial.print((float)(offset[activeDac]) / 819);
+          Serial.print("V\t\t");
+          Serial.print("mode: ");
+          Serial.print(mode[activeDac]);
+          Serial.print("\t\t");
+          Serial.print("freq: ");
+          Serial.print(freq[activeDac]);
+
+          // Serial.print("\t\n\r");
+        } else if (activeDac == 1) {
+          Serial.print("dac 1:   ");
+          Serial.print("ampl: ");
+          Serial.print((float)(amplitude[activeDac]) / 276);
+          Serial.print("V\t");
+          Serial.print("offset: ");
+          Serial.print(((float)(offset[activeDac]) / 276) - 7);
+          Serial.print("V\t\t");
+          Serial.print("mode: ");
+          Serial.print(mode[activeDac]);
+          Serial.print("\t\t");
+          Serial.print("freq: ");
+          Serial.print(freq[activeDac]);
+          // Serial.print("\t\n\r");
+        }
+        /*
+        Serial.print("\tdacon");
+        for (int i = 0; i < 3; i++)
+        {
+          Serial.print("\t");
+
+          Serial.print(dacOn[i]);
+        }*/
+        Serial.println();
+      }
+    }
+
+    uint32_t t = now % period[activeDac];
+    // if (dacOn[activeDac] == 1 )
+    //{
+    switch (mode[activeDac]) {
+    case 'q':
+      if (t < halvePeriod[activeDac]) {
+        if (activeDac == 0 && dacOn[activeDac] == 1) {
+          setDac0voltage((uint16_t) amplitude[activeDac]);
+          lightUpNet(4, -1, 1, DEFAULTSPECIALNETBRIGHTNESS, 12);
+          showLEDsCore2 = 1;
+        } else if (activeDac == 1 && dacOn[activeDac] == 1) {
+          setDac1voltage((uint16_t) amplitude[activeDac]);
+
+          showLEDsCore2 = 1;
+        }
+      } else {
+        if (activeDac == 0 && dacOn[activeDac] == 1) {
+          setDac0voltage((float)0.0);
+          lightUpNet(4, -1, 1, 2, 12);
+        }
+
+        else if (activeDac == 1 && dacOn[activeDac] == 1) {
+          setDac1voltage((uint16_t) offset[activeDac]);
+        }
+      }
+      break;
+    case 'w':
+      if (activeDac == 0 && dacOn[activeDac] == 1)
+        setDac0voltage((uint16_t)( t * amplitude[activeDac] / period[activeDac]));
+      else if (activeDac == 1 && dacOn[activeDac] == 1)
+        setDac1voltage((uint16_t)( t * amplitude[activeDac] / period[activeDac]));
+      break;
+    case 't':
+      if (activeDac == 0 && dacOn[activeDac] == 1) {
+
+        if (t < halvePeriod[activeDac])
+          setDac0voltage((uint16_t) 
+              ((t * amplitude[activeDac]) / halvePeriod[activeDac]));
+        else
+          setDac0voltage((uint16_t) 
+              (((period[activeDac] - t) * (amplitude[activeDac]) /
+                halvePeriod[activeDac])));
+      } else if (activeDac == 1 && dacOn[activeDac] == 1) {
+        if (t < halvePeriod[activeDac])
+          setDac1voltage((uint16_t) (t * amplitude[activeDac] /
+                              halvePeriod[activeDac]));
+        else
+          setDac1voltage((uint16_t) ((period[activeDac] - t) * amplitude[activeDac] /
+                              halvePeriod[activeDac]));
+      }
+      break;
+    case 'r':
+      if (activeDac == 0 && dacOn[activeDac] == 1)
+        setDac0voltage((uint16_t) random(amplitude[activeDac]));
+      else if (activeDac == 1 && dacOn[activeDac] == 1) {
+        setDac1voltage((uint16_t) random(amplitude[activeDac]));
+      }
+      break;
+    case 'z': // zero
+      if (activeDac == 0)
+        setDac0voltage((float)0.0);
+      else if (activeDac == 1)
+        setDac1voltage((uint16_t) (offset[activeDac]));
+      break;
+    case 'h': // high
+      Serial.println(
+          "\n\r\t\t\t\t     waveGen\t\n\n\r\toptions\t\t\twaves\t\t\tadjust "
+          "frequency\n\r");
+      Serial.println(
+          "\t5/0 = dac 0 0-5V (togg)\tq = square\t\t+ = frequency++\n\r");
+      Serial.println(
+          "\t8/1 = dac 1 +-8V (togg)\ts = sine\t\t- = frequency--\n\r");
+      Serial.println(
+          "\ta = set amplitude (p-p)\tw = sawtooth\t\t* = frequency*2\n\r");
+      Serial.println("\to = set offset\t\tt = triangle\t\t/ = frequency/2\n\r");
+      Serial.println("\tv = voltage\t\tr = random\t\t \n\r");
+      Serial.println("\th = show this menu\tx = exit\t\t \n\r");
+      mode[activeDac] = mode[2];
+      break;
+    case 'm': // mid
+      // setDac1voltage(2047);
+      break;
+    case 'a': {
+      float newAmplitudeF = 0;
+      int newAmplitude = 0;
+      int input = 0;
+      char aC = 0;
+      int a = 0;
+      if (activeDac == 0) {
+
+        Serial.print("\n\renter amplitude (0-5): ");
+        while (Serial.available() == 0)
+          ;
+        aC = Serial.read();
+        if (aC == 'a')
+          aC = Serial.read();
+        a = aC;
+
+        Serial.print(aC);
+
+        if (a >= 48 && a <= 53) {
+
+          input = a - 48;
+          newAmplitude = input * 819;
+          unsigned long timeoutTimer = micros();
+          Serial.print(".");
+          while (Serial.available() == 0) {
+            if (micros() - timeoutTimer > 5000) {
+              a = '0';
+              break;
+            }
+          }
+
+          a = Serial.read();
+
+          if (a == '.') {
+
+            while (Serial.available() == 0) {
+              if (micros() - timeoutTimer > 5000) {
+                break;
+              }
+            }
+
+            a = Serial.read();
+          }
+
+          if (a >= 48 && a <= 57) {
+            Serial.print((char)a);
+            input = a - 48;
+            newAmplitude += input * 81.9;
+
+            amplitude[activeDac] = newAmplitude;
+            Serial.print("\tamplitude: ");
+            Serial.print((float)(amplitude[activeDac]) / 819);
+            Serial.println("V");
+            if ((offset[activeDac] - (amplitude[activeDac] / 2)) < 10 ||
+                ((amplitude[activeDac] / 2) - offset[activeDac]) < 10) {
+              offset[activeDac] = (amplitude[activeDac] / 2) - 1;
+            }
+            { offset[activeDac] = (amplitude[activeDac] / 2) - 2; }
+            refillTable(amplitude[activeDac], offset[activeDac], 0);
+
+            mode[activeDac] = mode[2];
+            mode[2] = '0';
+            break;
+          }
+        }
+      } else if (activeDac == 1) {
+
+        Serial.print("\n\renter peak amplitude (0-7.5): ");
+        while (Serial.available() == 0)
+          ;
+        aC = Serial.read();
+        if (aC == 'o')
+          aC = Serial.read();
+        a = aC;
+
+        Serial.print(aC);
+
+        if (a >= 48 && a <= 55) {
+
+          input = a - 48;
+          newAmplitude = input * 276;
+          Serial.print(".");
+          while (Serial.available() == 0)
+            ;
+          a = Serial.read();
+
+          if (a == '.') {
+            while (Serial.available() == 0)
+              ;
+
+            a = Serial.read();
+          }
+
+          if (a >= 48 && a <= 57) {
+            Serial.print((char)a);
+            input = a - 48;
+            newAmplitude += input * 27.6;
+            // newAmplitude *= 2;
+
+            amplitude[activeDac] = newAmplitude;
+            Serial.print("\tamplitude: ");
+            Serial.print((amplitude[activeDac]));
+            Serial.println(" ");
+            Serial.print((float)(amplitude[activeDac]) / 276);
+            Serial.println("V");
+
+            refillTable(amplitude[activeDac], offset[activeDac] + calib[1], 1);
+
+            mode[activeDac] = mode[2];
+            mode[2] = '0';
+            break;
+          }
+        }
+      }
+    }
+    case 'o': {
+
+      int newOffset = 0;
+      int input = 0;
+      char aC = 0;
+      int o = 0;
+      if (activeDac == 0) {
+
+        Serial.print("\n\renter offset (0-5): ");
+        while (Serial.available() == 0)
+          ;
+        aC = Serial.read();
+        if (aC == 'o')
+          aC = Serial.read();
+
+        o = aC;
+
+        Serial.print(aC);
+
+        if (o >= 48 && o <= 53) {
+
+          input = o - 48;
+          newOffset = input * 819;
+          Serial.print(".");
+          while (Serial.available() == 0)
+            ;
+          o = Serial.read();
+
+          if (o == '.') {
+            while (Serial.available() == 0)
+              ;
+
+            o = Serial.read();
+          }
+
+          if (o >= 48 && o <= 57) {
+            Serial.print((char)o);
+            input = o - 48;
+            newOffset += input * 81.9;
+
+            offset[activeDac] = newOffset;
+            Serial.print("\toffset: ");
+            Serial.print((float)(offset[activeDac]) / 819);
+            Serial.println("V");
+
+            refillTable(amplitude[activeDac], offset[activeDac], 0);
+
+            mode[activeDac] = mode[2];
+            break;
+          }
+        }
+      } else if (activeDac == 1) {
+        int negative = 0;
+
+        Serial.print("\n\rEnter offset (-7 - 7): ");
+        while (Serial.available() == 0)
+          ;
+        aC = Serial.read();
+        if (aC == '-') {
+          Serial.print('-');
+          negative = 1;
+          while (Serial.available() == 0)
+            ;
+          aC = Serial.read();
+        }
+
+        o = aC;
+
+        Serial.print(aC);
+
+        if (o >= 48 && o <= 55) {
+
+          input = o - 48;
+          newOffset = input * 276;
+
+          if (input == '7') {
+            Serial.print(".00");
+          } else {
+
+            Serial.print(".");
+            while (Serial.available() == 0)
+              ;
+            o = Serial.read();
+            if (o == '.') {
+              while (Serial.available() == 0)
+                ;
+              o = Serial.read();
+            }
+
+            if (o >= 48 && o <= 57) {
+              Serial.print((char)o);
+              input = o - 48;
+              newOffset += input * 27.6;
+            }
+          }
+
+          if (negative == 1)
+            newOffset *= -1;
+
+          newOffset += (7 * 276);
+
+          offset[activeDac] = newOffset;
+          Serial.print("\toffset: ");
+          Serial.print(((float)(offset[activeDac]) / 276) - 7);
+          Serial.print("  ");
+          Serial.print(offset[activeDac]);
+          Serial.println("V");
+
+          refillTable(amplitude[activeDac], offset[activeDac] + calib[1], 1);
+
+          mode[activeDac] = mode[2];
+          break;
+        }
+      }
+    }
+    case 'v': {
+      if (activeDac == 0 && mode[2] != 'v') {
+        // freq[activeDac] = 0;
+        setDac0voltage((uint16_t) (amplitude[activeDac] / 819));
+        mode[2] = 'v';
+      } else if (activeDac == 1 && mode[2] != 'v') {
+        // freq[activeDac] = 0;
+        // refillTable(0, offset[activeDac] + calib[1], 1);
+        setDac1voltage((uint16_t) (((amplitude[activeDac] + calib[1]) / 276) -
+                          ((offset[activeDac] / 276) - 7)));
+        mode[2] = 'v';
+      } else if (mode[2] == 'v') {
+        // mode[2] = 's';
+      }
+
+      break;
+    }
+
+    default:
+    case 's':
+      // reference
+      // float f = ((PI * 2) * t)/period;
+      // setDac1voltage(2047 + 2047 * sin(f));
+      //
+      if (mode[activeDac] != 'v') {
+        int idx = (360 * t) / period[activeDac];
+        if (activeDac == 0 && dacOn[activeDac] == 1)
+          setDac0voltage(sine0[idx]); // lookuptable
+        else if (activeDac == 1 && dacOn[activeDac] == 1)
+          setDac1voltage(sine1[idx]); // lookuptable
+      }
+      break;
+    }
+  }
+}
+
+void refillTable(int amplitude, int offset, int dac) {
+  // int offsetCorr = 0;
+  if (dac == 0) {
+    // offset = amplitude / 2;
+  }
+
+  for (int i = 0; i < 360; i++) {
+    if (dac == 0) {
+      sine0[i] = offset + round(amplitude / 2 * sin(i * PI / 180));
+    } else if (dac == 1) {
+      sine1[i] =
+          offset + round((amplitude - (offset - 2047)) / 2 * sin(i * PI / 180));
+    } else if (dac == 2) {
+      sine0[i] = offset + round(amplitude / 2 * sin(i * PI / 180));
+      sine1[i] = offset + round(amplitude / 2 * sin(i * PI / 180));
+    }
+  }
 }
 // void GetAdc29Status(int i) {
 //   gpio_function gpio29Function = gpio_get_function(29);
