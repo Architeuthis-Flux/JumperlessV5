@@ -1589,7 +1589,7 @@ int checkSwitchPosition() { // 0 = measure, 1 = select
     // refreshLocalConnections();
     // showProbeLEDs = 3;
     switchPosition = 0;
-    Serial1.begin(115200);
+    Serial1.begin(baudRate);
     return 0;
   }
 }

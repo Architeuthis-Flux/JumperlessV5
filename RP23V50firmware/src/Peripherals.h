@@ -34,7 +34,7 @@ extern int gpioNet[10];
 extern uint32_t gpioReadingColors[10];
 extern int revisionNumber;
 
-
+extern int baudRate;
 
 void setGPIO(void);
 void readGPIO(void);

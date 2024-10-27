@@ -119,6 +119,10 @@ int rotEncInit = 0;
 
 int core2initFinished = 0;
 
+
+int baudRate = 115200; //for routable USB-serial
+
+
 void setup() {
   pinMode(RESETPIN, OUTPUT_12MA);
 
@@ -236,8 +240,8 @@ void setupCore2stuff() {
   USBSer1.setStringDescriptor("Jumperless USB Serial");
   
 
-  USBSer1.begin(115200);
-  Serial1.begin(115200);
+  USBSer1.begin(baudRate);
+  Serial1.begin(baudRate);
 #endif
   // delay(4);
 }
@@ -265,7 +269,7 @@ char input;
 
 int serSource = 0;
 int readInNodesArduino = 0;
-int baudRate = 115200;
+
 
 int restoredNodeFile = 0;
 
@@ -1117,16 +1121,25 @@ void loop1() {
     core2stuff();
   }
 
+
+if (USBSer1.baud() != baudRate) {
+    baudRate = USBSer1.baud();
+    USBSer1.begin(baudRate);
+    Serial1.begin(baudRate);
+    Serial.print("Baud rate for routable UART changed to ");
+    Serial.println(baudRate);
+  }
+
   if (USBSer1.available()) {
     char c = USBSer1.read();
-    //Serial1.write(c);
-    Serial1.print(c);
+    Serial1.write(c);
+   // Serial1.print(c);
   }
 
 
   if (Serial1.available()) {
     char c = Serial1.read();
-    USBSer1.print(c);
+    USBSer1.write(c);
   //  Serial.print(c);
 
   }
