@@ -646,6 +646,10 @@ skipinput:
     sketchOne();
     break;
   }
+  case 'a': {
+dtrFire = 3;
+    break;
+  }
 
   case '+': {
 #ifdef USE_FATFS

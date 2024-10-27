@@ -1,40 +1,35 @@
 // SPDX-License-Identifier: MIT
 
 #include "ArduinoStuff.h"
+#include "LEDs.h"
 #include "MatrixStateRP2040.h"
 #include "NetsToChipConnections.h"
-#include "LEDs.h"
-
 
 Adafruit_USBD_CDC USBSer1;
 
-
 int baudRate = 115200; // for routable USB-serial
 
-
-void initArduino(void) // if the UART is set up, the Arduino won't flash from it's own USB port
+void initArduino(void) // if the UART is set up, the Arduino won't flash from
+                       // it's own USB port
 {
 
-        // Serial1.setRX(17);
+  // Serial1.setRX(17);
 
-        // Serial1.setTX(16);
+  // Serial1.setTX(16);
 
-        // Serial1.begin(115200);
+  // Serial1.begin(115200);
 
-        // delay(1);
+  // delay(1);
 }
 
-void initSecondSerial(void)
-{
- #ifdef USE_TINYUSB
+void initSecondSerial(void) {
+#ifdef USE_TINYUSB
   USBSer1.setStringDescriptor("Jumperless USB Serial");
-
 
   USBSer1.begin(baudRate, getSerialConfig());
 
   Serial1.begin(baudRate, getSerialConfig());
 #endif
-
 }
 
 int dtrFire = 0;
@@ -132,20 +127,16 @@ uint16_t makeSerialConfig(uint8_t numbits, uint8_t paritytype,
 }
 uint16_t getSerialConfig(void) {
 
-        uint8_t numbits = USBSer1.numbits();
-        uint8_t paritytype = USBSer1.paritytype();
-        uint8_t stopbits = USBSer1.stopbits();
-
-
-
+  uint8_t numbits = USBSer1.numbits();
+  uint8_t paritytype = USBSer1.paritytype();
+  uint8_t stopbits = USBSer1.stopbits();
 
   return makeSerialConfig(numbits, paritytype, stopbits);
 }
 
-void checkForConfigChanges(bool print)
-{
-        
-if (USBSer1.numbits() != numbits) {
+void checkForConfigChanges(bool print) {
+
+  if (USBSer1.numbits() != numbits) {
     numbits = USBSer1.numbits();
     serConfigChanged = 1;
   }
@@ -160,9 +151,9 @@ if (USBSer1.numbits() != numbits) {
     serConfigChanged = 1;
   }
 
-    if (USBSer1.baud() != baudRate) {
+  if (USBSer1.baud() != baudRate) {
     baudRate = USBSer1.baud();
-    //USBSer1.begin(baudRate);
+    // USBSer1.begin(baudRate);
     serConfigChanged = 1;
   }
 
@@ -206,27 +197,30 @@ if (USBSer1.numbits() != numbits) {
     serConfigChanged = 3;
     delay(10);
   }
-  
 }
 
-void secondSerialHandler(void)
-{
+void secondSerialHandler(void) {
 
- checkForConfigChanges();
+  checkForConfigChanges();
 
-  if (USBSer1.dtr() == 0 && dtrFire == 0) {
+  if ((USBSer1.dtr() == 0 && dtrFire == 0) || dtrFire == 3) {
     // Serial.println("DTR");
-    dtrFire = 1;
+    if (dtrFire == 3) {
+      dtrFire = 2;
+    } else {
+      dtrFire = 1;
+    }
+    
     pinMode(GPIO_2_PIN, OUTPUT);
     digitalWrite(GPIO_2_PIN, LOW);
     pinMode(18, OUTPUT_8MA);
     pinMode(19, OUTPUT_8MA);
     digitalWrite(18, LOW);
     digitalWrite(19, LOW);
-delay(1);
+    delay(2);
     // Serial1.print('U');
 
-  } else if (USBSer1.dtr() != 0 && dtrFire == 1) {
+  } else if ((USBSer1.dtr() != 0 && dtrFire == 1) || dtrFire == 2) {
     digitalWrite(GPIO_2_PIN, HIGH);
     digitalWrite(18, HIGH);
     // pinMode(18, INPUT_PULLUP);
@@ -249,21 +243,10 @@ delay(1);
     USBSer1.write(c);
     //  Serial.print(c);
   }
-
-
 }
 
+void setBaudRate(int baudRate) {}
 
-void setBaudRate(int baudRate)
-{
+void arduinoPrint(void) {}
 
-}
-
-
-void arduinoPrint(void)
-{
-}
-
-void uploadArduino(void)
-{
-}
+void uploadArduino(void) {}
