@@ -647,7 +647,7 @@ skipinput:
     break;
   }
   case 'a': {
-dtrFire = 3;
+ManualDTR = true;
     break;
   }
 
