@@ -213,8 +213,8 @@ void secondSerialHandler(void) {
     LastRTS=actRTS;
     pinMode(GPIO_1_PIN, OUTPUT);
     digitalWrite(GPIO_1_PIN, actRTS);
-    Serial.print("GPIO 1: ");
-    Serial.println(actRTS);
+//     Serial.print("GPIO 1: ");
+//     Serial.println(actRTS);
   }
 
   if((actDTR != LastDTR) || ManualDTR){
