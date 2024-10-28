@@ -34,6 +34,7 @@ void initSecondSerial(void) {
 
 bool ManualDTR = false;
 bool LastDTR = false;
+bool LastRTS = false;
 uint8_t numbits = 8;
 uint8_t paritytype = 0;
 uint8_t stopbits = 1;
@@ -203,14 +204,24 @@ void checkForConfigChanges(bool print) {
 void secondSerialHandler(void) {
 
   checkForConfigChanges();
+  uint8_t state = tud_cdc_n_get_line_state(1);
 
-  bool actDTR = USBSer1.dtr();
+  bool actDTR = bitRead(state, 0);
+  bool actRTS = bitRead(state, 1);
+
+  if(actRTS != LastRTS){
+    LastRTS=actRTS;
+    pinMode(GPIO_1_PIN, OUTPUT);
+    digitalWrite(GPIO_1_PIN, actRTS);
+    Serial.print("GPIO 1: ");
+    Serial.println(actRTS);
+  }
 
   if((actDTR != LastDTR) || ManualDTR){
     ManualDTR = false;
     LastDTR = actDTR;
     SetResetLines(LOW);
-    delay(1);
+    delay(10);
     SetResetLines(HIGH);
   }
 
