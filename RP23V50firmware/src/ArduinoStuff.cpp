@@ -32,7 +32,8 @@ void initSecondSerial(void) {
 #endif
 }
 
-int dtrFire = 0;
+bool ManualDTR = false;
+bool LastDTR = false;
 uint8_t numbits = 8;
 uint8_t paritytype = 0;
 uint8_t stopbits = 1;
@@ -203,35 +204,16 @@ void secondSerialHandler(void) {
 
   checkForConfigChanges();
 
-  if ((USBSer1.dtr() == 0 && dtrFire == 0) || dtrFire == 3) {
-    // Serial.println("DTR");
-    if (dtrFire == 3) {
-      dtrFire = 2;
-    } else {
-      dtrFire = 1;
-    }
-    
-    pinMode(GPIO_2_PIN, OUTPUT);
-    digitalWrite(GPIO_2_PIN, LOW);
-    pinMode(18, OUTPUT_8MA);
-    pinMode(19, OUTPUT_8MA);
-    digitalWrite(18, LOW);
-    digitalWrite(19, LOW);
-    delay(2);
-    // Serial1.print('U');
+  bool actDTR = USBSer1.dtr();
 
-  } else if ((USBSer1.dtr() != 0 && dtrFire == 1) || dtrFire == 2) {
-    digitalWrite(GPIO_2_PIN, HIGH);
-    digitalWrite(18, HIGH);
-    // pinMode(18, INPUT_PULLUP);
-    digitalWrite(19, HIGH);
-    // pinMode(19, INPUT_PULLUP);
-    dtrFire = 0;
-  } else {
-    pinMode(18, INPUT);
-    pinMode(19, INPUT);
-    //  digitalWrite(GPIO_2_PIN, LOW);
+  if((actDTR != LastDTR) || ManualDTR){
+    ManualDTR = false;
+    LastDTR = actDTR;
+    SetResetLines(LOW);
+    delay(1);
+    SetResetLines(HIGH);
   }
+
 
   if (USBSer1.available()) {
     char c = USBSer1.read();
@@ -243,6 +225,17 @@ void secondSerialHandler(void) {
     USBSer1.write(c);
     //  Serial.print(c);
   }
+}
+
+void SetResetLines(bool state){
+  pinMode(GPIO_2_PIN, OUTPUT);
+  pinMode(18, OUTPUT_8MA);
+  pinMode(19, OUTPUT_8MA);
+  digitalWrite(GPIO_2_PIN, state);
+  digitalWrite(18, state);
+  digitalWrite(19, state);
+  pinMode(18, INPUT);
+  pinMode(19, INPUT);
 }
 
 void setBaudRate(int baudRate) {}

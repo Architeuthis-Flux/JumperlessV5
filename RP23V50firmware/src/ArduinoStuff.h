@@ -6,7 +6,7 @@
 
 
 
-extern int dtrFire;
+extern bool ManualDTR;
 extern uint8_t numbits;
 extern uint8_t paritytype;
 extern uint8_t stopbits;
@@ -29,6 +29,8 @@ uint16_t makeSerialConfig(uint8_t numbits = 8, uint8_t paritytype = 0,
 void arduinoPrint(void);
 void uploadArduino(void);
 void setBaudRate(int baudRate);
+
+void SetResetLines(bool state);
 
 
 
