@@ -127,6 +127,7 @@ uint16_t makeSerialConfig(uint8_t numbits, uint8_t paritytype,
 
   return config;
 }
+
 uint16_t getSerialConfig(void) {
 
   uint8_t numbits = USBSer1.numbits();
