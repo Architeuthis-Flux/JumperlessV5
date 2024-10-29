@@ -7,7 +7,7 @@
 #include "Probing.h"
 #include "Peripherals.h"
 #include <EEPROM.h>
-
+#include "Graphics.h"
 void debugFlagInit(int forceDefaults) {
 
   if (EEPROM.read(FIRSTSTARTUPADDRESS) != 0xAA || forceDefaults == 1) {
@@ -26,6 +26,7 @@ void debugFlagInit(int forceDefaults) {
     EEPROM.write(ROTARYENCODER_MODE_ADDRESS, 0);
     EEPROM.write(DISPLAYMODE_ADDRESS, 1);
     EEPROM.write(NETCOLORMODE_ADDRESS, 0);
+    EEPROM.write(MENUBRIGHTNESS_ADDRESS, 100);
     saveVoltages(0.0f, 0.0f, 0.0f, 0.0f);
 
     EEPROM.commit();
@@ -55,6 +56,7 @@ void debugFlagInit(int forceDefaults) {
   probeSwap = EEPROM.read(PROBESWAPADDRESS);
   netColorMode = EEPROM.read(NETCOLORMODE_ADDRESS);
 
+menuBrightnessSetting = EEPROM.read(MENUBRIGHTNESS_ADDRESS) - 100;
 
 
 //   debugFP = 1;
@@ -126,6 +128,17 @@ debugFP = false;
     EEPROM.write(SPECIALBRIGHTNESSADDRESS, DEFAULTSPECIALNETBRIGHTNESS);
     LEDbrightnessSpecial = DEFAULTSPECIALNETBRIGHTNESS;
   }
+    // delay(3000);
+    // Serial.print("menuBrightnessSetting out of range = ");
+    // Serial.println(menuBrightnessSetting);
+  if (menuBrightnessSetting < -100 || menuBrightnessSetting > 100) {
+
+
+    EEPROM.write(MENUBRIGHTNESS_ADDRESS, 100);
+    menuBrightnessSetting = 0;
+  }
+
+  
   if (rotaryEncoderMode != 0 && rotaryEncoderMode != 1) {
     EEPROM.write(ROTARYENCODER_MODE_ADDRESS, 0);
     rotaryEncoderMode = 0;
@@ -443,8 +456,12 @@ void saveLEDbrightness(int forceDefaults) {
     LEDbrightness = DEFAULTBRIGHTNESS;
     LEDbrightnessRail = DEFAULTRAILBRIGHTNESS;
     LEDbrightnessSpecial = DEFAULTSPECIALNETBRIGHTNESS;
+    menuBrightnessSetting = 0;
+    
   }
-  
+
+
+    EEPROM.write(MENUBRIGHTNESS_ADDRESS, menuBrightnessSetting+100);
     EEPROM.write(LEDBRIGHTNESSADDRESS, LEDbrightness);
     EEPROM.write(RAILBRIGHTNESSADDRESS, LEDbrightnessRail);
     EEPROM.write(SPECIALBRIGHTNESSADDRESS, LEDbrightnessSpecial);

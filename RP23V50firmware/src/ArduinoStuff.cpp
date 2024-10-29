@@ -26,16 +26,19 @@ void initArduino(void) // if the UART is set up, the Arduino won't flash from
 
 void initSecondSerial(void) {
 #ifdef USE_TINYUSB
+
   USBSer1.setStringDescriptor("JL Arduino");  //Not working
   USBSer2.setStringDescriptor("JL Routable"); //Not working
 
   USBSer1.begin(baudRateUSBSer1, getSerial1Config());
   Serial1.begin(baudRateUSBSer1, getSerial1Config());
 
+
   USBSer2.begin(baudRateUSBSer2, getSerial2Config());
   Serial2.begin(baudRateUSBSer2, getSerial2Config());
 #endif
 }
+
 
 bool ManualArduinoReset = false;
 bool LastArduinoDTR = false;
@@ -46,6 +49,7 @@ uint8_t stopbitsUSBSer1 = 1;
 uint8_t numbitsUSBSer2 = 8;
 uint8_t paritytypeUSBSer2 = 0;
 uint8_t stopbitsUSBSer2 = 1;
+
 
 int serConfigChangedUSBSer1 = 0;
 int serConfigChangedUSBSer2 = 0;
@@ -136,7 +140,9 @@ uint16_t makeSerialConfig(uint8_t numbits, uint8_t paritytype,
 
   return config;
 }
+
 uint16_t getSerial1Config(void) {
+
 
   uint8_t numbits = USBSer1.numbits();
   uint8_t paritytype = USBSer1.paritytype();
@@ -170,6 +176,7 @@ void checkForConfigChangesUSBSer1(bool print) {
     stopbitsUSBSer1 = USBSer1.stopbits();
     serConfigChangedUSBSer1 = 1;
   }
+
 
   if (USBSer1.baud() != baudRateUSBSer1) {
     baudRateUSBSer1 = USBSer1.baud();
@@ -208,7 +215,9 @@ void checkForConfigChangesUSBSer1(bool print) {
       Serial.print("N");
       break;
     }
+
     Serial.println(stopbitsUSBSer1);
+
     delay(10);
   } else if (serConfigChangedUSBSer1 == 1) {
     serConfigChangedUSBSer1 = 2;
@@ -236,10 +245,12 @@ void checkForConfigChangesUSBSer2(bool print) {
     serConfigChangedUSBSer2 = 1;
   }
 
+
   if (USBSer2.baud() != baudRateUSBSer2) {
     baudRateUSBSer2 = USBSer2.baud();
     // USBSer1.begin(baudRate);
     serConfigChangedUSBSer2 = 1;
+
   }
 
   if (serConfigChangedUSBSer2 == 3) {

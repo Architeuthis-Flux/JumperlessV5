@@ -192,6 +192,16 @@ struct pathStruct path[MAX_BRIDGES]; // node1, node2, net, chip[3], x[3], y[3]
         {"RP_GPIO_0", 114},
         {"RP_UART_TX", 116},
         {"RP_UART_RX", 117},
+        {"RP_GPIO_1", 138},
+        {"RP_GPIO_2", 139},
+        {"RP_GPIO_3", 140},
+        {"RP_GPIO_4", 141},
+        {"RP_GPIO_5", 122},
+        {"RP_GPIO_6", 123},
+        {"RP_GPIO_7", 124},
+        {"RP_GPIO_8", 125},
+
+        
         {"GPIO_0", 114},
         {"UART_TX", 116},
         {"UART_RX", 117},

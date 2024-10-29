@@ -18,6 +18,7 @@ extern volatile int sendAllPathsCore2;
 #define QUADRATURE_B_PIN 13
 #define BUTTON_ENC 11
 
+#define MENUBRIGHTNESS_ADDRESS 27
 #define NETCOLORMODE_ADDRESS 29
 #define DISPLAYMODE_ADDRESS 30
 #define ROTARYENCODER_MODE_ADDRESS 31
@@ -304,16 +305,18 @@ extern volatile int sendAllPathsCore2;
 #define RP_GPIO_21 136
 #define RP_GPIO_22 137
 #define RP_GPIO_23 138
-#define RP_GPIO_24 139
-#define RP_GPIO_25 140
-#define RP_GPIO_26 141
-#define RP_GPIO_27 142
+
+#define RP_GPIO_24 122
+#define RP_GPIO_25 123
+#define RP_GPIO_26 124
+#define RP_GPIO_27 125
 
 
 #define RP_GPIO_1 135
 #define RP_GPIO_2 136
 #define RP_GPIO_3 137
 #define RP_GPIO_4 138
+
 #define RP_GPIO_5 122
 #define RP_GPIO_6 123
 #define RP_GPIO_7 124

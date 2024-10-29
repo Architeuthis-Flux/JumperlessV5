@@ -1704,6 +1704,27 @@ void replaceSFNamesWithDefinedInts(void) {
   specialFunctionsString.replace("ADC4", "114");
   specialFunctionsString.replace("ADC7", "115");
 
+  specialFunctionsString.replace("GPIO_1", "138");
+  specialFunctionsString.replace("GPIO_2", "139");
+  specialFunctionsString.replace("GPIO_3", "140");
+  specialFunctionsString.replace("GPIO_4", "141");
+
+  specialFunctionsString.replace("GPIO1", "138");
+  specialFunctionsString.replace("GPIO2", "139");
+  specialFunctionsString.replace("GPIO3", "140");
+  specialFunctionsString.replace("GPIO4", "141");
+
+  specialFunctionsString.replace("GPIO_5", "122");
+  specialFunctionsString.replace("GPIO_6", "123");
+  specialFunctionsString.replace("GPIO_7", "124");
+  specialFunctionsString.replace("GPIO_8", "125");
+
+  specialFunctionsString.replace("GPIO5", "122");
+  specialFunctionsString.replace("GPIO6", "123");
+  specialFunctionsString.replace("GPIO7", "124");
+  specialFunctionsString.replace("GPIO8", "125");
+
+
 
   specialFunctionsString.replace("+5V", "105");
   specialFunctionsString.replace("5V", "105");

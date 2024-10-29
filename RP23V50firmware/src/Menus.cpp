@@ -297,7 +297,7 @@ uint32_t menuColors[10] = {0x09000a, 0x0f0004, 0x080800, 0x010f00,
                            0x000a03, 0x00030a, 0x040010, 0x070006};
 
 void initMenu(void) {
-FatFS.begin();
+  FatFS.begin();
   delay(10);
   if (menuRead == 0) {
     // Serial.println(menuLines);
@@ -1214,7 +1214,7 @@ int selectSubmenuOption(int menuPosition, int menuLevel) {
   // Serial.println("selected Submenu Option\n\r");
 
   encoderButtonState = IDLE;
-
+int lastBrightness = menuBrightnessSetting;
   int firstTime = 1;
   delayMicroseconds(1000);
   while (optionSelected == -1) {
@@ -1294,6 +1294,65 @@ int selectSubmenuOption(int menuPosition, int menuLevel) {
       if (menuType == 0) {
 
         if (brightnessMenu == 1) {
+          // Serial.println();
+          // Serial.println(highlightedOption);
+          // Serial.println();
+          
+
+          switch (highlightedOption) {
+          case 0:
+            menuBrightnessSetting = -80;
+            break;
+          case 1:
+            menuBrightnessSetting = -65;
+            break;
+          case 2:
+            menuBrightnessSetting = -55;
+            break;
+          case 3:
+            menuBrightnessSetting = -45;
+            break;
+          case 4:
+            menuBrightnessSetting = -30;
+            break;
+          case 5:
+            menuBrightnessSetting = -15;
+            break;
+          case 6:
+            menuBrightnessSetting = 0;
+            break;
+          case 7:
+            menuBrightnessSetting = 30;
+            break;
+          case 8:
+            menuBrightnessSetting = 60;
+            break;
+          case 9:
+            menuBrightnessSetting = 60;
+            break;
+          default:
+            menuBrightnessSetting = 0;
+            break;
+          }
+
+          // b.print("Bright" , menuColors[menuLevel-1],
+          //         0xFFFFFF, 0, -1, 3);
+          // b.printMenuReminder(menuLevel, menuColors[menuLevel]);
+        b.clear();
+        b.print("B", menuColors[0], 0xffffff, 0, 0, 3);
+        b.print("r", menuColors[1], 0xffffff, 1, 0, 3);
+        b.print("i", menuColors[2], 0xffffff, 2, 0, 3);
+        b.print("g", menuColors[3], 0xffffff, 3, 0, 3);
+        b.print("h", menuColors[4], 0xffffff, 4, 0, 3);
+        b.print("t", menuColors[5], 0xffffff, 5, 0, 3);
+
+        b.printMenuReminder(menuLevel, menuColors[menuLevel]);
+
+        // b.print("n", menuColors[6], 0xffffff, 1, 1, 2);
+        // b.print("e", menuColors[4], 0xffffff, 2, 1, 2);
+        // b.print("s", menuColors[2], 0xffffff, 3, 1, 2);
+        // b.print("s", menuColors[0], 0xffffff, 4, 1, 2);
+
           if (highlightedOption == 0) {
             selectColor = subMenuColors[(menuLevel + 5) % 8] & 0x030303;
           } else if (highlightedOption == 1) {
@@ -1304,11 +1363,13 @@ int selectSubmenuOption(int menuPosition, int menuLevel) {
             selectColor = subMenuColors[(menuLevel + 5) % 8] *
                           (((highlightedOption - 1)));
           }
-        }
-
+menuBrightnessSetting = lastBrightness;
+        } 
+       
+        
         b.print(subMenuStrings[highlightedOption].c_str(), selectColor,
                 backgroundColor, 3, 1, 0);
-
+        
         // Serial.println(selectColor, HEX);
         int start = highlightedOption;
         int loopCount = 0;
@@ -2238,20 +2299,20 @@ int doMenuAction(int menuPosition, int selection) {
           if (currentAction.from[i] != -1 && currentAction.to[i] != -1) {
             switch (currentAction.from[i]) {
             case 0:
-              addBridgeToNodeFile(MCP_GPIO_0, currentAction.to[i], netSlot);
+              addBridgeToNodeFile(RP_GPIO_5, currentAction.to[i], netSlot);
               break;
             case 1:
 
-              addBridgeToNodeFile(MCP_GPIO_1, currentAction.to[i], netSlot);
+              addBridgeToNodeFile(RP_GPIO_6, currentAction.to[i], netSlot);
               break;
               // break;
             case 2:
 
-              addBridgeToNodeFile(MCP_GPIO_2, currentAction.to[i], netSlot);
+              addBridgeToNodeFile(RP_GPIO_7, currentAction.to[i], netSlot);
               break;
             case 3:
 
-              addBridgeToNodeFile(MCP_GPIO_3, currentAction.to[i], netSlot);
+              addBridgeToNodeFile(RP_GPIO_8, currentAction.to[i], netSlot);
               break;
             default:
               break;
@@ -2357,6 +2418,43 @@ int doMenuAction(int menuPosition, int selection) {
                    "Bright") != -1) {
       int brightnessOptionMap[] = {2, 3, 5, 7, 10, 14, 17, 20, 25, 32, 36};
       LEDbrightness = (brightnessOptionMap[currentAction.from[0]]);
+
+      switch (currentAction.from[0]) {
+          case 0:
+            menuBrightnessSetting = -80;
+            break;
+          case 1:
+            menuBrightnessSetting = -65;
+            break;
+          case 2:
+            menuBrightnessSetting = -55;
+            break;
+          case 3:
+            menuBrightnessSetting = -45;
+            break;
+          case 4:
+            menuBrightnessSetting = -30;
+            break;
+          case 5:
+            menuBrightnessSetting = -15;
+            break;
+          case 6:
+            menuBrightnessSetting = 0;
+            break;
+          case 7:
+            menuBrightnessSetting = 30;
+            break;
+          case 8:
+            menuBrightnessSetting = 60;
+            break;
+          case 9:
+            menuBrightnessSetting = 60;
+            break;
+          default:
+            menuBrightnessSetting = 0;
+            break;
+      }
+
       saveLEDbrightness(0);
       showNets();
       showLEDsCore2 = 2;
@@ -2448,12 +2546,14 @@ char LEDbrightnessMenu(void) {
 
   char input = ' ';
   Serial.print("\n\r\t\tLED Brightness Menu \t\n\n\r");
-  Serial.print("\n\r\tl = LED brightness     =   ");
+  Serial.print("\n\r\tl = LED brightness        =   ");
   Serial.print(LEDbrightness);
-  Serial.print("\n\r\tr = Rail brightness    =   ");
+  Serial.print("\n\r\tr = Rail brightness       =   ");
   Serial.print(LEDbrightnessRail);
-  Serial.print("\n\r\ts = Special brightness =   ");
+  Serial.print("\n\r\ts = Special brightness    =   ");
   Serial.print(LEDbrightnessSpecial);
+  Serial.print("\n\r\tc = Click menu brightness =   ");
+  Serial.print(menuBrightnessSetting);
   Serial.print("\n\r\tt = All types\t");
   Serial.print("\n\n\r\td = Reset to defaults");
   Serial.print("\n\n\r\tb = Rainbow Bounce test");
@@ -2574,9 +2674,88 @@ char LEDbrightnessMenu(void) {
 
     // Serial.print(input);
     Serial.print("\n\r");
-  }
+  }else if (input == 'c') {
+    Serial.print("\n\r\t+ = increase\n\r\t- = decrease\n\r\tx = exit\n\r");
+                    b.clear();
+        b.print("B", menuColors[0], 0xffffff, 0, 0, 1);
+        b.print("r", menuColors[1], 0xffffff, 1, 0, 1);
+        b.print("i", menuColors[2], 0xffffff, 2, 0, 1);
+        b.print("g", menuColors[3], 0xffffff, 3, 0, 1);
+        b.print("h", menuColors[4], 0xffffff, 4, 0, 1);
+        b.print("t", menuColors[5], 0xffffff, 5, 0, 1);
 
-  else if (input == 's') {
+        b.print("n", menuColors[6], 0xffffff, 1, 1, 2);
+        b.print("e", menuColors[4], 0xffffff, 2, 1, 2);
+        b.print("s", menuColors[2], 0xffffff, 3, 1, 2);
+        b.print("s", menuColors[0], 0xffffff, 4, 1, 2);
+
+        showLEDsCore2 = 2;
+    while (input == 'c') {
+
+      while (Serial.available() == 0)
+        ;
+      char input2 = Serial.read();
+      if (input2 == '+') {
+        menuBrightnessSetting += 5;
+        if (menuBrightnessSetting > 150) {
+          menuBrightnessSetting = 150;
+        }
+
+                b.clear();
+       
+        b.print("B", menuColors[0], 0xffffff, 0, 0, 1);
+        b.print("r", menuColors[1], 0xffffff, 1, 0, 1);
+        b.print("i", menuColors[2], 0xffffff, 2, 0, 1);
+        b.print("g", menuColors[3], 0xffffff, 3, 0, 1);
+        b.print("h", menuColors[4], 0xffffff, 4, 0, 1);
+        b.print("t", menuColors[5], 0xffffff, 5, 0, 1);
+
+        b.print("n", menuColors[6], 0xffffff, 1, 1, 2);
+        b.print("e", menuColors[4], 0xffffff, 2, 1, 2);
+        b.print("s", menuColors[2], 0xffffff, 3, 1, 2);
+        b.print("s", menuColors[0], 0xffffff, 4, 1, 2);
+
+
+        showLEDsCore2 = 2;
+      } else if (input2 == '-') {
+
+        menuBrightnessSetting -= 5;
+        if (menuBrightnessSetting < -100) {
+          menuBrightnessSetting = -100;
+        }
+        b.clear();
+        b.print("B", menuColors[0], 0xffffff, 0, 0, 1);
+        b.print("r", menuColors[1], 0xffffff, 1, 0, 1);
+        b.print("i", menuColors[2], 0xffffff, 2, 0, 1);
+        b.print("g", menuColors[3], 0xffffff, 3, 0, 1);
+        b.print("h", menuColors[4], 0xffffff, 4, 0, 1);
+        b.print("t", menuColors[5], 0xffffff, 5, 0, 1);
+
+        b.print("n", menuColors[6], 0xffffff, 1, 1, 2);
+        b.print("e", menuColors[4], 0xffffff, 2, 1, 2);
+        b.print("s", menuColors[2], 0xffffff, 3, 1, 2);
+        b.print("s", menuColors[0], 0xffffff, 4, 1, 2);
+
+
+        showLEDsCore2 = 2;
+      } else if (input2 == 'x') {
+        input = ' ';
+      } else {
+      }
+      lightUpRail(-1, -1, 1, LEDbrightnessRail);
+
+      if (Serial.available() == 0) {
+
+        Serial.print("Click menu brightness:  ");
+        Serial.print(menuBrightnessSetting);
+        Serial.print("\n\r");
+
+      }
+    }
+
+    // Serial.print(input);
+    Serial.print("\n\r");
+  } else if (input == 's') {
     // Serial.print("\n\r\t+ = increase\n\r\t- = decrease\n\r\tx =
     // exit\n\n\r");
     while (input == 's') {
@@ -2627,6 +2806,11 @@ char LEDbrightnessMenu(void) {
     // Serial.print(input);
     Serial.print("\n\r");
   } else if (input == 't') {
+
+
+
+
+
 
     Serial.print("\n\r\t+ = increase\n\r\t- = decrease\n\r\tx = exit\n\n\r");
     while (input == 't') {

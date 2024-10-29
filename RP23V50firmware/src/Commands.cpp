@@ -360,17 +360,18 @@ void connectGPIO(int gpioNumber, int node) {
     gpioNumber = RP_GPIO_4;
     break;
   case 5:
-    gpioNumber = MCP_GPIO_0;
+    gpioNumber = RP_GPIO_5;
     break;
   case 6:
-    gpioNumber = MCP_GPIO_1;
+    gpioNumber = RP_GPIO_6;
     break;
   case 7:
-    gpioNumber = MCP_GPIO_2;
+    gpioNumber = RP_GPIO_7;
     break;
   case 8:
-    gpioNumber = MCP_GPIO_3;
+    gpioNumber = RP_GPIO_8;
     break;
+    
   }
   addBridgeToNodeFile(gpioNumber, node, netSlot, 0);
   refreshConnections();

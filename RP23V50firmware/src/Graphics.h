@@ -76,6 +76,7 @@ extern char defconString[16];
 extern uint8_t font[][3];
 extern volatile int doomOn;
 
+extern int menuBrightnessSetting;
 extern bread b;
 
 void playDoom(void);
