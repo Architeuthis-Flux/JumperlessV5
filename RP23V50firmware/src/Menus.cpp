@@ -2299,20 +2299,20 @@ int doMenuAction(int menuPosition, int selection) {
           if (currentAction.from[i] != -1 && currentAction.to[i] != -1) {
             switch (currentAction.from[i]) {
             case 0:
-              addBridgeToNodeFile(MCP_GPIO_0, currentAction.to[i], netSlot);
+              addBridgeToNodeFile(RP_GPIO_5, currentAction.to[i], netSlot);
               break;
             case 1:
 
-              addBridgeToNodeFile(MCP_GPIO_1, currentAction.to[i], netSlot);
+              addBridgeToNodeFile(RP_GPIO_6, currentAction.to[i], netSlot);
               break;
               // break;
             case 2:
 
-              addBridgeToNodeFile(MCP_GPIO_2, currentAction.to[i], netSlot);
+              addBridgeToNodeFile(RP_GPIO_7, currentAction.to[i], netSlot);
               break;
             case 3:
 
-              addBridgeToNodeFile(MCP_GPIO_3, currentAction.to[i], netSlot);
+              addBridgeToNodeFile(RP_GPIO_8, currentAction.to[i], netSlot);
               break;
             default:
               break;

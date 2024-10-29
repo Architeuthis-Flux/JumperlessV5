@@ -24,13 +24,20 @@ void initArduino(void) // if the UART is set up, the Arduino won't flash from
 
 void initSecondSerial(void) {
 #ifdef USE_TINYUSB
-  USBSer1.setStringDescriptor("Jumperless USB Serial");
-
+  USBSer1.setStringDescriptor("USB Serial");
+//   USBSer1.
+//   USBSer1.setProductDescriptor("Jumperless");
+//   USBSer1.setManufacturerDescriptor("Architeuthis Flux");
+//   USBSer1.setSerialDescriptor("0");
+//   USBSer1.setID(0x1D50, 0xACAB);
+//   USBSer1.addStringDescriptor("Jumperless");
+//   USBSer1.addStringDescriptor("Architeuthis Flux");
   USBSer1.begin(baudRate, getSerialConfig());
 
   Serial1.begin(baudRate, getSerialConfig());
 #endif
 }
+
 
 bool ManualDTR = false;
 bool LastDTR = false;
@@ -156,16 +163,17 @@ void checkForConfigChanges(bool print) {
 
   if (USBSer1.baud() != baudRate) {
     baudRate = USBSer1.baud();
-    // USBSer1.begin(baudRate);
     serConfigChanged = 1;
   }
 
   if (serConfigChanged == 3) {
+
+
     USBSer1.begin(baudRate, makeSerialConfig(numbits, paritytype, stopbits));
     Serial1.begin(baudRate, makeSerialConfig(numbits, paritytype, stopbits));
 
     serConfigChanged = 0;
-
+        if (print) {
     Serial.print("Serial1 config changed to ");
     Serial.print(baudRate);
     Serial.print(" ");
@@ -191,7 +199,8 @@ void checkForConfigChanges(bool print) {
       Serial.print("N");
       break;
     }
-    Serial.println(stopbits);
+    Serial.println(stopbits == 0 ? "1" : "2");
+        }
     delay(10);
   } else if (serConfigChanged == 1) {
     serConfigChanged = 2;
