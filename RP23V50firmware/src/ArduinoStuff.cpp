@@ -6,6 +6,7 @@
 #include "NetsToChipConnections.h"
 
 Adafruit_USBD_CDC USBSer1;
+Adafruit_USBD_CDC USBSer2;
 
 int baudRate = 115200; // for routable USB-serial
 
@@ -25,10 +26,13 @@ void initArduino(void) // if the UART is set up, the Arduino won't flash from
 void initSecondSerial(void) {
 #ifdef USE_TINYUSB
   USBSer1.setStringDescriptor("Jumperless USB Serial");
+  USBSer2.setStringDescriptor("Jumperless Arduino Bridge");
 
-  USBSer1.begin(baudRate, getSerialConfig());
+  USBSer1.begin(baudRate, getSerial1Config());
+  Serial1.begin(baudRate, getSerial1Config());
 
-  Serial1.begin(baudRate, getSerialConfig());
+  USBSer2.begin(baudRate, getSerial2Config());
+  Serial2.begin(baudRate, getSerial2Config());
 #endif
 }
 
@@ -127,11 +131,20 @@ uint16_t makeSerialConfig(uint8_t numbits, uint8_t paritytype,
 
   return config;
 }
-uint16_t getSerialConfig(void) {
+uint16_t getSerial1Config(void) {
 
   uint8_t numbits = USBSer1.numbits();
   uint8_t paritytype = USBSer1.paritytype();
   uint8_t stopbits = USBSer1.stopbits();
+
+  return makeSerialConfig(numbits, paritytype, stopbits);
+}
+
+uint16_t getSerial2Config(void) {
+
+  uint8_t numbits = USBSer2.numbits();
+  uint8_t paritytype = USBSer2.paritytype();
+  uint8_t stopbits = USBSer2.stopbits();
 
   return makeSerialConfig(numbits, paritytype, stopbits);
 }
@@ -235,6 +248,12 @@ void secondSerialHandler(void) {
     char c = Serial1.read();
     USBSer1.write(c);
     //  Serial.print(c);
+  }
+
+  if (USBSer2.available()) {
+    char c = USBSer2.read();
+    USBSer2.write(c);
+    //Simple Echo to test
   }
 }
 
