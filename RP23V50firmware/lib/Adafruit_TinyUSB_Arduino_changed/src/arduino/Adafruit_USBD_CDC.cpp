@@ -100,7 +100,7 @@ void Adafruit_USBD_CDC::begin(uint32_t baud) {
   }
 
   _instance = _instance_count++;
-  this->setStringDescriptor("TinyUSB Serial");
+  this->setStringDescriptor("jl Serial");
   TinyUSBDevice.addInterface(*this);
 }
 

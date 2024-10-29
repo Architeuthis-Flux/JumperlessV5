@@ -647,7 +647,7 @@ skipinput:
     break;
   }
   case 'a': {
-ManualDTR = true;
+ManualArduinoReset = true;
     break;
   }
 

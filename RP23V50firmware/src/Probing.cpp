@@ -1579,8 +1579,8 @@ int checkSwitchPosition() { // 0 = measure, 1 = select
     // }
     timer = micros();
     switchPosition = 1;
-    Serial1.begin(baudRate, getSerial1Config());
-    Serial2.begin(baudRate, getSerial2Config());
+    Serial1.begin(baudRateUSBSer1, getSerial1Config());
+    Serial2.begin(baudRateUSBSer2, getSerial2Config());
     return 1;
   } else {
     if (bufferPowerConnected == true) {
@@ -1591,8 +1591,8 @@ int checkSwitchPosition() { // 0 = measure, 1 = select
     // refreshLocalConnections();
     // showProbeLEDs = 3;
     switchPosition = 0;
-    Serial1.begin(baudRate, getSerial1Config());
-    Serial2.begin(baudRate, getSerial2Config());
+    Serial1.begin(baudRateUSBSer1, getSerial1Config());
+    Serial2.begin(baudRateUSBSer2, getSerial2Config());
     return 0;
   }
 }

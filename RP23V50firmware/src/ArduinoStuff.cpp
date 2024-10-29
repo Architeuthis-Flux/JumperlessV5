@@ -8,7 +8,8 @@
 Adafruit_USBD_CDC USBSer1;
 Adafruit_USBD_CDC USBSer2;
 
-int baudRate = 115200; // for routable USB-serial
+int baudRateUSBSer1 = 115200; // for Arduino-Serial
+int baudRateUSBSer2 = 115200; // for Routable Serial
 
 void initArduino(void) // if the UART is set up, the Arduino won't flash from
                        // it's own USB port
@@ -25,25 +26,29 @@ void initArduino(void) // if the UART is set up, the Arduino won't flash from
 
 void initSecondSerial(void) {
 #ifdef USE_TINYUSB
-  USBSer1.setStringDescriptor("Jumperless USB Serial");
-  USBSer2.setStringDescriptor("Jumperless Arduino Bridge");
+  USBSer1.setStringDescriptor("JL Arduino");  //Not working
+  USBSer2.setStringDescriptor("JL Routable"); //Not working
 
-  USBSer1.begin(baudRate, getSerial1Config());
-  Serial1.begin(baudRate, getSerial1Config());
+  USBSer1.begin(baudRateUSBSer1, getSerial1Config());
+  Serial1.begin(baudRateUSBSer1, getSerial1Config());
 
-  USBSer2.begin(baudRate, getSerial2Config());
-  Serial2.begin(baudRate, getSerial2Config());
+  USBSer2.begin(baudRateUSBSer2, getSerial2Config());
+  Serial2.begin(baudRateUSBSer2, getSerial2Config());
 #endif
 }
 
-bool ManualDTR = false;
-bool LastDTR = false;
-bool LastRTS = false;
-uint8_t numbits = 8;
-uint8_t paritytype = 0;
-uint8_t stopbits = 1;
+bool ManualArduinoReset = false;
+bool LastArduinoDTR = false;
+bool LastRoutableDTR = false;
+uint8_t numbitsUSBSer1 = 8;
+uint8_t paritytypeUSBSer1 = 0;
+uint8_t stopbitsUSBSer1 = 1;
+uint8_t numbitsUSBSer2 = 8;
+uint8_t paritytypeUSBSer2 = 0;
+uint8_t stopbitsUSBSer2 = 1;
 
-int serConfigChanged = 0;
+int serConfigChangedUSBSer1 = 0;
+int serConfigChangedUSBSer2 = 0;
 
 uint16_t makeSerialConfig(uint8_t numbits, uint8_t paritytype,
                           uint8_t stopbits) {
@@ -149,41 +154,41 @@ uint16_t getSerial2Config(void) {
   return makeSerialConfig(numbits, paritytype, stopbits);
 }
 
-void checkForConfigChanges(bool print) {
+void checkForConfigChangesUSBSer1(bool print) {
 
-  if (USBSer1.numbits() != numbits) {
-    numbits = USBSer1.numbits();
-    serConfigChanged = 1;
+  if (USBSer1.numbits() != numbitsUSBSer1) {
+    numbitsUSBSer1 = USBSer1.numbits();
+    serConfigChangedUSBSer1 = 1;
   }
 
-  if (USBSer1.paritytype() != paritytype) {
-    paritytype = USBSer1.paritytype();
-    serConfigChanged = 1;
+  if (USBSer1.paritytype() != paritytypeUSBSer1) {
+    paritytypeUSBSer1 = USBSer1.paritytype();
+    serConfigChangedUSBSer1 = 1;
   }
 
-  if (USBSer1.stopbits() != stopbits) {
-    stopbits = USBSer1.stopbits();
-    serConfigChanged = 1;
+  if (USBSer1.stopbits() != stopbitsUSBSer1) {
+    stopbitsUSBSer1 = USBSer1.stopbits();
+    serConfigChangedUSBSer1 = 1;
   }
 
-  if (USBSer1.baud() != baudRate) {
-    baudRate = USBSer1.baud();
+  if (USBSer1.baud() != baudRateUSBSer1) {
+    baudRateUSBSer1 = USBSer1.baud();
     // USBSer1.begin(baudRate);
-    serConfigChanged = 1;
+    serConfigChangedUSBSer1 = 1;
   }
 
-  if (serConfigChanged == 3) {
-    USBSer1.begin(baudRate, makeSerialConfig(numbits, paritytype, stopbits));
-    Serial1.begin(baudRate, makeSerialConfig(numbits, paritytype, stopbits));
+  if (serConfigChangedUSBSer1 == 3) {
+    USBSer1.begin(baudRateUSBSer1, makeSerialConfig(numbitsUSBSer1, paritytypeUSBSer1, stopbitsUSBSer1));
+    Serial1.begin(baudRateUSBSer1, makeSerialConfig(numbitsUSBSer1, paritytypeUSBSer1, stopbitsUSBSer1));
 
-    serConfigChanged = 0;
+    serConfigChangedUSBSer1 = 0;
 
     Serial.print("Serial1 config changed to ");
-    Serial.print(baudRate);
+    Serial.print(baudRateUSBSer1);
     Serial.print(" ");
 
-    Serial.print(numbits);
-    switch (paritytype) {
+    Serial.print(numbitsUSBSer1);
+    switch (paritytypeUSBSer1) {
     case 0:
       Serial.print("N");
       break;
@@ -203,39 +208,101 @@ void checkForConfigChanges(bool print) {
       Serial.print("N");
       break;
     }
-    Serial.println(stopbits);
+    Serial.println(stopbitsUSBSer1);
     delay(10);
-  } else if (serConfigChanged == 1) {
-    serConfigChanged = 2;
+  } else if (serConfigChangedUSBSer1 == 1) {
+    serConfigChangedUSBSer1 = 2;
     delay(10);
-  } else if (serConfigChanged == 2) {
-    serConfigChanged = 3;
+  } else if (serConfigChangedUSBSer1 == 2) {
+    serConfigChangedUSBSer1 = 3;
+    delay(10);
+  }
+}
+
+void checkForConfigChangesUSBSer2(bool print) {
+
+  if (USBSer2.numbits() != numbitsUSBSer2) {
+    numbitsUSBSer2 = USBSer2.numbits();
+    serConfigChangedUSBSer2 = 1;
+  }
+
+  if (USBSer2.paritytype() != paritytypeUSBSer2) {
+    paritytypeUSBSer2 = USBSer2.paritytype();
+    serConfigChangedUSBSer2 = 1;
+  }
+
+  if (USBSer2.stopbits() != stopbitsUSBSer2) {
+    stopbitsUSBSer2 = USBSer2.stopbits();
+    serConfigChangedUSBSer2 = 1;
+  }
+
+  if (USBSer2.baud() != baudRateUSBSer2) {
+    baudRateUSBSer2 = USBSer2.baud();
+    // USBSer1.begin(baudRate);
+    serConfigChangedUSBSer2 = 1;
+  }
+
+  if (serConfigChangedUSBSer2 == 3) {
+    USBSer2.begin(baudRateUSBSer2, makeSerialConfig(numbitsUSBSer2, paritytypeUSBSer2, stopbitsUSBSer2));
+    Serial2.begin(baudRateUSBSer2, makeSerialConfig(numbitsUSBSer2, paritytypeUSBSer2, stopbitsUSBSer2));
+
+    serConfigChangedUSBSer2 = 0;
+
+    Serial.print("Serial2 config changed to ");
+    Serial.print(baudRateUSBSer2);
+    Serial.print(" ");
+
+    Serial.print(numbitsUSBSer2);
+    switch (paritytypeUSBSer2) {
+    case 0:
+      Serial.print("N");
+      break;
+    case 1:
+      Serial.print("O");
+      break;
+    case 2:
+      Serial.print("E");
+      break;
+    case 3:
+      Serial.print("M");
+      break;
+    case 4:
+      Serial.print("S");
+      break;
+    default:
+      Serial.print("N");
+      break;
+    }
+    Serial.println(stopbitsUSBSer2);
+    delay(10);
+  } else if (serConfigChangedUSBSer2 == 1) {
+    serConfigChangedUSBSer2 = 2;
+    delay(10);
+  } else if (serConfigChangedUSBSer2 == 2) {
+    serConfigChangedUSBSer2 = 3;
     delay(10);
   }
 }
 
 void secondSerialHandler(void) {
 
-  checkForConfigChanges();
-  uint8_t state = tud_cdc_n_get_line_state(1);
+  checkForConfigChangesUSBSer1();
+  checkForConfigChangesUSBSer2();
 
-  bool actDTR = bitRead(state, 0);
-  bool actRTS = bitRead(state, 1);
+  bool actArduinoDTR = USBSer1.dtr();
+  bool actRouteableDTR = USBSer2.dtr();
 
-  if(actRTS != LastRTS){
-    LastRTS=actRTS;
-    pinMode(GPIO_1_PIN, OUTPUT);
-    digitalWrite(GPIO_1_PIN, actRTS);
-    Serial.print("GPIO 1: ");
-    Serial.println(actRTS);
+  if(actRouteableDTR != LastRoutableDTR){
+    pinMode(GPIO_2_PIN, OUTPUT);
+    digitalWrite(GPIO_2_PIN, actRouteableDTR);
   }
 
-  if((actDTR != LastDTR) || ManualDTR){
-    ManualDTR = false;
-    LastDTR = actDTR;
-    SetResetLines(LOW);
-    delay(10);
-    SetResetLines(HIGH);
+  if((actArduinoDTR != LastArduinoDTR) || ManualArduinoReset){
+    ManualArduinoReset = false;
+    LastArduinoDTR = actArduinoDTR;
+    SetArduinoResetLine(LOW);
+    delay(1);
+    SetArduinoResetLine(HIGH);
   }
 
 
@@ -252,13 +319,17 @@ void secondSerialHandler(void) {
 
   if (USBSer2.available()) {
     char c = USBSer2.read();
+    Serial2.write(c);
+  }
+
+   if (Serial2.available()) {
+    char c = Serial2.read();
     USBSer2.write(c);
-    //Simple Echo to test
+    //  Serial.print(c);
   }
 }
 
-void SetResetLines(bool state){
-  pinMode(GPIO_2_PIN, OUTPUT);
+void SetArduinoResetLine(bool state){
   pinMode(18, OUTPUT_8MA);
   pinMode(19, OUTPUT_8MA);
   digitalWrite(GPIO_2_PIN, state);
