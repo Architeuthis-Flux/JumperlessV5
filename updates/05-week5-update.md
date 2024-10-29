@@ -84,7 +84,7 @@ Here's what the Jumperless was putting out (this wasn't working):
 
 And here's the UPDI Friend's output (this was working):
 
-![](/images/UpdateImages/05-week5-images/logictraceUPDIfriend.png)
+![](/images/UpdateImages/05-week5-images/logictraceUPDIFriend.png)
 
 *Don't worry about the horzontal scale, they're the same, it's just how the screenshots were taken*
 
