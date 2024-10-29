@@ -25,11 +25,11 @@ It usually goes something like:
 User  > Hey, can jumperless do [thing]?
 Me    > No
 Me    > Oh wait it totally could, hold on
-         ~ a few hours later ~
+         ~ a few minutes later ~
 Me    > Okay open the app and let it auto-update the firmware
 ```
 
-The most recent one of these happened yesterday, and it resulted in an upgrade to the way it handles USB-Serial passthrough that I didn't think was even *possible*, let alone something that works so nicely you simply don't have to think about it. 
+The most recent one of these happened yesterday, and it resulted in an upgrade to the way it handles USB-Serial passthrough that I didn't think was even *possible*, let alone something that works so nicely you simply don't have to think about it.
 
 ## Serial Passthrough
 
@@ -114,17 +114,38 @@ I was thinking I was going to need to write a whole thing to send test data to i
 
 ![](/images/UpdateImages/05-week5-images/crumb.png)
 
-So let's write some code that uses these magical functions,
+So let's write some code that uses these magical functions to check for any config changes from the host side, and then restarts the passthrough side with the same settings.
+
+![](/images/UpdateImages/05-week5-images/uart-config-function.png)
+
+Holy crap this made serial passthrough soooo much less finicky. Not only for UDPI, now flashing the Arduino in the header is rock-solid too. This also lets you put an RP2040/RP2350 into boot mode with the 1200 baud "tickle" thing instead of needing to press the button.
+
+So here's what changing the settings looks like now:
+
+![](/images/UpdateImages/05-week5-images/baud-changed.png)
+
+Yep, you change settings on whatever serial program you're using and they'll be reflected on the Jumperless. What makes this extra clutch is this allows things like [avrdude](https://github.com/avrdudes/avrdude) to do all their serial port magic without any extra setup. And it's really cool to be able to *remove* menu options. 
+
+If you need any of those other flow control signals (DTR, CTS/RTS) that are sometimes used to pull the reset lines low or whatever, you can attach them to any of the routable GPIO and they'll do what they're told.
+
+
+So there you have it folks, Jumperless V5 is now even better at being series of tubes. I'm also kind of kicking around the idea of making it a series of bricks as well...
+
+
+![](/images/UpdateImages/05-week5-images/lego-1.jpg)
+
+
+![](/images/UpdateImages/05-week5-images/lego.png)
 
 
 
+Let me know whether you think this LEGO thing is a terrible idea on the [Jumperless Discord](https://discord.gg/CKP2chvcUt), [Forums](https://forum.jumperless.org/), [GitHub](https://github.com/Architeuthis-Flux/JumperlessV5), [Twitter/X](https://x.com/arabidsquid), [Bluesky](https://bsky.app/profile/architeuthisflux.bsky.social), [Mastodon](https://hackaday.social/@ArchiteuthisFlux), or in person at Hackaday Supercon 2024.
 
 
+Love,
+Kevin
 
-
-
-
-
+P.S. Huge thanks to @DerelBims for contributing a lot of the code you see in this update, 
 
 
 
