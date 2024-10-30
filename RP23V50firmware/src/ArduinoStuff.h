@@ -32,7 +32,7 @@ uint16_t makeSerialConfig(uint8_t numbits = 8, uint8_t paritytype = 0,
 void arduinoPrint(void);
 void uploadArduino(void);
 void setBaudRate(int baudRate);
-
+void ESPReset(void);
 void SetArduinoResetLine(bool state);
 
 

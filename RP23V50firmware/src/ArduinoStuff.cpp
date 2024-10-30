@@ -50,6 +50,11 @@ uint8_t numbitsUSBSer2 = 8;
 uint8_t paritytypeUSBSer2 = 0;
 uint8_t stopbitsUSBSer2 = 1;
 
+unsigned long FirstDTRTime;
+bool FirstDTR = true;
+bool ESPBoot = false;
+unsigned long ESPBootTime;
+
 
 int serConfigChangedUSBSer1 = 0;
 int serConfigChangedUSBSer2 = 0;
@@ -303,14 +308,34 @@ void secondSerialHandler(void) {
   bool actArduinoDTR = USBSer1.dtr();
   bool actRouteableDTR = USBSer2.dtr();
 
+  if(millis()-FirstDTRTime >= 1000) FirstDTR=true;
+  if(millis()-ESPBootTime>=1000) ESPBoot=false;
+
   if(actRouteableDTR != LastRoutableDTR){
+    LastRoutableDTR=actRouteableDTR;
     pinMode(GPIO_2_PIN, OUTPUT);
     digitalWrite(GPIO_2_PIN, actRouteableDTR);
   }
 
-  if((actArduinoDTR != LastArduinoDTR) || ManualArduinoReset){
-    ManualArduinoReset = false;
+  if((actArduinoDTR != LastArduinoDTR)){
     LastArduinoDTR = actArduinoDTR;
+    if(actArduinoDTR==0 && FirstDTR){
+      FirstDTRTime=millis();
+      FirstDTR=false;
+    } else if(actArduinoDTR==0 &&!FirstDTR){
+      ESPBoot=true;
+      ESPBootTime=millis();
+      ESPReset();
+    }
+    if(!ESPBoot){
+      SetArduinoResetLine(LOW);
+      delay(1);
+      SetArduinoResetLine(HIGH);
+    }
+  }
+
+  if(ManualArduinoReset){
+    ManualArduinoReset = false;
     SetArduinoResetLine(LOW);
     delay(1);
     SetArduinoResetLine(HIGH);
@@ -343,13 +368,23 @@ void secondSerialHandler(void) {
 void SetArduinoResetLine(bool state){
   pinMode(18, OUTPUT_8MA);
   pinMode(19, OUTPUT_8MA);
-  digitalWrite(GPIO_2_PIN, state);
   digitalWrite(18, state);
   digitalWrite(19, state);
   pinMode(18, INPUT);
   pinMode(19, INPUT);
 }
 
+void ESPReset(){
+  Serial.println("ESP Boot Mode");
+  pinMode(18, OUTPUT);
+  pinMode(19, OUTPUT);
+  digitalWrite(18, LOW);
+  digitalWrite(19, LOW);
+  delay(1);
+  digitalWrite(19, HIGH);
+  delay(2);
+  digitalWrite(18, HIGH);
+}
 void setBaudRate(int baudRate) {}
 
 void arduinoPrint(void) {}
