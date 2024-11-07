@@ -4,7 +4,7 @@
 
 ## What Does This All Mean?
 
-For you, dear reader/potential backer, it actually doesn't make *too* big of a difference whether you order your Jumperless V5 before or after crowdfunding ends. One of the many awesome things about doing this with Crowd Supply is that they also order a bunch of units to keep in stock. So the moment after the campaign ends on Thursday, November 7th, you'll still be able to order one, the only difference is the price will be $369 instead of the special crowdfunding price of $349. I don't think any of us need an *additional* source of urgency in our lives right now (especially us Americans, given the timing).
+For you, dear reader/potential backer, it actually doesn't make *too* big of a difference whether you order your [Jumperless V5](https://www.crowdsupply.com/architeuthis-flux/jumperless-v5) before or after crowdfunding ends. One of the many awesome things about doing this with Crowd Supply is that they also order a bunch of units to keep in stock. So the moment after the campaign ends on Thursday, November 7th, you'll still be able to order one, the only difference is the price will be $369 instead of the special crowdfunding price of $349. I don't think any of us need an *additional* source of urgency in our lives right now (especially us Americans, given the timing).
 
 
 For me, that means I get to start ramping up for full-scale production pretty soon. The goal is to get first batch (which should be enough to cover all the campaign backers' orders) assembled and shipped to me before Chinese New Year. That's not some arbitrary goal post, CNY / Spring Festival is a (well-earned) holiday that starts on January 29th next year and effectively means nothing is happening in China for the entire month of February.
