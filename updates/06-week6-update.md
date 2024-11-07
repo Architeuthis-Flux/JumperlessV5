@@ -130,8 +130,10 @@ Come can chat with the community and ask me any questions that come to mind on t
 Love,  
 Kevin
 
-
-P.S. I've been beta testing a prototype [Solder Ninja Pen](https://www.crowdsupply.com/sitron-labs/solder-ninja-pen) for 6 months now and it's kind of amazing. It's hard to explain exactly *why*, but it somehow solders better than my other tiny soldering irons in that same form factor. You should probably check it out.
+---
+# [Jumperless V5 on Crowd Supply](https://www.crowdsupply.com/architeuthis-flux/jumperless-v5)
+---
+P.S. I've been beta testing a prototype [Solder Ninja Pen](https://www.crowdsupply.com/sitron-labs/solder-ninja-pen) for 6 months now and it's kind of amazing. It's hard to explain exactly *why*, but it somehow solders better than my other tiny soldering irons in that same form factor. You should probably check it out.  
 
 
 
