@@ -4,7 +4,7 @@
 
 ## What Does This All Mean?
 
-For you, dear reader/potential backer, it actually doesn't make *too* big of a difference whether you order your Jumperless V5 before or after crowdfunding ends. One of the many awesome things about doing this with Crowd Supply is that they also order a bunch of units to keep in stock. So the moment after the campaign ends on Thursday, November 7th, you'll still be able to order one, the only difference is the price will be $369 (free shipping worldwide) instead of the special crowdfunding price of $349. I don't think any of us need an *additional* source of urgency in our lives right now (especially us Americans, given the timing).
+For you, dear reader/potential backer, it actually doesn't make *too* big of a difference whether you order your [Jumperless V5](https://www.crowdsupply.com/architeuthis-flux/jumperless-v5) before or after crowdfunding ends. One of the many awesome things about doing this with Crowd Supply is that they also order a bunch of units to keep in stock. So the moment after the campaign ends on Thursday, November 7th, you'll still be able to order one, the only difference is the price will be $369 instead of the special crowdfunding price of $349. I don't think any of us need an *additional* source of urgency in our lives right now (especially us Americans, given the timing).
 
 
 For me, that means I get to start ramping up for full-scale production pretty soon. The goal is to get first batch (which should be enough to cover all the campaign backers' orders) assembled and shipped to me before Chinese New Year. That's not some arbitrary goal post, CNY / Spring Festival is a (well-earned) holiday that starts on January 29th next year and effectively means nothing is happening in China for the entire month of February.
@@ -51,7 +51,9 @@ So far, the INA219 current sensors haven't really gotten the love they deserve, 
 
 You know those little "ants" they put on wires in simulations to show the flow of current?
 
-{current-ants.mp4}
+
+https://github.com/user-attachments/assets/a9aa8aad-be34-4f81-8a02-d770dbb77e69
+
 
 *This is a [transistor-level simulation of a CMOS analog switch](https://tinyurl.com/ym8awywx) if you're curious about what's going on inside a Jumperless*
 
@@ -63,7 +65,9 @@ Another funny thing is that means I should put a menu option for which current f
 
 So there will be a setting that does something like this:
 
-{current-motion.mp4}
+
+https://github.com/user-attachments/assets/0efb8998-ecd1-4ce5-9279-56501e711c7c
+
 
 
 
@@ -126,8 +130,10 @@ Come can chat with the community and ask me any questions that come to mind on t
 Love,  
 Kevin
 
-
-P.S. I've been beta testing a prototype [Solder Ninja Pen](https://www.crowdsupply.com/sitron-labs/solder-ninja-pen) for 6 months now and it's kind of amazing. It's hard to explain exactly *why*, but it somehow solders better than my other tiny soldering irons in that same form factor. You should probably check it out.
+---
+# [Jumperless V5 on Crowd Supply](https://www.crowdsupply.com/architeuthis-flux/jumperless-v5)
+---
+P.S. I've been beta testing a prototype [Solder Ninja Pen](https://www.crowdsupply.com/sitron-labs/solder-ninja-pen) for 6 months now and it's kind of amazing. It's hard to explain exactly *why*, but it somehow solders better than my other tiny soldering irons in that same form factor. You should probably check it out.  
 
 
 
