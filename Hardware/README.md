@@ -22,10 +22,14 @@ Anywate here's a render of each of the parts you'll find in these folders:
 ![gpioAdapter-10](https://github.com/user-attachments/assets/00379fbe-902e-412e-871a-a93cacff8603)
 ![gpioAdapter-12](https://github.com/user-attachments/assets/a842007c-e193-4f27-9a9e-9142569196ec)
 ![clickWheelCap-9](https://github.com/user-attachments/assets/5c5e2c89-f34e-435a-97f0-1d12b968cee7)
+
+
+<img width="947" alt="Screenshot 2024-11-16 at 7 25 29 PM" src="https://github.com/user-attachments/assets/4830f5d1-0c12-49ca-a462-1c2c082681d6">
+
+
 ![ProbeSenseNumbers](https://github.com/user-attachments/assets/1ae268b9-018e-45bd-8845-d4f6e959b1c8)
 ![ProbeSenseNumbersback](https://github.com/user-attachments/assets/45c31e08-5a71-47e8-9fe3-9138d52d3f7a)
 
-<img width="947" alt="Screenshot 2024-11-16 at 7 25 29 PM" src="https://github.com/user-attachments/assets/4830f5d1-0c12-49ca-a462-1c2c082681d6">
 
 Here's a list of the new stuff being added to V5:
 - a separate probe sensing system  (so rows can be selected without disconnecting and scanning the whole board)
