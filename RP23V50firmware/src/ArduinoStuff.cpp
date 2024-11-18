@@ -11,6 +11,8 @@ Adafruit_USBD_CDC USBSer2;
 int baudRateUSBSer1 = 115200; // for Arduino-Serial
 int baudRateUSBSer2 = 115200; // for Routable Serial
 
+volatile int backpowered = 1;
+
 void initArduino(void) // if the UART is set up, the Arduino won't flash from
                        // it's own USB port
 {

@@ -127,31 +127,31 @@ void initLEDs(void) {
 
   int claimedSms[2][4] = {{0, 0, 0, 0}, {0, 0, 0, 0}};
 
-  for (int i = 0; i < 4; i++) {
-    if (pio_sm_is_claimed(pio0, i)) {
-      claimedSms[0][i] = 1;
-    }
-    Serial.print("SM ");
-    Serial.print(i);
-    Serial.print(" is claimed: ");
-    Serial.println(claimedSms[0][i]);
-  }
+  // for (int i = 0; i < 4; i++) {
+  //   if (pio_sm_is_claimed(pio0, i)) {
+  //     claimedSms[0][i] = 1;
+  //   }
+  //   Serial.print("SM ");
+  //   Serial.print(i);
+  //   Serial.print(" is claimed: ");
+  //   Serial.println(claimedSms[0][i]);
+  // }
 
   probeLEDs.begin();
   probeLEDs.setPixelColor(0, 0x111111);
   probeLEDs.show();
 
-  Serial.println("\n\rprobeLEDs.begin()\n\r");
+  // Serial.println("\n\rprobeLEDs.begin()\n\r");
 
-    for (int i = 0; i < 4; i++) {
-    if (pio_sm_is_claimed(pio0,i)) {
-      claimedSms[1][i] = 1;
-    }
-    Serial.print("SM ");
-    Serial.print(i);
-    Serial.print(" is claimed: ");
-    Serial.println(claimedSms[1][i]);
-  }
+  //   for (int i = 0; i < 4; i++) {
+  //   if (pio_sm_is_claimed(pio0,i)) {
+  //     claimedSms[1][i] = 1;
+  //   }
+  //   Serial.print("SM ");
+  //   Serial.print(i);
+  //   Serial.print(" is claimed: ");
+  //   Serial.println(claimedSms[1][i]);
+  // }
 
   // EEPROM.commit();
   // delay(20);

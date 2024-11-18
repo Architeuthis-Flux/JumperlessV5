@@ -134,7 +134,12 @@ void setup() {
   //  USBSetup
   // Serial.ignoreFlowControl(true);
   Serial.begin(115200);
-  
+
+  // while (tud_cdc_connected() == 0 ) {
+  //   backpowered = 1;
+  //   delay(1);
+  // }
+  backpowered = 0;
   // USBDevice.setProductDescriptor("Jumperless");
   // USBDevice.setManufacturerDescriptor("Architeuthis Flux");
   // USBDevice.setSerialDescriptor("0");
@@ -240,8 +245,17 @@ initSecondSerial();
 
 void setup1() {
   // flash_safe_execute_core_init();
+
+
   setupCore2stuff();
 
+  // if (backpowered == 1) {
+  //   leds.clear();
+  //   leds.show();
+  //   while(backpowered == 1) {
+  //     delay(1);
+  //   }
+  // }
   core2initFinished = 1;
 
   digitalWrite(GPIO_2_PIN, LOW);

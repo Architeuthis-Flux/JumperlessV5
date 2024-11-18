@@ -11,7 +11,7 @@ extern uint8_t numbitsUSBSer1, numbitsUSBSer2;
 extern uint8_t paritytypeUSBSer1, paritytypeUSBSer2;
 extern uint8_t stopbitsUSBSer1, stopbitsUSBSer2;
 extern int baudRateUSBSer1, baudRateUSBSer2;
-
+extern volatile int backpowered;
 #ifdef USE_TINYUSB
 extern Adafruit_USBD_CDC USBSer1;
 extern Adafruit_USBD_CDC USBSer2;

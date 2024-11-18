@@ -100422,16 +100422,6 @@
 	)
 	(wire
 		(pts
-			(xy 1158.24 326.39) (xy 63.5 326.39)
-		)
-		(stroke
-			(width 0)
-			(type default)
-		)
-		(uuid "78834198-854a-499d-ba12-e417e7f844fa")
-	)
-	(wire
-		(pts
 			(xy 245.11 400.05) (xy 245.11 415.29)
 		)
 		(stroke
@@ -105498,6 +105488,50 @@
 					(size 1.27 1.27)
 				)
 				(justify right)
+				(hide yes)
+			)
+		)
+	)
+	(global_label "LED_60_OUT"
+		(shape output)
+		(at 1158.24 326.39 0)
+		(fields_autoplaced yes)
+		(effects
+			(font
+				(size 1.27 1.27)
+			)
+			(justify left)
+		)
+		(uuid "0c9711a2-66eb-458c-8923-7a6003612a82")
+		(property "Intersheetrefs" "${INTERSHEET_REFS}"
+			(at 1172.6551 326.39 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(justify left)
+				(hide yes)
+			)
+		)
+	)
+	(global_label "LED_RAILS_IN"
+		(shape input)
+		(at 63.5 326.39 0)
+		(fields_autoplaced yes)
+		(effects
+			(font
+				(size 1.27 1.27)
+			)
+			(justify left)
+		)
+		(uuid "6b968c25-047a-4b26-b6de-f6796ac96b17")
+		(property "Intersheetrefs" "${INTERSHEET_REFS}"
+			(at 79.0038 326.39 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(justify left)
 				(hide yes)
 			)
 		)
