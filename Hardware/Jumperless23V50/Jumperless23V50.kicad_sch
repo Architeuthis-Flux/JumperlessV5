@@ -24657,32 +24657,23 @@
 			(exclude_from_sim no)
 			(in_bom yes)
 			(on_board yes)
-			(property "Reference" "U"
-				(at 0 9.906 0)
+			(property "Reference" "SW3"
+				(at 0 9.2245 0)
 				(effects
 					(font
 						(size 1.27 1.27)
 					)
 				)
 			)
-			(property "Value" ""
-				(at 0 0 0)
+			(property "Value" "RotaryEncoder_Switch"
+				(at 0 6.8002 0)
 				(effects
 					(font
 						(size 1.27 1.27)
 					)
 				)
 			)
-			(property "Footprint" ""
-				(at 0 0 0)
-				(effects
-					(font
-						(size 1.27 1.27)
-					)
-					(hide yes)
-				)
-			)
-			(property "Datasheet" ""
+			(property "Footprint" "JumperlessFootprints:SIQ-02FVS3_Rotary_Encoder"
 				(at 0 0 0)
 				(effects
 					(font
@@ -24691,7 +24682,34 @@
 					(hide yes)
 				)
 			)
-			(property "Description" ""
+			(property "Datasheet" "~"
+				(at 0 0 0)
+				(effects
+					(font
+						(size 1.27 1.27)
+					)
+					(hide yes)
+				)
+			)
+			(property "Description" "Rotary encoder, dual channel, incremental quadrate outputs, with switch"
+				(at 0 0 0)
+				(effects
+					(font
+						(size 1.27 1.27)
+					)
+					(hide yes)
+				)
+			)
+			(property "LCSC" "C29780879"
+				(at 0 0 0)
+				(effects
+					(font
+						(size 1.27 1.27)
+					)
+					(hide yes)
+				)
+			)
+			(property "LCSC Part #" "C29780879"
 				(at 0 0 0)
 				(effects
 					(font
@@ -24926,6 +24944,24 @@
 				)
 			)
 			(symbol "SIQ-02FVS#_1_1"
+				(pin input line
+					(at 0 -7.62 90)
+					(length 2.54)
+					(name "MP"
+						(effects
+							(font
+								(size 1.27 1.27)
+							)
+						)
+					)
+					(number "0"
+						(effects
+							(font
+								(size 1.27 1.27)
+							)
+						)
+					)
+				)
 				(pin passive line
 					(at -7.62 2.54 0)
 					(length 2.54)
@@ -34571,6 +34607,12 @@
 		(uuid "daa95770-215f-42b0-b8ea-a1c8d18fb815")
 	)
 	(junction
+		(at 551.18 119.38)
+		(diameter 0)
+		(color 0 0 0 0)
+		(uuid "db0e6fc2-0fb5-4486-9439-3e002ecc3590")
+	)
+	(junction
 		(at 593.09 229.87)
 		(diameter 0)
 		(color 0 0 0 0)
@@ -37234,6 +37276,16 @@
 	)
 	(wire
 		(pts
+			(xy 561.34 111.76) (xy 561.34 118.11)
+		)
+		(stroke
+			(width 0)
+			(type default)
+		)
+		(uuid "254581c2-2837-4986-af65-471ec37edfe2")
+	)
+	(wire
+		(pts
 			(xy 369.57 80.645) (xy 368.3 80.645)
 		)
 		(stroke
@@ -37804,7 +37856,7 @@
 	)
 	(wire
 		(pts
-			(xy 188.595 353.695) (xy 193.675 353.695)
+			(xy 187.96 354.33) (xy 193.675 354.33)
 		)
 		(stroke
 			(width 0)
@@ -38174,7 +38226,7 @@
 	)
 	(wire
 		(pts
-			(xy 681.99 190.5) (xy 682.625 190.5)
+			(xy 668.02 190.5) (xy 682.625 190.5)
 		)
 		(stroke
 			(width 0)
@@ -41414,7 +41466,7 @@
 	)
 	(wire
 		(pts
-			(xy 191.77 358.775) (xy 191.77 360.68)
+			(xy 191.77 359.41) (xy 191.77 360.68)
 		)
 		(stroke
 			(width 0)
@@ -42304,7 +42356,7 @@
 	)
 	(wire
 		(pts
-			(xy 163.83 356.235) (xy 163.83 360.68)
+			(xy 163.83 356.87) (xy 163.83 360.68)
 		)
 		(stroke
 			(width 0)
@@ -42674,7 +42726,7 @@
 	)
 	(wire
 		(pts
-			(xy 163.83 356.235) (xy 173.355 356.235)
+			(xy 163.83 356.87) (xy 172.72 356.87)
 		)
 		(stroke
 			(width 0)
@@ -43391,6 +43443,16 @@
 			(type default)
 		)
 		(uuid "b6464e5c-7901-400f-a237-ac66ebdc4362")
+	)
+	(wire
+		(pts
+			(xy 551.18 118.11) (xy 551.18 119.38)
+		)
+		(stroke
+			(width 0)
+			(type default)
+		)
+		(uuid "b6468fa9-8dc1-43ad-bef0-2d44be5b3f1f")
 	)
 	(wire
 		(pts
@@ -45384,7 +45446,7 @@
 	)
 	(wire
 		(pts
-			(xy 193.675 349.885) (xy 193.675 353.695)
+			(xy 193.675 349.885) (xy 193.675 354.33)
 		)
 		(stroke
 			(width 0)
@@ -45841,6 +45903,16 @@
 			(type default)
 		)
 		(uuid "ed3f1e97-c7c0-4a51-ad3d-0c9fc1e15f3a")
+	)
+	(wire
+		(pts
+			(xy 561.34 118.11) (xy 551.18 118.11)
+		)
+		(stroke
+			(width 0)
+			(type default)
+		)
+		(uuid "ed46c083-9e98-4b03-ae91-4ab08f68721c")
 	)
 	(wire
 		(pts
@@ -46644,7 +46716,7 @@
 	)
 	(wire
 		(pts
-			(xy 191.77 358.775) (xy 188.595 358.775)
+			(xy 191.77 359.41) (xy 187.96 359.41)
 		)
 		(stroke
 			(width 0)
@@ -48879,7 +48951,7 @@
 	)
 	(global_label "ENC_A"
 		(shape input)
-		(at 173.355 353.695 180)
+		(at 172.72 354.33 180)
 		(fields_autoplaced yes)
 		(effects
 			(font
@@ -48889,7 +48961,7 @@
 		)
 		(uuid "03b279f7-105c-48cb-bf7f-fb5ecefd86a0")
 		(property "Intersheetrefs" "${INTERSHEET_REFS}"
-			(at 164.5641 353.695 0)
+			(at 163.9291 354.33 0)
 			(effects
 				(font
 					(size 1.27 1.27)
@@ -49292,7 +49364,7 @@
 			)
 		)
 	)
-	(global_label "GPIO_2"
+	(global_label "LED_OUT_PROBE"
 		(shape bidirectional)
 		(at 290.83 207.01 0)
 		(fields_autoplaced yes)
@@ -49304,7 +49376,7 @@
 		)
 		(uuid "0e68c2db-9ef8-4641-9d25-7ea3b4c51924")
 		(property "Intersheetrefs" "${INTERSHEET_REFS}"
-			(at 301.5789 207.01 0)
+			(at 310.2269 207.01 0)
 			(effects
 				(font
 					(size 1.27 1.27)
@@ -50408,7 +50480,7 @@
 	)
 	(global_label "ADC_UNBUFFERED_+-8V_PROBE"
 		(shape input)
-		(at 681.99 190.5 180)
+		(at 668.02 190.5 180)
 		(fields_autoplaced yes)
 		(effects
 			(font
@@ -50418,7 +50490,7 @@
 		)
 		(uuid "200ab1bc-9988-4d3c-9c13-23469ac395ac")
 		(property "Intersheetrefs" "${INTERSHEET_REFS}"
-			(at 648.4643 190.5 0)
+			(at 634.4943 190.5 0)
 			(effects
 				(font
 					(size 1.27 1.27)
@@ -50931,6 +51003,28 @@
 			)
 		)
 	)
+	(global_label "LED_OUT_PROBE"
+		(shape bidirectional)
+		(at 255.27 347.98 180)
+		(fields_autoplaced yes)
+		(effects
+			(font
+				(size 1.27 1.27)
+			)
+			(justify right)
+		)
+		(uuid "28dbf78e-1741-4363-895d-190ac3601010")
+		(property "Intersheetrefs" "${INTERSHEET_REFS}"
+			(at 235.8731 347.98 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(justify right)
+				(hide yes)
+			)
+		)
+	)
 	(global_label "Cap+"
 		(shape input)
 		(at 500.38 130.81 180)
@@ -50971,6 +51065,28 @@
 					(size 1.27 1.27)
 				)
 				(justify left)
+				(hide yes)
+			)
+		)
+	)
+	(global_label "LED_OUT_TOP"
+		(shape bidirectional)
+		(at 692.15 128.27 180)
+		(fields_autoplaced yes)
+		(effects
+			(font
+				(size 1.27 1.27)
+			)
+			(justify right)
+		)
+		(uuid "2af3e135-f858-4228-a21e-fdd09857a8c7")
+		(property "Intersheetrefs" "${INTERSHEET_REFS}"
+			(at 675.4745 128.27 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(justify right)
 				(hide yes)
 			)
 		)
@@ -51210,28 +51326,6 @@
 				(font
 					(size 1.27 1.27)
 				)
-				(hide yes)
-			)
-		)
-	)
-	(global_label "GPIO_2"
-		(shape bidirectional)
-		(at 255.27 347.98 180)
-		(fields_autoplaced yes)
-		(effects
-			(font
-				(size 1.27 1.27)
-			)
-			(justify right)
-		)
-		(uuid "30e85181-1cfc-4994-8bb7-1d6552531f04")
-		(property "Intersheetrefs" "${INTERSHEET_REFS}"
-			(at 244.5211 347.98 0)
-			(effects
-				(font
-					(size 1.27 1.27)
-				)
-				(justify right)
 				(hide yes)
 			)
 		)
@@ -53188,6 +53282,28 @@
 			)
 		)
 	)
+	(global_label "EncoderMP"
+		(shape input)
+		(at 180.34 364.49 270)
+		(fields_autoplaced yes)
+		(effects
+			(font
+				(size 1.27 1.27)
+			)
+			(justify right)
+		)
+		(uuid "56c198dd-7934-4450-8bb4-3ac874eb1e35")
+		(property "Intersheetrefs" "${INTERSHEET_REFS}"
+			(at 180.34 377.756 90)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(justify right)
+				(hide yes)
+			)
+		)
+	)
 	(global_label "+9V_G"
 		(shape input)
 		(at 610.87 478.79 180)
@@ -53488,6 +53604,28 @@
 					(size 1.27 1.27)
 				)
 				(justify right)
+				(hide yes)
+			)
+		)
+	)
+	(global_label "LED_OUT_TOP"
+		(shape bidirectional)
+		(at 290.83 209.55 0)
+		(fields_autoplaced yes)
+		(effects
+			(font
+				(size 1.27 1.27)
+			)
+			(justify left)
+		)
+		(uuid "5cd38a68-9640-4894-883a-897f7a2cfbeb")
+		(property "Intersheetrefs" "${INTERSHEET_REFS}"
+			(at 307.5055 209.55 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(justify left)
 				(hide yes)
 			)
 		)
@@ -53982,28 +54120,6 @@
 		(uuid "6602d848-1a5c-4a20-a665-e5a1b17605d1")
 		(property "Intersheetrefs" "${INTERSHEET_REFS}"
 			(at 213.3252 471.17 0)
-			(effects
-				(font
-					(size 1.27 1.27)
-				)
-				(justify left)
-				(hide yes)
-			)
-		)
-	)
-	(global_label "GPIO_3"
-		(shape bidirectional)
-		(at 290.83 209.55 0)
-		(fields_autoplaced yes)
-		(effects
-			(font
-				(size 1.27 1.27)
-			)
-			(justify left)
-		)
-		(uuid "674bca97-a00c-44c6-bb15-e793bd7645b5")
-		(property "Intersheetrefs" "${INTERSHEET_REFS}"
-			(at 301.5789 209.55 0)
 			(effects
 				(font
 					(size 1.27 1.27)
@@ -56191,7 +56307,7 @@
 	)
 	(global_label "ENC_B"
 		(shape input)
-		(at 173.355 358.775 180)
+		(at 172.72 359.41 180)
 		(fields_autoplaced yes)
 		(effects
 			(font
@@ -56201,7 +56317,7 @@
 		)
 		(uuid "9767488d-7014-4110-a42d-4cbd22c69dd1")
 		(property "Intersheetrefs" "${INTERSHEET_REFS}"
-			(at 164.3827 358.775 0)
+			(at 163.7477 359.41 0)
 			(effects
 				(font
 					(size 1.27 1.27)
@@ -56686,28 +56802,6 @@
 			)
 		)
 	)
-	(global_label "GPIO_3"
-		(shape bidirectional)
-		(at 692.15 128.27 180)
-		(fields_autoplaced yes)
-		(effects
-			(font
-				(size 1.27 1.27)
-			)
-			(justify right)
-		)
-		(uuid "a0bea433-0de1-4b64-821e-4fc2b87f6d5a")
-		(property "Intersheetrefs" "${INTERSHEET_REFS}"
-			(at 681.4011 128.27 0)
-			(effects
-				(font
-					(size 1.27 1.27)
-				)
-				(justify right)
-				(hide yes)
-			)
-		)
-	)
 	(global_label "-9V_I"
 		(shape input)
 		(at 101.6 411.48 90)
@@ -57141,28 +57235,6 @@
 				(font
 					(size 1.27 1.27)
 				)
-				(hide yes)
-			)
-		)
-	)
-	(global_label "GPIO_2"
-		(shape bidirectional)
-		(at 792.48 45.72 180)
-		(fields_autoplaced yes)
-		(effects
-			(font
-				(size 1.27 1.27)
-			)
-			(justify right)
-		)
-		(uuid "a78f9df7-16cc-46aa-ade9-4a03da43bac0")
-		(property "Intersheetrefs" "${INTERSHEET_REFS}"
-			(at 781.7311 45.72 0)
-			(effects
-				(font
-					(size 1.27 1.27)
-				)
-				(justify right)
 				(hide yes)
 			)
 		)
@@ -60737,28 +60809,6 @@
 				(font
 					(size 1.27 1.27)
 				)
-				(hide yes)
-			)
-		)
-	)
-	(global_label "VREF{slash}LV"
-		(shape input)
-		(at 561.34 111.76 0)
-		(fields_autoplaced yes)
-		(effects
-			(font
-				(size 1.27 1.27)
-			)
-			(justify left)
-		)
-		(uuid "f7222e54-fad2-4c67-b720-bd851fac4ce8")
-		(property "Intersheetrefs" "${INTERSHEET_REFS}"
-			(at 572.3686 111.76 0)
-			(effects
-				(font
-					(size 1.27 1.27)
-				)
-				(justify left)
 				(hide yes)
 			)
 		)
@@ -72764,7 +72814,7 @@
 	)
 	(symbol
 		(lib_id "JumperlessSymbols:SIQ-02FVS#")
-		(at 180.975 356.235 0)
+		(at 180.34 356.87 0)
 		(unit 1)
 		(exclude_from_sim no)
 		(in_bom yes)
@@ -72773,7 +72823,7 @@
 		(fields_autoplaced yes)
 		(uuid "532d9150-d335-4f07-995b-a8110168eeea")
 		(property "Reference" "SW3"
-			(at 180.975 347.0105 0)
+			(at 180.34 347.6455 0)
 			(effects
 				(font
 					(size 1.27 1.27)
@@ -72781,7 +72831,7 @@
 			)
 		)
 		(property "Value" "RotaryEncoder_Switch"
-			(at 180.975 349.4348 0)
+			(at 180.34 350.0698 0)
 			(effects
 				(font
 					(size 1.27 1.27)
@@ -72789,7 +72839,7 @@
 			)
 		)
 		(property "Footprint" "JumperlessFootprints:SIQ-02FVS3_Rotary_Encoder"
-			(at 180.975 356.235 0)
+			(at 180.34 356.87 0)
 			(effects
 				(font
 					(size 1.27 1.27)
@@ -72798,7 +72848,7 @@
 			)
 		)
 		(property "Datasheet" "~"
-			(at 180.975 356.235 0)
+			(at 180.34 356.87 0)
 			(effects
 				(font
 					(size 1.27 1.27)
@@ -72807,7 +72857,7 @@
 			)
 		)
 		(property "Description" "Rotary encoder, dual channel, incremental quadrate outputs, with switch"
-			(at 180.975 356.235 0)
+			(at 180.34 356.87 0)
 			(effects
 				(font
 					(size 1.27 1.27)
@@ -72816,7 +72866,7 @@
 			)
 		)
 		(property "LCSC" "C29780879"
-			(at 180.975 356.235 0)
+			(at 180.34 356.87 0)
 			(effects
 				(font
 					(size 1.27 1.27)
@@ -72825,7 +72875,7 @@
 			)
 		)
 		(property "LCSC Part #" "C29780879"
-			(at 180.975 356.235 0)
+			(at 180.34 356.87 0)
 			(effects
 				(font
 					(size 1.27 1.27)
@@ -72847,6 +72897,9 @@
 		)
 		(pin "2"
 			(uuid "1c1da4d6-1c11-457a-ba47-e70a052792bb")
+		)
+		(pin "0"
+			(uuid "905e6c4f-317e-425e-94ce-0d1c97263e6a")
 		)
 		(instances
 			(project "JumperlessV5hw"
@@ -81359,6 +81412,15 @@
 		)
 		(property "Description" "Generic connector, single row, 01x20, script generated"
 			(at 765.81 106.68 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(hide yes)
+			)
+		)
+		(property "LCSC Part #" "C2998828"
+			(at 765.81 106.68 90)
 			(effects
 				(font
 					(size 1.27 1.27)
@@ -95539,7 +95601,7 @@
 				(justify left)
 			)
 		)
-		(property "Value" "22uF"
+		(property "Value" "10uF"
 			(at 531.2664 110.363 0)
 			(effects
 				(font
@@ -95566,7 +95628,7 @@
 				(hide yes)
 			)
 		)
-		(property "Description" "10uF 25V 100mΩ@100kHz ±20% CASE-T-3528-12(mm)"
+		(property "Description" ""
 			(at 528.955 109.22 0)
 			(effects
 				(font
@@ -95575,7 +95637,7 @@
 				(hide yes)
 			)
 		)
-		(property "LCSC" "C212712"
+		(property "LCSC" " C2918502"
 			(at 528.955 109.22 0)
 			(effects
 				(font
@@ -95584,7 +95646,7 @@
 				(hide yes)
 			)
 		)
-		(property "LCSC Part #" "C212712"
+		(property "LCSC Part #" " C2918502"
 			(at 528.955 109.22 0)
 			(effects
 				(font
@@ -95701,7 +95763,7 @@
 				(justify left)
 			)
 		)
-		(property "Value" "22uF"
+		(property "Value" "10uF"
 			(at 531.2664 100.203 0)
 			(effects
 				(font
@@ -95728,7 +95790,7 @@
 				(hide yes)
 			)
 		)
-		(property "Description" "10uF 25V 100mΩ@100kHz ±20% CASE-T-3528-12(mm)"
+		(property "Description" ""
 			(at 528.955 99.06 0)
 			(effects
 				(font
@@ -95737,7 +95799,7 @@
 				(hide yes)
 			)
 		)
-		(property "LCSC" "C212712"
+		(property "LCSC" " C2918502"
 			(at 528.955 99.06 0)
 			(effects
 				(font
@@ -95746,7 +95808,7 @@
 				(hide yes)
 			)
 		)
-		(property "LCSC Part #" "C212712"
+		(property "LCSC Part #" " C2918502"
 			(at 528.955 99.06 0)
 			(effects
 				(font
@@ -97700,7 +97762,7 @@
 				(hide yes)
 			)
 		)
-		(property "Description" ""
+		(property "Description" "AFE201612S3R3MBT"
 			(at 186.69 198.12 0)
 			(effects
 				(font
@@ -97709,7 +97771,7 @@
 				(hide yes)
 			)
 		)
-		(property "LCSC" "C2041573"
+		(property "LCSC" " C41347751"
 			(at 186.69 198.12 0)
 			(effects
 				(font
@@ -97718,7 +97780,7 @@
 				(hide yes)
 			)
 		)
-		(property "LCSC Part #" "C2041573"
+		(property "LCSC Part #" " C41347751"
 			(at 186.69 198.12 0)
 			(effects
 				(font
@@ -98692,7 +98754,7 @@
 				(justify left)
 			)
 		)
-		(property "Value" "22uF"
+		(property "Value" "10uF"
 			(at 531.2664 120.523 0)
 			(effects
 				(font
@@ -98719,7 +98781,7 @@
 				(hide yes)
 			)
 		)
-		(property "Description" "10uF 25V 100mΩ@100kHz ±20% CASE-T-3528-12(mm)"
+		(property "Description" ""
 			(at 528.955 119.38 0)
 			(effects
 				(font
@@ -98728,7 +98790,7 @@
 				(hide yes)
 			)
 		)
-		(property "LCSC" "C212712"
+		(property "LCSC" " C2918502"
 			(at 528.955 119.38 0)
 			(effects
 				(font
@@ -98737,7 +98799,7 @@
 				(hide yes)
 			)
 		)
-		(property "LCSC Part #" "C212712"
+		(property "LCSC Part #" " C2918502"
 			(at 528.955 119.38 0)
 			(effects
 				(font
