@@ -88116,7 +88116,7 @@
 		(exclude_from_sim no)
 		(in_bom yes)
 		(on_board yes)
-		(dnp no)
+		(dnp yes)
 		(uuid "b772c8aa-08a2-4d52-ab21-c5bd6a335be9")
 		(property "Reference" "JP22"
 			(at 515.366 77.47 0)
@@ -92756,7 +92756,7 @@
 		(exclude_from_sim no)
 		(in_bom yes)
 		(on_board yes)
-		(dnp no)
+		(dnp yes)
 		(uuid "d80d9e68-66e6-4851-b9ab-4e16366a0b14")
 		(property "Reference" "JP21"
 			(at 606.298 119.38 0)
