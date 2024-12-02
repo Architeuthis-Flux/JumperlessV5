@@ -503,7 +503,7 @@
       "plot": "",
       "pos_files": "",
       "specctra_dsn": "",
-      "step": "V5LEDboard.step",
+      "step": "../../../../../Desktop/3DModelsV5parts/V5LEDboardNoTracks.step",
       "svg": "",
       "vrml": ""
     },

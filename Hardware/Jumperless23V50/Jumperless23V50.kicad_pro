@@ -37,9 +37,9 @@
         "other_text_thickness": 0.15,
         "other_text_upright": false,
         "pads": {
-          "drill": 0.0,
-          "height": 0.0458,
-          "width": 0.0458
+          "drill": 1.0,
+          "height": 1.5,
+          "width": 1.5
         },
         "silk_line_width": 0.15,
         "silk_text_italic": false,
@@ -650,7 +650,7 @@
       "plot": "",
       "pos_files": "",
       "specctra_dsn": "",
-      "step": "../../Jumperless2NOTracks.step",
+      "step": "../../../../../Desktop/3DModelsV5parts/MainBoard.step",
       "svg": "",
       "vrml": "../../Jumperless2.wrl"
     },
