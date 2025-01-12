@@ -1212,15 +1212,24 @@ void showMeasurements(int samples, int printOrBB) {
       bs += Serial.print("V\t");
     }
 
-    if (showINA0[0] == 1 || showINA0[1] == 1 || showINA0[2] == 1) {
-      bs += Serial.print("   INA219: ");
-    }
+    //if (showINA0[0] == 1 || showINA0[1] == 1 || showINA0[2] == 1) {
+    //  bs += Serial.print("   INA219: ");
+    //}
 
     if (showINA0[0] == 1) {
-      bs += Serial.print("I: ");
+      bs += Serial.print("INA 0: ");
       bs += Serial.print(INA0.getCurrent_mA());
       bs += Serial.print("mA\t");
+      bs += Serial.print("\tINA 1: ");
+      bs += Serial.print(INA1.getCurrent_mA());
+      bs += Serial.print("mA\t");
+
+
+
     }
+
+
+
     if (showINA0[1] == 1) {
       bs += Serial.print(" V: ");
       bs += Serial.print(INA0.getBusVoltage());
@@ -1251,11 +1260,15 @@ void showMeasurements(int samples, int printOrBB) {
 
 int readAdc(int channel, int samples) {
   int adcReadingAverage = 0;
-  // if (channel == 0) { // I have no fucking idea why this works
+  // if (channel == 0) { // I have no fucking idea why this works //future me: the op amps were untamed
 
   //   pinMode(ADC1_PIN, OUTPUT);
   //   digitalWrite(ADC1_PIN, LOW);
   // }
+
+  if (channel > 7) {
+return 0;
+  }
   unsigned long timeoutTimer = micros();
 
   for (int i = 0; i < samples; i++) {

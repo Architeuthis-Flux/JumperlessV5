@@ -268,7 +268,7 @@ void lightUpRail(int logo = -1, int railNumber = -1, int onOff = 1,
                  int supplySwitchPosition = 0);
 void setupSwirlColors(void);
 void logoSwirl(int start = 0, int spread = 5, int probe = 0);
-uint32_t dimLogoColor(uint32_t color, int brightness = 4);
+uint32_t dimLogoColor(uint32_t color, int brightness = 40);
 void lightUpNet(int netNumber = 0, int node = -1, int onOff = 1,
                 int brightness = DEFAULTBRIGHTNESS,
                 int hueShift = 0, int dontClear = 0, uint32_t forceColor = 0xffffff); //-1 means all nodes (default)

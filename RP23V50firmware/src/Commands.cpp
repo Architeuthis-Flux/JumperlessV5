@@ -196,9 +196,18 @@ float measureVoltage(int adcNumber, int node, bool checkForFloating) {
   case 3:
     adcDefine = ADC3;
     break;
-    // case 4:
-    //   adcDefine = ADC3;
-    //   break;
+    case 4:
+      adcDefine = ADC4;
+      break;
+    case 5:
+      //adcDefine = ADC5;
+      break;
+    case 6:
+      //adcDefine = ADC6;
+      break;
+    case 7:
+      adcDefine = ADC7;
+      break;
   default:
     return 0.0;
   }

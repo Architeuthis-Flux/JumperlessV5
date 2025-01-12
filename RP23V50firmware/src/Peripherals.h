@@ -70,6 +70,8 @@ void setDac1voltage(uint16_t value);
 void refillTable(int amplitude = 2047, int offset = 2047, int adc = 2);
 int waveGen(void);
 void GetAdc29Status(int i);
+
+
 int readAdc(int channel, int samples = 8);
 
 void chooseShownReadings(void);

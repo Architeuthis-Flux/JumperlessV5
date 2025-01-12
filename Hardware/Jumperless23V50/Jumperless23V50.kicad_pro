@@ -647,7 +647,7 @@
       "gencad": "",
       "idf": "",
       "netlist": "",
-      "plot": "",
+      "plot": "../../",
       "pos_files": "",
       "specctra_dsn": "",
       "step": "../../../../../Desktop/3DModelsV5parts/MainBoard.step",

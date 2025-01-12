@@ -1802,10 +1802,12 @@ void lightUpRail(int logo, int rail, int onOff, int brightness2,
   //       leds.setPixelColor(i, rawOtherColors[0]);
   //     }
   //   }
+  leds.setPixelColor(402, scaleDownBrightness(0x2000b9, 1, 35));
+  leds.setPixelColor(427, scaleDownBrightness(0x0020f9, 1, 35));
 
-  leds.setPixelColor(403, scaleDownBrightness(rawSpecialNetColors[1], 5, 35));
-  leds.setPixelColor(428, scaleDownBrightness(rawSpecialNetColors[1], 5, 35));
-  leds.setPixelColor(429, scaleDownBrightness(rawSpecialNetColors[2], 5, 35));
+  leds.setPixelColor(403, scaleDownBrightness(rawSpecialNetColors[1], 2, 35));
+  leds.setPixelColor(428, scaleDownBrightness(rawSpecialNetColors[1], 2, 35));
+  leds.setPixelColor(429, scaleDownBrightness(0xa0a000, 5, 35));
   leds.setPixelColor(416, scaleDownBrightness(rawSpecialNetColors[3], 5, 35));
   leds.setPixelColor(426, scaleDownBrightness(rawSpecialNetColors[2], 5, 35));
 
@@ -1965,6 +1967,26 @@ void lightUpRail(int logo, int rail, int onOff, int brightness2,
         }
       }
     }
+  }
+bool lightUpName = true;
+
+  if (lightUpName == true)
+  {
+    leds.setPixelColor(railsToPixelMap[0][20], 0x0010a0);
+    leds.setPixelColor(railsToPixelMap[0][21], 0x1f0050);
+    leds.setPixelColor(railsToPixelMap[0][22], 0x1d0030);
+    leds.setPixelColor(railsToPixelMap[0][23], 0x1e0020);
+    leds.setPixelColor(railsToPixelMap[0][24], 0x2f0010);
+
+    leds.setPixelColor(railsToPixelMap[1][20], 0x0040f0);
+    leds.setPixelColor(railsToPixelMap[1][21], 0x0f0050);
+    leds.setPixelColor(railsToPixelMap[1][22], 0x0d0030);
+    leds.setPixelColor(railsToPixelMap[1][23], 0x0e0020);
+    leds.setPixelColor(railsToPixelMap[1][24], 0x2f0000);
+
+
+
+
   }
   // leds.show();
   // showLEDsCore2 = 1;
