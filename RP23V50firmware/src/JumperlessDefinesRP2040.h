@@ -7,9 +7,9 @@ extern volatile int sendAllPathsCore2;
 #define PICO_RP2350B 1
 #define INPUTBUFFERLENGTH 8000
 
-#define PROTOTYPE_VERSION 4 //1 is the hw without the rearranged probe connections
+#define PROTOTYPE_VERSION 3 //1 is the hw without the rearranged probe connections
 
-#define REV 4
+#define REV 3
 
 
 #define PIOSTUFF 1 // comment these out to remove them for debugging
