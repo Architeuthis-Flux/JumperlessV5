@@ -16,9 +16,104 @@
 
 // CRGB probeLEDs[1];
 
-Adafruit_NeoPixel leds(LED_COUNT, 17, NEO_GRB + NEO_KHZ800);
+//bool splitLEDs;
+
+#if REV < 4
+bool splitLEDs = 0;
+Adafruit_NeoPixel bbleds(LED_COUNT+LED_COUNT_TOP, LED_PIN, NEO_GRB + NEO_KHZ800);
+Adafruit_NeoPixel topleds(1, -1, NEO_GRB + NEO_KHZ800);
+#elif REV >= 4
+bool splitLEDs = 1;
+Adafruit_NeoPixel bbleds(LED_COUNT, LED_PIN, NEO_GRB + NEO_KHZ800);
+Adafruit_NeoPixel topleds(LED_COUNT_TOP, LED_PIN_TOP, NEO_GRB + NEO_KHZ800);
+#endif
 
 Adafruit_NeoPixel probeLEDs(1, PROBE_LED_PIN, NEO_GRB + NEO_KHZ800);
+
+void ledClass::begin(void) {
+if (splitLEDs == 1) {
+  topleds.begin();
+}
+bbleds.begin();
+}
+
+void ledClass::show(void) {
+  if (splitLEDs == 1) {
+    topleds.show();
+  }
+  bbleds.show();
+}
+
+void ledClass::setPixelColor(uint16_t n, uint8_t r, uint8_t g, uint8_t b) {
+   if (n > LED_COUNT && splitLEDs == 1) {
+    topleds.setPixelColor(n-LED_COUNT, r, g, b);
+  } else {
+  bbleds.setPixelColor(n, r, g, b);
+  }
+}
+
+void ledClass::setPixelColor(uint16_t n, uint32_t c) {
+  if (n > LED_COUNT && splitLEDs == 1) {
+    
+      topleds.setPixelColor(n-LED_COUNT, c);
+    
+  } else {
+    bbleds.setPixelColor(n, c);
+  }
+
+}
+
+void ledClass::fill(uint32_t c, uint16_t first, uint16_t count) {
+  if (splitLEDs == 1) {
+    topleds.fill(c, first, count);
+  }
+  bbleds.fill(c, first, count);
+}
+
+void ledClass::setBrightness(uint8_t b) {
+  if (splitLEDs == 1) {
+    topleds.setBrightness(b);
+  }
+  bbleds.setBrightness(b);
+}
+
+void ledClass::clear(void) {
+  if (splitLEDs == 1) {
+    topleds.clear();
+  }
+  bbleds.clear();
+}
+
+
+  uint32_t ledClass::getPixelColor(uint16_t n) {
+     if (n > LED_COUNT && splitLEDs == 1) {
+      return topleds.getPixelColor(n-LED_COUNT);
+    } else {
+    return bbleds.getPixelColor(n);
+    }
+  }
+
+
+  uint16_t ledClass:: numPixels(void) {
+    if (splitLEDs == 1) {
+      return topleds.numPixels();
+    }
+    return bbleds.numPixels();
+  }
+
+
+
+  ledClass leds;
+
+// ledClass::clear(int start = 0, int end = LED_COUNT+LED_COUNT_TOP) {
+//   if (splitLEDs == 1) {
+//     topleds.clear();
+//   }
+//   bbleds.clear();
+// }
+
+
+
 
 // Adafruit_NeoMatrix matrix =
 //     Adafruit_NeoMatrix(30, 5, LED_PIN,
@@ -64,7 +159,7 @@ uint32_t rawSpecialNetColors[8] = // dim
     {0x000000, 0x001C04, 0x1C0702, 0x1C0107,
      0x231111, 0x230913, 0x232323, 0x232323};
 
-uint32_t rawOtherColors[12] = {
+uint32_t rawOtherColors[15] = {
     0x010006, // headerglow
     0x6000A8, // logo / status
     0x0055AA, // logoflash / statusflash
@@ -73,9 +168,15 @@ uint32_t rawOtherColors[12] = {
     0x443434, // UART TX
     0x324244, // UART RX
     0x232323,
-    0x380303, // ADC
-    0x253803, // DAC
-    0x0000E5, // GPIO
+
+    0x380303, // ADC inner
+    0x166800, // DAC inner
+    0x0005E5, // GPIO inner
+
+    0x400048, // ADC outer
+    0x453800, // DAC outer
+    0x00a045, // GPIO outer
+
 };
 
 rgbColor specialNetColors[8] = {{00, 00, 00},       {0x00, 0xFF, 0x30},
@@ -100,29 +201,18 @@ uint32_t rawRailColors[3][4] = // depends on supplySwitchPosition 0 = 3.3V, 1 =
 int pass = 0;
 // #define DATA_PIN 2
 void initLEDs(void) {
-  // debugLEDs = EEPROM.read(DEBUG_LEDSADDRESS);
-  //  if (debugLEDs != 0 && debugLEDs != 1) {
-  //    debugLEDs = 1;
-  //  }
-  //  EEPROM.write(DEBUG_LEDSADDRESS, debugLEDs);
-  // gpio_set_function(LED_PIN, GPIO_FUNC_PIO0);
-  // pinMode(DATA_PIN, OUTPUT);
-  // FastLED.addLeds<WS2811, DATA_PIN, RGB> (probeLEDs, 1);
 
-  // pinMode(LED_PIN, OUTPUT);
+
 
   leds.begin(); // INITIALIZE NeoPixel strip object (REQUIRED)
                 // delay(1);
   leds.show();
-  // delay(2);
-  //  leds.setBrightness(100);
-  // delay(2);
-  //delay(1000);
-  // pinMode(2, OUTPUT);
-  //  probeLEDs.begin();
-  //  probeLEDs.setBrightness(254);
-  //  probeLEDs.setPixelColor(0, 0xffffff);
-  // FastLED.show();
+
+  // if (splitLEDs == 1) {
+  //   topleds.begin();
+  //   topleds.show();
+  // }
+
 
 
   int claimedSms[2][4] = {{0, 0, 0, 0}, {0, 0, 0, 0}};
@@ -156,6 +246,8 @@ void initLEDs(void) {
   // EEPROM.commit();
   // delay(20);
 }
+
+
 
 uint32_t savedLEDcolors[NUM_SLOTS][LED_COUNT + 1];
 
@@ -1812,45 +1904,43 @@ void lightUpRail(int logo, int rail, int onOff, int brightness2,
   leds.setPixelColor(426, scaleDownBrightness(rawSpecialNetColors[2], 5, 35));
 
   if (sfProbeMenu == 1) {
-    leds.setPixelColor(430, scaleDownBrightness(rawOtherColors[8], 2, 45));
-    leds.setPixelColor(431, scaleDownBrightness(rawOtherColors[8], 2, 45));
-    leds.setPixelColor(432, 0);
-    leds.setPixelColor(433, 0);
-    leds.setPixelColor(434, 0);
-    leds.setPixelColor(435, 0);
+      leds.setPixelColor(430, scaleBrightness(rawOtherColors[8], -40));
+      leds.setPixelColor(431, scaleBrightness(rawOtherColors[11], -40));
+      leds.setPixelColor(432, 0);
+      leds.setPixelColor(433, 0);
+      leds.setPixelColor(434, 0);
+      leds.setPixelColor(435, 0);
 
   } else if (sfProbeMenu == 2) {
-    leds.setPixelColor(430, 0);
-    leds.setPixelColor(431, 0);
-
-    leds.setPixelColor(432, scaleDownBrightness(rawOtherColors[9], 5, 45));
-    leds.setPixelColor(433, scaleDownBrightness(rawOtherColors[9], 5, 45));
-
-    leds.setPixelColor(434, 0);
-    leds.setPixelColor(435, 0);
+      leds.setPixelColor(430, 0);
+      leds.setPixelColor(431, 0);
+      leds.setPixelColor(432, scaleBrightness(rawOtherColors[9], -40));
+      leds.setPixelColor(433, scaleBrightness(rawOtherColors[12], -40));
+      leds.setPixelColor(434, 0);
+      leds.setPixelColor(435, 0);
   } else if (sfProbeMenu == 3) {
-    leds.setPixelColor(430, 0);
-    leds.setPixelColor(431, 0);
-    leds.setPixelColor(432, 0);
-    leds.setPixelColor(433, 0);
-    leds.setPixelColor(434, scaleDownBrightness(rawOtherColors[10], 2, 45));
-    leds.setPixelColor(435, scaleDownBrightness(rawOtherColors[10], 2, 45));
+      leds.setPixelColor(430,0);
+      leds.setPixelColor(431,0);
+      leds.setPixelColor(432,0);
+      leds.setPixelColor(433,0);
+      leds.setPixelColor(434, scaleBrightness(rawOtherColors[10], -40));
+      leds.setPixelColor(435, scaleBrightness(rawOtherColors[13], -40));
 
   } else {
-    if (photos == true) {
-      leds.setPixelColor(430, scaleDownBrightness(rawOtherColors[8], 6, 25));
-      leds.setPixelColor(431, scaleDownBrightness(rawOtherColors[8], 6, 25));
-      leds.setPixelColor(432, scaleDownBrightness(rawOtherColors[9], 12, 25));
-      leds.setPixelColor(433, scaleDownBrightness(rawOtherColors[9], 12, 25));
-      leds.setPixelColor(434, scaleDownBrightness(rawOtherColors[10], 6, 25));
-      leds.setPixelColor(435, scaleDownBrightness(rawOtherColors[10], 6, 25));
+    if (photos == true && false) {
+      leds.setPixelColor(430, scaleBrightness(rawOtherColors[8], -40));
+      leds.setPixelColor(431, scaleBrightness(rawOtherColors[11], -40));
+      leds.setPixelColor(432, scaleBrightness(rawOtherColors[9], -40));
+      leds.setPixelColor(433, scaleBrightness(rawOtherColors[12], -40));
+      leds.setPixelColor(434, scaleBrightness(rawOtherColors[10], -40));
+      leds.setPixelColor(435, scaleBrightness(rawOtherColors[13], -40));
     } else {
-      leds.setPixelColor(430, scaleDownBrightness(rawOtherColors[8], 2, 45));
-      leds.setPixelColor(431, scaleDownBrightness(rawOtherColors[8], 2, 45));
-      leds.setPixelColor(432, scaleDownBrightness(rawOtherColors[9], 5, 45));
-      leds.setPixelColor(433, scaleDownBrightness(rawOtherColors[9], 5, 45));
-      leds.setPixelColor(434, scaleDownBrightness(rawOtherColors[10], 2, 45));
-      leds.setPixelColor(435, scaleDownBrightness(rawOtherColors[10], 2, 45));
+      leds.setPixelColor(430, scaleBrightness(rawOtherColors[8], -40));
+      leds.setPixelColor(431, scaleBrightness(rawOtherColors[11], -40));
+      leds.setPixelColor(432, scaleBrightness(rawOtherColors[9], -40));
+      leds.setPixelColor(433, scaleBrightness(rawOtherColors[12], -40));
+      leds.setPixelColor(434, scaleBrightness(rawOtherColors[10], -40));
+      leds.setPixelColor(435, scaleBrightness(rawOtherColors[13], -40));
     }
   }
   if (switchPosition == 2) //+-8V
@@ -1968,7 +2058,7 @@ void lightUpRail(int logo, int rail, int onOff, int brightness2,
       }
     }
   }
-bool lightUpName = true;
+bool lightUpName = false;
 
   if (lightUpName == true)
   {
@@ -2291,7 +2381,7 @@ void startupColors(void) {
   //   showLEDsCore2 = 1;
 }
 
-uint32_t chillinColors[LED_COUNT] = {
+uint32_t chillinColors[LED_COUNT+200] = {
     0x000000, 0x000000, 0x000000, 0x000000, 0x000000, 0x000000, 0x000000,
     0x000000, 0x000000, 0x000000, 0x000000, 0x000000, 0x000000, 0x000000,
     0x000000, 0x000000, 0x000000, 0x000000, 0x000000, 0x000000, 0x000000,
@@ -2563,6 +2653,17 @@ struct rgbColor unpackRgb(uint32_t color) {
    Serial.println(rgb.b);*/
   return rgb;
 }
+
+
+
+// uint32_t packRgb(uint8_t r, uint8_t g, uint8_t b) {
+//   return ((uint32_t)r << 16) | ((uint32_t)g << 8) | b;
+// }
+uint32_t packRgb(rgbColor rgb) {
+  return ((uint32_t)rgb.r << 16) | ((uint32_t)rgb.g << 8) | rgb.b;
+}
+
+
 void clearLEDs(void) {
   for (int i = 0; i <= 436; i++) { // For each pixel in strip...
 

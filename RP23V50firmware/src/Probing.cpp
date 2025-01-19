@@ -19,9 +19,9 @@
 #include <Adafruit_GFX.h>
 #include <Adafruit_SSD1306.h>
 #include <EEPROM.h>
-//#include <FastLED.h>
-#include <algorithm>
+// #include <FastLED.h>
 #include "ArduinoStuff.h"
+#include <algorithm>
 int debugProbing = 0;
 
 #define OLED_CONNECTED 0
@@ -107,7 +107,6 @@ int probeMode(int pin, int setOrClear) {
     return -1;
   }
 
-
   int deleteMisses[20] = {
       -1, -1, -1, -1, -1, -1, -1, -1, -1, -1,
       -1, -1, -1, -1, -1, -1, -1, -1, -1, -1,
@@ -122,21 +121,21 @@ int probeMode(int pin, int setOrClear) {
 
   if (checkSwitchPosition() == 1) {
     routableBufferPower(1);
-    //Serial.println("Select");
+    // Serial.println("Select");
   } else {
-    showProbeLEDs = 3;
-    probeActive = 0;
-    Serial.println("Measure");
-    
-    routableBufferPower(0);
-    measureMode();
-    showProbeLEDs = 6;
-    return -1;
-  }
+    // showProbeLEDs = 3;
+    // probeActive = 0;
+    // Serial.println("Measure");
 
+    // routableBufferPower(0);
+    // measureMode();
+    // showProbeLEDs = 6;
+    // return -1;
+  }
+  calibrateDac0();
 restartProbing:
   connectOrClearProbe = setOrClear;
-    probeActive = 1;
+  probeActive = 1;
   brightenNet(-1);
   if (bufferPowerConnected == false) {
     routableBufferPower(1);
@@ -167,9 +166,9 @@ restartProbing:
 
   // Serial.print("Press any key to exit and commit paths (or touch probe to
   // gpio 18)   ");
- // Serial.print("\n\r\t  Probe Active\n\r");
-  //Serial.print("   long press  = connect (blue) / clear (red)\n\r");
-  //Serial.println("   short press = commit");
+  // Serial.print("\n\r\t  Probe Active\n\r");
+  // Serial.print("   long press  = connect (blue) / clear (red)\n\r");
+  // Serial.println("   short press = commit");
 
   if (setOrClear == 1) {
     // sprintf(oledBuffer, "connect  ");
@@ -596,14 +595,14 @@ float measureMode(int updateSpeed) {
   while (checkProbeButton() != 0) {
     delay(1);
   }
-  removeBridgeFromNodeFile(ROUTABLE_BUFFER_IN, -1, netSlot, 1);
-removeBridgeFromNodeFile(ROUTABLE_BUFFER_OUT, -1, netSlot, 1);
-  addBridgeToNodeFile(ROUTABLE_BUFFER_OUT, ADC3, netSlot, 1);
+  //   removeBridgeFromNodeFile(ROUTABLE_BUFFER_IN, -1, netSlot, 1);
+  // removeBridgeFromNodeFile(ROUTABLE_BUFFER_OUT, -1, netSlot, 1);
+  //   addBridgeToNodeFile(ROUTABLE_BUFFER_OUT, ADC3, netSlot, 1);
 
-  refreshLocalConnections();
+  // refreshLocalConnections();
   float measurement = 0.0;
   while (checkProbeButton() == 0) {
-    measurement = (readAdc(3, 16) * (16.0 / 4090)) - 8.0;
+    measurement = (readAdc(7, 16) * (16.0 / 4090)) - 8.0;
     if (measurement > -0.05 && measurement < 0.05) {
       measurement = 0.0;
       delay(1);
@@ -623,12 +622,12 @@ removeBridgeFromNodeFile(ROUTABLE_BUFFER_OUT, -1, netSlot, 1);
 
     delay(updateSpeed);
   }
-  removeBridgeFromNodeFile(ROUTABLE_BUFFER_OUT, -1, netSlot, 1);
+  // removeBridgeFromNodeFile(ROUTABLE_BUFFER_OUT, -1, netSlot, 1);
 
   // addBridgeToNodeFile(ROUTABLE_BUFFER_IN, RP_GPIO_23, netSlot, 1);
 
-  refreshLocalConnections(-1);
-  delay(20);
+  // refreshLocalConnections(-1);
+  // delay(20);
   measureModeActive = 0;
   showProbeLEDs = 3;
   return measurement;
@@ -719,7 +718,7 @@ int selectSFprobeMenu(int function) {
       b.printRawRow(0b00000001, 54, 0x050500, 0xfffffe);
       b.printRawRow(0b00000001, 55, 0x050500, 0xfffffe);
       b.printRawRow(0b00000001, 59, 0x050500, 0xfffffe);
-function = RP_UART_RX;
+      function = RP_UART_RX;
       break;
     }
     case 133: {
@@ -767,18 +766,18 @@ function = RP_UART_RX;
     // b.print("to Pad", sfOptionColors[2], 0xFFFFFF, 0, 1, -1);
     // showLEDsCore2 = 2;
 
-   // delayWithButton(800);
+    // delayWithButton(800);
 
     // delay(800);
 
-    //function = attachPadsToSettings(function);
-    // node1or2 = 0;
-    // nodesToConnect[0] = function;
-    // nodesToConnect[1] = -1;
-    // connectedRowsIndex = 1;
+    // function = attachPadsToSettings(function);
+    //  node1or2 = 0;
+    //  nodesToConnect[0] = function;
+    //  nodesToConnect[1] = -1;
+    //  connectedRowsIndex = 1;
 
     // Serial.print("function!!!!!: ");
-   // printNodeOrName(function, 1);
+    // printNodeOrName(function, 1);
     showLEDsCore2 = 1;
     lightUpRail();
     delay(200);
@@ -1136,68 +1135,66 @@ int chooseADC(void) {
     // Serial.println(reading);
     if (reading != -1) {
       switch (reading) {
-        case 31 ... 35: {
-          selected = ADC0;
-          function = ADC0;
-          while (justReadProbe() == reading) {
-            // Serial.print("reading: ");
-            // Serial.println(justReadProbe());
-            delay(10);
-          }
-          break;
+      case 31 ... 35: {
+        selected = ADC0;
+        function = ADC0;
+        while (justReadProbe() == reading) {
+          // Serial.print("reading: ");
+          // Serial.println(justReadProbe());
+          delay(10);
         }
-        case 36 ... 40: {
-          selected = ADC1;
-          function = ADC1;
-          while (justReadProbe() == reading) {
-            // Serial.print("reading: ");
-            // Serial.println(justReadProbe());
-            delay(10);
-          }
-          break;
+        break;
+      }
+      case 36 ... 40: {
+        selected = ADC1;
+        function = ADC1;
+        while (justReadProbe() == reading) {
+          // Serial.print("reading: ");
+          // Serial.println(justReadProbe());
+          delay(10);
         }
-        case 41 ... 45: {
-          selected = ADC2;
-          function = ADC2;
-          while (justReadProbe() == reading) {
-            // Serial.print("reading: ");
-            // Serial.println(justReadProbe());
-            delay(10);
-          }
-          break;
+        break;
+      }
+      case 41 ... 45: {
+        selected = ADC2;
+        function = ADC2;
+        while (justReadProbe() == reading) {
+          // Serial.print("reading: ");
+          // Serial.println(justReadProbe());
+          delay(10);
         }
-        case 46 ... 50: {
-          selected = ADC3;
-          function = ADC3;
-          while (justReadProbe() == reading) {
-            // Serial.print("reading: ");
-            // Serial.println(justReadProbe());
-            delay(10);
-          }
-          break;
+        break;
+      }
+      case 46 ... 50: {
+        selected = ADC3;
+        function = ADC3;
+        while (justReadProbe() == reading) {
+          // Serial.print("reading: ");
+          // Serial.println(justReadProbe());
+          delay(10);
         }
-        case 51 ... 55: {
-          selected = ADC4;
-          function = ADC4;
-          while (justReadProbe() == reading) {
-            // Serial.print("reading: ");
-            // Serial.println(justReadProbe());
-            delay(10);
-          }
-          break;
+        break;
+      }
+      case 51 ... 55: {
+        selected = ADC4;
+        function = ADC4;
+        while (justReadProbe() == reading) {
+          // Serial.print("reading: ");
+          // Serial.println(justReadProbe());
+          delay(10);
         }
-                case 56 ... 60: {
-          selected = ADC7;
-          function = ADC7;
-          while (justReadProbe() == reading) {
-            // Serial.print("reading: ");
-            // Serial.println(justReadProbe());
-            delay(10);
-          }
-          break;
+        break;
+      }
+      case 56 ... 60: {
+        selected = ADC7;
+        function = ADC7;
+        while (justReadProbe() == reading) {
+          // Serial.print("reading: ");
+          // Serial.println(justReadProbe());
+          delay(10);
         }
-        
-      
+        break;
+      }
       }
     }
   }
@@ -1579,8 +1576,8 @@ int checkSwitchPosition() { // 0 = measure, 1 = select
     // }
     timer = micros();
     switchPosition = 1;
-    Serial1.begin(baudRateUSBSer1, getSerial1Config());
-    Serial2.begin(baudRateUSBSer2, getSerial2Config());
+    // Serial1.begin(baudRateUSBSer1, getSerial1Config());
+    // Serial2.begin(baudRateUSBSer2, getSerial2Config());
     return 1;
   } else {
     if (bufferPowerConnected == true) {
@@ -1591,76 +1588,124 @@ int checkSwitchPosition() { // 0 = measure, 1 = select
     // refreshLocalConnections();
     // showProbeLEDs = 3;
     switchPosition = 0;
-    Serial1.begin(baudRateUSBSer1, getSerial1Config());
-    Serial2.begin(baudRateUSBSer2, getSerial2Config());
+    // Serial1.begin(baudRateUSBSer1, getSerial1Config());
+    // Serial2.begin(baudRateUSBSer2, getSerial2Config());
     return 0;
+  }
+}
+float calibrated3v3 = 3.3;
+
+void calibrateDac0(float target) {
+  target = 3.33;
+  int calibrationFound = 0;
+
+  removeBridgeFromNodeFile(DAC0, -1, netSlot, 1);
+  removeBridgeFromNodeFile(ROUTABLE_BUFFER_IN, -1, netSlot, 1);
+  addBridgeToNodeFile(ROUTABLE_BUFFER_IN, DAC0, netSlot, 1);
+
+  refreshBlind(-1);
+
+  while (calibrationFound == 0) {
+    setDac0voltage(calibrated3v3, 0);
+    delay(10);
+    float MeasuredVoltage = INA1.getBusVoltage();
+    Serial.print("setVoltage: ");
+    Serial.print(calibrated3v3);
+    Serial.print("\t\tMeasuredVoltage: ");
+    Serial.println(MeasuredVoltage);
+
+    if (MeasuredVoltage > target + 0.01) {
+      calibrated3v3 = calibrated3v3 - 0.01;
+    } else if (MeasuredVoltage < target - 0.01) {
+      calibrated3v3 = calibrated3v3 + 0.01;
+    } else {
+      calibrationFound = 1;
+    }
   }
 }
 
 float checkProbeCurrent(void) {
   // removeBridgeFromNodeFile(ROUTABLE_BUFFER_IN, RP_GPIO_23, netSlot, 1);
-  addBridgeToNodeFile(RP_UART_RX, ISENSE_PLUS, netSlot, 1);
-  pinMode(1, OUTPUT_4MA);
-  digitalWrite(1, HIGH);
-  addBridgeToNodeFile(ROUTABLE_BUFFER_IN, ISENSE_MINUS, netSlot, 1);
+  // addBridgeToNodeFile(RP_UART_RX, ISENSE_PLUS, netSlot, 1);
+  // pinMode(1, OUTPUT_4MA);
+  // digitalWrite(1, HIGH);
+  // addBridgeToNodeFile(ROUTABLE_BUFFER_IN, ISENSE_MINUS, netSlot, 1);
+  // float current = INA1.getCurrent_mA();
 
+  int bs = 0;
+  // bs += Serial.print("I: ");
+  // bs += Serial.print(current);
+  // bs += Serial.println("mA\t");
+  // delay(100);
+  float lastDac = dacOutput[0];
+
+  setDac0voltage(3.3, 0);
+  addBridgeToNodeFile(ROUTABLE_BUFFER_IN, DAC0, netSlot, 1);
   // chooseShownReadings();
 
   refreshBlind(-1);
 
   //   printPathsCompact();
   // printChipStatus();
-  pinMode(23, INPUT);
+  // pinMode(23, INPUT);
+  digitalWrite(10, LOW);
   delayMicroseconds(10);
   // refreshLocalConnections();
-  int bs = 0;
-  float current = INA0.getCurrent_mA();
+
+  float current = INA1.getCurrent_mA();
   // delay(100);
   //  for( int i = 0; i< 100; i++)
   //  {
-
-  // bs += Serial.print("I: ");
-  // bs += Serial.print(current);
-  // bs += Serial.println("mA\t");
+  digitalWrite(10, HIGH);
+  bs += Serial.print("I: ");
+  bs += Serial.print(current);
+  bs += Serial.println("mA\t");
   // showProbeLEDs = 4;
   //      //delay(100);
   //  }
   //  removeBridgeFromNodeFile(ROUTABLE_BUFFER_IN, RP_GPIO_23, netSlot, 1);
-  removeBridgeFromNodeFile(RP_UART_RX, ISENSE_PLUS, netSlot, 1);
-  removeBridgeFromNodeFile(ROUTABLE_BUFFER_IN, ISENSE_MINUS, netSlot, 1);
+  // removeBridgeFromNodeFile(RP_UART_RX, ISENSE_PLUS, netSlot, 1);
+  // removeBridgeFromNodeFile(ROUTABLE_BUFFER_IN, ISENSE_MINUS, netSlot, 1);
+
+  removeBridgeFromNodeFile(ROUTABLE_BUFFER_IN, DAC0, netSlot, 1);
+  setDac0voltage(3.3, 0);
+  Serial.println(dacOutput[0]);
   //   removeBridgeFromNodeFile(RP_UART_RX, ISENSE_PLUS, netSlot, 0);
   // removeBridgeFromNodeFile(ROUTABLE_BUFFER_IN, ISENSE_MINUS, netSlot, 0);
-  pinMode(23, OUTPUT_4MA);
-  digitalWrite(23, HIGH);
+  // pinMode(23, OUTPUT_4MA);
+  // digitalWrite(23, HIGH);
 
   // refreshBlind();
 
-  pinMode(1, INPUT);
+  // pinMode(1, INPUT);
   return current;
 }
 
 void routableBufferPower(int offOn) {
   if (offOn == 1) {
-   // Serial.println("power on\n\r");
+    // Serial.println("power on\n\r");
     // delay(10);
-    removeBridgeFromNodeFile(ROUTABLE_BUFFER_IN, RP_GPIO_23, netSlot, 1);
 
+    setDac0voltage(3.3, 0);
+
+    removeBridgeFromNodeFile(DAC0, -1, netSlot, 1);
+    addBridgeToNodeFile(ROUTABLE_BUFFER_IN, DAC0, netSlot, 1);
     // delay(10);
     //  //  removeBridgeFromNodeFile(ROUTABLE_BUFFER_IN, RP_GPIO_22, netSlot);
     //   //delay(10);
-    addBridgeToNodeFile(ROUTABLE_BUFFER_IN, RP_GPIO_23, netSlot, 1);
+    // addBridgeToNodeFile(ROUTABLE_BUFFER_IN, RP_GPIO_23, netSlot, 1);
     // delay(10);
     //  // addBridgeToNodeFile(ROUTABLE_BUFFER_IN, RP_GPIO_22, netSlot);
     //  // delay(10);
     //  // pinMode(22, OUTPUT_12MA);
     //  // digitalWrite(22, HIGH);
-    pinMode(23, OUTPUT_8MA);
-    digitalWrite(23, HIGH);
+    //  pinMode(23, OUTPUT_8MA);
+    // digitalWrite(23, HIGH);
     bufferPowerConnected = true;
     refreshBlind();
-    //refreshConnections();
-    // printPathsCompact();
-    // printBridgeArray();
+    // refreshConnections();
+    //  printPathsCompact();
+    //  printBridgeArray();
 
     // delay(10);
     // clearAllNTCC();
@@ -1680,7 +1725,10 @@ void routableBufferPower(int offOn) {
     // Serial.println("power off\n\r");
     /// removeBridgeFromNodeFile(ROUTABLE_BUFFER_IN, RP_GPIO_22, netSlot);
     // delay(10);
-    removeBridgeFromNodeFile(ROUTABLE_BUFFER_IN, RP_GPIO_23, netSlot, 1);
+    // removeBridgeFromNodeFile(ROUTABLE_BUFFER_IN, RP_GPIO_23, netSlot, 1);
+
+    removeBridgeFromNodeFile(DAC0, ROUTABLE_BUFFER_IN, netSlot, 1);
+    setDac0voltage(0.0, 0);
     bufferPowerConnected = false;
     refreshBlind();
     // printPathsCompact();
@@ -1912,7 +1960,6 @@ int checkProbeButton(void) {
   buttonState = gpio_get(9);
   gpio_set_input_enabled(9, false);
 
-
   delayMicroseconds(10);
   delayMicroseconds(50);
   // pinMode(9, OUTPUT_4MA);
@@ -2000,7 +2047,12 @@ int checkProbeButton(void) {
     // Serial.println(buttonState2);
     // Serial.println(" ");
     // Serial.println("disconnect button");
-    return 1;
+    if (REV >= 4) {
+      return 2;
+    } else {
+      return 1;
+    }
+    // return 1;
   } else if (buttonState == 0 && buttonState2 == 0 &&
              buttonState3 == 0) { // connect Button
     // Serial.print("buttonState ");
@@ -2009,7 +2061,12 @@ int checkProbeButton(void) {
     // Serial.println(buttonState2);
     // Serial.println(" ");
     // Serial.println("connect button");
-    return 2;
+    if (REV >= 4) {
+      return 1;
+    } else {
+      return 2;
+    }
+    // return 2;
   }
   //   Serial.print("buttonState ");
   // Serial.println(buttonState);
@@ -2332,7 +2389,7 @@ int getNothingTouched(int samples) {
       }
     }
 
-    nothingTouchedReading = nothingTouchedReading / (samples - rejects) ;
+    nothingTouchedReading = nothingTouchedReading / (samples - rejects);
     mapFrom = nothingTouchedReading + 15;
 
     if (loops > 10) {
@@ -2638,7 +2695,7 @@ int readProbeRaw(int readNothingTouched) {
     lastReadRaw = average;
     //     Serial.print("adc0: ");
 
-     //Serial.println(average);
+    // Serial.println(average);
 
     return average;
 
@@ -2806,7 +2863,7 @@ int justReadProbe() {
 int readProbe() {
   int found = -1;
   // connectedRows[0] = -1;
-  unsigned long buttonCheck =0;
+  unsigned long buttonCheck = 0;
   // if (checkProbeButton() == 1) {
   //   return -18;
   // }

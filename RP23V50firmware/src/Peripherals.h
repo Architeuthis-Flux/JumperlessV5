@@ -52,6 +52,7 @@ void initADC(void);
 void printCalibration(void);
 void initDAC(void);
 
+void calibrateDacs(void);
 void setRailsAndDACs(void);
 void setTopRail(int value = 1650, int save = 1);
 void setTopRail(float value, int save = 1);

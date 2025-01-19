@@ -337,6 +337,29 @@ void createSlots(int slot, int addRotaryConnections) {
     core1busy = false;
   }
 }
+
+void createConfigFile(int overwrite) {
+
+  if (overwrite == 0) {
+    if (FatFS.exists("config.txt")) {
+      return;
+    }
+  }
+  while (core2busy == true) {
+    // Serial.println("waiting for core2 to finish");
+  }
+  core1busy = true;
+
+  File configFile = FatFS.open("config.txt", "w");
+  configFile.print("#Jumperless Config file\n\r");
+  configFile.println("version: 5");
+  configFile.print("revision: ");
+  configFile.println(EEPROM.read(REVISIONADDRESS));
+
+  configFile.close();
+
+
+}
 void inputNodeFileList(int addRotaryConnections) {
   // addRotaryConnections = 1;
   // Serial.println("Paste the nodeFile list here\n\n\r");

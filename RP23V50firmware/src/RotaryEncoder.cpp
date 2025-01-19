@@ -152,6 +152,8 @@ void rotaryEncoderStuff(void) {
   lastButtonEncoderState = encoderButtonState;
 
   buttonState = digitalRead(BUTTON_ENC);
+  // Serial.print("buttonState: ");
+  // Serial.println(buttonState);
 
   if (buttonState == 0) {
      encoderIsPressed = 1;

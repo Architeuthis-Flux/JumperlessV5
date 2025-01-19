@@ -10,7 +10,7 @@
 //extern File nodeFile;  
 extern volatile bool core1busy;
 extern volatile bool netsUpdated;
-
+void createConfigFile(int overwrite = 0);
 void clearNodeFileString(void);
 void closeAllFiles(void);
 void usbFSbegin(void);

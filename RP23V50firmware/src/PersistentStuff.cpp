@@ -12,6 +12,7 @@ void debugFlagInit(int forceDefaults) {
 
   if (EEPROM.read(FIRSTSTARTUPADDRESS) != 0xAA || forceDefaults == 1) {
     EEPROM.write(FIRSTSTARTUPADDRESS, 0xAA);
+    EEPROM.write(REVISIONADDRESS, REV);
     EEPROM.write(DEBUG_FILEPARSINGADDRESS, 0);
     EEPROM.write(TIME_FILEPARSINGADDRESS, 0);
     EEPROM.write(DEBUG_NETMANAGERADDRESS, 0);
@@ -56,6 +57,8 @@ void debugFlagInit(int forceDefaults) {
   probeSwap = EEPROM.read(PROBESWAPADDRESS);
   netColorMode = EEPROM.read(NETCOLORMODE_ADDRESS);
 
+  revisionNumber = EEPROM.read(REVISIONADDRESS);
+
 menuBrightnessSetting = EEPROM.read(MENUBRIGHTNESS_ADDRESS) - 100;
 
 
@@ -69,6 +72,19 @@ menuBrightnessSetting = EEPROM.read(MENUBRIGHTNESS_ADDRESS) - 100;
 //   debugNTCC2 = 1;
 
   // debugLEDs = 1;
+
+  if (revisionNumber <= 0 || revisionNumber > 10) {
+
+
+    delay(5000);
+    Serial.print("Revision number out of range (");
+    Serial.print(revisionNumber);
+    Serial.print("), setting to revision ");
+    EEPROM.write(REVISIONADDRESS, REV);
+    revisionNumber = REV;
+    
+    Serial.println(revisionNumber);
+  }
 
 
   if (debugFP != 0 && debugFP != 1)

@@ -168,7 +168,7 @@ void setup() {
 
   // delay(20);
   //  pinMode(buttonPin, INPUT_PULLDOWN);
-  initDAC(); // also sets revisionNumber
+  initDAC(); 
   pinMode(probePin, OUTPUT_8MA);
   pinMode(10, OUTPUT_8MA);
 
@@ -653,7 +653,8 @@ skipinput:
   }
   case '$': {
     // return current slot number
-    Serial.println(netSlot);
+    calibrateDacs();
+    //Serial.println(netSlot);
     break;
   }
   case 'u': {
@@ -1122,10 +1123,12 @@ volatile int showingProbeLEDs = 0;
 
 unsigned long ardTimer = 0;
 
+unsigned long tempTimer = 0;
+int lastTemp = 0;
 
-
-
-
+int hsvProbe = 0;
+int hsvProbe2 = 0;
+unsigned long probeRainbowTimer = 0;
 void loop1() {
   // int timer = micros();
 
@@ -1135,9 +1138,44 @@ void loop1() {
   } else {
     core2stuff();
   }
+  // leds.clear();
+  // leds.show();
+
+  
 
 secondSerialHandler();
 
+// if( millis() - probeRainbowTimer > 7)
+// {
+// hsvProbe++;
+// showProbeLEDs = 7;
+// probeRainbowTimer = millis();
+
+
+
+// }
+
+// if (millis() - tempTimer > 5000) {
+//     tempTimer = millis();
+//     Serial.print(" ");
+
+//     float temp = 0;
+//     for (int i = 0; i < 20; i++) {
+//       temp += analogReadTemp();
+//       delay(10);
+//     }
+//     temp = temp / 20;
+//     float tempF = (temp * 1.8) + 32;
+//     Serial.print(tempF);
+//     Serial.print(" F  \t");
+//     Serial.print(millis()/1000);
+
+//     for (int i = 0; i < ((tempF - 100.0)*5); i++) {
+// Serial.print(" ");
+
+//     }
+//     Serial.println("*");
+//   }
 
   // if (millis() - ardTimer == 2000) {
   //   Serial1.begin(115200);
@@ -1265,6 +1303,7 @@ void core2stuff() // core 2 handles the LEDs and the CH446Q8
         // pinMode(2, OUTPUT);
         // pinMode(9, INPUT);
         showingProbeLEDs = 1;
+        
         //         Serial.print("showProbeLEDs = ");
         // Serial.println(showProbeLEDs);
         switch (showProbeLEDs) {
@@ -1301,9 +1340,28 @@ void core2stuff() // core 2 handles the LEDs and the CH446Q8
         case 6:
           probeLEDs.setPixelColor(0, 0x0c190c); // measure dim
           break;
+        case 7:
+        {
+          //hsvProbe++;
+          if (hsvProbe > 255) {
+            hsvProbe = 0;
+            hsvProbe2 -= 8;
+            if (hsvProbe2 < 15) {
+              hsvProbe2 = 255;
+            }
+          }
+          hsvColor probeColor;
+          probeColor.h = hsvProbe;
+          probeColor.s = hsvProbe2;
+          probeColor.v = 25;
 
+          uint32_t colorp = packRgb(HsvToRgb(probeColor));
+          probeLEDs.setPixelColor(0, colorp); // select idle dim
+          break;
+        }
         default:
           break;
+
         }
         lastProbeLEDs = showProbeLEDs;
 

@@ -11,9 +11,13 @@
 //#include <FastLED.h>
 
 #define LED_PIN 17
+#define LED_PIN_TOP 3
+#define PROBE_LED_PIN 2
 
-  #define PROBE_LED_PIN 2
-#define LED_COUNT 445
+#define LED_COUNT 300
+#define LED_COUNT_TOP 145
+extern bool splitLEDs;
+
 #define DEFAULTBRIGHTNESS 5
 #define DEFAULTRAILBRIGHTNESS 5
 #define DEFAULTSPECIALNETBRIGHTNESS 5
@@ -21,7 +25,7 @@
 extern volatile bool core2busy;
 // #define PCBEXTINCTION 0 //extra brightness for to offset the extinction
 // through pcb
-
+//this stuff is unused
 #define PCBEXTINCTION                                                          \
   30 // extra brightness for to offset the extinction through pcb
 #define PCBREDSHIFTPINK                                                        \
@@ -39,12 +43,35 @@ extern volatile uint8_t LEDbrightness;
 extern volatile uint8_t LEDbrightnessSpecial;
 
 extern volatile uint8_t pauseCore2;
-extern Adafruit_NeoPixel leds;
+extern Adafruit_NeoPixel bbleds;
 extern Adafruit_NeoPixel probeLEDs;
 extern uint8_t probeLEDstateMachine;
 
+
+
+class ledClass { //I'm literally copying this from Adafruit_NeoPixel.h so I can split leds.show() into 2 strips without modifying the library 
+  public:
+  void begin(void);
+  void show(void);
+  void setPin(int16_t p);
+  void setPixelColor(uint16_t n, uint8_t r, uint8_t g, uint8_t b);
+  void setPixelColor(uint16_t n, uint32_t c);
+  uint32_t getPixelColor(uint16_t n);
+  uint16_t numPixels(void);
+  void fill(uint32_t c = 0, uint16_t first = 0, uint16_t count = 0);
+  void setBrightness(uint8_t);
+  void clear(void);
+
+  //void clear(int start = 0, int end = LED_COUNT+LED_COUNT_TOP);
+
+};
+  
+
+
+extern ledClass leds;
+
 //extern CRGB probeLEDs[1];
-extern Adafruit_NeoMatrix matrix;
+// extern Adafruit_NeoMatrix matrix;
 //extern bool debugLEDs;
 
 extern int brightenedNet;
@@ -122,43 +149,7 @@ const int numbers[120] = {
     75,  76,  77,  78,  79,  80,  81,  82,  83,  84,  85,  86,  87,  88,  89,
     90,  91,  92,  93,  94,  95,  96,  97,  98,  99,  100, 101, 102, 103, 104,
     105, 106, 107, 108, 109, 110, 111, 112, 113, 114, 115, 116, 117, 118, 119};
-// const int nodesToPixelMap[445] = {0, 0, 0, 0, 0, 1, 1, 1, 1, 1, 2, 2, 2, 2,
-// 2, 3, 3, 3, 3, 3, 4, 4, 4, 4, 4, 5, 5, 5, 5, 5, 6, 6, 6, 6, 6, 7, 7, 7, 7, 7,
-// 8, 8, 8, 8, 8, 9, 9, 9, 9, 9, 10, 10, 10, 10, 10, 11, 11, 11, 11, 11, 12, 12,
-// 12, 12, 12, 13, 13, 13, 13, 13, 14, 14, 14, 14, 14, 15, 15, 15, 15, 15, 16,
-// 16, 16, 16, 16, 17, 17, 17, 17, 17, 18, 18, 18, 18, 18, 19, 19, 19, 19, 19,
-// 20, 20, 20, 20, 20, 21, 21, 21, 21, 21, 22, 22, 22, 22, 22, 23, 23, 23, 23,
-// 23, 24, 24, 24, 24, 24, 25, 25, 25, 25, 25, 26, 26, 26, 26, 26, 27, 27, 27,
-// 27, 27, 28, 28, 28, 28, 28, 29, 29, 29, 29, 29, 30, 30, 30, 30, 30,
-//                                   31, 31, 31, 31, 31, 32, 32, 32, 32, 32, 33,
-//                                   33, 33, 33, 33, 34, 34, 34, 34, 34, 35, 35,
-//                                   35, 35, 35, 36, 36, 36, 36, 36, 37, 37, 37,
-//                                   37, 37, 38, 38, 38, 38, 38, 39, 39, 39, 39,
-//                                   39, 40, 40, 40, 40, 40, 41, 41, 41, 41, 41,
-//                                   42, 42, 42, 42, 42, 43, 43, 43, 43, 43, 44,
-//                                   44, 44, 44, 44, 45, 45, 45, 45, 45, 46, 46,
-//                                   46, 46, 46, 47, 47, 47, 47, 47, 48, 48, 48,
-//                                   48, 48, 49, 49, 49, 49, 49, 50, 50, 50, 50,
-//                                   50, 51, 51, 51, 51, 51, 52, 52, 52, 52, 52,
-//                                   53, 53, 53, 53, 53, 54, 54, 54, 54, 54, 55,
-//                                   55, 55, 55, 55, 56, 56, 56, 56, 56, 57, 57,
-//                                   57, 57, 57, 58, 58, 58, 58, 58, 59, 59, 59,
-//                                   59, 59, 60, 60, 60, 60, 60, 61, 61, 61, 61,
-//                                   61, 62, 62, 62, 62, 62, 63, 63, 63, 63, 63,
-//                                   64, 64, 64, 64, 64, 65, 65, 65, 65, 65, 66,
-//                                   66, 66, 66, 66, 67, 67, 67, 67, 67, 68, 68,
-//                                   68, 68, 68, 69, 69, 69, 69, 69, 70, 70, 70,
-//                                   70, 70, 71, 71, 71, 71, 71, 72, 72, 72, 72,
-//                                   72, 73, 73, 73, 73, 73, 74, 74, 74, 74, 74,
-//                                   75, 75, 75, 75, 75, 76, 76, 76, 76, 76, 77,
-//                                   77, 77, 77, 77, 78, 78, 78, 78, 78, 79, 79,
-//                                   79, 79, 79, 80, 80, 80, 80, 80, 81, 81, 81,
-//                                   81, 81, 82, 82, 82, 82, 82, 83, 83, 83, 83,
-//                                   83, 84, 84, 84, 84, 84, 85, 85, 85, 85, 85,
-//                                   86, 86, 86, 86, 86, 87, 87, 87, 87, 87, 88,
-//                                   88, 88, 88, 88, 89, 89, 89, 89, 89, 90, 90,
-//                                   90, 90, 90, 91, 91, 91, 91, 91, 92, 92, 92,
-//                                   92, 92, 93, 93, 93, 93, 93,
+
 
 const int nodesToPixelMap[120] = {
     0,  0,  1,  2,   3,   4,   5,   6,   7,   8,   9,   10,  11,  12,  13,
@@ -217,7 +208,7 @@ extern uint32_t
     rawSpecialNetColors[8]; // = {0x000000, 0x001C04, 0x1C0702, 0x1C0107,
                             // 0x231111, 0x230913, 0x232323, 0x232323};
 
-extern uint32_t rawOtherColors[12];
+extern uint32_t rawOtherColors[15];
 
 extern uint32_t rawRailColors[3][4];
 
@@ -268,7 +259,7 @@ void lightUpRail(int logo = -1, int railNumber = -1, int onOff = 1,
                  int supplySwitchPosition = 0);
 void setupSwirlColors(void);
 void logoSwirl(int start = 0, int spread = 5, int probe = 0);
-uint32_t dimLogoColor(uint32_t color, int brightness = 40);
+uint32_t dimLogoColor(uint32_t color, int brightness = 20);
 void lightUpNet(int netNumber = 0, int node = -1, int onOff = 1,
                 int brightness = DEFAULTBRIGHTNESS,
                 int hueShift = 0, int dontClear = 0, uint32_t forceColor = 0xffffff); //-1 means all nodes (default)
@@ -278,6 +269,10 @@ hsvColor RgbToHsv(rgbColor rgb);
 rgbColor HsvToRgb(hsvColor hsv);
 void applyBrightness(int brightness);
 rgbColor unpackRgb(uint32_t color);
+
+//uint32_t packRgb(uint8_t r, uint8_t g, uint8_t b); 
+uint32_t packRgb(rgbColor color);
+
 uint32_t scaleUpBrightness(uint32_t hexColor, int scaleFactor = 8,
                            int minBrightness = 25);
 uint32_t scaleDownBrightness(uint32_t hexColor, int scaleFactor = 8,

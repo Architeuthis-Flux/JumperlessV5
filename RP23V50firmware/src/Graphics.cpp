@@ -819,8 +819,9 @@ void playDoom(void) {
   core2busy = 1;
   int pixMap[10] = {9, 8, 7, 6, 5, 4, 3, 2, 1, 0};
   // doomIntro();
+  doomIntro();
   for (int l = 0; l < 4; l++) {
-    doomIntro();
+    
     for (int f = 0; f <= 39; f++) {
       for (int r = 0; r < 60; r++) {
 
@@ -840,6 +841,18 @@ void playDoom(void) {
         }
       }
       leds.show();
+      // if (l % 3 == 0) {
+
+      // leds.clear();
+      // leds.show();
+      // delayMicroseconds(l*200);
+      // }
+      //       if (l % 3 == 1) {
+
+      // leds.clear();
+      // leds.show();
+      // //delayMicroseconds(1);
+      // }
       delay(150);
     }
   }
