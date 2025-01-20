@@ -653,6 +653,22 @@ skipinput:
   }
   case '$': {
     // return current slot number
+    for (int d = 0; d < 4; d++) {
+      Serial.print("dacSpread[");
+      Serial.print(d);
+      Serial.print("] = ");
+      Serial.println(dacSpread[d]);
+
+    }
+
+    for (int d = 0; d < 4; d++) {
+      Serial.print("dacZero[");
+      Serial.print(d);
+      Serial.print("] = ");
+      Serial.println(dacZero[d]);
+
+    }
+    
     calibrateDacs();
     //Serial.println(netSlot);
     break;

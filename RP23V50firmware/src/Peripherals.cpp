@@ -458,11 +458,11 @@ void setTopRail(float value, int save) {
     dacValue = 0;
   }
 
-  railVoltage[0] = value;
   digitalWrite(LDAC, HIGH);
   mcp.setChannelValue(MCP4728_CHANNEL_C, dacValue);
   digitalWrite(LDAC, LOW);
   if (save) {
+    railVoltage[0] = value;
     saveVoltages(railVoltage[0], railVoltage[1], dacOutput[0], dacOutput[1]);
   }
 }
@@ -477,11 +477,11 @@ void setBotRail(float value, int save) {
     dacValue = 0;
   }
 
-  railVoltage[1] = value;
   digitalWrite(LDAC, HIGH);
   mcp.setChannelValue(MCP4728_CHANNEL_D, dacValue);
   digitalWrite(LDAC, LOW);
   if (save) {
+    railVoltage[1] = value;
     saveVoltages(railVoltage[0], railVoltage[1], dacOutput[0], dacOutput[1]);
   }
 }
@@ -521,12 +521,12 @@ void setDac0voltage(float voltage, int save) {
   if (dacValue < 0) {
     dacValue = 0;
   }
-  dacOutput[0] = voltage;
 
   digitalWrite(LDAC, HIGH);
   mcp.setChannelValue(MCP4728_CHANNEL_A, dacValue);
   digitalWrite(LDAC, LOW);
   if (save) {
+    dacOutput[0] = voltage;
     saveVoltages(railVoltage[0], railVoltage[1], dacOutput[0], dacOutput[1]);
   }
 }
@@ -547,11 +547,12 @@ void setDac1voltage(float voltage, int save) {
   if (dacValue < 0) {
     dacValue = 0;
   }
-  dacOutput[1] = voltage;
+
   digitalWrite(LDAC, HIGH);
   mcp.setChannelValue(MCP4728_CHANNEL_B, dacValue);
   digitalWrite(LDAC, LOW);
   if (save) {
+    dacOutput[1] = voltage;
     saveVoltages(railVoltage[0], railVoltage[1], dacOutput[0], dacOutput[1]);
   }
 }
@@ -621,7 +622,9 @@ void initINA219(void) {
 
   INA0.setBusVoltageRange(16);
   INA1.setBusVoltageRange(16);
-  // calibrateDacs();
+
+  
+  //  calibrateDacs();
 }
 
 void calibrateDacs(void) {
@@ -629,115 +632,203 @@ void calibrateDacs(void) {
   float setVoltage = 0.0;
   clearAllNTCC();
   // sendAllPathsCore2 = 1;
-  //
+  INA0.setBusADC(0x0e);
   int lastNetSlot = netSlot;
   netSlot = 7;
   createSlots(7, 0);
-// for (int i = 0; i < 4; i++) {
-  addBridgeToNodeFile(DAC0, ISENSE_PLUS, netSlot);
-  refreshConnections(0);
-  delay(100);
+  // for (int i = 0; i < 4; i++) {
+
   // Serial.print("netSlot: ");
   // Serial.println(netSlot);
   // printPathsCompact();
   // printChipStatus();
 
-  int zeroFound = 0;
   Serial.println("\n\r\t\tCalibrating\n\r");
 
-  
-  Serial.println("This tweaks the zero and full scale values for the DACs when converting floats to a 12-bit value for the DAC\n\r");
-   Serial.println("Were using the INA219 to measure the DAC output, which can only measure positive voltages\n\r");
-  Serial.println("The DAC outputs 0 to 4.096 V, which is scaled and shifted to +-8V\n\r");
-  Serial.println("This is the float voltage to 12-bit DAC formula:\n\n\r\tint dacValue = (voltage * 4095 / dacSpread[n]) + dacZero[n];\n\n\r");
+  Serial.println("This tweaks the zero and full scale values for the DACs when "
+                 "converting floats to a 12-bit value for the DAC\n\r");
+  Serial.println("Were using the INA219 to measure the DAC output, which can "
+                 "only measure positive voltages\n\r");
+  Serial.println(
+      "The DAC outputs 0 to 4.096 V, which is scaled and shifted to +-8V\n\r");
+  Serial.println(
+      "This is the float voltage to 12-bit DAC formula:\n\n\r\tint dacValue = "
+      "(voltage * 4095 / dacSpread[n]) + dacZero[n];\n\n\r");
 
- 
+  Serial.println("**UNPLUG ANYTHING CONNECTED TO THE RAILS**\n\n\r");
 
-  Serial.println("finding zero\n\r");
+  for (int d = 0; d < 4; d++) {
 
-  float zeroTolerance = 2.0;
+    removeBridgeFromNodeFile(ISENSE_PLUS, -1, netSlot);
 
-  int counter = 0;
+    switch (d) {
+    case 0:
 
-  while (zeroFound < 3) {
-    setVoltage = 0.0;
-    setDac0voltage(setVoltage, 0);
-    delay(20 * (zeroFound + 1));
-    float reading = INA0.getBusVoltage_mV();
+      addBridgeToNodeFile(DAC0, ISENSE_PLUS, netSlot);
+      Serial.println("\n\n\r\tDAC 0");
+      break;
+    case 1:
 
+      addBridgeToNodeFile(DAC1, ISENSE_PLUS, netSlot);
+      Serial.println("\n\n\r\tDAC 1");
+      break;
+    case 2:
 
-    if (reading < zeroTolerance && reading > -zeroTolerance) {
-      zeroFound++;
-    } else if (reading < 2.0) {
-      dacZero[0] = dacZero[0] + 1;
-    } else if (reading > 2.0) {
-      dacZero[0] = dacZero[0] - 1;
+      addBridgeToNodeFile(TOP_RAIL, ISENSE_PLUS, netSlot);
+      Serial.println("\n\n\r\tTop Rail");
+      break;
+    case 3:
+
+      addBridgeToNodeFile(BOTTOM_RAIL, ISENSE_PLUS, netSlot);
+      Serial.println("\n\n\r\tBottom Rail");
+      break;
     }
 
-    if (reading < 20.0 && reading > -20.0) // prevent the loop from running
-                                           // forever if it never finds zero
-    {
-      counter++;
+    refreshConnections(0);
+    delay(100);
+    printPathsCompact();
+    // Serial.print("\n\n\r\tDAC ");
+    // Serial.println(d);
+
+    Serial.println("\n\rfinding zero\n\r");
+    int zeroFound = 0;
+    float zeroTolerance = 2.1;
+
+    int counter = 0;
+    dacZero[d] = dacZero[d] + 3;
+
+    while (zeroFound < 2) {
+      setVoltage = 0.0;
+      setDacByNumber(d, setVoltage, 0);
+      delay(80); // * (zeroFound + 1));
+      float reading = INA0.getBusVoltage_mV();
+      while (INA0.getConversionFlag() == 0) {
+        // Serial.print(".");
+        delayMicroseconds(100);
+      }
+
+      reading = INA0.getBusVoltage_mV();
+
+      // delay(20);
+      //  for (int i = 0; i < 1; i++) {
+      //    delay(10);
+      //    //INA0.getConversionFlag();
+      //    float sample = INA0.getBusVoltage_mV();
+      //    reading += sample;
+      //    Serial.println(sample);
+
+      // }
+      //  reading = reading / 1;
+
+      if (reading < zeroTolerance && reading > -zeroTolerance) {
+        zeroFound++;
+      } else if (reading < 2.0) {
+        dacZero[d] = dacZero[d] + 1;
+      } else if (reading > 2.0) {
+        dacZero[d] = dacZero[d] - 1;
+      }
+
+      if (reading < 20.0 && reading > -20.0) // prevent the loop from running
+                                             // forever if it never finds zero
+      {
+        counter++;
+      }
+
+      if (counter > 20) {
+        zeroFound++;
+      }
+
+      Serial.print("dacZero: ");
+      Serial.print(dacZero[d]);
+
+      Serial.print("\t\tmeasured: ");
+      Serial.print(reading);
+      Serial.println(" mV");
+      // zeroFound = 1;
     }
 
-    if (counter > 20) {
-      zeroFound++;
+    int spreadFound = 0;
+    float tolerance = 1; // mV
+
+    Serial.println("\n\n\rfinding spread\n\r");
+    while (spreadFound < 2) {
+
+      setVoltage = 3.3;
+
+      float setMillivoltage = setVoltage * 1000;
+      setDacByNumber(d, setVoltage, 0);
+      delay(80);
+      // delay(20 * (spreadFound + 1));
+
+      float reading = INA0.getBusVoltage_mV();
+      while (INA0.getConversionFlag() == 0) {
+        delayMicroseconds(100);
+      }
+
+      reading = INA0.getBusVoltage_mV();
+      Serial.print("dacSpread: ");
+      Serial.print(dacSpread[d], 3);
+      Serial.print(" V\tmeasured: ");
+      Serial.print(reading, 2);
+      Serial.println(" mV");
+
+      if (reading <= (setMillivoltage + tolerance) &&
+          reading >= (setMillivoltage - tolerance)) {
+        spreadFound++;
+      } else if (reading <= setMillivoltage - 0.5) {
+        dacSpread[d] = dacSpread[d] - (abs((reading / 1000) - setVoltage));
+      } else if (reading >= setMillivoltage + 0.5) {
+        dacSpread[d] = dacSpread[d] + (abs((reading / 1000) - setVoltage));
+      }
     }
 
-    Serial.print("dacZero: ");
-    Serial.print(dacZero[0]);
+    Serial.println("\n\n\rtest\n\r");
 
-        Serial.print("\t\tmeasured: ");
-    Serial.print(reading);
-    Serial.println(" mV");
-    // zeroFound = 1;
+    for (int i = 0; i <= 9; i++) {
+      setVoltage = i * 1.0;
+      setDacByNumber(d, setVoltage, 0);
+      Serial.print("setVoltage: ");
+      Serial.print(setVoltage);
+      Serial.print(" V\t");
+      delay(80);
+      float reading = INA0.getBusVoltage();
+      while (INA0.getConversionFlag() == 0) {
+        // Serial.print(".");
+        // delay(1);
+        delayMicroseconds(100);
+      }
+      reading = INA0.getBusVoltage();
+      Serial.print("measured: ");
+      Serial.print(reading);
+      Serial.println(" V");
+      // dacCalibration[0][i] = reading;
+    }
+    setDacByNumber(d, d < 2 ? dacOutput[d] : railVoltage[d - 2], 0);
   }
+  saveDacCalibration();
 
-  int spreadFound = 0;
-  float tolerance = 1; // mV
-
-  Serial.println("\n\n\rfinding spread\n\r");
-  while (spreadFound < 3) {
-    setVoltage = 3.3;
-    float setMillivoltage = setVoltage * 1000;
-    setDac0voltage(setVoltage, 0);
-    delay(30 * (spreadFound + 1));
-    float reading = INA0.getBusVoltage_mV();
-    Serial.print("dacSpread: ");
-    Serial.print(dacSpread[0], 4);
-    Serial.print(" V\t\tmeasured: ");
-    Serial.print(reading, 2);
-    Serial.println(" mV");
-
-    if (reading <= (setMillivoltage + tolerance) &&
-        reading >= (setMillivoltage - tolerance)) {
-      spreadFound++;
-    } else if (reading <= setMillivoltage - 0.5) {
-      dacSpread[0] = dacSpread[0] - (abs((reading/1000) - setVoltage));
-    } else if (reading >= setMillivoltage + 0.5) {
-      dacSpread[0] = dacSpread[0] + (abs((reading/1000) - setVoltage));
-    }
-  }
-
-  Serial.println("\n\n\rtest\n\r");
-
-  for (int i = 0; i <= 10; i++) {
-    setVoltage = i * 1.0;
-    setDac0voltage(setVoltage, 0);
-    Serial.print("setVoltage: ");
-    Serial.print(setVoltage);
-    Serial.print(" V\t");
-    delay(50);
-    float reading = INA0.getBusVoltage();
-    Serial.print("\tmeasured: ");
-    Serial.print(reading);
-    Serial.println(" V");
-    // dacCalibration[0][i] = reading;
-  }
+   INA0.setBusADC(0x0b);
 
   netSlot = lastNetSlot;
   refreshConnections(1);
   // printPathsCompact();
+}
+
+void setDacByNumber(int dac, float voltage, int save) {
+  switch (dac) {
+  case 0:
+    setDac0voltage(voltage, save);
+    break;
+  case 1:
+    setDac1voltage(voltage, save);
+    break;
+  case 2:
+    setTopRail(voltage, save);
+    break;
+  case 3:
+    setBotRail(voltage, save);
+    break;
+  }
 }
 
 void dacSine(int resolution) {

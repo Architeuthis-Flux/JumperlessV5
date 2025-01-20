@@ -30,6 +30,11 @@ extern float railVoltage[2];
 extern uint8_t gpioState[10];
 extern uint8_t gpioReading[10];
 extern int gpioNet[10];
+extern float adcSpread[8];
+extern int adcZero[8];
+extern float dacSpread[4];
+extern int dacZero[4];
+
 
 extern uint32_t gpioReadingColors[10];
 extern int revisionNumber;
@@ -63,6 +68,7 @@ void dacSine(int resolution = 9);
 
 void dacTriangle(void);
 
+void setDacByNumber(int dac, float voltage = 0.0, int save = 1);
 void setDac0voltage(float value = 0.0, int save = 1);
 void setDac1voltage(float value = 0.0, int save = 1);
 void setDac0voltage(uint16_t value);

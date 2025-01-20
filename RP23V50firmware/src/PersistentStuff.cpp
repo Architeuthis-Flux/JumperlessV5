@@ -59,24 +59,51 @@ void debugFlagInit(int forceDefaults) {
 
   revisionNumber = EEPROM.read(REVISIONADDRESS);
 
+
+
 menuBrightnessSetting = EEPROM.read(MENUBRIGHTNESS_ADDRESS) - 100;
 
+  dacSpread[1] = EEPROM.get(DAC0_SPREAD_ADDRESS, dacSpread[0]);
+  dacSpread[1] = EEPROM.get(DAC1_SPREAD_ADDRESS, dacSpread[1]);
+  dacSpread[2] = EEPROM.get(TOP_RAIL_SPREAD_ADDRESS, dacSpread[2]);
+  dacSpread[3] = EEPROM.get(BOTTOM_RAIL_SPREAD_ADDRESS, dacSpread[3]);
 
-//   debugFP = 1;
-//   debugFPtime = 1;
+  dacZero[0] = EEPROM.get(DAC0_ZERO_ADDRESS, dacZero[0]);
+  dacZero[1] = EEPROM.get(DAC1_ZERO_ADDRESS, dacZero[1]);
+  dacZero[2] = EEPROM.get(TOP_RAIL_ZERO_ADDRESS, dacZero[2]);
+  dacZero[3] = EEPROM.get(BOTTOM_RAIL_ZERO_ADDRESS,dacZero[3]);
 
-//   debugNM = 1;
-//   debugNMtime = 1;
+  for (int i = 0; i < 4; i++) {
+    if (dacSpread[i] < 12.0 || dacSpread[i] > 28.0) {
+      // delay(2000);
+      
+      // Serial.print("dacSpread[");
+      // Serial.print(i);
+      // Serial.print("] out of range = ");
+      // Serial.println(dacSpread[i]);
+      dacSpread[i] = 21.0;
+      EEPROM.put(DAC0_SPREAD_ADDRESS + (i * 8), dacSpread[i]);
+      EEPROM.put(CALIBRATED_ADDRESS, 0);
+    }
+    if (dacZero[i] < 1000 || dacZero[i] > 2000) {
 
-//   debugNTCC = 1;
-//   debugNTCC2 = 1;
+      // Serial.print("dacZero[");
+      // Serial.print(i);
+      // Serial.print("] out of range = ");
+      // Serial.println(dacZero[i]);
+      dacZero[i] = 1630;
+      EEPROM.put(DAC0_ZERO_ADDRESS + (i * 4), 1630);
+      EEPROM.put(CALIBRATED_ADDRESS, 0);
+    }
+  }
 
-  // debugLEDs = 1;
+
+
 
   if (revisionNumber <= 0 || revisionNumber > 10) {
 
 
-    delay(5000);
+    //delay(5000);
     Serial.print("Revision number out of range (");
     Serial.print(revisionNumber);
     Serial.print("), setting to revision ");
@@ -175,6 +202,27 @@ readLogoBindings();
   delay(2);
 }
 
+void saveDacCalibration(void)
+{
+
+  EEPROM.put(DAC0_SPREAD_ADDRESS, dacSpread[0]);
+  EEPROM.put(DAC1_SPREAD_ADDRESS, dacSpread[1]);
+  EEPROM.put(TOP_RAIL_SPREAD_ADDRESS, dacSpread[2]);
+  EEPROM.put(BOTTOM_RAIL_SPREAD_ADDRESS, dacSpread[3]);
+
+  EEPROM.put(DAC0_ZERO_ADDRESS, dacZero[0]);
+  EEPROM.put(DAC1_ZERO_ADDRESS, dacZero[1]);
+  EEPROM.put(TOP_RAIL_ZERO_ADDRESS, dacZero[2]);
+  EEPROM.put(BOTTOM_RAIL_ZERO_ADDRESS, dacZero[3]);
+
+  EEPROM.put(CALIBRATED_ADDRESS, 0x55);
+
+  EEPROM.commit();
+  delay(2);
+
+
+
+}
 
 
 void debugFlagSet(int flag) {
