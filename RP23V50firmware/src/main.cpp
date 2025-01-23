@@ -281,7 +281,7 @@ int readInNodesArduino = 0;
 
 int restoredNodeFile = 0;
 
-const char firmwareVersion[] = "5.1.0.3"; // remember to update this
+const char firmwareVersion[] = "5.1.0.5"; // remember to update this
 
 int firstLoop = 1;
 
