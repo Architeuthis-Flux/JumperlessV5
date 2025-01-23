@@ -2233,14 +2233,14 @@ int doMenuAction(int menuPosition, int selection) {
     if (menuLines[currentAction.previousMenuPositions[1]].indexOf("Save") !=
         -1) {
 
-      if (currentAction.from[0] > 0 && currentAction.from[0] < NUM_SLOTS) {
+      if (currentAction.from[0] >= 0 && currentAction.from[0] < NUM_SLOTS) {
         saveCurrentSlotToSlot(netSlot, currentAction.from[0]);
         netSlot = currentAction.from[0];
       }
 
     } else if (menuLines[currentAction.previousMenuPositions[1]].indexOf(
                    "Load") != -1) {
-      if (currentAction.from[0] > 0 && currentAction.from[0] < NUM_SLOTS) {
+      if (currentAction.from[0] >= 0 && currentAction.from[0] < NUM_SLOTS) {
         // saveCurrentSlotToSlot(netSlot, currentAction.from[0]);
 
         netSlot = currentAction.from[0];

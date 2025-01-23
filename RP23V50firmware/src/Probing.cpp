@@ -132,7 +132,7 @@ int probeMode(int pin, int setOrClear) {
     // showProbeLEDs = 6;
     // return -1;
   }
-  calibrateDac0();
+  // calibrateDac0();
 restartProbing:
   connectOrClearProbe = setOrClear;
   probeActive = 1;
@@ -1593,58 +1593,54 @@ int checkSwitchPosition() { // 0 = measure, 1 = select
     return 0;
   }
 }
-float calibrated3v3 = 3.3;
+// float calibrated3v3 = 3.3;
 
-void calibrateDac0(float target) {
-  target = 3.33;
-  int calibrationFound = 0;
+// void calibrateDac0(float target) {
+//   target = 3.33;
+//   int calibrationFound = 0;
 
-  removeBridgeFromNodeFile(DAC0, -1, netSlot, 1);
-  removeBridgeFromNodeFile(ROUTABLE_BUFFER_IN, -1, netSlot, 1);
-  addBridgeToNodeFile(ROUTABLE_BUFFER_IN, DAC0, netSlot, 1);
+//   removeBridgeFromNodeFile(DAC0, -1, netSlot, 1);
+//   removeBridgeFromNodeFile(ROUTABLE_BUFFER_IN, -1, netSlot, 1);
+//   addBridgeToNodeFile(ROUTABLE_BUFFER_IN, DAC0, netSlot, 1);
 
-  refreshBlind(-1);
+//   refreshBlind(-1);
 
-  while (calibrationFound == 0) {
-    setDac0voltage(calibrated3v3, 0);
-    delay(10);
-    float MeasuredVoltage = INA1.getBusVoltage();
-    Serial.print("setVoltage: ");
-    Serial.print(calibrated3v3);
-    Serial.print("\t\tMeasuredVoltage: ");
-    Serial.println(MeasuredVoltage);
+//   while (calibrationFound == 0) {
+//     setDac0voltage(calibrated3v3, 0);
+//     delay(10);
+//     float MeasuredVoltage = INA1.getBusVoltage();
+//     Serial.print("setVoltage: ");
+//     Serial.print(calibrated3v3);
+//     Serial.print("\t\tMeasuredVoltage: ");
+//     Serial.println(MeasuredVoltage);
 
-    if (MeasuredVoltage > target + 0.01) {
-      calibrated3v3 = calibrated3v3 - 0.01;
-    } else if (MeasuredVoltage < target - 0.01) {
-      calibrated3v3 = calibrated3v3 + 0.01;
-    } else {
-      calibrationFound = 1;
-    }
-  }
-}
+//     if (MeasuredVoltage > target + 0.01) {
+//       calibrated3v3 = calibrated3v3 - 0.01;
+//     } else if (MeasuredVoltage < target - 0.01) {
+//       calibrated3v3 = calibrated3v3 + 0.01;
+//     } else {
+//       calibrationFound = 1;
+//     }
+//   }
+// }
 
 float checkProbeCurrent(void) {
-  // removeBridgeFromNodeFile(ROUTABLE_BUFFER_IN, RP_GPIO_23, netSlot, 1);
-  // addBridgeToNodeFile(RP_UART_RX, ISENSE_PLUS, netSlot, 1);
-  // pinMode(1, OUTPUT_4MA);
-  // digitalWrite(1, HIGH);
-  // addBridgeToNodeFile(ROUTABLE_BUFFER_IN, ISENSE_MINUS, netSlot, 1);
-  // float current = INA1.getCurrent_mA();
 
   int bs = 0;
-  // bs += Serial.print("I: ");
-  // bs += Serial.print(current);
-  // bs += Serial.println("mA\t");
-  // delay(100);
+
   float lastDac = dacOutput[0];
-
-  setDac0voltage(3.3, 0);
-  addBridgeToNodeFile(ROUTABLE_BUFFER_IN, DAC0, netSlot, 1);
+  // unsigned long timer[4];
+  //timer[0] = micros();
+  // setDac0voltage(3.3, 0);
+  // removeBridgeFromNodeFile(ROUTABLE_BUFFER_IN, DAC0, netSlot, 1);
+  addBridgeToNodeFile(ROUTABLE_BUFFER_IN, DAC0, netSlot, 1, 0);
+ // timer[1] = micros();
+  // printNodeFile();
+  setDac0voltage(3.33, 0);
   // chooseShownReadings();
-
+ // timer[2] = micros();
   refreshBlind(-1);
-
+ //timer[3] = micros();
   //   printPathsCompact();
   // printChipStatus();
   // pinMode(23, INPUT);
@@ -1653,31 +1649,18 @@ float checkProbeCurrent(void) {
   // refreshLocalConnections();
 
   float current = INA1.getCurrent_mA();
-  // delay(100);
-  //  for( int i = 0; i< 100; i++)
-  //  {
+
+  // for (int i = 1; i < 4; i++) {
+  //   Serial.print("timer[");
+  //   Serial.print(i);
+  //   Serial.print("]: ");
+
+  //     Serial.println(timer[i] - timer[i - 1]);
+  //     //Serial.print("\t");
+  //   }
+
   digitalWrite(10, HIGH);
-  bs += Serial.print("I: ");
-  bs += Serial.print(current);
-  bs += Serial.println("mA\t");
-  // showProbeLEDs = 4;
-  //      //delay(100);
-  //  }
-  //  removeBridgeFromNodeFile(ROUTABLE_BUFFER_IN, RP_GPIO_23, netSlot, 1);
-  // removeBridgeFromNodeFile(RP_UART_RX, ISENSE_PLUS, netSlot, 1);
-  // removeBridgeFromNodeFile(ROUTABLE_BUFFER_IN, ISENSE_MINUS, netSlot, 1);
 
-  removeBridgeFromNodeFile(ROUTABLE_BUFFER_IN, DAC0, netSlot, 1);
-  setDac0voltage(3.3, 0);
-  Serial.println(dacOutput[0]);
-  //   removeBridgeFromNodeFile(RP_UART_RX, ISENSE_PLUS, netSlot, 0);
-  // removeBridgeFromNodeFile(ROUTABLE_BUFFER_IN, ISENSE_MINUS, netSlot, 0);
-  // pinMode(23, OUTPUT_4MA);
-  // digitalWrite(23, HIGH);
-
-  // refreshBlind();
-
-  // pinMode(1, INPUT);
   return current;
 }
 
@@ -1690,58 +1673,17 @@ void routableBufferPower(int offOn) {
 
     removeBridgeFromNodeFile(DAC0, -1, netSlot, 1);
     addBridgeToNodeFile(ROUTABLE_BUFFER_IN, DAC0, netSlot, 1);
-    // delay(10);
-    //  //  removeBridgeFromNodeFile(ROUTABLE_BUFFER_IN, RP_GPIO_22, netSlot);
-    //   //delay(10);
-    // addBridgeToNodeFile(ROUTABLE_BUFFER_IN, RP_GPIO_23, netSlot, 1);
-    // delay(10);
-    //  // addBridgeToNodeFile(ROUTABLE_BUFFER_IN, RP_GPIO_22, netSlot);
-    //  // delay(10);
-    //  // pinMode(22, OUTPUT_12MA);
-    //  // digitalWrite(22, HIGH);
-    //  pinMode(23, OUTPUT_8MA);
-    // digitalWrite(23, HIGH);
+
     bufferPowerConnected = true;
     refreshBlind();
-    // refreshConnections();
-    //  printPathsCompact();
-    //  printBridgeArray();
-
-    // delay(10);
-    // clearAllNTCC();
-    // openNodeFile(netSlot);
-    // getNodesToConnect();
-    // // Serial.print("openNF\n\r");
-
-    // bridgesToPaths();
-    // // clearLEDsExceptRails();
-    // //assignNetColors();
-    // //showNets();
-    // delay(30);
-    // sendAllPathsCore2 = 1;
-    // delay(30);
 
   } else {
-    // Serial.println("power off\n\r");
-    /// removeBridgeFromNodeFile(ROUTABLE_BUFFER_IN, RP_GPIO_22, netSlot);
-    // delay(10);
-    // removeBridgeFromNodeFile(ROUTABLE_BUFFER_IN, RP_GPIO_23, netSlot, 1);
 
     removeBridgeFromNodeFile(DAC0, ROUTABLE_BUFFER_IN, netSlot, 1);
     setDac0voltage(0.0, 0);
     bufferPowerConnected = false;
     refreshBlind();
-    // printPathsCompact();
-    // printBridgeArray();
-    // refreshConnections();
-    //   delay(100);
-    //    // pinMode(22, INPUT);
-    //    pinMode(23, INPUT);
 
-    // openNodeFile(netSlot);
-    // getNodesToConnect();
-    // bridgesToPaths();
-    // sendAllPathsCore2 = 1;
   }
 }
 
@@ -2221,112 +2163,120 @@ int probeADCmap[102];
 
 int nothingTouchedReading = 35;
 int mapFrom = 35;
-int calibrateProbe() {
-  /* clang-format off */
+// int calibrateProbe() {
+//   /* clang-format off */
 
-  int probeRowMap[102] = {
+//   int probeRowMap[102] = {
 
-      0,	      1,	      2,	      3,	      4,	      5,	      6,	      7,	      8,
-      9,	      10,	      11,	      12,	      13,	      14,	      15,	      16,	      17,
-      18,	      19,	      20,	      21,	      22,	      23,	      24,	      25,	      26,
-      27,	      28,	      29,	      30,	      TOP_RAIL,	      TOP_RAIL_GND,	      BOTTOM_RAIL,	      BOTTOM_RAIL_GND,
-      31,	      32,	      33,	      34,	      35,	      36,	      37,	      38,	      39,
-      40,	      41,	      42,	      43,	      44,	      45,	      46,	      47,	      48,
-      49,	      50,	      51,	      52,	      53,	      54,	      55,	      56,	      57,
-      58,	      59,	      60,	      NANO_D1,	      NANO_D0,	      NANO_RESET_1,	      NANO_GND_1,	      NANO_D2,	      NANO_D3,
-      NANO_D4,	      NANO_D5,	      NANO_D6,	      NANO_D7,	      NANO_D8,	      NANO_D9,	      NANO_D10,	      NANO_D11,	      NANO_D12,
-      NANO_D13,	      NANO_3V3,	      NANO_AREF,	      NANO_A0,	      NANO_A1,	      NANO_A2,	      NANO_A3,	      NANO_A4,	      NANO_A5,
-      NANO_A6,	      NANO_A7,	      NANO_5V,	      NANO_RESET_0,	      NANO_GND_0,	      NANO_VIN,	
-      LOGO_PAD_BOTTOM,	      LOGO_PAD_TOP,	      GPIO_PAD,
-      DAC_PAD,	      ADC_PAD,	      BUILDING_PAD_TOP,	      BUILDING_PAD_BOTTOM,
-  };
-  /* clang-format on */
-  while (1) {
+//       0,	      1,	      2,	      3,	      4,
+//       5,	      6,	      7,	      8, 9,	      10,
+//       11,	      12,	      13,	      14,	      15,
+//       16,	      17, 18,	      19,	      20,	      21,
+//       22,	      23,	      24,	      25,	      26, 27,
+//       28,	      29,	      30,	      TOP_RAIL, TOP_RAIL_GND,
+//       BOTTOM_RAIL,	      BOTTOM_RAIL_GND, 31,	      32, 33, 34,
+//       35,	      36,	      37,	      38,	      39, 40,
+//       41,	      42,	      43,	      44,	      45,
+//       46,	      47,	      48, 49,	      50,	      51,
+//       52,	      53,	      54,	      55,	      56,
+//       57, 58,	      59,	      60,	      NANO_D1, NANO_D0,
+//       NANO_RESET_1,	      NANO_GND_1,	      NANO_D2,	      NANO_D3,
+//       NANO_D4,	      NANO_D5,	      NANO_D6,	      NANO_D7, NANO_D8,
+//       NANO_D9,	      NANO_D10,	      NANO_D11,	      NANO_D12,
+//       NANO_D13,	      NANO_3V3,	      NANO_AREF,	      NANO_A0,
+//       NANO_A1,	      NANO_A2,	      NANO_A3,	      NANO_A4, NANO_A5,
+//       NANO_A6,	      NANO_A7,	      NANO_5V,	      NANO_RESET_0,
+//       NANO_GND_0,	      NANO_VIN, LOGO_PAD_BOTTOM, LOGO_PAD_TOP,
+//       GPIO_PAD, DAC_PAD,	      ADC_PAD,	      BUILDING_PAD_TOP,
+//       BUILDING_PAD_BOTTOM,
+//   };
+//   /* clang-format on */
+//   while (1) {
 
-    int nothingTouchedAverage = 0;
-    for (int i = 0; i < 6; i++) {
-      int reading = readProbeRaw(1);
-      while (reading == -1) {
-        reading = readProbeRaw();
-      }
-      nothingTouchedAverage += readProbeRaw();
-      delay(10);
-    }
+//     int nothingTouchedAverage = 0;
+//     for (int i = 0; i < 6; i++) {
+//       int reading = readProbeRaw(1);
+//       while (reading == -1) {
+//         reading = readProbeRaw();
+//       }
+//       nothingTouchedAverage += readProbeRaw();
+//       delay(10);
+//     }
 
-    nothingTouchedReading = nothingTouchedAverage / 6;
-    // nothingTouchedReading = readProbeRaw();
-    // Serial.print("nothingTouchedReading: ");
-    // Serial.println(nothingTouchedReading);
+//     nothingTouchedReading = nothingTouchedAverage / 6;
+//     // nothingTouchedReading = readProbeRaw();
+//     // Serial.print("nothingTouchedReading: ");
+//     // Serial.println(nothingTouchedReading);
 
-    int rowProbedCalibration = 0;
+//     int rowProbedCalibration = 0;
 
-    while (1) {
+//     while (1) {
 
-      // int probeRead = 0;
+//       // int probeRead = 0;
 
-      // delay(10);
+//       // delay(10);
 
-      int probeRead = readProbeRaw();
-      while (probeRead == -1) {
-        probeRead = readProbeRaw();
-      }
-      // Serial.println(probeRead);
-      //  Serial.print("mapped: ");
-      //  Serial.print(probeRead);
-      //  Serial.print(" -> ");
-      //  Serial.print(nothingTouchedReading);
-      //  Serial.print(" - ");
-      //  Serial.print(probeRead1);
-      //  Serial.print("\n\n\r");
+//       int probeRead = readProbeRaw();
+//       while (probeRead == -1) {
+//         probeRead = readProbeRaw();
+//       }
+//       // Serial.println(probeRead);
+//       //  Serial.print("mapped: ");
+//       //  Serial.print(probeRead);
+//       //  Serial.print(" -> ");
+//       //  Serial.print(nothingTouchedReading);
+//       //  Serial.print(" - ");
+//       //  Serial.print(probeRead1);
+//       //  Serial.print("\n\n\r");
 
-      int mappedRead = map(probeRead, 100, 4055, 100, 0);
+//       int mappedRead = map(probeRead, 100, 4055, 100, 0);
 
-      if (mappedRead < 0) {
-        mappedRead = 0;
-      }
-      if (mappedRead > 101) {
-        mappedRead = 101;
-      }
-      // delay(10);
-      rowProbedCalibration = probeRowMap[mappedRead];
+//       if (mappedRead < 0) {
+//         mappedRead = 0;
+//       }
+//       if (mappedRead > 101) {
+//         mappedRead = 101;
+//       }
+//       // delay(10);
+//       rowProbedCalibration = probeRowMap[mappedRead];
 
-      // Serial.print(rowProbedCalibration);
-      // Serial.print(" ");
-      // Serial.print(mappedRead);
-      //   Serial.print("\t\t");
-      // Serial.println(nothingTouchedReading);
-      // Serial.println();
-      // delay(200);
-      // if (checkProbeButton() == 1) {
-      //   break;
-      // }
-      if (rowProbedCalibration > 0 && rowProbedCalibration <= 60) {
-        b.clear();
+//       // Serial.print(rowProbedCalibration);
+//       // Serial.print(" ");
+//       // Serial.print(mappedRead);
+//       //   Serial.print("\t\t");
+//       // Serial.println(nothingTouchedReading);
+//       // Serial.println();
+//       // delay(200);
+//       // if (checkProbeButton() == 1) {
+//       //   break;
+//       // }
+//       if (rowProbedCalibration > 0 && rowProbedCalibration <= 60) {
+//         b.clear();
 
-        b.printRawRow(0b00011111, rowProbedCalibration - 1, 0x4500e8, 0xffffff);
-        leds.show();
+//         b.printRawRow(0b00011111, rowProbedCalibration - 1, 0x4500e8,
+//         0xffffff); leds.show();
 
-        // showLEDsCore2 = 1;
+//         // showLEDsCore2 = 1;
 
-      } else if (rowProbedCalibration >= NANO_D0 &&
-                 rowProbedCalibration < NANO_RESET_1) {
-        b.clear();
+//       } else if (rowProbedCalibration >= NANO_D0 &&
+//                  rowProbedCalibration < NANO_RESET_1) {
+//         b.clear();
 
-        for (int i = 0; i < 35; i++) {
-          if (bbPixelToNodesMapV5[i][0] == rowProbedCalibration) {
-            leds.setPixelColor(bbPixelToNodesMapV5[i][1], 0x4500e8);
-            leds.show();
-            // break;
-          } else {
-            leds.setPixelColor(bbPixelToNodesMapV5[i][1], 0x000000);
-          }
-        }
-      }
-      // leds.setPixelColor(bbPixelToNodesMapV5[rowProbedCalibration],
-      // 0x4500e8);
-    }
-  }
-}
+//         for (int i = 0; i < 35; i++) {
+//           if (bbPixelToNodesMapV5[i][0] == rowProbedCalibration) {
+//             leds.setPixelColor(bbPixelToNodesMapV5[i][1], 0x4500e8);
+//             leds.show();
+//             // break;
+//           } else {
+//             leds.setPixelColor(bbPixelToNodesMapV5[i][1], 0x000000);
+//           }
+//         }
+//       }
+//       // leds.setPixelColor(bbPixelToNodesMapV5[rowProbedCalibration],
+//       // 0x4500e8);
+//     }
+//   }
+// }
 
 int nothingTouchedSamples[16] = {0};
 

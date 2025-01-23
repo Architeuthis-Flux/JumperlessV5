@@ -1219,7 +1219,7 @@ void core2stuff() // core 2 handles the LEDs and the CH446Q8
     //  probeLEDs.clear();
   }
   if (micros() - schedulerTimer > schedulerUpdateTime || showLEDsCore2 == 3 ||
-      showLEDsCore2 == 4 && core1busy == false) {
+      showLEDsCore2 == 4 && core1busy == false && core1request == 0) {
 
     if (((showLEDsCore2 >= 1 && loadingFile == 0) || showLEDsCore2 == 3 ||
          (swirled == 1) && sendAllPathsCore2 == 0) ||
@@ -1523,6 +1523,7 @@ void sendPaths(void) {
   unsigned long pathTimer = micros();
 
   sendAllPaths();
+  core2busy = false;
   // core2busy = false;
   unsigned long pathTime = micros() - pathTimer;
 
@@ -1530,6 +1531,6 @@ void sendPaths(void) {
   // Serial.print("pathTime = ");
   // Serial.println(pathTime);
   sendAllPathsCore2 = 0;
-  core2busy = false;
+  
   // }
 }

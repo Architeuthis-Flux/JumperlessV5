@@ -634,8 +634,8 @@ void calibrateDacs(void) {
   // sendAllPathsCore2 = 1;
   INA0.setBusADC(0x0e);
   int lastNetSlot = netSlot;
-  netSlot = 7;
-  createSlots(7, 0);
+  netSlot = 8;
+  createSlots(8, 0);
   // for (int i = 0; i < 4; i++) {
 
   // Serial.print("netSlot: ");
@@ -808,7 +808,8 @@ void calibrateDacs(void) {
   saveDacCalibration();
 
    INA0.setBusADC(0x0b);
-
+removeBridgeFromNodeFile(ISENSE_PLUS, -1, netSlot);
+clearAllNTCC();
   netSlot = lastNetSlot;
   refreshConnections(1);
   // printPathsCompact();
@@ -906,7 +907,7 @@ void chooseShownReadings(void) {
       showADCreadings[7] = path[i].net;
     }
     if (path[i].node1 == ROUTABLE_BUFFER_IN ||
-        path[i].node2 == ROUTABLE_BUFFER_IN) {
+        path[i].node2 == ROUTABLE_BUFFER_IN) { // routable buffer in is hardwired to probe sense adc
       showADCreadings[7] = path[i].net;
     }
 
@@ -964,6 +965,8 @@ void chooseShownReadings(void) {
     // showReadings = 3;
   }
 }
+
+
 float railSpread = 17.88;
 void showLEDmeasurements(void) {
   int samples = 8;

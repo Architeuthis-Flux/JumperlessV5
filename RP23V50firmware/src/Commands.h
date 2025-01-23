@@ -6,12 +6,16 @@ extern volatile int sendAllPathsCore2;
 extern volatile int showLEDsCore2;
 extern volatile int showProbeLEDs;
 
+extern volatile int core1request;
+
 struct rowLEDs {
   uint32_t color[5];
 
 };
 void refreshBlind(int disconnectFirst = 1);
-void waitCore2(void);
+
+unsigned long waitCore2(void);
+
 void refreshConnections(int ledShowOption = 1);
 void refreshLocalConnections(int ledShowOption = 1);
 void updateLEDs(void);

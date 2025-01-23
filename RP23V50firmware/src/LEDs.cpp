@@ -1894,8 +1894,8 @@ void lightUpRail(int logo, int rail, int onOff, int brightness2,
   //       leds.setPixelColor(i, rawOtherColors[0]);
   //     }
   //   }
-  leds.setPixelColor(402, scaleDownBrightness(0x2000b9, 1, 35));
-  leds.setPixelColor(427, scaleDownBrightness(0x0020f9, 1, 35));
+  leds.setPixelColor(402, scaleDownBrightness(0x2000b9, 4, 35));
+  leds.setPixelColor(427, scaleDownBrightness(0x0020f9, 4, 35));
 
   leds.setPixelColor(403, scaleDownBrightness(rawSpecialNetColors[1], 2, 35));
   leds.setPixelColor(428, scaleDownBrightness(rawSpecialNetColors[1], 2, 35));
@@ -2692,7 +2692,7 @@ void clearLEDsExceptRails(void) {
   }
 
   for (int i = 400; i < 430; i++) {
-    if (i != 403 && i != 428 && i != 429 && i != 416 && i != 426) {
+    if (i != 403 && i != 402 && i != 428 && i != 429 && i != 416  && i != 426 && i != 427) {
       leds.setPixelColor(i, 0);
     }
   }

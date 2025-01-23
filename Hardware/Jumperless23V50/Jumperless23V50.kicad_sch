@@ -47433,7 +47433,6 @@
 	)
 	(label "BG1"
 		(at 656.59 440.69 180)
-		(fields_autoplaced yes)
 		(effects
 			(font
 				(size 0.762 0.762)
@@ -47444,7 +47443,6 @@
 	)
 	(label "QSPI_SD0"
 		(at 140.97 220.345 180)
-		(fields_autoplaced yes)
 		(effects
 			(font
 				(size 1.27 1.27)
@@ -47455,7 +47453,6 @@
 	)
 	(label "DG0"
 		(at 402.59 463.55 180)
-		(fields_autoplaced yes)
 		(effects
 			(font
 				(size 0.762 0.762)
@@ -47466,7 +47463,6 @@
 	)
 	(label "XIN"
 		(at 204.47 237.49 0)
-		(fields_autoplaced yes)
 		(effects
 			(font
 				(size 1.27 1.27)
@@ -47477,7 +47473,6 @@
 	)
 	(label "QSPI_SS"
 		(at 87.63 222.885 0)
-		(fields_autoplaced yes)
 		(effects
 			(font
 				(size 1.27 1.27)
@@ -47488,7 +47483,6 @@
 	)
 	(label "GH0"
 		(at 758.19 463.55 180)
-		(fields_autoplaced yes)
 		(effects
 			(font
 				(size 0.762 0.762)
@@ -47499,7 +47493,6 @@
 	)
 	(label "BF0"
 		(at 567.69 438.15 180)
-		(fields_autoplaced yes)
 		(effects
 			(font
 				(size 0.762 0.762)
@@ -47510,7 +47503,6 @@
 	)
 	(label "AH1"
 		(at 742.95 435.61 180)
-		(fields_autoplaced yes)
 		(effects
 			(font
 				(size 0.762 0.762)
@@ -47521,7 +47513,6 @@
 	)
 	(label "EG1"
 		(at 491.49 466.09 180)
-		(fields_autoplaced yes)
 		(effects
 			(font
 				(size 0.762 0.762)
@@ -47532,7 +47523,6 @@
 	)
 	(label "BE1"
 		(at 478.79 440.69 180)
-		(fields_autoplaced yes)
 		(effects
 			(font
 				(size 0.762 0.762)
@@ -47543,7 +47533,6 @@
 	)
 	(label "DG1"
 		(at 402.59 466.09 180)
-		(fields_autoplaced yes)
 		(effects
 			(font
 				(size 0.762 0.762)
@@ -47554,7 +47543,6 @@
 	)
 	(label "DF0"
 		(at 400.05 458.47 180)
-		(fields_autoplaced yes)
 		(effects
 			(font
 				(size 0.762 0.762)
@@ -47565,7 +47553,6 @@
 	)
 	(label "BH0"
 		(at 745.49 438.15 180)
-		(fields_autoplaced yes)
 		(effects
 			(font
 				(size 0.762 0.762)
@@ -47576,7 +47563,6 @@
 	)
 	(label "QSPI_SCLK"
 		(at 204.47 228.6 0)
-		(fields_autoplaced yes)
 		(effects
 			(font
 				(size 1.27 1.27)
@@ -47587,7 +47573,6 @@
 	)
 	(label "USB_D+"
 		(at 95.885 182.245 180)
-		(fields_autoplaced yes)
 		(effects
 			(font
 				(size 1.27 1.27)
@@ -47598,7 +47583,6 @@
 	)
 	(label "QSPI_SD0"
 		(at 204.47 217.17 0)
-		(fields_autoplaced yes)
 		(effects
 			(font
 				(size 1.27 1.27)
@@ -47609,7 +47593,6 @@
 	)
 	(label "AC1"
 		(at 125.73 445.77 180)
-		(fields_autoplaced yes)
 		(effects
 			(font
 				(size 0.762 0.762)
@@ -47620,7 +47603,6 @@
 	)
 	(label "FG1"
 		(at 580.39 466.09 180)
-		(fields_autoplaced yes)
 		(effects
 			(font
 				(size 0.762 0.762)
@@ -47631,7 +47613,6 @@
 	)
 	(label "GH0"
 		(at 671.83 468.63 180)
-		(fields_autoplaced yes)
 		(effects
 			(font
 				(size 0.762 0.762)
@@ -47642,7 +47623,6 @@
 	)
 	(label "DE0"
 		(at 483.87 448.31 180)
-		(fields_autoplaced yes)
 		(effects
 			(font
 				(size 0.762 0.762)
@@ -47653,7 +47633,6 @@
 	)
 	(label "CH1"
 		(at 316.23 471.17 180)
-		(fields_autoplaced yes)
 		(effects
 			(font
 				(size 0.762 0.762)
@@ -47664,7 +47643,6 @@
 	)
 	(label "EG0"
 		(at 491.49 463.55 180)
-		(fields_autoplaced yes)
 		(effects
 			(font
 				(size 0.762 0.762)
@@ -47675,7 +47653,6 @@
 	)
 	(label "SWD"
 		(at 182.88 273.05 180)
-		(fields_autoplaced yes)
 		(effects
 			(font
 				(size 1.27 1.27)
@@ -47686,7 +47663,6 @@
 	)
 	(label "QSPI_SCLK"
 		(at 87.63 227.965 0)
-		(fields_autoplaced yes)
 		(effects
 			(font
 				(size 1.27 1.27)
@@ -47697,7 +47673,6 @@
 	)
 	(label "QSPI_SD3"
 		(at 204.47 224.79 0)
-		(fields_autoplaced yes)
 		(effects
 			(font
 				(size 1.27 1.27)
@@ -47708,7 +47683,6 @@
 	)
 	(label "SWD"
 		(at 204.47 269.24 0)
-		(fields_autoplaced yes)
 		(effects
 			(font
 				(size 1.27 1.27)
@@ -47719,7 +47693,6 @@
 	)
 	(label "SWCLK"
 		(at 182.88 278.13 180)
-		(fields_autoplaced yes)
 		(effects
 			(font
 				(size 1.27 1.27)
@@ -47730,7 +47703,6 @@
 	)
 	(label "BC1"
 		(at 300.99 440.69 180)
-		(fields_autoplaced yes)
 		(effects
 			(font
 				(size 0.762 0.762)
@@ -47741,7 +47713,6 @@
 	)
 	(label "DH0"
 		(at 405.13 468.63 180)
-		(fields_autoplaced yes)
 		(effects
 			(font
 				(size 0.762 0.762)
@@ -47752,7 +47723,6 @@
 	)
 	(label "USB_D+"
 		(at 320.04 186.69 180)
-		(fields_autoplaced yes)
 		(effects
 			(font
 				(size 1.27 1.27)
@@ -47763,7 +47733,6 @@
 	)
 	(label "AF1"
 		(at 133.35 461.01 180)
-		(fields_autoplaced yes)
 		(effects
 			(font
 				(size 0.762 0.762)
@@ -47774,7 +47743,6 @@
 	)
 	(label "USB_D-"
 		(at 95.885 177.165 180)
-		(fields_autoplaced yes)
 		(effects
 			(font
 				(size 1.27 1.27)
@@ -47785,7 +47753,6 @@
 	)
 	(label "DE1"
 		(at 483.87 450.85 180)
-		(fields_autoplaced yes)
 		(effects
 			(font
 				(size 0.762 0.762)
@@ -47796,7 +47763,6 @@
 	)
 	(label "EG0"
 		(at 664.21 453.39 180)
-		(fields_autoplaced yes)
 		(effects
 			(font
 				(size 0.762 0.762)
@@ -47807,7 +47773,6 @@
 	)
 	(label "BG0"
 		(at 656.59 438.15 180)
-		(fields_autoplaced yes)
 		(effects
 			(font
 				(size 0.762 0.762)
@@ -47818,7 +47783,6 @@
 	)
 	(label "XOUT"
 		(at 204.47 242.57 0)
-		(fields_autoplaced yes)
 		(effects
 			(font
 				(size 1.27 1.27)
@@ -47829,7 +47793,6 @@
 	)
 	(label "CD1"
 		(at 392.43 445.77 180)
-		(fields_autoplaced yes)
 		(effects
 			(font
 				(size 0.762 0.762)
@@ -47840,7 +47803,6 @@
 	)
 	(label "USB_D-"
 		(at 320.04 194.31 180)
-		(fields_autoplaced yes)
 		(effects
 			(font
 				(size 1.27 1.27)
@@ -47851,7 +47813,6 @@
 	)
 	(label "AE0"
 		(at 130.81 453.39 180)
-		(fields_autoplaced yes)
 		(effects
 			(font
 				(size 0.762 0.762)
@@ -47862,7 +47823,6 @@
 	)
 	(label "QSPI_SD2"
 		(at 204.47 222.25 0)
-		(fields_autoplaced yes)
 		(effects
 			(font
 				(size 1.27 1.27)
@@ -47873,7 +47833,6 @@
 	)
 	(label "EF0"
 		(at 575.31 453.39 180)
-		(fields_autoplaced yes)
 		(effects
 			(font
 				(size 0.762 0.762)
@@ -47884,7 +47843,6 @@
 	)
 	(label "BD1"
 		(at 217.17 450.85 180)
-		(fields_autoplaced yes)
 		(effects
 			(font
 				(size 0.762 0.762)
@@ -47895,7 +47853,6 @@
 	)
 	(label "BG0"
 		(at 224.79 463.55 180)
-		(fields_autoplaced yes)
 		(effects
 			(font
 				(size 0.762 0.762)
@@ -47906,7 +47863,6 @@
 	)
 	(label "QSPI_SS"
 		(at 204.47 213.36 0)
-		(fields_autoplaced yes)
 		(effects
 			(font
 				(size 1.27 1.27)
@@ -47917,7 +47873,6 @@
 	)
 	(label "EF1"
 		(at 575.31 455.93 180)
-		(fields_autoplaced yes)
 		(effects
 			(font
 				(size 0.762 0.762)
@@ -47928,7 +47883,6 @@
 	)
 	(label "FH0"
 		(at 582.93 468.63 180)
-		(fields_autoplaced yes)
 		(effects
 			(font
 				(size 0.762 0.762)
@@ -47939,7 +47893,6 @@
 	)
 	(label "BE1"
 		(at 219.71 455.93 180)
-		(fields_autoplaced yes)
 		(effects
 			(font
 				(size 0.762 0.762)
@@ -47950,7 +47903,6 @@
 	)
 	(label "BC0"
 		(at 214.63 443.23 180)
-		(fields_autoplaced yes)
 		(effects
 			(font
 				(size 0.762 0.762)
@@ -47961,7 +47913,6 @@
 	)
 	(label "BH0"
 		(at 227.33 468.63 180)
-		(fields_autoplaced yes)
 		(effects
 			(font
 				(size 0.762 0.762)
@@ -47972,7 +47923,6 @@
 	)
 	(label "BG1"
 		(at 224.79 466.09 180)
-		(fields_autoplaced yes)
 		(effects
 			(font
 				(size 0.762 0.762)
@@ -47983,7 +47933,6 @@
 	)
 	(label "CH0"
 		(at 316.23 468.63 180)
-		(fields_autoplaced yes)
 		(effects
 			(font
 				(size 0.762 0.762)
@@ -47994,7 +47943,6 @@
 	)
 	(label "AD1"
 		(at 128.27 450.85 180)
-		(fields_autoplaced yes)
 		(effects
 			(font
 				(size 0.762 0.762)
@@ -48005,7 +47953,6 @@
 	)
 	(label "CD0"
 		(at 306.07 448.31 180)
-		(fields_autoplaced yes)
 		(effects
 			(font
 				(size 0.762 0.762)
@@ -48016,7 +47963,6 @@
 	)
 	(label "FH1"
 		(at 582.93 471.17 180)
-		(fields_autoplaced yes)
 		(effects
 			(font
 				(size 0.762 0.762)
@@ -48027,7 +47973,6 @@
 	)
 	(label "CF1"
 		(at 311.15 461.01 180)
-		(fields_autoplaced yes)
 		(effects
 			(font
 				(size 0.762 0.762)
@@ -48038,7 +47983,6 @@
 	)
 	(label "EF0"
 		(at 488.95 458.47 180)
-		(fields_autoplaced yes)
 		(effects
 			(font
 				(size 0.762 0.762)
@@ -48049,7 +47993,6 @@
 	)
 	(label "FG1"
 		(at 666.75 461.01 180)
-		(fields_autoplaced yes)
 		(effects
 			(font
 				(size 0.762 0.762)
@@ -48060,7 +48003,6 @@
 	)
 	(label "VREG_AVDD"
 		(at 198.12 177.8 0)
-		(fields_autoplaced yes)
 		(effects
 			(font
 				(size 1.27 1.27)
@@ -48071,7 +48013,6 @@
 	)
 	(label "CF0"
 		(at 311.15 458.47 180)
-		(fields_autoplaced yes)
 		(effects
 			(font
 				(size 0.762 0.762)
@@ -48082,7 +48023,6 @@
 	)
 	(label "AG0"
 		(at 135.89 463.55 180)
-		(fields_autoplaced yes)
 		(effects
 			(font
 				(size 0.762 0.762)
@@ -48093,7 +48033,6 @@
 	)
 	(label "XIN"
 		(at 138.43 263.525 180)
-		(fields_autoplaced yes)
 		(effects
 			(font
 				(size 1.27 1.27)
@@ -48104,7 +48043,6 @@
 	)
 	(label "AH0"
 		(at 742.95 433.07 180)
-		(fields_autoplaced yes)
 		(effects
 			(font
 				(size 0.762 0.762)
@@ -48115,7 +48053,6 @@
 	)
 	(label "AB1"
 		(at 209.55 435.61 180)
-		(fields_autoplaced yes)
 		(effects
 			(font
 				(size 0.762 0.762)
@@ -48126,7 +48063,6 @@
 	)
 	(label "~{USB_BOOT}"
 		(at 71.12 222.885 0)
-		(fields_autoplaced yes)
 		(effects
 			(font
 				(size 1.27 1.27)
@@ -48137,7 +48073,6 @@
 	)
 	(label "AC1"
 		(at 298.45 435.61 180)
-		(fields_autoplaced yes)
 		(effects
 			(font
 				(size 0.762 0.762)
@@ -48148,7 +48083,6 @@
 	)
 	(label "AH1"
 		(at 138.43 471.17 180)
-		(fields_autoplaced yes)
 		(effects
 			(font
 				(size 0.762 0.762)
@@ -48159,7 +48093,6 @@
 	)
 	(label "EH1"
 		(at 494.03 471.17 180)
-		(fields_autoplaced yes)
 		(effects
 			(font
 				(size 0.762 0.762)
@@ -48170,7 +48103,6 @@
 	)
 	(label "CD1"
 		(at 306.07 450.85 180)
-		(fields_autoplaced yes)
 		(effects
 			(font
 				(size 0.762 0.762)
@@ -48181,7 +48113,6 @@
 	)
 	(label "EH0"
 		(at 753.11 453.39 180)
-		(fields_autoplaced yes)
 		(effects
 			(font
 				(size 0.762 0.762)
@@ -48192,7 +48123,6 @@
 	)
 	(label "AF0"
 		(at 565.15 433.07 180)
-		(fields_autoplaced yes)
 		(effects
 			(font
 				(size 0.762 0.762)
@@ -48203,7 +48133,6 @@
 	)
 	(label "SWCLK"
 		(at 204.47 266.7 0)
-		(fields_autoplaced yes)
 		(effects
 			(font
 				(size 1.27 1.27)
@@ -48214,7 +48143,6 @@
 	)
 	(label "FH0"
 		(at 755.65 458.47 180)
-		(fields_autoplaced yes)
 		(effects
 			(font
 				(size 0.762 0.762)
@@ -48225,7 +48153,6 @@
 	)
 	(label "BE0"
 		(at 478.79 438.15 180)
-		(fields_autoplaced yes)
 		(effects
 			(font
 				(size 0.762 0.762)
@@ -48236,7 +48163,6 @@
 	)
 	(label "EH1"
 		(at 753.11 455.93 180)
-		(fields_autoplaced yes)
 		(effects
 			(font
 				(size 0.762 0.762)
@@ -48247,7 +48173,6 @@
 	)
 	(label "DH0"
 		(at 750.57 448.31 180)
-		(fields_autoplaced yes)
 		(effects
 			(font
 				(size 0.762 0.762)
@@ -48258,7 +48183,6 @@
 	)
 	(label "FH1"
 		(at 755.65 461.01 180)
-		(fields_autoplaced yes)
 		(effects
 			(font
 				(size 0.762 0.762)
@@ -48269,7 +48193,6 @@
 	)
 	(label "AF0"
 		(at 133.35 458.47 180)
-		(fields_autoplaced yes)
 		(effects
 			(font
 				(size 0.762 0.762)
@@ -48280,7 +48203,6 @@
 	)
 	(label "AB1"
 		(at 123.19 440.69 180)
-		(fields_autoplaced yes)
 		(effects
 			(font
 				(size 0.762 0.762)
@@ -48291,7 +48213,6 @@
 	)
 	(label "FG0"
 		(at 580.39 463.55 180)
-		(fields_autoplaced yes)
 		(effects
 			(font
 				(size 0.762 0.762)
@@ -48302,7 +48223,6 @@
 	)
 	(label "BD0"
 		(at 389.89 438.15 180)
-		(fields_autoplaced yes)
 		(effects
 			(font
 				(size 0.762 0.762)
@@ -48313,7 +48233,6 @@
 	)
 	(label "BC0"
 		(at 300.99 438.15 180)
-		(fields_autoplaced yes)
 		(effects
 			(font
 				(size 0.762 0.762)
@@ -48324,7 +48243,6 @@
 	)
 	(label "CG0"
 		(at 313.69 463.55 180)
-		(fields_autoplaced yes)
 		(effects
 			(font
 				(size 0.762 0.762)
@@ -48335,7 +48253,6 @@
 	)
 	(label "FG0"
 		(at 666.75 458.47 180)
-		(fields_autoplaced yes)
 		(effects
 			(font
 				(size 0.762 0.762)
@@ -48346,7 +48263,6 @@
 	)
 	(label "RUN"
 		(at 204.47 255.27 0)
-		(fields_autoplaced yes)
 		(effects
 			(font
 				(size 1.27 1.27)
@@ -48357,7 +48273,6 @@
 	)
 	(label "EG1"
 		(at 664.21 455.93 180)
-		(fields_autoplaced yes)
 		(effects
 			(font
 				(size 0.762 0.762)
@@ -48368,7 +48283,6 @@
 	)
 	(label "DG1"
 		(at 661.67 450.85 180)
-		(fields_autoplaced yes)
 		(effects
 			(font
 				(size 0.762 0.762)
@@ -48379,7 +48293,6 @@
 	)
 	(label "AD0"
 		(at 128.27 448.31 180)
-		(fields_autoplaced yes)
 		(effects
 			(font
 				(size 0.762 0.762)
@@ -48390,7 +48303,6 @@
 	)
 	(label "DG0"
 		(at 661.67 448.31 180)
-		(fields_autoplaced yes)
 		(effects
 			(font
 				(size 0.762 0.762)
@@ -48401,7 +48313,6 @@
 	)
 	(label "CH0"
 		(at 748.03 443.23 180)
-		(fields_autoplaced yes)
 		(effects
 			(font
 				(size 0.762 0.762)
@@ -48412,7 +48323,6 @@
 	)
 	(label "CG0"
 		(at 659.13 443.23 180)
-		(fields_autoplaced yes)
 		(effects
 			(font
 				(size 0.762 0.762)
@@ -48423,7 +48333,6 @@
 	)
 	(label "QSPI_SD3"
 		(at 140.97 230.505 180)
-		(fields_autoplaced yes)
 		(effects
 			(font
 				(size 1.27 1.27)
@@ -48434,7 +48343,6 @@
 	)
 	(label "CH1"
 		(at 748.03 445.77 180)
-		(fields_autoplaced yes)
 		(effects
 			(font
 				(size 0.762 0.762)
@@ -48445,7 +48353,6 @@
 	)
 	(label "BC1"
 		(at 214.63 445.77 180)
-		(fields_autoplaced yes)
 		(effects
 			(font
 				(size 0.762 0.762)
@@ -48456,7 +48363,6 @@
 	)
 	(label "EH0"
 		(at 494.03 468.63 180)
-		(fields_autoplaced yes)
 		(effects
 			(font
 				(size 0.762 0.762)
@@ -48467,7 +48373,6 @@
 	)
 	(label "QSPI_SD2"
 		(at 140.97 227.965 180)
-		(fields_autoplaced yes)
 		(effects
 			(font
 				(size 1.27 1.27)
@@ -48478,7 +48383,6 @@
 	)
 	(label "EF1"
 		(at 488.95 461.01 180)
-		(fields_autoplaced yes)
 		(effects
 			(font
 				(size 0.762 0.762)
@@ -48489,7 +48393,6 @@
 	)
 	(label "BD1"
 		(at 389.89 440.69 180)
-		(fields_autoplaced yes)
 		(effects
 			(font
 				(size 0.762 0.762)
@@ -48500,7 +48403,6 @@
 	)
 	(label "BF0"
 		(at 222.25 458.47 180)
-		(fields_autoplaced yes)
 		(effects
 			(font
 				(size 0.762 0.762)
@@ -48511,7 +48413,6 @@
 	)
 	(label "AH0"
 		(at 138.43 468.63 180)
-		(fields_autoplaced yes)
 		(effects
 			(font
 				(size 0.762 0.762)
@@ -48522,7 +48423,6 @@
 	)
 	(label "VREG_LX"
 		(at 204.47 203.2 0)
-		(fields_autoplaced yes)
 		(effects
 			(font
 				(size 1.27 1.27)
@@ -48533,7 +48433,6 @@
 	)
 	(label "AE0"
 		(at 476.25 433.07 180)
-		(fields_autoplaced yes)
 		(effects
 			(font
 				(size 0.762 0.762)
@@ -48544,7 +48443,6 @@
 	)
 	(label "AG0"
 		(at 654.05 433.07 180)
-		(fields_autoplaced yes)
 		(effects
 			(font
 				(size 0.762 0.762)
@@ -48555,7 +48453,6 @@
 	)
 	(label "CE0"
 		(at 481.33 443.23 180)
-		(fields_autoplaced yes)
 		(effects
 			(font
 				(size 0.762 0.762)
@@ -48566,7 +48463,6 @@
 	)
 	(label "DE0"
 		(at 397.51 453.39 180)
-		(fields_autoplaced yes)
 		(effects
 			(font
 				(size 0.762 0.762)
@@ -48577,7 +48473,6 @@
 	)
 	(label "GH1"
 		(at 758.19 466.09 180)
-		(fields_autoplaced yes)
 		(effects
 			(font
 				(size 0.762 0.762)
@@ -48588,7 +48483,6 @@
 	)
 	(label "CE0"
 		(at 308.61 453.39 180)
-		(fields_autoplaced yes)
 		(effects
 			(font
 				(size 0.762 0.762)
@@ -48599,7 +48493,6 @@
 	)
 	(label "AB0"
 		(at 209.55 433.07 180)
-		(fields_autoplaced yes)
 		(effects
 			(font
 				(size 0.762 0.762)
@@ -48610,7 +48503,6 @@
 	)
 	(label "CF0"
 		(at 570.23 443.23 180)
-		(fields_autoplaced yes)
 		(effects
 			(font
 				(size 0.762 0.762)
@@ -48621,7 +48513,6 @@
 	)
 	(label "AB0"
 		(at 123.19 438.15 180)
-		(fields_autoplaced yes)
 		(effects
 			(font
 				(size 0.762 0.762)
@@ -48632,7 +48523,6 @@
 	)
 	(label "QSPI_SD1"
 		(at 204.47 219.71 0)
-		(fields_autoplaced yes)
 		(effects
 			(font
 				(size 1.27 1.27)
@@ -48643,7 +48533,6 @@
 	)
 	(label "CF1"
 		(at 570.23 445.77 180)
-		(fields_autoplaced yes)
 		(effects
 			(font
 				(size 0.762 0.762)
@@ -48654,7 +48543,6 @@
 	)
 	(label "AC0"
 		(at 125.73 443.23 180)
-		(fields_autoplaced yes)
 		(effects
 			(font
 				(size 0.762 0.762)
@@ -48665,7 +48553,6 @@
 	)
 	(label "QSPI_SD1"
 		(at 140.97 222.885 180)
-		(fields_autoplaced yes)
 		(effects
 			(font
 				(size 1.27 1.27)
@@ -48676,7 +48563,6 @@
 	)
 	(label "AF1"
 		(at 565.15 435.61 180)
-		(fields_autoplaced yes)
 		(effects
 			(font
 				(size 0.762 0.762)
@@ -48687,7 +48573,6 @@
 	)
 	(label "XOUT"
 		(at 138.43 273.685 180)
-		(fields_autoplaced yes)
 		(effects
 			(font
 				(size 1.27 1.27)
@@ -48698,7 +48583,6 @@
 	)
 	(label "AC0"
 		(at 298.45 433.07 180)
-		(fields_autoplaced yes)
 		(effects
 			(font
 				(size 0.762 0.762)
@@ -48709,7 +48593,6 @@
 	)
 	(label "DF0"
 		(at 572.77 448.31 180)
-		(fields_autoplaced yes)
 		(effects
 			(font
 				(size 0.762 0.762)
@@ -48720,7 +48603,6 @@
 	)
 	(label "DE1"
 		(at 397.51 455.93 180)
-		(fields_autoplaced yes)
 		(effects
 			(font
 				(size 0.762 0.762)
@@ -48731,7 +48613,6 @@
 	)
 	(label "CD0"
 		(at 392.43 443.23 180)
-		(fields_autoplaced yes)
 		(effects
 			(font
 				(size 0.762 0.762)
@@ -48742,7 +48623,6 @@
 	)
 	(label "GH1"
 		(at 671.83 471.17 180)
-		(fields_autoplaced yes)
 		(effects
 			(font
 				(size 0.762 0.762)
@@ -48753,7 +48633,6 @@
 	)
 	(label "BE0"
 		(at 219.71 453.39 180)
-		(fields_autoplaced yes)
 		(effects
 			(font
 				(size 0.762 0.762)
@@ -48764,7 +48643,6 @@
 	)
 	(label "AD1"
 		(at 387.35 435.61 180)
-		(fields_autoplaced yes)
 		(effects
 			(font
 				(size 0.762 0.762)
@@ -48775,7 +48653,6 @@
 	)
 	(label "AD0"
 		(at 387.35 433.07 180)
-		(fields_autoplaced yes)
 		(effects
 			(font
 				(size 0.762 0.762)
@@ -48786,7 +48663,6 @@
 	)
 	(label "BD0"
 		(at 217.17 448.31 180)
-		(fields_autoplaced yes)
 		(effects
 			(font
 				(size 0.762 0.762)
@@ -88113,7 +87989,7 @@
 		(exclude_from_sim no)
 		(in_bom yes)
 		(on_board yes)
-		(dnp yes)
+		(dnp no)
 		(uuid "b772c8aa-08a2-4d52-ab21-c5bd6a335be9")
 		(property "Reference" "JP22"
 			(at 515.366 77.47 0)
@@ -92753,7 +92629,7 @@
 		(exclude_from_sim no)
 		(in_bom yes)
 		(on_board yes)
-		(dnp yes)
+		(dnp no)
 		(uuid "d80d9e68-66e6-4851-b9ab-4e16366a0b14")
 		(property "Reference" "JP21"
 			(at 606.298 119.38 0)

@@ -25,7 +25,7 @@ void parseWokwiFileToNodeFile();
 void changeWokwiDefinesToJumperless ();
 void writeToNodeFile(int slot = 0, int flashOrLocal = 0);
 int removeBridgeFromNodeFile(int node1, int node2 = -1, int slot = 0, int flashOrLocal = 0);
-void addBridgeToNodeFile(int node1, int node2, int slot = 0, int flashOrLocal = 0);
+int addBridgeToNodeFile(int node1, int node2, int slot = 0, int flashOrLocal = 0, int allowDuplicates = 0); //returns 1 if duplicate was found
 void savePreformattedNodeFile (int source = 0, int slot = 0, int keepEncoder = 1);
 
 int getSlotLength(int slot, int flashOrLocal = 0);

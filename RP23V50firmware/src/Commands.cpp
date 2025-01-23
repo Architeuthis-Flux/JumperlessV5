@@ -9,56 +9,72 @@
 #include "NetManager.h"
 #include "NetsToChipConnections.h"
 #include "Peripherals.h"
+#include "PersistentStuff.h"
 #include "Probing.h"
 #include "RotaryEncoder.h"
-#include "PersistentStuff.h"  
 volatile int sendAllPathsCore2 =
     0; // this signals the core 2 to send all the paths to the CH446Q
 volatile int showLEDsCore2 = 0; // this signals the core 2 to show the LEDs
 volatile int showProbeLEDs =
     0; // this signals the core 2 to show the probe LEDs
 
-void waitCore2() {
+volatile int core1request = 0; // this signals core 1 wants to do something
 
-  delayMicroseconds(60);
+unsigned long waitCore2() {
+
+  // delayMicroseconds(60);
   unsigned long timeout = micros();
+  core1request = 1;
   while (core2busy || sendAllPathsCore2 != 0) {
+    // Serial.println("waiting for core2 to finish");
     if (micros() - timeout > 1000000) {
       core2busy = false;
       sendAllPathsCore2 = 0;
       break;
     }
   }
+  // Serial.println(micros() - timeout);
+
+  core1request = 0;
+  return micros() - timeout;
 }
+
+int lastSlot = netSlot;
 
 void refreshConnections(int ledShowOption) {
 
   waitCore2();
   clearAllNTCC();
 
-  //return;
+  // return;
   openNodeFile(netSlot, 0);
 
   getNodesToConnect();
 
   bridgesToPaths();
- chooseShownReadings();
+  chooseShownReadings();
   assignNetColors();
+
+  // if (lastSlot != netSlot) {
+  //   createLocalNodeFile(netSlot);
+  //   lastSlot = netSlot;
+  // }
 
   netsUpdated = true;
   if (ledShowOption != 0) {
 
-  showLEDsCore2 = ledShowOption;
+    showLEDsCore2 = ledShowOption;
   }
   sendAllPathsCore2 = 1;
- 
+
   waitCore2();
   // sendPaths();
 }
 
-void refreshLocalConnections(int ledShowOption) {
+void refreshLocalConnections(
+    int ledShowOption) { 
 
-  waitCore2();
+   waitCore2();
 
   clearAllNTCC();
 
@@ -67,13 +83,18 @@ void refreshLocalConnections(int ledShowOption) {
   getNodesToConnect();
 
   bridgesToPaths();
-chooseShownReadings();
+  chooseShownReadings();
   assignNetColors();
- 
+
+  //  if (lastSlot != netSlot) {
+  //   createLocalNodeFile(netSlot);
+  //   lastSlot = netSlot;
+  // }
+
   netsUpdated = true;
   if (ledShowOption != 0) {
 
-  showLEDsCore2 = ledShowOption;
+    showLEDsCore2 = ledShowOption;
   }
   sendAllPathsCore2 = 1;
 
@@ -81,8 +102,10 @@ chooseShownReadings();
   waitCore2();
 }
 
-void refreshBlind(int disconnectFirst) {
-  waitCore2();
+void refreshBlind(
+    int disconnectFirst) { // this doesn't actually touch the flash so we don't
+                           // need to wait for core 2
+                           /// waitCore2();
 
   clearAllNTCC();
   openNodeFile(netSlot, 1);
@@ -91,10 +114,14 @@ void refreshBlind(int disconnectFirst) {
   bridgesToPaths();
   assignNetColors();
   core1busy = false;
+  //   if (lastSlot != netSlot) {
+  //   createLocalNodeFile(netSlot);
+  //   lastSlot = netSlot;
+  // }
   sendAllPathsCore2 = disconnectFirst;
   chooseShownReadings();
-   //sendPaths();
-  waitCore2();
+  // sendPaths();
+  // waitCore2();
 }
 
 struct rowLEDs getRowLEDdata(int row) {
@@ -196,18 +223,18 @@ float measureVoltage(int adcNumber, int node, bool checkForFloating) {
   case 3:
     adcDefine = ADC3;
     break;
-    case 4:
-      adcDefine = ADC4;
-      break;
-    case 5:
-      //adcDefine = ADC5;
-      break;
-    case 6:
-      //adcDefine = ADC6;
-      break;
-    case 7:
-      adcDefine = ADC7;
-      break;
+  case 4:
+    adcDefine = ADC4;
+    break;
+  case 5:
+    // adcDefine = ADC5;
+    break;
+  case 6:
+    // adcDefine = ADC6;
+    break;
+  case 7:
+    adcDefine = ADC7;
+    break;
   default:
     return 0.0;
   }
@@ -218,8 +245,8 @@ float measureVoltage(int adcNumber, int node, bool checkForFloating) {
   waitCore2();
   addBridgeToNodeFile(node, adcDefine, netSlot, 1);
   refreshBlind(-1);
-//         printPathsCompact();
-// printChipStatus();
+  //         printPathsCompact();
+  // printChipStatus();
 
   // Serial.println(readAdc(adcNumber, 32) * (5.0 / 4095));
   // core1busy = true;
@@ -313,7 +340,7 @@ bool checkFloating(int node) {
     gpioPin = GPIO_TX_PIN;
     break;
   }
-  // Serial.print("gpioPin = "); 
+  // Serial.print("gpioPin = ");
   // Serial.println(gpioPin);
 
   // removeBridgeFromNodeFile(gpioNumber, -1, netSlot, 1);
@@ -380,7 +407,6 @@ void connectGPIO(int gpioNumber, int node) {
   case 8:
     gpioNumber = RP_GPIO_8;
     break;
-    
   }
   addBridgeToNodeFile(gpioNumber, node, netSlot, 0);
   refreshConnections();
