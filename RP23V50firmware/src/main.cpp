@@ -648,7 +648,9 @@ skipinput:
     break;
   }
   case '@': {
-    printWireStatus();
+    //printWireStatus();
+
+    printPathArray();
     break;
   }
   case '$': {
@@ -852,11 +854,19 @@ ManualArduinoReset = true;
 
     break;
   case 'b':
+  {
+    int showDupes = 1;
+    char in = Serial.read();
+    if (in == '0') {
+      showDupes = 0;
+    } else  if (in == '2') {
+      showDupes = 2;
+    }
     couldntFindPath(1);
     Serial.print("\n\n\rBridge Array\n\r");
     printBridgeArray();
     Serial.print("\n\n\n\rPaths\n\r");
-    printPathsCompact();
+    printPathsCompact(showDupes);
     Serial.print("\n\n\rChip Status\n\r");
     printChipStatus();
     Serial.print("\n\n\r");
@@ -864,7 +874,7 @@ ManualArduinoReset = true;
     Serial.print(revisionNumber);
     Serial.print("\n\n\r");
     break;
-
+  }
   case 'm':
 
     break;
@@ -1302,6 +1312,7 @@ void core2stuff() // core 2 handles the LEDs and the CH446Q8
       }
 
       // delayMicroseconds(220);
+      // Serial.println("show");
       core2busy = true;
 
       leds.show();

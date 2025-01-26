@@ -1113,13 +1113,27 @@ int chooseDAC(int justPickOne) {
 }
 int chooseADC(void) {
   int function = -1;
-  // b.clear();
+   //b.clear();
+
+  // probeActive = false;
   clearLEDsExceptRails();
+ 
   // lastReadRaw = 0;
+  //inPadMenu = 0;
   // showLEDsCore2 = 2;
+   
+   //waitCore2();
+
+   //inPadMenu = 1;
+
+    //sfProbeMenu = 1;
+//delay(100);
+     //clearLEDsExceptRails();
+
+    // core1busy = 1;
   b.print(" ADC", scaleDownBrightness(rawOtherColors[8], 4, 22), 0xFFFFFF, 0, 0,
           3);
-  // sfProbeMenu = 1;
+
   //  delay(1000);
   //  function = 111;
   b.print("0", sfOptionColors[0], 0xFFFFFF, 0, 1, -1);
@@ -1128,6 +1142,15 @@ int chooseADC(void) {
   b.print("3", sfOptionColors[3], 0xFFFFFF, 3, 1, 2);
   b.print("4", sfOptionColors[4], 0xFFFFFF, 4, 1, 3);
   b.print("P", sfOptionColors[5], 0xFFFFFF, 5, 1, 4);
+
+   showLEDsCore2 = 2;
+Serial.print("inPadMenu: ");
+Serial.println(inPadMenu);
+// Serial.print("sfProbeMenu: ");
+// Serial.println(sfProbeMenu);
+// Serial.print("probeActive: ");
+// Serial.println(probeActive);
+  //while (true);
   int selected = -1;
   while (selected == -1 && longShortPress(500) != 1) {
     int reading = justReadProbe();

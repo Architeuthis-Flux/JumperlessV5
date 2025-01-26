@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: MIT
 #ifndef NETTOCHIPCONNECTIONS_H
 #define NETTOCHIPCONNECTIONS_H
-
+// #include "JumperlessDefinesRP2040.h"
 
 
 
@@ -15,6 +15,9 @@ extern bool debugNTCC2;
 
 extern int numberOfUnconnectablePaths;
 extern int unconnectablePaths[10][2];
+
+
+// extern int newBridges[MAX_NETS][MAX_DUPLICATE][2];
 
 void clearAllNTCC(void);
 
@@ -65,11 +68,13 @@ int printPathType (int pathIndex);
 
 void swapNodes (int);
 
-void commitPaths(void);
-int checkForOverlappingPaths(void);
-void printPathsCompact(void);
+int ijklPaths(int pathNumber, int allowStacking = 0);
 
-void resolveAltPaths(void);
+void commitPaths(int allowStacking = 0);
+int checkForOverlappingPaths(void);
+void printPathsCompact(int showCullDupes = 2);
+
+void resolveAltPaths(int allowStacking = 0);
 
 void printChipStatus(void);
 
@@ -77,12 +82,14 @@ void duplicateSFnets (void);
 
 void swapDuplicateNode (int);
 
-void resolveUncommittedHops(void);
+void resolveUncommittedHops(int allowStacking = 0);
 void resolveUncommittedHops2(void);
 
+bool freeOrSameNetX(int chip, int x, int net, int allowStacking = 0);
+bool freeOrSameNetY(int chip, int x, int net, int allowStacking = 0);
+bool frontEnd(int chip, int y = -1, int x = -1);
 
-
-
+void fillUnusedPaths(int duplicatePaths = 2, int duplicatePathsPower = 4, int fillPower = 1);
 
 
 

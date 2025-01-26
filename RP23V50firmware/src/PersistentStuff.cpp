@@ -74,7 +74,7 @@ menuBrightnessSetting = EEPROM.read(MENUBRIGHTNESS_ADDRESS) - 100;
   dacZero[3] = EEPROM.get(BOTTOM_RAIL_ZERO_ADDRESS,dacZero[3]);
 
   for (int i = 0; i < 4; i++) {
-    if (dacSpread[i] < 12.0 || dacSpread[i] > 28.0) {
+    if (dacSpread[i] < 12.0 || dacSpread[i] > 28.0 || dacSpread[i] != dacSpread[i]) {
       // delay(2000);
       
       // Serial.print("dacSpread[");
@@ -83,7 +83,7 @@ menuBrightnessSetting = EEPROM.read(MENUBRIGHTNESS_ADDRESS) - 100;
       // Serial.println(dacSpread[i]);
       dacSpread[i] = 21.0;
       EEPROM.put(DAC0_SPREAD_ADDRESS + (i * 8), dacSpread[i]);
-      EEPROM.put(CALIBRATED_ADDRESS, 0);
+      //EEPROM.put(CALIBRATED_ADDRESS, 0);
     }
     if (dacZero[i] < 1000 || dacZero[i] > 2000) {
 
@@ -93,7 +93,7 @@ menuBrightnessSetting = EEPROM.read(MENUBRIGHTNESS_ADDRESS) - 100;
       // Serial.println(dacZero[i]);
       dacZero[i] = 1630;
       EEPROM.put(DAC0_ZERO_ADDRESS + (i * 4), 1630);
-      EEPROM.put(CALIBRATED_ADDRESS, 0);
+     // EEPROM.put(CALIBRATED_ADDRESS, 0);
     }
   }
 

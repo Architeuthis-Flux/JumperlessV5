@@ -2100,7 +2100,7 @@ void showNets(void) {
   //   Serial.println(debugNTCC);
   // }
 
-  if (displayMode == 0 || numberOfPaths > MAX_PATHS_FOR_WIRES) {
+  if (displayMode == 0 || numberOfShownNets > MAX_NETS_FOR_WIRES) {
     for (int i = 0; i <= numberOfNets; i++) {
       // Serial.print(i);
       skipShow = 0;

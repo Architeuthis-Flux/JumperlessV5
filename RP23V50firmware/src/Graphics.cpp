@@ -155,7 +155,7 @@ uint32_t specialColors[13][5] = {
     // };
 
 
-int menuBrightnessSetting = -80; // -100 - 100 (0 default)
+int menuBrightnessSetting = -40; // -100 - 100 (0 default)
 
     bool animationsEnabled = true;
 specialRowAnimation rowAnimations[26];

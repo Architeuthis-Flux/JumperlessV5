@@ -32,9 +32,49 @@ uint32_t rawColor; //color of the net in hex (for the machine)
 char *colorName; //name of the color
 
 bool machine = false; //whether this net was created by the machine or by the user
+
+int priority = 1; //when duplicating paths, it will make this many copies every time it runs through
+
+int duplicatePaths[MAX_DUPLICATE] = {-1, -1, -1, -1,-1, -1, -1, -1,-1,-1}; // if the paths are redundant (for lower resistance) this is the pathNumber of the other one(s)
+
+int numberOfDuplicates = 0; // if the paths are redundant (for lower resistance) this is the number of duplicates
 };
 
 extern struct netStruct net[MAX_NETS];
+
+//see the comments at the end for a more nicely formatted version that's not in struct initalizers
+enum pathType {BBtoBB, BBtoNANO, NANOtoNANO, BBtoSF, NANOtoSF, BBtoBBL, NANOtoBBL, SFtoSF, SFtoBBL, BBLtoBBL};
+
+enum nodeType {BB, NANO, SF, BBL};
+
+struct pathStruct{
+
+  int node1; //these are the rows or nano header pins to connect
+  int node2;
+  int net; 
+
+  int chip[4];
+  int x[6];
+  int y[6];
+  int candidates[3][3]; //[node][candidate]
+  int altPathNeeded;
+  enum pathType pathType;
+  enum nodeType nodeType[3];
+  bool sameChip;
+  bool Lchip;
+  bool skip = false;
+
+
+
+  int duplicate = 0; // the "parent" path if 1, the "child" path if 2, 0 if not a duplicate
+
+};
+
+
+
+extern struct pathStruct path[MAX_BRIDGES]; //this is the array of paths 
+
+
 
 extern char *netNameConstants[MAX_NETS];
 
@@ -53,6 +93,8 @@ int8_t yStatus[8];  //store the row/nano it's connected to
 const int16_t xMap[16];
 
 const int16_t yMap[8];
+
+int uncommittedHops; //store the path number of the uncommitted hop
 
 };
 
@@ -122,33 +164,6 @@ const int duplucateSFnodes[26][4] = {  // [] [sf chip1,  x pin1, sf chip2, x pin
 {CHIP_K,15,CHIP_L,4},
 };
 
-//see the comments at the end for a more nicely formatted version that's not in struct initalizers
-enum pathType {BBtoBB, BBtoNANO, NANOtoNANO, BBtoSF, NANOtoSF, BBtoBBL, NANOtoBBL, SFtoSF, SFtoBBL, BBLtoBBL};
-
-enum nodeType {BB, NANO, SF, BBL};
-
-struct pathStruct{
-
-  int node1; //these are the rows or nano header pins to connect
-  int node2;
-  int net; 
-
-  int chip[4];
-  int x[6];
-  int y[6];
-  int candidates[3][3]; //[node][candidate]
-  int altPathNeeded;
-  enum pathType pathType;
-  enum nodeType nodeType[3];
-  bool sameChip;
-  bool Lchip;
-  bool skip = false;
-
-};
-
-
-
-extern struct pathStruct path[MAX_BRIDGES]; //this is the array of paths 
 
  struct SFmapPair {
         const char* name;

@@ -7,7 +7,7 @@ extern volatile int sendAllPathsCore2;
 #define PICO_RP2350B 1
 #define INPUTBUFFERLENGTH 8000
 
-#define PROTOTYPE_VERSION 3 //1 is the hw without the rearranged probe connections
+#define PROTOTYPE_VERSION 4 //1 is the hw without the rearranged probe connections
 
 #define REV 3
 
@@ -80,12 +80,13 @@ extern volatile int sendAllPathsCore2;
 #define CALIBRATED_ADDRESS 158
 
 
-#define MAX_NETS 100
+#define MAX_NETS 60
 #define MAX_BRIDGES 255
 #define MAX_NODES 64
 #define MAX_DNI 8 // max number of doNotIntersect rules
+#define MAX_DUPLICATE 25 // max number of duplicates
 
-#define MAX_NETS_FOR_WIRES 29
+#define MAX_NETS_FOR_WIRES 14
 #define MAX_PATHS_FOR_WIRES 38
 #define LASTCOMMANDADDRESS 1
 #define CLEARBEFORECOMMANDADDRESS 4

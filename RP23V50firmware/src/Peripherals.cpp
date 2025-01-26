@@ -439,13 +439,13 @@ void readGPIO(void) {
 }
 
 void setRailsAndDACs(void) {
-  setTopRail(railVoltage[0], 0);
+  setTopRail(railVoltage[0], 1);
   // delay(10);
-  setBotRail(railVoltage[1], 0);
+  setBotRail(railVoltage[1], 1);
   // delay(10);
-  setDac0voltage(dacOutput[0]);
+  setDac0voltage(dacOutput[0], 1);
   // delay(10);
-  setDac1voltage(dacOutput[1]);
+  setDac1voltage(dacOutput[1], 1);
   // delay(10);
 }
 void setTopRail(float value, int save) {
@@ -461,8 +461,9 @@ void setTopRail(float value, int save) {
   digitalWrite(LDAC, HIGH);
   mcp.setChannelValue(MCP4728_CHANNEL_C, dacValue);
   digitalWrite(LDAC, LOW);
+  railVoltage[0] = value;
   if (save) {
-    railVoltage[0] = value;
+    
     saveVoltages(railVoltage[0], railVoltage[1], dacOutput[0], dacOutput[1]);
   }
 }
@@ -480,8 +481,9 @@ void setBotRail(float value, int save) {
   digitalWrite(LDAC, HIGH);
   mcp.setChannelValue(MCP4728_CHANNEL_D, dacValue);
   digitalWrite(LDAC, LOW);
+railVoltage[1] = value;
   if (save) {
-    railVoltage[1] = value;
+    
     saveVoltages(railVoltage[0], railVoltage[1], dacOutput[0], dacOutput[1]);
   }
 }
@@ -525,8 +527,9 @@ void setDac0voltage(float voltage, int save) {
   digitalWrite(LDAC, HIGH);
   mcp.setChannelValue(MCP4728_CHANNEL_A, dacValue);
   digitalWrite(LDAC, LOW);
+  dacOutput[0] = voltage;
   if (save) {
-    dacOutput[0] = voltage;
+    
     saveVoltages(railVoltage[0], railVoltage[1], dacOutput[0], dacOutput[1]);
   }
 }
@@ -551,8 +554,9 @@ void setDac1voltage(float voltage, int save) {
   digitalWrite(LDAC, HIGH);
   mcp.setChannelValue(MCP4728_CHANNEL_B, dacValue);
   digitalWrite(LDAC, LOW);
+  dacOutput[1] = voltage;
   if (save) {
-    dacOutput[1] = voltage;
+    
     saveVoltages(railVoltage[0], railVoltage[1], dacOutput[0], dacOutput[1]);
   }
 }
@@ -756,6 +760,10 @@ void calibrateDacs(void) {
       setVoltage = 3.3;
 
       float setMillivoltage = setVoltage * 1000;
+
+      if (dacSpread[d] < 18.0 || dacSpread[d] > 25.0 || dacSpread[d] != dacSpread[d]) {
+        dacSpread[d] = 20.1;
+      }
       setDacByNumber(d, setVoltage, 0);
       delay(80);
       // delay(20 * (spreadFound + 1));
