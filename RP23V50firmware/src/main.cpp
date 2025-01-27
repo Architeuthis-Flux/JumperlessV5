@@ -380,17 +380,7 @@ menu:
   }
 
 dontshowmenu:
-  // if (debugNTCC > 0) {
-  // Serial.print("debugLEDs = ");
-  //   Serial.println(debugLEDs);
-  // }
-  // Serial.print("core2busy = ");
-  // Serial.println(core2busy);
 
-  // defconDisplay = 0;
-  //  readVoltages();
-  // routableBufferPower(1);
-  //  refreshConnections();
 
   // delay(500);
   // Serial.print("ADC 6: ");
@@ -649,8 +639,9 @@ skipinput:
   }
   case '@': {
     //printWireStatus();
-
-    printPathArray();
+Serial.println("Fuck you!!!");
+    
+   // printPathArray();
     break;
   }
   case '$': {
@@ -1062,12 +1053,12 @@ ManualArduinoReset = true;
     Serial.print(debugNTCC2);
     Serial.print("\n\r5. LEDs                   =    ");
     Serial.print(debugLEDs);
-    Serial.print("\n\n\r6. swap probe pin         =    ");
-    if (probeSwap == 0) {
-      Serial.print("19");
-    } else {
-      Serial.print("18");
-    }
+    // Serial.print("\n\n\r6. swap probe pin         =    ");
+    // if (probeSwap == 0) {
+    //   Serial.print("19");
+    // } else {
+    //   Serial.print("18");
+    // }
 
     Serial.print("\n\n\n\r");
 
@@ -1155,6 +1146,8 @@ int lastTemp = 0;
 int hsvProbe = 0;
 int hsvProbe2 = 0;
 unsigned long probeRainbowTimer = 0;
+
+
 void loop1() {
   // int timer = micros();
 
@@ -1170,6 +1163,19 @@ void loop1() {
   
 
 secondSerialHandler();
+
+
+
+if (blockProbingTimer > 0)
+{
+if (millis() - blockProbingTimer > blockProbing)
+{
+  blockProbing = 0;
+  blockProbingTimer = 0;
+  //Serial.println("probing unblocked");
+}
+}
+
 
 // if( millis() - probeRainbowTimer > 7)
 // {
@@ -1228,6 +1234,7 @@ void core2stuff() // core 2 handles the LEDs and the CH446Q8
     // lastProbeLEDs = showProbeLEDs;
     //  probeLEDs.clear();
   }
+
   if (micros() - schedulerTimer > schedulerUpdateTime || showLEDsCore2 == 3 ||
       showLEDsCore2 == 4 && core1busy == false && core1request == 0) {
 
@@ -1316,10 +1323,10 @@ void core2stuff() // core 2 handles the LEDs and the CH446Q8
       core2busy = true;
 
       leds.show();
-      core2busy = false;
+      
       // probeLEDs.clear();
 
-      if (checkingButton == 0) {
+      if (checkingButton == 0 || showProbeLEDs == 2) {
         //   Serial.print("probeActive = ");
         //   Serial.println(probeActive);
         // showProbeLEDs = probeCycle;
@@ -1335,17 +1342,70 @@ void core2stuff() // core 2 handles the LEDs and the CH446Q8
         // Serial.println(showProbeLEDs);
         switch (showProbeLEDs) {
         case 1:
-          probeLEDs.setPixelColor(0, 0x000036); // connect
+        if (connectOrClearProbe == 1 && node1or2 == 1) {
+          probeLEDs.setPixelColor(0, 0x0f0fc6); // connect bright
+        } else {
+          probeLEDs.setPixelColor(0, 0x000032); // connect
+        }
           // probeLEDs[0].setColorCode(0x000011);
           //  Serial.println(showProbeLEDs);
           //   probeLEDs.show();
+          //showProbeLEDs = 0;
           break;
         case 2:
-          probeLEDs.setPixelColor(0, 0x360000); // remove
+        {
+
+        //if (connectOrClearProbe == 0) {
+        // Serial.print("removeFade = ");
+        // Serial.println(removeFade);
+          switch (removeFade) {
+          case 0:
+            probeLEDs.setPixelColor(0, 0x280000); // remove
+            break;
+          case 1:
+            probeLEDs.setPixelColor(0, 0x330101); // remove
+            break;
+          case 2:
+            probeLEDs.setPixelColor(0, 0x3c0202); // remove
+            break;
+          case 3:
+            probeLEDs.setPixelColor(0, 0x450303); // remove
+            break;
+          case 4:
+            probeLEDs.setPixelColor(0, 0x4e0404); // remove
+            break;
+          case 5:
+            probeLEDs.setPixelColor(0, 0x570505); // remove
+            break;
+          case 6:
+            probeLEDs.setPixelColor(0, 0x600707); // remove
+            break;
+          case 7:
+            probeLEDs.setPixelColor(0, 0x690909); // remove
+            break;
+          case 8:
+            probeLEDs.setPixelColor(0, 0x820a0a); // remove
+            break;
+          case 9:
+            probeLEDs.setPixelColor(0, 0xab1010); // remove
+            break;
+          case 10:
+            probeLEDs.setPixelColor(0, 0xff1a1a); // remove
+            break;
+          default:
+           probeLEDs.setPixelColor(0, 0x280000); // remove
+            break;
+          }
+        // } else {
+        //   probeLEDs.setPixelColor(0, 0x360000); // remove
+        // }
+          //probeLEDs.setPixelColor(0, 0x360000); // remove
           // probeLEDs[0].setColorCode(0x110000);
           //  probeLEDs.show();
           //  Serial.println(showProbeLEDs);
+          showProbeLEDs = 0;
           break;
+        }
         case 3:
           probeLEDs.setPixelColor(0, 0x003600); // measure
           // probeLEDs[0].setColorCode(0x001100);
@@ -1405,8 +1465,10 @@ void core2stuff() // core 2 handles the LEDs and the CH446Q8
 
         probeLEDs.show();
         showingProbeLEDs = 0;
-        core2busy = false;
+       // showProbeLEDs = 0;
+        //core2busy = false;
       }
+      core2busy = false;
       if (rails != 3 && swirled == 0) {
         showLEDsCore2 = 0;
 

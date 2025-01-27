@@ -41,7 +41,7 @@ unsigned long waitCore2() {
 
 int lastSlot = netSlot;
 
-void refreshConnections(int ledShowOption) {
+void refreshConnections(int ledShowOption, int fillUnused) {
 
   waitCore2();
   clearAllNTCC();
@@ -72,9 +72,10 @@ void refreshConnections(int ledShowOption) {
 }
 
 void refreshLocalConnections(
-    int ledShowOption) { 
+    int ledShowOption, int fillUnused) { 
+                                         
 
-   waitCore2();
+ //  waitCore2();
 
   clearAllNTCC();
 
@@ -102,17 +103,18 @@ void refreshLocalConnections(
   waitCore2();
 }
 
-void refreshBlind(
-    int disconnectFirst) { // this doesn't actually touch the flash so we don't
+void refreshBlind(int disconnectFirst, int fillUnused) { // this doesn't actually touch the flash so we don't
                            // need to wait for core 2
                            /// waitCore2();
-
+fillUnused = 0;
   clearAllNTCC();
   openNodeFile(netSlot, 1);
   core1busy = true;
   getNodesToConnect();
-  bridgesToPaths();
+  bridgesToPaths(fillUnused);
   assignNetColors();
+
+  //printPathsCompact();
   core1busy = false;
   //   if (lastSlot != netSlot) {
   //   createLocalNodeFile(netSlot);

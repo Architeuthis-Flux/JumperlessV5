@@ -38,23 +38,12 @@ void getNodesToConnect() // read in the nodes you'd like to connect
 
   if (debugNM)
     Serial.println("\n\n\rconnecting nodes into nets\n\r");
-//   Serial.print("newBridgeLength = ");
-//   Serial.println(newBridgeLength);
 
-  // newBridgeIndex = 0;
   for (int i = 0; i < newBridgeLength; i++) {
     newNode1 = path[i].node1;
-    // if (newNode1 == 115)
-    // {
-    //   newNode1 = 139;
-    // }
 
     newNode2 = path[i].node2;
-    // if (newNode2 == 115)
-    // {
-    //   newNode2 = 139;
-    // }
-    // debugNM = true;
+
     if (debugNM)
       printNodeOrName(newNode1);
     if (debugNM)
@@ -63,8 +52,6 @@ void getNodesToConnect() // read in the nodes you'd like to connect
       printNodeOrName(newNode2);
     if (debugNM)
       Serial.print("\n\r");
-    // debugNM = false;
-    //  do some error checking
 
     if (newNode1 <= 0 || newNode2 <= 0) {
       path[i].net = -1;

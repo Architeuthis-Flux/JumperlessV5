@@ -1700,6 +1700,7 @@ void logoSwirl(int start, int spread, int probe) {
           dimLogoColor(
               logoColorsPink[(start + (spread * 7)) % (LOGO_COLOR_LENGTH - 1)],
               selectionBrightness));
+       
 
     } else {
       // for (int i = 0; i < (LOGO_COLOR_LENGTH-1); i++) {

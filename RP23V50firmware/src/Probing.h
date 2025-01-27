@@ -9,6 +9,9 @@ extern long probeFrequency;
 extern int probePin;
 extern int buttonPin;
 
+extern volatile unsigned long blockProbing;
+extern volatile unsigned long blockProbingTimer;
+
 extern volatile int connectOrClearProbe;
 extern int node1or2;
 extern int probeHighlight;
@@ -21,6 +24,9 @@ extern volatile int probeActive;
 extern volatile int inPadMenu;
 extern volatile int checkingButton;
 extern volatile int measureModeActive;
+
+
+extern volatile int removeFade;
 
 extern volatile bool bufferPowerConnected;
 

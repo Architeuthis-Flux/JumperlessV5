@@ -11,6 +11,9 @@
 extern volatile bool core1busy;
 extern volatile bool netsUpdated;
 void createConfigFile(int overwrite = 0);
+
+int checkIfBridgeExists(int node1, int node2 = -1, int slot = -1, int flashOrLocal = 1);
+
 void clearNodeFileString(void);
 void closeAllFiles(void);
 void usbFSbegin(void);
@@ -24,7 +27,7 @@ void inputNodeFileList(int addRotaryConnections = 0);
 void parseWokwiFileToNodeFile();
 void changeWokwiDefinesToJumperless ();
 void writeToNodeFile(int slot = 0, int flashOrLocal = 0);
-int removeBridgeFromNodeFile(int node1, int node2 = -1, int slot = 0, int flashOrLocal = 0);
+int removeBridgeFromNodeFile(int node1, int node2 = -1, int slot = 0, int flashOrLocal = 0, int onlyCheck = 0);
 int addBridgeToNodeFile(int node1, int node2, int slot = 0, int flashOrLocal = 0, int allowDuplicates = 1); //returns 1 if duplicate was found
 void savePreformattedNodeFile (int source = 0, int slot = 0, int keepEncoder = 1);
 

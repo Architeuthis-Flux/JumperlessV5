@@ -11,10 +11,71 @@
 			"server": "${config:openocd.bin}/openocd",
 			"serverArgs": [
 				"-f",
-				"interface/picoprobe.cfg",
+				"interface/cmsis-dap.cfg",
 				"-f",
-				"target/rp2040.cfg",
+				"target/rp2350.cfg"
 			],
+			//"isBackground": true,
+			"presentation": {
+				"echo": true,
+				"reveal": "always",
+				"focus": true,
+				"panel": "shared",
+				"showReuseMessage": false,
+				"clear": true
+			},
+			//"dependsOrder": "sequence",
+			// "dependsOn": [
+			// 	"stop",
+			// ]
+			
+		},
+		{
+			"label": "Refresh Debug",
+			"dependsOrder": "sequence",
+			"dependsOn": [
+				"stop",
+				"wait",
+				"PlatformIO: Upload",
+				"PlatformIO: Pre-Debug"
+			]
+		},
+		{
+			"label": "stop",
+			"problemMatcher": [
+				
+			],
+			//"isBackground": false,
+			"command": "pkill openocd",
+			"type": "shell"
+
+		},
+		{
+			"label": "wait",
+			//"isBackground": false,
+			"command": "sleep 3",
+			"type": "shell"
+
+		},
+		{
+			"type": "PlatformIO",
+			"task": "Upload",
+			"problemMatcher": [
+				"$platformio"
+			],
+			"label": "PlatformIO: Upload",
+			//"dependsOrder": "sequence",
+			// "dependsOn": [
+			// 	"stop",
+			// ]
 		}
-	]
-}
+	],
+		"inputs": [
+			{
+			  "id": "terminate",
+			  "type": "command",
+			  "command": "workbench.action.tasks.terminate",
+			  "args": "terminateAll"
+			}
+		]
+	}

@@ -438,17 +438,17 @@ void readGPIO(void) {
   Serial.println();
 }
 
-void setRailsAndDACs(void) {
-  setTopRail(railVoltage[0], 1);
+void setRailsAndDACs(int saveEEPROM) {
+  setTopRail(railVoltage[0], 1, saveEEPROM);
   // delay(10);
-  setBotRail(railVoltage[1], 1);
+  setBotRail(railVoltage[1], 1, saveEEPROM);
   // delay(10);
-  setDac0voltage(dacOutput[0], 1);
+  setDac0voltage(dacOutput[0], saveEEPROM);
   // delay(10);
-  setDac1voltage(dacOutput[1], 1);
+  setDac1voltage(dacOutput[1], saveEEPROM);
   // delay(10);
 }
-void setTopRail(float value, int save) {
+void setTopRail(float value, int save, int saveEEPROM) {
 
   int dacValue = (value * 4095 / dacSpread[2]) + dacZero[2];
 
@@ -461,14 +461,17 @@ void setTopRail(float value, int save) {
   digitalWrite(LDAC, HIGH);
   mcp.setChannelValue(MCP4728_CHANNEL_C, dacValue);
   digitalWrite(LDAC, LOW);
+  if (save)
+  {
   railVoltage[0] = value;
-  if (save) {
+  }
+  if (saveEEPROM) {
     
     saveVoltages(railVoltage[0], railVoltage[1], dacOutput[0], dacOutput[1]);
   }
 }
 
-void setBotRail(float value, int save) {
+void setBotRail(float value, int save, int saveEEPROM) {
 
   int dacValue = (value * 4095 / dacSpread[3]) + dacZero[3];
 
@@ -481,14 +484,17 @@ void setBotRail(float value, int save) {
   digitalWrite(LDAC, HIGH);
   mcp.setChannelValue(MCP4728_CHANNEL_D, dacValue);
   digitalWrite(LDAC, LOW);
+  if (save)
+  {
 railVoltage[1] = value;
-  if (save) {
+  }
+  if (saveEEPROM) {
     
     saveVoltages(railVoltage[0], railVoltage[1], dacOutput[0], dacOutput[1]);
   }
 }
 
-void setTopRail(int value, int save) {
+void setTopRail(int value, int save, int saveEEPROM) {
   if (value > 4095) {
     value = 4095;
   }
@@ -497,7 +503,7 @@ void setTopRail(int value, int save) {
   }
   mcp.setChannelValue(MCP4728_CHANNEL_C, value);
 }
-void setBotRail(int value, int save) {
+void setBotRail(int value, int save, int saveEEPROM) {
   if (value > 4095) {
     value = 4095;
   }
@@ -509,7 +515,7 @@ void setBotRail(int value, int save) {
 uint16_t lastInputCode0 = 0;
 uint16_t lastInputCode1 = offset[1] + calib[1];
 
-void setDac0voltage(float voltage, int save) {
+void setDac0voltage(float voltage, int save, int saveEEPROM) {
   // int dacValue = (voltage * 4095 / 19.8) + 1641;
   int dacValue = (voltage * 4095 / dacSpread[0]) + dacZero[0];
 
@@ -527,8 +533,12 @@ void setDac0voltage(float voltage, int save) {
   digitalWrite(LDAC, HIGH);
   mcp.setChannelValue(MCP4728_CHANNEL_A, dacValue);
   digitalWrite(LDAC, LOW);
-  dacOutput[0] = voltage;
   if (save) {
+    
+    dacOutput[0] = voltage;
+  }
+
+  if (saveEEPROM) {
     
     saveVoltages(railVoltage[0], railVoltage[1], dacOutput[0], dacOutput[1]);
   }
@@ -540,7 +550,7 @@ void setDac0voltage(uint16_t inputCode) {
   digitalWrite(LDAC, LOW);
 }
 
-void setDac1voltage(float voltage, int save) {
+void setDac1voltage(float voltage, int save, int saveEEPROM) {
 
   int dacValue = (voltage * 4095 / dacSpread[1]) + dacZero[1];
 
@@ -554,8 +564,12 @@ void setDac1voltage(float voltage, int save) {
   digitalWrite(LDAC, HIGH);
   mcp.setChannelValue(MCP4728_CHANNEL_B, dacValue);
   digitalWrite(LDAC, LOW);
-  dacOutput[1] = voltage;
   if (save) {
+    
+    dacOutput[1] = voltage;
+  }
+  
+  if (saveEEPROM) {
     
     saveVoltages(railVoltage[0], railVoltage[1], dacOutput[0], dacOutput[1]);
   }
@@ -823,19 +837,19 @@ clearAllNTCC();
   // printPathsCompact();
 }
 
-void setDacByNumber(int dac, float voltage, int save) {
+void setDacByNumber(int dac, float voltage, int save, int saveEEPROM) { 
   switch (dac) {
   case 0:
-    setDac0voltage(voltage, save);
+    setDac0voltage(voltage, save, saveEEPROM);
     break;
   case 1:
-    setDac1voltage(voltage, save);
+    setDac1voltage(voltage, save, saveEEPROM);
     break;
   case 2:
-    setTopRail(voltage, save);
+    setTopRail(voltage, save, saveEEPROM);
     break;
   case 3:
-    setBotRail(voltage, save);
+    setBotRail(voltage, save, saveEEPROM);
     break;
   }
 }

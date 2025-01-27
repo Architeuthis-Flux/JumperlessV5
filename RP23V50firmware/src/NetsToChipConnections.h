@@ -22,7 +22,7 @@ extern int unconnectablePaths[10][2];
 void clearAllNTCC(void);
 
 void sortPathsByNet(void);  
-void bridgesToPaths(void);
+void bridgesToPaths(int fillUnused = 1, int allowStacking = 0);
 
 void findStartAndEndChips(int node1, int node2, int net);
 
@@ -72,7 +72,7 @@ int ijklPaths(int pathNumber, int allowStacking = 0);
 
 void commitPaths(int allowStacking = 0);
 int checkForOverlappingPaths(void);
-void printPathsCompact(int showCullDupes = 2);
+void printPathsCompact(int showCullDupes = 1);
 
 void resolveAltPaths(int allowStacking = 0);
 
@@ -89,7 +89,7 @@ bool freeOrSameNetX(int chip, int x, int net, int allowStacking = 0);
 bool freeOrSameNetY(int chip, int x, int net, int allowStacking = 0);
 bool frontEnd(int chip, int y = -1, int x = -1);
 
-void fillUnusedPaths(int duplicatePaths = 2, int duplicatePathsPower = 4, int fillPower = 1);
+void fillUnusedPaths(int duplicatePaths = 2, int duplicatePathsPower = 3, int fillPower = 1);
 
 
 

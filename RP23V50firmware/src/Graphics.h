@@ -73,7 +73,7 @@ extern specialRowAnimation rowAnimations[26];
 
 extern bool animationsEnabled;
 extern char defconString[16];
-extern uint8_t font[][3];
+extern const uint8_t font[][3];
 extern volatile int doomOn;
 
 extern int menuBrightnessSetting;

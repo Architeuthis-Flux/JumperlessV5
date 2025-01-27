@@ -159,11 +159,11 @@ void clearAllNTCC(void) {
   net[4].machine = false;
   net[5].machine = false;
 
-  net[1].priority = 2;
-  net[2].priority = 2;
-  net[3].priority = 2;
-  net[4].priority = 2;
-  net[5].priority = 2;
+  net[1].priority = 1;
+  net[2].priority = 1;
+  net[3].priority = 1;
+  net[4].priority = 1;
+  net[5].priority = 1;
 
   for (int i = 6; i < MAX_NETS; i++) {
     net[i] = {0, " ", {}, {{}}, 0, {}, {}, 0, 0, 0, 0, false};
@@ -344,7 +344,7 @@ void sortPathsByNet(
   }
 }
 
-void bridgesToPaths(void) {
+void bridgesToPaths(int fillUnused, int allowStacking) {
   if (debugNTCC5) {
     Serial.println("bridgesToPaths()");
   }
@@ -353,9 +353,16 @@ void bridgesToPaths(void) {
     pathsWithCandidates[i] = 0;
   }
 
+ //allowStacking = 0;
   sortPathsByNet();
-  fillUnusedPaths();
+  //   Serial.print("number of paths: ");
+  // Serial.println(numberOfPaths);
+  // Serial.print("number of shown paths: ");
+  // Serial.println(numberOfShownNets);
 
+  if (fillUnused == 1) {
+    fillUnusedPaths();
+  }
   // Serial.print("number of paths: ");
   // Serial.println(numberOfPaths);
   // Serial.print("number of shown paths: ");
@@ -424,13 +431,13 @@ void bridgesToPaths(void) {
     Serial.println("resolved chip candidates");
   }
 
-  commitPaths();
+  commitPaths(allowStacking);
   if (debugNTCC5) {
     delay(10);
     Serial.println("committed paths");
   }
 
-  resolveUncommittedHops();
+  resolveUncommittedHops(allowStacking);
   if (debugNTCC5) {
     delay(10);
     Serial.println("resolved uncommitted hops");
@@ -452,8 +459,8 @@ void bridgesToPaths(void) {
 void fillUnusedPaths(int duplicatePaths, int duplicatePathsPower,
                      int fillPower) {
   /// return;
-  duplicatePathsPower = 5;
-  duplicatePaths = 3;
+  duplicatePathsPower = 4;
+  duplicatePaths = 4;
   int duplicatePathIndex = 0;
 
   uint8_t nodeCount[MAX_NETS] = {0};
@@ -502,7 +509,7 @@ void fillUnusedPaths(int duplicatePaths, int duplicatePathsPower,
 
     if (bridgeCount[path[i].net] > 0) {
       // path[i].duplicate = 1;
-      net[path[i].net].duplicatePaths[duplindex] = i;
+      // net[path[i].net].duplicatePaths[duplindex] = i;
       if (path[i].net < 6) {
         net[path[i].net].numberOfDuplicates = duplicatePathsPower;
       } else {
@@ -513,30 +520,35 @@ void fillUnusedPaths(int duplicatePaths, int duplicatePathsPower,
 
   // get the nodes in the net and cycle them, so if the bridges are A-B, B-C,
   // the duplicate paths will start with A-C
-  //  A-B, B-C                                      -> A-C
-  //  A-B, B-C, C-D                                 -> A-C, A-D, B-D
-  //  A-B, B-C, C-D, D-E                            -> A-C, A-D, A-E, B-D, B-E,
-  //  C-E A-B, B-C, C-D, D-E, E-F                       -> A-C, A-D, A-E, A-F,
-  //  B-D, B-E, B-F, C-E, C-F, D-F A-B, B-C, C-D, D-E, E-F, F-G       -> A-C,
-  //  A-D, A-E, A-F, A-G, B-D, B-E, B-F, B-G, C-E, C-F, C-G, D-F, D-G, E-G A-B,
-  //  B-C, C-D, D-E, E-F, F-G, G-H  -> A-C, A-D, A-E, A-F, A-G, A-H, B-D, B-E,
-  //  B-F, B-G, B-H, C-E, C-F, C-G, C-H, D-F, D-G, D-H, E-G, E-H, F-H
 
-  // int bridgeLUT[MAX_DUPLICATE][2] =
+  //  A-B, B-C                        -> A-C
+  //  A-B, B-C, C-D                   -> A-C, A-D, B-D
+  //  A-B, B-C, C-D, D-E              -> A-C, A-D, A-E, B-D, B-E,
+  //  A-B, B-C, C-D, D-E, E-F         -> A-C, A-D, A-E, A-F, B-D, B-E, B-F, C-E,
+  //  C-F, D-F A-B, B-C, C-D, D-E, E-F, F-G    -> A-C, A-D, A-E, A-F, A-G, B-D,
+  //  B-E, B-F, B-G, C-E, C-F, C-G, D-F, D-G, E-G A-B, B-C, C-D, D-E, E-F, F-G,
+  //  G-H -> A-C, A-D, A-E, A-F, A-G, A-H, B-D, B-E, B-F, B-G, B-H, C-E, C-F,
+  //  C-G, C-H, D-F, D-G, D-H, E-G, E-H, F-H
+
+  // int bridgeLUT[MAX_DUPLICATE] = {1, 1, 3, 5, 10, 15, 21, 28, 36, 45, 55, 66,
+  // 78, 91, 105, 120, 136, 153, 171, 190, 210, 231, 253, 276, 300};
 
   // int16_t tempNodes[MAX_NETS][MAX_NODES] = {0};
 
-  for (int i = 0; i < numberOfNets; i++) {
+  for (int i = 1; i < numberOfNets; i++) {
     if (net[i].numberOfDuplicates == 0) {
       continue;
     }
-    int16_t tempNodes[nodeCount[i]];
-    // Serial.print("net[");
-    // Serial.print(i);
-    // Serial.print("]  nodes[");
+
+    // int16_t tempNodes[MAX_NODES];
+    //  Serial.print("net[");
+    //  Serial.print(i);
+    //  Serial.print("]  nodes[");
+
     for (int j = 0; j < nodeCount[i]; j++) {
-      tempNodes[j] = net[i].nodes[j];
+      // tempNodes[j] = net[i].nodes[j];
       //   Serial.print(tempNodes[j]);
+      // Serial.print(net[i].nodes[j]);
       // Serial.print(", ");
     }
     // Serial.println("]\t\t");
@@ -555,8 +567,51 @@ void fillUnusedPaths(int duplicatePaths, int duplicatePathsPower,
 
     for (int j = 0; j <= targetBridgeCount; j++) {
 
+      if (nodeCount[i] >= 3) {
+        for (int l = 0; l < MAX_DUPLICATE; l++) {
+          if (unique == -1) {
+            bridge1++;
+            if (bridge1 >= nodeCount[i]) {
+              bridge0++;
+              if (bridge0 >= nodeCount[i]) {
+                bridge0 = 0;
+              }
+              bridge1 = bridge0 + 1;
+            }
+            unique = 0;
+          }
+          if (net[i].nodes[bridge0] == 0 || net[i].nodes[bridge1] == 0) {
+            break;
+          }
+          if (net[i].nodes[bridge0] == net[i].nodes[bridge1]) {
+            unique = -1;
+            continue;
+          }
+          if (net[i].nodes[bridge0] == net[i].bridges[l][0] &&
+              net[i].nodes[bridge1] == net[i].bridges[l][1]) {
+            unique = -1;
+            continue;
+          }
+          if (net[i].nodes[bridge0] == net[i].bridges[l][1] &&
+              net[i].nodes[bridge1] == net[i].bridges[l][0]) {
+            unique = -1;
+            continue;
+          }
+          unique = 1;
+          // Serial.print(net[i].nodes[bridge0]);
+          // Serial.print("-");
+          // Serial.print(net[i].nodes[bridge1]);
+          // Serial.println("]\t\t");
+          // Serial.print("net[");
+
+          break;
+        }
+      }
       newBridges[i][j][0] = net[i].nodes[bridge0];
       newBridges[i][j][1] = net[i].nodes[bridge1];
+
+      net[i].bridges[j][0] = newBridges[i][j][0];
+      net[i].bridges[j][1] = newBridges[i][j][1];
 
       bridge1++;
 
@@ -583,23 +638,18 @@ void fillUnusedPaths(int duplicatePaths, int duplicatePathsPower,
   int priorities[MAX_NETS] = {0};
   int maxp = 0;
 
-  for (int i = 0; i < numberOfNets; i++) {
-    priorities[i] = net[i].priority;
-    if (i < 6 && net[i].priority > maxp) {
-      maxp = net[i].priority;
-    }
-  }
-
   for (int j = 0; j < MAX_DUPLICATE; j++) {
 
+    for (int i = 0; i < numberOfNets; i++) {
+      priorities[i] = net[i].priority;
+      if (i < 6 && net[i].priority > maxp) {
+        maxp = net[i].priority;
+      }
+    }
     for (int k = 0; k < maxp; k++) {
       for (int i = 0; i < 6; i++) {
         // for (int p = 0; p < net[i].priority; p++) {
 
-        if (priorities[i] <= 0) {
-          continue;
-        }
-        priorities[i]--;
         if (net[i].numberOfDuplicates == 0) {
           continue;
         }
@@ -609,7 +659,15 @@ void fillUnusedPaths(int duplicatePaths, int duplicatePathsPower,
           continue;
         }
 
-        //!make it add the the priority so the connections are mixed
+        if (priorities[i] <= 0) {
+          continue;
+        }
+
+        if (priorities[i] > 0) {
+          priorities[i]--;
+        }
+
+        //! make it add the the priority so the connections are mixed
 
         if (newBridges[i][j][0] == ROUTABLE_BUFFER_IN &&
                 newBridges[i][j][1] == DAC0 ||
@@ -640,10 +698,11 @@ void fillUnusedPaths(int duplicatePaths, int duplicatePathsPower,
       }
     }
 
-    for (int i = 0; i < 6; i++) {
-      priorities[i] = net[i].priority;
-    }
-    for (int i = 6; i < numberOfNets; i++) {
+    // for (int i = 0; i < 6; i++) {
+    //   priorities[i] = net[i].priority;
+    // }
+    for (int i = 5; i < numberOfNets; i++) {
+
       if (net[i].numberOfDuplicates == 0) {
         continue;
       }
@@ -653,9 +712,20 @@ void fillUnusedPaths(int duplicatePaths, int duplicatePathsPower,
         continue;
       }
 
+      if (priorities[i] <= 0) {
+        continue;
+      }
 
+      if (priorities[i] > 0) {
+        priorities[i]--;
+      }
 
-      if (newBridges[i][j][0] != 0 || newBridges[i][j][1] != 0) {
+      if (newBridges[i][j][0] != 0 && newBridges[i][j][1] != 0) {
+
+        ///
+        net[i].bridges[bridgeCount[i]][0] = newBridges[i][j][0];
+        net[i].bridges[bridgeCount[i]][1] = newBridges[i][j][1];
+        bridgeCount[i]++; ///!why is this incrementing bridgeCount[0]?
 
         path[numberOfPaths].net = i;
         path[numberOfPaths].node1 = newBridges[i][j][0];
@@ -676,6 +746,7 @@ void fillUnusedPaths(int duplicatePaths, int duplicatePathsPower,
       // Serial.print("\n\r");
     }
   }
+  // Serial.print("done filling unused paths\n\r");
 }
 
 void commitPaths(int allowStacking) {
@@ -808,7 +879,6 @@ void commitPaths(int allowStacking) {
         }
         break;
       }
-      
 
       if (freeLane == 0) {
         ch[path[i].chip[0]].xStatus[xMapL0c0] = path[i].net;
@@ -1096,8 +1166,8 @@ int ijklPaths(int pathNumber, int allowStacking) {
     path[pathNumber].y[3] = -2;
     //  printPathsCompact();
     //  printChipStatus();
-// Serial.print("pathNumber: ");
-// Serial.println(pathNumber);
+    // Serial.print("pathNumber: ");
+    // Serial.println(pathNumber);
     return 1;
   } else {
     return 0;
@@ -1182,6 +1252,9 @@ void resolveAltPaths(int allowStacking) {
                                        // but it's at least slightly readable
         {
           if (chipsWithFreeY0[bb] == -1) {
+            // Serial.print("chipsWithFreeY0[");
+            // Serial.print(bb);
+            // Serial.print("] == -1\n\r");
             continue;
           }
 
@@ -1213,6 +1286,10 @@ void resolveAltPaths(int allowStacking) {
             continue;
           }
 
+          // if (path[i].chip[0] == path[i].chip[1]) {
+          //   continue;
+          // }
+
           // if (ch[bb].xStatus[] == path[i].net ||
           //     ch[bb].xStatus[xMapL0c0] == -1)
 
@@ -1226,6 +1303,8 @@ void resolveAltPaths(int allowStacking) {
             //     ch[bb].xStatus[xMapL0c1] == -1) // lanes 0 0
             if (freeOrSameNetX(bb, xMapL0c1, path[i].net, allowStacking) ==
                 true) {
+
+              // if (ch[bb].yStatus[0] == -1) {
               ch[bb].xStatus[xMapL0c0] = path[i].net;
               ch[bb].xStatus[xMapL0c1] = path[i].net;
 
@@ -1235,9 +1314,11 @@ void resolveAltPaths(int allowStacking) {
               //     path[i].y[2] = 0;
               //     path[i].y[3] = 0;
               //   } else {
-              if (debugNTCC2) {
-                Serial.println("Gave up on L");
-              }
+              // if (debugNTCC2) {
+              //     Serial.println("Gave up on L  ");
+              // Serial.println(bb);
+              //  // }
+
               path[i].y[2] = 0;
               path[i].y[3] = 0;
               ch[bb].yStatus[0] = path[i].net;
@@ -1288,6 +1369,8 @@ void resolveAltPaths(int allowStacking) {
 
                 Serial.print(" \n\r");
               }
+              // printPathsCompact();
+              //}
               // continue;
               break;
             }
@@ -1308,9 +1391,9 @@ void resolveAltPaths(int allowStacking) {
               //     path[i].y[2] = 0;
               //     path[i].y[3] = 0;
               //   } else {
-              if (debugNTCC2) {
-                Serial.println("Gave up on L");
-              }
+              // if (debugNTCC2) {
+              // Serial.println("Gave up on L");
+              //}
               path[i].y[2] = 0;
               path[i].y[3] = 0;
               ch[bb].yStatus[0] = path[i].net;
@@ -1359,7 +1442,8 @@ void resolveAltPaths(int allowStacking) {
             }
           }
           if (freeOrSameNetX(bb, xMapL0c0, path[i].net, allowStacking) ==
-              true && false) {
+                  true &&
+              false) {
             if (freeOrSameNetX(bb, xMapL1c1, path[i].net, allowStacking) ==
                 true) {
 
@@ -1422,7 +1506,8 @@ void resolveAltPaths(int allowStacking) {
             }
           }
           if (freeOrSameNetX(bb, xMapL1c0, path[i].net, allowStacking) ==
-              true && false) {
+                  true &&
+              false) {
             if (freeOrSameNetX(bb, xMapL0c1, path[i].net, allowStacking) ==
                 true) {
               //   if (giveUpOnL == 0) {
@@ -1962,10 +2047,10 @@ void resolveAltPaths(int allowStacking) {
 
               // if (ch[sfChip].yStatus[yMapSF] != -1 &&
               //     ch[sfChip].yStatus[yMapSF] != path[i].net) {
-                    if (freeOrSameNetY(sfChip, yMapSF, path[i].net, allowStacking) == false) {
-                      continue;
-                    }
-
+              if (freeOrSameNetY(sfChip, yMapSF, path[i].net, allowStacking) ==
+                  false) {
+                continue;
+              }
 
               path[i].altPathNeeded = false;
 
@@ -2316,11 +2401,17 @@ void resolveUncommittedHops(int allowStacking) { /// fix this
     if (pathsWithSameXChips[i] == 1 || pathsWithSameYChips[i] == 1) {
       if (pathsWithSameXChips[i] == 1) {
         int freeX = -1;
+        int otherChip = -1;
+        int otherChipX = -1;
+        int lastFreeX = -1;
+
+        int foundChipXs[2][3] = {{-1, -1, -1}, {-1, -1, -1}};
 
         for (int chip = 0; chip < 3; chip++) {
 
           if (sameChips[0][chip] != -1) // && sameChips[0][chip] > 8)
           {
+
             for (int freeXidx = 0; freeXidx < 16; freeXidx++) {
               int otherChipXStatus = 99;
 
@@ -2328,25 +2419,25 @@ void resolveUncommittedHops(int allowStacking) { /// fix this
                 continue;
               }
 
-              if (ch[sameChips[0][chip]].xStatus
-                          [freeXSearchOrder[sameChips[0][chip]][freeXidx]] ==
-                      -1 ||
-                  ch[sameChips[0][chip]].xStatus
-                          [freeXSearchOrder[sameChips[0][chip]][freeXidx]] ==
-                      path[i].net) {
+              // if (ch[sameChips[0][chip]].xStatus
+              //             [freeXSearchOrder[sameChips[0][chip]][freeXidx]] ==
+              //         -1 ||
+              //     ch[sameChips[0][chip]].xStatus
+              //             [freeXSearchOrder[sameChips[0][chip]][freeXidx]] ==
+              //         path[i].net) {
 
-                // if (freeOrSameNetX(sameChips[0][chip],
-                //                    freeXSearchOrder[sameChips[0][chip]][freeXidx],
-                //                    path[i].net, allowStacking) == true) {
+              if (freeOrSameNetX(sameChips[0][chip],
+                                 freeXSearchOrder[sameChips[0][chip]][freeXidx],
+                                 path[i].net, allowStacking) == true) {
 
-                int otherChip =
+                otherChip =
                     ch[sameChips[0][chip]]
                         .xMap[freeXSearchOrder[sameChips[0][chip]][freeXidx]];
                 int thisChip = sameChips[0][chip];
                 // Serial.print("other Chip = ");
                 // Serial.println(chipNumToChar(otherChip));
                 int otherChipFree = 0;
-                int otherChipX = -1;
+                otherChipX = -1;
 
                 for (int xOtherCheck = 0; xOtherCheck < 16; xOtherCheck++) {
                   //             int lane = -1;
@@ -2383,13 +2474,13 @@ void resolveUncommittedHops(int allowStacking) { /// fix this
                   //     }
                   // }
                 }
-                if (otherChipXStatus == -1 ||
-                    (otherChipXStatus == path[i].net)) { // &&
-                  // allowStacking == 1)) {
+                if ((otherChipXStatus == -1 ||
+                     (otherChipXStatus == path[i].net &&
+                      allowStacking == 1))) {
 
                   freeX = freeXSearchOrder[sameChips[0][chip]][freeXidx];
-
-                  ch[otherChip].xStatus[otherChipX] = path[i].net;
+                  //lastFreeX = freeX;
+                  // ch[otherChip].xStatus[otherChipX] = path[i].net;
                   break;
                 }
               }
@@ -2407,7 +2498,17 @@ void resolveUncommittedHops(int allowStacking) { /// fix this
             /// Serial.println(freeX);
             path[i].x[chip] = freeX;
 
-            ch[sameChips[0][chip]].xStatus[freeX] = path[i].net;
+            foundChipXs[0][0] = sameChips[0][chip];
+            foundChipXs[0][1] = freeX;
+
+            foundChipXs[1][0] = otherChip;
+            foundChipXs[1][1] = otherChipX;
+
+            // ch[otherChip].xStatus[otherChipX] = path[i].net;
+
+            // ch[sameChips[0][chip]].xStatus[freeX] = path[i].net;
+
+
 
             // Serial.print("path: ");
             // Serial.print(i);
@@ -2419,9 +2520,25 @@ void resolveUncommittedHops(int allowStacking) { /// fix this
             //}
           }
         }
+
+        // for (int i = 0; i < 2; i++) {
+        //   Serial.print("foundChipXs[");
+        //   Serial.print(i);
+        //   Serial.print("][0]: ");
+        //   Serial.println(foundChipXs[i][0]);
+        //   Serial.print("foundChipXs[");
+        //   Serial.print(i);
+        //   Serial.print("][1]: ");
+        //   Serial.println(foundChipXs[i][1]);
+        // }
+
+
+            ch[foundChipXs[0][0]].xStatus[foundChipXs[0][1]] = path[i].net;
+
+            ch[foundChipXs[1][0]].xStatus[foundChipXs[1][1]] = path[i].net;
       }
 
-     // continue; /// !the fucked part is in the y
+      // continue; /// the fucked part is in the y
       if (pathsWithSameYChips[i] == 1) {
         // int chipPairs[2] =  {-1, -1};
         // for (int t = 0; t < 4; t++)
@@ -2556,7 +2673,7 @@ void resolveUncommittedHops(int allowStacking) { /// fix this
                     // Serial.print("\t ");
                     // Serial.print("sameChips[1][chip]: ");
                     // printChipNumToChar(sameChips[1][chip]);
-                    // break;
+                    break;
                   }
 
                   /// Serial.println(" \r\n");
@@ -2668,33 +2785,30 @@ int checkForOverlappingPaths() {
 
 int printNetOrNumber(int net) {
   int spaces = 0;
-switch (net)
-{
-case 0:
-  spaces = Serial.print("E");
-  break;
-case 1:
-  spaces = Serial.print("Gn");
-  break;
-case 2:
-  spaces = Serial.print("T");
-  break;
-case 3:
-  spaces = Serial.print("B");
-  break;
-case 4:
-  spaces = Serial.print("d0");
-  break;
-case 5:
-  spaces = Serial.print("d1");
-  break;
-default:
-  spaces = Serial.print(net);
-  break;
-
-
-}
-return spaces;
+  switch (net) {
+  case 0:
+    spaces = Serial.print("E");
+    break;
+  case 1:
+    spaces = Serial.print("Gn");
+    break;
+  case 2:
+    spaces = Serial.print("T");
+    break;
+  case 3:
+    spaces = Serial.print("B");
+    break;
+  case 4:
+    spaces = Serial.print("d0");
+    break;
+  case 5:
+    spaces = Serial.print("d1");
+    break;
+  default:
+    spaces = Serial.print(net);
+    break;
+  }
+  return spaces;
 }
 
 void printPathsCompact(int showCullDupes) {
@@ -2730,8 +2844,8 @@ void printPathsCompact(int showCullDupes) {
 
     Serial.print(i);
     Serial.print("\t");
-    
-    //Serial.print(path[i].net);
+
+    // Serial.print(path[i].net);
 
     printNetOrNumber(path[i].net);
     Serial.print("\t");

@@ -58,19 +58,19 @@ void printCalibration(void);
 void initDAC(void);
 
 void calibrateDacs(void);
-void setRailsAndDACs(void);
-void setTopRail(int value = 1650, int save = 1);
-void setTopRail(float value, int save = 1);
-void setBotRail(int value = 1650, int save = 1);
-void setBotRail(float value, int save = 1);
+void setRailsAndDACs(int saveEEPROM = 0);
+void setTopRail(int value = 1650, int save = 1, int saveEEPROM = 0);
+void setTopRail(float value, int save = 1, int saveEEPROM = 0);
+void setBotRail(int value = 1650, int save = 1, int saveEEPROM = 0);
+void setBotRail(float value, int save = 1, int saveEEPROM = 0);
 
 void dacSine(int resolution = 9);
 
 void dacTriangle(void);
 
-void setDacByNumber(int dac, float voltage = 0.0, int save = 1);
-void setDac0voltage(float value = 0.0, int save = 1);
-void setDac1voltage(float value = 0.0, int save = 1);
+void setDacByNumber(int dac, float voltage = 0.0, int save = 1, int saveEEPROM = 0);
+void setDac0voltage(float value = 0.0, int save = 1, int saveEEPROM = 0);
+void setDac1voltage(float value = 0.0, int save = 1, int saveEEPROM = 0);
 void setDac0voltage(uint16_t value);
 void setDac1voltage(uint16_t value);
 

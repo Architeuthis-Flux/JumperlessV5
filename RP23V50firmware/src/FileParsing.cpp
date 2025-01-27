@@ -336,6 +336,53 @@ void createConfigFile(int overwrite) {
   configFile.close();
 }
 
+
+int checkIfBridgeExists(int node1, int node2, int slot, int flashOrLocal) {
+
+  if (flashOrLocal == 0) {
+
+    openFileThreadSafe(rplus, slot);
+
+    if (!nodeFile) {
+      if (debugFP) {
+        Serial.println("Failed to open nodeFile (removeBridgeFromNodeFile)");
+      }
+
+      return -1;
+    } else {
+      if (debugFP)
+        Serial.println(
+            "\n\ropened nodeFile.txt\n\n\rloading bridges from file\n\r");
+    }
+
+    if (nodeFile.size() < 2) {
+      // Serial.println("empty file");
+      nodeFile.close();
+      core1busy = false;
+      return -1;
+    }
+    nodeFile.seek(0);
+    nodeFile.setTimeout(8);
+
+    //nodeFile.readStringUntil
+  }
+
+  
+
+
+
+
+
+
+
+
+
+
+
+return 0;
+
+}
+
 void inputNodeFileList(int addRotaryConnections) {
   // addRotaryConnections = 1;
   // Serial.println("Paste the nodeFile list here\n\n\r");
@@ -1046,38 +1093,28 @@ void clearNodeFile(int slot, int flashOrLocal) {
 String slicedLines[130];
 int slicedLinesIndex = 0;
 
-int removeBridgeFromNodeFile(int node1, int node2, int slot, int flashOrLocal) {
+int removeBridgeFromNodeFile(int node1, int node2, int slot, int flashOrLocal, int onlyCheck) {
   unsigned long timerStart = millis();
   unsigned long timerEnd[5] = {0, 0, 0, 0, 0};
 
   // Serial.print("Slot = ");
   // Serial.println(slot);
   if (flashOrLocal == 0) {
-    // while (core2busy == true) {
-    //    Serial.println("remove core2busy");
-    // }
-    // core1busy = true;
-    // nodeFile = FatFS.open("nodeFileSlot" + String(slot) + ".txt", "r+");
-    /// Serial.println(nodeFile);
+
     openFileThreadSafe(rplus, slot);
 
     if (!nodeFile) {
       if (debugFP) {
         Serial.println("Failed to open nodeFile (removeBridgeFromNodeFile)");
       }
-      // createSlots(-1, 0);
-      // nodeFile = FatFS.open("nodeFileSlot" + String(slot) + ".txt", "w+");
+
       return -1;
     } else {
       if (debugFP)
         Serial.println(
             "\n\ropened nodeFile.txt\n\n\rloading bridges from file\n\r");
     }
-    // Serial.print("*");
-    //    while (nodeFile.available()) {
-    //    Serial.write(nodeFile.read());
-    //  }
-    // Serial.println("*");
+
     if (nodeFile.size() < 2) {
       // Serial.println("empty file");
       nodeFile.close();
@@ -1220,25 +1257,35 @@ int removeBridgeFromNodeFile(int node1, int node2, int slot, int flashOrLocal) {
     // Serial.println(slicedLines[i]);
     // delay(10);
     // Serial.println(millis()-timerStart);
+    int remove = 0;
 
     if (node2 == -1 && slicedLines[i].indexOf(paddedNode1) != -1) {
-      slicedLines[i] = "Removed Node";
+
+      if (onlyCheck == 0) {
+        remove = 1;
+      //slicedLines[i] = "Removed Node";
+      }
       // Serial.print("Removed Node ");
       // Serial.println(paddedNode1);
-
+      
       removedLines++;
 
     } else if (slicedLines[i].indexOf(paddedNode1) != -1 &&
                slicedLines[i].indexOf(paddedNode2) != -1) {
-      slicedLines[i] = "Removed Bridge";
+
+      if (onlyCheck == 0) {
+        remove = 1;
+     // slicedLines[i] = "Removed Bridge";
+      }
       // Serial.print("Removed Bridge ");
       // Serial.print(paddedNode1);
       // Serial.print(" - ");
       // Serial.println(paddedNode2);
 
       removedLines++;
-    } else {
-
+    } 
+    if (remove == 0) {
+      remove = 0;
       slicedLines[i].replace(" ", "");
 
       if (flashOrLocal == 0) {
