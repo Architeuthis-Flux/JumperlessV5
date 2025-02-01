@@ -20,7 +20,7 @@ extern bool splitLEDs;
 
 #define DEFAULTBRIGHTNESS 5
 #define DEFAULTRAILBRIGHTNESS 5
-#define DEFAULTSPECIALNETBRIGHTNESS 5
+#define DEFAULTSPECIALNETBRIGHTNESS 20
 
 extern volatile bool core2busy;
 // #define PCBEXTINCTION 0 //extra brightness for to offset the extinction

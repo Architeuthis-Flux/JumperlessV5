@@ -44,6 +44,7 @@ int lastSlot = netSlot;
 void refreshConnections(int ledShowOption, int fillUnused) {
 
   waitCore2();
+  core1busy = true;
   clearAllNTCC();
 
   // return;
@@ -67,6 +68,7 @@ void refreshConnections(int ledShowOption, int fillUnused) {
   }
   sendAllPathsCore2 = 1;
 
+  core1busy = false;
   waitCore2();
   // sendPaths();
 }
@@ -75,7 +77,8 @@ void refreshLocalConnections(
     int ledShowOption, int fillUnused) { 
                                          
 
- //  waitCore2();
+  waitCore2();
+  core1busy = true;
 
   clearAllNTCC();
 
@@ -100,18 +103,20 @@ void refreshLocalConnections(
   sendAllPathsCore2 = 1;
 
   // sendPaths();
+  core1busy = false;
   waitCore2();
 }
 
 void refreshBlind(int disconnectFirst, int fillUnused) { // this doesn't actually touch the flash so we don't
                            // need to wait for core 2
-                           /// waitCore2();
-fillUnused = 0;
+                         waitCore2();
+                         core1busy = true;
+//fillUnused = 0;
   clearAllNTCC();
   openNodeFile(netSlot, 1);
   core1busy = true;
   getNodesToConnect();
-  bridgesToPaths(fillUnused);
+  bridgesToPaths();
   assignNetColors();
 
   //printPathsCompact();
@@ -120,10 +125,18 @@ fillUnused = 0;
   //   createLocalNodeFile(netSlot);
   //   lastSlot = netSlot;
   // }
-  sendAllPathsCore2 = disconnectFirst;
+  if (disconnectFirst == 1) {
+    sendAllPathsCore2 = 1;
+  } else if (disconnectFirst == 0) {
+    sendAllPathsCore2 = 1;
+  } else {
+    sendAllPathsCore2 = 1;//disconnectFirst;
+  }
+  
   chooseShownReadings();
   // sendPaths();
-  // waitCore2();
+  core1busy = false;
+   waitCore2();
 }
 
 struct rowLEDs getRowLEDdata(int row) {

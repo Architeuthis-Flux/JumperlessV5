@@ -28,6 +28,12 @@ void debugFlagInit(int forceDefaults) {
     EEPROM.write(DISPLAYMODE_ADDRESS, 1);
     EEPROM.write(NETCOLORMODE_ADDRESS, 0);
     EEPROM.write(MENUBRIGHTNESS_ADDRESS, 100);
+    EEPROM.write(PATH_DUPLICATE_ADDRESS, 0);
+    EEPROM.write(DAC_DUPLICATE_ADDRESS, 0);
+    EEPROM.write(POWER_DUPLICATE_ADDRESS, 0);
+    EEPROM.write(DAC_PRIORITY_ADDRESS, 1);
+    EEPROM.write(POWER_PRIORITY_ADDRESS, 1);
+
     saveVoltages(0.0f, 0.0f, 0.0f, 0.0f);
 
     EEPROM.commit();
@@ -58,6 +64,13 @@ void debugFlagInit(int forceDefaults) {
   netColorMode = EEPROM.read(NETCOLORMODE_ADDRESS);
 
   revisionNumber = EEPROM.read(REVISIONADDRESS);
+
+  pathDuplicates = EEPROM.read(PATH_DUPLICATE_ADDRESS);
+  dacDuplicates = EEPROM.read(DAC_DUPLICATE_ADDRESS);
+  powerDuplicates = EEPROM.read(POWER_DUPLICATE_ADDRESS);
+  dacPriority = EEPROM.read(DAC_PRIORITY_ADDRESS);
+  powerPriority = EEPROM.read(POWER_PRIORITY_ADDRESS);
+
 
 
 
@@ -97,7 +110,26 @@ menuBrightnessSetting = EEPROM.read(MENUBRIGHTNESS_ADDRESS) - 100;
     }
   }
 
-
+if (pathDuplicates < 0 || pathDuplicates > 20) {
+    EEPROM.write(PATH_DUPLICATE_ADDRESS, 0);
+    pathDuplicates = 1;
+  }
+  if (dacDuplicates < 0 || dacDuplicates > 20) {
+    EEPROM.write(DAC_DUPLICATE_ADDRESS, 0);
+    dacDuplicates = 0;
+  }
+  if (powerDuplicates < 0 || powerDuplicates > 20) {
+    EEPROM.write(POWER_DUPLICATE_ADDRESS, 0);
+    powerDuplicates = 1;
+  }
+  if (dacPriority < 1 || dacPriority > 10) {
+    EEPROM.write(DAC_PRIORITY_ADDRESS, 1);
+    dacPriority = 1;
+  }
+  if (powerPriority < 1 || powerPriority > 10) {
+    EEPROM.write(POWER_PRIORITY_ADDRESS, 1);
+    powerPriority = 1;
+  }
 
 
   if (revisionNumber <= 0 || revisionNumber > 10) {
@@ -412,6 +444,26 @@ void saveVoltages(float top, float bot, float dac0, float dac1) {
   delay(1);
 
 
+}
+
+void saveDuplicateSettings(int forceDefaults) {
+  if (forceDefaults == 1) {
+    EEPROM.write(PATH_DUPLICATE_ADDRESS, 1);
+    EEPROM.write(DAC_DUPLICATE_ADDRESS, 0);
+    EEPROM.write(POWER_DUPLICATE_ADDRESS, 2);
+    EEPROM.write(DAC_PRIORITY_ADDRESS, 1);
+    EEPROM.write(POWER_PRIORITY_ADDRESS, 1);
+    EEPROM.commit();
+    delay(2);
+    return;
+  }
+  EEPROM.write(PATH_DUPLICATE_ADDRESS, pathDuplicates);
+  EEPROM.write(DAC_DUPLICATE_ADDRESS, dacDuplicates);
+  EEPROM.write(POWER_DUPLICATE_ADDRESS, powerDuplicates);
+  EEPROM.write(DAC_PRIORITY_ADDRESS, dacPriority);
+  EEPROM.write(POWER_PRIORITY_ADDRESS, powerPriority);
+  EEPROM.commit();
+  delay(2);
 }
 
 void readVoltages(void) {

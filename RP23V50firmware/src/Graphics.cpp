@@ -1438,7 +1438,7 @@ void printChar(const char c, uint32_t color, uint32_t bg, int position,
   int fontMapIndex = -1;
   int start = 0;
 
-  if (lowercaseNumber > 0) {
+  if (lowercaseNumber > 0 && c >= 48 && c <= 57) {
     start = 90;
   }
 

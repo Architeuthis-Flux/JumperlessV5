@@ -10,6 +10,7 @@ extern volatile int sendAllPathsCore2;
 #define PROTOTYPE_VERSION 4 //1 is the hw without the rearranged probe connections
 
 #define REV 3
+#define PROBE_REV 3
 
 
 #define PIOSTUFF 1 // comment these out to remove them for debugging
@@ -78,6 +79,12 @@ extern volatile int sendAllPathsCore2;
 #define BOTTOM_RAIL_ZERO_ADDRESS 154
 
 #define CALIBRATED_ADDRESS 158
+
+#define PATH_DUPLICATE_ADDRESS 160
+#define POWER_DUPLICATE_ADDRESS 161
+#define DAC_DUPLICATE_ADDRESS 162
+#define POWER_PRIORITY_ADDRESS 163
+#define DAC_PRIORITY_ADDRESS 164
 
 
 #define MAX_NETS 60

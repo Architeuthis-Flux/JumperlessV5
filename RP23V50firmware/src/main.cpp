@@ -627,7 +627,23 @@ skipinput:
   switch (input) {
 
   case '^': {
-    doomOn = 1;
+    //doomOn = 1;
+
+    char f[8] = {' '};
+    int index = 0;
+    float f1 = 0.0;
+
+    while (Serial.available() == 0) {
+    }
+    while (index < 8) {
+      f[index] = Serial.read();
+      index++;
+    }
+
+    f1 = atof(f);
+    Serial.print("f = ");
+    Serial.println(f1);
+    setDac0voltage(f1);
     // playDoom();
     // doomOn = 0;
     break;
@@ -1164,7 +1180,9 @@ void loop1() {
 
 secondSerialHandler();
 
-
+      // core2busy = true;
+      // rotaryEncoderStuff();
+      // core2busy = false;
 
 if (blockProbingTimer > 0)
 {
@@ -1273,10 +1291,9 @@ void core2stuff() // core 2 handles the LEDs and the CH446Q8
           defcon(swirlCount, spread, defconDisplay);
           core2busy = false;
         }
-        if ((rails == 1 || probeActive == 1 || true) && inClickMenu == 0 &&
+        if ((rails == 1 || probeActive == 1 ) && inClickMenu == 0 &&
             inPadMenu == 0) {
-          // multicore_lockout_start_blocking();
-          // multicore_lockout_start_timeout_us(1000);
+
 
           while (core1busy == true) {
             // core2busy = false;
@@ -1290,7 +1307,7 @@ void core2stuff() // core 2 handles the LEDs and the CH446Q8
           // Serial.println("showNets");
           // delay(100);
           showLEDmeasurements();
-          // showAllRowAnimations();
+         
 
           showNets();
           if (inClickMenu == 0) {
@@ -1299,9 +1316,6 @@ void core2stuff() // core 2 handles the LEDs and the CH446Q8
 
           core2busy = false;
           netUpdateRefreshCount = 0;
-          // showLEDmeasurements();
-          // multicore_lockout_end_timeout_us(1000);
-          // multicore_lockout_end_blocking();
 
         } else {
           // netUpdateRefreshCount++;
@@ -1446,6 +1460,18 @@ void core2stuff() // core 2 handles the LEDs and the CH446Q8
           probeLEDs.setPixelColor(0, colorp); // select idle dim
           break;
         }
+        case 8:
+          probeLEDs.setPixelColor(0, 0xffffff); // max
+          showProbeLEDs = 9;
+          while(showProbeLEDs == 9)
+          {
+            probeLEDs.show();
+            delayMicroseconds(100);
+            //Serial.println("max");
+          }
+          showProbeLEDs = 0;
+          Serial.println("max");
+          break;
         default:
           break;
 
@@ -1554,9 +1580,9 @@ void core2stuff() // core 2 handles the LEDs and the CH446Q8
 
       // readGPIO();
       // multicore_lockout_start_blocking();
-      core2busy = true;
+      //core2busy = true;
       rotaryEncoderStuff();
-      core2busy = false;
+      //core2busy = false;
       // multicore_lockout_end_blocking();
 
       if (probeActive == 0 && measureModeActive == 0) {
@@ -1583,16 +1609,19 @@ void sendPaths(void) {
   while (core1busy == true) {
   }
   core2busy = true;
-  if (sendAllPathsCore2 != -1) {
+  //if (sendAllPathsCore2 != -1) {
 
     // Serial.println("sendPaths");
     // multicore_lockout_start_blocking();
     // multicore_lockout_start_timeout_us(1000);
-    digitalWrite(RESETPIN, HIGH);
-    delayMicroseconds(50);
-    digitalWrite(RESETPIN, LOW);
-    delayMicroseconds(2200);
-  }
+
+    // digitalWrite(RESETPIN, HIGH);
+    // delayMicroseconds(50);
+    // digitalWrite(RESETPIN, LOW);
+    // delayMicroseconds(2200);
+
+    
+  //}
   unsigned long pathTimer = micros();
 
   sendAllPaths();

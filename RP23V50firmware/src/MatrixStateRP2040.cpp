@@ -43,7 +43,7 @@ CHIP_K, CHIP_L};                                           //60
 
 
 
-
+#if PROTOTYPE_VERSION <= 4
 struct chipStatus ch[12] = {
   {0,'A',
   {-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1}, // x status
@@ -117,6 +117,85 @@ struct chipStatus ch[12] = {
   {30, 60, ROUTABLE_BUFFER_IN, ADC4_5V, RP_GPIO_20, RP_GPIO_21, RP_GPIO_22, RP_GPIO_23, RP_GPIO_24, RP_GPIO_25, RP_GPIO_26, RP_GPIO_27, CHIP_I, CHIP_J, CHIP_K, GND}, //this is for V5r1 change this for V5r2
   {CHIP_A,CHIP_B,CHIP_C,CHIP_D,CHIP_E,CHIP_F,CHIP_G,CHIP_H}}
   };
+#endif
+
+#if PROTOTYPE_VERSION > 4
+struct chipStatus ch[12] = {
+  {0,'A',
+  {-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1}, // x status
+  {-1,-1,-1,-1,-1,-1,-1,-1}, //y status
+  {CHIP_I, CHIP_J, CHIP_B, CHIP_B, CHIP_C, CHIP_C, CHIP_D, CHIP_D, CHIP_E, CHIP_K, CHIP_F, CHIP_F, CHIP_G, CHIP_L, CHIP_H, CHIP_H},//X MAP constant
+  {BOUNCE_NODE, TOP_1, TOP_2,TOP_3, TOP_4, TOP_5, TOP_6, TOP_7}},  // Y MAP constant
+
+  {1,'B',
+  {-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1}, // x status
+  {-1,-1,-1,-1,-1,-1,-1,-1}, //y status
+  {CHIP_A, CHIP_A, CHIP_I, CHIP_J, CHIP_C, CHIP_C, CHIP_D, CHIP_D, CHIP_E, CHIP_E, CHIP_F, CHIP_K, CHIP_G, CHIP_G, CHIP_H, CHIP_L},
+  {BOUNCE_NODE, TOP_8, TOP_9,TOP_10,TOP_11,TOP_12,TOP_13,TOP_14}},//yMap
+
+  {2,'C',
+  {-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1}, // x status
+  {-1,-1,-1,-1,-1,-1,-1,-1}, //y status
+  {CHIP_A, CHIP_A, CHIP_B, CHIP_B, CHIP_I, CHIP_J, CHIP_D, CHIP_D, CHIP_E, CHIP_L, CHIP_F, CHIP_F, CHIP_G, CHIP_K, CHIP_H, CHIP_H},
+  {BOUNCE_NODE,TOP_15, TOP_16,TOP_17,TOP_18,TOP_19,TOP_20,TOP_21}},
+
+  {3,'D',
+  {-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1}, // x status
+  {-1,-1,-1,-1,-1,-1,-1,-1}, //y status
+  {CHIP_A, CHIP_A, CHIP_B, CHIP_B, CHIP_C, CHIP_C, CHIP_I, CHIP_J, CHIP_E, CHIP_E, CHIP_F, CHIP_L, CHIP_G, CHIP_G, CHIP_H, CHIP_K},
+  {BOUNCE_NODE,TOP_22, TOP_23,TOP_24,TOP_25,TOP_26,TOP_27,TOP_28}},
+
+  {4,'E',
+  {-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1}, // x status
+  {-1,-1,-1,-1,-1,-1,-1,-1}, //y status
+  {CHIP_A, CHIP_K, CHIP_B, CHIP_B, CHIP_C, CHIP_L, CHIP_D, CHIP_D, CHIP_I, CHIP_J, CHIP_F, CHIP_F, CHIP_G, CHIP_G, CHIP_H, CHIP_H},
+  {BOUNCE_NODE, BOTTOM_1,  BOTTOM_2, BOTTOM_3, BOTTOM_4, BOTTOM_5, BOTTOM_6, BOTTOM_7}},
+
+  {5,'F',
+  {-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1}, // x status
+  {-1,-1,-1,-1,-1,-1,-1,-1}, //y status
+  {CHIP_A, CHIP_A, CHIP_B, CHIP_K, CHIP_C, CHIP_C, CHIP_D, CHIP_L, CHIP_E, CHIP_E, CHIP_I, CHIP_J, CHIP_G, CHIP_G, CHIP_H, CHIP_H},
+  {BOUNCE_NODE, BOTTOM_8,  BOTTOM_9, BOTTOM_10,BOTTOM_11,BOTTOM_12,BOTTOM_13,BOTTOM_14}},
+
+  {6,'G',
+  {-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1}, // x status
+  {-1,-1,-1,-1,-1,-1,-1,-1}, //y status
+  {CHIP_A, CHIP_L, CHIP_B, CHIP_B, CHIP_C, CHIP_K, CHIP_D, CHIP_D, CHIP_E, CHIP_E, CHIP_F, CHIP_F, CHIP_I, CHIP_J, CHIP_H, CHIP_H},
+  {BOUNCE_NODE,BOTTOM_15, BOTTOM_16,BOTTOM_17,BOTTOM_18,BOTTOM_19,BOTTOM_20,BOTTOM_21}},
+
+  {7,'H',
+  {-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1}, // x status
+  {-1,-1,-1,-1,-1,-1,-1,-1}, //y status
+  {CHIP_A, CHIP_A, CHIP_B, CHIP_L, CHIP_C, CHIP_C, CHIP_D, CHIP_K, CHIP_E, CHIP_E, CHIP_F, CHIP_F, CHIP_G, CHIP_G, CHIP_I, CHIP_J},
+  {BOUNCE_NODE,BOTTOM_22,  BOTTOM_23,BOTTOM_24,BOTTOM_25,BOTTOM_26,BOTTOM_27,BOTTOM_28}},
+
+  {8,'I',
+  {-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1}, // x status
+  {-1,-1,-1,-1,-1,-1,-1,-1}, //y status
+  {NANO_A0, NANO_D1, NANO_A2, NANO_D3, NANO_A4, NANO_D5, NANO_A6, NANO_D7, NANO_D11, NANO_D9, NANO_D13,ISENSE_PLUS/*NANO_RESET_0*/ , CHIP_L, CHIP_J, CHIP_K,RP_UART_RX }, //this is for V5r1 change this for V5r2
+  {CHIP_A,CHIP_B,CHIP_C,CHIP_D,CHIP_E,CHIP_F,CHIP_G,CHIP_H}},
+
+  {9,'J',
+  {-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1}, // x status
+  {-1,-1,-1,-1,-1,-1,-1,-1}, //y status
+  {NANO_D0, NANO_A1, NANO_D2, NANO_A3, NANO_D4, NANO_A5, NANO_D6, NANO_A7, NANO_D8, NANO_D10, NANO_D12, ISENSE_MINUS/*NANO_RESET_1*/ , CHIP_L, CHIP_I, CHIP_K, RP_UART_TX},  //this is for V5r1 change this for V5r2
+  {CHIP_A,CHIP_B,CHIP_C,CHIP_D,CHIP_E,CHIP_F,CHIP_G,CHIP_H}},
+
+  {10,'K',
+  {-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1}, // x status
+  {-1,-1,-1,-1,-1,-1,-1,-1}, //y status
+  {29, 59, ROUTABLE_BUFFER_IN, NANO_AREF, TOP_RAIL, BOTTOM_RAIL, DAC1, DAC0, ADC0, ADC1, ADC2, ADC3, CHIP_L, CHIP_I, CHIP_J, GND}, //this is for V5r1 change this for V5r2
+  {CHIP_A,CHIP_B,CHIP_C,CHIP_D,CHIP_E,CHIP_F,CHIP_G,CHIP_H}},
+
+  {11,'L',
+  {-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1}, // x status
+  {-1,-1,-1,-1,-1,-1,-1,-1}, //y status
+  {30, 60, ROUTABLE_BUFFER_OUT, ADC4_5V, RP_GPIO_20, RP_GPIO_21, RP_GPIO_22, RP_GPIO_23, RP_GPIO_24, RP_GPIO_25, RP_GPIO_26, RP_GPIO_27, CHIP_I, CHIP_J, CHIP_K, GND}, //this is for V5r1 change this for V5r2
+  {CHIP_A,CHIP_B,CHIP_C,CHIP_D,CHIP_E,CHIP_F,CHIP_G,CHIP_H}}
+  };
+#endif
+
+
 
 enum nanoPinsToIndex       {     NANO_PIN_D0 ,     NANO_PIN_D1 ,     NANO_PIN_D2 ,     NANO_PIN_D3 ,     NANO_PIN_D4 ,     NANO_PIN_D5 ,     NANO_PIN_D6 ,     NANO_PIN_D7 ,     NANO_PIN_D8 ,     NANO_PIN_D9 ,     NANO_PIN_D10 ,     NANO_PIN_D11 ,      NANO_PIN_D12 ,     NANO_PIN_D13 ,       NANO_PIN_RST ,      NANO_PIN_REF ,     NANO_PIN_A0 ,     NANO_PIN_A1 ,     NANO_PIN_A2 ,     NANO_PIN_A3 ,     NANO_PIN_A4 ,     NANO_PIN_A5 ,     NANO_PIN_A6 ,     NANO_PIN_A7 };
 

@@ -50,6 +50,14 @@ bool debugNTCC2 = 0; // EEPROM.read(DEBUG_NETTOCHIPCONNECTIONSALTADDRESS);
 bool debugNTCC3 = false;
 int pathIndex = 0;
 
+int powerDuplicates = 0;
+int dacDuplicates = 0;
+int pathDuplicates = 0;
+int powerPriority = 1;
+int dacPriority = 1;
+
+
+
 // Or maybe a more useful way to default to: run a set number of connections
 // (like 2-4) for power, then 2 for every regular jumper, then fill in the rest
 // of with more power connections.
@@ -86,7 +94,6 @@ void clearAllNTCC(void) {
     path[i].node1 = 0;
     path[i].node2 = 0;
     path[i].altPathNeeded = false;
-    path[i].Lchip = false;
     path[i].sameChip = false;
     path[i].skip = false;
 
@@ -159,11 +166,11 @@ void clearAllNTCC(void) {
   net[4].machine = false;
   net[5].machine = false;
 
-  net[1].priority = 1;
-  net[2].priority = 1;
-  net[3].priority = 1;
-  net[4].priority = 1;
-  net[5].priority = 1;
+  net[1].priority = powerPriority;
+  net[2].priority = powerPriority;
+  net[3].priority = powerPriority;
+  net[4].priority = dacPriority;
+  net[5].priority = dacPriority;
 
   for (int i = 6; i < MAX_NETS; i++) {
     net[i] = {0, " ", {}, {{}}, 0, {}, {}, 0, 0, 0, 0, false};
@@ -361,7 +368,7 @@ void bridgesToPaths(int fillUnused, int allowStacking) {
   // Serial.println(numberOfShownNets);
 
   if (fillUnused == 1) {
-    fillUnusedPaths();
+   fillUnusedPaths(powerDuplicates, dacDuplicates, pathDuplicates);
   }
   // Serial.print("number of paths: ");
   // Serial.println(numberOfPaths);
@@ -456,11 +463,10 @@ void bridgesToPaths(int fillUnused, int allowStacking) {
   // resolveChipCandidates();
 }
 
-void fillUnusedPaths(int duplicatePaths, int duplicatePathsPower,
-                     int fillPower) {
+void fillUnusedPaths(int duplicatePathsOverride, int duplicatePathsPower,
+                     int duplicatePathsDac) {
   /// return;
-  duplicatePathsPower = 4;
-  duplicatePaths = 4;
+  
   int duplicatePathIndex = 0;
 
   uint8_t nodeCount[MAX_NETS] = {0};
@@ -510,10 +516,12 @@ void fillUnusedPaths(int duplicatePaths, int duplicatePathsPower,
     if (bridgeCount[path[i].net] > 0) {
       // path[i].duplicate = 1;
       // net[path[i].net].duplicatePaths[duplindex] = i;
-      if (path[i].net < 6) {
-        net[path[i].net].numberOfDuplicates = duplicatePathsPower;
+      if (path[i].net <= 3) {
+        net[path[i].net].numberOfDuplicates = powerDuplicates;
+      } else if (path[i].net == 4 || path[i].net == 5) {
+        net[path[i].net].numberOfDuplicates = dacDuplicates;
       } else {
-        net[path[i].net].numberOfDuplicates = duplicatePaths;
+        net[path[i].net].numberOfDuplicates = pathDuplicates;
       }
     }
   }
@@ -682,7 +690,6 @@ void fillUnusedPaths(int duplicatePaths, int duplicatePathsPower,
           path[numberOfPaths].node1 = newBridges[i][j][0];
           path[numberOfPaths].node2 = newBridges[i][j][1];
           path[numberOfPaths].altPathNeeded = false;
-          path[numberOfPaths].Lchip = false;
           path[numberOfPaths].sameChip = false;
           path[numberOfPaths].skip = false;
           path[numberOfPaths].duplicate = 1;
@@ -726,12 +733,12 @@ void fillUnusedPaths(int duplicatePaths, int duplicatePathsPower,
         net[i].bridges[bridgeCount[i]][0] = newBridges[i][j][0];
         net[i].bridges[bridgeCount[i]][1] = newBridges[i][j][1];
         bridgeCount[i]++; ///!why is this incrementing bridgeCount[0]?
+ 
 
         path[numberOfPaths].net = i;
         path[numberOfPaths].node1 = newBridges[i][j][0];
         path[numberOfPaths].node2 = newBridges[i][j][1];
         path[numberOfPaths].altPathNeeded = false;
-        path[numberOfPaths].Lchip = false;
         path[numberOfPaths].sameChip = false;
         path[numberOfPaths].skip = false;
         path[numberOfPaths].duplicate = 1;

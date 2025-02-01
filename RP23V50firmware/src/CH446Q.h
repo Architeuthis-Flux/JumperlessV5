@@ -17,8 +17,8 @@ void sendXYraw(int chip, int x, int y, int setorclear);
 
 void sendAllPaths(void); // should we sort them by chip? for now, no
 void resetArduino (void);
-void sendPath(int path, int setOrClear = 1);
-
+void sendPath(int path, int setOrClear = 1, int newOrLast = 0);
+void findDifferentPaths(void);
 void createXYarray(void);
 
 #endif

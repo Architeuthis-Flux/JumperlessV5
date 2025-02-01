@@ -10,6 +10,7 @@ enum actionCategories {
   PROBEACTION,
   DISPLAYACTION,
   APPSACTION,
+  ROUTINGACTION,
   NOCATEGORY
 };
 

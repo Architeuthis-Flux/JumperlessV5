@@ -31,7 +31,7 @@ extern uint8_t gpioState[10];
 extern uint8_t gpioReading[10];
 extern int gpioNet[10];
 extern float adcSpread[8];
-extern int adcZero[8];
+extern float adcZero[8];
 extern float dacSpread[4];
 extern int dacZero[4];
 
@@ -57,7 +57,7 @@ void initADC(void);
 void printCalibration(void);
 void initDAC(void);
 
-void calibrateDacs(void);
+void calibrateDacs(int test = 0);
 void setRailsAndDACs(int saveEEPROM = 0);
 void setTopRail(int value = 1650, int save = 1, int saveEEPROM = 0);
 void setTopRail(float value, int save = 1, int saveEEPROM = 0);
@@ -78,7 +78,7 @@ void refillTable(int amplitude = 2047, int offset = 2047, int adc = 2);
 int waveGen(void);
 void GetAdc29Status(int i);
 
-
+float readAdcVoltage(int channel, int samples = 8);
 int readAdc(int channel, int samples = 8);
 
 void chooseShownReadings(void);

@@ -1124,7 +1124,12 @@ int removeBridgeFromNodeFile(int node1, int node2, int slot, int flashOrLocal, i
     nodeFile.seek(0);
     nodeFile.setTimeout(8);
   }
-
+if (onlyCheck == 1) {
+  Serial.print("Checking for bridge between ");
+  Serial.print(node1);
+  Serial.print(" and ");
+  Serial.println(node2);
+}
   timerEnd[0] = millis() - timerStart;
 
   for (int i = 0; i < 120; i++) {

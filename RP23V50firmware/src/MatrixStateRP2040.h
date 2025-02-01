@@ -61,7 +61,7 @@ struct pathStruct{
   enum pathType pathType;
   enum nodeType nodeType[3];
   bool sameChip;
-  bool Lchip;
+  //bool Lchip;
   bool skip = false;
 
 

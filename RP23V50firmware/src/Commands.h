@@ -12,7 +12,7 @@ struct rowLEDs {
   uint32_t color[5];
 
 };
-void refreshBlind(int disconnectFirst = 1, int fillUnused = 0);
+void refreshBlind(int disconnectFirst = -1, int fillUnused = 0);
 
 unsigned long waitCore2(void);
 

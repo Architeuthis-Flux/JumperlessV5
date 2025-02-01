@@ -24,7 +24,7 @@ Adafruit_NeoPixel bbleds(LED_COUNT+LED_COUNT_TOP, LED_PIN, NEO_GRB + NEO_KHZ800)
 Adafruit_NeoPixel topleds(1, -1, NEO_GRB + NEO_KHZ800);
 #elif REV >= 4
 bool splitLEDs = 1;
-Adafruit_NeoPixel bbleds(LED_COUNT, LED_PIN, NEO_GRB + NEO_KHZ800);
+Adafruit_NeoPixel bbleds(LED_COUNT+LED_COUNT_TOP, LED_PIN, NEO_GRB + NEO_KHZ800);
 Adafruit_NeoPixel topleds(LED_COUNT_TOP, LED_PIN_TOP, NEO_GRB + NEO_KHZ800);
 #endif
 
