@@ -50,9 +50,9 @@ bool debugNTCC2 = 0; // EEPROM.read(DEBUG_NETTOCHIPCONNECTIONSALTADDRESS);
 bool debugNTCC3 = false;
 int pathIndex = 0;
 
-int powerDuplicates = 0;
+int powerDuplicates = 2;
 int dacDuplicates = 0;
-int pathDuplicates = 0;
+int pathDuplicates = 2;
 int powerPriority = 1;
 int dacPriority = 1;
 

@@ -38,6 +38,7 @@ volatile unsigned long blockProbingTimer = 0;
 Adafruit_SSD1306 display(SCREEN_WIDTH, SCREEN_HEIGHT, &Wire, OLED_RESET);
 
 int switchPosition = 1;
+int showProbeCurrent = 0;
 
 volatile bool bufferPowerConnected = 0;
 int probeToRowMap2[102] = {
@@ -1651,7 +1652,7 @@ int checkSwitchPosition() { // 0 = measure, 1 = select
 //  // delay(10);
 // }
   if (checkProbeCurrent() > 0.08) {
-    showProbeLEDs = 0;
+    //showProbeLEDs = 0;
     // Serial.print("probe current: ");
     // Serial.println(micros() - timer);
     // if (probeActive == 0) {
@@ -1669,7 +1670,7 @@ int checkSwitchPosition() { // 0 = measure, 1 = select
     // Serial2.begin(baudRateUSBSer2, getSerial2Config());
     return 1;
   } else {
-    showProbeLEDs = 0;
+    //showProbeLEDs = 0;
     if (bufferPowerConnected == true) {
       // routableBufferPower(0);
       //  addBridgeToNodeFile(ROUTABLE_BUFFER_IN, RP_GPIO_23, netSlot, 1);
@@ -1730,7 +1731,7 @@ float checkProbeCurrent(void) {
   //addBridgeToNodeFile(ROUTABLE_BUFFER_IN, DAC0, netSlot, 1, 0);
  // timer[1] = micros();
   // printNodeFile();
-  setDac0voltage(3.33, 0);
+  setDac0voltage(3.33, 1, 1);
   // chooseShownReadings();
  // timer[2] = micros();
   
@@ -1748,8 +1749,11 @@ float checkProbeCurrent(void) {
 
   float current = INA1.getCurrent_mA();
 
-  // Serial.print("current: ");
-  // Serial.println(current);
+if (showProbeCurrent == 1) {
+  Serial.print("current: ");
+  Serial.print(current);
+  Serial.println(" mA\n\r");
+}
 
   // for (int i = 1; i < 4; i++) {
   //   Serial.print("timer[");
@@ -1765,7 +1769,7 @@ float checkProbeCurrent(void) {
   return current;
 }
 
-void routableBufferPower(int offOn) {
+void routableBufferPower(int offOn, int flash) {
   if (offOn == 1) {
     //Serial.println("power on\n\r");
     // delay(10);
@@ -1773,7 +1777,13 @@ void routableBufferPower(int offOn) {
     setDac0voltage(3.33, 0);
 
     //removeBridgeFromNodeFile(DAC0, -1, netSlot, 1);
-    addBridgeToNodeFile(ROUTABLE_BUFFER_IN, DAC0, netSlot, 1, 0);
+
+    if (flash == 1) {
+     addBridgeToNodeFile(ROUTABLE_BUFFER_IN, DAC0, netSlot, 0, 0);
+    } else {
+      addBridgeToNodeFile(ROUTABLE_BUFFER_IN, DAC0, netSlot, 1, 0);
+    }
+    //addBridgeToNodeFile(ROUTABLE_BUFFER_IN, DAC0, netSlot, 1, 0);
 
     
     //addBridgeToNodeFile(ROUTABLE_BUFFER_IN, DAC0, netSlot, 1, 1);
@@ -1784,7 +1794,8 @@ void routableBufferPower(int offOn) {
 
   } else {
 
-    removeBridgeFromNodeFile(DAC0, ROUTABLE_BUFFER_IN, netSlot, 1);
+    removeBridgeFromNodeFile(ROUTABLE_BUFFER_IN, DAC0, netSlot, 1);
+    removeBridgeFromNodeFile(ROUTABLE_BUFFER_IN, DAC0, netSlot, 0);
     setDac0voltage(0.0, 1);
     bufferPowerConnected = false;
     refreshBlind();
@@ -1971,6 +1982,7 @@ int checkProbeButton(void) {
     // delay(10);
   }
   waitCore2();
+  // setDac0voltage(3.33, 1, 1);
 
   core1busy = true;
 

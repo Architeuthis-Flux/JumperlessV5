@@ -1644,7 +1644,10 @@ void openNodeFile(int slot, int flashOrLocal) {
   netsUpdated = false;
   // Serial.println(nodeFileString);
   // Serial.println("opening nodeFileSlot" + String(slot) + ".txt");
-  // Serial.println("flashOrLocal = " + String(flashOrLocal));
+  //Serial.println("flashOrLocal = " + String(flashOrLocal));
+
+  //Serial.println(flashOrLocal?"local":"flash");
+
   // while (core2busy == true) {
   //   // Serial.println("waiting for core2 to finish");
   // }

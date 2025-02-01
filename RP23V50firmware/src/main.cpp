@@ -161,7 +161,7 @@ void setup() {
 
   debugFlagInit();
 
-  delay(5);
+  //delay(2000);
   // initGPIOex();
   //  delay(5);
   //  Serial.setTimeout(500);
@@ -193,12 +193,17 @@ void setup() {
 
   // createSlots(-1, 0);
   // delay(10);
-  clearAllNTCC();
+  
 
   digitalWrite(RESETPIN, LOW);
   while (core2initFinished == 0) {
     delayMicroseconds(1);
   }
+
+
+
+
+  clearAllNTCC();
   pinMode(probePin, OUTPUT_8MA);
   // pinMode(buttonPin, INPUT_PULLDOWN);
   digitalWrite(probePin, HIGH);
@@ -224,7 +229,7 @@ void setup() {
   // delay(1000);
   // setRailsAndDACs();
 
-  routableBufferPower(1);
+  routableBufferPower(1, 1);
   // fatFS
   //  multicore_lockout_victim_init();
   // delay(400);
@@ -232,6 +237,7 @@ void setup() {
 }
 
 void setupCore2stuff() {
+ //delay(2000);
   initCH446Q();
 
   delay(1);
@@ -869,8 +875,18 @@ ManualArduinoReset = true;
     } else  if (in == '2') {
       showDupes = 2;
     }
+    Serial.print("\n\rpathDuplicates: ");
+Serial.println(pathDuplicates);
+Serial.print("dacDuplicates: ");
+Serial.println(dacDuplicates);
+Serial.print("powerDuplicates: ");
+Serial.println(powerDuplicates);
+Serial.print("dacPriority: ");
+Serial.println(dacPriority);
+Serial.print("powerPriority: ");
+Serial.println(powerPriority);
     couldntFindPath(1);
-    Serial.print("\n\n\rBridge Array\n\r");
+    Serial.print("\n\rBridge Array\n\r");
     printBridgeArray();
     Serial.print("\n\n\n\rPaths\n\r");
     printPathsCompact(showDupes);
@@ -1069,6 +1085,8 @@ ManualArduinoReset = true;
     Serial.print(debugNTCC2);
     Serial.print("\n\r5. LEDs                   =    ");
     Serial.print(debugLEDs);
+    Serial.print("\n\r6. show probe current     =    ");
+    Serial.print(showProbeCurrent);
     // Serial.print("\n\n\r6. swap probe pin         =    ");
     // if (probeSwap == 0) {
     //   Serial.print("19");
@@ -1340,7 +1358,7 @@ void core2stuff() // core 2 handles the LEDs and the CH446Q8
       
       // probeLEDs.clear();
 
-      if (checkingButton == 0 || showProbeLEDs == 2) {
+      if (checkingButton == 0 || showProbeLEDs == 2 ) {
         //   Serial.print("probeActive = ");
         //   Serial.println(probeActive);
         // showProbeLEDs = probeCycle;
@@ -1620,7 +1638,7 @@ void sendPaths(void) {
     // digitalWrite(RESETPIN, LOW);
     // delayMicroseconds(2200);
 
-    
+
   //}
   unsigned long pathTimer = micros();
 

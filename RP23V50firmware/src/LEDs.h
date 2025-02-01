@@ -18,8 +18,8 @@
 #define LED_COUNT_TOP 145
 extern bool splitLEDs;
 
-#define DEFAULTBRIGHTNESS 5
-#define DEFAULTRAILBRIGHTNESS 5
+#define DEFAULTBRIGHTNESS 10
+#define DEFAULTRAILBRIGHTNESS 15
 #define DEFAULTSPECIALNETBRIGHTNESS 20
 
 extern volatile bool core2busy;

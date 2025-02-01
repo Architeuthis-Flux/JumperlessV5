@@ -28,13 +28,14 @@ void debugFlagInit(int forceDefaults) {
     EEPROM.write(DISPLAYMODE_ADDRESS, 1);
     EEPROM.write(NETCOLORMODE_ADDRESS, 0);
     EEPROM.write(MENUBRIGHTNESS_ADDRESS, 100);
-    EEPROM.write(PATH_DUPLICATE_ADDRESS, 0);
+    EEPROM.write(PATH_DUPLICATE_ADDRESS, 2);
     EEPROM.write(DAC_DUPLICATE_ADDRESS, 0);
-    EEPROM.write(POWER_DUPLICATE_ADDRESS, 0);
+    EEPROM.write(POWER_DUPLICATE_ADDRESS, 2);
     EEPROM.write(DAC_PRIORITY_ADDRESS, 1);
     EEPROM.write(POWER_PRIORITY_ADDRESS, 1);
+    EEPROM.write(SHOW_PROBE_CURRENT_ADDRESS, 0);
 
-    saveVoltages(0.0f, 0.0f, 0.0f, 0.0f);
+    saveVoltages(0.0f, 0.0f, 3.33f, 0.0f);
 
     EEPROM.commit();
     delay(5);
@@ -71,6 +72,7 @@ void debugFlagInit(int forceDefaults) {
   dacPriority = EEPROM.read(DAC_PRIORITY_ADDRESS);
   powerPriority = EEPROM.read(POWER_PRIORITY_ADDRESS);
 
+  showProbeCurrent = EEPROM.read(SHOW_PROBE_CURRENT_ADDRESS);
 
 
 
@@ -109,24 +111,62 @@ menuBrightnessSetting = EEPROM.read(MENUBRIGHTNESS_ADDRESS) - 100;
      // EEPROM.put(CALIBRATED_ADDRESS, 0);
     }
   }
+if (showProbeCurrent != 0 && showProbeCurrent != 1)
+  {
+    EEPROM.write(SHOW_PROBE_CURRENT_ADDRESS, 0);
+    showProbeCurrent = 0;
+  }
+// delay(3000);
+// Serial.print("pathDuplicates: ");
+// Serial.println(pathDuplicates);
+// Serial.print("dacDuplicates: ");
+// Serial.println(dacDuplicates);
+// Serial.print("powerDuplicates: ");
+// Serial.println(powerDuplicates);
+// Serial.print("dacPriority: ");
+// Serial.println(dacPriority);
+// Serial.print("powerPriority: ");
+// Serial.println(powerPriority);
 
 if (pathDuplicates < 0 || pathDuplicates > 20) {
-    EEPROM.write(PATH_DUPLICATE_ADDRESS, 0);
-    pathDuplicates = 1;
+  Serial.print("pathDuplicates out of range (");
+  Serial.print(pathDuplicates);
+  Serial.println("), setting to 3");
+    EEPROM.write(PATH_DUPLICATE_ADDRESS, 3);
+    pathDuplicates = 3;
   }
   if (dacDuplicates < 0 || dacDuplicates > 20) {
+    Serial.print("dacDuplicates out of range (");
+    Serial.print(dacDuplicates);
+    Serial.println("), setting to 0");
+
     EEPROM.write(DAC_DUPLICATE_ADDRESS, 0);
     dacDuplicates = 0;
   }
   if (powerDuplicates < 0 || powerDuplicates > 20) {
-    EEPROM.write(POWER_DUPLICATE_ADDRESS, 0);
-    powerDuplicates = 1;
+    Serial.print("powerDuplicates out of range (");
+    Serial.print(powerDuplicates);
+    Serial.println("), setting to 3");
+
+    
+    EEPROM.write(POWER_DUPLICATE_ADDRESS, 3);
+    powerDuplicates = 3;
   }
   if (dacPriority < 1 || dacPriority > 10) {
+
+    Serial.print("dacPriority out of range (");
+    Serial.print(dacPriority);
+    Serial.println("), setting to 1");
+
     EEPROM.write(DAC_PRIORITY_ADDRESS, 1);
     dacPriority = 1;
   }
   if (powerPriority < 1 || powerPriority > 10) {
+
+    Serial.print("powerPriority out of range (");
+    Serial.print(powerPriority);
+    Serial.println("), setting to 1");
+
     EEPROM.write(POWER_PRIORITY_ADDRESS, 1);
     powerPriority = 1;
   }
@@ -335,17 +375,31 @@ void debugFlagSet(int flag) {
     break;
   }
 
+  // case 6: {
+  //   flagStatus = EEPROM.read(PROBESWAPADDRESS);
+
+  //   if (flagStatus == 0) {
+  //     EEPROM.write(PROBESWAPADDRESS, 1);
+
+  //     probeSwap = true;
+  //   } else {
+  //     EEPROM.write(PROBESWAPADDRESS, 0);
+
+  //     probeSwap = false;
+  //   }
+  //   break;
+  // }
   case 6: {
-    flagStatus = EEPROM.read(PROBESWAPADDRESS);
+    flagStatus = EEPROM.read(SHOW_PROBE_CURRENT_ADDRESS);
 
     if (flagStatus == 0) {
-      EEPROM.write(PROBESWAPADDRESS, 1);
+      EEPROM.write(SHOW_PROBE_CURRENT_ADDRESS, 1);
 
-      probeSwap = true;
+      showProbeCurrent = 1;
     } else {
-      EEPROM.write(PROBESWAPADDRESS, 0);
+      EEPROM.write(SHOW_PROBE_CURRENT_ADDRESS, 0);
 
-      probeSwap = false;
+      showProbeCurrent = 0;
     }
     break;
   }
@@ -358,6 +412,7 @@ void debugFlagSet(int flag) {
     EEPROM.write(DEBUG_NETTOCHIPCONNECTIONSADDRESS, 0);
     EEPROM.write(DEBUG_NETTOCHIPCONNECTIONSALTADDRESS, 0);
     EEPROM.write(DEBUG_LEDSADDRESS, 0);
+    EEPROM.write(SHOW_PROBE_CURRENT_ADDRESS, 0);
 
     debugFP = false;
     debugFPtime = false;
@@ -366,6 +421,7 @@ void debugFlagSet(int flag) {
     debugNTCC = false;
     debugNTCC2 = false;
     debugLEDs = false;
+    showProbeCurrent = 0;
 
     break;
   }
@@ -378,6 +434,7 @@ void debugFlagSet(int flag) {
     EEPROM.write(DEBUG_NETTOCHIPCONNECTIONSADDRESS, 1);
     EEPROM.write(DEBUG_NETTOCHIPCONNECTIONSALTADDRESS, 1);
     EEPROM.write(DEBUG_LEDSADDRESS, 1);
+    EEPROM.write(SHOW_PROBE_CURRENT_ADDRESS, 1);
     debugFP = true;
     debugFPtime = true;
     debugNM = true;
@@ -385,6 +442,7 @@ void debugFlagSet(int flag) {
     debugNTCC = true;
     debugNTCC2 = true;
     debugLEDs = true;
+    showProbeCurrent = 1;
     break;
   }
   case 10: {
@@ -448,9 +506,9 @@ void saveVoltages(float top, float bot, float dac0, float dac1) {
 
 void saveDuplicateSettings(int forceDefaults) {
   if (forceDefaults == 1) {
-    EEPROM.write(PATH_DUPLICATE_ADDRESS, 1);
+    EEPROM.write(PATH_DUPLICATE_ADDRESS, 2);
     EEPROM.write(DAC_DUPLICATE_ADDRESS, 0);
-    EEPROM.write(POWER_DUPLICATE_ADDRESS, 2);
+    EEPROM.write(POWER_DUPLICATE_ADDRESS, 3);
     EEPROM.write(DAC_PRIORITY_ADDRESS, 1);
     EEPROM.write(POWER_PRIORITY_ADDRESS, 1);
     EEPROM.commit();

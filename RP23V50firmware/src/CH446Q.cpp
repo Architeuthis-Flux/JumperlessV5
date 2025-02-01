@@ -43,6 +43,12 @@ void isrFromPio(void) {
   hw_clear_bits(&pio0_hw->irq, irq_flags);
 }
 
+struct pathStruct lastPath[MAX_BRIDGES];
+//struct pathStruct newPath[MAX_BRIDGES];
+int lastPathNumber = 0;
+int changedPaths[MAX_BRIDGES];
+int changedPathsCount = 0;
+
 void initCH446Q(void) {
 
   uint dat = 14;
@@ -70,55 +76,25 @@ void initCH446Q(void) {
   // pinMode(CS_A, OUTPUT);
   // digitalWrite(CS_A, HIGH);
 
-  // pinMode(CS_A, OUTPUT_8MA);
-  // pinMode(CS_B, OUTPUT_8MA);
-  // pinMode(CS_C, OUTPUT_8MA);
-  // pinMode(CS_D, OUTPUT_8MA);
-  // pinMode(CS_E, OUTPUT_8MA);
-  // pinMode(CS_F, OUTPUT_8MA);
-  // pinMode(CS_G, OUTPUT_8MA);
-  // pinMode(CS_H, OUTPUT_8MA);
-  // pinMode(CS_I, OUTPUT_8MA);
-  // pinMode(CS_J, OUTPUT_8MA);
-  // pinMode(CS_K, OUTPUT_8MA);
-  // pinMode(CS_L, OUTPUT_8MA);
 
-  // digitalWrite(CS_A, LOW);
-  // digitalWrite(CS_B, LOW);
-  // digitalWrite(CS_C, LOW);
-  // digitalWrite(CS_D, LOW);
-  // digitalWrite(CS_E, LOW);
-  // digitalWrite(CS_F, LOW);
-  // digitalWrite(CS_G, LOW);
-  // digitalWrite(CS_H, LOW);
-  // digitalWrite(CS_I, LOW);
-  // digitalWrite(CS_J, LOW);
-  // digitalWrite(CS_K, LOW);
-  // digitalWrite(CS_L, LOW);
+  for (int i = 0; i < MAX_BRIDGES; i++) {
+    lastPath[i].chip[0] = -1;
+    lastPath[i].chip[1] = -1;
+    lastPath[i].chip[2] = -1;
+    lastPath[i].chip[3] = -1;
+    lastPath[i].x[0] = -1;
+    lastPath[i].x[1] = -1;
+    lastPath[i].x[2] = -1;
+    lastPath[i].x[3] = -1;
+    lastPath[i].y[0] = -1;
+    lastPath[i].y[1] = -1;
+    lastPath[i].y[2] = -1;
+    lastPath[i].y[3] = -1;
+    
+  }
 
-  // delay(3);
-  /// digitalWrite(RESETPIN, LOW);
 }
 
-// void resetArduino(void)
-// {
-//   int lastPath = MAX_BRIDGES - 1;
-//   path[lastPath].chip[0] = CHIP_I;
-//   path[lastPath].chip[1] = CHIP_I;
-//   path[lastPath].x[0] = 11;
-//   path[lastPath].y[0] = 0;
-//   path[lastPath].x[1] = 15;
-//   path[lastPath].y[1] = 0;
-
-//   sendPath(lastPath, 1);
-//   delay(15);
-//   sendPath(lastPath, 0);
-// }
-struct pathStruct lastPath[MAX_BRIDGES];
-//struct pathStruct newPath[MAX_BRIDGES];
-int lastPathNumber = 0;
-int changedPaths[MAX_BRIDGES];
-int changedPathsCount = 0;
 
 
 void sendAllPaths(void) // should we sort them by chip? for now, no
@@ -141,7 +117,7 @@ void sendAllPaths(void) // should we sort them by chip? for now, no
     // }
 
     if (changedPaths[i] == -1) {
-      continue;
+      //continue;
     }
     sendPath(i, 1);
     // delay(1);
@@ -150,40 +126,40 @@ void sendAllPaths(void) // should we sort them by chip? for now, no
       Serial.print("lastPath ");
       Serial.print(i);
       Serial.print(" \n\r");
-      // printPathType(i);
-      // Serial.print(" \n\r");
-      // for (int j = 0; j < 4; j++) {
-      //   printChipNumToChar(lastPath[i].chip[j]);
-      //   Serial.print("  x[");
-      //   Serial.print(j);
-      //   Serial.print("]:");
-      //   Serial.print(lastPath[i].x[j]);
-      //   Serial.print("   y[");
-      //   Serial.print(j);
-      //   Serial.print("]:");
-      //   Serial.print(lastPath[i].y[j]);
-      //   Serial.println(" \t ");
-      // }
-      // Serial.print("\n\n\r");
+      printPathType(i);
+      Serial.print(" \n\r");
+      for (int j = 0; j < 4; j++) {
+        printChipNumToChar(lastPath[i].chip[j]);
+        Serial.print("  x[");
+        Serial.print(j);
+        Serial.print("]:");
+        Serial.print(lastPath[i].x[j]);
+        Serial.print("   y[");
+        Serial.print(j);
+        Serial.print("]:");
+        Serial.print(lastPath[i].y[j]);
+        Serial.println(" \t ");
+      }
+      Serial.print("\n\n\r");
 
-      // Serial.print("path ");
-      // Serial.print(i);
-      // Serial.print(" \t");
-      // printPathType(i);
-      // Serial.print(" \n\r");
-      // for (int j = 0; j < 4; j++) {
-      //   printChipNumToChar(path[i].chip[j]);
-      //   Serial.print("  x[");
-      //   Serial.print(j);
-      //   Serial.print("]:");
-      //   Serial.print(path[i].x[j]);
-      //   Serial.print("   y[");
-      //   Serial.print(j);
-      //   Serial.print("]:");
-      //   Serial.print(path[i].y[j]);
-      //   Serial.println(" \t ");
-      // }
-      // Serial.print("\n\n\r");
+      Serial.print("path ");
+      Serial.print(i);
+      Serial.print(" \t");
+      printPathType(i);
+      Serial.print(" \n\r");
+      for (int j = 0; j < 4; j++) {
+        printChipNumToChar(path[i].chip[j]);
+        Serial.print("  x[");
+        Serial.print(j);
+        Serial.print("]:");
+        Serial.print(path[i].x[j]);
+        Serial.print("   y[");
+        Serial.print(j);
+        Serial.print("]:");
+        Serial.print(path[i].y[j]);
+        Serial.println(" \t ");
+      }
+      Serial.print("\n\n\r");
     }
   }
 }
@@ -202,7 +178,7 @@ void findDifferentPaths(void) {
     numToSearch = lastPathNumber;
   }
   for (int i = 0; i < numToSearch; i++) {
-    for (int j = 0; j < numToSearch; j++) {
+    for (int j = i; j < numToSearch; j++) {
 
       // if (i == j)
       // {

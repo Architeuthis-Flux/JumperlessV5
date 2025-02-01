@@ -19,6 +19,7 @@ extern int logoTopSetting[2];
 extern int logoBottomSetting[2];
 extern int buildingTopSetting[2];
 extern int buildingBottomSetting[2];
+extern int showProbeCurrent;
 
 extern volatile int probeActive;
 extern volatile int inPadMenu;
@@ -66,7 +67,7 @@ int readFloatingOrState (int pin = 0, int row = 0);
 int checkSwitchPosition(void);
 float checkProbeCurrent(void);
 
-void routableBufferPower (int offOn);
+void routableBufferPower (int offOn, int flash = 0);
 
 void startProbe (long probeSpeed = 25000);
 void stopProbe();
