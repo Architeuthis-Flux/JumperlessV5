@@ -122,7 +122,7 @@ int probeMode(int pin, int setOrClear) {
   // createLocalNodeFile(netSlot);
    routableBufferPower(1);
 
-  if (checkSwitchPosition() == 1) {
+ if (checkSwitchPosition() == 1) {
     routableBufferPower(1);
     // Serial.println("Select");
   } else {
@@ -1725,13 +1725,13 @@ float checkProbeCurrent(void) {
   // setDac0voltage(3.3, 0);
  //if ( removeBridgeFromNodeFile(ROUTABLE_BUFFER_IN, DAC0, netSlot, 1, 1) == 0) {
  
-   addBridgeToNodeFile(ROUTABLE_BUFFER_IN, DAC0, netSlot, 1, 0);
+   //addBridgeToNodeFile(ROUTABLE_BUFFER_IN, DAC0, netSlot, 1, 0);
     refreshBlind(1, 0);
 //  }
   //addBridgeToNodeFile(ROUTABLE_BUFFER_IN, DAC0, netSlot, 1, 0);
  // timer[1] = micros();
   // printNodeFile();
-  setDac0voltage(3.33, 1, 1);
+  //setDac0voltage(3.33, 1, 1);
   // chooseShownReadings();
  // timer[2] = micros();
   
@@ -1749,11 +1749,11 @@ float checkProbeCurrent(void) {
 
   float current = INA1.getCurrent_mA();
 
-if (showProbeCurrent == 1) {
+//if (showProbeCurrent == 1) {
   Serial.print("current: ");
   Serial.print(current);
   Serial.println(" mA\n\r");
-}
+//}
 
   // for (int i = 1; i < 4; i++) {
   //   Serial.print("timer[");
@@ -1774,14 +1774,23 @@ void routableBufferPower(int offOn, int flash) {
     //Serial.println("power on\n\r");
     // delay(10);
 
-    setDac0voltage(3.33, 0);
+    setDac0voltage(3.33, 1, 1);
 
     //removeBridgeFromNodeFile(DAC0, -1, netSlot, 1);
+    //  pinMode(27, OUTPUT);
+    //   digitalWrite(27, HIGH);
+
 
     if (flash == 1) {
      addBridgeToNodeFile(ROUTABLE_BUFFER_IN, DAC0, netSlot, 0, 0);
+     //addBridgeToNodeFile(ROUTABLE_BUFFER_IN, RP_GPIO_8, netSlot, 1, 0);
+
+refreshConnections();
     } else {
+
       addBridgeToNodeFile(ROUTABLE_BUFFER_IN, DAC0, netSlot, 1, 0);
+      //addBridgeToNodeFile(ROUTABLE_BUFFER_IN, RP_GPIO_8, netSlot, 1, 0);
+refreshBlind(1, 0);
     }
     //addBridgeToNodeFile(ROUTABLE_BUFFER_IN, DAC0, netSlot, 1, 0);
 
@@ -1790,12 +1799,13 @@ void routableBufferPower(int offOn, int flash) {
 
 
     bufferPowerConnected = true;
-    refreshBlind(1, 0);
+    
 
   } else {
-
-    removeBridgeFromNodeFile(ROUTABLE_BUFFER_IN, DAC0, netSlot, 1);
-    removeBridgeFromNodeFile(ROUTABLE_BUFFER_IN, DAC0, netSlot, 0);
+    //removeBridgeFromNodeFile(ROUTABLE_BUFFER_IN, RP_GPIO_8, netSlot, 1);
+    //removeBridgeFromNodeFile(ROUTABLE_BUFFER_IN, RP_GPIO_8, netSlot, 0);
+     removeBridgeFromNodeFile(ROUTABLE_BUFFER_IN, DAC0, netSlot, 1);
+     removeBridgeFromNodeFile(ROUTABLE_BUFFER_IN, DAC0, netSlot, 0);
     setDac0voltage(0.0, 1);
     bufferPowerConnected = false;
     refreshBlind();
@@ -2415,10 +2425,10 @@ void checkPads(void) {
       37,       38,       39,       40,        41,       42,       43,       44,       45,
       46,       47,       48,       49,        50,       51,       52,       53,       54,
       55,       56,       57,       58,        59,       60,       NANO_D1,       NANO_D0,       NANO_RESET_1,
-      NANO_GND_1,       NANO_D2,       NANO_D3,       NANO_D4,       NANO_D5,       NANO_D6,       NANO_D7,       NANO_D8,
+      GND,       NANO_D2,       NANO_D3,       NANO_D4,       NANO_D5,       NANO_D6,       NANO_D7,       NANO_D8,
       NANO_D9,	      NANO_D10,	      NANO_D11,	      NANO_D12,	      NANO_D13,	      NANO_3V3,	      NANO_AREF,	      NANO_A0,
       NANO_A1,	      NANO_A2,	      NANO_A3,	      NANO_A4,	      NANO_A5,	      NANO_A6,	      NANO_A7,	      NANO_5V,
-      NANO_RESET_0,	      NANO_GND_0,	      NANO_VIN,	      LOGO_PAD_BOTTOM,	      LOGO_PAD_TOP,	      GPIO_PAD,	      DAC_PAD,
+      NANO_RESET_0,	      GND,	      NANO_VIN,	      LOGO_PAD_BOTTOM,	      LOGO_PAD_TOP,	      GPIO_PAD,	      DAC_PAD,
       ADC_PAD,	      BUILDING_PAD_TOP,	      BUILDING_PAD_BOTTOM,
   };
 
@@ -2798,7 +2808,7 @@ int justReadProbe() {
       NANO_A7,
       NANO_5V,
       NANO_RESET_0,
-      NANO_GND_0,
+      GND,
       -1,
       LOGO_PAD_BOTTOM,
       LOGO_PAD_TOP,
@@ -2859,10 +2869,10 @@ if (blockProbing > 0) {
       37,       38,       39,       40,        41,       42,       43,       44,       45,
       46,       47,       48,       49,        50,       51,       52,       53,       54,
       55,       56,       57,       58,        59,       60,       NANO_D1,       NANO_D0,       NANO_RESET_1,
-      NANO_GND_1,       NANO_D2,       NANO_D3,       NANO_D4,       NANO_D5,       NANO_D6,       NANO_D7,       NANO_D8,
+      GND,       NANO_D2,       NANO_D3,       NANO_D4,       NANO_D5,       NANO_D6,       NANO_D7,       NANO_D8,
       NANO_D9,	      NANO_D10,	      NANO_D11,	      NANO_D12,	      NANO_D13,	      NANO_3V3,	      NANO_AREF,	      NANO_A0,
       NANO_A1,	      NANO_A2,	      NANO_A3,	      NANO_A4,	      NANO_A5,	      NANO_A6,	      NANO_A7,	      NANO_5V,
-      NANO_RESET_0,	      NANO_GND_0,	     -1,	      LOGO_PAD_BOTTOM,	      LOGO_PAD_TOP,	      GPIO_PAD,	      DAC_PAD,
+      NANO_RESET_0,	      GND,	     -1,	      LOGO_PAD_BOTTOM,	      LOGO_PAD_TOP,	      GPIO_PAD,	      DAC_PAD,
       ADC_PAD,	    -1,-1, -1, -1 , -1, -1
   };// BUILDING_PAD_TOP,	      BUILDING_PAD_BOTTOM,  i took this out
 

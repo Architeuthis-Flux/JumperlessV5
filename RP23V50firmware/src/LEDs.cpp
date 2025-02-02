@@ -29,6 +29,7 @@ Adafruit_NeoPixel topleds(LED_COUNT_TOP, LED_PIN_TOP, NEO_GRB + NEO_KHZ800);
 #endif
 
 Adafruit_NeoPixel probeLEDs(1, PROBE_LED_PIN, NEO_GRB + NEO_KHZ800);
+//Adafruit_NeoPixel probeLEDs(1, 9, NEO_GRB + NEO_KHZ800);
 
 void ledClass::begin(void) {
 if (splitLEDs == 1) {
@@ -1118,25 +1119,61 @@ void lightUpNet(int netNumber, int node, int onOff, int brightness2,
   }
   // showRowAnimation(-1, GND);
   //  showLEDsCore2 = 1;
+  showSkippedNodes();
 }
 
-void turnOffSkippedNodes(void) {
-  return;
+void showSkippedNodes(uint32_t color0, uint32_t color1, uint32_t color2,
+                      uint32_t color3, uint32_t color4) {
+  //return;
 
   for (int i = 0; i < numberOfPaths; i++) {
 
     if (path[i].skip == true) {
-      leds.setPixelColor(nodesToPixelMap[path[i].node1] + 0, 0);
-      // leds.setPixelColor(nodesToPixelMap[path[i].node1]+1, 0);
-      leds.setPixelColor(nodesToPixelMap[path[i].node1] + 2, 0);
-      // leds.setPixelColor(nodesToPixelMap[path[i].node1]+3, 0);
-      leds.setPixelColor(nodesToPixelMap[path[i].node1] + 4, 0);
+      if (path[i].node1 > 0 && path[i].node1 <= 60) {
 
-      leds.setPixelColor(nodesToPixelMap[path[i].node2], 0);
-      // leds.setPixelColor(nodesToPixelMap[path[i].node2]+1, 0);
-      leds.setPixelColor(nodesToPixelMap[path[i].node2] + 2, 0);
-      // leds.setPixelColor(nodesToPixelMap[path[i].node2]+3, 0);
-      leds.setPixelColor(nodesToPixelMap[path[i].node2] + 4, 0);
+      if (color0 != 0xffffff){
+      leds.setPixelColor((path[i].node1-1)*5 + 0, color0);
+      }
+      if (color1 != 0xffffff){
+      leds.setPixelColor((path[i].node1-1)*5 + 1, color1);
+      }
+      if (color2 != 0xffffff){
+      leds.setPixelColor((path[i].node1-1)*5  + 2, color2);
+      } 
+      if (color3 != 0xffffff){
+      leds.setPixelColor((path[i].node1-1)*5  + 3, color3);
+      }
+      if (color4 != 0xffffff){
+      leds.setPixelColor((path[i].node1-1)*5  + 4, color4);
+      }
+      }
+
+      // // leds.setPixelColor(nodesToPixelMap[path[i].node1]+1, 0);
+      // leds.setPixelColor(nodesToPixelMap[path[i].node1] + 2, 0);
+      // // leds.setPixelColor(nodesToPixelMap[path[i].node1]+3, 0);
+      // leds.setPixelColor(nodesToPixelMap[path[i].node1] + 4, 0);
+      if (path[i].node2 > 0 && path[i].node2 <= 60) {
+      if (color0 != 0xffffff){
+      leds.setPixelColor((path[i].node2-1)*5  + 0, color0);
+      }
+      if (color1 != 0xffffff){
+      leds.setPixelColor((path[i].node2-1)*5 + 1, color1);
+      }
+      if (color2 != 0xffffff){
+      leds.setPixelColor((path[i].node2-1)*5 + 2, color2);
+      }
+      if (color3 != 0xffffff){
+      leds.setPixelColor((path[i].node2-1)*5 + 3, color3);
+      }
+      if (color4 != 0xffffff){
+      leds.setPixelColor((path[i].node2-1)*5 + 4, color4);
+      }
+      }
+      // leds.setPixelColor(nodesToPixelMap[path[i].node2], 0);
+      // // leds.setPixelColor(nodesToPixelMap[path[i].node2]+1, 0);
+      // leds.setPixelColor(nodesToPixelMap[path[i].node2] + 2, 0);
+      // // leds.setPixelColor(nodesToPixelMap[path[i].node2]+3, 0);
+      // leds.setPixelColor(nodesToPixelMap[path[i].node2] + 4, 0);
     }
   }
 }

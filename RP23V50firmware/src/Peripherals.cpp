@@ -736,7 +736,7 @@ void calibrateDacs(int test) {
     int counter = 0;
     dacZero[d] = dacZero[d] + 5;
 
-    while (zeroFound < 2) {
+    while (zeroFound < 2 && counter < 40) {
       setVoltage = 0.0;
       setDacByNumber(d, setVoltage, 0);
       delay(80); // * (zeroFound + 1));
@@ -767,11 +767,11 @@ void calibrateDacs(int test) {
         dacZero[d] = dacZero[d] - 1;
       }
 
-      if (reading < 20.0 && reading > -20.0) // prevent the loop from running
-                                             // forever if it never finds zero
-      {
+      // if (reading < 20.0 && reading > -20.0) // prevent the loop from running
+      //                                        // forever if it never finds zero
+      // {
         counter++;
-      }
+      //}
 
       if (counter > 20) {
         zeroFound++;

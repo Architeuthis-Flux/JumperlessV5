@@ -277,7 +277,7 @@ uint32_t scaleUpBrightness(uint32_t hexColor, int scaleFactor = 8,
                            int minBrightness = 25);
 uint32_t scaleDownBrightness(uint32_t hexColor, int scaleFactor = 8,
                              int maxBrightness = 15);
-void turnOffSkippedNodes();
+void showSkippedNodes(uint32_t color0 = 0x1f1f1f, uint32_t color1 = 0xffffff, uint32_t color2 = 0x1f1f1f, uint32_t color3 = 0xffffff, uint32_t color4 = 0x1f1f1f);
 void clearLEDsExceptRails();
 
 uint32_t packRgb(uint8_t r, uint8_t g, uint8_t b);

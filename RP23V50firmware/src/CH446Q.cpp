@@ -105,7 +105,7 @@ void sendAllPaths(void) // should we sort them by chip? for now, no
   //   delay(10);
   // MCPIO.write16(0);
 
-  findDifferentPaths();
+ findDifferentPaths();
   lastPathNumber = numberOfPaths;
   for (int i = 0; i < numberOfPaths; i++) {
 

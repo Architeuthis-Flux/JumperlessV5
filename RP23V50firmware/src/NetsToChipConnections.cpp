@@ -259,18 +259,6 @@ void sortPathsByNet(
         path[pathIndex].duplicate = 0;
 
         if (path[pathIndex].net == path[pathIndex - 1].net) {
-          // if (path[pathIndex].node1 == path[pathIndex - 1].node1 &&
-          //     path[pathIndex].node2 == path[pathIndex - 1].node2) {
-          //   // path[pathIndex].duplicate = path[pathIndex - 1].duplicate + 1;
-          //   // Serial.print("path[");
-          //   // Serial.print(pathIndex);
-          //   // Serial.print("] is a duplicate of path[");
-          //   // Serial.print(pathIndex - 1);
-          //   // Serial.print("] with duplicate = ");
-          //   // Serial.println(path[pathIndex].duplicate);
-          // } else {
-          //   path[pathIndex].duplicate = 0;
-          // }
 
         } else {
           numberOfUniqueNets++;
@@ -450,6 +438,8 @@ void bridgesToPaths(int fillUnused, int allowStacking) {
     Serial.println("resolved uncommitted hops");
   }
 
+  resolveAltPaths(1);
+couldntFindPath(1);
   // couldntFindPath();
   checkForOverlappingPaths();
   if (debugNTCC2) {
@@ -2244,7 +2234,7 @@ bool frontEnd(int chip, int y, int x) { // is this an externally facing node
 
 void couldntFindPath(int forcePrint) {
   if (debugNTCC2 == true || forcePrint == 1 || debugNTCC5 == true) {
-    Serial.print("\n\r");
+    //Serial.print("\n\r");
   }
   numberOfUnconnectablePaths = 0;
   for (int i = 0; i < numberOfPaths; i++) {
@@ -2271,17 +2261,18 @@ void couldntFindPath(int forcePrint) {
         printNodeOrName(path[i].node1);
         Serial.print(" to ");
         printNodeOrName(path[i].node2);
-        Serial.print("\n\r");
+        Serial.println("\n\r");
       }
       unconnectablePaths[numberOfUnconnectablePaths][0] = path[i].node1;
       unconnectablePaths[numberOfUnconnectablePaths][1] = path[i].node2;
       numberOfUnconnectablePaths++;
-      // path[i].skip = true;
+      path[i].skip = true;
     }
   }
   if (debugNTCC2 == true || forcePrint == 1 || debugNTCC5 == true) {
-    Serial.print("\n\r");
+    //Serial.print("\n\r");
   }
+  
 }
 
 void resolveUncommittedHops2(void) {}

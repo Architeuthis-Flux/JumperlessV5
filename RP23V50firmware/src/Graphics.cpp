@@ -1003,9 +1003,12 @@ void showRowAnimation(int index, int net) {
   // Serial.print("   direction = ");
   // Serial.println(rowAnimations[net].direction);
 
-  if (displayMode == 0) {
+  if (displayMode == 0 || numberOfShownNets > MAX_NETS_FOR_WIRES) {
     for (int i = 0; i <= numberOfPaths; i++) {
       if (path[i].net == actualNet) {
+        if (path[i].skip == true) {
+          continue;
+        }
 
         if (path[i].node1 > 0 && path[i].node1 <= 60 &&
             path[i].node1 != probeHighlight) {
@@ -1045,6 +1048,9 @@ void showRowAnimation(int index, int net) {
   }
 
   for (int i = 0; i <= numberOfPaths; i++) {
+        //     if (path[i].skip == true) {
+        //   continue;
+        // }
     if (path[i].net == actualNet) {
 
       if (path[i].node1 > NANO_D0 && path[i].node1 <= NANO_GND_1) {
@@ -1075,6 +1081,7 @@ void showRowAnimation(int index, int net) {
   // b.printRawRow(0b00010000, row, frameColors[4], 0xfffffe);
 
   // showLEDsCore2 = 2;
+  showSkippedNodes();
 }
 
 void showAllRowAnimations() {

@@ -159,7 +159,7 @@ void setup() {
   // PluggableUSB().plug(Serial3);
   EEPROM.begin(512);
 
-  debugFlagInit();
+  debugFlagInit(0);
 
   //delay(2000);
   // initGPIOex();
@@ -229,6 +229,7 @@ void setup() {
   // delay(1000);
   // setRailsAndDACs();
 
+  routableBufferPower(1, 0);
   routableBufferPower(1, 1);
   // fatFS
   //  multicore_lockout_victim_init();
@@ -1328,9 +1329,7 @@ void core2stuff() // core 2 handles the LEDs and the CH446Q8
          
 
           showNets();
-          if (inClickMenu == 0) {
-            showAllRowAnimations();
-          }
+
 
           core2busy = false;
           netUpdateRefreshCount = 0;
@@ -1349,7 +1348,9 @@ void core2stuff() // core 2 handles the LEDs and the CH446Q8
         // Serial.print("inPadMenu = ");
         // Serial.println(inPadMenu);
       }
-
+          if (inClickMenu != 1) {
+            showAllRowAnimations();
+          }
       // delayMicroseconds(220);
       // Serial.println("show");
       core2busy = true;
