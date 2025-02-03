@@ -4,8 +4,8 @@ AlignConsecutiveAssignments: false
 AlignConsecutiveDeclarations: false
 AlignEscapedNewlinesLeft: false
 AlignOperands: false
-AlignTrailingComments: false
-AllowAllParametersOfDeclarationOnNextLine: false
+AlignTrailingComments: true
+AllowAllParametersOfDeclarationOnNextLine: true
 AllowShortBlocksOnASingleLine: true
 AllowShortCaseLabelsOnASingleLine: true
 AllowShortFunctionsOnASingleLine: All
@@ -32,10 +32,10 @@ IncludeCategories:
    Priority:        3
  - Regex:           '.\*'
    Priority:        1
-IndentCaseLabels: false
+IndentCaseLabels: true
 IndentWrappedFunctionNames: true
 KeepEmptyLinesAtTheStartOfBlocks: true
-MaxEmptyLinesToKeep: 4
+MaxEmptyLinesToKeep: 3
 NamespaceIndentation: None
 ObjCSpaceAfterProperty: false
 ObjCSpaceBeforeProtocolList: false
@@ -46,7 +46,7 @@ PenaltyBreakString: 500
 PenaltyExcessCharacter: 1000000
 PenaltyReturnTypeOnItsOwnLine: 400
 PointerAlignment: Left
-ReflowComments: false
+ReflowComments: true
 SortIncludes: false
 SpaceAfterCStyleCast: false
 SpaceBeforeAssignmentOperators: false
@@ -63,12 +63,12 @@ AccessModifierOffset: -2
 BreakBeforeBraces: BS_WebKit
 JavaScriptQuotes: Single
 JavaScriptWrapImports: false
-UseTab: Never
+UseTab: Always
 TabWidth: 2
 ConstructorInitializerIndentWidth: 2
 TableGenBreakInsideDAGArg: DontBreak
 ContinuationIndentWidth: 2
 IndentWidth: 2
-ColumnLimit: 2000
+ColumnLimit: 500
 Language: Cpp
 ...

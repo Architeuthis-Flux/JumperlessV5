@@ -112,7 +112,7 @@ void refreshBlind(
     int fillUnused) { // this doesn't actually touch the flash so we don't
   // need to wait for core 2
   waitCore2();
-  core1busy = true;
+  //core1busy = true;
   // fillUnused = 0;
   clearAllNTCC();
   openNodeFile(netSlot, 1);
@@ -137,7 +137,7 @@ void refreshBlind(
 
   chooseShownReadings();
   // sendPaths();
-  core1busy = false;
+  //core1busy = false;
   waitCore2();
 }
 
@@ -164,6 +164,7 @@ struct rowLEDs getRowLEDdata(int row) {
   }
   row = row - 1;
   for (int i = 0; i < 5; i++) { // stored in GRB order
+  rowLEDs.color[i] = 0x000000;
     rowLEDs.color[i] = leds.getPixelColor(row * 5 + i);
     // rowLEDs.color[i] = packRgb(pixelPointer[15 * row + (3 * i) + 1],
     //                            pixelPointer[15 * row + (3 * i)],
@@ -261,6 +262,7 @@ float measureVoltage(int adcNumber, int node, bool checkForFloating) {
   // delay(2);
   waitCore2();
   addBridgeToNodeFile(node, adcDefine, netSlot, 1);
+  //refreshLocalConnections(-1 , 0);
   refreshBlind(-1);
   //         printPathsCompact();
   // printChipStatus();

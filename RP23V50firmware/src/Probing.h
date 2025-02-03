@@ -89,6 +89,6 @@ extern int lastProbeLEDs;
 
 
 void probeLEDhandler(void); 
-
+void highlightNets(int probeReading);
 
 #endif

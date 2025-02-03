@@ -98,7 +98,7 @@ void printString(const char* s, uint32_t color = 0xFFFFFF, uint32_t bg = 0xFFFFF
 void defcon(int start, int spread, int color = 0, int nudge = 1);
 
 void printTextFromMenu(void);
-
+int attractMode(void);
 
 
 

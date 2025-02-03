@@ -36,7 +36,8 @@
     "cortex-debug.registerUseNaturalFormat": false,
     "C_Cpp.errorSquiggles": "disabled",
     "clang-format.language.cpp.style": "file",
-    "C_Cpp.clang_format_style": "file : /Users/kevinsanto/Documents/GitHub/JumperlessV5/JumperlessV5firmware/.vscode/.clang-format",
-    "cmake.ignoreCMakeListsMissing": true
+    "C_Cpp.clang_format_style": "Visual Studio",
+    "cmake.ignoreCMakeListsMissing": true,
+    "C_Cpp.formatting": "vcFormat"
 
 }

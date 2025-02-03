@@ -3332,3 +3332,51 @@ void probeLEDhandler(void) {
   probeLEDs.show();
   showingProbeLEDs = 0;
 }
+
+
+void highlightNets(int probeReading) {
+   // Serial.print("justReadProbe = ");
+      // Serial.println(probeReading);
+      // delay(100);
+
+      int netHighlighted = brightenNet(probeReading);
+      // Serial.print("netHighlighted = ");
+      // Serial.println(netHighlighted);
+      if (netHighlighted != -1) {
+
+        Serial.print("\r                                               \r");
+        switch (netHighlighted) {
+        case 0:
+          break;
+        case 1:
+          Serial.print("Net Highlighted = GND");
+          break;
+        case 2:
+          Serial.print("Net Highlighted = Top Rail  ");
+
+          Serial.print(railVoltage[0]);
+          break;
+        case 3:
+          Serial.print("Net Highlighted = Bottom Rail  ");
+
+          Serial.print(railVoltage[1]);
+          break;
+        case 4:
+          Serial.print("Net Highlighted = DAC 0  ");
+          Serial.print(dacOutput[0]);
+          break;
+        case 5:
+          Serial.print("Net Highlighted = DAC 1  ");
+          Serial.print(dacOutput[1]);
+          break;
+        default:
+          Serial.print("Net Highlighted = ");
+          Serial.print(netHighlighted);
+        }
+        showLEDsCore2 = 1;
+      } else {
+
+        // brightenNet(-1);
+      }
+
+}

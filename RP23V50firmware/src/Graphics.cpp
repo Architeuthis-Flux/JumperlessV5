@@ -1629,7 +1629,7 @@ void printTextFromMenu(void)
 int scroll = 0;
     char f[80] = {' '};
     int index = 0;
-    leds.clear();
+    b.clear();
     while (Serial.available() > 0) {
       if (index > 79) {
         break;
@@ -1736,4 +1736,39 @@ Serial.println("scroll wheel to change speed)\n\r");
     //   // delay(100);
     //   // leds.show();
     // }
+}
+int attractMode (void){
+
+        if (encoderDirectionState == DOWN) {
+        // attractMode = 0;
+        defconDisplay = -1;
+        netSlot++;
+        if (netSlot >= NUM_SLOTS) {
+          netSlot = -1;
+          defconDisplay = 0;
+        }
+        Serial.print("netSlot = ");
+        Serial.println(netSlot);
+        slotChanged = 1;
+        showLEDsCore2 = -1;
+        encoderDirectionState = NONE;
+        return 1;
+        // goto menu;
+      } else if (encoderDirectionState == UP) {
+        // attractMode = 0;
+        defconDisplay = -1;
+        netSlot--;
+        if (netSlot <= -1) {
+          netSlot = NUM_SLOTS;
+          defconDisplay = 0;
+        }
+        Serial.print("netSlot = ");
+        Serial.println(netSlot);
+        slotChanged = 1;
+        showLEDsCore2 = -1;
+        encoderDirectionState = NONE;
+        return 1;
+        // goto menu;
+      }
+      return 0;
 }

@@ -84,6 +84,8 @@ int findSubMenu(int level, int index);
 
 void showLoss(void);
 
+int yesNoMenu(void);
+
 
 
 

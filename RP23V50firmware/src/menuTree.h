@@ -29,6 +29,8 @@ Apps\n\
 --Upload\n\
 --->a4\n\
 -Logic  Analyzr\n\
+-Scan\n\
+-Calib  DACs\n\
 Slots\n\
 \n\
 -$Load$\n\
