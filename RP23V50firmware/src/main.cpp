@@ -40,6 +40,7 @@ KevinC@ppucc.io
 #include "CH446Q.h"
 #include "Commands.h"
 
+#include "ArduinoStuff.h"
 #include "FileParsing.h"
 #include "Graphics.h"
 #include "JumperlessDefinesRP2040.h"
@@ -53,7 +54,6 @@ KevinC@ppucc.io
 #include "PersistentStuff.h"
 #include "Probing.h"
 #include "RotaryEncoder.h"
-#include "ArduinoStuff.h"
 
 #ifdef USE_FATFS
 #include "FatFS.h"
@@ -79,7 +79,6 @@ KevinC@ppucc.io
 // using namespace logic_analyzer;
 
 bread b;
-
 
 // bool core1_separate_stack = true;
 
@@ -117,8 +116,6 @@ int rotEncInit = 0;
 // https://wokwi.com/projects/367384677537829889
 
 int core2initFinished = 0;
-
-
 
 void setup() {
   pinMode(RESETPIN, OUTPUT_12MA);
@@ -161,14 +158,14 @@ void setup() {
 
   debugFlagInit(0);
 
-  //delay(2000);
-  // initGPIOex();
-  //  delay(5);
-  //  Serial.setTimeout(500);
+  // delay(2000);
+  //  initGPIOex();
+  //   delay(5);
+  //   Serial.setTimeout(500);
 
   // delay(20);
   //  pinMode(buttonPin, INPUT_PULLDOWN);
-  initDAC(); 
+  initDAC();
   pinMode(probePin, OUTPUT_8MA);
   pinMode(10, OUTPUT_8MA);
 
@@ -193,15 +190,11 @@ void setup() {
 
   // createSlots(-1, 0);
   // delay(10);
-  
 
   digitalWrite(RESETPIN, LOW);
   while (core2initFinished == 0) {
     delayMicroseconds(1);
   }
-
-
-
 
   clearAllNTCC();
   pinMode(probePin, OUTPUT_8MA);
@@ -238,7 +231,7 @@ void setup() {
 }
 
 void setupCore2stuff() {
- //delay(2000);
+  // delay(2000);
   initCH446Q();
 
   delay(1);
@@ -246,13 +239,12 @@ void setupCore2stuff() {
   initLEDs();
   initRowAnimations();
   setupSwirlColors();
-initSecondSerial();
+  initSecondSerial();
   // delay(4);
 }
 
 void setup1() {
   // flash_safe_execute_core_init();
-
 
   setupCore2stuff();
 
@@ -387,7 +379,6 @@ menu:
   }
 
 dontshowmenu:
-
 
   // delay(500);
   // Serial.print("ADC 6: ");
@@ -634,7 +625,7 @@ skipinput:
   switch (input) {
 
   case '^': {
-    //doomOn = 1;
+    // doomOn = 1;
 
     char f[8] = {' '};
     int index = 0;
@@ -661,10 +652,10 @@ skipinput:
     break;
   }
   case '@': {
-    //printWireStatus();
-Serial.println("Fuck you!!!");
-    
-   // printPathArray();
+    // printWireStatus();
+    Serial.println("Fuck you!!!");
+
+    // printPathArray();
     break;
   }
   case '$': {
@@ -674,7 +665,6 @@ Serial.println("Fuck you!!!");
       Serial.print(d);
       Serial.print("] = ");
       Serial.println(dacSpread[d]);
-
     }
 
     for (int d = 0; d < 4; d++) {
@@ -682,11 +672,10 @@ Serial.println("Fuck you!!!");
       Serial.print(d);
       Serial.print("] = ");
       Serial.println(dacZero[d]);
-
     }
-    
+
     calibrateDacs();
-    //Serial.println(netSlot);
+    // Serial.println(netSlot);
     break;
   }
   case 'u': {
@@ -695,7 +684,7 @@ Serial.println("Fuck you!!!");
     break;
   }
   case 'a': {
-ManualArduinoReset = true;
+    ManualArduinoReset = true;
     break;
   }
 
@@ -751,7 +740,7 @@ ManualArduinoReset = true;
     break;
   }
 
-  case 'g': {
+  case '#': {
     // pauseCore2 = 1;
     //  while (slotChanged == 0)
     //  {
@@ -763,42 +752,11 @@ ManualArduinoReset = true;
         goto menu;
       }
     }
-    b.clear();
+    printTextFromMenu();
 
-    char f[80] = {' '};
-    int index = 0;
-    // leds.clear();
-    while (Serial.available() > 0) {
-      if (index > 19) {
-        break;
-      }
-      f[index] = Serial.read();
-      index++;
-      // b.print(f);
-      // delayMicroseconds(30);
-      // leds.show();
-    }
-    f[index] = ' ';
-    f[index + 1] = ' ';
-    uint32_t color = 0x100010;
-    // Serial.print(index);
-    defconString[0] = f[0];
-    defconString[1] = f[1];
-    defconString[2] = f[2];
-    defconString[3] = f[3];
-    defconString[4] = f[4];
-    defconString[5] = f[5];
-    defconString[6] = f[6];
-    defconString[7] = f[7];
-    defconString[8] = f[8];
-    defconString[9] = f[9];
-    defconString[10] = f[10];
-    defconString[11] = f[11];
-    defconString[12] = f[12];
-    defconString[13] = f[13];
-    defconString[14] = f[14];
-    defconString[15] = f[15];
-    defconDisplay = 0;
+    clearLEDs();
+    showLEDsCore2 = 1;
+    defconDisplay = -1;
     // b.print(f, color);
 
     break;
@@ -867,25 +825,24 @@ ManualArduinoReset = true;
     listNets();
 
     break;
-  case 'b':
-  {
+  case 'b': {
     int showDupes = 1;
     char in = Serial.read();
     if (in == '0') {
       showDupes = 0;
-    } else  if (in == '2') {
+    } else if (in == '2') {
       showDupes = 2;
     }
     Serial.print("\n\rpathDuplicates: ");
-Serial.println(pathDuplicates);
-Serial.print("dacDuplicates: ");
-Serial.println(dacDuplicates);
-Serial.print("powerDuplicates: ");
-Serial.println(powerDuplicates);
-Serial.print("dacPriority: ");
-Serial.println(dacPriority);
-Serial.print("powerPriority: ");
-Serial.println(powerPriority);
+    Serial.println(pathDuplicates);
+    Serial.print("dacDuplicates: ");
+    Serial.println(dacDuplicates);
+    Serial.print("powerDuplicates: ");
+    Serial.println(powerDuplicates);
+    Serial.print("dacPriority: ");
+    Serial.println(dacPriority);
+    Serial.print("powerPriority: ");
+    Serial.println(powerPriority);
     couldntFindPath(1);
     Serial.print("\n\rBridge Array\n\r");
     printBridgeArray();
@@ -1158,7 +1115,7 @@ float botRailVoltage = 0.0;
 
 int readcounter = 0;
 unsigned long schedulerTimer = 0;
-unsigned long schedulerUpdateTime = 3900;
+unsigned long schedulerUpdateTime = 3300;
 int rowProbed = 0;
 int swirled = 0;
 int countsss = 0;
@@ -1170,18 +1127,11 @@ int tempDD = 0;
 int clearBeforeSend = 0;
 
 unsigned long measureLEDTimer = 0;
-int lastProbeLEDs = -1;
-volatile int showingProbeLEDs = 0;
 
 unsigned long ardTimer = 0;
 
 unsigned long tempTimer = 0;
 int lastTemp = 0;
-
-int hsvProbe = 0;
-int hsvProbe2 = 0;
-unsigned long probeRainbowTimer = 0;
-
 
 void loop1() {
   // int timer = micros();
@@ -1195,65 +1145,45 @@ void loop1() {
   // leds.clear();
   // leds.show();
 
-  
+  secondSerialHandler();
 
-secondSerialHandler();
+  // core2busy = true;
+  // rotaryEncoderStuff();
+  // core2busy = false;
 
-      // core2busy = true;
-      // rotaryEncoderStuff();
-      // core2busy = false;
+  if (blockProbingTimer > 0) {
+    if (millis() - blockProbingTimer > blockProbing) {
+      blockProbing = 0;
+      blockProbingTimer = 0;
+      // Serial.println("probing unblocked");
+    }
+  }
 
-if (blockProbingTimer > 0)
-{
-if (millis() - blockProbingTimer > blockProbing)
-{
-  blockProbing = 0;
-  blockProbingTimer = 0;
-  //Serial.println("probing unblocked");
-}
-}
+  // if( millis() - probeRainbowTimer > 7)
+  // {
+  // hsvProbe++;
+  // showProbeLEDs = 7;
+  // probeRainbowTimer = millis();
 
-
-// if( millis() - probeRainbowTimer > 7)
-// {
-// hsvProbe++;
-// showProbeLEDs = 7;
-// probeRainbowTimer = millis();
-
-
-
-// }
-
-// if (millis() - tempTimer > 5000) {
-//     tempTimer = millis();
-//     Serial.print(" ");
-
-//     float temp = 0;
-//     for (int i = 0; i < 20; i++) {
-//       temp += analogReadTemp();
-//       delay(10);
-//     }
-//     temp = temp / 20;
-//     float tempF = (temp * 1.8) + 32;
-//     Serial.print(tempF);
-//     Serial.print(" F  \t");
-//     Serial.print(millis()/1000);
-
-//     for (int i = 0; i < ((tempF - 100.0)*5); i++) {
-// Serial.print(" ");
-
-//     }
-//     Serial.println("*");
-//   }
-
-  // if (millis() - ardTimer == 2000) {
-  //   Serial1.begin(115200);
   // }
-  //}
 
-  // timer = micros() - timer;
+  // if (millis() - tempTimer > 5000) {
+  //     tempTimer = millis();
+  //     Serial.print(" ");
 
-  // yield();
+  //     float temp = 0;
+  //     for (int i = 0; i < 20; i++) {
+  //       temp += analogReadTemp();
+  //       delay(10);
+  //     }
+  //     temp = temp / 20;
+  //     float tempF = (temp * 1.8) + 32;
+  //     Serial.print(tempF);
+  //     Serial.print(" F  \t");
+  //     Serial.print(millis()/1000);
+
+  //     for (int i = 0; i < ((tempF - 100.0)*5); i++) {
+  // Serial.print(" ");
 }
 
 void core2stuff() // core 2 handles the LEDs and the CH446Q8
@@ -1273,21 +1203,20 @@ void core2stuff() // core 2 handles the LEDs and the CH446Q8
   }
 
   if (micros() - schedulerTimer > schedulerUpdateTime || showLEDsCore2 == 3 ||
-      showLEDsCore2 == 4 && core1busy == false && core1request == 0) {
+      showLEDsCore2 == 4 || showLEDsCore2 == 6 && core1busy == false && core1request == 0) {
 
     if (((showLEDsCore2 >= 1 && loadingFile == 0) || showLEDsCore2 == 3 ||
          (swirled == 1) && sendAllPathsCore2 == 0) ||
         showProbeLEDs != lastProbeLEDs) {
 
       // Serial.println(showLEDsCore2);
+
+      if (showLEDsCore2 == 6) {
+        showLEDsCore2 = 1;
+
+      }
       int rails =
           showLEDsCore2; // 3 doesn't show nets and keeps control of the LEDs
-
-      //       if (clearBeforeSend == 1) {
-      //   clearLEDsExceptRails();
-      //   Serial.println("clearing");
-      //   //clearBeforeSend = 0;
-      // }
 
       if (rails != 3) {
         core2busy = true;
@@ -1305,213 +1234,52 @@ void core2stuff() // core 2 handles the LEDs and the CH446Q8
 
       if (rails != 2 && rails != 5 && rails != 3 && inClickMenu == 0 &&
           inPadMenu == 0) {
+
         if (defconDisplay >= 0 && probeActive == 0) {
-          core2busy = true;
+          // Serial.print("defconDisplay = ");
+          // Serial.println(defconDisplay);
+          // Serial.print("probeActive = ");
+          // Serial.println(probeActive);
+         // core2busy = true;
           defcon(swirlCount, spread, defconDisplay);
-          core2busy = false;
-        }
-        if ((rails == 1 || probeActive == 1 ) && inClickMenu == 0 &&
-            inPadMenu == 0) {
+          //core2busy = false;
+        } else {
 
 
           while (core1busy == true) {
             // core2busy = false;
           }
           core2busy = true;
+
           if (clearBeforeSend == 1) {
             clearLEDsExceptRails();
             // Serial.println("clearing");
             clearBeforeSend = 0;
           }
+
           // Serial.println("showNets");
           // delay(100);
           showLEDmeasurements();
-         
 
           showNets();
 
+          showAllRowAnimations();
 
           core2busy = false;
           netUpdateRefreshCount = 0;
-
-        } else {
-          // netUpdateRefreshCount++;
-          //  Serial.println(rails);
         }
 
-      } else {
+      } 
 
-        // Serial.print("showLEDsCore2 = ");
-        // Serial.println(showLEDsCore2);
-        // Serial.print("inClickMenu = ");
-        // Serial.println(inClickMenu);
-        // Serial.print("inPadMenu = ");
-        // Serial.println(inPadMenu);
-      }
-          if (inClickMenu != 1) {
-            showAllRowAnimations();
-          }
-      // delayMicroseconds(220);
-      // Serial.println("show");
       core2busy = true;
 
       leds.show();
-      
+
       // probeLEDs.clear();
 
-      if (checkingButton == 0 || showProbeLEDs == 2 ) {
-        //   Serial.print("probeActive = ");
-        //   Serial.println(probeActive);
-        // showProbeLEDs = probeCycle;
-        // while(checkingButton == 1) {
-        //   //Serial.println("checkingButton");
-        // }
-        core2busy = true;
-        // pinMode(2, OUTPUT);
-        // pinMode(9, INPUT);
-        showingProbeLEDs = 1;
-        
-        //         Serial.print("showProbeLEDs = ");
-        // Serial.println(showProbeLEDs);
-        switch (showProbeLEDs) {
-        case 1:
-        if (connectOrClearProbe == 1 && node1or2 == 1) {
-          probeLEDs.setPixelColor(0, 0x0f0fc6); // connect bright
-        } else {
-          probeLEDs.setPixelColor(0, 0x000032); // connect
-        }
-          // probeLEDs[0].setColorCode(0x000011);
-          //  Serial.println(showProbeLEDs);
-          //   probeLEDs.show();
-          //showProbeLEDs = 0;
-          break;
-        case 2:
-        {
-
-        //if (connectOrClearProbe == 0) {
-        // Serial.print("removeFade = ");
-        // Serial.println(removeFade);
-          switch (removeFade) {
-          case 0:
-            probeLEDs.setPixelColor(0, 0x280000); // remove
-            break;
-          case 1:
-            probeLEDs.setPixelColor(0, 0x330101); // remove
-            break;
-          case 2:
-            probeLEDs.setPixelColor(0, 0x3c0202); // remove
-            break;
-          case 3:
-            probeLEDs.setPixelColor(0, 0x450303); // remove
-            break;
-          case 4:
-            probeLEDs.setPixelColor(0, 0x4e0404); // remove
-            break;
-          case 5:
-            probeLEDs.setPixelColor(0, 0x570505); // remove
-            break;
-          case 6:
-            probeLEDs.setPixelColor(0, 0x600707); // remove
-            break;
-          case 7:
-            probeLEDs.setPixelColor(0, 0x690909); // remove
-            break;
-          case 8:
-            probeLEDs.setPixelColor(0, 0x820a0a); // remove
-            break;
-          case 9:
-            probeLEDs.setPixelColor(0, 0xab1010); // remove
-            break;
-          case 10:
-            probeLEDs.setPixelColor(0, 0xff1a1a); // remove
-            break;
-          default:
-           probeLEDs.setPixelColor(0, 0x280000); // remove
-            break;
-          }
-        // } else {
-        //   probeLEDs.setPixelColor(0, 0x360000); // remove
-        // }
-          //probeLEDs.setPixelColor(0, 0x360000); // remove
-          // probeLEDs[0].setColorCode(0x110000);
-          //  probeLEDs.show();
-          //  Serial.println(showProbeLEDs);
-          showProbeLEDs = 0;
-          break;
-        }
-        case 3:
-          probeLEDs.setPixelColor(0, 0x003600); // measure
-          // probeLEDs[0].setColorCode(0x001100);
-          //  probeLEDs.show();
-          //  Serial.println(showProbeLEDs);
-          break;
-        case 4:
-
-          probeLEDs.setPixelColor(0, 0x170c17); // select idle
-          // probeLEDs[0].setColorCode(0x110011);
-          //  probeLEDs.show();
-          //  Serial.println(showProbeLEDs);
-          break;
-        case 5:
-          probeLEDs.setPixelColor(0, 0x111111); // all
-          // probeLEDs[0].setColorCode(0x111111);
-          //  Serial.println(showProbeLEDs);
-          break;
-        case 6:
-          probeLEDs.setPixelColor(0, 0x0c190c); // measure dim
-          break;
-        case 7:
-        {
-          //hsvProbe++;
-          if (hsvProbe > 255) {
-            hsvProbe = 0;
-            hsvProbe2 -= 8;
-            if (hsvProbe2 < 15) {
-              hsvProbe2 = 255;
-            }
-          }
-          hsvColor probeColor;
-          probeColor.h = hsvProbe;
-          probeColor.s = hsvProbe2;
-          probeColor.v = 25;
-
-          uint32_t colorp = packRgb(HsvToRgb(probeColor));
-          probeLEDs.setPixelColor(0, colorp); // select idle dim
-          break;
-        }
-        case 8:
-          probeLEDs.setPixelColor(0, 0xffffff); // max
-          showProbeLEDs = 9;
-          while(showProbeLEDs == 9)
-          {
-            probeLEDs.show();
-            delayMicroseconds(100);
-            //Serial.println("max");
-          }
-          showProbeLEDs = 0;
-          Serial.println("max");
-          break;
-        default:
-          break;
-
-        }
-        lastProbeLEDs = showProbeLEDs;
-
-        // while(checkingButton == 1) {
-        //   //Serial.println("checkingButton");
-        // }
-
-        // FastLED.show();
-        // delay(1);
-        /// pinMode(2, INPUT);
-        // pinMode(9, OUTPUT);
-        //       Serial.print("showProbeLEDs = ");
-        // Serial.println(showProbeLEDs);
-
-        probeLEDs.show();
-        showingProbeLEDs = 0;
-       // showProbeLEDs = 0;
-        //core2busy = false;
+      if (checkingButton == 0 || showProbeLEDs == 2) {
+        probeLEDhandler();
+        // core2busy = false;
       }
       core2busy = false;
       if (rails != 3 && swirled == 0) {
@@ -1539,22 +1307,12 @@ void core2stuff() // core 2 handles the LEDs and the CH446Q8
 
       if (swirlCount >= LOGO_COLOR_LENGTH - 1) {
         swirlCount = 0;
-
       } else {
-
         swirlCount++;
       }
 
       if (swirlCount % 20 == 0) {
         countsss++;
-        // showProbeLEDs++;
-        // if (showProbeLEDs > 5) {
-        //   showProbeLEDs = 1;
-        // }
-        // Serial.print("showProbeLEDs = ");
-        // Serial.println(showProbeLEDs);
-        // defconDisplay = countsss;
-        // showAllRowAnimations();
       }
 
       if (showLEDsCore2 == 0) {
@@ -1580,11 +1338,13 @@ void core2stuff() // core 2 handles the LEDs and the CH446Q8
         } else {
           // defconDisplay = 0;
         }
-      }
 
-      if (defconDisplay > 6) {
+              if (defconDisplay > 6) {
         defconDisplay = 0;
       }
+      }
+
+
       if (readcounter > 100) {
         readcounter = 0;
         // probeCycle++;
@@ -1599,18 +1359,18 @@ void core2stuff() // core 2 handles the LEDs and the CH446Q8
 
       // readGPIO();
       // multicore_lockout_start_blocking();
-      //core2busy = true;
+      // core2busy = true;
       rotaryEncoderStuff();
-      //core2busy = false;
-      // multicore_lockout_end_blocking();
+      // core2busy = false;
+      //  multicore_lockout_end_blocking();
 
-      if (probeActive == 0 && measureModeActive == 0) {
-        if (millis() - measureLEDTimer > 50) {
-          measureLEDTimer = millis();
+      // if (probeActive == 0 && measureModeActive == 0) {
+      //   if (millis() - measureLEDTimer > 50) {
+      //     measureLEDTimer = millis();
 
-          showLEDmeasurements();
-        }
-      }
+      //     showLEDmeasurements();
+      //   }
+      // }
       if (inClickMenu == 0 && loadingFile == 0 && showLEDsCore2 == 0 &&
           core1busy == false) {
         // showAllRowAnimations();
@@ -1628,17 +1388,16 @@ void sendPaths(void) {
   while (core1busy == true) {
   }
   core2busy = true;
-  //if (sendAllPathsCore2 != -1) {
+  // if (sendAllPathsCore2 != -1) {
 
-    // Serial.println("sendPaths");
-    // multicore_lockout_start_blocking();
-    // multicore_lockout_start_timeout_us(1000);
+  // Serial.println("sendPaths");
+  // multicore_lockout_start_blocking();
+  // multicore_lockout_start_timeout_us(1000);
 
-    // digitalWrite(RESETPIN, HIGH);
-    // delayMicroseconds(50);
-    // digitalWrite(RESETPIN, LOW);
-    // delayMicroseconds(2200);
-
+  // digitalWrite(RESETPIN, HIGH);
+  // delayMicroseconds(50);
+  // digitalWrite(RESETPIN, LOW);
+  // delayMicroseconds(2200);
 
   //}
   unsigned long pathTimer = micros();
@@ -1648,10 +1407,10 @@ void sendPaths(void) {
   // core2busy = false;
   unsigned long pathTime = micros() - pathTimer;
 
-  delayMicroseconds(3200);
+  //delayMicroseconds(3200);
   // Serial.print("pathTime = ");
   // Serial.println(pathTime);
   sendAllPathsCore2 = 0;
-  
+
   // }
 }

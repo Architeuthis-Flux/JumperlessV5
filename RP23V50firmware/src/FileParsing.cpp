@@ -568,7 +568,7 @@ void inputNodeFileList(int addRotaryConnections) {
       nodeFile.close();
     }
 
-    refreshSavedColors(i);
+    //refreshSavedColors(i);
     core1busy = false;
   }
   // uint8_t trash = Serial.read();
@@ -631,16 +631,23 @@ void savePreformattedNodeFile(int source, int slot, int keepEncoder) {
   }
 
   if (source == 0) {
-    while (Serial.available() == 0 || Serial.read() == 'f') {
+    int charCount = 0;
+    while (Serial.available() == 0 || Serial.peek() == 'f') {
     }
     nodeFile.print("{");
     while (Serial.available() > 0) {
       // nodeFile.write(Serial.read());
       uint8_t c = Serial.read();
-      // Serial.print(c);
+       
       if (c != 'f' && c != '}' && c != '{' && c != ' ' && c != '\n' &&
           c != '\r' && c != '\t') {
+           if (charCount == 0 && c == '-') {
+             continue;
+             
+           }
         nodeFile.write(c);
+        charCount++;
+        Serial.write(c);
       }
 
       delayMicroseconds(10);
@@ -670,7 +677,7 @@ void savePreformattedNodeFile(int source, int slot, int keepEncoder) {
   //  nodeFileString.read(nodeFile);
   // Serial.println(nodeFileString);
 
-  nodeFile.print(" } ");
+  nodeFile.print(" , } ");
   // Serial.println(" keeping encoder");
 
   nodeFile.close();

@@ -253,7 +253,7 @@ void clearLEDs(void);
 void randomColors(uint32_t color, int wait);
 void rainbowy(int, int, int wait);
 void showNets(void);
-void assignNetColors();
+void assignNetColors(int preview = 0);
 void lightUpRail(int logo = -1, int railNumber = -1, int onOff = 1,
                  int brightness = -1,
                  int supplySwitchPosition = 0);
@@ -277,7 +277,7 @@ uint32_t scaleUpBrightness(uint32_t hexColor, int scaleFactor = 8,
                            int minBrightness = 25);
 uint32_t scaleDownBrightness(uint32_t hexColor, int scaleFactor = 8,
                              int maxBrightness = 15);
-void showSkippedNodes(uint32_t color0 = 0x1f1f1f, uint32_t color1 = 0xffffff, uint32_t color2 = 0x1f1f1f, uint32_t color3 = 0xffffff, uint32_t color4 = 0x1f1f1f);
+void showSkippedNodes(uint32_t onColor = 0x0f1f2f, uint32_t offColor =  0x040007);
 void clearLEDsExceptRails();
 
 uint32_t packRgb(uint8_t r, uint8_t g, uint8_t b);

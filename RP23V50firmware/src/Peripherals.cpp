@@ -1241,206 +1241,123 @@ void chooseShownReadings(void) {
 float railSpread = 17.88;
 
 void showLEDmeasurements(void) {
-  int samples = 8;
+  int samples =16;
 
-  int adc0ReadingUnscaled;
-  float adc0Reading;
+  //int adc0ReadingUnscaled;
+  float adcReading;
 
-  int adc1ReadingUnscaled;
-  float adc1Reading;
+  // int adc1ReadingUnscaled;
+  // float adc1Reading;
 
-  int adc2ReadingUnscaled;
-  float adc2Reading;
+  // int adc2ReadingUnscaled;
+  // float adc2Reading;
 
-  int adc3ReadingUnscaled;
-  float adc3Reading;
+  // int adc3ReadingUnscaled;
+  // float adc3Reading;
 
-  int adc4ReadingUnscaled;
-  float adc4Reading;
+  // int adc4ReadingUnscaled;
+  // float adc4Reading;
 
-  int adc7ReadingUnscaled;
-  float adc7Reading;
+  // int adc7ReadingUnscaled;
+  // float adc7Reading;
 
   int bs = 0;
 
   int numReadings = 0;
 
-  if (showADCreadings[0] > 0 && showADCreadings[0] <= numberOfNets) {
-    numReadings++;
-    adc0ReadingUnscaled = readAdc(0, samples);
-    adc0Reading = (adc0ReadingUnscaled) * (railSpread / 4095);
-    adc0Reading -= railSpread / 2; // offset
-    int mappedAdc0Reading = map(adc0ReadingUnscaled, 0, 4095, -40, 40);
-    int hueShift = 0;
+  uint32_t color = 0x000000;
 
-    if (mappedAdc0Reading < 0) {
-      hueShift = map(mappedAdc0Reading, -40, 0, 0, 60);
-      mappedAdc0Reading = abs(mappedAdc0Reading) + 3;
+
+for (int i = 0; i < 8; i++) {
+
+  if (showADCreadings[i] > 0 && showADCreadings[i] <= numberOfNets) {
+    numReadings++;
+    adcReading = readAdcVoltage(i, samples);
+    color = measurementToColor(adcReading, adcRange[i][0], adcRange[i][1]);
+
+    int brightness = LEDbrightnessSpecial + (int)abs(adcReading*5.0);//map(abs((adcReading*10)), 0, 80, -LEDbrightnessSpecial, 150);
+    if (brightness <= 4) {
+      brightness = 4;
+    }
+
+    if (displayMode == 0 || numberOfShownNets > MAX_NETS_FOR_WIRES) {
+      lightUpNet(showADCreadings[i], -1, 1, brightness, 0, 0, color);
+    }
+
+    color = scaleBrightness(color, map(brightness, LEDbrightnessSpecial, LEDbrightnessSpecial+45, -90, 100));
+    // Serial.println((color, map(brightness, LEDbrightnessSpecial, LEDbrightnessSpecial+45, -90, 100)));
+    netColors[showADCreadings[i]] = unpackRgb(color);
+    adcReadingColors[i] = color;
+
+
+    net[showADCreadings[i]].color = unpackRgb(color);
+     //drawWires(showADCreadings[0]);
+     //showLEDsCore2 = 2;
+  }
+}
+
+
+}
+
+
+uint32_t measurementToColor(float measurement, float min, float max) {
+  uint32_t color = 0;
+  hsvColor hsv;
+  int minInt = -80;
+  int maxInt = 80;
+  int measurementInt = measurement * 10;
+
+  
+  if (measurement < min) {
+    measurement = min;
+  } else if (measurement > max) {
+    measurement = max;
+  }
+
+
+int shift = 228;
+  hsv.h = map(measurementInt, minInt, maxInt, 210, 10);
+  hsv.h += shift;
+  hsv.s = 255;
+ 
+  if (measurement < -0.7) {
+    hsv.h += 10;
+    
+    if (measurement < -5.4) {
+      hsv.s -= abs(measurement + 5.4) * 48;
+      if (hsv.s < 0) {
+        hsv.s = 0;
+      }
+      // Serial.println(measurement + 5.4);
+      // Serial.println(hsv.s);
     } else {
-      hueShift = map(mappedAdc0Reading, 0, 40, 0, 60);
-      mappedAdc0Reading = abs(mappedAdc0Reading) + 3;
+      hsv.s = 230;
     }
-    uint32_t color =
-        logoColors8vSelect[map(adc0ReadingUnscaled, 1000, 3000, 0, 70) % 70];
-    if (displayMode == 0) {
-      lightUpNet(showADCreadings[0], -1, 1, LEDbrightnessSpecial, 0, 0, color);
-    }
-    netColors[showADCreadings[0]] = unpackRgb(color);
-    adcReadingColors[0] = color;
-    // Serial.print("showADCreadings[3]: ");
-    // Serial.println(showADCreadings[3]);
+    } else if (measurement > 0.5) {
+    hsv.h += 239;
 
-    net[showADCreadings[0]].color = unpackRgb(color);
-    // drawWires(showADCreadings[3]);
-    // showLEDsCore2 = 2;
+    if (measurement > 5.4) {
+      hsv.s -= (measurement - 5.4) * 48;
+      
+      if (hsv.s < 0) {
+        hsv.s = 0;
+      }
+    } 
+  } else {
+    //hsv.h += 254 - (measurement - 0.0) * 64;
   }
-  if (showADCreadings[1] > 0 && showADCreadings[1] <= numberOfNets) {
-    numReadings++;
-    adc1ReadingUnscaled = readAdc(1, samples);
-    adc1Reading = (adc1ReadingUnscaled) * (railSpread / 4095);
-    adc1Reading -= railSpread / 2; // offset
-    int mappedAdc1Reading = map(adc1ReadingUnscaled, 0, 4095, -40, 40);
-    int hueShift = 0;
+ // hsv.s = 255;
 
-    if (mappedAdc1Reading < 0) {
-      hueShift = map(mappedAdc1Reading, -40, 0, 0, 60);
-      mappedAdc1Reading = abs(mappedAdc1Reading) + 3;
-    } else {
-      hueShift = map(mappedAdc1Reading, 0, 40, 0, 60);
-      mappedAdc1Reading = abs(mappedAdc1Reading) + 3;
-    }
-    uint32_t color =
-        logoColors8vSelect[map(adc1ReadingUnscaled, 1000, 3000, 0, 70) % 70];
-    if (displayMode == 0) {
-      lightUpNet(showADCreadings[1], -1, 1, LEDbrightnessSpecial, 0, 0, color);
-    }
-    netColors[showADCreadings[1]] = unpackRgb(color);
-    adcReadingColors[1] = color;
-    // Serial.print("showADCreadings[1]: ");
-    // Serial.println(showADCreadings[1]);
-    net[showADCreadings[1]].color = unpackRgb(color);
-    // drawWires(showADCreadings[1]);
-    // showLEDsCore2 = 2;
-  }
+  hsv.h = hsv.h % 256;
+  hsv.v = 255;
+ // Serial.println(hsv.h);
+  // int measurementInt = measurement * 10;
+  // int distance = abs(0 - measurementInt);
+  // hsv.v = map(distance, min*11, max*11, 0, 100);
+  rgbColor rgb = HsvToRgb(hsv);
+  color = packRgb(rgb);
 
-  if (showADCreadings[2] > 0 && showADCreadings[2] <= numberOfNets) {
-
-    numReadings++;
-    adc2ReadingUnscaled = readAdc(2, samples);
-    adc2Reading = (adc2ReadingUnscaled) * (railSpread / 4095);
-    adc2Reading -= railSpread / 2; // offset
-    int mappedAdc2Reading = map(adc2ReadingUnscaled, 0, 4095, -40, 40);
-    int hueShift = 0;
-
-    if (mappedAdc2Reading < 0) {
-      hueShift = map(mappedAdc2Reading, -40, 0, 0, 60);
-      mappedAdc2Reading = abs(mappedAdc2Reading) + 3;
-    } else {
-      hueShift = map(mappedAdc2Reading, 0, 40, 0, 60);
-      mappedAdc2Reading = abs(mappedAdc2Reading) + 3;
-    }
-    // uint32_t color = logoColors8vSelect[abs(
-    //     map(adc2ReadingUnscaled, 1000, 3000, -10, 55) % 70)];
-    uint32_t color =
-        logoColors8vSelect[map(adc2ReadingUnscaled, 1000, 3000, 0, 70) % 70];
-    // Serial.println(mappedAdc2Reading);
-    if (displayMode == 0) {
-      lightUpNet(showADCreadings[2], -1, 1, LEDbrightnessSpecial, 0, 0, color);
-    }
-    netColors[showADCreadings[2]] = unpackRgb(color);
-    adcReadingColors[2] = color;
-    // Serial.print("showADCreadings[2]: ");
-    // Serial.println(showADCreadings[2]);
-    net[showADCreadings[2]].color = unpackRgb(color);
-    // drawWires(showADCreadings[2]);
-  }
-
-  if (showADCreadings[3] > 0 && showADCreadings[3] <= numberOfNets) {
-    numReadings++;
-    adc3ReadingUnscaled = readAdc(3, samples);
-    adc3Reading = (adc3ReadingUnscaled) * (railSpread / 4095);
-    adc3Reading -= railSpread / 2; // offset
-    int mappedAdc3Reading = map(adc3ReadingUnscaled, 0, 4095, -40, 40);
-    int hueShift = 0;
-
-    if (mappedAdc3Reading < 0) {
-      hueShift = map(mappedAdc3Reading, -40, 0, 0, 60);
-      mappedAdc3Reading = abs(mappedAdc3Reading) + 3;
-    } else {
-      hueShift = map(mappedAdc3Reading, 0, 40, 0, 60);
-      mappedAdc3Reading = abs(mappedAdc3Reading) + 3;
-    }
-    uint32_t color =
-        logoColors8vSelect[map(adc3ReadingUnscaled, 1000, 3000, 0, 70) % 70];
-    if (displayMode == 0) {
-      lightUpNet(showADCreadings[3], -1, 1, LEDbrightnessSpecial, 0, 0, color);
-    }
-    netColors[showADCreadings[3]] = unpackRgb(color);
-    adcReadingColors[3] = color;
-    // Serial.print("showADCreadings[3]: ");
-    // Serial.println(showADCreadings[3]);
-
-    net[showADCreadings[3]].color = unpackRgb(color);
-    // drawWires(showADCreadings[3]);
-    // showLEDsCore2 = 2;
-  }
-
-  if (showADCreadings[4] > 0 && showADCreadings[4] <= numberOfNets) {
-    numReadings++;
-    adc4ReadingUnscaled = readAdc(4, samples);
-    adc4Reading = (adc4ReadingUnscaled) * (5.0 / 4095);
-    int mappedAdc4Reading = map(adc4ReadingUnscaled, 0, 4095, 0, 65);
-
-    uint32_t color = logoColors8vSelect[abs(
-        (map(adc4ReadingUnscaled, 50, 4095, 0, 30) + 26) % 70)];
-    if (displayMode == 0) {
-      lightUpNet(showADCreadings[4], -1, 1, LEDbrightnessSpecial, 0, 0, color);
-    }
-    netColors[showADCreadings[4]] = unpackRgb(color);
-    adcReadingColors[4] = color;
-    // Serial.print("showADCreadings[1]: ");
-    // Serial.println(showADCreadings[1]);
-    net[showADCreadings[4]].color = unpackRgb(color);
-    // drawWires(showADCreadings[1]);
-    //  showLEDsCore2 = 2;
-  }
-
-  if (showADCreadings[7] > 0 && showADCreadings[7] <= numberOfNets) {
-    numReadings++;
-    adc7ReadingUnscaled = readAdc(7, samples);
-    adc7Reading = (adc7ReadingUnscaled) * (railSpread / 4095);
-    adc7Reading -= railSpread / 2; // offset
-    int mappedAdc7Reading = map(adc7ReadingUnscaled, 0, 4095, -40, 40);
-    int hueShift = 0;
-
-    if (mappedAdc7Reading < 0) {
-      hueShift = map(mappedAdc7Reading, -40, 0, 0, 60);
-      mappedAdc7Reading = abs(mappedAdc7Reading) + 3;
-    } else {
-      hueShift = map(mappedAdc7Reading, 0, 40, 0, 60);
-      mappedAdc7Reading = abs(mappedAdc7Reading) + 3;
-    }
-    uint32_t color =
-        logoColors8vSelect[map(adc7ReadingUnscaled, 1000, 3000, 0, 70) % 70];
-    if (displayMode == 0) {
-      lightUpNet(showADCreadings[7], -1, 1, LEDbrightnessSpecial, 0, 0, color);
-    }
-    netColors[showADCreadings[7]] = unpackRgb(color);
-    adcReadingColors[7] = color;
-    // Serial.print("showADCreadings[3]: ");
-    // Serial.println(showADCreadings[3]);
-
-    net[showADCreadings[7]].color = unpackRgb(color);
-    // drawWires(showADCreadings[3]);
-    // showLEDsCore2 = 2;
-  }
-
-  if (numReadings > 0 && displayMode == 1) {
-    // showLEDsCore2 = 1;
-    // assignNetColors();
-    // drawWires();
-    // delay(100);
-  }
+  return color;
 }
 
 void showMeasurements(int samples, int printOrBB) {
@@ -1480,20 +1397,21 @@ void showMeasurements(int samples, int printOrBB) {
 
       //  bs += Serial.print("Floating  ");
       // }
-      adc0ReadingUnscaled = readAdc(0, samples);
+      // adc0ReadingUnscaled = readAdc(0, samples);
 
-      adc0Reading = (adc0ReadingUnscaled) * (railSpread / 4095);
-      adc0Reading -= railSpread / 2; // offset
+      // adc0Reading = (adc0ReadingUnscaled) * (railSpread / 4095);
+      // adc0Reading -= railSpread / 2; // offset
+      adc0Reading = readAdcVoltage(0, samples);
       bs += Serial.print("ADC 0: ");
       bs += Serial.print(adc0Reading);
       bs += Serial.print("V\t");
-      int mappedAdc0Reading = map(adc0ReadingUnscaled, 0, 4095, -40, 40);
-      int hueShift = 0;
+      // int mappedAdc0Reading = map(adc0ReadingUnscaled, 0, 4095, -40, 40);
+      // int hueShift = 0;
 
-      if (mappedAdc0Reading < 0) {
-        hueShift = map(mappedAdc0Reading, -40, 0, 0, 200);
-        mappedAdc0Reading = abs(mappedAdc0Reading);
-      }
+      // if (mappedAdc0Reading < 0) {
+      //   hueShift = map(mappedAdc0Reading, -40, 0, 0, 200);
+      //   mappedAdc0Reading = abs(mappedAdc0Reading);
+      // }
     }
     if (showADCreadings[1] != 0) {
       //       if (readFloatingOrState(ADC0_PIN, -1) == floating)//this doesn't
@@ -1502,20 +1420,22 @@ void showMeasurements(int samples, int printOrBB) {
 
       //  bs += Serial.print("Floating  ");
       // }
-      adc1ReadingUnscaled = readAdc(1, samples);
+      // adc1ReadingUnscaled = readAdc(1, samples);
 
-      adc1Reading = (adc1ReadingUnscaled) * (railSpread / 4095);
-      adc1Reading -= railSpread / 2; // offset
+      // adc1Reading = (adc1ReadingUnscaled) * (railSpread / 4095);
+      // adc1Reading -= railSpread / 2; // offset
+
+      adc1Reading = readAdcVoltage(1, samples);
       bs += Serial.print("ADC 1: ");
       bs += Serial.print(adc1Reading);
       bs += Serial.print("V\t");
-      int mappedAdc1Reading = map(adc1ReadingUnscaled, 0, 4095, -40, 40);
-      int hueShift = 0;
+      // int mappedAdc1Reading = map(adc1ReadingUnscaled, 0, 4095, -40, 40);
+      // int hueShift = 0;
 
-      if (mappedAdc1Reading < 0) {
-        hueShift = map(mappedAdc1Reading, -40, 0, 0, 200);
-        mappedAdc1Reading = abs(mappedAdc1Reading);
-      }
+      // if (mappedAdc1Reading < 0) {
+      //   hueShift = map(mappedAdc1Reading, -40, 0, 0, 200);
+      //   mappedAdc1Reading = abs(mappedAdc1Reading);
+      // }
     }
 
     if (showADCreadings[2] != 0) {

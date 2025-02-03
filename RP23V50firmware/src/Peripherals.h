@@ -84,6 +84,9 @@ int readAdc(int channel, int samples = 8);
 void chooseShownReadings(void);
 void showMeasurements(int samples = 8, int printOrBB = 2);// 0 = print, 1 = breadboard 2 = both
 void showLEDmeasurements(void);
+
+uint32_t measurementToColor(float measurement, float min = -8.0, float max = 8.0);
+
 const uint16_t DACLookup_FullSine_9Bit[512] =
     {
         2048, 2073, 2098, 2123, 2148, 2174, 2199, 2224,

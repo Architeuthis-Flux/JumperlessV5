@@ -9,6 +9,7 @@
 #include "PersistentStuff.h"
 #include "Probing.h"
 #include "leds.h"
+#include "Menus.h"  
 
 /* clang-format off */
 
@@ -167,8 +168,11 @@ char defconString[16] = "Jumper less V5 ";
 
 /* clang-format on */
 int colorCycle = 0;
-void defcon(int start, int spread, int color) {
+int defNudge = 0;
+
+void defcon(int start, int spread, int color, int nudge) {
   spread = 13;
+  nudge = defNudge;
 
   int scaleFactor = -70;
 
@@ -177,86 +181,86 @@ void defcon(int start, int spread, int color) {
       defconString[0],
       scaleBrightness(logoColorsAll[color][(start) % (LOGO_COLOR_LENGTH - 1)],
                       scaleFactor),
-      (uint32_t)0xffffff, 0, 0, 1);
+      (uint32_t)0xffffff, 0, 0, nudge);
 
   b.print(defconString[1],
           scaleBrightness(
               logoColorsAll[color][(start + spread) % (LOGO_COLOR_LENGTH - 1)],
               scaleFactor),
-          (uint32_t)0xffffff, 1, 0, 1);
+          (uint32_t)0xffffff, 1, 0, nudge);
 
   b.print(
       defconString[2],
       scaleBrightness(
           logoColorsAll[color][(start + spread * 2) % (LOGO_COLOR_LENGTH - 1)],
           scaleFactor),
-      (uint32_t)0xffffff, 2, 0, 1);
+      (uint32_t)0xffffff, 2, 0, nudge);
   b.print(
       defconString[3],
       scaleBrightness(
           logoColorsAll[color][(start + spread * 3) % (LOGO_COLOR_LENGTH - 1)],
           scaleFactor),
-      (uint32_t)0xffffff, 3, 0, 1);
+      (uint32_t)0xffffff, 3, 0, nudge);
   b.print(
       defconString[4],
       scaleBrightness(
           logoColorsAll[color][(start + spread * 4) % (LOGO_COLOR_LENGTH - 1)],
           scaleFactor),
-      (uint32_t)0xffffff, 4, 0, 1);
+      (uint32_t)0xffffff, 4, 0, nudge);
   b.print(
       defconString[5],
       scaleBrightness(
           logoColorsAll[color][(start + spread * 5) % (LOGO_COLOR_LENGTH - 1)],
           scaleFactor),
-      (uint32_t)0xffffff, 5, 0, 1);
+      (uint32_t)0xffffff, 5, 0, nudge);
   b.print(
       defconString[6],
       scaleBrightness(
           logoColorsAll[color][(start + spread * 5) % (LOGO_COLOR_LENGTH - 1)],
           scaleFactor),
-      (uint32_t)0xffffff, 6, 0, 1);
+      (uint32_t)0xffffff, 6, 0, nudge);
   b.print(
       defconString[7],
       scaleBrightness(
           logoColorsAll[color][(start + spread * 6) % (LOGO_COLOR_LENGTH - 1)],
           scaleFactor),
-      (uint32_t)0xffffff, 0, 1, -1);
+      (uint32_t)0xffffff, 0, 1, nudge);
   b.print(
       defconString[8],
       scaleBrightness(
           logoColorsAll[color][(start + spread * 7) % (LOGO_COLOR_LENGTH - 1)],
           scaleFactor),
-      (uint32_t)0xffffff, 1, 1, -1);
+      (uint32_t)0xffffff, 1, 1, nudge);
   b.print(
       defconString[9],
       scaleBrightness(
           logoColorsAll[color][(start + spread * 8) % (LOGO_COLOR_LENGTH - 1)],
           scaleFactor),
-      (uint32_t)0xffffff, 2, 1, -1);
+      (uint32_t)0xffffff, 2, 1, nudge);
   b.print(
       defconString[10],
       scaleBrightness(
           logoColorsAll[color][(start + spread * 9) % (LOGO_COLOR_LENGTH - 1)],
           scaleFactor),
-      (uint32_t)0xffffff, 3, 1, -1);
+      (uint32_t)0xffffff, 3, 1, nudge);
   b.print(
       defconString[11],
       scaleBrightness(
           logoColorsAll[color][(start + spread * 10) % (LOGO_COLOR_LENGTH - 1)],
           scaleFactor),
-      (uint32_t)0xffffff, 4, 1, -1);
+      (uint32_t)0xffffff, 4, 1, nudge);
   b.print(
       defconString[12],
       scaleBrightness(
           logoColorsAll[color][(start + spread * 11) % (LOGO_COLOR_LENGTH - 1)],
           scaleFactor),
-      (uint32_t)0xffffff, 5, 1, -1);
+      (uint32_t)0xffffff, 5, 1, nudge);
   b.print(
       defconString[13],
       scaleBrightness(
           logoColorsAll[color][(start + spread * 12) % (LOGO_COLOR_LENGTH - 1)],
           scaleFactor),
-      (uint32_t)0xffffff, 6, 1, -1);
+      (uint32_t)0xffffff, 6, 1, nudge);
   // railsToPixelMap[0][20] = 0;
   //  leds.setPixelColor(railsToPixelMap[0][20], 0x004f9f);
   //  leds.setPixelColor(railsToPixelMap[0][21], 0x3f000f);
@@ -975,6 +979,8 @@ void showRowAnimation(int index, int net) {
       frameColors[i] =
           rowAnimations[net].frames[(rowAnimations[net].currentFrame + i) % 15];
     }
+    // Serial.print("brightenedAmount = ");  
+    // Serial.println(brightenedAmount);
 
     // Serial.print("frameColors[");
     // Serial.print(i);
@@ -1015,7 +1021,7 @@ void showRowAnimation(int index, int net) {
           for (int j = 0; j < 5; j++) {
 
             b.printRawRow(0b00010000 >> j, path[i].node1 - 1, frameColors[j],
-                          0xfffffe);
+                          0xfffffe, 4);
           }
         }
         if (path[i].node2 > 0 && path[i].node2 <= 60 &&
@@ -1023,7 +1029,7 @@ void showRowAnimation(int index, int net) {
           for (int j = 0; j < 5; j++) {
 
             b.printRawRow(0b00010000 >> j, path[i].node2 - 1, frameColors[j],
-                          0xfffffe);
+                          0xfffffe, 4);
           }
         }
       }
@@ -1337,8 +1343,9 @@ void bread::printMenuReminder(int menuDepth, uint32_t color) {
   }
 }
 
-void bread::printRawRow(uint8_t data, int row, uint32_t color, uint32_t bg) {
-color = scaleBrightness(color, menuBrightnessSetting);
+void bread::printRawRow(uint8_t data, int row, uint32_t color, uint32_t bg, int scale) {
+
+color = scaleBrightness(color, (menuBrightnessSetting/scale));
   if (row <= 60) {
     printGraphicsRow(data, row, color, bg);
   } else {
@@ -1611,4 +1618,122 @@ void scrollFont() {
       scrollPosition = 0;
     }
   }
+}
+
+
+void printTextFromMenu(void)
+{
+
+    
+    b.clear();
+int scroll = 0;
+    char f[80] = {' '};
+    int index = 0;
+    leds.clear();
+    while (Serial.available() > 0) {
+      if (index > 79) {
+        break;
+      }
+      f[index] = Serial.read();
+      index++;
+      // b.print(f);
+      // delayMicroseconds(30);
+      // leds.show();
+    }
+
+    if (index > 14) {
+      scroll = 1;
+    }
+    f[index] = ' ';
+    f[index + 1] = ' ';
+    f[index + 2] = ' ';
+    index += 3;
+    uint32_t color = 0x100010;
+    // Serial.print(index);
+    defconString[0] = f[0];
+    defconString[1] = f[1];
+    defconString[2] = f[2];
+    defconString[3] = f[3];
+    defconString[4] = f[4];
+    defconString[5] = f[5];
+    defconString[6] = f[6];
+    defconString[7] = f[7];
+    defconString[8] = f[8];
+    defconString[9] = f[9];
+    defconString[10] = f[10];
+    defconString[11] = f[11];
+    defconString[12] = f[12];
+    defconString[13] = f[13];
+    defconString[14] = f[14];
+    defconString[15] = f[15];
+    //defconString[16] = f[16];
+
+    defconDisplay = 0;
+    unsigned long timerScrollTimer = millis();
+    while (Serial.available() != 0) {
+      char trash = Serial.read();
+    }
+
+int speed = 200000;
+    int cycleCount = 15;
+    Serial.println("\n\rPress any key to exit\n\r");
+
+    if (scroll == 1) {
+Serial.println("scroll wheel to change speed)\n\r");
+    }
+    
+    while (Serial.available() == 0) {
+      if (scroll == 1) {
+        rotaryEncoderStuff();
+        if (encoderDirectionState == UP) {
+          if (speed > 10000) {
+            speed = speed - 10000;
+          } else {
+            speed-=500;
+          }        if (speed < 0) {
+          speed = 0;
+        } 
+          // Serial.print("\r                          \rspeed = ");
+          // Serial.print(speed);
+          
+          //encoderDirectionState = NONE;
+        } else if (encoderDirectionState == DOWN) {
+          speed = speed + 10000;
+          //           Serial.print("\r                          \rspeed = ");
+          // Serial.print(speed);
+          //encoderDirectionState = NONE; 
+          if (speed > 1000000) {
+          speed = 1000000;
+        }
+        }
+
+        if ((micros() - timerScrollTimer) > speed) {
+          // Serial.print("defNudge = ");
+          // Serial.println(defNudge);
+          timerScrollTimer = micros();
+          defNudge--;
+          if (defNudge < -3) {
+            defNudge = 0;
+          cycleCount++;
+          
+          
+          char temp = f[(cycleCount)%index];
+          for (int i = 0; i < 15; i++) {
+            defconString[i] = defconString[i + 1];
+          }
+          defconString[15] = temp;
+          //b.print(f, color);
+          }
+          //delay(100);
+          //leds.show();
+          //showLEDsCore2 =2;
+        }
+      }
+    }
+
+    // while (Serial.available() == 0) {
+    //   // b.print(f, color);
+    //   // delay(100);
+    //   // leds.show();
+    // }
 }

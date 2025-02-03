@@ -54,29 +54,30 @@ void refreshConnections(int ledShowOption, int fillUnused) {
 
   bridgesToPaths();
   chooseShownReadings();
-  assignNetColors();
+  //assignNetColors();
 
   // if (lastSlot != netSlot) {
   //   createLocalNodeFile(netSlot);
   //   lastSlot = netSlot;
   // }
+core1busy = false;
 
-  netsUpdated = true;
   if (ledShowOption != 0) {
 
     showLEDsCore2 = ledShowOption;
+    waitCore2();
   }
   sendAllPathsCore2 = 1;
 
-  core1busy = false;
-  waitCore2();
+  
+  
   // sendPaths();
 }
 
 void refreshLocalConnections(int ledShowOption, int fillUnused) {
 
-  waitCore2();
-  core1busy = true;
+   waitCore2();
+   
 
   clearAllNTCC();
 
@@ -86,23 +87,24 @@ void refreshLocalConnections(int ledShowOption, int fillUnused) {
 
   bridgesToPaths();
   chooseShownReadings();
-  assignNetColors();
+  //assignNetColors();
 
   //  if (lastSlot != netSlot) {
   //   createLocalNodeFile(netSlot);
   //   lastSlot = netSlot;
   // }
 
-  netsUpdated = true;
+  core1busy = false;
   if (ledShowOption != 0) {
 
     showLEDsCore2 = ledShowOption;
+    waitCore2();
   }
   sendAllPathsCore2 = 1;
 
   // sendPaths();
-  core1busy = false;
-  waitCore2();
+  
+  //waitCore2();
 }
 
 void refreshBlind(

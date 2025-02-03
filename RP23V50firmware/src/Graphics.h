@@ -42,7 +42,7 @@ void barGraph(int position, int value, int maxValue, int leftRight,
                      uint32_t color, uint32_t bg);
 
 void printMenuReminder(int menuDepth, uint32_t color);
-void printRawRow(uint8_t data, int row, uint32_t color, uint32_t bg);
+void printRawRow(uint8_t data, int row, uint32_t color, uint32_t bg, int scale = 1);
 
    
     void clear(int topBottom = -1);
@@ -69,6 +69,7 @@ void printRawRow(uint8_t data, int row, uint32_t color, uint32_t bg);
         
     };
     
+    extern int defNudge;
 extern specialRowAnimation rowAnimations[26];
 
 extern bool animationsEnabled;
@@ -94,7 +95,9 @@ void printString(const char* s, uint32_t color = 0xFFFFFF, uint32_t bg = 0xFFFFF
  void drawWires(int net = -1);
  void printWireStatus(void);
 
-void defcon(int start, int spread, int color = 0);
+void defcon(int start, int spread, int color = 0, int nudge = 1);
+
+void printTextFromMenu(void);
 
 
 

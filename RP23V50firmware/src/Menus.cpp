@@ -2608,24 +2608,26 @@ int doMenuAction(int menuPosition, int selection) {
       debugFlagSet(12);
     } else if (menuLines[currentAction.previousMenuPositions[1]].indexOf(
                    "Bright") != -1) {
-      int brightnessOptionMap[] = {2, 3, 5, 7, 10, 14, 17, 20, 25, 32, 36};
+      int brightnessOptionMap[] = {3, 4, 6, 9, 10, 14, 18, 26, 32, 42, 48};
+      int specialBrightnessOptionMap[] = {3, 4, 6, 9, 10, 14, 18, 26, 32, 42, 48};
       LEDbrightness = (brightnessOptionMap[currentAction.from[0]]);
+      LEDbrightnessSpecial = (specialBrightnessOptionMap[currentAction.from[0]]);
 
       switch (currentAction.from[0]) {
       case 0:
-        menuBrightnessSetting = -80;
+        menuBrightnessSetting = -70;
         break;
       case 1:
-        menuBrightnessSetting = -65;
-        break;
-      case 2:
         menuBrightnessSetting = -55;
         break;
+      case 2:
+        menuBrightnessSetting = -40;
+        break;
       case 3:
-        menuBrightnessSetting = -45;
+        menuBrightnessSetting = -25;
         break;
       case 4:
-        menuBrightnessSetting = -30;
+        menuBrightnessSetting = -10;
         break;
       case 5:
         menuBrightnessSetting = -5;

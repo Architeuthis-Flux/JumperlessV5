@@ -85,4 +85,10 @@ int readProbeRaw(int readNothingTouched = 0);
 int calibrateProbe(void);
 void calibrateDac0(float target = 3.3);
 
+extern int lastProbeLEDs;
+
+
+void probeLEDhandler(void); 
+
+
 #endif
