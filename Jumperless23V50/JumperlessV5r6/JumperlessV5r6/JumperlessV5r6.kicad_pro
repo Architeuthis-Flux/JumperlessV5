@@ -86,7 +86,7 @@
         "items_not_allowed": "warning",
         "length_out_of_range": "error",
         "lib_footprint_issues": "warning",
-        "lib_footprint_mismatch": "warning",
+        "lib_footprint_mismatch": "ignore",
         "malformed_courtyard": "ignore",
         "microvia_drill_out_of_range": "warning",
         "missing_courtyard": "ignore",
@@ -100,7 +100,7 @@
         "silk_over_copper": "ignore",
         "silk_overlap": "ignore",
         "skew_out_of_range": "error",
-        "solder_mask_bridge": "warning",
+        "solder_mask_bridge": "ignore",
         "starved_thermal": "warning",
         "text_height": "ignore",
         "text_thickness": "ignore",
@@ -111,7 +111,7 @@
         "tracks_crossing": "error",
         "unconnected_items": "error",
         "unresolved_variable": "error",
-        "via_dangling": "warning",
+        "via_dangling": "ignore",
         "zones_intersect": "error"
       },
       "rules": {
