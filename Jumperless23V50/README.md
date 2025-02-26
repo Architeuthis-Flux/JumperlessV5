@@ -7,7 +7,7 @@ Here in this folder there *should* be every bit of hardware that goes into this 
 
 Anywate here's a render of each of the parts you'll find in these folders:
 ![hero copy](https://github.com/user-attachments/assets/07d47522-235b-4960-8402-e838b25ef85d)
-
+![JumperlessV5r6](https://github.com/user-attachments/assets/883e8027-53df-4467-9c5d-db390e1c6145)
 ![Jumperless23V50back](https://github.com/user-attachments/assets/ada7a899-3d40-4e3f-a9fd-00384b688887)
 
 ![newShell-3](https://github.com/user-attachments/assets/8ef1c403-d72d-4d47-be7e-78af6d7ec09a)
