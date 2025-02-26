@@ -6,8 +6,8 @@ Jumperless V5 is a breadboard where any point can be connected to any other with
 
 ![JumperlessV5front](https://github.com/Architeuthis-Flux/JumperlessV5/assets/20519442/60e26150-3dce-4d52-812f-8f1f99c58989)
 
-## You'll be able to get one on [Crowd Supply](https://www.crowdsupply.com/architeuthis-flux/jumperless-v5) in the near future.
-###### Sign up for updates so I know how many of these to make
+## You can get one on [Crowd Supply](https://www.crowdsupply.com/architeuthis-flux/jumperless-v5).
+
 
 
 https://github.com/user-attachments/assets/703db848-5871-4152-bb03-244a400a1bb8
@@ -35,9 +35,12 @@ https://github.com/user-attachments/assets/c78493ee-f2cd-4704-bab7-26346f978c54
 https://github.com/user-attachments/assets/168cb387-934b-4a25-b30d-b696312ee0e1
 
 
-Jumperless V5 will cost roughly $350 (with free shipping worldwide)
+Jumperless V5 will cost roughly $360 (with free shipping worldwide)
 
-## For People Who Like Reading
+
+
+
+# For People Who Like Reading (btw all of this is a bit dated and some details have changed since then)
 You're flipping through a comic book and see an ad in the back for some X-ray glasses. You put some coins in an envelope and send it off (because it's like 50 years ago in this made up scenario) and get back some spectacles. You immediately look up at the night sky towards the galactic center for Sagittarius A* and don't see a thing; you've been had. You go back to prototyping your new Eurorack module (because that's what I assume everyone was doing in the early 80's) and forget to take them off. 
 
 You notice that you can now see electrons flowing, capacitors charging, frequencies changing, UART messages passing, all right there on your breadboard. Those aren't X-ray specs, they're electron specs, even better.  
