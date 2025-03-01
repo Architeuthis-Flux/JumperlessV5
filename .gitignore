@@ -30,3 +30,4 @@ _Build
 *.csv
 *Store
 Hardware/Jumperless23V50/~Jumperless23V50.kicad_pcb.lck
+*.lck

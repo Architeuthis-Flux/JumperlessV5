@@ -26,6 +26,8 @@ extern volatile int inPadMenu;
 extern volatile int checkingButton;
 extern volatile int measureModeActive;
 
+extern int minProbeReadingMap;
+extern int maxProbeReadingMap;
 
 extern volatile int removeFade;
 

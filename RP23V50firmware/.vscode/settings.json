@@ -31,7 +31,8 @@
         "charconv": "cpp",
         "chrono": "cpp",
         "format": "cpp",
-        "cstdint": "cpp"
+        "cstdint": "cpp",
+        "algorithm": "cpp"
     },
     "cortex-debug.registerUseNaturalFormat": false,
     "C_Cpp.errorSquiggles": "disabled",

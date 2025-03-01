@@ -44,7 +44,8 @@ extern int baudRate;
 void setGPIO(void);
 void readGPIO(void);
 
-int i2cScan(int sdaRow = -1 , int sclRow = -1);
+int initI2C(int sdaPin = 22, int sclPin = 23, int speed = 100000);
+
 
 int readFloatingOrStateMCP (int pin = 0);
 

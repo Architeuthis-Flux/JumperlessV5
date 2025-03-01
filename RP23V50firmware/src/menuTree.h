@@ -129,11 +129,11 @@ DisplayOptions\n\
 RoutingOptions\n\
 -Stack\n\
 --$Rails$\n\
----*0**1**2**Max *\n\
+---*0**1**2**3**4**Max *\n\
 --$DACs$\n\
----*0**1**2**Max *\n\
+---*0**1**2**3**4**Max *\n\
 --$Paths$\n\
----*0**1**2**Max *\n\0"};
+---*0**1**2**3**4**Max *\n\0"};
 
 
 

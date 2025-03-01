@@ -16,8 +16,7 @@
 #include "RotaryEncoder.h"
 #include "hardware/pwm.h"
 #include "pico/stdlib.h"
-#include <Adafruit_GFX.h>
-#include <Adafruit_SSD1306.h>
+
 #include <EEPROM.h>
 // #include <FastLED.h>
 #include "ArduinoStuff.h"
@@ -26,16 +25,8 @@ int debugProbing = 0;
 
 volatile unsigned long blockProbing = 0;
 volatile unsigned long blockProbingTimer = 0;
-#define OLED_CONNECTED 0
 
-#define SCREEN_WIDTH 128 // OLED display width, in pixels
-#define SCREEN_HEIGHT 32 // OLED display height, in pixels
 
-#define OLED_RESET -1 // Reset pin # (or -1 if sharing Arduino reset pin)
-#define SCREEN_ADDRESS                                                         \
-  0x3C ///< See datasheet for Address; 0x3D for 128x64, 0x3C for 128x32
-
-Adafruit_SSD1306 display(SCREEN_WIDTH, SCREEN_HEIGHT, &Wire, OLED_RESET);
 
 int switchPosition = 1;
 int showProbeCurrent = 0;
@@ -60,7 +51,7 @@ unsigned long probeTimeout = 0;
 
 int lastFoundIndex = 0;
 
-int lastFoundHistory[50] = {-1};
+//int lastFoundHistory[50] = {-1};
 
 int connectedRowsIndex = 0;
 int connectedRows[32] = {-1};
@@ -77,12 +68,10 @@ int buttonPin = 9;
 
 unsigned long probeButtonTimer = 0;
 
-int justSelectedConnectedNodes = 0;
-
 int voltageSelection = SUPPLY_3V3;
 int voltageChosen = 0;
 volatile int connectOrClearProbe = 0;
-int wasRotaryMode = 0;
+
 volatile int inPadMenu = 0;
 int rainbowList[13][3] = {
     {40, 50, 80}, {88, 33, 70}, {30, 15, 45}, {8, 27, 45},  {45, 18, 19},
@@ -104,6 +93,12 @@ uint32_t deleteFade[13] = {0x371f16, 0x28160b, 0x191307, 0x141005, 0x0f0901,
 int fadeIndex = 0;
 volatile int removeFade = 0;
 int probeMode(int pin, int setOrClear) {
+
+
+extern int minProbeReadingMap;
+extern int maxProbeReadingMap;
+
+
 
   if (checkingPads == 1) {
     Serial.println("checkingPads\n\r");
@@ -485,6 +480,12 @@ restartProbing:
           doubleSelectTimeout = millis();
           doubleSelectCountdown = 200;
 
+//             Serial.print("\n\n\rPaths: \n\r");
+//   printPathsCompact();
+//   Serial.print("\n\n\n\rChip Status: \n\r");
+// printChipStatus();
+// Serial.println("\n\n\r");
+
           // delay(400);
         } else if (setOrClear == 0) {
 
@@ -568,9 +569,7 @@ restartProbing:
     // Serial.print(" ");
     // Serial.println(row[0]);
 
-    if (justSelectedConnectedNodes == 1) {
-      justSelectedConnectedNodes = 0;
-    }
+
 
     if (millis() - doubleSelectTimeout > 700) {
       // Serial.println("doubleSelectCountdown");
@@ -1953,7 +1952,7 @@ int selectFromLastFound(void) {
   // rainbowList[0][1], rainbowList[0][2]); leds.show(); showLEDsCore2 = 1;
   probeButtonTimer = millis();
   // connectedRowsIndex = 0;
-  justSelectedConnectedNodes = 1;
+  //justSelectedConnectedNodes = 1;
   return selected2;
 }
 
@@ -2003,7 +2002,7 @@ int checkProbeButton(void) {
   // gpio_set_function(2, GPIO_FUNC_SIO);
   // gpio_disable_pulls(2);
   // pinMode(2, INPUT);
-  pinMode(9, INPUT);
+  pinMode(BUTTON_PIN, INPUT);
   // probeLEDs.setPin(3);
   gpio_set_function(2, GPIO_FUNC_SIO);
   gpio_disable_pulls(2);
@@ -2025,17 +2024,17 @@ int checkProbeButton(void) {
   // pinMode(2, INPUT);
   delayMicroseconds(20);
   //  pinMode(9, OUTPUT_4MA);
-  // pinMode(9, INPUT_PULLUP);
+  // pinMode(BUTTON_PIN, INPUT_PULLUP);
   pinMode(10, OUTPUT_8MA);
 
   digitalWrite(10, HIGH);
 
-  gpio_set_pulls(9, false, true);
+  gpio_set_pulls(BUTTON_PIN, false, true);
 
-  gpio_set_input_enabled(9, true); // rp2350 errata hack: setting it to input
+  gpio_set_input_enabled(BUTTON_PIN, true); // rp2350 errata hack: setting it to input
                                    // right before reading and back fixes it
-  buttonState = gpio_get(9);
-  gpio_set_input_enabled(9, false);
+  buttonState = gpio_get(BUTTON_PIN);
+  gpio_set_input_enabled(BUTTON_PIN, false);
 
   delayMicroseconds(10);
   delayMicroseconds(40);
@@ -2047,16 +2046,16 @@ int checkProbeButton(void) {
   //  delayMicroseconds(1);
   //  pinMode(2, INPUT);
   //  digitalWrite(2, HIGH);
-  gpio_set_pulls(9, true, false);
-  // gpio_set_input_enabled(9, false);
-  gpio_set_input_enabled(9, true);
-  delayMicroseconds(20); // pinMode(9, INPUT_PULLDOWN);
-  // Serial.print("pin 9 is pulled ");
-  // Serial.print(gpio_is_pulled_up(9) ? "up\n\r" : "");
-  // Serial.print(gpio_is_pulled_down(9) ? "down\n\r" : "");
+  gpio_set_pulls(BUTTON_PIN, true, false);
+  // gpio_set_input_enabled(BUTTON_PIN, false);
+  gpio_set_input_enabled(BUTTON_PIN, true);
+  delayMicroseconds(20); // pinMode(BUTTON_PIN, INPUT_PULLDOWN);
+  // Serial.print("pin BUTTON_PIN is pulled ");
+  // Serial.print(gpio_is_pulled_up(BUTTON_PIN) ? "up\n\r" : "");
+  // Serial.print(gpio_is_pulled_down(BUTTON_PIN) ? "down\n\r" : "");
 
-  buttonState2 = gpio_get(9);
-  gpio_set_input_enabled(9, false);
+  buttonState2 = gpio_get(BUTTON_PIN);
+  gpio_set_input_enabled(BUTTON_PIN, false);
   delayMicroseconds(1);
 
   delayMicroseconds(20);
@@ -2064,30 +2063,30 @@ int checkProbeButton(void) {
   // digitalWrite(2, LOW);
   // delayMicroseconds(1);
   // pinMode(2, INPUT);
-  // pinMode(9, OUTPUT_4MA);
-  gpio_set_pulls(9, false, false);
+  // pinMode(BUTTON_PIN, OUTPUT_4MA);
+  gpio_set_pulls(BUTTON_PIN, false, false);
   // pinMode(2, OUTPUT_8MA);
   // digitalWrite(2, LOW);
   // delayMicroseconds(1);
   // pinMode(2, INPUT);
-  // pinMode(9, INPUT_PULLUP);
-  // gpio_set_input_enabled(9, true);
+  // pinMode(BUTTON_PIN, INPUT_PULLUP);
+  // gpio_set_input_enabled(BUTTON_PIN, true);
   delayMicroseconds(20);
 
-  pinMode(9, OUTPUT_8MA);
-  digitalWrite(9, LOW);
+  pinMode(BUTTON_PIN, OUTPUT_8MA);
+  digitalWrite(BUTTON_PIN, LOW);
   delayMicroseconds(1);
-  pinMode(9, INPUT);
-  gpio_set_pulls(9, false, true);
-  // Serial.print("pin 9 is pulled ");
-  // Serial.print(gpio_is_pulled_up(9) ? "up\n\r" : "");
-  // Serial.print(gpio_is_pulled_down(9) ? "down\n\r" : "");
-  // gpio_set_input_enabled(9, false);
-  gpio_set_input_enabled(9, true);
-  buttonState3 = gpio_get(9);
-  gpio_set_input_enabled(9, false);
+  pinMode(BUTTON_PIN, INPUT);
+  gpio_set_pulls(BUTTON_PIN, false, true);
+  // Serial.print("pin BUTTON_PIN is pulled ");
+  // Serial.print(gpio_is_pulled_up(BUTTON_PIN) ? "up\n\r" : "");
+  // Serial.print(gpio_is_pulled_down(BUTTON_PIN) ? "down\n\r" : "");
+  // gpio_set_input_enabled(BUTTON_PIN, false);
+  gpio_set_input_enabled(BUTTON_PIN, true);
+  buttonState3 = gpio_get(BUTTON_PIN);
+  gpio_set_input_enabled(BUTTON_PIN, false);
 
-  gpio_set_pulls(9, false, false);
+  gpio_set_pulls(BUTTON_PIN, false, false);
   //   while(Serial.available() == 0)
   // {
   //   Serial.read();
@@ -2161,13 +2160,13 @@ int readFloatingOrState(int pin, int rowBeingScanned) {
 
   if (rowBeingScanned != -1) {
 
-    analogWrite(probePin, 128);
+    analogWrite(PROBE_PIN, 128);
 
     while (1) // this is the silliest way to align to the falling edge of the
               // probe PWM signal
     {
-      if (gpio_get(probePin) != 0) {
-        if (gpio_get(probePin) == 0) {
+      if (gpio_get(PROBE_PIN) != 0) {
+        if (gpio_get(PROBE_PIN) == 0) {
           break;
         }
       }
@@ -2188,8 +2187,8 @@ int readFloatingOrState(int pin, int rowBeingScanned) {
     while (1) // this is the silliest way to align to the falling edge of the
               // probe PWM signal
     {
-      if (gpio_get(probePin) != 0) {
-        if (gpio_get(probePin) == 0) {
+      if (gpio_get(PROBE_PIN) != 0) {
+        if (gpio_get(PROBE_PIN) == 0) {
           break;
         }
       }
@@ -2266,15 +2265,15 @@ int readFloatingOrState(int pin, int rowBeingScanned) {
 
 void startProbe(long probeSpeed) {
 
-  // pinMode(probePin, OUTPUT_4MA);
-  // // pinMode(buttonPin, INPUT_PULLDOWN);
+  // pinMode(PROBE_PIN, OUTPUT_4MA);
+  // // pinMode(BUTTON_PIN, INPUT_PULLDOWN);
   // // pinMode(ADC0_PIN, INPUT);
-  // digitalWrite(probePin, HIGH);
+  // digitalWrite(PROBE_PIN, HIGH);
 }
 
 void stopProbe() {
-  // pinMode(probePin, INPUT);
-  // pinMode(buttonPin, INPUT);
+  // pinMode(PROBE_PIN, INPUT);
+  // pinMode(BUTTON_PIN, INPUT);
 }
 
 int checkLastFound(int found) {
@@ -2640,7 +2639,7 @@ int readProbeRaw(int readNothingTouched) {
   // lastReadRaw = 0;
 
   int measurements[16] = {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0};
-  // digitalWrite(probePin, HIGH);
+  // digitalWrite(PROBE_PIN, HIGH);
   if (connectOrClearProbe == 1) {
 
     for (int i = 0; i < 4; i++) {
@@ -2655,7 +2654,7 @@ int readProbeRaw(int readNothingTouched) {
 
   } else {
     for (int i = 0; i < 4; i++) {
-      measurements[i] = readAdc(5, 4);
+      measurements[i] = readAdc(5, 8);
       delayMicroseconds(30);
     }
   }
@@ -2682,9 +2681,9 @@ int readProbeRaw(int readNothingTouched) {
   if (maxVariance < 4 && (abs(average - nothingTouchedReading) > 30) &&
       (abs(average - lastReadRaw) > 5)) {
     lastReadRaw = average;
-    //     Serial.print("adc0: ");
+    //      Serial.println("  ");
 
-    // Serial.println(average);
+    //  Serial.println(average);
 
     return average;
 
@@ -2836,6 +2835,7 @@ int justReadProbe() {
   //   Serial.print("probeRead: ");
   // Serial.println(probeRead);
 
+  //int rowProbed = map(probeRead, mapFrom, 4045, 101, 0);
   int rowProbed = map(probeRead, mapFrom, 4045, 101, 0);
   // Serial.print("rowProbed: ");
   // Serial.println(rowProbed);
@@ -2940,7 +2940,8 @@ int readProbe() {
   if (probeRead == -1) {
     return -1;
   }
-  int rowProbed = map(probeRead, mapFrom, 4040, 101, 0);
+  
+  int rowProbed = map(probeRead, mapFrom, 4060, 101, 0);
   // Serial.print("probeRead: ");
   // Serial.println(probeRead);
 
@@ -2989,9 +2990,9 @@ int scanRows(int pin) {
   // digitalWrite(RESETPIN, LOW);
   // delayMicroseconds(20);
 
-  pinMode(probePin, INPUT);
+  pinMode(PROBE_PIN, INPUT);
   delayMicroseconds(400);
-  int probeRead = readFloatingOrState(probePin, -1);
+  int probeRead = readFloatingOrState(PROBE_PIN, -1);
 
   if (probeRead == high) {
     found = voltageSelection;

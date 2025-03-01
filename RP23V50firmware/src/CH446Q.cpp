@@ -177,8 +177,8 @@ void findDifferentPaths(void) {
   } else {
     numToSearch = lastPathNumber;
   }
-  for (int i = 0; i < numToSearch; i++) {
-    for (int j = i; j < numToSearch; j++) {
+  for (int i = 0; i <= numToSearch; i++) {
+    for (int j = i; j <= numToSearch; j++) {
 
       // if (i == j)
       // {

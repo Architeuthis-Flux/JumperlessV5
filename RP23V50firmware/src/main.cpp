@@ -301,7 +301,10 @@ void loop() {
 
 menu:
   getNothingTouched();
-
+//   Serial.print("\n\rPaths: \n\n\r");
+//   printPathsCompact();
+//   Serial.print("\n\n\n\rChip Status: \n\n\r");
+// printChipStatus();
   //printMainMenu(showExtraMenu);
 
   Serial.print("\n\n\r\t\tMenu\n\r");
@@ -453,7 +456,7 @@ dontshowmenu:
           // defconDisplay = -1;
           // probeLEDs.show();
           if (probeButton == 2) {
-            connectOrClearProbe = 1;
+                connectOrClearProbe = 1;
             probeActive = 1;
             showProbeLEDs = 1;
             input = 'p';
@@ -570,6 +573,15 @@ skipinput:
     }
 
     case '+': {
+      if (lightUpName == true)
+      {
+        lightUpName = false;
+      } else {
+        lightUpName = true;
+      }
+
+
+
 #ifdef USE_FATFS
     refreshConnections();
     saveLocalNodeFile();
@@ -591,33 +603,35 @@ skipinput:
     }
 
     case 'i': {
-    Serial.println("I2C scan\n\n\r");
-    Serial.println("enter SCL row\n\r");
-    Serial.print("SCL = ");
-    delay(100);
-    int sclRow = -1;
-    int sdaRow = -1;
-    while (Serial.available() == 0) {
-      }
-    while (sclRow == -1 || (sclRow < 1 || sclRow > 100)) {
-      sclRow = Serial.parseInt();
-      delay(100);
-      }
-    Serial.println("enter SDA row\n\r");
 
-    while (Serial.available() == 0) {
-      }
-    while (sdaRow == -1 || (sdaRow < 1 || sdaRow > 100)) {
-      sdaRow = Serial.parseInt();
-      delay(100);
-      }
-    Serial.print("SCL = ");
-    Serial.println(sclRow);
-    Serial.print("SDA = ");
-    Serial.println(sdaRow);
-    Serial.println("Scanning I2C bus\n\r");
+      oledTest(17, 18, 22, 23);
+    // Serial.println("I2C scan\n\n\r");
+    // Serial.println("enter SCL row\n\r");
+    // Serial.print("SCL = ");
+    // delay(100);
+    // int sclRow = -1;
+    // int sdaRow = -1;
+    // while (Serial.available() == 0) {
+    //   }
+    // while (sclRow == -1 || (sclRow < 1 || sclRow > 100)) {
+    //   sclRow = Serial.parseInt();
+    //   delay(100);
+    //   }
+    // Serial.println("enter SDA row\n\r");
 
-    i2cScan(sdaRow, sclRow);
+    // while (Serial.available() == 0) {
+    //   }
+    // while (sdaRow == -1 || (sdaRow < 1 || sdaRow > 100)) {
+    //   sdaRow = Serial.parseInt();
+    //   delay(100);
+    //   }
+    // Serial.print("SCL = ");
+    // Serial.println(sclRow);
+    // Serial.print("SDA = ");
+    // Serial.println(sdaRow);
+    // Serial.println("Scanning I2C bus\n\r");
+
+   // i2cScan(sdaRow, sclRow);
     break;
     }
 

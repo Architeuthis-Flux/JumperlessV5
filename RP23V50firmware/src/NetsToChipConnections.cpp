@@ -2828,7 +2828,7 @@ void printPathsCompact(int showCullDupes) {
       }
 
     if (lastDuplicate == 0 && path[i].duplicate == 1) {
-      Serial.println(" ");
+      Serial.println("\n\rduplicates");
       }
 
     lastDuplicate = path[i].duplicate;

@@ -2675,7 +2675,7 @@ int doMenuAction(int menuPosition, int selection) {
 
                                       if (currentAction.fromAscii[0][0] == 'M' || currentAction.fromAscii[0][0] == 'm') {
                                         powerPriority = 2;
-                                        powerDuplicates = 4;
+                                        powerDuplicates = 7;
 
                                         } else {
                                         powerPriority = 1;
@@ -2685,7 +2685,7 @@ int doMenuAction(int menuPosition, int selection) {
                                         pathDuplicates = currentAction.from[0];
                                         if (currentAction.fromAscii[0][0] == 'M' || currentAction.fromAscii[0][0] == 'm') {
                                           //pathPriority = 2;
-                                          pathDuplicates = 5;
+                                          pathDuplicates = 7;
                                           }
                                         } else if (menuLines[currentAction.previousMenuPositions[2]].indexOf("DACs") != -1)
                                           {

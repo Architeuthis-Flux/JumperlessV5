@@ -1542,9 +1542,9 @@ uint32_t dimLogoColor(uint32_t color, int brightness) {
   hsvColor colorHsv = RgbToHsv(dimColor);
 
   colorHsv.v = brightness;
-  if (photos == true) {
-    return packRgb(HsvToRgb(colorHsv).r, HsvToRgb(colorHsv).g * 1,
-                   HsvToRgb(colorHsv).b * 2);
+  if (photos == true || true) {
+    return packRgb(HsvToRgb(colorHsv).r/3, HsvToRgb(colorHsv).g /3,
+                   HsvToRgb(colorHsv).b );
   } else {
     return packRgb(HsvToRgb(colorHsv).r, HsvToRgb(colorHsv).g * 2,
                    HsvToRgb(colorHsv).b * 3);
@@ -1897,7 +1897,7 @@ void logoSwirl(int start, int spread, int probe) {
   // delay(200);
   //  showLEDsCore2 = 1;
 }
-
+bool lightUpName = false;
 int brightenNet(int node, int addBrightness) {
 
   if (node == -1) {
@@ -2170,7 +2170,7 @@ void lightUpRail(int logo, int rail, int onOff, int brightness2,
       }
     }
   }
-  bool lightUpName = false;
+  
 
   if (lightUpName == true) {
     leds.setPixelColor(railsToPixelMap[0][20], 0x0010a0);

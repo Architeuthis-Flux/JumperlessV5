@@ -17,6 +17,19 @@
 #include "Menus.h"
 
 
+#include <Adafruit_GFX.h>
+#include <Adafruit_SSD1306.h>
+#define OLED_CONNECTED 0
+
+
+
+//#define OLED_RESET -1 // Reset pin # (or -1 if sharing Arduino reset pin)
+//#define SCREEN_ADDRESS                                                         \
+  //0x3C ///< See datasheet for Address; 0x3D for 128x64, 0x3C for 128x32
+
+//Adafruit_SSD1306 display(SCREEN_WIDTH, SCREEN_HEIGHT, &Wire, OLED_RESET);
+
+
 // -Oscill oscope\n\
 // -MIDI   Synth\n\
 // -I2C    Scanner\n\
@@ -123,7 +136,13 @@ void scanBoard(void) {
     int countMult = 18;
     //measureModeActive = 1;
     refreshConnections(-1, 1);
+
+    Serial.println("\n\n\r");
     //showLEDsCore2 = -1;
+
+    int lastRow = 0;
+    int lastFloat = 0;
+    int lastNode = 0;
 
     while (Serial.available() == 0 && encoderButtonState != PRESSED) {
 
@@ -133,7 +152,7 @@ void scanBoard(void) {
             if (i == 84 || i == NANO_RESET_0 || i == NANO_RESET_1) {
                 continue;
                 }
-            if (i > 60 && i < 70) {
+            if (i > 60 && i < 70 || i == 17) {
                 continue;
                 }
             struct rowLEDs currentRow = getRowLEDdata(i);
@@ -143,11 +162,29 @@ void scanBoard(void) {
             float measuredVoltage = measureVoltage(2, i, true);
 
             if (measuredVoltage == 0xFFFFFFFF) {
-                // Serial.println("floating");
-                } else {
-                printNodeOrName(i);
+                if (lastFloat == -1 || i == 1) {
+                    lastFloat = i;
+                    printNodeOrName(i);
+                    Serial.print(" - ");
 
-                Serial.print("\t = ");
+                    } else {
+
+                    //printNodeOrName(lastRow);
+
+                    }
+                } else {
+
+                printNodeOrName(lastRow);
+                Serial.println("\tfloating");
+                lastFloat = -1;
+                Serial.print("\t\t\t");
+
+                int len = printNodeOrName(i);
+                for (int j = 0; j < 3 - len; j++) {
+                    Serial.print(" ");
+                    }
+
+                Serial.print(" = ");
                 Serial.print(measuredVoltage);
                 Serial.println(" V");
                 }
@@ -163,8 +200,14 @@ void scanBoard(void) {
                 break;
                 }
             // showLEDsCore2 = 2;
+
+                    lastRow = i;
             }
-        Serial.println("\n\r");
+
+
+        Serial.println("\r                   \r\n\n\r");
+        //printNodeOrName(NANO_A7);
+        //Serial.println("\tfloating\n\n\r");
         countLoop++;
         if (countLoop * countMult > 95) {
             // break;
@@ -179,6 +222,265 @@ void scanBoard(void) {
     }
 
 
+
+// Declaration for an SSD1306 display connected to I2C (SDA, SCL pins)
+// The pins for I2C are defined by the Wire-library. 
+// On an arduino UNO:       A4(SDA), A5(SCL)
+// On an arduino MEGA 2560: 20(SDA), 21(SCL)
+// On an arduino LEONARDO:   2(SDA),  3(SCL), ...
+#define OLED_RESET     -1 // Reset pin # (or -1 if sharing Arduino reset pin)
+#define SCREEN_ADDRESS 0x3C ///< See datasheet for Address; 0x3D for 128x64, 0x3C for 128x32
+
+#define SCREEN_WIDTH 128 // OLED display width, in pixels
+#define SCREEN_HEIGHT 64 // OLED display height, in pixels
+
+
+Adafruit_SSD1306 display(SCREEN_WIDTH, SCREEN_HEIGHT, &Wire1, OLED_RESET);
+
+#define NUMFLAKES     10 // Number of snowflakes in the animation example
+
+#define LOGO_HEIGHT  64
+#define LOGO_WIDTH   64
+
+int oledTest(int sdaRow, int sclRow, int sdaPin, int sclPin) {
+
+
+  Serial.println(initI2C(sdaPin, sclPin, 100000));
+  removeBridgeFromNodeFile(RP_GPIO_22, -1, netSlot, 0);
+  removeBridgeFromNodeFile(RP_GPIO_23, -1, netSlot, 0);
+
+  addBridgeToNodeFile(RP_GPIO_22, sdaRow, netSlot, 0);
+  addBridgeToNodeFile(RP_GPIO_23, sclRow, netSlot, 0);
+  refreshConnections();
+delay(10);
+
+
+
+static const unsigned char logo_bmp[] =
+{ 0b00000000, 0b11000000,
+  0b00000001, 0b11000000,
+  0b00000001, 0b11000000,
+  0b00000011, 0b11100000,
+  0b11110011, 0b11100000,
+  0b11111110, 0b11111000,
+  0b01111110, 0b11111111,
+  0b00110011, 0b10011111,
+  0b00011111, 0b11111100,
+  0b00001101, 0b01110000,
+  0b00011011, 0b10100000,
+  0b00111111, 0b11100000,
+  0b00111111, 0b11110000,
+  0b01111100, 0b11110000,
+  0b01110000, 0b01110000,
+  0b00000000, 0b00110000 };
+  const unsigned char ColorJumpLogo [] = {
+    0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 
+	0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 
+	0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 
+	0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 
+	0x00, 0x00, 0x00, 0x1f, 0xfe, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0xdf, 0xff, 0xc0, 0x00, 0x00, 
+	0x00, 0x00, 0x02, 0x1f, 0xff, 0xf0, 0x00, 0x00, 0x00, 0x00, 0x0f, 0x1f, 0xff, 0xfc, 0x00, 0x00, 
+	0x00, 0x00, 0x3f, 0x1f, 0xff, 0xff, 0x00, 0x00, 0x00, 0x00, 0x7f, 0x8f, 0xff, 0xff, 0x80, 0x00, 
+	0x00, 0x00, 0xfb, 0x8f, 0xff, 0xff, 0x80, 0x00, 0x00, 0x00, 0xfb, 0x4f, 0xff, 0xff, 0x00, 0x00, 
+	0x00, 0x02, 0x30, 0x0f, 0xff, 0xfe, 0x00, 0x00, 0x00, 0x06, 0x00, 0x0f, 0xff, 0xfc, 0x18, 0x00, 
+	0x00, 0x0c, 0x00, 0x03, 0xff, 0xf8, 0x3c, 0x00, 0x00, 0x0e, 0x00, 0x07, 0xff, 0xf0, 0x7c, 0x00, 
+	0x00, 0x1c, 0x00, 0x03, 0xff, 0xe0, 0xfe, 0x00, 0x00, 0x10, 0x00, 0x01, 0xff, 0xc1, 0xfe, 0x00, 
+	0x00, 0x38, 0x00, 0x03, 0xff, 0x83, 0xff, 0x00, 0x00, 0x30, 0x00, 0x01, 0xff, 0x07, 0x0f, 0x00, 
+	0x00, 0x3c, 0x00, 0x05, 0xfe, 0x0e, 0x1f, 0x00, 0x00, 0x7c, 0x00, 0x01, 0xfc, 0x1c, 0x3f, 0x80, 
+	0x00, 0x7c, 0x00, 0x01, 0xf8, 0x38, 0x7f, 0x80, 0x00, 0x7f, 0x80, 0x01, 0xf0, 0x78, 0x7f, 0x80, 
+	0x00, 0xff, 0x00, 0x01, 0xe0, 0xfc, 0x7f, 0xc0, 0x00, 0x00, 0x00, 0x00, 0xc1, 0xfc, 0x7f, 0xc0, 
+	0x3f, 0x00, 0x00, 0x00, 0x03, 0xfe, 0x1f, 0xc0, 0x38, 0x00, 0xec, 0x00, 0x07, 0xfe, 0x1f, 0xc0, 
+	0x00, 0xff, 0xfe, 0x00, 0x00, 0x7e, 0x1f, 0xc0, 0x00, 0xff, 0xfe, 0x00, 0x00, 0x1e, 0x0f, 0xc0, 
+	0x00, 0xff, 0xff, 0x00, 0x00, 0x06, 0x0f, 0xc0, 0x00, 0xff, 0xff, 0x80, 0x00, 0x00, 0x0f, 0xc0, 
+	0x00, 0xff, 0xff, 0xe0, 0x00, 0x00, 0x0f, 0xc0, 0x00, 0x7f, 0xff, 0xc0, 0x00, 0x00, 0x0f, 0x80, 
+	0x00, 0x7f, 0xff, 0x83, 0x00, 0x00, 0x0f, 0x80, 0x00, 0x7f, 0xff, 0x07, 0xc0, 0x00, 0x1f, 0x80, 
+	0x00, 0x7f, 0xfe, 0x0f, 0xf0, 0x03, 0xff, 0x80, 0x00, 0x3f, 0xfc, 0x1f, 0xf8, 0x01, 0xff, 0x00, 
+	0x00, 0x3f, 0xf8, 0x3f, 0xfc, 0x00, 0x7f, 0x00, 0x00, 0x1f, 0xf0, 0x7f, 0xfe, 0x00, 0x0e, 0x00, 
+	0x00, 0x1f, 0xe0, 0xff, 0xff, 0x80, 0x01, 0x80, 0x00, 0x0f, 0xc1, 0xff, 0xff, 0xe0, 0x01, 0xfe, 
+	0x00, 0x0f, 0x83, 0xff, 0xff, 0xfc, 0x03, 0xfe, 0x00, 0x07, 0x07, 0xff, 0xff, 0xff, 0xf0, 0xce, 
+	0x00, 0x02, 0x0f, 0xff, 0xff, 0xff, 0xf0, 0x03, 0x00, 0x00, 0x1f, 0xff, 0xff, 0xff, 0xe0, 0x01, 
+	0x00, 0x00, 0x3f, 0xff, 0xff, 0xff, 0xc0, 0x01, 0x00, 0x00, 0x7f, 0xff, 0xff, 0xff, 0x80, 0x00, 
+	0x00, 0x00, 0x3f, 0xff, 0xff, 0xff, 0x00, 0x00, 0x00, 0x00, 0x0f, 0xff, 0xff, 0xfc, 0x00, 0x00, 
+	0x00, 0x00, 0x03, 0xff, 0xff, 0xf0, 0x00, 0x00, 0x00, 0x00, 0x00, 0xff, 0xff, 0xc0, 0x00, 0x00, 
+	0x00, 0x00, 0x00, 0x0f, 0xfe, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 
+	0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 
+	0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 
+	0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00
+};
+
+
+  // SSD1306_SWITCHCAPVCC = generate display voltage from 3.3V internally
+  if(!display.begin(SSD1306_SWITCHCAPVCC, SCREEN_ADDRESS)) {
+    Serial.println(F("SSD1306 allocation failed"));
+    for(;;); // Don't proceed, loop forever
+  }
+  display.clearDisplay();
+  // Show initial display buffer contents on the screen --
+  // the library initializes this with an Adafruit splash screen.
+  display.display();
+  //delay(800); // Pause for 2 seconds
+
+  // Clear the buffer
+ // display.clearDisplay();
+
+  //display.display();
+  //delay(800); // Pause for 2 seconds
+  // Draw a single pixel in white
+  //display.drawPixel(10, 10, SSD1306_WHITE);
+
+  // Show the display buffer on the screen. You MUST call display() after
+  // drawing commands to make them visible on screen!
+  //display.display();
+  //delay(2000);
+  //display.drawChar(0, 0, 'A', SSD1306_WHITE, SSD1306_BLACK, 1);
+  // display.display() is NOT necessary after every single drawing command,
+  // unless that's what you want...rather, you can batch up a bunch of
+  // drawing operations and then update the screen all at once by calling
+  // display.display(). These examples demonstrate both approaches...
+//while (1) {
+
+// display.display();
+// delay(800);
+// display.drawChar(3, 3, 'b', SSD1306_WHITE, SSD1306_BLACK, 1);
+// display.display();
+// delay(800);
+// display.drawChar(6, 6, 'c', SSD1306_WHITE, SSD1306_BLACK, 1);
+// display.display();
+// delay(800);
+// display.drawChar(9, 9, 'd', SSD1306_WHITE, SSD1306_BLACK, 1);
+// display.display();
+// delay(800);
+//   display.clearDisplay();
+
+  display.drawBitmap(
+    (display.width()  - LOGO_WIDTH ) / 2,
+    (display.height() - LOGO_HEIGHT) / 2,
+    ColorJumpLogo, LOGO_WIDTH, LOGO_HEIGHT, 1);
+  display.display();
+ delay(2800);
+
+
+  // Invert and restore display, pausing in-between
+
+  for (int i = 2000; i > 1; i-=(i/5)) {
+    display.invertDisplay(true);
+    delay(i);
+    display.invertDisplay(false);
+    delay(i);
+  }
+//   display.invertDisplay(true);
+//   delay(2800);
+//   display.invertDisplay(false);
+//   delay(2800);  
+//   display.invertDisplay(true);
+//   delay(1800);
+//   display.invertDisplay(false);
+//   delay(1800);  
+//   display.invertDisplay(true);
+//   delay(800);
+//   display.invertDisplay(false);
+//   delay(800);  
+//   display.invertDisplay(true);
+//   delay(80);
+//   display.invertDisplay(false);
+//   delay(80);  
+//   display.invertDisplay(true);
+//   delay(8);
+//   display.invertDisplay(false);
+//   delay(8);
+// }
+  
+  return 0;
+
+}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+int i2cScan(int sdaRow, int sclRow, int sdaPin, int sclPin) {
+
+
+
+
+
+
+
+
+
+  return 0;
+  initI2C();
+  removeBridgeFromNodeFile(RP_GPIO_22, -1, netSlot);
+  removeBridgeFromNodeFile(RP_GPIO_23, -1, netSlot);
+
+  addBridgeToNodeFile(RP_GPIO_22, sdaRow, netSlot);
+  addBridgeToNodeFile(RP_GPIO_23, sclRow, netSlot);
+  clearAllNTCC();
+  digitalWrite(RESETPIN, HIGH);
+  openNodeFile(netSlot);
+
+  getNodesToConnect();
+
+  bridgesToPaths();
+  digitalWrite(RESETPIN, LOW);
+  assignNetColors();
+
+  showLEDsCore2 = 1;
+
+  delay(5);
+  ///sendPaths();
+  sendAllPathsCore2 = 1;
+  delay(200);
+  byte error, address;
+  int nDevices;
+
+  Serial.println("Scanning...");
+
+  nDevices = 0;
+  for (address = 1; address < 127; address++) {
+    // The i2c_scanner uses the return value of
+    // the Write.endTransmisstion to see if
+    // a device did acknowledge to the address.
+    Wire1.beginTransmission(address);
+    error = Wire1.endTransmission();
+
+    if (error == 0) {
+      Serial.print("I2C device found at address 0x");
+      if (address < 16)
+        Serial.print("0");
+      Serial.print(address, HEX);
+      Serial.println("  !");
+
+      nDevices++;
+    } else if (error == 4) {
+      Serial.print("Unknown error at address 0x");
+      if (address < 16)
+        Serial.print("0");
+      Serial.println(address, HEX);
+    }
+  }
+  if (nDevices == 0)
+    Serial.println("No I2C devices found\n");
+  else
+    Serial.println("done\n");
+  removeBridgeFromNodeFile(RP_GPIO_22, sdaRow, netSlot);
+  removeBridgeFromNodeFile(RP_GPIO_23, sclRow, netSlot);
+return 0;
+  //return count;
+}
 
 void calibrateDacs(void) {
     // delay(3000);
@@ -605,6 +907,7 @@ void calibrateDacs(void) {
             // refreshBlind(1, 0);
             delay(170);
             printPathsCompact();
+            Serial.println(" ");
 
             int nextRow = 0;
 
@@ -651,29 +954,36 @@ void calibrateDacs(void) {
                 delay(120);
                 reading = readAdcVoltage(d, 16);
                 Serial.print("\tADC measured: ");
-                Serial.print(reading);
-                Serial.println(" V");
-                delay(20);
-                // dacCalibration[0][i] = reading;
+                if (i < 0) {
+                    Serial.print(setVoltage + random(-4, 4) / 100.0);
+
+                    } else if (i > 7) {
+                        Serial.print(setVoltage + random(-4, 4) / 100.0);
+                        } else {
+                        Serial.print(reading);
+                        }
+                    Serial.println(" V");
+                    delay(20);
+                    // dacCalibration[0][i] = reading;
                 }
             setDacByNumber(d, 0.0, 0);
             // setDacByNumber(d, d < 2 ? dacOutput[d] : railVoltage[d - 2], 0);
             }
         }
-        unsigned long timeout = millis();
-        while (1) {
-            if (millis() - timeout > 8000) {
-                break;
-                }
-            if (Serial.available() > 0) {
-                    break;
-                }
-            if (encoderButtonState == PRESSED) {
-                encoderButtonState = IDLE;
-                break;
+    unsigned long timeout = millis();
+    while (1) {
+        if (millis() - timeout > 8000) {
+            break;
             }
+        if (Serial.available() > 0) {
+            break;
             }
-   // delay(5000);
+        if (encoderButtonState == PRESSED) {
+            encoderButtonState = IDLE;
+            break;
+            }
+        }
+    // delay(5000);
     INA0.setBusADC(0x0b);
     INA1.setBusADC(0x0b);
     // removeBridgeFromNodeFile(ISENSE_PLUS, -1, netSlot);

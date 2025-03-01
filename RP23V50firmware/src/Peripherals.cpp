@@ -211,8 +211,92 @@ void initDAC(void) {
   delay(10);
 }
 
-void initI2C(void) {
-  return;
+int initI2C(int sdaPin, int sclPin, int speed) {
+
+
+
+  static int i2c1Pins[3] = {22, 23, 100000};
+  static int i2c0Pins[3] = {4, 5, 100000};
+  // pin, {0=SDA, 1=SCL}, {I2C0, I2C1}
+
+
+int gpioI2Cmap[15][3] = {
+    {0,  0, 0}, {1,  1, 0},
+    {4,  0, 0}, {5,  1, 0},
+    {6,  0, 1}, {7,  1, 1},
+    {20, 0, 0}, {21, 1, 0}, 
+    {22, 0, 1}, {23, 1, 1}, 
+    {24, 0, 0}, {25, 1, 0}, 
+    {26, 0, 1}, {27, 1, 1}, 
+};
+//I2C0 is taken by current sensors and dac
+//maybe bitbang I2C0?
+int sdaFound = 0;
+int sclFound = 0;
+
+int portFound = 1; // right now only I2C1 is available
+for (int i = 0; i < 15; i++) {
+  if (gpioI2Cmap[i][0] == sdaPin && gpioI2Cmap[i][2] == 1) {
+   int sdaFound = i;
+    
+  }
+  if (gpioI2Cmap[i][0] == sclPin && gpioI2Cmap[i][2] == 1) {
+
+    int sclFound = i;
+  }
+  if (sdaFound != 0 && sclFound != 0) {
+    break;
+  }
+}
+
+Serial.print("sdaFound: ");
+Serial.println(sdaFound);
+Serial.print("sclFound: ");
+Serial.println(sclFound);
+
+Serial.print("portFound: ");
+Serial.println(portFound);
+
+
+
+if (sdaFound == 0 || sclFound == 0) {
+  return -1;
+} else if (portFound == 0) {
+  
+
+  Wire.setSDA(sdaPin);
+  Wire.setSCL(sclPin);
+  Wire.setClock(speed);
+  Wire.begin();
+    if (i2c0Pins[0] == sdaPin && i2c0Pins[1] == sclPin && i2c0Pins[2] == speed) {
+    return gpioI2Cmap[sdaFound][2] + 10; //returns 10 if the pins are already set
+  }
+  i2c0Pins[0] = sdaPin;
+  i2c0Pins[1] = sclPin;
+  i2c0Pins[2] = speed;
+
+  return gpioI2Cmap[sdaFound][2];
+} else if (portFound == 1) {
+  Wire1.setSDA(sdaPin);
+  Wire1.setSCL(sclPin);
+  Wire1.setClock(speed);
+  Wire1.begin();
+  if (i2c1Pins[0] == sdaPin && i2c1Pins[1] == sclPin && i2c1Pins[2] == speed) {
+    return gpioI2Cmap[sdaFound][2] + 10; //returns 11 if the pins are already set
+  }
+  i2c1Pins[0] = sdaPin;
+  i2c1Pins[1] = sclPin;
+  i2c1Pins[2] = speed;
+
+  return gpioI2Cmap[sdaFound][2];
+}
+
+
+
+
+return -1;  
+
+  
   // pinMode(22, INPUT_PULLUP);
   // pinMode(23, INPUT_PULLUP);
   // Wire1.setSDA(22);
@@ -220,67 +304,7 @@ void initI2C(void) {
   // Wire1.begin();
 }
 
-int i2cScan(int sdaRow, int sclRow) {
-  return 0;
-  initI2C();
-  removeBridgeFromNodeFile(RP_GPIO_22, -1, netSlot);
-  removeBridgeFromNodeFile(RP_GPIO_23, -1, netSlot);
 
-  addBridgeToNodeFile(RP_GPIO_22, sdaRow, netSlot);
-  addBridgeToNodeFile(RP_GPIO_23, sclRow, netSlot);
-  clearAllNTCC();
-  digitalWrite(RESETPIN, HIGH);
-  openNodeFile(netSlot);
-
-  getNodesToConnect();
-
-  bridgesToPaths();
-  digitalWrite(RESETPIN, LOW);
-  assignNetColors();
-
-  showLEDsCore2 = 1;
-
-  delay(5);
-  sendPaths();
-  sendAllPathsCore2 = 1;
-  delay(200);
-  byte error, address;
-  int nDevices;
-
-  Serial.println("Scanning...");
-
-  nDevices = 0;
-  for (address = 1; address < 127; address++) {
-    // The i2c_scanner uses the return value of
-    // the Write.endTransmisstion to see if
-    // a device did acknowledge to the address.
-    Wire1.beginTransmission(address);
-    error = Wire1.endTransmission();
-
-    if (error == 0) {
-      Serial.print("I2C device found at address 0x");
-      if (address < 16)
-        Serial.print("0");
-      Serial.print(address, HEX);
-      Serial.println("  !");
-
-      nDevices++;
-    } else if (error == 4) {
-      Serial.print("Unknown error at address 0x");
-      if (address < 16)
-        Serial.print("0");
-      Serial.println(address, HEX);
-    }
-  }
-  if (nDevices == 0)
-    Serial.println("No I2C devices found\n");
-  else
-    Serial.println("done\n");
-  removeBridgeFromNodeFile(RP_GPIO_22, sdaRow, netSlot);
-  removeBridgeFromNodeFile(RP_GPIO_23, sclRow, netSlot);
-
-  return count;
-}
 
 void setGPIO(void) {
   //     // Serial.print(19+i);

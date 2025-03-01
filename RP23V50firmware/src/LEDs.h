@@ -77,7 +77,7 @@ extern ledClass leds;
 extern int brightenedNet;
 extern int brightenedRail;
 extern int brightenedAmount;
-
+extern bool lightUpName;
 
 extern int netColorMode; // 0 = rainbow, 1 = shuffle
 extern int displayMode;
