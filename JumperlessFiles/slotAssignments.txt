@@ -1,4 +1,4 @@
-slot 0	https://wokwi.com/projects/411042319973246977	 taryl
+slot 0
 slot 1
 slot 2
 slot 3

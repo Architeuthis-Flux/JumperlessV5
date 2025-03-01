@@ -26,6 +26,7 @@ ssl._create_default_https_context = ssl._create_unverified_context
 
 os.system("")
 #import platform
+os.system('color')
 
 if (sys.platform == "win32"):
     import win32api
@@ -107,6 +108,36 @@ if (noArduinocli == True):
     disableArduinoFlashing = 1
 
 
+def print_format_table():
+    """
+    prints table of formatted text format options
+    """
+    for style in range(8):
+        for fg in range(30,38):
+            s1 = ''
+            for bg in range(40,48):
+                format = ';'.join([str(style), str(fg), str(bg)])
+                s1 += '\x1b[%sm %s \x1b[0m' % (format, format)
+            print(s1)
+        print('\n')
+
+# if (sys.platform == "win32"):
+class style():
+    BLACK = '\033[30m'
+    RED = '\033[31m'
+    GREEN = '\033[32m'
+    YELLOW = '\033[33m'
+    BLUE = '\033[34m'
+    MAGENTA = '\033[35m'
+    CYAN = '\033[36m'
+    WHITE = '\033[37m'
+    UNDERLINE = '\033[4m'
+    RESET = '\033[0m'
+
+print(style.MAGENTA + "Jumperless Bridge App")
+
+# print('\x1b[0,35,40m'+ "Jumperless Bridge App" + '\x1b[0m')
+
 def openSerial():
     global portName
     global ser
@@ -153,7 +184,7 @@ def openSerial():
         print ("\n")
         
         jumperlessIndex = chooseJumperlessPort(sortedports)
-        arduinoIndex = (jumperlessIndex + 1) % 2
+        arduinoIndex = (jumperlessIndex + 1) % len(sortedports)
         
         #print (jumperlessIndex)
         #print (arduinoIndex)
@@ -183,7 +214,12 @@ def openSerial():
             
 
         else:
-            selection = input(
+            selection = ' '
+            if (sys.platform == "win32"):
+                selection = input("\n\nSelect the port connected to your Jumperless   ('r' to rescan)\n\n")
+
+            else:
+                selection = input(
                 "\n\nSelect the port connected to your Jumperless   ('r' to rescan)\n\n(Choose the lower numbered port, the other is routable USB-Serial)\n\n")
             
             
@@ -202,7 +238,10 @@ def openSerial():
                 #print (foundports)
                 #print(sortedports)
                 print ("\n\n")
-                ArduinoSelection = input(
+                if (sys.platform == "win32"):
+                    ArduinoSelection = input("\n\nChoose the Arduino port   ('x' to skip)\n\n")
+                else:
+                    ArduinoSelection = input(
                         "\n\nChoose the Arduino port   ('x' to skip)\n\n(Choose the higher numbered port)\n\n")
                 
                 if (ArduinoSelection == 'x' or ArduinoSelection == 'X'):
@@ -229,7 +268,8 @@ def openSerial():
 
 #portName =  '/dev/cu.usbmodem11301'
     try:
-        ser = serial.Serial(portName, 115200, timeout=None, write_timeout=0.5, exclusive=False)
+        print(portName)
+        ser = serial.Serial(portName, 115200, timeout=None)
         serialTries = 0
     #ser.open()
     except:
@@ -311,7 +351,7 @@ def chooseJumperlessPort(sortedports):
                             
                             if (int(jumperlessFirmwareNumber[0]) >= 5):
                                 jumperlessV5 = True
-                            #     print ("Jumperless V5 detected")
+                                # print ("Jumperless V5 detected")
                            
                             # print (jumperlessFirmwareNumber)
                             #print ("found a match!")
@@ -336,6 +376,7 @@ reading = 0
 
 
 latestFirmwareAddress = "https://github.com/Architeuthis-Flux/Jumperless/releases/latest/download/firmware.uf2"
+latestFirmwareAddressV5 = "https://github.com/Architeuthis-Flux/JumperlessV5/releases/latest/download/firmware.uf2"
 
 url_link = 0
 
@@ -370,13 +411,13 @@ def checkIfFWisOld ():
         print('\nCouldn\'t read FW version from the Jumperless\n\nMake sure you don\'t have this app running in \nanother window. Or if the firmware is really \nold, just enter \'Y\' to auto update from here\n')
         return
 
-    if (int(currentList[0])>5):
+    if (int(currentList[0])>=5):
         jumperlessV5 = True
 
     try:
         if (jumperlessV5 is True):#Change this to the new repo when you have releases
             print('Jumperless V5')
-            response = requests.get("https://github.com/Architeuthis-Flux/Jumperless/releases/latest")
+            response = requests.get("https://github.com/Architeuthis-Flux/JumperlessV5/releases/latest")
         else:
             response = requests.get("https://github.com/Architeuthis-Flux/Jumperless/releases/latest")
 
@@ -447,7 +488,11 @@ def updateJumperlessFirmware(force):
         serialconnected = 0
         menuEntered = 1
         
-        urlretrieve(latestFirmwareAddress, "firmware.uf2")
+        if (jumperlessV5 == True):
+            urlretrieve(latestFirmwareAddressV5, "firmware.uf2")
+        else:
+
+            urlretrieve(latestFirmwareAddress, "firmware.uf2")
         
         ser.close()
         time.sleep(0.50)
@@ -467,24 +512,41 @@ def updateJumperlessFirmware(force):
         print ("Waiting for mounted drive...")
         
         foundVolume = "none"
+        timeStart = time.time()
         
         while (foundVolume == "none"):
+            if (time.time() - timeStart > 10):
+                print("Couldn't find Jumperless. Make sure it's in BOOTSEL mode and try again")
+                return
             time.sleep(0.5)
             partitions = psutil.disk_partitions()
             
             for p in partitions:
                 #print(p.mountpoint)
                 if (sys.platform == "win32"):
-                    if (win32api.GetVolumeInformation(p.mountpoint)[0] == "RPI-RP2"):
-                        foundVolume = p.mountpoint
-                        print("Found Jumperless at " + foundVolume + "...")
-                        break
+                    if (jumperlessV5 == True):
+                        if (win32api.GetVolumeInformation(p.mountpoint)[0] == "RP2350"):
+                            foundVolume = p.mountpoint
+                            print("Found Jumperless V5 at " + foundVolume + "...")
+                            break
+                    else:
+                        if (win32api.GetVolumeInformation(p.mountpoint)[0] == "RPI-RP2"):
+                            foundVolume = p.mountpoint
+                            print("Found Jumperless at " + foundVolume + "...")
+                            break
 
                 else:
-                    if (p.mountpoint.endswith("RPI-RP2") == True):
-                        foundVolume = p.mountpoint
-                        print("Found Jumperless at " + foundVolume + "...")
-                        break
+                    if (jumperlessV5 == True):
+                        if (p.mountpoint.endswith("RP2350") == True):
+                            foundVolume = p.mountpoint
+                            print("Found Jumperless V5 at " + foundVolume + "...")
+                            break
+                    else:
+                        if (p.mountpoint.endswith("RPI-RP2") == True):
+                            foundVolume = p.mountpoint
+                            print("Found Jumperless at " + foundVolume + "...")
+                            break
+
                     
                 
 
@@ -543,7 +605,7 @@ def bridgeMenu():
     while(menuEntered == 1):
         wokwiUpdateString = str(wokwiUpdateRate + 0.4)
 
-        print("\t\t\tBridge App Menu\n\n")
+        print(style.MAGENTA + "\t\t\tBridge App Menu\n\n")
 
         print("\t\ta = Assign Wokwi Links to Slots", end='')
         if (numAssignedSlots > 0):
@@ -562,8 +624,9 @@ def bridgeMenu():
         
         print("\t\tf = Change Wokwi update frequency - currently " + wokwiUpdateString + "s" )
         print("\t\tu = Update Jumperless Firmware - " + currentString)
-
+        print("\t\tq = Quit App\n")
         print("\t\tj = Go Back To Jumperless\n")
+        
 
         menuSelection = input("\n\nmenu > ")
         
@@ -577,6 +640,14 @@ def bridgeMenu():
 
         #     #disableArduinoFlashing = 1
         #     break
+        if (menuSelection == 'p'):
+            print_format_table()
+            break
+        if (menuSelection == 'q'):
+            ser.close()
+            # if (sys.platform == "win32"):
+            print(style.RESET)
+            exit()
 
         if (menuSelection == 's'):
             ser.close()
@@ -605,7 +676,8 @@ def bridgeMenu():
             #openProject()
             assignWokwiSlots()
             #time.sleep(1)
-            
+            # if (sys.platform == "win32"):
+            print(style.RESET)
             return
             #time.sleep(.5)
             #ser.write(b'm')
@@ -711,6 +783,11 @@ def bridgeMenu():
                 #menuEntered = 0
             else:
                 break
+    # if (sys.platform == "win32"):
+    print(style.RESET)
+
+
+    
 
 
 slotLines = [ "slot 0\n", "slot 1\n", "slot 2\n", "slot 3\n", "slot 4\n", "slot 5\n", "slot 6\n", "slot 7\n"]
@@ -840,7 +917,10 @@ def assignWokwiSlots():
 
     if (noWokwiStuff == True):
         print("\nWokwi updates disabled!\n")
-        ser.write('m'.encode())
+        try:
+            ser.write('m'.encode())
+        except:
+            pass
         return
 
     while ((firstLine.startswith('slot 0') == False or firstLine.startswith('#') == True or firstLine.startswith('//') == True) ):
@@ -904,7 +984,7 @@ def assignWokwiSlots():
         noWokwiStuff = True
         url_link = ' '
         print("\nWokwi updates disabled\n")
-        ser.write('m'.encode())
+        # ser.write('m'.encode())
         return
     if (slotInput == 'menu'):
         menuEntered = 1
@@ -926,7 +1006,11 @@ def assignWokwiSlots():
             #assignWokwiSlots()
             print("\n\nNo Wokwi project selected, enter 'menu' to add one later\n\n")
             noWokwiStuff = True
-            ser.write('m'.encode())
+            # try:
+
+            #     ser.write('m'.encode())
+            # except:
+            #     pass
             # slotInput = '0'
             # print("\n\n")
             return
@@ -1176,7 +1260,11 @@ def openProject():
         noWokwiStuff = True
         url_link = ' '
         print("\nWokwi updates disabled\n\n")
-        ser.write('m'.encode())
+        try:
+
+            ser.write('m'.encode())
+        except:
+            pass
         url_selected = 1
         #break
         return
@@ -1249,6 +1337,8 @@ if (noWokwiStuff == False):
 
 print("      'm' to show the onboard menu\n\n")
 
+# if (sys.platform == "win32"):
+print(style.RESET)
 
 
 
@@ -1376,7 +1466,7 @@ def serialTermIn():
             except:
                 try:
                     ser.cancel_read()
-                    ser.close()
+                    # ser.close()
                 except:
                     pass
                 
@@ -2113,13 +2203,22 @@ while (noWokwiStuff == False):
                 #print(p)
                 time.sleep(0.1)
                 if (numAssignedSlots > 0 and slotURLs[currentSlotUpdate] != '!'):
-                    ser.write('o'.encode())
-                    time.sleep(0.010)
-                    ser.write("Slot ".encode())
+                    # ser.write('o'.encode())
+                    # print("o")
+                    # time.sleep(0.010)
+                    # ser.write("Slot ".encode())
+                    # print("Slot ", end='')
+
+                    # print(str(currentSlotUpdate))
                     #print("Slot " + str(currentSlot) + " " + )
-                    ser.write(str(currentSlotUpdate).encode())
-                    ser.write("\n\n\rf ".encode())
-                    ser.write(p.encode())
+                    # ser.write(str(currentSlotUpdate).encode())
+
+                    ser.write("o Slot ".encode() + str(currentSlotUpdate).encode() + " f ".encode() + p.encode())
+                    # print("o Slot ".encode() + str(currentSlotUpdate).encode() + " f ".encode() + p.encode())
+                    # print("f " + p)
+                    # print("f ")
+                    # ser.write(p.encode())
+                    # print(p)
                     time.sleep(wokwiUpdateRate)
                 # else:
                 #     ser.write('f'.encode())

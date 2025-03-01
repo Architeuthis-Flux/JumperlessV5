@@ -35,6 +35,9 @@
     "clang-format.language.cpp.style": "file",
     "C_Cpp.clang_format_style": "file : /Users/kevinsanto/Documents/GitHub/JumperlessV5/JumperlessV5firmware/.vscode/.clang-format",
     "cortex-debug.variableUseNaturalFormat": false,
-    "cmake.ignoreCMakeListsMissing": true
+    "cmake.ignoreCMakeListsMissing": true,
+    "terminal.integrated.automationProfile.windows": {
+        "terminal.integrated.shellArgs.windows": ["-ExecutionPolicy", "Bypass"]
+    }
 
 }
