@@ -18,6 +18,8 @@ _autosave-*
 fp-info-cache
 _Build
 .venv*
+jumperlessWokwiBridge/dist/*
+jumperlessWokwiBridge/build/*
 
 # Netlist files (exported from Eeschema)
 *.net

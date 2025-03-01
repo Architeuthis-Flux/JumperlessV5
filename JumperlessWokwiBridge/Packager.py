@@ -44,12 +44,18 @@ intel_folder = pathlib.Path("intel mac/Jumperless.app")
 
 
 
+appdist_path = pathlib.Path("dist/Jumperless.app")
+
+dmg_folder = pathlib.Path("JumperlessDMG/Jumperless.app")
+python_folder = pathlib.Path("Jumperless\ Python/")
+
+
 os.system(f"python -m PyInstaller --icon=\"/Users/kevinsanto/Documents/GitHub/JumperlessV5/jumperlesswokwibridge/icon.icns\" \
 -y \
 --console \
 --windowed \
 --target-arch universal2 \
---path \"/Users/kevinsanto/Documents/GitHub/JumperlessV5/JumperlessWokwiBridge/.venv/lib/python3.12/site-packages\" \
+--path \"/Users/kevinsanto/Documents/GitHub/JumperlessV5/JumperlessWokwiBridge/.venv/lib/python3.13/site-packages\" \
 JumperlessWokwiBridge.py \
 --name Jumperless ")
 
@@ -98,30 +104,47 @@ time.sleep(4)
 
 # os.system(f"cp {icon_path} {generated_app_path}")
 
-print("Done")
+# print("Done")
 
 
-# # rename the app to JumperlessWokwiBridge_cli
-# print("chmodding launcher")
-# os.system(f"chmod 755 {nonexec_launcher_path}")
-# print("Changed permissions for " + str(nonexec_launcher_path)+ '\n')
+# rename the app to JumperlessWokwiBridge_cli
+print("chmodding launcher")
+os.system(f"chmod 755 {nonexec_launcher_path}")
+print("Changed permissions for " + str(nonexec_launcher_path)+ '\n')
 
-# print("Renaming launcher to Jumperless")
-# os.system(f'cp {nonexec_launcher_path} {launcher_path}')
-# print("Renamed " + str(nonexec_launcher_path) + " to " + str(launcher_path)+ '\n')
-
-
-# print("Renaming app main app to Jumperless_cli")
-# os.rename(generated_app_path, generated_app_path_renamed)
-# print("Renamed " + str(generated_app_path) + "(main app) to " + str(generated_app_path_renamed)+ '\n')
+print("Renaming launcher to Jumperless")
+os.system(f'cp {nonexec_launcher_path} {launcher_path}')
+print("Renamed " + str(nonexec_launcher_path) + " to " + str(launcher_path)+ '\n')
 
 
-# os.system(f"cp {launcher_path} {target_app_path}")
-# print("Copied " + str(launcher_path) + "(launcher) to " + str(target_app_path)+ '\n')
+print("Renaming app main app to Jumperless_cli")
+os.rename(generated_app_path, generated_app_path_renamed)
+print("Renamed " + str(generated_app_path) + "(main app) to " + str(generated_app_path_renamed)+ '\n')
 
 
-# # os.system(f"cp {generated_app_path} {target_app_path}")
-# # print("Copied " + str(generated_app_path) + " to " + str(target_app_path))
+os.system(f"cp {launcher_path} {target_app_path}")
+print("Copied " + str(launcher_path) + "(launcher) to " + str(target_app_path)+ '\n')
+
+shutil.copytree(appdist_path, dmg_folder, dirs_exist_ok=True )
+# os.system(f"cp {appdist_path} {dmg_folder}")
+print("Copied " + str(app_path) + " to " + str(dmg_folder)+ '\n')
+
+
+# //shutil.copytree(appdist_path, python_folder, dirs_exist_ok=True )
+
+os.system(f"cp JumperlessWokwiBridge.py {python_folder}")
+os.system(f"cp requirements.txt {python_folder}")
+print("Copied " + "JumperlessWokwiBridge.py" + " to " + str(python_folder)+ '\n')
+
+os.system(f"rm Jumperless_Installer.dmg")
+
+
+
+os.chmod("createDMG.sh", 0o755)
+
+os.system("./createDMG.sh")
+# os.system(f"cp {generated_app_path} {target_app_path}")
+# print("Copied " + str(generated_app_path) + " to " + str(target_app_path))
 
 # App = "/Applications/"
 # print("Copying app to applications folder")

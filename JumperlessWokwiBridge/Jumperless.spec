@@ -3,7 +3,7 @@
 
 a = Analysis(
     ['JumperlessWokwiBridge.py'],
-    pathex=['/Users/kevinsanto/Documents/GitHub/JumperlessV5/JumperlessWokwiBridge/.venv/lib/python3.12/site-packages'],
+    pathex=['/Users/kevinsanto/Documents/GitHub/JumperlessV5/JumperlessWokwiBridge/.venv/lib/python3.13/site-packages'],
     binaries=[],
     datas=[],
     hiddenimports=[],

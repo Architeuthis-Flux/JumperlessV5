@@ -17,19 +17,20 @@ import codecs
 import os
 #import pyduinocli# We're not doing this flashing from Wokwi thing anymore unless someone reallllly wants it
 
-import psutil
+
 import shutil
 from urllib.request import urlretrieve
 
 import ssl
 ssl._create_default_https_context = ssl._create_unverified_context
-
+import psutil
 os.system("")
 #import platform
 os.system('color')
 
 if (sys.platform == "win32"):
     import win32api
+
 #from watchedserial import WatchedReaderThread
 
 import serial.tools.list_ports
@@ -184,7 +185,7 @@ def openSerial():
         print ("\n")
         
         jumperlessIndex = chooseJumperlessPort(sortedports)
-        arduinoIndex = (jumperlessIndex + 1) % len(sortedports)
+        arduinoIndex = (jumperlessIndex + 1) % (len(sortedports)+1)
         
         #print (jumperlessIndex)
         #print (arduinoIndex)
@@ -520,6 +521,7 @@ def updateJumperlessFirmware(force):
                 return
             time.sleep(0.5)
             partitions = psutil.disk_partitions()
+            
             
             for p in partitions:
                 #print(p.mountpoint)
