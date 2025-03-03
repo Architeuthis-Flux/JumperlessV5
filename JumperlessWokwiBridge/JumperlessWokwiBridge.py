@@ -795,6 +795,7 @@ def bridgeMenu():
 slotLines = [ "slot 0\n", "slot 1\n", "slot 2\n", "slot 3\n", "slot 4\n", "slot 5\n", "slot 6\n", "slot 7\n"]
 defaultSlotLines = [ "slot 0\n", "slot 1\n", "slot 2\n", "slot 3\n", "slot 4\n", "slot 5\n", "slot 6\n", "slot 7\n"]
 slotURLs = [ '!', '!', '!', '!', '!', '!', '!', '!', '!']
+slotAPIurls = [ '!', '!', '!', '!', '!', '!', '!', '!', '!']
 
 numAssignedSlots = 0
 
@@ -817,6 +818,9 @@ def countAssignedSlots():
             splitLine = line.split('\t')
             if (len(splitLine) > 1):
                 slotURLs[idx] = splitLine[1]
+
+                slotAPIurls[idx] = slotURLs[idx].replace("https://wokwi.com/projects/", "https://wokwi.com/api/projects/")
+                slotAPIurls[idx] = slotAPIurls[idx] + "/diagram.json"
                 numAssignedSlots += 1
             idx += 1
 
@@ -1746,7 +1750,7 @@ while (noWokwiStuff == False):
 
     while (justreconnected == 1):
 
-        #print("just reconnected")
+        # print("just reconnected")
         lastDiagram = blankDiagrams
         
         forceWokwiUpdate = 1
@@ -1770,7 +1774,7 @@ while (noWokwiStuff == False):
     #print(noWokwiStuff)
 
     if (serialconnected == 1 and noWokwiStuff == False):
-        #print ("connected!!!")
+        # print ("connected!!!")
 
         # if (forceWokwiUpdate == 1 and cycled == 0):
         #     #currentSlotUpdate = 0
@@ -1800,7 +1804,7 @@ while (noWokwiStuff == False):
             loop = 0
             while(slotURLs[currentSlotUpdate] == '!' and loop < 2 and menuEntered == 0):
                 
-                #print(currentSlotUpdate)                
+                # print(currentSlotUpdate)                
                 currentSlotUpdate += 1
                 if (currentSlotUpdate > 7):
                     loop+=1
@@ -1809,9 +1813,9 @@ while (noWokwiStuff == False):
 
             try:
 
-                result = requests.get(slotURLs[currentSlotUpdate]).text
+                result = requests.get(slotAPIurls[currentSlotUpdate]).text
             except Exception as e:
-                #print(e)
+                print(e)
                 continue
 
 
@@ -1827,21 +1831,58 @@ while (noWokwiStuff == False):
         
      
         try:
+            # print (slotURLs[currentSlotUpdate])
             doc = BeautifulSoup(result, "html.parser")
-            s = doc.find('script', type='application/json').get_text()
+            # print(doc.prettify)
+            # doc.
+            #https://wokwi.com/api/projects/367384677537829889/diagram.json
 
-            stringex = str(s)
-        
-        #print (stringex)
+            
+            # script_tags = doc.find('script')
+            # print(script_tags)
+            # s = next((tag for tag in script_tags if "gic-analyzer" in tag.string and tag.parent.name == 'body' and '__variable_22ceb1' in tag.parent.get('class', []) and 'enable-motion' in tag.parent.get('class', [])), None)
+            # script_content_part = "connections"
+            # s = doc.find('script', script_content_part).get_text()
+            # s = doc.find('script', type='application/json').get_text()
+            # s = doc.find('script').get_text()
 
-            d = json.loads(stringex)
+            
+
+            # script_content_part = "connections"
+            # # script_content_part = "gic-analyzer"
+            # # s = doc.find('script', string=lambda text: text and script_content_part in text).get_text()
+            # s = doc.find('connections')
+
+            # s = str(s)
+
+            # print(s)
+            # s = doc.decode(s)
+
+            # extract the json string from the script tag
+            # s = s.string
+            s = json.loads(doc.string)
+
+            s = s['connections']
+       
+            g = json.dumps(s, indent=4,)
+            # print(g)
+
+            
+
+            # # print(s)
+            
+            # stringex = str(s)
         
-            decoded = json.loads(stringex)
+            # print (stringex)
+
+            # d = json.loads(stringex)
+        
+            decoded = json.loads(g)
 
         except:
             continue
         
-            print (decoded['props']['pageProps']['p']['files'][0]['name'])
+            # print (decoded['props']['pageProps']['p']['files'][0]['name'])
 
 
         librariesExist = 0
@@ -1860,13 +1901,14 @@ while (noWokwiStuff == False):
         try:
 
 
-            d = decoded['props']['pageProps']['p']['files'][finddiagramindex(decoded)]['content']
+            # d = decoded['props']['pageProps']['p']['files'][finddiagramindex(decoded)]['content']
+            d = decoded
         except:
             continue
         #print (d)
 
         
-        f = json.loads(d)
+        f = json.loads(doc.string)
 
         #cf = json.loads(c)
 
@@ -1988,7 +2030,7 @@ while (noWokwiStuff == False):
         #     #justreconnected = 0
             
 
-
+        # print("fuck ")
         if ((lastDiagram != diagram or justFlashed == 1 and noWokwiStuff == False) or (forceWokwiUpdate == 1)):
             justFlashed = 0
             #print(forceWokwiUpdate)
@@ -2199,7 +2241,7 @@ while (noWokwiStuff == False):
 
             lastDiagram[currentSlotUpdate] = diagram[currentSlotUpdate]
             #lastDiagram = diagram
-
+            # print("fuck ")
             try:
                 #print(f)
                 #print(p)
@@ -2214,8 +2256,10 @@ while (noWokwiStuff == False):
                     # print(str(currentSlotUpdate))
                     #print("Slot " + str(currentSlot) + " " + )
                     # ser.write(str(currentSlotUpdate).encode())
-
+                    # if (jumperlessV5 == True):
                     ser.write("o Slot ".encode() + str(currentSlotUpdate).encode() + " f ".encode() + p.encode())
+                    # else:
+                        # ser.write(" f ".encode() + p.encode())
                     # print("o Slot ".encode() + str(currentSlotUpdate).encode() + " f ".encode() + p.encode())
                     # print("f " + p)
                     # print("f ")
