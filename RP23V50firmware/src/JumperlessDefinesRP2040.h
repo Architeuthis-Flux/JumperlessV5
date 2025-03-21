@@ -9,8 +9,8 @@ extern volatile int sendAllPathsCore2;
 
 #define PROTOTYPE_VERSION 3 //1 is the hw without the rearranged probe connections
 
-#define REV 3
-#define PROBE_REV 3
+#define REV 4
+#define PROBE_REV 4
 
 
 #define PIOSTUFF 1 // comment these out to remove them for debugging

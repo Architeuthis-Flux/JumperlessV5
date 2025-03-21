@@ -2031,9 +2031,10 @@ int checkProbeButton(void) {
 
   gpio_set_pulls(BUTTON_PIN, false, true);
 
-  gpio_set_input_enabled(BUTTON_PIN, true); // rp2350 errata hack: setting it to input
-                                   // right before reading and back fixes it
+  gpio_set_input_enabled(BUTTON_PIN, true);  // rp2350 errata hack: setting it to input
+                                                           // right before reading and back fixes it
   buttonState = gpio_get(BUTTON_PIN);
+  
   gpio_set_input_enabled(BUTTON_PIN, false);
 
   delayMicroseconds(10);

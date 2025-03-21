@@ -260,6 +260,10 @@ void setup1() {
 
   digitalWrite(GPIO_2_PIN, LOW);
 
+
+  // while(1) {
+  //   delay(1);
+  //   }
   // delay(4);
   // multicore_lockout_victim_init();
   //  lightUpRail();
@@ -297,7 +301,42 @@ unsigned long waitTimer = 0;
 unsigned long switchTimer = 0;
 int flashingArduino = 0;
 int attract = 0;
+#include <pico/stdlib.h>
+
+#include <hardware/adc.h>
+#include <hardware/gpio.h>
 void loop() {
+
+
+// unsigned long adcSpeedTimer = 0;  
+// unsigned long adcSpeedTimer2 = 0;
+// float adcSpeed = 0;
+// int speedRead = 0;
+// int readSpeedCount = 0;
+// adc_init();
+// adc_gpio_init(ADC0_PIN);
+// adc_fifo_setup(true, false, 1, false, false);
+// adc_select_input(0);
+// adc_run(true);
+
+//   while (1){
+    
+//    //speedRead = adc_read();
+//     //speedRead = adc_fifo_get_blocking();
+//     speedRead = analogRead(ADC0_PIN);
+//     //delayMicroseconds(1);
+
+//     readSpeedCount++;
+//     if (micros() - adcSpeedTimer2 > 1000000) {
+      
+//       Serial.print("ADC Speed: ");
+//       Serial.println(readSpeedCount);
+//       adcSpeedTimer2 = micros();
+//       readSpeedCount = 0;
+//     }
+
+
+//   }
 
 menu:
   getNothingTouched();

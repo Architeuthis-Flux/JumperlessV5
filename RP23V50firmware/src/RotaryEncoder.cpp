@@ -49,15 +49,7 @@ void initRotaryEncoder(void) {
   pio_add_program(pioEnc, &quadrature_encoder_program);
   quadrature_encoder_program_init(pioEnc, smEnc, PIN_AB, 0);
 
-  //   offsetEnc = pio_add_program(pioEnc, &quadrature_program);
-  //   smEnc = pio_claim_unused_sm(pioEnc, true);
-  //   quadrature_program_init(pioEnc, smEnc, offsetEnc, QUADRATURE_A_PIN,
-  //                           QUADRATURE_B_PIN);
-  // delay(1000);
-  // Serial.print(smEnc);
-  // Serial.print("\n\rRotary Encoder Mode: ");
-  // Serial.print(rotaryEncoderMode);
-  // Serial.print("\n\r");
+
 }
 
 void unInitRotaryEncoder(void) {
