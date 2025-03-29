@@ -12,7 +12,9 @@ void debugFlagInit(int forceDefaults) {
 
   if (EEPROM.read(FIRSTSTARTUPADDRESS) != 0xAA || forceDefaults == 1) {
     EEPROM.write(FIRSTSTARTUPADDRESS, 0xAA);
+    
     EEPROM.write(REVISIONADDRESS, REV);
+
     EEPROM.write(DEBUG_FILEPARSINGADDRESS, 0);
     EEPROM.write(TIME_FILEPARSINGADDRESS, 0);
     EEPROM.write(DEBUG_NETMANAGERADDRESS, 0);

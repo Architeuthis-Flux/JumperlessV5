@@ -399,6 +399,11 @@ menu:
 
 
     }
+
+  //  Serial.print("\n\r");
+   // Serial.print("revision ");
+    Serial.println(senseRevision());
+   // Serial.println("\n\r");
   //Serial.print("\ta = manual Arduino reset\n\r");
   //Serial.print("\t+ = refresh connections and save node file\n\r");
   //Serial.print("\ti = I2C scan\n\r");

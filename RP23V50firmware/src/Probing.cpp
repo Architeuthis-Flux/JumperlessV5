@@ -2012,20 +2012,11 @@ int checkProbeButton(void) {
   // hw_set_bits(&pads_bank0_hw->io[2], PADS_BANK0_GPIO2_ISO_BITS);
 
   gpio_set_dir(2, false);
-  // hw_clear_bits(&pads_bank0_hw->io[2], PADS_BANK0_GPIO2_OD_BITS);
-  // gpio_set_inover(2, true);
-  // hw_clear_bits(&pads_bank0_hw->io[2], PADS_BANK0_GPIO2_ISO_BITS);
-  // hw_set_bits(PADS_BANK0_BASE,  PADS_BANK0_GPIO2_ISO_BITS);
-  //  pads_bank0_hw->io
-  //  // probeLEDs.begin();
-  //  pinMode(2, OUTPUT_8MA);
-  //  digitalWrite(2, LOW);
-  //  delayMicroseconds(1);
-  // pinMode(2, INPUT);
+
   delayMicroseconds(20);
   //  pinMode(9, OUTPUT_4MA);
   // pinMode(BUTTON_PIN, INPUT_PULLUP);
-  pinMode(10, OUTPUT_8MA);
+  pinMode(10, OUTPUT_12MA);
 
   digitalWrite(10, HIGH);
 
@@ -2039,14 +2030,7 @@ int checkProbeButton(void) {
 
   delayMicroseconds(10);
   delayMicroseconds(40);
-  // pinMode(9, OUTPUT_4MA);
 
-  // delayMicroseconds(5);
-  //  pinMode(2, OUTPUT_8MA);
-  //  digitalWrite(2, LOW);
-  //  delayMicroseconds(1);
-  //  pinMode(2, INPUT);
-  //  digitalWrite(2, HIGH);
   gpio_set_pulls(BUTTON_PIN, true, false);
   // gpio_set_input_enabled(BUTTON_PIN, false);
   gpio_set_input_enabled(BUTTON_PIN, true);

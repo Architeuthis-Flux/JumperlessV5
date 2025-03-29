@@ -4,6 +4,8 @@
 #include "JumperlessDefinesRP2040.h"
 #include "MatrixStateRP2040.h"
 
+#include "CH446Q.h"
+
 
 
 
@@ -41,6 +43,73 @@ CHIP_K, CHIP_L};                                           //60
 // const int xHopMap[12][12][16] =  //[chip] [other chip][x]
 // {
 
+
+int senseRevision(void) {
+
+// pinMode(3, INPUT_PULLUP);
+// int senseRev1 = digitalRead(3);
+// pinMode(3, INPUT_PULLDOWN);
+// int senseRev2 = digitalRead(3);
+
+sendXYraw(11, 2, 0, 1);
+sendXYraw(11, 11, 0, 1);
+
+
+gpio_set_function(27, GPIO_FUNC_SIO);
+ gpio_disable_pulls(27);
+// gpio_set_inover(2, true);
+//  gpio_set_outover(2, false);
+// pads_bank0_hw->io[8] = PADS_BANK0_GPIO2_GPIO2;
+// hw_set_bits(&pads_bank0_hw->io[2], PADS_BANK0_GPIO2_ISO_BITS);
+Serial.println("\n\n\n\n\n\r");
+gpio_set_dir(27, false);
+
+
+gpio_set_pulls(27, false, true);
+
+gpio_set_input_enabled(27, true);  // rp2350 errata hack: setting it to input
+                                                         // right before reading and back fixes it
+int buttonState = gpio_get(27);
+
+gpio_set_input_enabled(27, false);
+
+Serial.print(buttonState);
+delayMicroseconds(10);
+delayMicroseconds(90);
+
+gpio_set_pulls(27, true, false);
+// gpio_set_input_enabled(BUTTON_PIN, false);
+gpio_set_input_enabled(27, true);
+
+
+
+int buttonState2 = gpio_get(27);
+
+delayMicroseconds(90); // pinMode(BUTTON_PIN, INPUT_PULLDOWN);
+gpio_set_input_enabled(27, false);
+delayMicroseconds(1);
+
+delayMicroseconds(20);
+Serial.println(buttonState2);
+Serial.println("\n\n\n\n\n\r");
+
+sendXYraw(11, 2, 0, 0);
+sendXYraw(11, 11, 0, 0);
+
+if (buttonState2 == HIGH && buttonState == LOW) {
+  return 3;
+}
+else {
+  return 4;
+}
+
+
+
+
+
+
+  return 0;
+}
 
 
 #if PROTOTYPE_VERSION <= 4

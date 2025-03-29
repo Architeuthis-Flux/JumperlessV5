@@ -1073,12 +1073,13 @@ void changeWokwiDefinesToJumperless(void) {
         nodeNumber = DAC0;
       } else {
 
-        connectionsW[i][j] = -1;
+        connectionsW[i][j] = "-1";
       }
 
       // nodeNumber += connString1.toInt();
-
-      connectionsW[i][j] = nodeNumber;
+      String nodeNumberString = String(nodeNumber);
+      connectionsW[i][j] = nodeNumberString;
+      //connectionsW[i][j] = nodeNumber;
       if (debugFP) {
         Serial.print(connectionsW[i][j]);
 
@@ -1155,7 +1156,7 @@ if (onlyCheck == 1) {
   int lineIdx = 0;
   int charIdx = 0;
   for (int i = 0; i < 120; i++) {
-    slicedLines[lineIdx] = ' ';
+    slicedLines[lineIdx] = " ";
 
     if (flashOrLocal == 0) {
       lineBufString = nodeFile.readStringUntil(',');
@@ -1430,7 +1431,7 @@ timerStart[0] = micros();
 
   for (int i = 0; i < 120; i++) {
 
-    slicedLines[lineIdx] = ' ';
+    slicedLines[lineIdx] = " ";
     // if (i == 0 && nodeFileString.startsWith("{") == -1 && flashOrLocal == 1)
     // {
     //   slicedLines[0].concat("{");

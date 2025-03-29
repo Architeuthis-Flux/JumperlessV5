@@ -70,7 +70,7 @@ struct pathStruct{
 
 };
 
-
+int senseRevision(void);
 
 extern struct pathStruct path[MAX_BRIDGES]; //this is the array of paths 
 
