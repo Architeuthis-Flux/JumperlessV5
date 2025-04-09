@@ -9,6 +9,7 @@ $Rails$\n\
 \n\
 Apps\n\
 \n\
+-Custom App\n\
 -Oscill oscope\n\
 -MIDI   Synth\n\
 -I2C    Scanner\n\

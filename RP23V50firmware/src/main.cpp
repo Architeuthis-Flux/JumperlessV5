@@ -402,7 +402,7 @@ menu:
 
   //  Serial.print("\n\r");
    // Serial.print("revision ");
-    Serial.println(senseRevision());
+   // Serial.println(senseRevision());
    // Serial.println("\n\r");
   //Serial.print("\ta = manual Arduino reset\n\r");
   //Serial.print("\t+ = refresh connections and save node file\n\r");
@@ -1036,7 +1036,7 @@ float botRailVoltage = 0.0;
 
 int readcounter = 0;
 unsigned long schedulerTimer = 0;
-unsigned long schedulerUpdateTime = 3300;
+unsigned long schedulerUpdateTime = 5300;
 int rowProbed = 0;
 int swirled = 0;
 int countsss = 0;

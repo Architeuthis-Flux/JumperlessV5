@@ -2421,7 +2421,7 @@ void checkPads(void) {
   };
 
   /* clang-format on */
-  probeReading = probeRowMap[map(probeReading, 40, 4050, 101, 0)];
+  probeReading = probeRowMap[map(probeReading, 30, 4050, 101, 0)];
 
   // stopProbe();
   if (probeReading < LOGO_PAD_TOP || probeReading > BUILDING_PAD_BOTTOM) {
