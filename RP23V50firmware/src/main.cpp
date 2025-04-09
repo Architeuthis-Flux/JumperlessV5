@@ -308,43 +308,43 @@ int attract = 0;
 void loop() {
 
 
-// unsigned long adcSpeedTimer = 0;  
-// unsigned long adcSpeedTimer2 = 0;
-// float adcSpeed = 0;
-// int speedRead = 0;
-// int readSpeedCount = 0;
-// adc_init();
-// adc_gpio_init(ADC0_PIN);
-// adc_fifo_setup(true, false, 1, false, false);
-// adc_select_input(0);
-// adc_run(true);
+  // unsigned long adcSpeedTimer = 0;  
+  // unsigned long adcSpeedTimer2 = 0;
+  // float adcSpeed = 0;
+  // int speedRead = 0;
+  // int readSpeedCount = 0;
+  // adc_init();
+  // adc_gpio_init(ADC0_PIN);
+  // adc_fifo_setup(true, false, 1, false, false);
+  // adc_select_input(0);
+  // adc_run(true);
 
-//   while (1){
-    
-//    //speedRead = adc_read();
-//     //speedRead = adc_fifo_get_blocking();
-//     speedRead = analogRead(ADC0_PIN);
-//     //delayMicroseconds(1);
+  //   while (1){
 
-//     readSpeedCount++;
-//     if (micros() - adcSpeedTimer2 > 1000000) {
-      
-//       Serial.print("ADC Speed: ");
-//       Serial.println(readSpeedCount);
-//       adcSpeedTimer2 = micros();
-//       readSpeedCount = 0;
-//     }
+  //    //speedRead = adc_read();
+  //     //speedRead = adc_fifo_get_blocking();
+  //     speedRead = analogRead(ADC0_PIN);
+  //     //delayMicroseconds(1);
+
+  //     readSpeedCount++;
+  //     if (micros() - adcSpeedTimer2 > 1000000) {
+
+  //       Serial.print("ADC Speed: ");
+  //       Serial.println(readSpeedCount);
+  //       adcSpeedTimer2 = micros();
+  //       readSpeedCount = 0;
+  //     }
 
 
-//   }
+  //   }
 
 menu:
   getNothingTouched();
-//   Serial.print("\n\rPaths: \n\n\r");
-//   printPathsCompact();
-//   Serial.print("\n\n\n\rChip Status: \n\n\r");
-// printChipStatus();
-  //printMainMenu(showExtraMenu);
+  //   Serial.print("\n\rPaths: \n\n\r");
+  //   printPathsCompact();
+  //   Serial.print("\n\n\n\rChip Status: \n\n\r");
+  // printChipStatus();
+    //printMainMenu(showExtraMenu);
 
   Serial.print("\n\n\r\t\tMenu\n\r");
   // Serial.print("Slot ");
@@ -500,7 +500,7 @@ dontshowmenu:
           // defconDisplay = -1;
           // probeLEDs.show();
           if (probeButton == 2) {
-                connectOrClearProbe = 1;
+            connectOrClearProbe = 1;
             probeActive = 1;
             showProbeLEDs = 1;
             input = 'p';
@@ -549,12 +549,19 @@ dontshowmenu:
     }
 
 skipinput:
+
+
   switch (input) {
+
+    case '2': {
+      runApp(2);
+      break;
+      }
 
     case '^': {
     // doomOn = 1;
-// Serial.println(yesNoMenu());
-// break;
+    // Serial.println(yesNoMenu());
+    // break;
     char f[8] = { ' ' };
     int index = 0;
     float f1 = 0.0;
@@ -617,11 +624,11 @@ skipinput:
     }
 
     case '+': {
-      if (lightUpName == true)
+    if (lightUpName == true)
       {
-        lightUpName = false;
+      lightUpName = false;
       } else {
-        lightUpName = true;
+      lightUpName = true;
       }
 
 
@@ -648,7 +655,7 @@ skipinput:
 
     case 'i': {
 
-      oledTest(17, 18, 22, 23);
+    oledTest(17, 18, 22, 23);
     // Serial.println("I2C scan\n\n\r");
     // Serial.println("enter SCL row\n\r");
     // Serial.print("SCL = ");

@@ -15,7 +15,7 @@
 #include "LEDs.h"   
 #include "RotaryEncoder.h"
 #include "Menus.h"
-
+#include "CH446Q.h"
 
 #include <Adafruit_GFX.h>
 #include <Adafruit_SSD1306.h>
@@ -136,112 +136,296 @@ void runApp(int index, char* name)
 
     }
 
-
+//this just does a bunch of random stuff
+//it should be a good example of how to use the API
 void customApp(void) {
 
 
-    //add some bridges to the net file
-    addBridgeToNodeFile(ADC0, 40, netSlot, 0);
-    addBridgeToNodeFile(12, 41, netSlot, 0);
-    addBridgeToNodeFile(RP_GPIO_1, 42, netSlot, 0);
-    addBridgeToNodeFile(TOP_RAIL, 43, netSlot, 0);
-
+    //!add some bridges to the net file
+    addBridgeToNodeFile(12, 25, netSlot, 0, 0); //netSlot is the current slot
+    addBridgeToNodeFile(TOP_RAIL, 52, netSlot, 0, 0);
     refreshConnections(-1, 1); //you need to refresh connections to make the changes take effect
 
-    pinMode(RP_GPIO_1, OUTPUT);
-    digitalWrite(RP_GPIO_1, HIGH);
-    // delay(1000);
-    digitalWrite(RP_GPIO_1, LOW);
+    
+    //!change the top rail voltage
+    setTopRail((float)3.3); //this will set the top rail to 3.3V
 
 
 
-    float voltage = readAdcVoltage(0, 4); //readADC() will return the 0-4096
-    Serial.print("ADC0: ");
+    //!GPIO
+    addBridgeToNodeFile(RP_GPIO_1, 42, netSlot, 0, 0);
+    addBridgeToNodeFile(RP_GPIO_2, 42, netSlot, 0, 0);
+    refreshConnections(-1, 0); //you need to refresh connections to make the changes take effect
+
+    pinMode(GPIO_1_PIN, OUTPUT); //I need to change this to GPIO 0 (so GPIO 0 = pin 20, 1 = 21, etc.), but for now they start at 1
+    pinMode(GPIO_2_PIN, INPUT);
+
+    //set GPIO 1 high and read it with GPIO 2
+    digitalWrite(GPIO_1_PIN, HIGH); 
+    int reading = digitalRead(GPIO_2_PIN); 
+    Serial.print("GPIO 2 Reading: ");
+    Serial.println(reading);
+
+    delay(10);
+
+    //set GPIO 1 low and read it with GPIO 2
+    digitalWrite(GPIO_1_PIN, LOW);
+    reading = digitalRead(GPIO_2_PIN);
+    Serial.print("GPIO_2_PIN: ");
+    Serial.println(reading);
+
+    removeBridgeFromNodeFile(RP_GPIO_1, 42, netSlot, 0);
+    removeBridgeFromNodeFile(RP_GPIO_2, 42, netSlot, 0);
+    refreshConnections(-1, 0);
+
+    //!DAC
+    //connect the DAC to row 20 and set it to 5.35V
+    setDacByNumber(1, 5.35);
+
+    addBridgeToNodeFile(DAC1, 20, netSlot, 0, 0); //connect it
+    refreshConnections(-1, 0);
+    delay(10);
+
+    //!ADC
+    //connect the ADC to the same row as the DAC and read the voltage
+    addBridgeToNodeFile(ADC0, 20, netSlot, 0, 0);//note that this is the same row as the DAC
+    refreshConnections(-1, 0);
+
+    //delay(100); //give it a sec (refreshConnections() is async on core 2, so it might not be done yet)
+    waitCore2(); //or you could also use this to wait for the core 2 to finish
+
+    float voltage = readAdcVoltage(0, 8); //readADC() will return the 0-4096
+    Serial.print("\n\rADC0: ");
     Serial.println(voltage);
 
 
-    //remove some bridges from the net file
-    removeBridgeFromNodeFile(ADC0, 40, netSlot, 0);
-    removeBridgeFromNodeFile(12, 41, netSlot, 0);
-    removeBridgeFromNodeFile(RP_GPIO_1, 42, netSlot, 0);
-    removeBridgeFromNodeFile(TOP_RAIL, 43, netSlot, 0);
+    //!print the nets (should show ADC0 and DAC1 connected)
+    listNets();
+    listSpecialNets();
+    Serial.println("\n\n\r");
+    printPathsCompact(); //print the actual chip connections
+    Serial.println("\n\n\n\n\r");
 
-    refreshConnections(-1, 0); //you need to refresh connections to make the changes take effect
+    //remove the ADC and DAC bridges
+    removeBridgeFromNodeFile(ADC0, 20, netSlot, 0);
+    removeBridgeFromNodeFile(DAC1, 20, netSlot, 0);
+    refreshConnections(-1, 0);
 
 
-    // //if you want jumperless to make the connection to an ADC, read the voltage, and then disconnect it
-    // Serial.print("Voltage at row 4: ");
-    // Serial.println(measureVoltage(1, 4, false)); //this might be a bit buggy, probably best to do it manually
-
-
-    //if you don't want to rely on my helper functions, you can do shit directly
-    addBridgeToNodeFile(ISENSE_PLUS, 19, netSlot, 0, 0);
-    addBridgeToNodeFile(ISENSE_MINUS, 23, netSlot, 0, 0);
+    //!measure current
+    addBridgeToNodeFile(ISENSE_PLUS, 9, netSlot, 0, 0);
+    addBridgeToNodeFile(ISENSE_MINUS, 28, netSlot, 0, 0);
     refreshConnections();
-
-
 
     float current_ma = INA0.getCurrent_mA();
 
-    Serial.print("current between row 19 and 23: ");
+    Serial.print("current between row 19 and 28: ");
     Serial.print(current_ma);
     Serial.println(" mA\n\r");
 
 
-    int current_ua = (int)(current_ma * 1000);
+    removeBridgeFromNodeFile(ISENSE_PLUS, 9, netSlot, 0);
+    removeBridgeFromNodeFile(ISENSE_MINUS, 28, netSlot, 0);
+    refreshConnections(-1, 0);
+    delay(1);
 
 
-    //print text on the breadboard
-    b.clear();
-    clearLEDsExceptRails();
-    b.print(" fuck   you!");
-    showLEDsCore2 = -3;
+    //!use INA219 to measure voltage
+    //turns out the INA219 is the most accurate voltage measurement on the board too (only for positive voltages though) and is what the ADC are calibrated against
+    setTopRail(4.20F); //this will set the top rail to 2.3V
+    addBridgeToNodeFile(TOP_RAIL, ISENSE_PLUS, netSlot, 0, 0);
+    refreshConnections(-1, 0); //you need to refresh connections to make the changes take effect
+    waitCore2();
+    delay(10);
+    float voltage2 = INA0.getBusVoltage();
+    Serial.print("top rail voltage (from INA219): ");
+    Serial.print(voltage2, 4);
+    Serial.println(" V\n\r");
 
-    delay(500);
+    removeBridgeFromNodeFile(TOP_RAIL, ISENSE_PLUS, netSlot, 0);
+    refreshConnections(-1, 0); //you need to refresh connections to make the changes take effect
 
-    b.clear();
-    b.print(current_ua);
 
-    //draw with raw rows
-    b.printRawRow(0b00001, 48, 0x170010, 0xffffff);
-    b.printRawRow(0b00011, 49, 0x150012, 0xffffff);
-    b.printRawRow(0b00111, 50, 0x130013, 0xffffff);
-    b.printRawRow(0b01111, 51, 0x100015, 0xffffff);
-    b.printRawRow(0b11111, 52, 0x080018, 0xffffff);
+    //!probe tip (in measure mode)
+    //get the voltage on the probe tip
+    float probeVoltage = readAdcVoltage(7, 8); //ADC 7 is hardwired to the probe tip (in measure mode), so it's this easy
+    Serial.print("Probe voltage: ");
+    Serial.print(probeVoltage, 4);
+    Serial.println(" V\n\r");
 
+
+    //get the current on the probe tip
+    //the probe tip is hardwired to ROUTABLE_BUFFER_IN, so it connects that to DAC 1, sets the DAC 1 to 3.33V (which it does by default right now so you can use the probe to tap rows in measure mode), and then measures the current
+    //the reason this exists is to tell the position of the switch (measure or select) by sensing whether DAC 1 is powering the probe LEDs
+    float probeCurrent = checkProbeCurrent(); 
+    Serial.print("Probe current: ");
+    Serial.print(probeCurrent, 2);
+    Serial.println(" mA\n\r");
+    //this will be something around ~1-3mA if it's in select mode (because it's whatever the probe LEDs are drawing)
+
+
+    //!printing stuff on the breadboard
     showLEDsCore2 = -3; //this tells the second core to write to the LEDs (negative numbers clear first, check loop1() in main.cpp to see what it's doing)
     //3 or -3 will "hold" control of the LEDs (so animations and other stuff aren't drawn)
 
-    delay(500);
+    b.clear();              //clear the screen
+    clearLEDsExceptRails(); //these are fairly similar, but this is more direct
+
+    //draw with raw rows
+    b.printRawRow(0b00001, 55, 0x170010, 0xffffff);
+    b.printRawRow(0b00011, 56, 0x150012, 0xffffff);
+    b.printRawRow(0b00111, 57, 0x130013, 0xffffff);
+    b.printRawRow(0b01111, 58, 0x100015, 0xffffff);
+    b.printRawRow(0b11111, 59, 0x080018, 0xffffff);
+
+    //text (also shows the insane way I deal with colors)
+    for (uint8_t i = 0; i < 254; i++) {
+        hsvColor hsvTextColor = { i, 255, 30 };
+        rgbColor rgbTextColor = HsvToRgb(hsvTextColor);
+        uint32_t textColor = (uint32_t)rgbTextColor.r << 16 | (uint32_t)rgbTextColor.g << 8 | (uint32_t)rgbTextColor.b;
+        b.print("Fuck    you!", (uint32_t)textColor);
+
+        showLEDsCore2 = -3;
+        delayMicroseconds(200);
+        }
 
 
-    showLEDsCore2 = 0;
+    //!check switch position
+    int switchPosition = checkSwitchPosition();
+    Serial.print("Switch position: ");
+    if (switchPosition == 0)
+        {
+        Serial.println("Measure");
+        } else {
+        Serial.println("Select");
+        }
 
 
-    //get input from the probe
+    //!get row input from the probe
+    b.clear();
+    b.print(" Tap    Rows!", (uint32_t)0x00140a);
+    showLEDsCore2 = -3;
+    delay(100);
+    showLEDsCore2 = -1; //-1 will clear and then draw the wires as they are in the node file (without any extra stuff we drew)
+
+
+
+    //check for tapped rows until the probe button is pressed
     int probeRow = -1;
+    int lastProbedRow = 0; //store this so we can clear it
+
+    Serial.println("Click the probe button to exit\n\n\n\r");
 
     while (checkProbeButton() == 0) {
-        probeRow = justReadProbe();
+
+        probeRow = justReadProbe(); //justReadProbe() returns the row number of the probe, or -1 if it is not touching anything
 
         if (probeRow != -1) {
-            Serial.print("Probed row: ");
-            Serial.println(probeRow);
-            b.printRawRow(0b11111, probeRow, 0x172000, 0xffffff);
-            showLEDsCore2 = -2;
-            //break;
+            Serial.print("\r                 \rProbed row: ");
+            printNodeOrName(probeRow); //this will print names for the rows
+
+            b.printRawRow(0b11111, lastProbedRow - 1, 0x000000, 0xffffff); //clear the last probed row
+            b.printRawRow(0b11111, probeRow - 1, 0x172000, 0xffffff); //ugh these are off by 1 (because the first row is 0)
+
+            b.print(probeRow, (uint32_t)0x002008); //this will print the row number on the breadboard
+            //showLEDsCore2 = -2;
+            lastProbedRow = probeRow;
+            delayMicroseconds(100);
             }
 
         }
 
 
+    //!remove bridges from the node file
+    removeBridgeFromNodeFile(12, -1, netSlot, 0);
+    removeBridgeFromNodeFile(52, -1, netSlot, 0); //-1 means remove all bridges to this node
+    refreshConnections(-1, 0); //you need to refresh connections to make the changes take effect
+
+ 
+
+    //!using the local node file (in RAM)
+    //most of the stuff above should have actually been done this way, because we're making connections temporarily so they don't need to be stored in flash
+    //writing to flash is slow and needs to pause the other core while it does it's thing, so this is is *way* faster
+    
+    addBridgeToNodeFile(12, 25, netSlot, 1); //note the last parameter flashOrLocal is 1
+    refreshLocalConnections(-1, 0); //you still need to refresh connections
+    delay(100);
+
+    removeBridgeFromNodeFile(12, -1, netSlot, 1); //remove all bridges to this node
+    refreshLocalConnections(-1, 0); //you still need to refresh connections
+    delay(100);
+    //the only difference is that the last parameter is 1 instead of 0 and calling refreshLocalConnections() instead of refreshConnections()
+
+
+    //!speed test: RAM VS flash
+    //this isn't really so much about hardware as it is about the my code, I could probably make flash access faster if I put in some effort
+
+    //RAM
+    for (int i = 1; i <= 30; i++) {
+        removeBridgeFromNodeFile(1, i-1, netSlot, 1);
+        addBridgeToNodeFile(1, i, netSlot, 1);
+        refreshLocalConnections(-1, 0); //you still need to refresh connections
+        
+        showLEDsCore2 = -1;
+        waitCore2(); //wait for the other core to finish
+        }
+
+    
+    removeBridgeFromNodeFile(30, -1, netSlot, 1); //remove that last bridge
+    refreshLocalConnections(-1, 0); //you still need to refresh connections
+
+    //now let's do the same thing but with flash
+    for (int i = 31; i <= 60; i++) {
+        removeBridgeFromNodeFile(31, i-1, netSlot, 0);
+        addBridgeToNodeFile(31, i, netSlot, 0);
+        refreshConnections(-1, 0); //you still need to refresh connections
+        showLEDsCore2 = -1;
+       // waitCore2(); //wait for the other core to finish
+        
+        
+       // delayMicroseconds((31 - i) * 100);
+        }
+        removeBridgeFromNodeFile(60, -1, netSlot, 1); //remove that last bridge
+        refreshConnections(-1, 0); //you still need to refresh connections
+        delay(100);
+
+    //!raw CH446Q connections
+    //you could even do this ~10,000 faster by sending raw X and Y connections directly to the CH446Qs
+    //you'll need to be staring at the schematic it use this, but for doing stuff like "fake GPIO" by connecting a row to GND and a rail really fast or something, this might be useful
+    
+    sendXYraw(CHIP_K, 4, 0, 1); //TOP_RAIL to AK
+    sendXYraw(CHIP_A, 9, 1, 1); //AK to row 1
+    
+    
+    //let's see how fast of a PWM we can get on pin 1
+    //we can leave AK to row 1 connected and just toggle between TOP_RAIL to AK and GND to AK
+    //!fake GPIO
+    unsigned long startTime = millis();
+    unsigned long timeout = 10000; //10 seconds
+
+    while (millis() - startTime < timeout) {
+        sendXYraw(CHIP_K, 4, 0, 1); //connect TOP_RAIL to AK
+        delayMicroseconds(100); 
+        sendXYraw(CHIP_K, 4, 0, 0); //disconnect TOP_RAIL from AK
+        sendXYraw(CHIP_K, 15, 0, 1); //connect GND to AK
+        delayMicroseconds(100); 
+        sendXYraw(CHIP_K, 15, 0, 0); //disconnect GND from AK
+        }
+
+    //clean up
+    sendXYraw(CHIP_K, 4, 0, 0); //disconnect TOP_RAIL from AK
+    sendXYraw(CHIP_K, 15, 0, 0); //disconnect TOP_RAIL from AK
+    sendXYraw(CHIP_A, 9, 1, 0); //disconnect AK from row 1
 
 
 
 
-    //  Serial.println("Custom App");
 
+    
     }
+
+
+
 
 void scanBoard(void) {
     int countLoop = 0;
