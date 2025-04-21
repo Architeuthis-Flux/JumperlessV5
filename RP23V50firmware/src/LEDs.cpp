@@ -933,6 +933,9 @@ void lightUpNet(int netNumber, int node, int onOff, int brightness2,
                 }
                 if (brightenedNet == netNumber) {
                   shiftedColorHsv.v += brightenedAmount;
+                  // shiftedColorHsv.v *= 8;
+                  shiftedColorHsv.v =
+                      constrain(shiftedColorHsv.v, 0, 255);
                 }
                 shiftedColor = HsvToRgb(shiftedColorHsv);
 
@@ -964,7 +967,13 @@ void lightUpNet(int netNumber, int node, int onOff, int brightness2,
                 // colorToShift = shiftHue(colorToShift, hueShift);
                 hsvColor brighterColor = RgbToHsv(colorToShift);
                 if (brightenedNet == netNumber) {
-                  shiftedColorHsv.v += brightenedAmount * 1;
+                 // shiftedColorHsv.v += brightenedAmount;
+                  shiftedColorHsv.v = 255;
+                  brighterColor.v = 255;
+                  // brighterColor.v =
+                  //     constrain(shiftedColorHsv.v, 0, 255);
+                  // shiftedColorHsv.v =
+                  //     constrain(shiftedColorHsv.v, 0, 255);
                 }
                 brighterColor.v += PCBEXTINCTION;
                 rgbColor bright = HsvToRgb(brighterColor);
@@ -991,9 +1000,9 @@ void lightUpNet(int netNumber, int node, int onOff, int brightness2,
                 // Serial.println(nodesToPixelMap[net[netNumber].nodes[j]]);
                 if (net[netNumber].nodes[j] >= NANO_D0) {
                   if (brightenedNet == netNumber) {
-                    color = scaleBrightness(color, brightenedAmount * 3);
+                    color = scaleBrightness(color, brightenedAmount * 5);
                   } else {
-                    color = scaleBrightness(color, brightenedAmount * 2);
+                    color = scaleBrightness(color, brightenedAmount * 8);
                   }
                   leds.setPixelColor(
                       (nodesToPixelMap[net[netNumber].nodes[j]]) + 320, color);
@@ -1925,6 +1934,9 @@ int brightenNet(int node, int addBrightness) {
       } else if (brightenedNet == 3) {
         brightenedRail = 2;
         // lightUpRail(-1, 2, 1, addBrightness);
+      } else {
+        brightenedRail = -1;
+        // lightUpNet(brightenedNet, addBrightness);
       }
 
       assignNetColors();

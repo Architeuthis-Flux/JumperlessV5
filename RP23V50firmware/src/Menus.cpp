@@ -305,15 +305,15 @@ uint32_t menuColors[10] = { 0x09000a, 0x0f0004, 0x080800, 0x010f00,
 
 void initMenu(void) {
   FatFS.begin();
-  delay(10);
+  delay(1);
   if (menuRead == 0) {
     // Serial.println(menuLines);
-    delay(10);
+    //delay(1);
     readMenuFile();
     // return 0;
     }
   if (menuParsed == 0) {
-    delay(10);
+    //delay(1);
     parseMenuFile();
     /// return 0;
     }

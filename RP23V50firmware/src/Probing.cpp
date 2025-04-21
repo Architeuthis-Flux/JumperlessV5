@@ -2363,15 +2363,15 @@ int getNothingTouched(int samples) {
     }
 
     nothingTouchedReading = nothingTouchedReading / (samples - rejects);
-    mapFrom = nothingTouchedReading + 15;
+    mapFrom = nothingTouchedReading ;
 
     if (loops > 10) {
       break;
     }
 
   } while ((nothingTouchedReading > 80 || rejects > samples / 2) && loops < 9);
-  // Serial.print("nothingTouchedReading: ");
-  // Serial.println(nothingTouchedReading);
+  //  Serial.print("nothingTouchedReading: ");
+  //  Serial.println(nothingTouchedReading);
   return nothingTouchedReading;
 }
 unsigned long doubleTimeout = 0;

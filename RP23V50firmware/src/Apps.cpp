@@ -136,8 +136,7 @@ void runApp(int index, char* name)
 
     }
 
-//this just does a bunch of random stuff
-//it should be a good example of how to use the API
+//this just does a bunch of random stuff as an example
 void customApp(void) {
 
 
@@ -421,7 +420,7 @@ void customApp(void) {
 
 
 
-    
+
     }
 
 
