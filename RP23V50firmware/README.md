@@ -19,23 +19,30 @@ You should probably try to just load the firmware just ot make sure everything w
 
 ## To write an App
 
+
 Before you go writing your app, follow these steps to make it so it's listed in the App library and you can run it from the menus.
 
 - Go to [`menuTree.h`](https://github.com/Architeuthis-Flux/JumperlessV5/blob/main/RP23V50firmware/src/menuTree.h) and add the name of your app under `Apps\n\` (shown as `-Custom App\n\` here, it needs to fit in 7x2 chars to show on the breadboard)
+<img width="349" alt="menutree" src="https://github.com/user-attachments/assets/c619f655-de53-4a8c-8bde-24c536956546" />
 
 - Go to `Apps.h` and declare your function where you'll write your app
+<img width="758" alt="Appdoth" src="https://github.com/user-attachments/assets/63f7fbab-a63c-4f7c-b454-b4166875d6af" />
 
 - Go to `Apps.cpp` and add a struct in the `struct app apps[30]` for your app 
 `{"Name", index, ??idk, name of the function (unused)}`
+<img width="510" alt="appStruct" src="https://github.com/user-attachments/assets/f2b02ab6-0a49-46be-bf38-264bc8022417" />
 
 - Go to `Apps.cpp > runApp()` and add a `case` for your app's index (this is so you can also find it by index rather than exact matching the name `"Custom App"`
+<img width="587" alt="runApp" src="https://github.com/user-attachments/assets/3285c3d4-3efd-4685-9683-da4cd44cac51" />
 
 - Make a function that's the entirety of your app, I just pushed a demo function called `customApp(void)` with some (non exhaustive) examples of things you can do from an app.
+<img width="907" alt="customApp" src="https://github.com/user-attachments/assets/57787127-ac7f-4923-9073-c2eb0611bd6a" />
 
 - Run your app with the clickwheel, `Apps > Custom App`.
 
 The quick way run `"Custom App"` is to just enter `2` in the main menu, or just use the clickwheel and go Apps > Custom App.
 
+<img width="418" alt="mainSwitch" src="https://github.com/user-attachments/assets/8fbc2583-0f4f-4cc1-a245-b6fbad5ac785" />
 
 If you want to add your own shortcut, find an unused menu character and add a 
 ```
