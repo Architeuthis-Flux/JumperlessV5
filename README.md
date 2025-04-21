@@ -3,14 +3,11 @@
 
 Jumperless V5 is a breadboard where any point can be connected to any other with software-defined jumpers. RGB LEDs under each hole turn the breadboard itself into a display; paired with its assortment of routable analog/digial IO, Jumperless V5 gives you real-time information about everything that's happening in your circuit and the ability to change it at a whim.
 
-
-![JumperlessV5front](https://github.com/Architeuthis-Flux/JumperlessV5/assets/20519442/60e26150-3dce-4d52-812f-8f1f99c58989)
-
 ## You can get one on [Crowd Supply](https://www.crowdsupply.com/architeuthis-flux/jumperless-v5).
 
+![HeroNew](https://github.com/user-attachments/assets/8eb56a45-aa24-4dd0-8528-8c3656c0b4ae)
 
-
-https://github.com/user-attachments/assets/703db848-5871-4152-bb03-244a400a1bb8
+![dymo-6s](https://github.com/user-attachments/assets/d59e3ebc-591c-4c2c-bce3-1f65f9555c61)
 
 
 
@@ -20,10 +17,12 @@ The 4 individually programmable ±8V power supplies, 5 voltage/current/resistanc
 V5 is a major redesign of the original [Jumperless](https://github.com/Architeuthis-Flux/Jumperless). Having a few hundred people out there using Jumperlesses, sharing ideas, and [writing their](https://github.com/nilclass/jlctl) [own apps](https://github.com/nilclass/jumperlab) gave me a long enough list of things I wish I had done that I felt it was time to push the design even further. Now that the fundamentals are battle-tested (switching matrix, power supply, routing algorithm), Jumperless V5 can add some even crazier new stuff like; an ungodly number (445) of LEDs, a built in rotary encoder/switch, daisy chain headers, individually programmable power rails, and an isolated, always-on probing system. 
 
 
+Watch the launch video here:
+[![Launch Video](https://img.youtube.com/vi/fJTE7R_CV8w/maxresdefault.jpg)](https://www.youtube.com/watch?v=fJTE7R_CV8w)
 
 
 
-![JumperlessV5back](https://github.com/Architeuthis-Flux/JumperlessV5/assets/20519442/615c90cc-c19b-41ef-a5fb-0dfb2a027084)
+
 
 
 These additions may seem somewhat minor, but they fundamentally change the way using a Jumperless V5 *feels*. It's intuitive enough that it quickly just becomes "part of your brain" in the same way your computer does. And it's easy to forget this isn't how prototyping stuff on a breadboard always has been.
@@ -38,6 +37,7 @@ https://github.com/user-attachments/assets/168cb387-934b-4a25-b30d-b696312ee0e1
 Jumperless V5 will cost roughly $360 (with free shipping worldwide)
 
 
+![V5r5-9](https://github.com/user-attachments/assets/bf30c323-7071-48df-9679-cbe8289fe615)
 
 
 # For People Who Like Reading (btw all of this is a bit dated and some details have changed since then)
@@ -157,6 +157,9 @@ If you have some feature you want to add, I'm happy to help. Either by just addi
 ![JumperlessV5hw](https://github.com/Architeuthis-Flux/JumperlessV5/assets/20519442/ce409b68-03f8-4ee0-b19b-1aba168de07f)
 
 
+https://github.com/user-attachments/assets/703db848-5871-4152-bb03-244a400a1bb8
+
+
 https://github.com/user-attachments/assets/f4ce75e4-14b6-48c8-96ba-9c4a3180d78c
 
 
@@ -166,11 +169,18 @@ https://github.com/user-attachments/assets/7bf4f20c-272e-4586-8e50-9da7c20dedf6
 https://github.com/user-attachments/assets/13d6d9ab-8ea0-4387-aee6-343be06bf343
 
 
+![JumperlessV5dimensions](https://github.com/user-attachments/assets/45578502-b6f5-4a78-8532-c7acc77c7f05)
+![Explodraft](https://github.com/user-attachments/assets/9ce7daf6-f8a3-40d1-9ada-f57076623956)
+![BoxCollage](https://github.com/user-attachments/assets/0bf42810-6479-4c9d-88fa-83b3aecc9a92)
+![CableCollage](https://github.com/user-attachments/assets/a319e241-92eb-4648-aa23-b6e4abd8206f)
 
+![3DStandCollage](https://github.com/user-attachments/assets/91d7cfc4-92cf-4149-af75-68f9ca55a82b)
+![LayersCollage](https://github.com/user-attachments/assets/1e77b1d5-62d2-43c2-b479-25e13ae436c1)
 
 ![SBCadapters-4](https://github.com/user-attachments/assets/b3c5f8c6-84f3-4f9e-b543-64ebc18004e0)
 ![SBCadapters-3](https://github.com/user-attachments/assets/cd5504ac-27c4-4623-8025-be4615748875)
 ![SBCadapters-2](https://github.com/user-attachments/assets/dc7d4b75-3351-447b-a035-1eed026571bf)
 ![SBCadapters-1](https://github.com/user-attachments/assets/983a8943-3e70-4f71-a25c-db8b70e866cc)
-
+![RaspberryJ-2](https://github.com/user-attachments/assets/173f3d3b-58bf-4dea-9912-552df6e8ac47)
+![JumperlessV5back](https://github.com/Architeuthis-Flux/JumperlessV5/assets/20519442/615c90cc-c19b-41ef-a5fb-0dfb2a027084)
 
