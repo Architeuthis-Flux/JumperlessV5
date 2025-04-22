@@ -1,11 +1,3 @@
-
-
-
-
-
-
-
-
 # Now would be a good time to start getting excited
 
 
@@ -17,6 +9,9 @@ But there's a lot of other cool stuff I've been working on while I wait for thes
 ## Joom, it had to be done
 
 First, here's a fun little side quest, [Joom](https://github.com/Architeuthis-Flux/joom).
+
+[![Joom](https://img.youtube.com/vi/xWYWruUO0F4/maxresdefault.jpg)](https://www.youtube.com/watch?v=xWYWruUO0F4)
+
 
 https://www.youtube.com/watch?v=xWYWruUO0F4
 
@@ -105,6 +100,7 @@ So then I decided to have [Zhibang Packaging](https://www.zhibangpackaging.com/)
 
 Fun fact: that OG Jumperless, white cable, and probe PCB you see in that bottom left photo, I didn't arrange that. A really cool benefit to having solid relationships with your suppliers is stuff like that, they went out of their way to coordinate with Elecrow and picked up samples from them to check the fit on the foam insert I sent them (okay their factories are like 3 blocks away from each other but still, that was super nice of them.)
 
+[![Video](https://img.youtube.com/vi/O2n4sLUqOEU/maxresdefault.jpg)](https://www.youtube.com/watch?v=O2n4sLUqOEU)
 https://www.youtube.com/watch?v=O2n4sLUqOEU
 
 (Sound on to hear what it sounds like inside a box factory)
@@ -127,10 +123,13 @@ The crop tops and 3/4 sleeve shirts were a special request and I only had a few 
 
 Electronics pro tip: have a [friend from high school](https://www.instagram.com/chrispowers_chrispowers/) open a printing business who will close their shop for two days while you hang out and watch them make your stuff.
 
+[![Video](https://img.youtube.com/vi/dvKw246zul0/0.jpg)](https://www.youtube.com/watch?v=dvKw246zul0)
 
 https://www.youtube.com/watch?v=dvKw246zul0
 
-https://www.youtube.com/watch?v=h5wWYyeBhd
+[![Video](https://img.youtube.com/vi/h5wWYyeBhdM/0.jpg)](https://www.youtube.com/watch?v=h5wWYyeBhdM)
+
+https://www.youtube.com/watch?v=h5wWYyeBhdM
 
 
 We also did some R&D and figured out you can mix red, green, and blue glow in the dark pigment to get a white glow and mix it into clear plastisol ink, then do a top layer with that. So yeah, these also glow in roughly full color.
@@ -143,6 +142,8 @@ I always thought it was lame to sell stuff that's also an ad, so these shirts ar
 ## The lengths I will go to match the design language
 
 The low profile, right angle, TRRS cables you see in all these photos have the ends [hand painted and dipped in glitter](https://hackaday.io/project/191238-jumperless/log/223752-any-sufficiently-extra-technology-is-indistinguishable-from-a-barbie-oppenheimer-crossover-meme-glittering-usb-cables). The prospect of doing that a thousand times wasn't *completely* out of the question, but I knew after the first 100 or so I'd be questioning my life choices. So I put out an RFQ on Alibaba to have them made by someone with better equipment than cans of spray paint and **The Glitter Pile**
+
+[![Video](https://img.youtube.com/vi/bh_8oB4UwfM/0.jpg)](https://www.youtube.com/watch?v=bh_8oB4UwfM)
 
 https://www.youtube.com/watch?v=bh_8oB4UwfM
 
@@ -206,6 +207,7 @@ There's also more stuff I didn't include here. If you write an app you're happy 
 
 ### Scan
 
+[![Video](https://img.youtube.com/vi/BxFaah4Uk7w/maxresdefault.jpg)](https://www.youtube.com/watch?v=BxFaah4Uk7w)
 https://www.youtube.com/watch?v=BxFaah4Uk7w
 
 This was kinda the old example app, it scans through each row connecting them to an ADC, if it measures ~0V, it'll connect a GPIO to that row and wiggle the pullup resistors so it can tell the difference between a row that isn't connected to anything and a row tied to GND.
@@ -214,18 +216,21 @@ This is the absolute slowest way to do it by writing to the filesystem every tim
 
 ### DAC calibration
 
+[![Video](https://img.youtube.com/vi/EthICnDbT1k/maxresdefault.jpg)](https://www.youtube.com/watch?v=EthICnDbT1k)
 https://www.youtube.com/watch?v=EthICnDbT1k
 
 Because all the DACs and ADCs are scaled to +-8V with op amps, the precision of the feedback resistors kind of determines how well the readings match the real voltage on those. But as it turns out, the [INA219 current/power monitors](https://www.ti.com/lit/ds/symlink/ina219.pdf?ts=1745204710113) have a pretty good internal voltage reference. So this app sets a bunch of voltages and calibrates the scaling against those. It saves everything to EEPROM so you should only have to run this once.
 
 ### Real Time ADC Display (feat. A Cool Encoder I Found On LCSC)
 
+[![Video](https://img.youtube.com/vi/Gtyf7BvZwmc/maxresdefault.jpg)](https://www.youtube.com/watch?v=Gtyf7BvZwmc)
 https://www.youtube.com/watch?v=Gtyf7BvZwmc
 
 This is more of a core function that's been around forever, but I have a nice video of it so I'm showing it here. This also works with the DACs and any of the 10 routable GPIO, and it doesn't matter whether they're set as inputs or outputs.
 
 ### Path Stacking
 
+[![Video](https://img.youtube.com/vi/1rEojT77RpI/maxresdefault.jpg)](https://www.youtube.com/watch?v=1rEojT77RpI)
 https://www.youtube.com/watch?v=1rEojT77RpI
 
 This one is awesome, it's a new setting on Jumperless V5 that automatically fills all unused paths with redundant copies of existing paths to get a lower connection resistance. If you want more control over which paths want low resistance, you can turn it off and just make the same connection multiple times (which does the same thing but makes sure there are more free paths available for the ones you care about.)
@@ -236,7 +241,7 @@ This one is awesome, it's a new setting on Jumperless V5 that automatically fill
 
 Remember in the [previous update](https://www.crowdsupply.com/architeuthis-flux/jumperless-v5/updates/good-news-everyone-things-are-happening) where the PCB fab Elecrow was using had to scrap the first sample run of 5 and remake them? Well, after my project manager, Chris, and I talked it over, we decided to believe them when they insisted that they could make them. The 5 samples came out great, but apparently they couldn't pull it off at scale and had to throw away ***the entire run of 800 PCBs***, brutal. At least they told us about it pretty early this time so it didn't push back the schedule too much.
 
-One cool bonus from all that is I got them to send me a few of the bad boards so I could do this:
+A fun bonus from all that is I got them to send me a few of the bad boards so I could do this:
 ![](/images/UpdateImages/08-post-campaign-images/LayersCollage.jpg)
 
 ### New fab, who dis?
@@ -252,6 +257,7 @@ As of the time I'm writing this (April 21st), I am happy to report that they hav
 
 This is the quick testing procedure I'm having them run. I've found that if the click wheel and power supply works on these, 99.9% of the time, everything else is gonna work too (I'll do the rest of the testing myself, this is just to check for major issues in production.)
 
+[![Video](https://img.youtube.com/vi/4XLGgrQFE7A/maxresdefault.jpg)](https://www.youtube.com/watch?v=4XLGgrQFE7A)
 https://www.youtube.com/watch?v=4XLGgrQFE7A
 
 So they should be shipping the first batch out to me this week. When they arrive at my house, I will glue on the click wheel caps, put them through some more thorough tests, polish any rough edges, give them their glittery probe cables, read them a bedtime story, then put them all in a box to ship to Mouser's distribution center to be shipped to you.
