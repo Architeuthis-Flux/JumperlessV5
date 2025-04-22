@@ -264,5 +264,16 @@ So they should be shipping the first batch out to me this week. When they arrive
 
 There's no way to tell how long it will take to move through Mouser's system and get to your doorstep, but it won't be long now. 
 
+___
 
 
+If you have any questions about anything or just want to get a more real-time stream of updates about how it's all coming along, come chat with me and the community on the [Jumperless Discord](https://discord.gg/bvacV7r3FP), [Forums](https://forum.jumperless.org/), [GitHub](https://github.com/Architeuthis-Flux/JumperlessV5), [Twitter/X](https://x.com/arabidsquid), [Bluesky](https://bsky.app/profile/architeuthisflux.bsky.social), or [Mastodon](https://leds.social/@ArchiteuthisFlux).
+
+Love,  
+Kevin
+
+
+
+[![Video](https://img.youtube.com/vi/1g_xCEyMQhM/maxresdefault.jpg)](https://www.youtube.com/watch?v=1g_xCEyMQhM)
+
+https://www.youtube.com/watch?v=1g_xCEyMQhM
