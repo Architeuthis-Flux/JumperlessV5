@@ -37,9 +37,9 @@ extern int debugProbing;
 
 enum measuredState
 {
-  floating = 0,
+  floating = 2,
   high = 1,
-  low = 2,
+  low = 0,
   probe = 3,
   unknownState = 4 
 

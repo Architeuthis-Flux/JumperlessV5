@@ -11,28 +11,43 @@
 #include <Adafruit_GFX.h>
 // #include <Adafruit_NeoMatrix.h>
 #include <Adafruit_NeoPixel.h>
-
+#include "config.h"
 // #include <FastLED.h>
 
 // CRGB probeLEDs[1];
 
 // bool splitLEDs;
 
-#if REV < 4
-bool splitLEDs = 0;
-Adafruit_NeoPixel bbleds(LED_COUNT + LED_COUNT_TOP, LED_PIN,
-                         NEO_GRB + NEO_KHZ800);
-Adafruit_NeoPixel topleds(1, -1, NEO_GRB + NEO_KHZ800);
-#elif REV >= 4
+// #if REV < 4
+// bool splitLEDs = 0;
+// Adafruit_NeoPixel bbleds(LED_COUNT + LED_COUNT_TOP, LED_PIN,
+//                          NEO_GRB + NEO_KHZ800);
+// Adafruit_NeoPixel topleds(1, -1, NEO_GRB + NEO_KHZ800);
+// #elif REV >= 4
 bool splitLEDs = 1;
-Adafruit_NeoPixel bbleds(LED_COUNT, LED_PIN, NEO_GRB + NEO_KHZ800);
+Adafruit_NeoPixel bbleds(LED_COUNT+ LED_COUNT_TOP, LED_PIN, NEO_GRB + NEO_KHZ800);
 Adafruit_NeoPixel topleds(LED_COUNT_TOP, LED_PIN_TOP, NEO_GRB + NEO_KHZ800);
-#endif
+//#endif
 
 Adafruit_NeoPixel probeLEDs(1, PROBE_LED_PIN, NEO_GRB + NEO_KHZ800);
 // Adafruit_NeoPixel probeLEDs(1, 9, NEO_GRB + NEO_KHZ800);
 
+void ledClass::end(void) {
+  bbleds.~Adafruit_NeoPixel();
+  topleds.~Adafruit_NeoPixel();
+  
+}
+
 void ledClass::begin(void) {
+
+  if (jumperlessConfig.hardware_version.hardware_revision <= 3) {
+    splitLEDs = 0;
+    
+  } else {
+    splitLEDs = 1;
+    bbleds.updateLength(LED_COUNT);
+  }
+
   if (splitLEDs == 1) {
     topleds.begin();
   }
@@ -2224,10 +2239,16 @@ void showNets(void) {
     for (int i = 0; i <= numberOfNets; i++) {
       // Serial.print(i);
       skipShow = 0;
-      for (int j = 0; j < 3; j++) {
+      for (int j = 0; j < 5; j++) {
         if (showADCreadings[j] == i) {
           skipShow = 1;
           continue;
+        }
+        for (int k = 0; k < 8; k++) {
+          if (gpioNet[k] == i) {
+            skipShow = 1;
+            continue;
+          }
         }
       }
       if (skipShow == 1) {

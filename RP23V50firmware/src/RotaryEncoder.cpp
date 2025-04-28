@@ -57,7 +57,7 @@ void unInitRotaryEncoder(void) {
 }
 
 const char rotaryEncoderHelp[] =
-    "\n\r" // Github copilot, please don't help me with this
+    "\n\r" // this is for the og jumperless
     "\t\t  Rotary Encoder Help\n\r"
     "\t\t  -------------------\n\r"
     "\n\r"

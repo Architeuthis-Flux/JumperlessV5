@@ -3,6 +3,13 @@
 
 #include <Arduino.h>
 
+extern const int screenMap[445];
+extern const int screenMapNoRails[445];
+
+
+
+
+
 class bread {
     public:
     bread();
@@ -81,6 +88,7 @@ extern int menuBrightnessSetting;
 extern bread b;
 
 void playDoom(void);
+void showArray(uint8_t* array, int size);
 void initRowAnimations (void);
 void showAllRowAnimations(void);
 void showRowAnimation(int row, int net);

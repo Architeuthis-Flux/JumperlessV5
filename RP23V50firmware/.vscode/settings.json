@@ -39,6 +39,7 @@
     "clang-format.language.cpp.style": "file",
     "C_Cpp.clang_format_style": "Visual Studio",
     "cmake.ignoreCMakeListsMissing": true,
-    "C_Cpp.formatting": "vcFormat"
+    "C_Cpp.formatting": "vcFormat",
+    "cortex-debug.variableUseNaturalFormat": false
 
 }

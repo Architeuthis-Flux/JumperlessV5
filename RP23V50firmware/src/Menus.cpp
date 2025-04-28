@@ -18,7 +18,7 @@
 #include "MatrixStateRP2040.h"
 #include "NetManager.h"
 #include "NetsToChipConnections.h"
-
+#include "configManager.h"
 #include "Apps.h"
 #include "UserCode.h"
 
@@ -304,8 +304,9 @@ uint32_t menuColors[10] = { 0x09000a, 0x0f0004, 0x080800, 0x010f00,
                            0x000a03, 0x00030a, 0x040010, 0x070006 };
 
 void initMenu(void) {
-  FatFS.begin();
-  delay(1);
+
+  //FatFS.begin();
+ // delay(1);
   if (menuRead == 0) {
     // Serial.println(menuLines);
     //delay(1);
@@ -1570,9 +1571,9 @@ int yesNoMenu(void)
   int highlightedOption = 0;
   int changed = 1;
   uint32_t selectColor = 0x1a001a;
-  uint32_t yesColor =       0x001004;
+  uint32_t yesColor = 0x001004;
   uint32_t yesColorBright = 0x001f0f;
-  uint32_t noColor =       0x100003;
+  uint32_t noColor = 0x100003;
   uint32_t noColorBright = 0x1f0008;
   uint32_t backgroundColor = 0x000002;
   int firstTime = 1;
@@ -1602,7 +1603,7 @@ int yesNoMenu(void)
 
     delayMicroseconds(1000);
 
-    if (encoderButtonState == HELD )
+    if (encoderButtonState == HELD)
       {
       b.clear();
       inClickMenu = 0;
@@ -1638,18 +1639,18 @@ int yesNoMenu(void)
           }
         if (changed == 1)
           {
-Serial.print("\r                      \r");
+          Serial.print("\r                      \r");
 
           b.clear(1);
           if (highlightedOption == 1)
             {
-              Serial.print("Yes");
+            Serial.print("Yes");
             b.print(">", yesColorBright, 0x0, 0, 1, -2);
             b.print("Yes", yesColorBright, 0x0, 1, 1, -2);
             b.print("No", noColor, 0x0, 5, 1, -1);
             } else
             {
-              Serial.print("No");
+            Serial.print("No");
             b.print(">", noColorBright, 0x0, 4, 1, -1);
             b.print("Yes", yesColor, 0x0, 1, 1, -2);
             b.print("No", noColorBright, 0x0, 5, 1, -1);
@@ -2386,17 +2387,24 @@ int doMenuAction(int menuPosition, int selection) {
                         if (currentAction.from[i] != -1) {
                           switch (currentAction.from[i]) {
                             case 0:
-                              addBridgeToNodeFile(ADC1, currentAction.to[i], netSlot);
+                              addBridgeToNodeFile(ADC0, currentAction.to[i], netSlot);
                               break;
                             case 1:
 
-                              addBridgeToNodeFile(ADC2, currentAction.to[i], netSlot);
+                              addBridgeToNodeFile(ADC1, currentAction.to[i], netSlot);
                               break;
                               // break;
                             case 2:
 
+                              addBridgeToNodeFile(ADC2, currentAction.to[i], netSlot);
+                              break;
+                            case 3:
                               addBridgeToNodeFile(ADC3, currentAction.to[i], netSlot);
                               break;
+                            case 4:
+                              addBridgeToNodeFile(ADC4, currentAction.to[i], netSlot);
+                              break;
+
                             default:
                               break;
                             }
@@ -2431,28 +2439,75 @@ int doMenuAction(int menuPosition, int selection) {
                             // break;
                             }
                           }
-                        }
-                      // digitalWrite(RESETPIN, HIGH);
+                        } else if (menuLines[currentAction.previousMenuPositions[1]].indexOf("Digital") != -1) {
+                          if (menuLines[currentAction.previousMenuPositions[2]].indexOf("GPIO") != -1) {
+                            for (int i = 0; i < 10; i++) {
+                              if (currentAction.from[i] != -1) {
+                                switch (currentAction.from[i]) {
+                                  case 0:
+                                    addBridgeToNodeFile(RP_GPIO_1, currentAction.to[i], netSlot);
+                                    gpioState[0] = 2;
+                                    break;
+                                  case 1:
+                                    addBridgeToNodeFile(RP_GPIO_2, currentAction.to[i], netSlot);
+                                    gpioState[1] = 2;
+                                    break;
+                                  case 2:
+                                    addBridgeToNodeFile(RP_GPIO_3, currentAction.to[i], netSlot);
+                                    gpioState[2] = 2;
+                                    break;
+                                  case 3:
+                                    addBridgeToNodeFile(RP_GPIO_4, currentAction.to[i], netSlot);
+                                    gpioState[3] = 2;
+                                    break;
+                                  case 4:
+                                    addBridgeToNodeFile(RP_GPIO_5, currentAction.to[i], netSlot);
+                                    gpioState[4] = 2;
+                                    break;
+                                  case 5:
+                                    addBridgeToNodeFile(RP_GPIO_6, currentAction.to[i], netSlot);
+                                    gpioState[5] = 2;
+                                    break;
+                                  case 6:
+                                    addBridgeToNodeFile(RP_GPIO_7, currentAction.to[i], netSlot);
+                                    gpioState[6] = 2;
+                                    break;
+                                  case 7:
+                                    addBridgeToNodeFile(RP_GPIO_8, currentAction.to[i], netSlot);
+                                    gpioState[7] = 2;
+                                    break;
+                                  default:
+                                    break;
+                                  }
+                                updateGPIOConfigFromState();
+                                }
+                              }
+                            }
+                          }
 
-                      // delayMicroseconds(200);
+                        // digitalWrite(RESETPIN, HIGH);
 
-                      // digitalWrite(RESETPIN, LOW);
+                        // delayMicroseconds(200);
 
-                      // showSavedColors(netSlot);
-                      // sendPaths();
-                      // sendAllPathsCore2 = 1;
-                      // chooseShownReadings();
+                        // digitalWrite(RESETPIN, LOW);
 
-                      refreshConnections();
+                        // showSavedColors(netSlot);
+                        // sendPaths();
+                        // sendAllPathsCore2 = 1;
+                        // chooseShownReadings();
 
-                      slotChanged = 0;
+                        refreshConnections();
 
-                      return 10;
-                      // loadingFile = 1;
+                        slotChanged = 0;
+
+                        return 10;
+                        // loadingFile = 1;
 
                     } else if (currentCategory == RAILSACTION) {
 
                       Serial.print("Rails Action\n\r");
+                      showLEDsCore2 = 1;
+                      waitCore2();
 
                       switch (currentAction.from[0]) {
                         case 0: {
@@ -3364,4 +3419,128 @@ void showLoss(void) {
 
 
 
-*/
+// */
+
+// void drawMainMenu(void) {
+//     clearDisplay();
+//     drawString("Jumperless", 0, 0, 2, WHITE);
+//     drawLine(0, 20, 128, 20, WHITE);
+
+//     const char* options[] = {
+//         "Nets",
+//         "Probing",
+//         "Settings",
+//         "Apps",
+//         "Config"
+//     };
+//     const int numOptions = 5;
+//     menuPositionMax = numOptions - 1;
+//     menuPositionMin = 0;
+
+//     // Draw menu options
+//     for (int i = 0; i < numOptions; i++) {
+//         int y = 24 + (i * 16);
+//         if (menuPosition == i) {
+//             drawString(">", 0, y, 2, WHITE);
+//             drawString(options[i], 20, y, 2, WHITE);
+//         } else {
+//             drawString(options[i], 20, y, 2, DARKGREY);
+//         }
+//     }
+
+//     // Handle menu selection
+//     if (menuConfirm) {
+//         menuConfirm = 0;
+//         switch (menuPosition) {
+//             case 0:
+//                 menuState = MENU_NETS;
+//                 break;
+//             case 1:
+//                 menuState = MENU_PROBING;
+//                 break;
+//             case 2:
+//                 menuState = MENU_SETTINGS;
+//                 break;
+//             case 3:
+//                 menuState = MENU_APPS;
+//                 break;
+//             case 4:
+//                 menuState = MENU_CONFIG;
+//                 break;
+//         }
+//         menuPosition = 0;
+//     }
+// }
+
+// void drawConfigMenu(void) {
+//     clearDisplay();
+//     drawString("Configuration", 0, 0, 1, WHITE);
+//     drawLine(0, 10, 128, 10, WHITE);
+
+//     // Menu options
+//     const char* options[] = {
+//         "Print Config",
+//         "Load Config",
+//         "Reset to Default",
+//         "Back"
+//     };
+//     const int numOptions = 4;
+//     menuPositionMax = numOptions - 1;
+//     menuPositionMin = 0;
+
+//     // Draw menu options
+//     for (int i = 0; i < numOptions; i++) {
+//         int y = 16 + (i * 12);
+//         if (menuPosition == i) {
+//             drawString(">", 0, y, 1, WHITE);
+//             drawString(options[i], 10, y, 1, WHITE);
+//         } else {
+//             drawString(options[i], 10, y, 1, DARKGREY);
+//         }
+//     }
+
+//     // Handle menu selection
+//     if (menuConfirm) {
+//         menuConfirm = 0;
+//         switch (menuPosition) {
+//             case 0: // Print Config
+//                 printConfigToSerial();
+//                 break;
+//             case 1: // Load Config
+//                 readConfigFromSerial();
+//                 break;
+//             case 2: // Reset to Default
+//                 resetConfigToDefaults();
+//                 saveConfig();
+//                 Serial.println("Configuration reset to defaults");
+//                 break;
+//             case 3: // Back
+//                 menuState = MENU_MAIN;
+//                 menuPosition = 0;
+//                 break;
+//         }
+//     }
+// }
+
+// void drawMenu(void) {
+//     switch (menuState) {
+//         case MENU_MAIN:
+//             drawMainMenu();
+//             break;
+//         case MENU_NETS:
+//             drawNetsMenu();
+//             break;
+//         case MENU_PROBING:
+//             drawProbingMenu();
+//             break;
+//         case MENU_SETTINGS:
+//             drawSettingsMenu();
+//             break;
+//         case MENU_APPS:
+//             drawAppsMenu();
+//             break;
+//         case MENU_CONFIG:
+//             drawConfigMenu();
+//             break;
+//     }
+// }

@@ -90,9 +90,9 @@ int8_t xStatus[16]; //store the bb row or nano conn this is eventually connected
 
 int8_t yStatus[8];  //store the row/nano it's connected to
 
-const int16_t xMap[16];
+ int16_t xMap[16];
 
-const int16_t yMap[8];
+ int16_t yMap[8];
 
 int uncommittedHops; //store the path number of the uncommitted hop
 
@@ -100,6 +100,7 @@ int uncommittedHops; //store the path number of the uncommitted hop
 
 extern struct chipStatus ch[12];
 
+void initChipStatus(void);
 struct nanoStatus {  //there's only one of these so ill declare and initalize together unlike above
 
 //all these arrays should line up (both by index and visually) so one index will give you all this data

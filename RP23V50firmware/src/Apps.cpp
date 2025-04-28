@@ -16,7 +16,10 @@
 #include "RotaryEncoder.h"
 #include "Menus.h"
 #include "CH446Q.h"
+#include "configManager.h"
 
+#include <PNGdec.h>
+// #include <PNGDisplay.h>
 #include <Adafruit_GFX.h>
 #include <Adafruit_SSD1306.h>
 #define OLED_CONNECTED 0
@@ -55,25 +58,8 @@
 struct app apps[30] = {
     {"Scan", 0, 1, scanBoard},
     {"Calib  DACs", 1, 1, calibrateDacs},
-
-
     {"Custom App", 2, 1, customApp},
-
-
-    // {"Logic  Analyzr", 2, 1, logicAnalyzer},
-    // {"Oscill oscope", 3, 1, oscilloscope},
-    // {"MIDI   Synth", 4, 1, midiSynth},
-    // {"I2C    Scanner", 5, 1, i2cScanner},
-    // {"Self   Dstruct", 6, 1, selfDestruct},
-    // {"EEPROM Dumper", 7, 1, eepromDumper},
-    // {"7 Seg  Mapper", 8, 1, segmentMapper},
-    // {"Rick   Roll", 9, 1, rickRoll},
-    // {"555", 10, 1, circuit555},
-    // {"Op Amp", 11, 1, opAmp},
-    // {"$7400$", 12, 1, ic74x109},
-    // {"$7400$", 13, 1, ic74x161},
-    // {"$7400$", 14, 1, ic74x42},
-    // {"$7400$", 15, 1, ic74x595},
+    {"PNG Image", 3, 1, displayImage},
     {"DOOM", 16, 1, playDoom},
     // {"Pong", 17, 1, playPong},
     // {"Tetris", 18, 1, playTetris},
@@ -105,6 +91,7 @@ void runApp(int index, char* name)
         case 0: scanBoard(); break;
         case 1: calibrateDacs(); break;
         case 2: customApp(); break;
+        case 3: displayImage(); break;
             // case 2: logicAnalyzer(); break;
             // case 3: oscilloscope(); break;
             // case 4: midiSynth(); break;
@@ -148,8 +135,6 @@ void customApp(void) {
     
     //!change the top rail voltage
     setTopRail((float)3.3); //this will set the top rail to 3.3V
-
-
 
     //!GPIO
     addBridgeToNodeFile(RP_GPIO_1, 42, netSlot, 0, 0);
@@ -418,9 +403,7 @@ void customApp(void) {
 
 
 
-
-
-
+    
     }
 
 
@@ -518,6 +501,12 @@ void scanBoard(void) {
 
 
 
+
+
+#include <U8g2lib.h>
+//U8G2_SSD1306_64X32_1F_F_HW_I2C u8g2(U8G2_R0, /* reset=*/ U8X8_PIN_NONE, /* clock=*/ RP_GPIO_23, /* data=*/ RP_GPIO_22);
+
+
 // Declaration for an SSD1306 display connected to I2C (SDA, SCL pins)
 // The pins for I2C are defined by the Wire-library. 
 // On an arduino UNO:       A4(SDA), A5(SCL)
@@ -526,26 +515,26 @@ void scanBoard(void) {
 #define OLED_RESET     -1 // Reset pin # (or -1 if sharing Arduino reset pin)
 #define SCREEN_ADDRESS 0x3C ///< See datasheet for Address; 0x3D for 128x64, 0x3C for 128x32
 
-#define SCREEN_WIDTH 128 // OLED display width, in pixels
-#define SCREEN_HEIGHT 64 // OLED display height, in pixels
+#define SCREEN_WIDTH 64 // OLED display width, in pixels
+#define SCREEN_HEIGHT 32 // OLED display height, in pixels
 
 
 Adafruit_SSD1306 display(SCREEN_WIDTH, SCREEN_HEIGHT, &Wire1, OLED_RESET);
 
 #define NUMFLAKES     10 // Number of snowflakes in the animation example
 
-#define LOGO_HEIGHT  64
+#define LOGO_HEIGHT  32
 #define LOGO_WIDTH   64
 
-int oledTest(int sdaRow, int sclRow, int sdaPin, int sclPin) {
+int oledTest(int sdaRow, int sclRow, int sdaPin, int sclPin, int leaveConnections) {
 
 
-    Serial.println(initI2C(sdaPin, sclPin, 100000));
+    Serial.println(initI2C(sdaPin, sclPin, 400000));
     removeBridgeFromNodeFile(RP_GPIO_22, -1, netSlot, 0);
     removeBridgeFromNodeFile(RP_GPIO_23, -1, netSlot, 0);
 
-    addBridgeToNodeFile(RP_GPIO_22, sdaRow, netSlot, 0);
-    addBridgeToNodeFile(RP_GPIO_23, sclRow, netSlot, 0);
+    addBridgeToNodeFile(RP_GPIO_22, sdaRow, netSlot, 0, 0);
+    addBridgeToNodeFile(RP_GPIO_23, sclRow, netSlot, 0, 0);
     refreshConnections();
     delay(10);
 
@@ -601,90 +590,112 @@ int oledTest(int sdaRow, int sclRow, int sdaPin, int sclPin) {
       0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
       0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
       0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00
-        };
+    };
+
+    const unsigned char ColorJumpLogo32[] = {
+	0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 
+	0x00, 0xc0, 0x0f, 0x00, 0x00, 0xc0, 0x3f, 0x00, 0x00, 0xce, 0xff, 0x00, 0x00, 0xc2, 0x7f, 0x00, 
+	0x00, 0x80, 0x3f, 0x00, 0x40, 0x80, 0x1f, 0x02, 0x00, 0x80, 0x0f, 0x07, 0x20, 0x00, 0x07, 0x04, 
+	0x60, 0x00, 0x03, 0x0e, 0x60, 0x00, 0x21, 0x0f, 0x00, 0x00, 0x30, 0x0e, 0x00, 0x00, 0x70, 0x0c, 
+	0xf0, 0x07, 0x00, 0x0c, 0xe0, 0x0f, 0x00, 0x0c, 0xe0, 0x0f, 0x00, 0x0c, 0xe0, 0x87, 0x00, 0x04, 
+	0xc0, 0xc3, 0x03, 0x06, 0xc0, 0xe1, 0x07, 0x00, 0x80, 0xf0, 0x1f, 0x68, 0x00, 0xf8, 0xff, 0x01, 
+	0x00, 0xfc, 0xff, 0x00, 0x00, 0xfc, 0x7f, 0x00, 0x00, 0xf0, 0x1f, 0x00, 0x00, 0x00, 0x00, 0x00, 
+	0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00
+    };
+
+    const unsigned char white32[] = {
+        0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 
+        0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 
+        0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 
+        0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF,
+        0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF,
+        0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF,
+        0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF,
+        0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF,
+        0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF,
+        0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF,
+        
+    };
+
+    U8G2_SSD1306_64X32_1F_F_2ND_HW_I2C display(U8G2_R0, /* reset=*/ U8X8_PIN_NONE);
+
+    // Initialize display
+   
+   // display.clearBuffer();
+    //u8g2.sendCommand(0xFF);
+   // display.sendF("ca",0x81, 0x35); 
+    //display.sendF("a",0xFF);
+    // display.setPowerSave(0);
+    // display.setContrast(127);
+    // display.setDrawColor(1);
+    // display.setBitmapMode(0);
+
+     display.begin();
 
 
-    // SSD1306_SWITCHCAPVCC = generate display voltage from 3.3V internally
-    if (!display.begin(SSD1306_SWITCHCAPVCC, SCREEN_ADDRESS)) {
-        Serial.println(F("SSD1306 allocation failed"));
-        for (;;); // Don't proceed, loop forever
-        }
-    display.clearDisplay();
-    // Show initial display buffer contents on the screen --
-    // the library initializes this with an Adafruit splash screen.
-    display.display();
-    //delay(800); // Pause for 2 seconds
+    display.sendF("cac", 0x0db,7 << 4, 0xaf);
 
-    // Clear the buffer
-   // display.clearDisplay();
+    display.sendF("ca", 0x0d9, (15 << 4) | 15 );
 
-    //display.display();
-    //delay(800); // Pause for 2 seconds
-    // Draw a single pixel in white
-    //display.drawPixel(10, 10, SSD1306_WHITE);
+    display.setContrast(255);
+   // display.drawBox(0, 0, display.getWidth(), display.getHeight());
+    //display.sendBuffer();
+    //delay(800);
 
-    // Show the display buffer on the screen. You MUST call display() after
-    // drawing commands to make them visible on screen!
-    //display.display();
-    //delay(2000);
-    //display.drawChar(0, 0, 'A', SSD1306_WHITE, SSD1306_BLACK, 1);
-    // display.display() is NOT necessary after every single drawing command,
-    // unless that's what you want...rather, you can batch up a bunch of
-    // drawing operations and then update the screen all at once by calling
-    // display.display(). These examples demonstrate both approaches...
-  //while (1) {
+    // Draw logo
+   // display.clearBuffer();
+    display.drawXBM(16, 0, 32, 32, white32);
 
-  // display.display();
-  // delay(800);
-  // display.drawChar(3, 3, 'b', SSD1306_WHITE, SSD1306_BLACK, 1);
-  // display.display();
-  // delay(800);
-  // display.drawChar(6, 6, 'c', SSD1306_WHITE, SSD1306_BLACK, 1);
-  // display.display();
-  // delay(800);
-  // display.drawChar(9, 9, 'd', SSD1306_WHITE, SSD1306_BLACK, 1);
-  // display.display();
-  // delay(800);
-  //   display.clearDisplay();
+    display.sendBuffer();
+    delay(800);
 
-    display.drawBitmap(
-      (display.width() - LOGO_WIDTH) / 2,
-      (display.height() - LOGO_HEIGHT) / 2,
-      ColorJumpLogo, LOGO_WIDTH, LOGO_HEIGHT, 1);
-    display.display();
-    delay(2800);
-
-
-    // Invert and restore display, pausing in-between
-
-    for (int i = 2000; i > 1; i -= (i / 5)) {
-        display.invertDisplay(true);
+    // Invert display animation
+    for (int i = 2000; i > 6; i -= (i / 5)) {
+        display.clearDisplay();
+        display.sendBuffer();
         delay(i);
-        display.invertDisplay(false);
+        display.drawXBM(16, 0, 32, 32, ColorJumpLogo32);
+        display.sendBuffer();
         delay(i);
-        }
-    //   display.invertDisplay(true);
-    //   delay(2800);
-    //   display.invertDisplay(false);
-    //   delay(2800);  
-    //   display.invertDisplay(true);
-    //   delay(1800);
-    //   display.invertDisplay(false);
-    //   delay(1800);  
-    //   display.invertDisplay(true);
-    //   delay(800);
-    //   display.invertDisplay(false);
-    //   delay(800);  
-    //   display.invertDisplay(true);
-    //   delay(80);
-    //   display.invertDisplay(false);
-    //   delay(80);  
-    //   display.invertDisplay(true);
-    //   delay(8);
-    //   display.invertDisplay(false);
-    //   delay(8);
-    // }
+    }
 
+    // // SSD1306_SWITCHCAPVCC = generate display voltage from 3.3V internally
+    // if (!display.begin(SSD1306_SWITCHCAPVCC, SCREEN_ADDRESS)) {
+    //     delay(1000);
+    //     Serial.println(F("SSD1306 allocation failed"));
+    //     //for (;;); // Don't proceed, loop forever
+    //     }
+
+     
+    // display.clearDisplay();
+    // // Show initial display buffer contents on the screen --
+    // // the library initializes this with an Adafruit splash screen.
+    // display.fillScreen(SSD1306_WHITE);
+    // display.display();
+    // delay(800); // Pause for 2 seconds
+
+
+
+    // display.drawBitmap(0,0,
+    //   ColorJumpLogo32, 64, 32, 1);
+    // display.display();
+    // delay(800);
+
+
+    // // Invert and restore display, pausing in-between
+
+    // for (int i = 2000; i >6; i -= (i / 5)) {
+    //     display.invertDisplay(true);
+    //     delay(i);
+    //     display.invertDisplay(false);
+    //     delay(i);
+    //     }
+
+    if (leaveConnections == 0) {
+        removeBridgeFromNodeFile(RP_GPIO_22, sdaRow, netSlot, 0);
+        removeBridgeFromNodeFile(RP_GPIO_23, sclRow, netSlot, 0);
+        refreshConnections(-1, 1);
+        }
     return 0;
 
     }
@@ -696,86 +707,80 @@ int oledTest(int sdaRow, int sclRow, int sdaPin, int sclPin) {
 
 
 
+int i2cScan(int sdaRow, int sclRow, int sdaPin, int sclPin, int leaveConnections ) {
+    // If no rows specified, return error
+    if (sdaRow < 0 || sclRow < 0) {
+        Serial.println("Error: Must specify both SDA and SCL rows");
+        return -1;
+    }
 
-
-
-
-
-
-
-
-
-
-int i2cScan(int sdaRow, int sclRow, int sdaPin, int sclPin) {
-
-
-
-
-
-
-
-
-
-    return 0;
-    initI2C();
-    removeBridgeFromNodeFile(RP_GPIO_22, -1, netSlot);
-    removeBridgeFromNodeFile(RP_GPIO_23, -1, netSlot);
-
-    addBridgeToNodeFile(RP_GPIO_22, sdaRow, netSlot);
-    addBridgeToNodeFile(RP_GPIO_23, sclRow, netSlot);
-    clearAllNTCC();
-    digitalWrite(RESETPIN, HIGH);
-    openNodeFile(netSlot);
-
-    getNodesToConnect();
-
-    bridgesToPaths();
-    digitalWrite(RESETPIN, LOW);
-    assignNetColors();
-
-    showLEDsCore2 = 1;
-
-    delay(5);
-    ///sendPaths();
-    sendAllPathsCore2 = 1;
-    delay(200);
-    byte error, address;
-    int nDevices;
-
-    Serial.println("Scanning...");
-
-    nDevices = 0;
-    for (address = 1; address < 127; address++) {
-        // The i2c_scanner uses the return value of
-        // the Write.endTransmisstion to see if
-        // a device did acknowledge to the address.
-        Wire1.beginTransmission(address);
-        error = Wire1.endTransmission();
-
-        if (error == 0) {
-            Serial.print("I2C device found at address 0x");
-            if (address < 16)
-                Serial.print("0");
-            Serial.print(address, HEX);
-            Serial.println("  !");
-
-            nDevices++;
-            } else if (error == 4) {
-                Serial.print("Unknown error at address 0x");
-                if (address < 16)
-                    Serial.print("0");
-                Serial.println(address, HEX);
+    // Remove any existing connections from the GPIO pins
+    // removeBridgeFromNodeFile(RP_GPIO_22, -1, netSlot, 0);
+    // removeBridgeFromNodeFile(RP_GPIO_23, -1, netSlot, 0);
+    
+    // Connect the GPIO pins to the specified rows
+    addBridgeToNodeFile(RP_GPIO_22, sdaRow, netSlot, 0, 0);  // SDA
+    addBridgeToNodeFile(RP_GPIO_23, sclRow, netSlot, 0, 0);  // SCL
+    
+    // Refresh the hardware connections
+    refreshConnections(-1, 1);
+    waitCore2();  // Wait for connections to be established
+    
+    // Initialize I2C hardware
+    Wire1.end();  // Stop any existing I2C communication
+    Wire1.setSDA(sdaPin);
+    Wire1.setSCL(sclPin);
+    Wire1.begin();
+    Wire1.setClock(100000);  // Standard 100kHz I2C speed
+    
+    // Scan all possible I2C addresses
+    Serial.println("\nScanning I2C bus...");
+    Serial.println("    _0  _1  _2  _3  _4  _5  _6  _7  _8  _9  _A  _B  _C  _D  _E  _F ");
+    
+    int nDevices = 0;
+    for (int baseAddr = 0; baseAddr < 128; baseAddr += 16) {
+        Serial.printf("\n%02X:", baseAddr/16);
+        
+        for (int addr = 0; addr < 16; addr++) {
+            int deviceAddr = baseAddr + addr;
+            if (deviceAddr > 0 && deviceAddr < 127) {  // Skip address 0 (general call) and 127
+                Wire1.beginTransmission(deviceAddr);
+                byte error = Wire1.endTransmission();
+                
+                if (error == 0) {
+                    Serial.printf(" %X ", deviceAddr);  // Device found
+                    nDevices++;
+                } else {
+                    Serial.print(" -- ");  // No device
                 }
+            } else {
+                Serial.print(" -- ");  // Skip reserved addresses
+            }
         }
-    if (nDevices == 0)
-        Serial.println("No I2C devices found\n");
-    else
-        Serial.println("done\n");
-    removeBridgeFromNodeFile(RP_GPIO_22, sdaRow, netSlot);
-    removeBridgeFromNodeFile(RP_GPIO_23, sclRow, netSlot);
-    return 0;
-    //return count;
     }
+    
+    // Print summary
+    Serial.println("\n\nI2C Scan Results:");
+    if (nDevices == 0) {
+        Serial.println("No I2C devices found");
+    } else {
+        Serial.printf("Found %d I2C device(s)\n", nDevices);
+    }
+    
+    // Clean up connections
+    if (leaveConnections == 0) {
+        removeBridgeFromNodeFile(RP_GPIO_22, sdaRow, netSlot, 0);
+        removeBridgeFromNodeFile(RP_GPIO_23, sclRow, netSlot, 0);
+        refreshConnections(-1, 1);
+    }
+    
+    return nDevices;
+}
+
+
+
+
+
 
 void calibrateDacs(void) {
     // delay(3000);
@@ -883,7 +888,7 @@ void calibrateDacs(void) {
             int counter = 0;
             dacZero[d] = dacZero[d] + 5;
 
-            while (zeroFound < 2 && counter < 40) {
+            while (zeroFound < 2 && counter < 80) {
                 setVoltage = 0.0;
                 setDacByNumber(d, setVoltage, 0);
                 delay(80); // * (zeroFound + 1));
@@ -920,7 +925,7 @@ void calibrateDacs(void) {
                         counter++;
                         //}
 
-                        if (counter > 20) {
+                        if (counter > 40) {
                             zeroFound++;
                             }
 
@@ -933,51 +938,6 @@ void calibrateDacs(void) {
                         // zeroFound = 1;
                 }
 
-            // zeroFound = 0;
-            // zeroTolerance = 1.1;
-
-            // counter = 0;
-            // //adcZero[d] = adcZero[d] + 3;
-            // setVoltage = 0.0;
-            // setDacByNumber(d, setVoltage, 0);
-            // delay(180);
-            // Serial.print("\n\n\r\t\tzeroing ADC ");
-            // Serial.println(d);
-            // while (zeroFound < 2) {
-
-            //   delay(5); // * (zeroFound + 1));
-
-            //   float reading = readAdcVoltage(d, 32) * 1000;
-
-            //   if (reading < zeroTolerance && reading > -zeroTolerance) {
-            //     zeroFound++;
-            //   } else if (reading > 100) {
-            //     adcZero[d] = adcZero[d] + 0.1;
-            //   } else if (reading < -2.0) {
-            //     adcZero[d] = adcZero[d] - 0.01;
-            //   } else if (reading > 2.0) {
-            //     adcZero[d] = adcZero[d] + 0.01;
-            //   }
-
-            //   if (reading < 20.0 && reading > -20.0) // prevent the loop from running
-            //                                          // forever if it never finds
-            //                                          zero
-            //   {
-            //     counter++;
-            //   }
-
-            //   if (counter > 20) {
-            //     zeroFound++;
-            //   }
-
-            //   Serial.print("adcZero: ");
-            //   Serial.print(adcZero[d]);
-
-            //   Serial.print("\t\tmeasured: ");
-            //   Serial.print(reading);
-            //   Serial.println(" mV");
-            //   // zeroFound = 1;
-            // }
 
             int spreadFound = 0;
             float tolerance = 4.1; // mV
@@ -1266,8 +1226,9 @@ void calibrateDacs(void) {
             }
         }
     unsigned long timeout = millis();
+    Serial.println("\n\r");
     while (1) {
-        if (millis() - timeout > 8000) {
+        if (millis() - timeout > 6000) {
             break;
             }
         if (Serial.available() > 0) {
@@ -1285,6 +1246,204 @@ void calibrateDacs(void) {
     createSlots(netSlot, 0);
     clearAllNTCC();
     netSlot = lastNetSlot;
-    refreshConnections();
+    refreshConnections(-1);
     // printPathsCompact();
     }
+
+
+
+
+
+
+
+
+
+
+
+// uint16_t screen[NUM_PIXELS + 100];
+// int dot = 0;
+
+// int scanlineOrder[20] = { 99, 10, 11,  0, 1, 2, 3, 4, 5, 6, 7, 8 , 9, 99,  12, 13,99,99, 99, 99, };
+
+
+// void jumperless_handleScanline(uint16_t* line, int scanline) {
+
+
+//     int downsample_w = 10;
+//     int downsample_h = 13;
+
+
+
+//     int offset_w = 10;//SCREENWIDTH / downsample_w;
+
+
+//     int offset_h = 0;//SCREENHEIGHT / downsample_h;
+
+
+
+//     offset_h = 0;
+//     downsample_h = 12;
+
+
+//     for (int i = 0; i < LCD_WIDTH; i++) {
+
+//         int downscanline = ((scanline + offset_h)) + 0;
+//         // }
+//         if (downscanline < 0) {
+//             continue;
+//             }
+
+//         if (scanlineOrder[downscanline] == 99) {
+//             continue;
+
+//             }
+
+//         if (scanlineOrder[downscanline] >= 14) {
+//             return;
+
+//             }
+
+            
+//         if (scanlineOrder[downscanline] < 5) {
+
+//             screen[(i * 5) + scanlineOrder[downscanline]] = line[(i * downsample_w) + offset_w];
+//             // if ((i*5)+scanline == dot) {
+//             //     screen[(i*5)+scanline] = 0xffff;
+//             //     dot++;
+//             // }
+//             } else if (scanlineOrder[downscanline] < 10) {
+//                 screen[(((i + 29) * 5) + scanlineOrder[downscanline])] = line[(i * downsample_w) + offset_w];
+//                 // if ((((i+29)*5)+scanline) == dot) {
+//                 //     screen[(((i+29)*5)+scanline)] = 0xffff;
+//                 //     dot++;
+//                 // }
+//                 } else if (scanlineOrder[downscanline] < 14) {
+
+//                     if (i < 25) {
+//                         screen[(300 + ((scanlineOrder[downscanline] - 10) * 25) + i)] = line[(i * downsample_w) - (downsample_w / 2) + offset_w];
+//                         }
+//                     //screen[(((i+29)*5)+(downscanline))] = line[(i*downsample_w)+offset_w];
+
+
+//                     }
+//         }
+
+//     // if (dot > 300) {
+//     //     dot = 0;
+//     // }
+
+
+//     }
+
+
+
+#include <FatFS.h>
+File pngFile;
+
+PNG png;
+
+void writeImage(PNGDRAW *pDraw) {
+    Serial.printf("Writing image at y=%d, width=%d\n", pDraw->y, pDraw->iWidth);
+    for (int i = 0; i < pDraw->iWidth; i++) {
+        Serial.printf("%02X ", pDraw->pPixels[i]);
+    }
+    Serial.println();
+}
+
+void displayImage(void) {
+    Serial.println("Displaying image");
+    // Buffer for PNG data
+    delay(100);    
+
+    int strip = 0;
+
+    //return;
+    const int MAX_IMAGE_SIZE = 2000;  // Adjust size as needed
+
+    uint8_t imageData[MAX_IMAGE_SIZE];
+    int bytesRead = 0;
+
+    Serial.println("Ready to receive PNG data. Send raw bytes...");
+
+    // Read data until buffer is full or no more data available
+    char idat[] = "IDAT";
+    char iend[] = "IEND";
+    int idatIndex = 0;
+    int iendIndex = 0;
+    unsigned long timeout = millis();
+
+    if (strip == 1) {
+    while(idatIndex < 4) {
+        if(Serial.available()) {
+            imageData[bytesRead] = Serial.read();
+            if(imageData[bytesRead] == idat[idatIndex]) {
+                idatIndex++;
+            }
+        }
+        if(millis() - timeout > 1000) {
+            Serial.println(idatIndex);
+            break;
+        }
+    }
+    }
+    while(bytesRead < MAX_IMAGE_SIZE) {
+        if(Serial.available()) {
+            imageData[bytesRead] = Serial.read();
+            Serial.println(imageData[bytesRead], BIN);
+            if (strip == 1) {
+            if (imageData[bytesRead] == iend[iendIndex]) {
+                iendIndex++;
+            }
+            if (iendIndex == 4) {
+                Serial.println("IEND found");
+                break;
+            }
+            }
+            bytesRead++;
+            timeout = millis();
+        }
+        
+        // Break if no data received for 1 second
+        if(millis() - timeout > 2000) {
+            Serial.println(bytesRead);
+            break;
+        }
+    }
+
+    Serial.printf("Received %d bytes of image data\n", bytesRead);
+    //return; 
+    uint8_t imageData2[bytesRead];
+    //png.setBuffer(imageData2);
+
+    FatFS.begin();
+    pngFile = FatFS.open("aled.png", "w");
+    if (pngFile) {
+        Serial.println("File opened successfully");
+    } else {
+        Serial.println("Failed to open file");
+    }
+
+    pngFile.write(imageData, bytesRead);
+    
+    
+    if (png.openFLASH((uint8_t *)imageData, bytesRead, writeImage) == 0) {
+        int width = png.getWidth();
+        int height = png.getHeight();
+        Serial.printf("Width: %d, Height: %d\n", width, height);
+    } else {
+        Serial.println("Failed to open PNG");
+    }
+
+
+
+    // for (int i = 0; i < bytesRead; i++) {
+    //     Serial.print(imageData[i], HEX);
+    //     if (i % 30 == 29) {
+    //         Serial.println();
+    //     } else {
+    //         Serial.print(" ");
+    //     }
+    // }
+    //showArray(imageData, bytesRead);
+  
+}

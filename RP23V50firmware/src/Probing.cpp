@@ -21,6 +21,9 @@
 // #include <FastLED.h>
 #include "ArduinoStuff.h"
 #include <algorithm>
+
+#include "config.h"
+
 int debugProbing = 0;
 
 volatile unsigned long blockProbing = 0;
@@ -87,9 +90,12 @@ int checkingPads = 0;
 int probeHighlight = -1;
 
 int justAttached = 0;
-uint32_t deleteFade[13] = {0x371f16, 0x28160b, 0x191307, 0x141005, 0x0f0901,
-                           0x090300, 0x050200, 0x030100, 0x030000, 0x020000,
-                           0x010000, 0x000000, 0x000000};
+uint32_t deleteFade[13] =      {0x371f16, 0x28160b, 0x191307, 0x141005, 0x0f0901,
+                                0x090300, 0x050200, 0x030100, 0x030000, 0x020000,
+                                0x010000, 0x000000, 0x000000};
+uint32_t deleteFadeSides[13] = {0x030003, 0x020002, 0x010001, 0x000000, 0x000000,
+                                0x000000, 0x000000, 0x000000, 0x000000, 0x000000,
+                                0x000000, 0x000000, 0x000000};
 int fadeIndex = 0;
 volatile int removeFade = 0;
 int probeMode(int pin, int setOrClear) {
@@ -275,7 +281,8 @@ restartProbing:
           // clearLEDsExceptMiddle(deleteMisses[i], -1);
           b.printRawRow(0b00000100, deleteMisses[i] - 1, deleteFade[fadeOffset],
                         0xfffffe);
-
+          b.printRawRow(0b00001010, deleteMisses[i] - 1, deleteFadeSides[fadeOffset],
+                        0xfffffe);
           //   Serial.print(i);
           //   Serial.print("   ");
           //   Serial.print(deleteMisses[i]);
@@ -1782,7 +1789,7 @@ void routableBufferPower(int offOn, int flash) {
     // Serial.println("power on\n\r");
     //  delay(10);
 
-    setDac0voltage(3.33, 1, 1);
+    setDac0voltage(3.33, 1, 0);
 
     // removeBridgeFromNodeFile(DAC0, -1, netSlot, 1);
     //   pinMode(27, OUTPUT);
@@ -1999,17 +2006,11 @@ int checkProbeButton(void) {
 
   core1busy = true;
 
-  // gpio_set_function(2, GPIO_FUNC_SIO);
-  // gpio_disable_pulls(2);
-  // pinMode(2, INPUT);
+
   pinMode(BUTTON_PIN, INPUT);
   // probeLEDs.setPin(3);
   gpio_set_function(2, GPIO_FUNC_SIO);
   gpio_disable_pulls(2);
-  // gpio_set_inover(2, true);
-  //  gpio_set_outover(2, false);
-  // pads_bank0_hw->io[8] = PADS_BANK0_GPIO2_GPIO2;
-  // hw_set_bits(&pads_bank0_hw->io[2], PADS_BANK0_GPIO2_ISO_BITS);
 
   gpio_set_dir(2, false);
 
@@ -2035,9 +2036,6 @@ int checkProbeButton(void) {
   // gpio_set_input_enabled(BUTTON_PIN, false);
   gpio_set_input_enabled(BUTTON_PIN, true);
   delayMicroseconds(20); // pinMode(BUTTON_PIN, INPUT_PULLDOWN);
-  // Serial.print("pin BUTTON_PIN is pulled ");
-  // Serial.print(gpio_is_pulled_up(BUTTON_PIN) ? "up\n\r" : "");
-  // Serial.print(gpio_is_pulled_down(BUTTON_PIN) ? "down\n\r" : "");
 
   buttonState2 = gpio_get(BUTTON_PIN);
   gpio_set_input_enabled(BUTTON_PIN, false);
@@ -2098,7 +2096,7 @@ int checkProbeButton(void) {
     // Serial.println(buttonState2);
     // Serial.println(" ");
     // Serial.println("disconnect button");
-    if (PROBE_REV >= 4) {
+    if (jumperlessConfig.hardware_version.probe_version >= 4) {
       return 2;
     } else {
       return 1;
@@ -2112,7 +2110,8 @@ int checkProbeButton(void) {
     // Serial.println(buttonState2);
     // Serial.println(" ");
     // Serial.println("connect button");
-    if (PROBE_REV >= 4) {
+
+    if (jumperlessConfig.hardware_version.probe_version >= 4) {
       return 1;
     } else {
       return 2;
@@ -2128,10 +2127,14 @@ int checkProbeButton(void) {
   return 0;
 }
 
-int readFloatingOrState(int pin, int rowBeingScanned) {
+
+
+int readFloatingOrState(int pin, int rowBeingScanned) {//this is the old probe reading code
   // return 0;
   enum measuredState state = unknownState;
   // enum measuredState state2 = floating;
+
+  
 
   int readingPullup = 0;
   int readingPullup2 = 0;
@@ -2322,7 +2325,7 @@ int getNothingTouched(int samples) {
     nothingTouchedReading = 0;
     for (int i = 0; i < samples; i++) {
       // int reading = readProbeRaw(1);
-      int readNoth = readAdc(5, 32);
+      int readNoth = readAdc(5, 8);
       nothingTouchedSamples[i] = readNoth;
       //   delayMicroseconds(50);
       //   Serial.print("nothingTouchedSample ");
@@ -2365,13 +2368,13 @@ int getNothingTouched(int samples) {
     nothingTouchedReading = nothingTouchedReading / (samples - rejects);
     mapFrom = nothingTouchedReading ;
 
-    if (loops > 10) {
+    if (loops > 5) {
       break;
     }
 
-  } while ((nothingTouchedReading > 80 || rejects > samples / 2) && loops < 9);
-  //  Serial.print("nothingTouchedReading: ");
-  //  Serial.println(nothingTouchedReading);
+  } while ((nothingTouchedReading > 80 || rejects > samples / 2) && loops < 4);
+   Serial.print("nothingTouchedReading: ");
+   Serial.println(nothingTouchedReading);
   return nothingTouchedReading;
 }
 unsigned long doubleTimeout = 0;

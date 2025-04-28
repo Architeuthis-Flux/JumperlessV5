@@ -13,32 +13,70 @@
 
 /* clang-format off */
 
-uint8_t upperCase [30][3] = {{
-0x1e, 0x05, 0x1e, },{ 0x1f, 0x15, 0x0a, },{ 
-0x1f, 0x11, 0x11, },{ 0x1f, 0x11, 0x0e, },{ 0x1f, 0x15, 0x11, },{ 0x1f, 0x05, 0x01, },{ 
-0x0e, 0x15, 0x1d, },{ 0x1f, 0x04, 0x1f, },{ 0x11, 0x1f, 0x11, },{ 0x08, 0x10, 0x0f, },{ 
-0x1f, 0x04, 0x1b, },{ 0x1f, 0x10, 0x10, },{ 0x1f, 0x07, 0x1f, },{ 0x1f, 0x01, 0x1f, },{ 
-0x1f, 0x11, 0x1f, },{ 0x1f, 0x05, 0x07, },{ 0x0f, 0x09, 0x17, },{ 0x1f, 0x0d, 0x17, },{ 
-0x17, 0x15, 0x1d, },{ 0x01, 0x1f, 0x01, },{ 0x1f, 0x10, 0x1f, },{ 0x0f, 0x10, 0x0f, },{ 
+const int screenMap[445] = 
+    { 300, 300, 301, 302, 303, 304, 305, 305, 306, 307, 308, 309, 310, 310, 311, 312, 313, 314, 315, 315, 316, 317, 318, 319, 320, 320, 321, 322, 323, 324, 
+      325, 325, 326, 327, 328, 329, 330, 330, 331, 332, 333, 334, 335, 335, 336, 337, 338, 339, 340, 340, 341, 342, 343, 344, 345, 345, 346, 347, 348, 349,
+        0,   5,  10,  15,  20,  25,  30,  35,  40,  45,  50,  55,  60,  65,  70,  75,  80,  85,  90,  95, 100, 105, 110, 115, 120, 125, 130, 135, 140, 145,
+        1,   6,  11,  16,  21,  26,  31,  36,  41,  46,  51,  56,  61,  66,  71,  76,  81,  86,  91,  96, 101, 106, 111, 116, 121, 126, 131, 136, 141, 146,
+        2,   7,  12,  17,  22,  27,  32,  37,  42,  47,  52,  57,  62,  67,  72,  77,  82,  87,  92,  97, 102, 107, 112, 117, 122, 127, 132, 137, 142, 147,
+        3,   8,  13,  18,  23,  28,  33,  38,  43,  48,  53,  58,  63,  68,  73,  78,  83,  88,  93,  98, 103, 108, 113, 118, 123, 128, 133, 138, 143, 148,
+        4,   9,  14,  19,  24,  29,  34,  39,  44,  49,  54,  59,  64,  69,  74,  79,  84,  89,  94,  99, 104, 109, 114, 119, 124, 129, 134, 139, 144, 149,
+
+      150, 155, 160, 165, 170, 175, 180, 185, 190, 195, 200, 205, 210, 215, 220, 225, 230, 235, 240, 245, 250, 255, 260, 265, 270, 275, 280, 285, 290, 295,
+      151, 156, 161, 166, 171, 176, 181, 186, 191, 196, 201, 206, 211, 216, 221, 226, 231, 236, 241, 246, 251, 256, 261, 266, 271, 276, 281, 286, 291, 296,
+      152, 157, 162, 167, 172, 177, 182, 187, 192, 197, 202, 207, 212, 217, 222, 227, 232, 237, 242, 247, 252, 257, 262, 267, 272, 277, 282, 287, 292, 297,
+      153, 158, 163, 168, 173, 178, 183, 188, 193, 198, 203, 208, 213, 218, 223, 228, 233, 238, 243, 248, 253, 258, 263, 268, 273, 278, 283, 288, 293, 298,
+      154, 159, 164, 169, 174, 179, 184, 189, 194, 199, 204, 209, 214, 219, 224, 229, 234, 239, 244, 249, 254, 259, 264, 269, 274, 279, 284, 289, 294, 299,  
+
+    
+      350, 350, 351, 352, 353, 354, 355, 355, 356, 357, 358, 359, 360, 360, 361, 362, 363, 364, 365, 365, 366, 367, 368, 369, 370, 370, 371, 372, 373, 374,
+      375, 375, 376, 377, 378, 379, 380, 380, 381, 382, 383, 384, 385, 385, 386, 387, 388, 389, 390, 390, 391, 392, 393, 394, 395, 395, 396, 397, 398, 399,
+    
+};
+
+const int screenMapNoRails[445] = 
+    {   0,   5,  10,  15,  20,  25,  30,  35,  40,  45,  50,  55,  60,  65,  70,  75,  80,  85,  90,  95, 100, 105, 110, 115, 120, 125, 130, 135, 140, 145,
+        1,   6,  11,  16,  21,  26,  31,  36,  41,  46,  51,  56,  61,  66,  71,  76,  81,  86,  91,  96, 101, 106, 111, 116, 121, 126, 131, 136, 141, 146,
+        2,   7,  12,  17,  22,  27,  32,  37,  42,  47,  52,  57,  62,  67,  72,  77,  82,  87,  92,  97, 102, 107, 112, 117, 122, 127, 132, 137, 142, 147,
+        3,   8,  13,  18,  23,  28,  33,  38,  43,  48,  53,  58,  63,  68,  73,  78,  83,  88,  93,  98, 103, 108, 113, 118, 123, 128, 133, 138, 143, 148,
+        4,   9,  14,  19,  24,  29,  34,  39,  44,  49,  54,  59,  64,  69,  74,  79,  84,  89,  94,  99, 104, 109, 114, 119, 124, 129, 134, 139, 144, 149,
+
+      150, 155, 160, 165, 170, 175, 180, 185, 190, 195, 200, 205, 210, 215, 220, 225, 230, 235, 240, 245, 250, 255, 260, 265, 270, 275, 280, 285, 290, 295,
+      151, 156, 161, 166, 171, 176, 181, 186, 191, 196, 201, 206, 211, 216, 221, 226, 231, 236, 241, 246, 251, 256, 261, 266, 271, 276, 281, 286, 291, 296,
+      152, 157, 162, 167, 172, 177, 182, 187, 192, 197, 202, 207, 212, 217, 222, 227, 232, 237, 242, 247, 252, 257, 262, 267, 272, 277, 282, 287, 292, 297,
+      153, 158, 163, 168, 173, 178, 183, 188, 193, 198, 203, 208, 213, 218, 223, 228, 233, 238, 243, 248, 253, 258, 263, 268, 273, 278, 283, 288, 293, 298,
+      154, 159, 164, 169, 174, 179, 184, 189, 194, 199, 204, 209, 214, 219, 224, 229, 234, 239, 244, 249, 254, 259, 264, 269, 274, 279, 284, 289, 294, 299,  
+
+    
+};
+
+
+uint8_t upperCase[30][3] = { {
+0x1e, 0x05, 0x1e, },{ 0x1f, 0x15, 0x0a, },{
+0x1f, 0x11, 0x11, },{ 0x1f, 0x11, 0x0e, },{ 0x1f, 0x15, 0x11, },{ 0x1f, 0x05, 0x01, },{
+0x0e, 0x15, 0x1d, },{ 0x1f, 0x04, 0x1f, },{ 0x11, 0x1f, 0x11, },{ 0x08, 0x10, 0x0f, },{
+0x1f, 0x04, 0x1b, },{ 0x1f, 0x10, 0x10, },{ 0x1f, 0x07, 0x1f, },{ 0x1f, 0x01, 0x1f, },{
+0x1f, 0x11, 0x1f, },{ 0x1f, 0x05, 0x07, },{ 0x0f, 0x09, 0x17, },{ 0x1f, 0x0d, 0x17, },{
+0x17, 0x15, 0x1d, },{ 0x01, 0x1f, 0x01, },{ 0x1f, 0x10, 0x1f, },{ 0x0f, 0x10, 0x0f, },{
 0x1f, 0x0c, 0x1f, },{ 0x1b, 0x04, 0x1b, },{ 0x03, 0x1c, 0x03, },{ 0x19, 0x15, 0x13, },{ //Z
 
-}};
+} };
 
-uint8_t lowerCase [30][3] = {{
-    0x1c, 0x0a, 0x1c, },{ 0x1e, 0x14, 0x08, },{ 0x0c, 0x12, 0x12, },{ 0x08, 0x14, 0x1e, },{ 
-0x0e, 0x16, 0x14, },{ 0x1c, 0x0a, 0x02, },{ 0x14, 0x16, 0x0e, },{ 0x1e, 0x04, 0x18, },{ 
-0x00, 0x1d, 0x00, },{ 0x10, 0x0d, 0x00, },{ 0x1e, 0x08, 0x16, },{ 0x00, 0x1e, 0x10, },{ 
-0x1e, 0x06, 0x1e, },{ 0x1e, 0x02, 0x1c, },{ 0x1e, 0x12, 0x1e, },{ 0x1e, 0x0a, 0x04, },{ 
-0x04, 0x0a, 0x1c, },{ 0x1e, 0x02, 0x04, },{ 0x14, 0x1a, 0x0a, },{ 0x04, 0x1e, 0x14, },{ 
-0x1e, 0x10, 0x1e, },{ 0x0e, 0x10, 0x0e, },{ 0x1e, 0x18, 0x1e, },{ 0x16, 0x08, 0x16, },{ 
-0x06, 0x18, 0x06, },{ 0x12, 0x1a, 0x16, }}; //z
+uint8_t lowerCase[30][3] = { {
+    0x1c, 0x0a, 0x1c, },{ 0x1e, 0x14, 0x08, },{ 0x0c, 0x12, 0x12, },{ 0x08, 0x14, 0x1e, },{
+0x0e, 0x16, 0x14, },{ 0x1c, 0x0a, 0x02, },{ 0x14, 0x16, 0x0e, },{ 0x1e, 0x04, 0x18, },{
+0x00, 0x1d, 0x00, },{ 0x10, 0x0d, 0x00, },{ 0x1e, 0x08, 0x16, },{ 0x00, 0x1e, 0x10, },{
+0x1e, 0x06, 0x1e, },{ 0x1e, 0x02, 0x1c, },{ 0x1e, 0x12, 0x1e, },{ 0x1e, 0x0a, 0x04, },{
+0x04, 0x0a, 0x1c, },{ 0x1e, 0x02, 0x04, },{ 0x14, 0x1a, 0x0a, },{ 0x04, 0x1e, 0x14, },{
+0x1e, 0x10, 0x1e, },{ 0x0e, 0x10, 0x0e, },{ 0x1e, 0x18, 0x1e, },{ 0x16, 0x08, 0x16, },{
+0x06, 0x18, 0x06, },{ 0x12, 0x1a, 0x16, } }; //z
 
-uint8_t fontNumbers [10][3] = {{
-0x1f, 0x11, 0x1f, },{ 0x12, 0x1f, 0x10, },{ 0x1d, 0x15, 0x17, },{ 0x11, 0x15, 0x1f, },{ 
-0x07, 0x04, 0x1f, },{ 0x17, 0x15, 0x1d, },{ 0x1f, 0x15, 0x1d, },{ 0x19, 0x05, 0x03, },{ 
-0x1f, 0x15, 0x1f, },{ 0x17, 0x15, 0x1f, }}; //9
+uint8_t fontNumbers[10][3] = { {
+0x1f, 0x11, 0x1f, },{ 0x12, 0x1f, 0x10, },{ 0x1d, 0x15, 0x17, },{ 0x11, 0x15, 0x1f, },{
+0x07, 0x04, 0x1f, },{ 0x17, 0x15, 0x1d, },{ 0x1f, 0x15, 0x1d, },{ 0x19, 0x05, 0x03, },{
+0x1f, 0x15, 0x1f, },{ 0x17, 0x15, 0x1f, } }; //9
 
-uint8_t symbols [50][3] = {
+uint8_t symbols[50][3] = {
 { 0x00, 0x17, 0x00, }, //'!'
 { 0x16, 0x1f, 0x0d, }, //$
 { 0x19, 0x04, 0x13, }, //%
@@ -77,59 +115,59 @@ uint8_t symbols [50][3] = {
 { 0x00, 0x03, 0x00, }, // '
 { 0x0a, 0x0f, 0x08, }, // 𝟷
 { 0x0d, 0x0b, 0x00, }, // 𝟸
-{ 0x09, 0x0b, 0x0f, }};// 𝟹
+{ 0x09, 0x0b, 0x0f, } };// 𝟹
 
 // char symbolMap[40] = {
 // '!', '$', '%', '^', '*', '_', '-', '+', '÷', 'x', '=', '±', '?', '<', '>', '~', '\'', ',', '.', '/', '\\', '(', ')', '[', ']', '{', '}', '|', ';', ':', 'µ', '°', '❬', '❭', '"', '\'', '𝟷', '𝟸', '𝟹'};
 
 wchar_t fontMap[120] = {
-'0', '1', '2', '3', '4', '5', '6', '7', '8', '9', 
+'0', '1', '2', '3', '4', '5', '6', '7', '8', '9',
 'A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'J', 'K', 'L', 'M', 'N', 'O', 'P', 'Q', 'R', 'S', 'T', 'U', 'V', 'W', 'X', 'Y', 'Z',
 'a', 'b', 'c', 'd', 'e', 'f', 'g', 'h', 'i', 'j', 'k', 'l', 'm', 'n', 'o', 'p', 'q', 'r', 's', 't', 'u', 'v', 'w', 'x', 'y', 'z',
-'!', '$', '%', '^', '*', '_', '-', '+', L'÷', 'x', '=', L'±', '?', '<', '>', '~', '\'', ',', '.', '/', '\\', 
-'(', ')', '[', ']', '{', '}', '|', ';', ':', L'µ', L'°', L'❬', L'❭', '"', '\'', L'𝟷', L'𝟸', L'𝟹', '0', '1', '2', '3', '4', '5', '6', '7', '8', '9'};
+'!', '$', '%', '^', '*', '_', '-', '+', L'÷', 'x', '=', L'±', '?', '<', '>', '~', '\'', ',', '.', '/', '\\',
+'(', ')', '[', ']', '{', '}', '|', ';', ':', L'µ', L'°', L'❬', L'❭', '"', '\'', L'𝟷', L'𝟸', L'𝟹', '0', '1', '2', '3', '4', '5', '6', '7', '8', '9' };
 
 
 
 const uint8_t font[][3] = // 'JumperlessFontmap', 500x5px
-{{
-0x1f, 0x11, 0x1f, },{ 0x12, 0x1f, 0x10, },{ 0x1d, 0x15, 0x17, },{ 0x11, 0x15, 0x1f, },{ 
-0x07, 0x04, 0x1f, },{ 0x17, 0x15, 0x1d, },{ 0x1f, 0x15, 0x1d, },{ 0x19, 0x05, 0x03, },{ 
-0x1f, 0x15, 0x1f, },{ 0x17, 0x15, 0x1f, },{ //9
+  { {
+  0x1f, 0x11, 0x1f, },{ 0x12, 0x1f, 0x10, },{ 0x1d, 0x15, 0x17, },{ 0x11, 0x15, 0x1f, },{
+  0x07, 0x04, 0x1f, },{ 0x17, 0x15, 0x1d, },{ 0x1f, 0x15, 0x1d, },{ 0x19, 0x05, 0x03, },{
+  0x1f, 0x15, 0x1f, },{ 0x17, 0x15, 0x1f, },{ //9
 
-0x1e, 0x05, 0x1e, },{ 0x1f, 0x15, 0x0a, },{ 
-0x1f, 0x11, 0x11, },{ 0x1f, 0x11, 0x0e, },{ 0x1f, 0x15, 0x11, },{ 0x1f, 0x05, 0x01, },{ 
-0x0e, 0x15, 0x1d, },{ 0x1f, 0x04, 0x1f, },{ 0x11, 0x1f, 0x11, },{ 0x08, 0x10, 0x0f, },{ 
-0x1f, 0x04, 0x1b, },{ 0x1f, 0x10, 0x10, },{ 0x1f, 0x07, 0x1f, },{ 0x1f, 0x01, 0x1f, },{ 
-0x1f, 0x11, 0x1f, },{ 0x1f, 0x05, 0x07, },{ 0x0f, 0x09, 0x17, },{ 0x1f, 0x0d, 0x17, },{ 
-0x17, 0x15, 0x1d, },{ 0x01, 0x1f, 0x01, },{ 0x1f, 0x10, 0x1f, },{ 0x0f, 0x10, 0x0f, },{ 
-0x1f, 0x0c, 0x1f, },{ 0x1b, 0x04, 0x1b, },{ 0x03, 0x1c, 0x03, },{ 0x19, 0x15, 0x13, },{ //Z
+  0x1e, 0x05, 0x1e, },{ 0x1f, 0x15, 0x0a, },{
+  0x1f, 0x11, 0x11, },{ 0x1f, 0x11, 0x0e, },{ 0x1f, 0x15, 0x11, },{ 0x1f, 0x05, 0x01, },{
+  0x0e, 0x15, 0x1d, },{ 0x1f, 0x04, 0x1f, },{ 0x11, 0x1f, 0x11, },{ 0x08, 0x10, 0x0f, },{
+  0x1f, 0x04, 0x1b, },{ 0x1f, 0x10, 0x10, },{ 0x1f, 0x07, 0x1f, },{ 0x1f, 0x01, 0x1f, },{
+  0x1f, 0x11, 0x1f, },{ 0x1f, 0x05, 0x07, },{ 0x0f, 0x09, 0x17, },{ 0x1f, 0x0d, 0x17, },{
+  0x17, 0x15, 0x1d, },{ 0x01, 0x1f, 0x01, },{ 0x1f, 0x10, 0x1f, },{ 0x0f, 0x10, 0x0f, },{
+  0x1f, 0x0c, 0x1f, },{ 0x1b, 0x04, 0x1b, },{ 0x03, 0x1c, 0x03, },{ 0x19, 0x15, 0x13, },{ //Z
 
-0x1c, 0x0a, 0x1c, },{ 0x1e, 0x14, 0x08, },{ 0x0c, 0x12, 0x12, },{ 0x08, 0x14, 0x1e, },{ 
-0x0e, 0x16, 0x14, },{ 0x1c, 0x0a, 0x02, },{ 0x14, 0x16, 0x0e, },{ 0x1e, 0x04, 0x18, },{ 
-0x00, 0x1d, 0x00, },{ 0x10, 0x0d, 0x00, },{ 0x1e, 0x08, 0x16, },{ 0x00, 0x1e, 0x10, },{ 
-0x1e, 0x06, 0x1e, },{ 0x1e, 0x02, 0x1c, },{ 0x1e, 0x12, 0x1e, },{ 0x1e, 0x0a, 0x04, },{ 
-0x04, 0x0a, 0x1c, },{ 0x1e, 0x02, 0x04, },{ 0x14, 0x1a, 0x0a, },{ 0x04, 0x1e, 0x14, },{ 
-0x1e, 0x10, 0x1e, },{ 0x0e, 0x10, 0x0e, },{ 0x1e, 0x18, 0x1e, },{ 0x16, 0x08, 0x16, },{ 
-0x06, 0x18, 0x06, },{ 0x12, 0x1a, 0x16, },{ //z
-    
-0x00, 0x17, 0x00, },{ 0x16, 0x1f, 0x0d, },{ 
-0x19, 0x04, 0x13, },{ 0x02, 0x01, 0x02, },{ 0x02, 0x07, 0x02, },{ 0x10, 0x10, 0x10, },{ 
-0x04, 0x04, 0x04, },{ 0x04, 0x0e, 0x04, },{ 0x04, 0x15, 0x04, },{ 0x0a, 0x04, 0x0a, },{ 
-0x0a, 0x0a, 0x0a, },{ 0x12, 0x17, 0x12, },{ 0x01, 0x1d, 0x07, },{ 0x04, 0x0a, 0x11, },{ 
-0x11, 0x0a, 0x04, },{ 0x12, 0x17, 0x12, },{ 0x01, 0x02, 0x00, },{ 0x10, 0x08, 0x00, },{ 
-0x00, 0x10, 0x00, },{ 0x18, 0x04, 0x03, },{ 0x03, 0x04, 0x18, },{ 0x00, 0x0e, 0x11, },{ 
-0x11, 0x0e, 0x00, },{ 0x00, 0x1f, 0x11, },{ 0x00, 0x11, 0x1f, },{ 0x04, 0x0e, 0x1b, },{ 
-0x1b, 0x0e, 0x04, },{ 0x00, 0x1f, 0x00, },{ 0x10, 0x0a, 0x00, },{ 0x00, 0x0a, 0x00, },{ 
-0x1e, 0x08, 0x06, },{ 0x07, 0x05, 0x07, },{ 0x04, 0x0e, 0x1f, },{ 0x1f, 0x0e, 0x04, },{ 
-0x03, 0x00, 0x03, },{ 0x00, 0x03, 0x00, },{ 0x0a, 0x0f, 0x08, },{ 0x0d, 0x0b, 0x00, },{ 
-0x09, 0x0b, 0x0f, },{
+  0x1c, 0x0a, 0x1c, },{ 0x1e, 0x14, 0x08, },{ 0x0c, 0x12, 0x12, },{ 0x08, 0x14, 0x1e, },{
+  0x0e, 0x16, 0x14, },{ 0x1c, 0x0a, 0x02, },{ 0x14, 0x16, 0x0e, },{ 0x1e, 0x04, 0x18, },{
+  0x00, 0x1d, 0x00, },{ 0x10, 0x0d, 0x00, },{ 0x1e, 0x08, 0x16, },{ 0x00, 0x1e, 0x10, },{
+  0x1e, 0x06, 0x1e, },{ 0x1e, 0x02, 0x1c, },{ 0x1e, 0x12, 0x1e, },{ 0x1e, 0x0a, 0x04, },{
+  0x04, 0x0a, 0x1c, },{ 0x1e, 0x02, 0x04, },{ 0x14, 0x1a, 0x0a, },{ 0x04, 0x1e, 0x14, },{
+  0x1e, 0x10, 0x1e, },{ 0x0e, 0x10, 0x0e, },{ 0x1e, 0x18, 0x1e, },{ 0x16, 0x08, 0x16, },{
+  0x06, 0x18, 0x06, },{ 0x12, 0x1a, 0x16, },{ //z
 
-0x1e, 0x12, 0x1e, },{ 0x14, 0x1e, 0x10, },{ 0x1a, 0x12, 0x16, },{ 0x12, 0x16, 0x1e, },{ //lowercase Numbers
-0x0e, 0x08, 0x1e, },{ 0x16, 0x12, 0x1a, },{ 0x1e, 0x1a, 0x1a, },{ 0x12, 0x0a, 0x06, },{ 
-0x1e, 0x1a, 0x1e, },{ 0x16, 0x16, 0x1e, }
+  0x00, 0x17, 0x00, },{ 0x16, 0x1f, 0x0d, },{
+  0x19, 0x04, 0x13, },{ 0x02, 0x01, 0x02, },{ 0x02, 0x07, 0x02, },{ 0x10, 0x10, 0x10, },{
+  0x04, 0x04, 0x04, },{ 0x04, 0x0e, 0x04, },{ 0x04, 0x15, 0x04, },{ 0x0a, 0x04, 0x0a, },{
+  0x0a, 0x0a, 0x0a, },{ 0x12, 0x17, 0x12, },{ 0x01, 0x1d, 0x07, },{ 0x04, 0x0a, 0x11, },{
+  0x11, 0x0a, 0x04, },{ 0x12, 0x17, 0x12, },{ 0x01, 0x02, 0x00, },{ 0x10, 0x08, 0x00, },{
+  0x00, 0x10, 0x00, },{ 0x18, 0x04, 0x03, },{ 0x03, 0x04, 0x18, },{ 0x00, 0x0e, 0x11, },{
+  0x11, 0x0e, 0x00, },{ 0x00, 0x1f, 0x11, },{ 0x00, 0x11, 0x1f, },{ 0x04, 0x0e, 0x1b, },{
+  0x1b, 0x0e, 0x04, },{ 0x00, 0x1f, 0x00, },{ 0x10, 0x0a, 0x00, },{ 0x00, 0x0a, 0x00, },{
+  0x1e, 0x08, 0x06, },{ 0x07, 0x05, 0x07, },{ 0x04, 0x0e, 0x1f, },{ 0x1f, 0x0e, 0x04, },{
+  0x03, 0x00, 0x03, },{ 0x00, 0x03, 0x00, },{ 0x0a, 0x0f, 0x08, },{ 0x0d, 0x0b, 0x00, },{
+  0x09, 0x0b, 0x0f, },{
 
-};
+  0x1e, 0x12, 0x1e, },{ 0x14, 0x1e, 0x10, },{ 0x1a, 0x12, 0x16, },{ 0x12, 0x16, 0x1e, },{ //lowercase Numbers
+  0x0e, 0x08, 0x1e, },{ 0x16, 0x12, 0x1a, },{ 0x1e, 0x1a, 0x1a, },{ 0x12, 0x0a, 0x06, },{
+  0x1e, 0x1a, 0x1e, },{ 0x16, 0x16, 0x1e, }
+
+  };
 
 
 //0=top rail, 1= gnd, 2 = bottom rail, 3 = gnd again, 4 = adc 1, 5 = adc 2, 6 = adc 3, 7 = adc 4, 8 = adc 5, 9 = adc 6, 10 = dac 0, 11 = dac 1, 12 = routable buffer in, 13 = routable buffer out, 14 = i sense +, 15 = isense -, 16 = gpio Tx, 17 = gpio Rx, 
@@ -143,24 +181,24 @@ uint32_t specialColors[13][5] = {
     {0x000000, 0x000000, 0x000000, 0x000000, 0x000000},
     {0x000000, 0x000000, 0x000000, 0x000000, 0x000000},
     {0x000000, 0x000000, 0x000000, 0x000000, 0x000000},
-    {0x000000, 0x000000, 0x000000, 0x000000, 0x000000}};
+    {0x000000, 0x000000, 0x000000, 0x000000, 0x000000} };
 
 
-    // struct specialRowAnimation{
-    //     int net;
-    //     int currentFrame;
-    //     int numberOfFrames = 8;
-    //     uint32_t frames[8][5] = {0xffffff};
+// struct specialRowAnimation{
+//     int net;
+//     int currentFrame;
+//     int numberOfFrames = 8;
+//     uint32_t frames[8][5] = {0xffffff};
 
-        
-    // };
+
+// };
 
 
 int menuBrightnessSetting = -40; // -100 - 100 (0 default)
 
-    bool animationsEnabled = true;
+bool animationsEnabled = true;
 specialRowAnimation rowAnimations[26];
- volatile int doomOn = 0;
+volatile int doomOn = 0;
 
 int wireStatus[64][5]; // row, led (net stored)
 //char defconString[16] = " Fuck    You   ";
@@ -185,81 +223,81 @@ void defcon(int start, int spread, int color, int nudge) {
 
   b.print(defconString[1],
           scaleBrightness(
-              logoColorsAll[color][(start + spread) % (LOGO_COLOR_LENGTH - 1)],
-              scaleFactor),
+            logoColorsAll[color][(start + spread) % (LOGO_COLOR_LENGTH - 1)],
+            scaleFactor),
           (uint32_t)0xffffff, 1, 0, nudge);
 
   b.print(
       defconString[2],
       scaleBrightness(
-          logoColorsAll[color][(start + spread * 2) % (LOGO_COLOR_LENGTH - 1)],
-          scaleFactor),
+        logoColorsAll[color][(start + spread * 2) % (LOGO_COLOR_LENGTH - 1)],
+        scaleFactor),
       (uint32_t)0xffffff, 2, 0, nudge);
   b.print(
       defconString[3],
       scaleBrightness(
-          logoColorsAll[color][(start + spread * 3) % (LOGO_COLOR_LENGTH - 1)],
-          scaleFactor),
+        logoColorsAll[color][(start + spread * 3) % (LOGO_COLOR_LENGTH - 1)],
+        scaleFactor),
       (uint32_t)0xffffff, 3, 0, nudge);
   b.print(
       defconString[4],
       scaleBrightness(
-          logoColorsAll[color][(start + spread * 4) % (LOGO_COLOR_LENGTH - 1)],
-          scaleFactor),
+        logoColorsAll[color][(start + spread * 4) % (LOGO_COLOR_LENGTH - 1)],
+        scaleFactor),
       (uint32_t)0xffffff, 4, 0, nudge);
   b.print(
       defconString[5],
       scaleBrightness(
-          logoColorsAll[color][(start + spread * 5) % (LOGO_COLOR_LENGTH - 1)],
-          scaleFactor),
+        logoColorsAll[color][(start + spread * 5) % (LOGO_COLOR_LENGTH - 1)],
+        scaleFactor),
       (uint32_t)0xffffff, 5, 0, nudge);
   b.print(
       defconString[6],
       scaleBrightness(
-          logoColorsAll[color][(start + spread * 5) % (LOGO_COLOR_LENGTH - 1)],
-          scaleFactor),
+        logoColorsAll[color][(start + spread * 5) % (LOGO_COLOR_LENGTH - 1)],
+        scaleFactor),
       (uint32_t)0xffffff, 6, 0, nudge);
   b.print(
       defconString[7],
       scaleBrightness(
-          logoColorsAll[color][(start + spread * 6) % (LOGO_COLOR_LENGTH - 1)],
-          scaleFactor),
+        logoColorsAll[color][(start + spread * 6) % (LOGO_COLOR_LENGTH - 1)],
+        scaleFactor),
       (uint32_t)0xffffff, 0, 1, nudge);
   b.print(
       defconString[8],
       scaleBrightness(
-          logoColorsAll[color][(start + spread * 7) % (LOGO_COLOR_LENGTH - 1)],
-          scaleFactor),
+        logoColorsAll[color][(start + spread * 7) % (LOGO_COLOR_LENGTH - 1)],
+        scaleFactor),
       (uint32_t)0xffffff, 1, 1, nudge);
   b.print(
       defconString[9],
       scaleBrightness(
-          logoColorsAll[color][(start + spread * 8) % (LOGO_COLOR_LENGTH - 1)],
-          scaleFactor),
+        logoColorsAll[color][(start + spread * 8) % (LOGO_COLOR_LENGTH - 1)],
+        scaleFactor),
       (uint32_t)0xffffff, 2, 1, nudge);
   b.print(
       defconString[10],
       scaleBrightness(
-          logoColorsAll[color][(start + spread * 9) % (LOGO_COLOR_LENGTH - 1)],
-          scaleFactor),
+        logoColorsAll[color][(start + spread * 9) % (LOGO_COLOR_LENGTH - 1)],
+        scaleFactor),
       (uint32_t)0xffffff, 3, 1, nudge);
   b.print(
       defconString[11],
       scaleBrightness(
-          logoColorsAll[color][(start + spread * 10) % (LOGO_COLOR_LENGTH - 1)],
-          scaleFactor),
+        logoColorsAll[color][(start + spread * 10) % (LOGO_COLOR_LENGTH - 1)],
+        scaleFactor),
       (uint32_t)0xffffff, 4, 1, nudge);
   b.print(
       defconString[12],
       scaleBrightness(
-          logoColorsAll[color][(start + spread * 11) % (LOGO_COLOR_LENGTH - 1)],
-          scaleFactor),
+        logoColorsAll[color][(start + spread * 11) % (LOGO_COLOR_LENGTH - 1)],
+        scaleFactor),
       (uint32_t)0xffffff, 5, 1, nudge);
   b.print(
       defconString[13],
       scaleBrightness(
-          logoColorsAll[color][(start + spread * 12) % (LOGO_COLOR_LENGTH - 1)],
-          scaleFactor),
+        logoColorsAll[color][(start + spread * 12) % (LOGO_COLOR_LENGTH - 1)],
+        scaleFactor),
       (uint32_t)0xffffff, 6, 1, nudge);
   // railsToPixelMap[0][20] = 0;
   //  leds.setPixelColor(railsToPixelMap[0][20], 0x004f9f);
@@ -281,68 +319,68 @@ void defcon(int start, int spread, int color, int nudge) {
   leds.setPixelColor(
       bbPixelToNodesMapV5[0][1],
       scaleBrightness(
-          logoColorsAll[0][(start - spreadnudge) % (LOGO_COLOR_LENGTH - 1)],
-          topScale));
+        logoColorsAll[0][(start - spreadnudge) % (LOGO_COLOR_LENGTH - 1)],
+        topScale));
   leds.setPixelColor(
       bbPixelToNodesMapV5[2][1],
       scaleBrightness(logoColorsAll[0][(start + spread - spreadnudge) %
-                                       (LOGO_COLOR_LENGTH - 1)],
+                      (LOGO_COLOR_LENGTH - 1)],
                       topScale));
 
   leds.setPixelColor(
       bbPixelToNodesMapV5[4][1],
       scaleBrightness(logoColorsAll[0][(start + spread * 2 - spreadnudge) %
-                                       (LOGO_COLOR_LENGTH - 1)],
+                      (LOGO_COLOR_LENGTH - 1)],
                       topScale));
   leds.setPixelColor(
       bbPixelToNodesMapV5[6][1],
       scaleBrightness(logoColorsAll[0][(start + spread * 3 - spreadnudge) %
-                                       (LOGO_COLOR_LENGTH - 1)],
+                      (LOGO_COLOR_LENGTH - 1)],
                       topScale));
   leds.setPixelColor(
       bbPixelToNodesMapV5[8][1],
       scaleBrightness(logoColorsAll[0][(start + spread * 4 - spreadnudge) %
-                                       (LOGO_COLOR_LENGTH - 1)],
+                      (LOGO_COLOR_LENGTH - 1)],
                       topScale));
   leds.setPixelColor(
       bbPixelToNodesMapV5[10][1],
       scaleBrightness(logoColorsAll[0][(start + spread * 5 - spreadnudge) %
-                                       (LOGO_COLOR_LENGTH - 1)],
+                      (LOGO_COLOR_LENGTH - 1)],
                       topScale));
   leds.setPixelColor(
       bbPixelToNodesMapV5[12][1],
       scaleBrightness(logoColorsAll[0][(start + spread * 6 - spreadnudge) %
-                                       (LOGO_COLOR_LENGTH - 1)],
+                      (LOGO_COLOR_LENGTH - 1)],
                       topScale));
   leds.setPixelColor(
       bbPixelToNodesMapV5[14][1],
       scaleBrightness(logoColorsAll[0][(start + spread * 7 - spreadnudge) %
-                                       (LOGO_COLOR_LENGTH - 1)],
+                      (LOGO_COLOR_LENGTH - 1)],
                       topScale));
   leds.setPixelColor(
       bbPixelToNodesMapV5[16][1],
       scaleBrightness(logoColorsAll[0][(start + spread * 8 - spreadnudge) %
-                                       (LOGO_COLOR_LENGTH - 1)],
+                      (LOGO_COLOR_LENGTH - 1)],
                       topScale));
   leds.setPixelColor(
       bbPixelToNodesMapV5[18][1],
       scaleBrightness(logoColorsAll[0][(start + spread * 9 - spreadnudge) %
-                                       (LOGO_COLOR_LENGTH - 1)],
+                      (LOGO_COLOR_LENGTH - 1)],
                       topScale));
   leds.setPixelColor(
       bbPixelToNodesMapV5[20][1],
       scaleBrightness(logoColorsAll[0][(start + spread * 10 - spreadnudge) %
-                                       (LOGO_COLOR_LENGTH - 1)],
+                      (LOGO_COLOR_LENGTH - 1)],
                       topScale));
   leds.setPixelColor(
       bbPixelToNodesMapV5[22][1],
       scaleBrightness(logoColorsAll[0][(start + spread * 11 - spreadnudge) %
-                                       (LOGO_COLOR_LENGTH - 1)],
+                      (LOGO_COLOR_LENGTH - 1)],
                       topScale));
   leds.setPixelColor(
       bbPixelToNodesMapV5[24][1],
       scaleBrightness(logoColorsAll[0][(start + spread * 12 - spreadnudge) %
-                                       (LOGO_COLOR_LENGTH - 1)],
+                      (LOGO_COLOR_LENGTH - 1)],
                       topScale));
 
   leds.setPixelColor(
@@ -353,60 +391,60 @@ void defcon(int start, int spread, int color, int nudge) {
   leds.setPixelColor(
       bbPixelToNodesMapV5[3][1],
       scaleBrightness(
-          logoColorsAll[0][(start + spread) % (LOGO_COLOR_LENGTH - 1)],
-          topScale));
+        logoColorsAll[0][(start + spread) % (LOGO_COLOR_LENGTH - 1)],
+        topScale));
 
   leds.setPixelColor(
       bbPixelToNodesMapV5[5][1],
       scaleBrightness(
-          logoColorsAll[0][(start + spread * 2) % (LOGO_COLOR_LENGTH - 1)],
-          topScale));
+        logoColorsAll[0][(start + spread * 2) % (LOGO_COLOR_LENGTH - 1)],
+        topScale));
   leds.setPixelColor(
       bbPixelToNodesMapV5[7][1],
       scaleBrightness(
-          logoColorsAll[0][(start + spread * 3) % (LOGO_COLOR_LENGTH - 1)],
-          topScale));
+        logoColorsAll[0][(start + spread * 3) % (LOGO_COLOR_LENGTH - 1)],
+        topScale));
   leds.setPixelColor(
       bbPixelToNodesMapV5[9][1],
       scaleBrightness(
-          logoColorsAll[0][(start + spread * 4) % (LOGO_COLOR_LENGTH - 1)],
-          topScale));
+        logoColorsAll[0][(start + spread * 4) % (LOGO_COLOR_LENGTH - 1)],
+        topScale));
   leds.setPixelColor(
       bbPixelToNodesMapV5[11][1],
       scaleBrightness(
-          logoColorsAll[0][(start + spread * 5) % (LOGO_COLOR_LENGTH - 1)],
-          topScale));
+        logoColorsAll[0][(start + spread * 5) % (LOGO_COLOR_LENGTH - 1)],
+        topScale));
   leds.setPixelColor(
       bbPixelToNodesMapV5[13][1],
       scaleBrightness(
-          logoColorsAll[0][(start + spread * 6) % (LOGO_COLOR_LENGTH - 1)],
-          topScale));
+        logoColorsAll[0][(start + spread * 6) % (LOGO_COLOR_LENGTH - 1)],
+        topScale));
   leds.setPixelColor(
       bbPixelToNodesMapV5[15][1],
       scaleBrightness(
-          logoColorsAll[0][(start + spread * 7) % (LOGO_COLOR_LENGTH - 1)],
-          topScale));
+        logoColorsAll[0][(start + spread * 7) % (LOGO_COLOR_LENGTH - 1)],
+        topScale));
   leds.setPixelColor(
       bbPixelToNodesMapV5[17][1],
       scaleBrightness(
-          logoColorsAll[0][(start + spread * 8) % (LOGO_COLOR_LENGTH - 1)],
-          topScale));
+        logoColorsAll[0][(start + spread * 8) % (LOGO_COLOR_LENGTH - 1)],
+        topScale));
   leds.setPixelColor(
       bbPixelToNodesMapV5[19][1],
       scaleBrightness(
-          logoColorsAll[0][(start + spread * 9) % (LOGO_COLOR_LENGTH - 1)],
-          topScale));
+        logoColorsAll[0][(start + spread * 9) % (LOGO_COLOR_LENGTH - 1)],
+        topScale));
 
   leds.setPixelColor(
       bbPixelToNodesMapV5[21][1],
       scaleBrightness(
-          logoColorsAll[0][(start + spread * 10) % (LOGO_COLOR_LENGTH - 1)],
-          topScale));
+        logoColorsAll[0][(start + spread * 10) % (LOGO_COLOR_LENGTH - 1)],
+        topScale));
   leds.setPixelColor(
       bbPixelToNodesMapV5[23][1],
       scaleBrightness(
-          logoColorsAll[0][(start + spread * 11) % (LOGO_COLOR_LENGTH - 1)],
-          topScale));
+        logoColorsAll[0][(start + spread * 11) % (LOGO_COLOR_LENGTH - 1)],
+        topScale));
 
   // b.print('M', logoColors[(start + spread * 2) % (LOGO_COLOR_LENGTH - 1)],
   // 2,0); b.print('P', logoColors[(start + spread * 3) % (LOGO_COLOR_LENGTH -
@@ -421,9 +459,9 @@ void defcon(int start, int spread, int color, int nudge) {
   // (LOGO_COLOR_LENGTH - 1)], 11,1); b.print('V', logoColors[(start + spread *
   // 11) % (LOGO_COLOR_LENGTH - 1)], 12,1); b.print('5', logoColors[(start +
   // spread * 12) % (LOGO_COLOR_LENGTH - 1)], 13,1);
-}
+  }
 
-int filledPaths[64][4] = {-1}; // node1 node2 rowfilled
+int filledPaths[64][4] = { -1 }; // node1 node2 rowfilled
 
 void drawWires(int net) {
   // int fillSequence[6] = {0,2,4,1,3,};
@@ -441,20 +479,20 @@ void drawWires(int net) {
   // Serial.print("numberOfShownNets = ");
   // Serial.println(numberOfShownNets);
 
-  int fillSequence[6] = {0, 1, 2, 3, 4, 0};
+  int fillSequence[6] = { 0, 1, 2, 3, 4, 0 };
   int fillIndex = 0;
 
   for (int i = 0; i < 64; i++) {
     for (int j = 0; j < 4; j++) {
       filledPaths[i][j] = -1;
+      }
     }
-  }
 
   for (int i = 0; i < 62; i++) {
     for (int j = 0; j < 5; j++) {
       wireStatus[i][j] = 0;
+      }
     }
-  }
 
   // for (int i = 0; i < numberOfNets; i++) {
   //   // Serial.print(i);
@@ -507,20 +545,20 @@ void drawWires(int net) {
             sameLevel = 1;
             if (path[i].node1 > path[i].node2) {
               whichIsLarger = 1;
-            } else {
+              } else {
               whichIsLarger = 2;
-            }
-          } else if (path[i].node1 > 30 && path[i].node1 <= 60 &&
-                     path[i].node2 > 30 && path[i].node2 <= 60) {
-            bothOnBottom = 1;
-            sameLevel = 1;
-            if (path[i].node1 > path[i].node2) {
-              whichIsLarger = 1;
-            } else {
-              whichIsLarger = 2;
-            }
-          }
-        } else {
+              }
+            } else if (path[i].node1 > 30 && path[i].node1 <= 60 &&
+                       path[i].node2 > 30 && path[i].node2 <= 60) {
+              bothOnBottom = 1;
+              sameLevel = 1;
+              if (path[i].node1 > path[i].node2) {
+                whichIsLarger = 1;
+                } else {
+                whichIsLarger = 2;
+                }
+              }
+          } else {
           // Serial.println("else ");
           // Serial.print("path[");
           // Serial.print(i);
@@ -528,7 +566,7 @@ void drawWires(int net) {
           // Serial.print(path[i].net);
 
           lightUpNet(path[i].net);
-        }
+          }
 
         // if (sameLevel == 0 && ((path[i].node1 >= 110 && path[i].node1 <= 113)
         // || (path[i].node2 >= 110 && path[i].node2 <= 113)))
@@ -545,11 +583,11 @@ void drawWires(int net) {
             range = path[i].node1 - path[i].node2;
             first = path[i].node2;
             last = path[i].node1;
-          } else {
+            } else {
             range = path[i].node2 - path[i].node1;
             first = path[i].node1;
             last = path[i].node2;
-          }
+            }
 
           // Serial.print("\nfirst = ");
           // Serial.println(first);
@@ -573,7 +611,7 @@ void drawWires(int net) {
                 // wireStatus[j][w] = path[i].net;
                 if (w > largestFillIndex) {
                   largestFillIndex = w;
-                }
+                  }
                 // Serial.print("j = ");
                 // Serial.println(j);
                 // if (first > 30) {
@@ -581,9 +619,9 @@ void drawWires(int net) {
                 // }
 
                 break;
+                }
               }
             }
-          }
           //           Serial.print("largestFillIndex = ");
           // Serial.println(largestFillIndex);
           // if (largestFillIndex > 4) {
@@ -596,11 +634,11 @@ void drawWires(int net) {
 
                 wireStatus[j][k] = path[i].net;
                 // wireStatus[j][largestFillIndex] = path[i].net;
-              }
-            } else {
+                }
+              } else {
               wireStatus[j][largestFillIndex] = path[i].net;
+              }
             }
-          }
 
           fillIndex = largestFillIndex;
 
@@ -609,32 +647,32 @@ void drawWires(int net) {
           filledPaths[i][2] = fillSequence[fillIndex];
 
           // showLEDsCore2 = 1;
-        } else {
+          } else {
           for (int j = 0; j < 5; j++) {
 
             if (path[i].node1 > 0 && path[i].node1 <= 60) {
               if (wireStatus[path[i].node1][j] == 0) {
                 wireStatus[path[i].node1][j] = path[i].net;
-              }
+                }
 
               // Serial.print("path[i].node1 = ");
               // Serial.println(path[i].node1);
-            }
+              }
             if (path[i].node2 > 0 && path[i].node2 <= 60) {
               if (wireStatus[path[i].node2][j] == 0) {
                 wireStatus[path[i].node2][j] = path[i].net;
-              }
+                }
               // Serial.print("path[i].node2 = ");
               // Serial.println(path[i].node2);
+              }
             }
-          }
           // lightUpNet(path[i].net);
-        }
-      } else {
+          }
+        } else {
 
         lightUpNet(path[i].net);
+        }
       }
-    }
     for (int i = 0; i <= 60; i++) {
       for (int j = 0; j < 4; j++) {
         if (wireStatus[i][j] != 0) {
@@ -643,23 +681,23 @@ void drawWires(int net) {
               wireStatus[i][4] == wireStatus[i][j]) {
             wireStatus[i][j + 1] = wireStatus[i][j];
             // leds.setPixelColor((i * 5) + fillSequence[j], 0x000000);
-          } else {
+            } else {
             // leds.setPixelColor((i * 5) + fillSequence[j], 0x100010);
+            }
           }
         }
       }
-    }
 
     for (int i = 31; i <= 60; i++) { // reverse the bottom row
 
-      int tempRow[5] = {wireStatus[i][0], wireStatus[i][1], wireStatus[i][2],
-                        wireStatus[i][3], wireStatus[i][4]};
+      int tempRow[5] = { wireStatus[i][0], wireStatus[i][1], wireStatus[i][2],
+                        wireStatus[i][3], wireStatus[i][4] };
       wireStatus[i][0] = tempRow[4];
       wireStatus[i][1] = tempRow[3];
       wireStatus[i][2] = tempRow[2];
       wireStatus[i][3] = tempRow[1];
       wireStatus[i][4] = tempRow[0];
-    }
+      }
 
     for (int i = 1; i <= 60; i++) {
       if (i <= 60) {
@@ -680,11 +718,11 @@ void drawWires(int net) {
 
           if (wireStatus[i][j] == 0) {
             // leds.setPixelColor((i * 5) + fillSequence[j], 0x000000);
-          } else if (probeHighlight != i) {
-            leds.setPixelColor((((i - 1) * 5) + j), color);
+            } else if (probeHighlight != i) {
+              leds.setPixelColor((((i - 1) * 5) + j), color);
+              }
           }
-        }
-      } else {
+        } else {
         for (int j = 0; j < 5; j++) {
 
           uint32_t color3 = 0x100010;
@@ -715,18 +753,18 @@ void drawWires(int net) {
 
           if (wireStatus[i][j] == 0) {
             // leds.setPixelColor((i * 5) + fillSequence[j], 0x000000);
-          } else if (probeHighlight != i) {
-            leds.setPixelColor((((i - 1) * 5) + (4 - j)), color);
-            // Serial.print((((i - 1) * 5) + (4 - j)));
-            // Serial.print(" ");
+            } else if (probeHighlight != i) {
+              leds.setPixelColor((((i - 1) * 5) + (4 - j)), color);
+              // Serial.print((((i - 1) * 5) + (4 - j)));
+              // Serial.print(" ");
+              }
           }
         }
       }
-    }
-  } else {
+    } else {
     // lightUpNet(net);
+    }
   }
-}
 
 void doomIntro(void) {
 
@@ -753,8 +791,8 @@ void doomIntro(void) {
   for (int f = 0; f < 60; f++) {
     for (int r = 0; r < 5; r++) {
       leds.setPixelColor((f * 5) + r, scaleBrightness(0x550500, -93));
+      }
     }
-  }
   leds.show();
 
   delay(100);
@@ -784,48 +822,48 @@ void doomIntro(void) {
       if (i < 30) {
         if (random(0, 100) > 70) {
           leds.setPixelColor((i * 5) + random(0, 5), 0x000000);
+          }
         }
-      }
       if (random(0, 100) > 80) {
         leds.setPixelColor((i * 5) + random(0, 5), 0x000000);
-      }
+        }
       if (random(0, 100) < 20) {
         leds.setPixelColor((i * 5) + random(0, 3), 0x000000);
-      }
+        }
       if (random(0, 100) < 10) {
         leds.setPixelColor((i * 5) + random(0, 2), 0x000000);
-      }
+        }
 
       if (random(0, 100) > 85) {
         leds.setPixelColor((i * 5) + random(0, 5), 0x000000);
-      }
+        }
 
       if (random(0, 100) > 90) {
         leds.setPixelColor((i * 5) + random(0, 5), 0x000000);
         leds.setPixelColor((i * 5) + random(0, 3), 0x000000);
-      }
+        }
       if (random(0, 100) > 95) {
         leds.setPixelColor((i * 5) + random(0, 5), 0x000000);
         leds.setPixelColor((i * 5) + random(0, 2), 0x000000);
+        }
       }
-    }
     leds.show();
     delay(48);
-  }
+    }
 
   //    delay(40);
 
   //    }
-}
+  }
 
 void playDoom(void) {
   // core1busy = 1;
   core2busy = 1;
-  int pixMap[10] = {9, 8, 7, 6, 5, 4, 3, 2, 1, 0};
+  int pixMap[10] = { 9, 8, 7, 6, 5, 4, 3, 2, 1, 0 };
   // doomIntro();
   doomIntro();
   for (int l = 0; l < 4; l++) {
-    
+
     for (int f = 0; f <= 39; f++) {
       for (int r = 0; r < 60; r++) {
 
@@ -835,15 +873,15 @@ void playDoom(void) {
             leds.setPixelColor(
                 (r * 5) + i,
                 scaleBrightness(doomFrames[f][(r * 10) + 5 + (4 - i)], -93));
-          }
-        } else {
+            }
+          } else {
           for (int i = 0; i < 5; i++) {
             leds.setPixelColor(
                 (r * 5) + i,
                 scaleBrightness(doomFrames[f][((r - 30) * 10) + (4 - i)], -93));
+            }
           }
         }
-      }
       leds.show();
       // if (l % 3 == 0) {
 
@@ -858,37 +896,37 @@ void playDoom(void) {
       // //delayMicroseconds(1);
       // }
       delay(150);
+      }
     }
-  }
 
   // core1busy = 0;
   core2busy = 0;
-}
+  }
 
 int animationOrder[26] = {
     TOP_RAIL, GND, BOTTOM_RAIL, GND, ADC1, ADC2, ADC3, ADC4, ADC7,
     // ADC6,
     DAC0, DAC1, ROUTABLE_BUFFER_IN, ROUTABLE_BUFFER_OUT, ISENSE_PLUS,
     ISENSE_MINUS, RP_UART_TX, RP_UART_RX, RP_GPIO_1, RP_GPIO_2, RP_GPIO_3,
-    RP_GPIO_4, MCP_GPIO_0, MCP_GPIO_1, MCP_GPIO_2, MCP_GPIO_3};
+    RP_GPIO_4, MCP_GPIO_0, MCP_GPIO_1, MCP_GPIO_2, MCP_GPIO_3 };
 
 /* clang-format off */
 
 uint32_t animations[10][15] = {
 
-    {0x080001, 0x080002, 0x070003, 0x080002, 0x080001, 
-     0x090000, 0x090000, 0x080100, 0x070200, 0x060300, 
+    {0x080001, 0x080002, 0x070003, 0x080002, 0x080001,
+     0x090000, 0x090000, 0x080100, 0x070200, 0x060300,
      0x070200, 0x080100, 0x080000, 0x090000, 0x080000},
 
-    {0x000900, 0x000a00, 0x020b00, 0x000a00, 0x000900, 
-     0x000901, 0x000702, 0x000603, 0x000702, 0x000801, 
+    {0x000900, 0x000a00, 0x020b00, 0x000a00, 0x000900,
+     0x000901, 0x000702, 0x000603, 0x000702, 0x000801,
      0x000800, 0x010800, 0x020800, 0x020800, 0x010800},
 
-    {0x080001, 0x080002, 0x070003, 0x080002, 0x080001, 
-     0x090000, 0x090000, 0x080100, 0x070200, 0x060300, 
+    {0x080001, 0x080002, 0x070003, 0x080002, 0x080001,
+     0x090000, 0x090000, 0x080100, 0x070200, 0x060300,
      0x070200, 0x080100, 0x080000, 0x090000, 0x080000},
 
-};
+  };
 
 /* clang-format on */
 
@@ -908,15 +946,15 @@ void initRowAnimations() {
     rowAnimations[i].numberOfFrames = 8;
     for (int j = 0; j < 15; j++) {
       rowAnimations[i].frames[j] = animations[i][j];
+      }
     }
-  }
   rowAnimations[0].direction = 1;
   rowAnimations[0].frameInterval = 160;
   rowAnimations[1].direction = 0;
   rowAnimations[1].frameInterval = 100;
   rowAnimations[2].direction = 0;
   rowAnimations[2].frameInterval = 160;
-}
+  }
 
 void showRowAnimation(int index, int net) {
 
@@ -926,18 +964,18 @@ void showRowAnimation(int index, int net) {
   int actualNet = -1;
   if (inPadMenu == 1) {
     return;
-  }
+    }
   for (int i = 0; i < 27; i++) {
     if (rowAnimations[i].net == net) {
       structIndex = i;
 
       break;
+      }
     }
-  }
 
   if (structIndex == -1) {
     return;
-  }
+    }
 
   actualNet = findNodeInNet(net);
   net = structIndex;
@@ -952,9 +990,9 @@ void showRowAnimation(int index, int net) {
       rowAnimations[net].frameInterval) {
     rowAnimations[net].currentFrame++;
     rowAnimations[net].lastFrameTime = millis();
-  } else {
+    } else {
     // return;
-  }
+    }
 
   // if (rowAnimations[net].currentFrame >=
   //     rowAnimations[net].numberOfFrames + 5) {
@@ -975,10 +1013,10 @@ void showRowAnimation(int index, int net) {
       frameColors[i] = scaleBrightness(
           rowAnimations[net].frames[(rowAnimations[net].currentFrame + i) % 15],
           brightenedAmount * 8);
-    } else {
+      } else {
       frameColors[i] =
-          rowAnimations[net].frames[(rowAnimations[net].currentFrame + i) % 15];
-    }
+        rowAnimations[net].frames[(rowAnimations[net].currentFrame + i) % 15];
+      }
     // Serial.print("brightenedAmount = ");  
     // Serial.println(brightenedAmount);
 
@@ -988,20 +1026,20 @@ void showRowAnimation(int index, int net) {
     // Serial.print(frameColors[i], HEX);
     // Serial.print(" ");
     // Serial.println((rowAnimations[net].currentFrame + i) % 15);
-  }
+    }
   // Serial.println(" ");
   int row = 2;
 
   if (rowAnimations[net].direction == 0) {
 
-    uint32_t tempFrame[5] = {frameColors[0], frameColors[1], frameColors[2],
-                             frameColors[3], frameColors[4]};
+    uint32_t tempFrame[5] = { frameColors[0], frameColors[1], frameColors[2],
+                             frameColors[3], frameColors[4] };
     frameColors[0] = tempFrame[4];
     frameColors[1] = tempFrame[3];
     frameColors[2] = tempFrame[2];
     frameColors[3] = tempFrame[1];
     frameColors[4] = tempFrame[0];
-  }
+    }
   // Serial.print("\n\n\rnet = ");
   // Serial.print(net);
   // Serial.print("   actualNet = ");
@@ -1014,7 +1052,7 @@ void showRowAnimation(int index, int net) {
       if (path[i].net == actualNet) {
         if (path[i].skip == true) {
           continue;
-        }
+          }
 
         if (path[i].node1 > 0 && path[i].node1 <= 60 &&
             path[i].node1 != probeHighlight) {
@@ -1022,41 +1060,41 @@ void showRowAnimation(int index, int net) {
 
             b.printRawRow(0b00010000 >> j, path[i].node1 - 1, frameColors[j],
                           0xfffffe, 4);
+            }
           }
-        }
         if (path[i].node2 > 0 && path[i].node2 <= 60 &&
             path[i].node2 != probeHighlight) {
           for (int j = 0; j < 5; j++) {
 
             b.printRawRow(0b00010000 >> j, path[i].node2 - 1, frameColors[j],
                           0xfffffe, 4);
+            }
           }
         }
       }
-    }
 
     // for (int i = 0; i < 5; i++) {
     //   b.printRawRow(0b00000001 << i, row, frameColors[i], 0xfffffe);
     // }
-  } else {
+    } else {
 
     for (int i = 0; i <= 60; i++) {
       for (int j = 0; j < 5; j++) {
         if (wireStatus[i][j] == actualNet) {
           if (i == probeHighlight) {
 
-          } else {
+            } else {
             leds.setPixelColor(((i - 1) * 5) + j, frameColors[j]);
+            }
           }
         }
       }
     }
-  }
 
   for (int i = 0; i <= numberOfPaths; i++) {
-        //     if (path[i].skip == true) {
-        //   continue;
-        // }
+    //     if (path[i].skip == true) {
+    //   continue;
+    // }
     if (path[i].net == actualNet) {
 
       if (path[i].node1 > NANO_D0 && path[i].node1 <= NANO_GND_1) {
@@ -1065,20 +1103,20 @@ void showRowAnimation(int index, int net) {
 
             leds.setPixelColor(bbPixelToNodesMapV5[j][1],
                                scaleBrightness(frameColors[0], 200));
+            }
           }
         }
-      }
       if (path[i].node2 > NANO_D0 && path[i].node2 <= NANO_GND_1) {
         for (int j = 0; j < 35; j++) {
           if (bbPixelToNodesMapV5[j][0] == path[i].node2) {
 
             leds.setPixelColor(bbPixelToNodesMapV5[j][1],
                                scaleBrightness(frameColors[0], 200));
+            }
           }
         }
       }
     }
-  }
 
   // b.printRawRow(0b00000001, row, frameColors[0], 0xfffffe);
   // b.printRawRow(0b00000010, row, frameColors[1], 0xfffffe);
@@ -1088,15 +1126,15 @@ void showRowAnimation(int index, int net) {
 
   // showLEDsCore2 = 2;
   showSkippedNodes();
-}
+  }
 
 void showAllRowAnimations() {
   // showRowAnimation(2, rowAnimations[1].net);
   // showRowAnimation(2, rowAnimations[2].net);
   for (int i = 0; i < 3; i++) {
     showRowAnimation(i, rowAnimations[i].net);
+    }
   }
-}
 
 void printWireStatus(void) {
 
@@ -1105,8 +1143,8 @@ void printWireStatus(void) {
     Serial.print(" ");
     if (s < 9) {
       Serial.print(" ");
+      }
     }
-  }
   Serial.println();
 
   int level = 1;
@@ -1116,18 +1154,18 @@ void printWireStatus(void) {
       Serial.print(" ");
       if (wireStatus[s][r] < 10) {
         Serial.print(" ");
+        }
       }
-    }
     Serial.println();
-  }
+    }
   Serial.println("\n\n");
   for (int s = 31; s <= 60; s++) {
     Serial.print(s);
     Serial.print(" ");
     if (s < 9) {
       Serial.print(" ");
+      }
     }
-  }
   Serial.println();
   for (int r = 0; r < 5; r++) {
     for (int s = 31; s <= 60; s++) {
@@ -1135,98 +1173,98 @@ void printWireStatus(void) {
       Serial.print(" ");
       if (wireStatus[s][r] < 10) {
         Serial.print(" ");
+        }
       }
-    }
     Serial.println();
+    }
   }
-}
 // }
 uint32_t defaultColor = 0x001012;
 
 bread::bread() {
   // defaultColor = 0x060205;
-}
+  }
 
 void bread::print(const char c) { printChar(c, defaultColor); }
 
 void bread::print(const char c, int position) {
   printChar(c, defaultColor, position);
-}
+  }
 
 void bread::print(const char c, uint32_t color) { printChar(c, color); }
 
 void bread::print(const char c, uint32_t color, int position, int topBottom) {
   printChar(c, color, position, topBottom);
-}
+  }
 
 void bread::print(const char c, uint32_t color, int topBottom) {
   printChar(c, color, topBottom);
-}
+  }
 
 void bread::print(const char c, uint32_t color, uint32_t backgroundColor) {
   printChar(c, color, backgroundColor);
-}
+  }
 
 void bread::print(const char c, uint32_t color, uint32_t backgroundColor,
                   int position, int topBottom) {
   printChar(c, color, backgroundColor, position, topBottom);
-}
+  }
 
 void bread::print(const char c, uint32_t color, uint32_t backgroundColor,
                   int position, int topBottom, int nudge) {
   printChar(c, color, backgroundColor, position, topBottom, nudge);
-}
+  }
 
 void bread::print(const char c, uint32_t color, uint32_t backgroundColor,
                   int position, int topBottom, int nudge, int lowercaseNumber) {
   printChar(c, color, backgroundColor, position, topBottom, nudge,
             lowercaseNumber);
-}
+  }
 
-void bread::print(const char *s) {
+void bread::print(const char* s) {
   // Serial.println("1");
   printString(s, defaultColor);
-}
+  }
 
-void bread::print(const char *s, int position) {
+void bread::print(const char* s, int position) {
   // Serial.println("2");
   printString(s, defaultColor, 0xffffff, position);
-}
+  }
 
-void bread::print(const char *s, uint32_t color) {
+void bread::print(const char* s, uint32_t color) {
   // Serial.println("3");
   printString(s, color);
-}
+  }
 
-void bread::print(const char *s, uint32_t color, uint32_t backgroundColor) {
+void bread::print(const char* s, uint32_t color, uint32_t backgroundColor) {
   // Serial.println("4");
   printString(s, color, backgroundColor);
-}
+  }
 
-void bread::print(const char *s, uint32_t color, uint32_t backgroundColor,
+void bread::print(const char* s, uint32_t color, uint32_t backgroundColor,
                   int position, int topBottom) {
   // Serial.println("5");
   printString(s, color, backgroundColor, position, topBottom);
-}
+  }
 
-void bread::print(const char *s, uint32_t color, uint32_t backgroundColor,
+void bread::print(const char* s, uint32_t color, uint32_t backgroundColor,
                   int position, int topBottom, int nudge) {
   // Serial.println("5");
   printString(s, color, backgroundColor, position, topBottom, nudge);
-}
+  }
 
-void bread::print(const char *s, uint32_t color, uint32_t backgroundColor,
+void bread::print(const char* s, uint32_t color, uint32_t backgroundColor,
                   int position, int topBottom, int nudge, int lowercaseNumber) {
   // Serial.println("5");
   printString(s, color, backgroundColor, position, topBottom, nudge,
               lowercaseNumber);
-}
+  }
 
-void bread::print(const char *s, uint32_t color, uint32_t backgroundColor,
+void bread::print(const char* s, uint32_t color, uint32_t backgroundColor,
                   int topBottom) {
   // Serial.println("6");
   printString(s, color, backgroundColor, 0, topBottom);
-}
+  }
 
 void bread::print(int i) {
   // Serial.println("7");
@@ -1234,7 +1272,7 @@ void bread::print(int i) {
   itoa(i, buffer, 10);
   printString(buffer, defaultColor);
   // Serial.println(buffer);
-}
+  }
 
 // void bread::print(int i, int position) {
 //   char buffer[15];
@@ -1246,120 +1284,121 @@ void bread::print(int i, uint32_t color) {
   char buffer[15];
   itoa(i, buffer, 10);
   printString(buffer, color);
-}
+  }
 
 void bread::print(int i, uint32_t color, int position) {
   char buffer[15];
   itoa(i, buffer, 10);
   printString(buffer, color, 0xffffff, position);
-}
+  }
 
 void bread::print(int i, uint32_t color, int position, int topBottom) {
   char buffer[15];
   itoa(i, buffer, 10);
   printString(buffer, color, 0xffffff, position, topBottom);
-}
+  }
 void bread::print(int i, uint32_t color, int position, int topBottom,
                   int nudge) {
   char buffer[15];
   itoa(i, buffer, 10);
   printString(buffer, color, 0xffffff, position, topBottom, nudge);
-}
+  }
 void bread::print(int i, uint32_t color, int position, int topBottom, int nudge,
                   int lowercase) {
   char buffer[15];
   itoa(i, buffer, 10);
   printString(buffer, color, 0xffffff, position, topBottom, nudge);
-}
+  }
 
 void bread::print(int i, uint32_t color, uint32_t backgroundColor) {
   char buffer[15];
   itoa(i, buffer, 10);
   printString(buffer, color, backgroundColor);
-}
+  }
 
 void bread::printMenuReminder(int menuDepth, uint32_t color) {
   uint8_t columnMask[5] = // 'JumperlessFontmap', 500x5px
-      {0b00000001, 0b00000010, 0b00000100, 0b00001000, 0b00010000};
-  uint8_t graphicRow[3] = {0x00, 0x00, 0x00};
+    { 0b00000001, 0b00000010, 0b00000100, 0b00001000, 0b00010000 };
+  uint8_t graphicRow[3] = { 0x00, 0x00, 0x00 };
 
   if (menuDepth > 6) {
     menuDepth = 6;
-  }
+    }
 
   switch (menuDepth) {
-  case 1:
+    case 1:
 
-    graphicRow[2] = 0b00000000;
-    graphicRow[1] = 0b00010000;
-    graphicRow[0] = 0b00010000;
-    break;
-  case 2:
-    graphicRow[2] = 0b00000000;
-    graphicRow[1] = 0b00001000;
-    graphicRow[0] = 0b00011000;
+      graphicRow[2] = 0b00000000;
+      graphicRow[1] = 0b00010000;
+      graphicRow[0] = 0b00010000;
+      break;
+    case 2:
+      graphicRow[2] = 0b00000000;
+      graphicRow[1] = 0b00001000;
+      graphicRow[0] = 0b00011000;
 
-    break;
+      break;
 
-  case 3:
-    graphicRow[2] = 0b00000000;
-    graphicRow[1] = 0b00000100;
-    graphicRow[0] = 0b00011100;
+    case 3:
+      graphicRow[2] = 0b00000000;
+      graphicRow[1] = 0b00000100;
+      graphicRow[0] = 0b00011100;
 
-    break;
+      break;
 
-  case 4:
+    case 4:
 
-    graphicRow[2] = 0b00000000;
-    graphicRow[1] = 0b00000010;
-    graphicRow[0] = 0b00011110;
+      graphicRow[2] = 0b00000000;
+      graphicRow[1] = 0b00000010;
+      graphicRow[0] = 0b00011110;
 
-    break;
+      break;
 
-  case 5:
+    case 5:
 
-    graphicRow[2] = 0b00000000;
-    graphicRow[1] = 0b00000001;
-    graphicRow[0] = 0b00011111;
+      graphicRow[2] = 0b00000000;
+      graphicRow[1] = 0b00000001;
+      graphicRow[0] = 0b00011111;
 
-    break;
+      break;
 
-  case 6:
+    case 6:
 
-    graphicRow[2] = 0b00000001;
-    graphicRow[1] = 0b00000001;
-    graphicRow[0] = 0b00011111;
+      graphicRow[2] = 0b00000001;
+      graphicRow[1] = 0b00000001;
+      graphicRow[0] = 0b00011111;
 
-    break;
-  }
+      break;
+    }
 
   if (color == 0xFFFFFF) {
     color = defaultColor;
-  }
+    }
 
   for (int i = 0; i < 3; i++) {
 
     printGraphicsRow(graphicRow[i], i, color);
+    }
   }
-}
 
 void bread::printRawRow(uint8_t data, int row, uint32_t color, uint32_t bg, int scale) {
 
-color = scaleBrightness(color, (menuBrightnessSetting/scale));
+  color = scaleBrightness(color, (menuBrightnessSetting / scale));
   if (row <= 60) {
     printGraphicsRow(data, row, color, bg);
-  } else {
+    } else {
     for (int i = 0; i < 35; i++) {
       if (bbPixelToNodesMapV5[i][0] == row + 1) {
         leds.setPixelColor(bbPixelToNodesMapV5[i][1], color);
         return;
+        }
       }
     }
   }
-}
 
 void bread::barGraph(int position, int value, int maxValue, int leftRight,
-                     uint32_t color, uint32_t bg) {}
+                     uint32_t color, uint32_t bg) {
+  }
 /*
 
 ||||||||||||||||||||||||||||||
@@ -1374,11 +1413,11 @@ void bread::barGraph(int position, int value, int maxValue, int leftRight,
 */
 void printGraphicsRow(uint8_t data, int row, uint32_t color, uint32_t bg) {
   uint8_t columnMask[5] = // 'JumperlessFontmap', 500x5px
-      {0b00010000, 0b00001000, 0b00000100, 0b00000010, 0b00000001};
+    { 0b00010000, 0b00001000, 0b00000100, 0b00000010, 0b00000001 };
 
   if (color == 0xFFFFFF) {
     color = defaultColor;
-  }
+    }
   if (bg == 0xFFFFFF) {
 
     for (int j = 4; j >= 0; j--) {
@@ -1386,33 +1425,33 @@ void printGraphicsRow(uint8_t data, int row, uint32_t color, uint32_t bg) {
       if (((data)&columnMask[j]) != 0) {
         color = scaleBrightness(color, menuBrightnessSetting);
         leds.setPixelColor(((row) * 5) + j, color);
-      } else {
+        } else {
         leds.setPixelColor(((row) * 5) + j, 0);
+        }
       }
-    }
-  } else if (bg == 0xFFFFFE) {
+    } else if (bg == 0xFFFFFE) {
 
-    for (int j = 4; j >= 0; j--) {
-      // Serial.println(((data) & columnMask[j]) != 0 ? "1" : "0");
-      if (((data)&columnMask[j]) != 0) {
-        color = scaleBrightness(color, menuBrightnessSetting);
-        leds.setPixelColor(((row) * 5) + j, color);
+      for (int j = 4; j >= 0; j--) {
+        // Serial.println(((data) & columnMask[j]) != 0 ? "1" : "0");
+        if (((data)&columnMask[j]) != 0) {
+          color = scaleBrightness(color, menuBrightnessSetting);
+          leds.setPixelColor(((row) * 5) + j, color);
+          } else {
+          // leds.getPixelColor(((row) * 5) + j);
+          // leds.setPixelColor(((row) * 5) + j, 0);
+          }
+        }
       } else {
-        // leds.getPixelColor(((row) * 5) + j);
-        // leds.setPixelColor(((row) * 5) + j, 0);
+      for (int j = 4; j >= 0; j--) {
+        if (((data)&columnMask[j]) != 0) {
+          color = scaleBrightness(color, menuBrightnessSetting);
+          leds.setPixelColor(((row) * 5) + j, color);
+          } else {
+          leds.setPixelColor(((row) * 5) + j, bg);
+          }
+        }
       }
-    }
-  } else {
-    for (int j = 4; j >= 0; j--) {
-      if (((data)&columnMask[j]) != 0) {
-        color = scaleBrightness(color, menuBrightnessSetting);
-        leds.setPixelColor(((row) * 5) + j, color);
-      } else {
-        leds.setPixelColor(((row) * 5) + j, bg);
-      }
-    }
   }
-}
 
 void printChar(const char c, uint32_t color, uint32_t bg, int position,
                int topBottom, int nudge, int lowercaseNumber) {
@@ -1426,15 +1465,15 @@ void printChar(const char c, uint32_t color, uint32_t bg, int position,
     charPosition += 7;
     if (charPosition > 13) {
       return;
+      }
     }
-  }
   if (topBottom == 0) {
     if (charPosition > 6) {
       return;
       // charPosition = charPosition % 7;
-    }
+      }
     charPosition = charPosition % 7;
-  }
+    }
 
   charPosition = charPosition % 14;
 
@@ -1442,97 +1481,97 @@ void printChar(const char c, uint32_t color, uint32_t bg, int position,
 
   if (charPosition > (6 * 4)) {
     charPosition = charPosition + 2;
-  }
+    }
   // charPosition = charPosition * 4;
   charPosition = charPosition + 2;
 
   if (color == 0xFFFFFF) {
     color = defaultColor;
-  }
+    }
   int fontMapIndex = -1;
   int start = 0;
 
   if (lowercaseNumber > 0 && c >= 48 && c <= 57) {
     start = 90;
-  }
+    }
 
   for (int i = start; i < 120; i++) {
     if (c == fontMap[i]) {
       fontMapIndex = i;
       break;
+      }
     }
-  }
   if (fontMapIndex == -1) {
     return;
-  }
+    }
   uint8_t columnMask[5] = // 'JumperlessFontmap', 500x5px
-      {0b00000001, 0b00000010, 0b00000100, 0b00001000, 0b00010000};
+    { 0b00000001, 0b00000010, 0b00000100, 0b00001000, 0b00010000 };
 
   if (bg == 0xFFFFFF) {
     for (int i = 0; i < 3; i++) {
       for (int j = 0; j < 5; j++) {
         if (((font[fontMapIndex][i]) & columnMask[j]) != 0) {
           leds.setPixelColor(((charPosition + i + nudge) * 5) + j, color);
-        } else {
+          } else {
           leds.setPixelColor(((charPosition + i + nudge) * 5) + j, 0);
+          }
         }
       }
-    }
-  } else if (bg == 0xFFFFFD) {
-    for (int j = 0; j < 5; j++) {
-
-      leds.setPixelColor(((charPosition + nudge - 1) * 5) + j, 0);
-    }
-
-    for (int i = 0; i < 3; i++) {
+    } else if (bg == 0xFFFFFD) {
       for (int j = 0; j < 5; j++) {
-        if (((font[fontMapIndex][i]) & columnMask[j]) != 0) {
-          leds.setPixelColor(((charPosition + i + nudge) * 5) + j, color);
-        } else {
-          leds.setPixelColor(((charPosition + i + nudge) * 5) + j, 0);
+
+        leds.setPixelColor(((charPosition + nudge - 1) * 5) + j, 0);
         }
-      }
-    }
-    for (int j = 0; j < 5; j++) {
 
-      leds.setPixelColor(((charPosition + nudge + 3) * 5) + j, 0);
-    }
-  } else if (bg == 0xFFFFFE) {
-    for (int i = 0; i < 3; i++) {
-      for (int j = 0; j < 5; j++) {
-        if (((font[fontMapIndex][i]) & columnMask[j]) != 0) {
-          leds.setPixelColor(((charPosition + i + nudge) * 5) + j, color);
-        } else {
-          // leds.setPixelColor((i*5)+j, bg);
-        }
-      }
-    }
-  } else {
-    if (charPosition + nudge != 0) {
-      for (int j = 0; j < 5; j++) {
-
-        leds.setPixelColor(((charPosition + nudge - 1) * 5) + j, bg);
-      }
-    }
-    for (int i = 0; i < 4; i++) {
-      if (i < 3) {
+      for (int i = 0; i < 3; i++) {
         for (int j = 0; j < 5; j++) {
           if (((font[fontMapIndex][i]) & columnMask[j]) != 0) {
             leds.setPixelColor(((charPosition + i + nudge) * 5) + j, color);
-          } else {
-            leds.setPixelColor(((charPosition + i + nudge) * 5) + j, bg);
+            } else {
+            leds.setPixelColor(((charPosition + i + nudge) * 5) + j, 0);
+            }
           }
         }
-      } else {
-        for (int j = 0; j < 5; j++) {
-          leds.setPixelColor(((charPosition + i + nudge) * 5) + j, bg);
-        }
-      }
-    }
-  }
-}
+      for (int j = 0; j < 5; j++) {
 
-void printString(const char *s, uint32_t color, uint32_t bg, int position,
+        leds.setPixelColor(((charPosition + nudge + 3) * 5) + j, 0);
+        }
+      } else if (bg == 0xFFFFFE) {
+        for (int i = 0; i < 3; i++) {
+          for (int j = 0; j < 5; j++) {
+            if (((font[fontMapIndex][i]) & columnMask[j]) != 0) {
+              leds.setPixelColor(((charPosition + i + nudge) * 5) + j, color);
+              } else {
+              // leds.setPixelColor((i*5)+j, bg);
+              }
+            }
+          }
+        } else {
+        if (charPosition + nudge != 0) {
+          for (int j = 0; j < 5; j++) {
+
+            leds.setPixelColor(((charPosition + nudge - 1) * 5) + j, bg);
+            }
+          }
+        for (int i = 0; i < 4; i++) {
+          if (i < 3) {
+            for (int j = 0; j < 5; j++) {
+              if (((font[fontMapIndex][i]) & columnMask[j]) != 0) {
+                leds.setPixelColor(((charPosition + i + nudge) * 5) + j, color);
+                } else {
+                leds.setPixelColor(((charPosition + i + nudge) * 5) + j, bg);
+                }
+              }
+            } else {
+            for (int j = 0; j < 5; j++) {
+              leds.setPixelColor(((charPosition + i + nudge) * 5) + j, bg);
+              }
+            }
+          }
+        }
+  }
+
+void printString(const char* s, uint32_t color, uint32_t bg, int position,
                  int topBottom, int nudge, int lowercaseNumber) {
   // int position = 0;
 
@@ -1559,32 +1598,32 @@ void printString(const char *s, uint32_t color, uint32_t bg, int position,
     // }
 
     position++;
-  }
+    }
   // Serial.println();
-}
+  }
 
 void bread::clear(int topBottom) {
   if (topBottom == -1) {
     for (int i = 0; i < 60; i++) {
       for (int j = 0; j < 5; j++) {
         leds.setPixelColor((i * 5) + j, 0x00, 0x00, 0x00);
+        }
       }
-    }
-  } else if (topBottom == 0) {
-    for (int i = 0; i < 30; i++) {
-      for (int j = 0; j < 5; j++) {
-        leds.setPixelColor((i * 5) + j, 0x00, 0x00, 0x00);
-      }
-    }
-  } else if (topBottom == 1) {
-    for (int i = 30; i < 60; i++) {
-      for (int j = 0; j < 5; j++) {
-        leds.setPixelColor((i * 5) + j, 0x00, 0x00, 0x00);
-      }
-    }
+    } else if (topBottom == 0) {
+      for (int i = 0; i < 30; i++) {
+        for (int j = 0; j < 5; j++) {
+          leds.setPixelColor((i * 5) + j, 0x00, 0x00, 0x00);
+          }
+        }
+      } else if (topBottom == 1) {
+        for (int i = 30; i < 60; i++) {
+          for (int j = 0; j < 5; j++) {
+            leds.setPixelColor((i * 5) + j, 0x00, 0x00, 0x00);
+            }
+          }
+        }
+      // leds.show();
   }
-  // leds.show();
-}
 
 void scrollFont() {
   // pauseCore2 = 1;
@@ -1597,7 +1636,7 @@ void scrollFont() {
   int scrollPosition = 0;
 
   uint8_t columnMask[5] = // 'JumperlessFontmap', 500x5px
-      {0b00000001, 0b00000010, 0b00000100, 0b00001000, 0b00010000};
+    { 0b00000001, 0b00000010, 0b00000100, 0b00001000, 0b00010000 };
   while (Serial.available() == 0) {
 
     for (int i = 0; i < 60; i++) {
@@ -1605,97 +1644,97 @@ void scrollFont() {
         if ((font[(i + scrollPosition) % 500][0] & columnMask[j]) != 0) {
           // Serial.print("1");
           leds.setPixelColor((i * 5) + j, color);
-        } else {
+          } else {
           // Serial.print("0");
           leds.setPixelColor((i * 5) + j, 0x00, 0x00, 0x00);
+          }
         }
       }
-    }
     leds.show();
     delay(scrollSpeed);
     scrollPosition++;
     if (scrollPosition > 499) {
       scrollPosition = 0;
+      }
     }
   }
-}
 
 
 void printTextFromMenu(void)
-{
+  {
 
-    
-    b.clear();
-int scroll = 0;
-    char f[80] = {' '};
-    int index = 0;
-    b.clear();
-    while (Serial.available() > 0) {
-      if (index > 79) {
-        break;
+
+  b.clear();
+  int scroll = 0;
+  char f[80] = { ' ' };
+  int index = 0;
+  b.clear();
+  while (Serial.available() > 0) {
+    if (index > 79) {
+      break;
       }
-      f[index] = Serial.read();
-      index++;
-      // b.print(f);
-      // delayMicroseconds(30);
-      // leds.show();
+    f[index] = Serial.read();
+    index++;
+    // b.print(f);
+    // delayMicroseconds(30);
+    // leds.show();
     }
 
-    if (index > 14) {
-      scroll = 1;
+  if (index > 14) {
+    scroll = 1;
     }
-    f[index] = ' ';
-    f[index + 1] = ' ';
-    f[index + 2] = ' ';
-    index += 3;
-    uint32_t color = 0x100010;
-    // Serial.print(index);
-    defconString[0] = f[0];
-    defconString[1] = f[1];
-    defconString[2] = f[2];
-    defconString[3] = f[3];
-    defconString[4] = f[4];
-    defconString[5] = f[5];
-    defconString[6] = f[6];
-    defconString[7] = f[7];
-    defconString[8] = f[8];
-    defconString[9] = f[9];
-    defconString[10] = f[10];
-    defconString[11] = f[11];
-    defconString[12] = f[12];
-    defconString[13] = f[13];
-    defconString[14] = f[14];
-    defconString[15] = f[15];
-    //defconString[16] = f[16];
+  f[index] = ' ';
+  f[index + 1] = ' ';
+  f[index + 2] = ' ';
+  index += 3;
+  uint32_t color = 0x100010;
+  // Serial.print(index);
+  defconString[0] = f[0];
+  defconString[1] = f[1];
+  defconString[2] = f[2];
+  defconString[3] = f[3];
+  defconString[4] = f[4];
+  defconString[5] = f[5];
+  defconString[6] = f[6];
+  defconString[7] = f[7];
+  defconString[8] = f[8];
+  defconString[9] = f[9];
+  defconString[10] = f[10];
+  defconString[11] = f[11];
+  defconString[12] = f[12];
+  defconString[13] = f[13];
+  defconString[14] = f[14];
+  defconString[15] = f[15];
+  //defconString[16] = f[16];
 
-    defconDisplay = 0;
-    unsigned long timerScrollTimer = millis();
-    while (Serial.available() != 0) {
-      char trash = Serial.read();
+  defconDisplay = 0;
+  unsigned long timerScrollTimer = millis();
+  while (Serial.available() != 0) {
+    char trash = Serial.read();
     }
 
-int speed = 200000;
-    int cycleCount = 15;
-    Serial.println("\n\rPress any key to exit\n\r");
+  int speed = 200000;
+  int cycleCount = 15;
+  Serial.println("\n\rPress any key to exit\n\r");
 
+  if (scroll == 1) {
+    Serial.println("scroll wheel to change speed)\n\r");
+    }
+
+  while (Serial.available() == 0) {
     if (scroll == 1) {
-Serial.println("scroll wheel to change speed)\n\r");
-    }
-    
-    while (Serial.available() == 0) {
-      if (scroll == 1) {
-        rotaryEncoderStuff();
-        if (encoderDirectionState == UP) {
-          if (speed > 10000) {
-            speed = speed - 10000;
+      rotaryEncoderStuff();
+      if (encoderDirectionState == UP) {
+        if (speed > 10000) {
+          speed = speed - 10000;
           } else {
-            speed-=500;
+          speed -= 500;
           }        if (speed < 0) {
-          speed = 0;
-        } 
+            speed = 0;
+            }
           // Serial.print("\r                          \rspeed = ");
           // Serial.print(speed);
-          
+
           //encoderDirectionState = NONE;
         } else if (encoderDirectionState == DOWN) {
           speed = speed + 10000;
@@ -1703,9 +1742,9 @@ Serial.println("scroll wheel to change speed)\n\r");
           // Serial.print(speed);
           //encoderDirectionState = NONE; 
           if (speed > 1000000) {
-          speed = 1000000;
-        }
-        }
+            speed = 1000000;
+            }
+          }
 
         if ((micros() - timerScrollTimer) > speed) {
           // Serial.print("defNudge = ");
@@ -1714,61 +1753,99 @@ Serial.println("scroll wheel to change speed)\n\r");
           defNudge--;
           if (defNudge < -3) {
             defNudge = 0;
-          cycleCount++;
-          
-          
-          char temp = f[(cycleCount)%index];
-          for (int i = 0; i < 15; i++) {
-            defconString[i] = defconString[i + 1];
-          }
-          defconString[15] = temp;
-          //b.print(f, color);
-          }
+            cycleCount++;
+
+
+            char temp = f[(cycleCount) % index];
+            for (int i = 0; i < 15; i++) {
+              defconString[i] = defconString[i + 1];
+              }
+            defconString[15] = temp;
+            //b.print(f, color);
+            }
           //delay(100);
           //leds.show();
           //showLEDsCore2 =2;
-        }
+          }
       }
     }
 
-    // while (Serial.available() == 0) {
-    //   // b.print(f, color);
-    //   // delay(100);
-    //   // leds.show();
-    // }
-}
-int attractMode (void){
+  // while (Serial.available() == 0) {
+  //   // b.print(f, color);
+  //   // delay(100);
+  //   // leds.show();
+  // }
+  }
 
-        if (encoderDirectionState == DOWN) {
-        // attractMode = 0;
-        defconDisplay = -1;
-        netSlot++;
-        if (netSlot >= NUM_SLOTS) {
-          netSlot = -1;
-          defconDisplay = 0;
-        }
-        Serial.print("netSlot = ");
-        Serial.println(netSlot);
-        slotChanged = 1;
-        showLEDsCore2 = -1;
-        encoderDirectionState = NONE;
-        return 1;
-        // goto menu;
-      } else if (encoderDirectionState == UP) {
-        // attractMode = 0;
-        defconDisplay = -1;
-        netSlot--;
-        if (netSlot <= -1) {
-          netSlot = NUM_SLOTS;
-          defconDisplay = 0;
-        }
-        Serial.print("netSlot = ");
-        Serial.println(netSlot);
-        slotChanged = 1;
-        showLEDsCore2 = -1;
-        encoderDirectionState = NONE;
-        return 1;
-        // goto menu;
+
+void showArray(uint8_t* array, int size) {
+  int noRails = 0;
+  if (size <= 300) {
+    noRails = 1;
+    size = 300;
+    }
+  if (size <= 150) {
+    noRails = 2; //only top row
+    size = 150;
+    }
+  if (size > 400) {
+    noRails = 0;
+    size = 400;
+    }
+
+  if (noRails == 1) {
+
+    for (int i = 0; i < size; i++) {
+
+      leds.setPixelColor(array[screenMapNoRails[i]], array[i]);
       }
-      return 0;
-}
+    } else if (noRails == 2) {
+      for (int i = 0; i < size; i++) {
+        leds.setPixelColor(array[screenMapNoRails[i]], array[i]);
+        }
+
+      } else if (noRails == 0) {
+        for (int i = 0; i < size; i++) {
+          leds.setPixelColor(array[screenMap[i]], array[i]);
+          }
+        }
+    showLEDsCore2 = -3;
+  }
+
+
+
+int attractMode(void) {
+
+  if (encoderDirectionState == DOWN) {
+    // attractMode = 0;
+    defconDisplay = -1;
+    netSlot++;
+    if (netSlot >= NUM_SLOTS) {
+      netSlot = -1;
+      defconDisplay = 0;
+      }
+    Serial.print("netSlot = ");
+    Serial.println(netSlot);
+    slotChanged = 1;
+    showLEDsCore2 = -1;
+    encoderDirectionState = NONE;
+    return 1;
+    // goto menu;
+    } else if (encoderDirectionState == UP) {
+      // attractMode = 0;
+      defconDisplay = -1;
+      netSlot--;
+      if (netSlot <= -1) {
+        netSlot = NUM_SLOTS;
+        defconDisplay = 0;
+        }
+      Serial.print("netSlot = ");
+      Serial.println(netSlot);
+      slotChanged = 1;
+      showLEDsCore2 = -1;
+      encoderDirectionState = NONE;
+      return 1;
+      // goto menu;
+      }
+    return 0;
+  }

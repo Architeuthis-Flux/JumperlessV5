@@ -1,3 +1,12 @@
+#pragma once
+
+// Uncomment to use EEPROM storage instead of config file
+//#define EEPROMSTUFF
+
+#include "config.h"
+#include <EEPROM.h>
+#include "configManager.h"
+
 #ifndef PERSSISTENTSTUFF_H
 #define PERSSISTENTSTUFF_H
 
@@ -35,4 +44,9 @@ char lastCommandRead(void);
 void lastCommandWrite(char lastCommand);
 
 void runCommandAfterReset(char);
+
+void readSettingsFromConfig();
+
+void updateGPIOConfigFromState(void);
+
 #endif

@@ -61,6 +61,7 @@ class ledClass { //I'm literally copying this from Adafruit_NeoPixel.h so I can 
   void fill(uint32_t c = 0, uint16_t first = 0, uint16_t count = 0);
   void setBrightness(uint8_t);
   void clear(void);
+  void end(void);
 
   //void clear(int start = 0, int end = LED_COUNT+LED_COUNT_TOP);
 

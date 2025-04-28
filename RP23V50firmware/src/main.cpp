@@ -55,7 +55,9 @@ KevinC@ppucc.io
 #include "Probing.h"
 #include "RotaryEncoder.h"
 #include "Apps.h"
+#include "configManager.h"
 
+//#define USE_FATFS 1
 #ifdef USE_FATFS
 #include "FatFS.h"
 #include "USBfs.h"
@@ -116,7 +118,9 @@ unsigned long lastNetConfirmTimer = 0;
 int rotEncInit = 0;
 // https://wokwi.com/projects/367384677537829889
 
-int core2initFinished = 0;
+volatile bool core2initFinished = false;
+
+volatile bool configLoaded = false;
 
 void setup() {
   pinMode(RESETPIN, OUTPUT_12MA);
@@ -133,10 +137,22 @@ void setup() {
   // Serial.ignoreFlowControl(true);
   Serial.begin(115200);
 
-  // while (tud_cdc_connected() == 0 ) {
-  //   backpowered = 1;
-  //   delay(1);
-  // }
+  // Initialize FatFS
+  if (!FatFS.begin()) {
+    Serial.println("Failed to initialize FatFS");
+  }
+
+  //EEPROM.begin(512);
+
+  //debugFlagInit(0); //these will be overridden by the config file
+
+  // Load configuration
+  loadConfig();
+ //readSettingsFromConfig();
+  configLoaded = 1;
+  delayMicroseconds(2000);
+
+
   backpowered = 0;
   // USBDevice.setProductDescriptor("Jumperless");
   // USBDevice.setManufacturerDescriptor("Architeuthis Flux");
@@ -147,54 +163,24 @@ void setup() {
   // USBDevice.begin();
   // stdio_usb_init();
 
-  // Serial2.begin(115200);
-  // SerialUSB
-  // usbd_serial_init();
 
-  // for (int itf = 0; itf < CFG_TUD_CDC; itf++)
-  // init_uart_data(itf);
-
-  // PluggableUSB().plug(Serial3);
-  EEPROM.begin(512);
-
-  debugFlagInit(0);
-
-  // delay(2000);
-  //  initGPIOex();
-  //   delay(5);
-  //   Serial.setTimeout(500);
-
-  // delay(20);
-  //  pinMode(buttonPin, INPUT_PULLDOWN);
   initDAC();
   pinMode(probePin, OUTPUT_8MA);
   pinMode(10, OUTPUT_8MA);
 
   digitalWrite(10, HIGH);
 
-  // delay(10);
-
-  // delay(1);
 
   initINA219();
 
   initArduino();
 
-  delay(4);
-  // #ifdef USE_FATFS
-  //  FatFS.begin();
-  // #endif
-  //  FatFS.format();
-
-  // setDac0_5Vvoltage(0.0);
-  // setDac1_8Vvoltage(1.9);
-
-  // createSlots(-1, 0);
-  // delay(10);
+  delayMicroseconds(100);
 
   digitalWrite(RESETPIN, LOW);
+
   while (core2initFinished == 0) {
-    delayMicroseconds(1);
+   // delayMicroseconds(1);
     }
 
   clearAllNTCC();
@@ -206,36 +192,31 @@ void setup() {
 
   // delay(10);
 
-  delay(4);
+  delayMicroseconds(100);
 
   // delay(100);
   initMenu();
   initADC();
 
-  pinMode(18, INPUT_PULLUP);
+  pinMode(18, INPUT_PULLUP); //reset lines for arduino
   pinMode(19, INPUT_PULLUP);
-  //  pinMode(18, OUTPUT);
-  //   pinMode(19, OUTPUT);
-  //   digitalWrite(18, HIGH);
-  //   digitalWrite(19, HIGH);
 
-  //  showLEDsCore2 = 1;
-  // delay(1000);
-  // setRailsAndDACs();
 
-  routableBufferPower(1, 0);
-  routableBufferPower(1, 1);
-  // fatFS
-  //  multicore_lockout_victim_init();
-  // delay(400);
-  // Serial.println("Jumperless");
+  //routableBufferPower(1, 0);
+    routableBufferPower(1, 1);
+
+  getNothingTouched();
+
   }
 
 void setupCore2stuff() {
   // delay(2000);
   initCH446Q();
 
-  delay(1);
+  //delay(1);
+  while (configLoaded == 0) {
+    delayMicroseconds(1);
+    }
 
   initLEDs();
   initRowAnimations();
@@ -249,27 +230,8 @@ void setup1() {
 
   setupCore2stuff();
 
-  // if (backpowered == 1) {
-  //   leds.clear();
-  //   leds.show();
-  //   while(backpowered == 1) {
-  //     delay(1);
-  //   }
-  // }
   core2initFinished = 1;
 
-  digitalWrite(GPIO_2_PIN, LOW);
-
-
-  // while(1) {
-  //   delay(1);
-  //   }
-  // delay(4);
-  // multicore_lockout_victim_init();
-  //  lightUpRail();
-
-  // delay(4);
-  // showLEDsCore2 = 1;
   }
 
 unsigned long teardownTimer = 0;
@@ -285,7 +247,7 @@ int readInNodesArduino = 0;
 
 int restoredNodeFile = 0;
 
-const char firmwareVersion[] = "5.1.0.5"; // remember to update this
+const char firmwareVersion[] = "5.1.0.6"; // remember to update this
 
 int firstLoop = 1;
 
@@ -308,71 +270,13 @@ int attract = 0;
 void loop() {
 
 
-  // unsigned long adcSpeedTimer = 0;  
-  // unsigned long adcSpeedTimer2 = 0;
-  // float adcSpeed = 0;
-  // int speedRead = 0;
-  // int readSpeedCount = 0;
-  // adc_init();
-  // adc_gpio_init(ADC0_PIN);
-  // adc_fifo_setup(true, false, 1, false, false);
-  // adc_select_input(0);
-  // adc_run(true);
 
-  //   while (1){
-
-  //    //speedRead = adc_read();
-  //     //speedRead = adc_fifo_get_blocking();
-  //     speedRead = analogRead(ADC0_PIN);
-  //     //delayMicroseconds(1);
-
-  //     readSpeedCount++;
-  //     if (micros() - adcSpeedTimer2 > 1000000) {
-
-  //       Serial.print("ADC Speed: ");
-  //       Serial.println(readSpeedCount);
-  //       adcSpeedTimer2 = micros();
-  //       readSpeedCount = 0;
-  //     }
-
-
-  //   }
 
 menu:
-  getNothingTouched();
-  //   Serial.print("\n\rPaths: \n\n\r");
-  //   printPathsCompact();
-  //   Serial.print("\n\n\n\rChip Status: \n\n\r");
-  // printChipStatus();
-    //printMainMenu(showExtraMenu);
+  
+
 
   Serial.print("\n\n\r\t\tMenu\n\r");
-  // Serial.print("Slot ");
-  // Serial.print(netSlot);
- // Serial.print("\n\r");
-  // Serial.print("\tm = show this menu\n\r");
-  // Serial.print("\tn = show netlist\n\r");
-  // Serial.print("\ts = show node files by slot\n\r");
-  // Serial.print("\to = load node files by slot\n\r");
-  // Serial.print("\tf = load node file to current slot\n\r");
-  // // Serial.print("\tr = rotary encoder mode -");
-  // //   rotaryEncoderMode == 1 ? Serial.print(" ON (z/x to cycle)\n\r")
-  // //                          : Serial.print(" off\n\r");
-  // // Serial.print("\t\b\bz/x = cycle slots - current slot ");
-  // // Serial.print(netSlot);
-  // Serial.print("\n\r");
-  // Serial.print("\te = show extra menu options\n\r");
-
-  // if (extraOptions == 1) {
-  //   Serial.print("\tb = show bridge array\n\r");
-  //   Serial.print("\tp = probe connections\n\r");
-  //   Serial.print("\tw = waveGen\n\r");
-  //   Serial.print("\tv = toggle show current/voltage\n\r");
-  //   // Serial.print("\tu = set baud rate for USB-Serial\n\r");
-  //   Serial.print("\tl = LED brightness / test\n\r");
-  //   Serial.print("\td = toggle debug flags\n\r");
-  // }
-  // Serial.print("\tc = clear nodes with probe\n\r");
 
   Serial.print("\n\r");
   Serial.print("\tn = show netlist\n\r");
@@ -396,32 +300,14 @@ menu:
     Serial.print("\to = load node file by slot\n\r");
     Serial.print("\tu = scan board\n\r");
     Serial.print("\tv = toggle show readings\n\r");
+    Serial.print("\t- = clear all connections\n\r");
+    Serial.print("\t~ = print config\n\r");
+    Serial.print("\t` = edit config\n\r");
 
-
+    
     }
 
-  //  Serial.print("\n\r");
-   // Serial.print("revision ");
-   // Serial.println(senseRevision());
-   // Serial.println("\n\r");
-  //Serial.print("\ta = manual Arduino reset\n\r");
-  //Serial.print("\t+ = refresh connections and save node file\n\r");
-  //Serial.print("\ti = I2C scan\n\r");
-  //Serial.print("\t@ = print wire status\n\r");
 
-
-
-  //Serial.print("\tp = probe mode\n\r");
-  //Serial.print("\tc = clear probe\n\r");
-  //Serial.print("\tw = wave generator\n\r");
-
-
-
-
-  //Serial.print("\tz = cycle slots backward\n\r");
-  //Serial.print("\ty = load file\n\r");
-
-  //Serial.print("\tt = clear node file and list nets\n\r");
 
   Serial.print("\n\n\r");
   //b.clear();
@@ -430,7 +316,7 @@ menu:
   if (firstLoop == 1) {
     firstLoop = 0;
     // delay(100);
-    setRailsAndDACs();
+    //setRailsAndDACs();
     if (attract == 1) {
       defconDisplay = 0;
       netSlot = -1;
@@ -442,6 +328,11 @@ menu:
     goto loadfile;
     }
 
+if (configChanged == true) {
+  Serial.println("config changed, saving...\n\n\r");
+  saveConfig();
+  configChanged = false;
+  }
 dontshowmenu:
 
   // delay(500);
@@ -471,7 +362,7 @@ dontshowmenu:
       highlightNets(probeReading);
       }
 
-    if ((millis() - waitTimer) > 100) {
+    if ((millis() - waitTimer) > 80) {
       waitTimer = millis();
 
       int probeButton = checkProbeButton();
@@ -550,9 +441,36 @@ dontshowmenu:
 
 skipinput:
 
+if (isDigit(input)) {
+  runApp(input - '0');
+  return;
+  }
 
   switch (input) {
 
+    case '-': {
+      clearAllNTCC();
+
+      clearNodeFile(netSlot, 0);
+      refreshConnections(-1);
+
+
+      break;
+      }
+    case '~': {
+      core1busy = 1;
+      waitCore2();
+      printConfigToSerial();
+      core1busy = 0;
+      break;
+      }
+    case '`': {
+      core1busy = 1;
+      waitCore2();
+      readConfigFromSerial();
+      core1busy = 0;
+      break;
+      }
     case '2': {
       runApp(2);
       break;
@@ -588,8 +506,9 @@ skipinput:
     }
     case '@': {
     // printWireStatus();
-    Serial.println("Fuck you!!!");
-
+    i2cScan(8, 7, 22, 23, 1);
+    oledTest(8, 7, 22, 23, 1);
+  
     // printPathArray();
     break;
     }
@@ -656,33 +575,7 @@ skipinput:
     case 'i': {
 
     oledTest(17, 18, 22, 23);
-    // Serial.println("I2C scan\n\n\r");
-    // Serial.println("enter SCL row\n\r");
-    // Serial.print("SCL = ");
-    // delay(100);
-    // int sclRow = -1;
-    // int sdaRow = -1;
-    // while (Serial.available() == 0) {
-    //   }
-    // while (sclRow == -1 || (sclRow < 1 || sclRow > 100)) {
-    //   sclRow = Serial.parseInt();
-    //   delay(100);
-    //   }
-    // Serial.println("enter SDA row\n\r");
 
-    // while (Serial.available() == 0) {
-    //   }
-    // while (sdaRow == -1 || (sdaRow < 1 || sdaRow > 100)) {
-    //   sdaRow = Serial.parseInt();
-    //   delay(100);
-    //   }
-    // Serial.print("SCL = ");
-    // Serial.println(sclRow);
-    // Serial.print("SDA = ");
-    // Serial.println(sdaRow);
-    // Serial.println("Scanning I2C bus\n\r");
-
-   // i2cScan(sdaRow, sclRow);
     break;
     }
 
@@ -1022,7 +915,11 @@ skipinput:
 
       break;
     }
-
+    delayMicroseconds(1000);
+while (Serial.available() > 0) {
+  Serial.read();
+  delayMicroseconds(1000);
+}
   goto menu;
   }
 
@@ -1043,7 +940,7 @@ float botRailVoltage = 0.0;
 
 int readcounter = 0;
 unsigned long schedulerTimer = 0;
-unsigned long schedulerUpdateTime = 5300;
+unsigned long schedulerUpdateTime = 6300;
 int rowProbed = 0;
 int swirled = 0;
 int countsss = 0;
@@ -1186,6 +1083,7 @@ void core2stuff() // core 2 handles the LEDs and the CH446Q8
 
           // Serial.println("showNets");
           // delay(100);
+          readGPIO();
           showLEDmeasurements();
 
           showNets();
@@ -1304,7 +1202,7 @@ void core2stuff() // core 2 handles the LEDs and the CH446Q8
             // readGPIO();
             }
           schedulerTimer = micros();
-          // readGPIO();
+           
     }
   }
 
