@@ -32,7 +32,8 @@
         "chrono": "cpp",
         "format": "cpp",
         "cstdint": "cpp",
-        "algorithm": "cpp"
+        "algorithm": "cpp",
+        "random": "cpp"
     },
     "cortex-debug.registerUseNaturalFormat": false,
     "C_Cpp.errorSquiggles": "disabled",

@@ -95,14 +95,14 @@ struct config {
             1, //gpio_7
         };
         int pulls[8] = {
-            2, //gpio_0 0 = pull up 1 = pull down 2 = none
-            2, //gpio_1
-            2, //gpio_2
-            2, //gpio_3
-            2, //gpio_4
-            2, //gpio_5
-            2, //gpio_6
-            2, //gpio_7
+            0, //gpio_0 0 = pull up 1 = pull down 2 = none
+            0, //gpio_1
+            0, //gpio_2
+            0, //gpio_3
+            0, //gpio_4
+            0, //gpio_5
+            0, //gpio_6
+            0, //gpio_7
         };
         int uart_tx_pin = 0;
         int uart_rx_pin = 1;

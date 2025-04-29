@@ -314,9 +314,9 @@ void secondSerialHandler(void) {
   if(millis()-ESPBootTime>=1000) ESPBoot=false;
 
   if(actRouteableDTR != LastRoutableDTR){
-    LastRoutableDTR=actRouteableDTR;
-    pinMode(GPIO_2_PIN, OUTPUT);
-    digitalWrite(GPIO_2_PIN, actRouteableDTR);
+    LastRoutableDTR=actRouteableDTR; //!add some switching logic to allow for a switchable GPIO
+    //pinMode(GPIO_2_PIN, OUTPUT);
+    //digitalWrite(GPIO_2_PIN, actRouteableDTR);
   }
 
   if((actArduinoDTR != LastArduinoDTR)){

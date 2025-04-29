@@ -76,6 +76,8 @@ void clearAllNTCC(void) {
   pathsWithCandidatesIndex = 0;
   pathIndex = 0;
 
+ // digitalWrite(RESETPIN,HIGH);
+
   for (int i = 0; i < 12; i++) {
     chipsLeastToMostCrowded[i] = i;
     }
@@ -184,6 +186,7 @@ void clearAllNTCC(void) {
 
     for (int j = 0; j < 8; j++) {
       ch[i].yStatus[j] = -1;
+
       }
     }
   for (int i = 0; i < 10; i++) {
@@ -193,6 +196,15 @@ void clearAllNTCC(void) {
   numberOfUnconnectablePaths = 0;
   // printPathsCompact();
   // printChipStatus();
+
+  for (int i = 0; i < 8; i++) {
+    gpioNet[i] = -1;
+    showADCreadings[i] = -1;
+    gpioReading[i] = -1;
+    gpioReadingColors[i] = 0x010101;
+    }
+
+ // digitalWrite(RESETPIN,LOW);
   }
 
 void sortPathsByNet(

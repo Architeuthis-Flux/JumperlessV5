@@ -23,7 +23,7 @@
 #include <algorithm>
 
 #include "config.h"
-
+#include "PersistentStuff.h"
 int debugProbing = 0;
 
 volatile unsigned long blockProbing = 0;
@@ -1293,7 +1293,7 @@ int chooseGPIOinputOutput(int gpioChosen) {
   b.print(gpioChosen, sfOptionColors[gpioChosen - 1], 0xFFFFFF, 0, 0, -2);
   b.print("Output", sfOptionColors[gpioChosen % 7], 0xFFFFFF, 0, 1, 3);
 
-  showLEDsCore2 = 2;
+  showLEDsCore2 = -2;
 
   // Serial.print("gpioChosen: ");
   // Serial.println(gpioChosen);
@@ -1317,6 +1317,10 @@ int chooseGPIOinputOutput(int gpioChosen) {
       }
     }
   }
+
+
+  Serial.print("gpioChosen: ");
+  Serial.println(gpioChosen);
 
   // clearLEDsExceptRails();
   // showNets();
@@ -1350,43 +1354,43 @@ int chooseGPIO(int skipInputOutput) {
     if (reading != -1) {
       switch (reading) {
       case 1 ... 6: {
-        selected = 135;
-        function = 135;
+        selected = RP_GPIO_1;
+        function = RP_GPIO_1;
         break;
       }
       case 7 ... 15: {
-        selected = 136;
-        function = 136;
+        selected = RP_GPIO_2;
+        function = RP_GPIO_2;
         break;
       }
       case 16 ... 24: {
-        selected = 137;
-        function = 137;
+        selected = RP_GPIO_3;
+        function = RP_GPIO_3;
         break;
       }
       case 25 ... 30: {
-        selected = 138;
-        function = 138;
+        selected = RP_GPIO_4;
+        function = RP_GPIO_4;
         break;
       }
       case 31 ... 36: {
-        selected = 122;
-        function = 122;
+        selected = RP_GPIO_5;
+        function = RP_GPIO_5;
         break;
       }
       case 37 ... 45: {
-        selected = 123;
-        function = 123;
+        selected = RP_GPIO_6;
+        function = RP_GPIO_6;
         break;
       }
       case 46 ... 54: {
-        selected = 124;
-        function = 124;
+        selected = RP_GPIO_7;
+        function = RP_GPIO_7;
         break;
       }
       case 55 ... 60: {
-        selected = 125;
-        function = 125;
+        selected = RP_GPIO_8;
+        function = RP_GPIO_8;
         break;
       }
       }
@@ -1413,14 +1417,18 @@ int chooseGPIO(int skipInputOutput) {
       break;
     }
     }
-    Serial.print("gpioChosen: ");
-    Serial.println(gpioChosen);
+    // Serial.print("gpioChosen: ");
+    // Serial.println(gpioChosen);
     clearLEDsExceptRails();
     chooseGPIOinputOutput(gpioChosen);
   }
   // clearLEDsExceptRails();
   //  showNets();
+  
   showLEDsCore2 = -1;
+  //updateGPIOConfigFromState();
+
+  
   return function;
 }
 

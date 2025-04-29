@@ -127,7 +127,7 @@ void setup() {
 
   digitalWrite(RESETPIN, HIGH);
   /// multicore_lockout_victim_init();
-  delayMicroseconds(800);
+  //delayMicroseconds(800);
   // Serial.setTimeout(8000);
   //  USB_PID = 0xACAB;
   //  USB_VID = 0x1D50;
@@ -140,7 +140,7 @@ void setup() {
   // Initialize FatFS
   if (!FatFS.begin()) {
     Serial.println("Failed to initialize FatFS");
-  }
+    }
 
   //EEPROM.begin(512);
 
@@ -148,7 +148,7 @@ void setup() {
 
   // Load configuration
   loadConfig();
- //readSettingsFromConfig();
+  //readSettingsFromConfig();
   configLoaded = 1;
   delayMicroseconds(2000);
 
@@ -180,7 +180,7 @@ void setup() {
   digitalWrite(RESETPIN, LOW);
 
   while (core2initFinished == 0) {
-   // delayMicroseconds(1);
+    // delayMicroseconds(1);
     }
 
   clearAllNTCC();
@@ -203,7 +203,7 @@ void setup() {
 
 
   //routableBufferPower(1, 0);
-    routableBufferPower(1, 1);
+  routableBufferPower(1, 1);
 
   getNothingTouched();
 
@@ -273,7 +273,7 @@ void loop() {
 
 
 menu:
-  
+
 
 
   Serial.print("\n\n\r\t\tMenu\n\r");
@@ -304,10 +304,19 @@ menu:
     Serial.print("\t~ = print config\n\r");
     Serial.print("\t` = edit config\n\r");
 
-    
+
     }
 
-
+  for (int i = 0; i < 8; i++) {
+    Serial.print("gpioState[");
+    Serial.print(i);
+    Serial.print("]: ");
+    Serial.println(gpioState[i]);
+    Serial.print("gpioNet[");
+    Serial.print(i);
+    Serial.print("]: ");
+    Serial.println(gpioNet[i]);
+    }
 
   Serial.print("\n\n\r");
   //b.clear();
@@ -328,11 +337,11 @@ menu:
     goto loadfile;
     }
 
-if (configChanged == true) {
-  Serial.println("config changed, saving...\n\n\r");
-  saveConfig();
-  configChanged = false;
-  }
+  if (configChanged == true) {
+    Serial.println("config changed, saving...\n\n\r");
+    saveConfig();
+    configChanged = false;
+    }
 dontshowmenu:
 
   // delay(500);
@@ -441,40 +450,43 @@ dontshowmenu:
 
 skipinput:
 
-if (isDigit(input)) {
-  runApp(input - '0');
-  return;
-  }
+  if (isDigit(input)) {
+    runApp(input - '0');
+    return;
+    }
 
   switch (input) {
 
     case '-': {
-      clearAllNTCC();
+    digitalWrite(RESETPIN, HIGH);
+    delay(1);
 
-      clearNodeFile(netSlot, 0);
-      refreshConnections(-1);
+    clearAllNTCC();
 
+    clearNodeFile(netSlot, 0);
+    refreshConnections(-1);
+    digitalWrite(RESETPIN, LOW);
 
-      break;
-      }
+    break;
+    }
     case '~': {
-      core1busy = 1;
-      waitCore2();
-      printConfigToSerial();
-      core1busy = 0;
-      break;
-      }
+    core1busy = 1;
+    waitCore2();
+    printConfigToSerial();
+    core1busy = 0;
+    break;
+    }
     case '`': {
-      core1busy = 1;
-      waitCore2();
-      readConfigFromSerial();
-      core1busy = 0;
-      break;
-      }
+    core1busy = 1;
+    waitCore2();
+    readConfigFromSerial();
+    core1busy = 0;
+    break;
+    }
     case '2': {
-      runApp(2);
-      break;
-      }
+    runApp(2);
+    break;
+    }
 
     case '^': {
     // doomOn = 1;
@@ -508,7 +520,7 @@ if (isDigit(input)) {
     // printWireStatus();
     i2cScan(8, 7, 22, 23, 1);
     oledTest(8, 7, 22, 23, 1);
-  
+
     // printPathArray();
     break;
     }
@@ -915,11 +927,11 @@ if (isDigit(input)) {
 
       break;
     }
-    delayMicroseconds(1000);
-while (Serial.available() > 0) {
-  Serial.read();
   delayMicroseconds(1000);
-}
+  while (Serial.available() > 0) {
+    Serial.read();
+    delayMicroseconds(1000);
+    }
   goto menu;
   }
 
@@ -1083,12 +1095,14 @@ void core2stuff() // core 2 handles the LEDs and the CH446Q8
 
           // Serial.println("showNets");
           // delay(100);
-          readGPIO();
+
+          readGPIO(); //if want, I can make this update the LEDs like 10 times faster by putting outside this loop, 
           showLEDmeasurements();
 
           showNets();
 
           showAllRowAnimations();
+
 
           core2busy = false;
           netUpdateRefreshCount = 0;
@@ -1202,7 +1216,7 @@ void core2stuff() // core 2 handles the LEDs and the CH446Q8
             // readGPIO();
             }
           schedulerTimer = micros();
-           
+
     }
   }
 

@@ -341,7 +341,7 @@ void setGPIO(void) {
 
 int gpioReadWithFloating(int pin, unsigned long usDelay = 10) { //2 = floating, 1 = high, 0 = low
   enum measuredState state = unknownState;
-  int settleDelay = 7;
+  int settleDelay = 12;
      int reading = -1;
     int readingPulldown = -1;
     int readingPullup = -1;
@@ -433,13 +433,16 @@ void readGPIO(void) {
     //     (gpioState[i] == 2 || gpioState[i] == 3 || gpioState[i] == 4)) {
     //   int reading = digitalRead(GPIO_1_PIN + i); // readFloatingOrState(20 + i); //this is a regular read
           if (gpioNet[i] != -1 && (gpioState[i] == 2 || gpioState[i] == 3 || gpioState[i] == 4)) {
-      int reading =  gpioReadWithFloating(20 + i); //check if the pin is floating or has a state
-      // Serial.print("gpioNet[i]: ");
+      int reading = gpioReadWithFloating(20 + i); //check if the pin is floating or has a state
+      // Serial.print("gpioNet[");
+      // Serial.print(i);
+      // Serial.print("]: ");
       // Serial.print(gpioNet[i]);
-      // Serial.print(" ");
-      // Serial.print("gpRd[i]: ");
+      // Serial.print(" gpRd[");
+      // Serial.print(i);
+      // Serial.print("]: ");
       // Serial.print(gpioReading[i]);
-      // Serial.print(" ");
+      // Serial.print(" reading: ");
       // Serial.println(reading);
       // Serial.println("\n\r");
 
@@ -816,14 +819,61 @@ void chooseShownReadings(void) {
       showADCreadings[4] = path[i].net;
     }
 
+    // if (path[i].node1 == ADC5 || path[i].node2 == ADC5) {
+    //   showADCreadings[5] = path[i].net;
+    // }
+
+
+
     if (path[i].node1 == ADC7 || path[i].node2 == ADC7) {
       showADCreadings[7] = path[i].net;
     }
+
+
     if (path[i].node1 == ROUTABLE_BUFFER_IN ||
         path[i].node2 == ROUTABLE_BUFFER_IN) { // routable buffer in is
                                                // hardwired to probe sense adc
       showADCreadings[7] = path[i].net;
     }
+
+
+    // for (int j = 0; j < 8; j++) {
+    //   gpioNet[j] = -1;  
+    // }
+
+
+    // if (path[i].node1 == RP_GPIO_0 || path[i].node2 == RP_GPIO_0) {
+      
+    // }
+    // if (path[i].node1 == RP_GPIO_1 || path[i].node2 == RP_GPIO_1) {
+    //   gpioNet[0] = path[i].net;
+    // }
+    // if (path[i].node1 == RP_GPIO_2 || path[i].node2 == RP_GPIO_2) {
+    //   gpioNet[1] = path[i].net;
+    // }
+    // if (path[i].node1 == RP_GPIO_3 || path[i].node2 == RP_GPIO_3) {
+    //   gpioNet[2] = path[i].net;
+    // }
+    // if (path[i].node1 == RP_GPIO_4 || path[i].node2 == RP_GPIO_4) {
+    //   gpioNet[3] = path[i].net;
+    // }
+    // if (path[i].node1 == RP_GPIO_5 || path[i].node2 == RP_GPIO_5) {
+    //   gpioNet[4] = path[i].net;
+    // }
+    // if (path[i].node1 == RP_GPIO_6 || path[i].node2 == RP_GPIO_6) {
+    //   gpioNet[5] = path[i].net;
+    // }
+    // if (path[i].node1 == RP_GPIO_7 || path[i].node2 == RP_GPIO_7) {
+    //   gpioNet[6] = path[i].net;
+    // }
+    // if (path[i].node1 == RP_GPIO_8 || path[i].node2 == RP_GPIO_8) {
+    //   gpioNet[7] = path[i].net;
+    // }
+
+    
+    
+    
+    
 
     // Serial.println(newBridgeIndex);
     //     for (int j = 0; j < 4; j++)

@@ -69,6 +69,19 @@ void resetConfigToDefaults(void) {
     int saved_generation = jumperlessConfig.hardware_version.generation;
     int saved_hardware_revision = jumperlessConfig.hardware_version.hardware_revision;
     int saved_probe_version = jumperlessConfig.hardware_version.probe_version;
+
+    //save calibration values
+    int saved_top_rail_zero = jumperlessConfig.calibration.top_rail_zero;
+    int saved_bottom_rail_zero = jumperlessConfig.calibration.bottom_rail_zero;
+    int saved_dac_0_zero = jumperlessConfig.calibration.dac_0_zero;
+    int saved_dac_1_zero = jumperlessConfig.calibration.dac_1_zero;
+    float saved_top_rail_spread = jumperlessConfig.calibration.top_rail_spread;
+    float saved_bottom_rail_spread = jumperlessConfig.calibration.bottom_rail_spread;
+    float saved_dac_0_spread = jumperlessConfig.calibration.dac_0_spread;
+    float saved_dac_1_spread = jumperlessConfig.calibration.dac_1_spread;
+    int saved_probe_max = jumperlessConfig.calibration.probe_max;
+    int saved_probe_min = jumperlessConfig.calibration.probe_min;
+    
     
     // Initialize with default values from config.h
     jumperlessConfig = config();
@@ -77,6 +90,12 @@ void resetConfigToDefaults(void) {
     jumperlessConfig.hardware_version.generation = saved_generation;
     jumperlessConfig.hardware_version.hardware_revision = saved_hardware_revision;
     jumperlessConfig.hardware_version.probe_version = saved_probe_version;
+
+    // Restore calibration values
+    jumperlessConfig.calibration.top_rail_zero = saved_top_rail_zero;
+    jumperlessConfig.calibration.bottom_rail_zero = saved_bottom_rail_zero;
+    jumperlessConfig.calibration.dac_0_zero = saved_dac_0_zero;
+    jumperlessConfig.calibration.dac_1_zero = saved_dac_1_zero;
 
     saveConfig();
 }

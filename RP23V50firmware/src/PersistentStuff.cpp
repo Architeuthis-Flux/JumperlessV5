@@ -714,7 +714,7 @@ void updateGPIOConfigFromState(void) {
     switch (gpioState[i]) {
       case 0: // output low
         jumperlessConfig.gpio.direction[i] = 0; // output
-        jumperlessConfig.gpio.pulls[i] = 2; // low
+        jumperlessConfig.gpio.pulls[i] = 2; // no pull
         break;
       case 1: // output high
         jumperlessConfig.gpio.direction[i] = 0; // output
@@ -818,18 +818,27 @@ void readSettingsFromConfig() {
     // 0 = output low, 1 = output high, 2 = input, 3 = input pullup, 4 = input pulldown
     if (jumperlessConfig.gpio.direction[i] == 0) { // output
       gpioState[i] = jumperlessConfig.gpio.pulls[i] ? 1 : 0; // 1 for high, 0 for low
+      gpio_set_dir(20+i, true);
     } else if (jumperlessConfig.gpio.direction[i] == 1) { // input
-      if (jumperlessConfig.gpio.pulls[i] == 0) { // no pull
+      gpio_set_dir(20+i, false);
+      if (jumperlessConfig.gpio.pulls[i] == 2) { // no pull
         gpioState[i] = 2;
+        gpio_set_pulls(20+i, false, false);
       } else if (jumperlessConfig.gpio.pulls[i] == 1) { // pullup
         gpioState[i] = 3;
-      } else if (jumperlessConfig.gpio.pulls[i] == 2) { // pulldown
+        gpio_set_pulls(20+i, true, false);
+      } else if (jumperlessConfig.gpio.pulls[i] == 0) { // pulldown
         gpioState[i] = 4;
+        gpio_set_pulls(20+i, false, true);
       } else {
         gpioState[i] = 5; // unknown
+        gpio_set_pulls(20+i, false, false);
+        
       }
     } else {
       gpioState[i] = 5; // unknown
+      gpio_set_dir(20+i, false);
+      gpio_set_pulls(20+i, false, false);
     }
   }
 }

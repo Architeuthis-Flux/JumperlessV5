@@ -15,7 +15,7 @@
 #include <Arduino.h>
 #include <EEPROM.h>
 #include <FatFS.h>
-
+#include "Peripherals.h"
 volatile bool netsUpdated = true;
 
 bool debugFP = EEPROM.read(DEBUG_FILEPARSINGADDRESS);
@@ -1105,6 +1105,11 @@ int removeBridgeFromNodeFile(int node1, int node2, int slot, int flashOrLocal, i
   unsigned long timerStart = millis();
   unsigned long timerEnd[5] = {0, 0, 0, 0, 0};
 
+  for (int i = 0; i < 8; i++) { //idk if I should do this here but YOLO
+    if (node1 == RP_GPIO_1 + i || node2 == RP_GPIO_1 + i) {
+      gpioNet[i] = -1;
+    }
+    }
   // Serial.print("Slot = ");
   // Serial.println(slot);
   if (flashOrLocal == 0) {
