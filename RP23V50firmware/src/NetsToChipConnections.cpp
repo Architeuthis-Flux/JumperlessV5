@@ -6,8 +6,8 @@
 #include <EEPROM.h>
 
 #include "Commands.h"
-#include "JumperlessDefinesRP2040.h"
-#include "MatrixStateRP2040.h"
+#include "JumperlessDefines.h"
+#include "MatrixState.h"
 #include "NetManager.h"
 #include "Peripherals.h"
 // don't try to understand this, it's still a mess
@@ -203,6 +203,12 @@ void clearAllNTCC(void) {
     gpioReading[i] = -1;
     gpioReadingColors[i] = 0x010101;
     }
+  gpioNet[8] = -1;
+  gpioNet[9] = -1;
+  gpioReading[8] = -1;
+  gpioReading[9] = -1;
+  gpioReadingColors[8] = 0x010101;
+  gpioReadingColors[9] = 0x010101;
 
  // digitalWrite(RESETPIN,LOW);
   }
@@ -1524,7 +1530,8 @@ void resolveAltPaths(int allowStacking, int powerOnly) {
 
                 Serial.print(" \n\r");
                 }
-              couldFindPath = i;
+              // printPathsCompact();
+              //}
               // continue;
               break;
               }
@@ -3778,7 +3785,7 @@ connected to the index on Chip L, -1 for none int8_t xStatusL[24]  =  { -1 ,
 -1 , 0 , 0      , -1     , -1     };//-1 for not connected to that chip, 0 for
 available, >0 means it's connected and the netNumber is stored here
 
-// mapIJKL[]     will tell you whethher there's a connection from that nano
+// mapIJKL[]     will tell you whethrer there's a connection from that nano
 pin to the corresponding special function chip
 // xMapIJKL[]    will tell you the X pin that it's connected to on that sf
 chip

@@ -1,9 +1,9 @@
 // SPDX-License-Identifier: MIT
 
 #include "CH446Q.h"
-#include "JumperlessDefinesRP2040.h"
+#include "JumperlessDefines.h"
 #include "LEDs.h"
-#include "MatrixStateRP2040.h"
+#include "MatrixState.h"
 #include "NetsToChipConnections.h"
 #include "Peripherals.h"
 

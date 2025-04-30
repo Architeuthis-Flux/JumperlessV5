@@ -4,7 +4,7 @@
 #define NETMANAGER_H
 
 #include <Arduino.h>
-#include "JumperlessDefinesRP2040.h"
+#include "JumperlessDefines.h"
 //#include "MatrixStateRP2040.h"
 
 extern int newBridge[MAX_BRIDGES][3]; // node1, node2, net

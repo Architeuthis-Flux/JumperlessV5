@@ -2,11 +2,11 @@
 #include "FileParsing.h"
 #include <Arduino.h>
 #include "LittleFS.h"
-#include "MatrixStateRP2040.h"
+#include "MatrixState.h"
 #include "SafeString.h"
 #include "ArduinoJson.h"
 #include "NetManager.h"
-#include "JumperlessDefinesRP2040.h"
+#include "JumperlessDefines.h"
 #include "LEDs.h"
 #include <EEPROM.h>
 #include "MachineCommands.h"

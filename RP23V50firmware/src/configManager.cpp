@@ -1,11 +1,11 @@
-#include "configManager.h"
 #include <FatFS.h>
-#include "MatrixStateRP2040.h"
+#include "MatrixState.h"
 #include "config.h"
 #include "PersistentStuff.h"
 #include "LEDs.h"
 #include "Commands.h"
 #include "FileParsing.h"
+#include "configManager.h"
 
 // Define the global configuration instance
 
@@ -196,12 +196,8 @@ void updateConfigFromFile(const char* filename) {
             else if (strcmp(key, "special_net_brightness") == 0) jumperlessConfig.display_settings.special_net_brightness = parseInt(value);
             else if (strcmp(key, "net_color_mode") == 0) jumperlessConfig.display_settings.net_color_mode = parseInt(value);
         } else if (strcmp(section, "gpio") == 0) {
-            if (strcmp(key, "direction") == 0) parseCommaSeparatedInts(value, jumperlessConfig.gpio.direction, 8);
-            else if (strcmp(key, "pulls") == 0) parseCommaSeparatedInts(value, jumperlessConfig.gpio.pulls, 8);
-            else if (strcmp(key, "uart_tx_pin") == 0) jumperlessConfig.gpio.uart_tx_pin = parseInt(value);
-            else if (strcmp(key, "uart_rx_pin") == 0) jumperlessConfig.gpio.uart_rx_pin = parseInt(value);
-            else if (strcmp(key, "uart_tx_pull") == 0) jumperlessConfig.gpio.uart_tx_pull = parseInt(value);
-            else if (strcmp(key, "uart_rx_pull") == 0) jumperlessConfig.gpio.uart_rx_pull = parseInt(value);
+            if (strcmp(key, "direction") == 0) parseCommaSeparatedInts(value, jumperlessConfig.gpio.direction, 10);
+            else if (strcmp(key, "pulls") == 0) parseCommaSeparatedInts(value, jumperlessConfig.gpio.pulls, 10);
             else if (strcmp(key, "uart_tx_function") == 0) jumperlessConfig.gpio.uart_tx_function = parseInt(value);
             else if (strcmp(key, "uart_rx_function") == 0) jumperlessConfig.gpio.uart_rx_function = parseInt(value);
         } else if (strcmp(section, "serial") == 0) {
@@ -301,21 +297,18 @@ void saveConfigToFile(const char* filename) {
     // Write GPIO section
     file.println("[gpio]");
     file.print("direction=");
-    for (int i = 0; i < 8; i++) {
+    for (int i = 0; i < 10; i++) {
         if (i > 0) file.print(",");
         file.print(jumperlessConfig.gpio.direction[i]);
     }
     file.println(";");
     file.print("pulls=");
-    for (int i = 0; i < 8; i++) {
+    for (int i = 0; i < 10; i++) {
         if (i > 0) file.print(",");
         file.print(jumperlessConfig.gpio.pulls[i]);
     }
     file.println(";");
-    file.print("uart_tx_pin="); file.print(jumperlessConfig.gpio.uart_tx_pin); file.println(";");
-    file.print("uart_rx_pin="); file.print(jumperlessConfig.gpio.uart_rx_pin); file.println(";");
-    file.print("uart_tx_pull="); file.print(jumperlessConfig.gpio.uart_tx_pull); file.println(";");
-    file.print("uart_rx_pull="); file.print(jumperlessConfig.gpio.uart_rx_pull); file.println(";");
+
     file.print("uart_tx_function="); file.print(jumperlessConfig.gpio.uart_tx_function); file.println(";");
     file.print("uart_rx_function="); file.print(jumperlessConfig.gpio.uart_rx_function); file.println(";");
     file.println();
@@ -451,21 +444,17 @@ void printConfigSectionToSerial(int section) {
     if (section == -1 || section == 7) {
         Serial.println("\n[gpio]");
         Serial.print("direction=");
-        for (int i = 0; i < 8; i++) {
+        for (int i = 0; i < 10; i++) {
             if (i > 0) Serial.print(",");
             Serial.print(jumperlessConfig.gpio.direction[i]);
         }
         Serial.println(";");
         Serial.print("pulls=");
-        for (int i = 0; i < 8; i++) {
+        for (int i = 0; i < 10; i++) {
             if (i > 0) Serial.print(",");
             Serial.print(jumperlessConfig.gpio.pulls[i]);
         }
         Serial.println(";");
-        Serial.print("uart_tx_pin="); Serial.print(jumperlessConfig.gpio.uart_tx_pin); Serial.println(";");
-        Serial.print("uart_rx_pin="); Serial.print(jumperlessConfig.gpio.uart_rx_pin); Serial.println(";");
-        Serial.print("uart_tx_pull="); Serial.print(jumperlessConfig.gpio.uart_tx_pull); Serial.println(";");
-        Serial.print("uart_rx_pull="); Serial.print(jumperlessConfig.gpio.uart_rx_pull); Serial.println(";");
         Serial.print("uart_tx_function="); Serial.print(jumperlessConfig.gpio.uart_tx_function); Serial.println(";");
         Serial.print("uart_rx_function="); Serial.print(jumperlessConfig.gpio.uart_rx_function); Serial.println(";");
     }
@@ -870,7 +859,7 @@ void updateConfigValue(const char* section, const char* key, const char* value) 
     else if (strcmp(section, "gpio") == 0) {
         if (strcmp(key, "direction") == 0) {
             char temp[128] = {0};
-            for (int i = 0; i < 8; i++) {
+                for (int i = 0; i < 10; i++) {
                 if (i > 0) strcat(temp, ",");
                 char num[4];
                 sprintf(num, "%d", jumperlessConfig.gpio.direction[i]);
@@ -880,7 +869,7 @@ void updateConfigValue(const char* section, const char* key, const char* value) 
         }
         else if (strcmp(key, "pulls") == 0) {
             char temp[128] = {0};
-            for (int i = 0; i < 8; i++) {
+            for (int i = 0; i < 10; i++) {
                 if (i > 0) strcat(temp, ",");
                 char num[4];
                 sprintf(num, "%d", jumperlessConfig.gpio.pulls[i]);
@@ -888,10 +877,6 @@ void updateConfigValue(const char* section, const char* key, const char* value) 
             }
             strcpy(oldValue, temp);
         }
-        else if (strcmp(key, "uart_tx_pin") == 0) sprintf(oldValue, "%d", jumperlessConfig.gpio.uart_tx_pin);
-        else if (strcmp(key, "uart_rx_pin") == 0) sprintf(oldValue, "%d", jumperlessConfig.gpio.uart_rx_pin);
-        else if (strcmp(key, "uart_tx_pull") == 0) sprintf(oldValue, "%d", jumperlessConfig.gpio.uart_tx_pull);
-        else if (strcmp(key, "uart_rx_pull") == 0) sprintf(oldValue, "%d", jumperlessConfig.gpio.uart_rx_pull);
         else if (strcmp(key, "uart_tx_function") == 0) sprintf(oldValue, "%d", jumperlessConfig.gpio.uart_tx_function);
         else if (strcmp(key, "uart_rx_function") == 0) sprintf(oldValue, "%d", jumperlessConfig.gpio.uart_rx_function);
     }
@@ -959,15 +944,12 @@ void updateConfigValue(const char* section, const char* key, const char* value) 
     }
     else if (strcmp(section, "gpio") == 0) {
         if (strcmp(key, "direction") == 0) {
-            parseCommaSeparatedInts(value, jumperlessConfig.gpio.direction, 8);
+            parseCommaSeparatedInts(value, jumperlessConfig.gpio.direction, 10);
         }
         else if (strcmp(key, "pulls") == 0) {
-            parseCommaSeparatedInts(value, jumperlessConfig.gpio.pulls, 8);
+            parseCommaSeparatedInts(value, jumperlessConfig.gpio.pulls, 10);
         }
-        else if (strcmp(key, "uart_tx_pin") == 0) jumperlessConfig.gpio.uart_tx_pin = parseInt(value);
-        else if (strcmp(key, "uart_rx_pin") == 0) jumperlessConfig.gpio.uart_rx_pin = parseInt(value);
-        else if (strcmp(key, "uart_tx_pull") == 0) jumperlessConfig.gpio.uart_tx_pull = parseInt(value);
-        else if (strcmp(key, "uart_rx_pull") == 0) jumperlessConfig.gpio.uart_rx_pull = parseInt(value);
+
         else if (strcmp(key, "uart_tx_function") == 0) jumperlessConfig.gpio.uart_tx_function = parseInt(value);
         else if (strcmp(key, "uart_rx_function") == 0) jumperlessConfig.gpio.uart_rx_function = parseInt(value);
     }
@@ -1074,15 +1056,15 @@ void printConfigStructToSerial() {
   // GPIO settings
   Serial.println("[gpio]");
   Serial.print("direction = [");
-  for (int i = 0; i < 8; i++) {
+  for (int i = 0; i < 10; i++) {
     Serial.print(jumperlessConfig.gpio.direction[i]);
-    if (i < 7) Serial.print(", ");
+    if (i < 9) Serial.print(", ");
   }
   Serial.println("]");
   Serial.print("pulls = [");
-  for (int i = 0; i < 8; i++) {
+  for (int i = 0; i < 10; i++) {
     Serial.print(jumperlessConfig.gpio.pulls[i]);
-    if (i < 7) Serial.print(", ");
+    if (i < 9) Serial.print(", ");
   }
   Serial.println("]");
   Serial.println();

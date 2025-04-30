@@ -3,12 +3,12 @@
 #include "Commands.h"
 #include "FileParsing.h"
 #include "Graphics.h"
-#include "MatrixStateRP2040.h"
+#include "MatrixState.h"
 #include "NetManager.h"
 #include "NetsToChipConnections.h"
 #include "Peripherals.h"
 #include "Probing.h"
-#include <Adafruit_GFX.h>
+//#include <Adafruit_GFX.h>
 // #include <Adafruit_NeoMatrix.h>
 #include <Adafruit_NeoPixel.h>
 #include "config.h"
@@ -52,6 +52,8 @@ void ledClass::begin(void) {
     topleds.begin();
   }
   bbleds.begin();
+  bbleds.setBrightness(254);
+  topleds.setBrightness(254);
 }
 
 void ledClass::show(void) {
@@ -477,7 +479,7 @@ void assignNetColors(int preview) {
 
       if (i >= 1 && i <= 3) {
         netHsv.v = LEDbrightnessRail;
-      } else if (i >= 4 && i <= 7) {
+      } else if (i >= 4 && i <= 5) {
         netHsv.v = LEDbrightnessSpecial;
       }
 
@@ -750,11 +752,17 @@ void assignNetColors(int preview) {
         // Serial.println(i);
         break;
       }
+    }
+    for (int a = 0; a < 10; a++) {
       if (i == gpioNet[a]) {
         net[i].color = unpackRgb(gpioReadingColors[a]);
         netColors[i] = net[i].color;
         // Serial.print("showing gpio: ");
         // Serial.println(i);
+        // Serial.print("gpioReadingColors[");
+        // Serial.print(a);
+        // Serial.print("]: ");
+        // Serial.println(gpioReadingColors[a], HEX);
 
         showingReading = 1;
         break;
@@ -834,6 +842,8 @@ void lightUpNet(int netNumber, int node, int onOff, int brightness2,
   //     Serial.print(" onOff: ");
   //     Serial.print(onOff);
   // return;
+
+  
   if (netNumber <= 0 || netNumber >= MAX_NETS) {
     return;
   }
@@ -881,7 +891,9 @@ void lightUpNet(int netNumber, int node, int onOff, int brightness2,
           }
         }
       } else {
+        
         if (net[netNumber].nodes[j] <= NANO_A7) {
+          
           if (net[netNumber].nodes[j] == node || node == -1) {
             if (onOff == 1) {
 
@@ -904,6 +916,7 @@ void lightUpNet(int netNumber, int node, int onOff, int brightness2,
                                               net[netNumber].color.b};
 
               if (forceColor != 0xffffff) {
+                // Serial.println("force color");
                 colorToShift = unpackRgb(forceColor);
               }
 
@@ -912,7 +925,7 @@ void lightUpNet(int netNumber, int node, int onOff, int brightness2,
 
               if (colorCorrection != 0) {
                 // shiftedColor = pcbColorCorrect(shiftedColor);
-
+                //Serial.println("color correction"); 
                 uint32_t correctedColor =
                     packRgb(shiftedColor.r, shiftedColor.g, shiftedColor.b);
 
@@ -923,6 +936,7 @@ void lightUpNet(int netNumber, int node, int onOff, int brightness2,
 
               if (net[netNumber].specialFunction >= 100 &&
                   net[netNumber].specialFunction <= 105) {
+                   // Serial.println("rail color");
                 if (brightness2 != DEFAULTBRIGHTNESS) {
                   shiftedColorHsv.v = brightness2;
                 } else {
@@ -941,6 +955,7 @@ void lightUpNet(int netNumber, int node, int onOff, int brightness2,
                 //  Serial.print(color, HEX);
               } else if (net[netNumber].specialFunction >= 100 &&
                          net[netNumber].specialFunction <= 120) {
+                         // Serial.println("special function");
                 if (brightness2 != DEFAULTBRIGHTNESS) {
                   shiftedColorHsv.v = brightness2;
                 } else {
@@ -960,10 +975,13 @@ void lightUpNet(int netNumber, int node, int onOff, int brightness2,
                 // (shiftedColor.b
                 // * LEDbrightnessSpecial) >> 8);
               } else {
+                //Serial.println("normal color");
+                // Serial.print("shiftedColorHsv.v: ");
+                // Serial.println(shiftedColorHsv.v);
                 if (brightness2 != DEFAULTBRIGHTNESS) {
-                  shiftedColorHsv.v = brightness2;
+                 // shiftedColorHsv.v = brightness2; //maybe put an averaging thing here
                 } else {
-                  shiftedColorHsv.v = LEDbrightness;
+                 // shiftedColorHsv.v = LEDbrightness;
                 }
                 if (brightenedNet == netNumber) {
                   shiftedColorHsv.v += brightenedAmount;
@@ -2082,11 +2100,11 @@ void lightUpRail(int logo, int rail, int onOff, int brightness2,
       leds.setPixelColor(435, scaleBrightness(rawOtherColors[13], -40));
     }
   }
-  if (switchPosition == 2) //+-8V
-  {
-    rawRailColors[switchPosition][0] = scaleDownBrightness(rawOtherColors[3]);
-    rawRailColors[switchPosition][2] = scaleDownBrightness(rawOtherColors[4]);
-  }
+  // if (switchPosition == 2) //+-8V
+  // {
+  //   rawRailColors[switchPosition][0] = scaleDownBrightness(rawOtherColors[3]);
+  //   rawRailColors[switchPosition][2] = scaleDownBrightness(rawOtherColors[4]);
+  // }
   for (int j = 0; j < 4; j++) {
     if (j == rail || rail == -1) {
       // rgbColor rgbRail = railColors[j];
@@ -2241,12 +2259,12 @@ void showNets(void) {
       skipShow = 0;
       for (int j = 0; j < 5; j++) {
         if (showADCreadings[j] == i) {
-          skipShow = 1;
+          //skipShow = 1;
           continue;
         }
-        for (int k = 0; k < 8; k++) {
+        for (int k = 0; k < 10; k++) {
           if (gpioNet[k] == i) {
-            skipShow = 1;
+            //skipShow = 1;
             continue;
           }
         }
@@ -2332,6 +2350,11 @@ rgbColor HsvToRgb(hsvColor hsv) {
   }
 
   return rgb;
+}
+
+uint32_t HsvToRaw(hsvColor hsv) {
+  rgbColor rgb = HsvToRgb(hsv);
+  return rgb.r << 16 | rgb.g << 8 | rgb.b;
 }
 
 hsvColor RgbToHsv(rgbColor rgb) {
@@ -2593,43 +2616,7 @@ void startupColorsV5(void) {
 
   hsvColor hsv;
   int bounce = 0;
-  // leds.clear();
-  //   for (long j = 150; j < 340; j += 1) {
 
-  //     for (int i = 0; i < LED_COUNT - 9; i++) {
-  //       float huef;
-  //       float i2 = i;
-  //       float j2 = j;
-
-  //       huef = sinf((i2 / (j2)) * 1.5f); //*(sinf((j2/i2))*19.0);
-  //       // hsv.h = (j*(i*j))%255;
-  //       // hsv.h = (j*(int((sin(j+i)*4))))%254;
-  //       hsv.h = ((int)(huef * 255)) % 254;
-  //       hsv.s = 254;
-  //       if (i < 400) {
-  //         hsv.v = 6;
-  //       } else {
-  //         hsv.v = 16;
-  //       }
-  //       // hsv.v = 6;
-  //       rgbColor rgb = HsvToRgb(hsv);
-  //       uint32_t rgbPacked = packRgb(rgb.r, rgb.g, rgb.b);
-  //       // rgbPacked = rgbPacked * i
-  //       if (i < 300 && logo == 1) {
-  //         if (jumperlessText[textMap[i]] == 0) {
-  //           leds.setPixelColor(i, rgbPacked);
-  //         } else {
-  //           leds.setPixelColor(i, 0);
-  //         }
-  //       } else {
-  //         leds.setPixelColor(i, rgbPacked);
-  //       }
-  //     }
-
-  //     showLEDsCore2 = 3;
-  //     delayMicroseconds(500);
-  //   }
-  //   //delay(1000);
   long jStart = 250;
   for (long j = 250; j >= 0; j -= 1) {
 

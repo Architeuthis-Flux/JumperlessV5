@@ -1,8 +1,8 @@
 // SPDX-License-Identifier: MIT
 
 #include <Arduino.h>
-#include "JumperlessDefinesRP2040.h"
-#include "MatrixStateRP2040.h"
+#include "JumperlessDefines.h"
+#include "MatrixState.h"
 #include "config.h"
 
 #include "CH446Q.h"
@@ -47,6 +47,7 @@ CHIP_K, CHIP_L };                                           //60
 
 int senseRevision(void) { //unused, this doesn't work
 
+return 0;
   // pinMode(3, INPUT_PULLUP);
   // int senseRev1 = digitalRead(3);
   // pinMode(3, INPUT_PULLDOWN);

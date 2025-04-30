@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: MIT
 
-#ifndef JUMPERLESSDEFINESRP2040_H
-#define JUMPERLESSDEFINESRP2040_H
+#ifndef JUMPERLESSDEFINES_H
+#define JUMPERLESSDEFINES_H
 
 extern volatile int sendAllPathsCore2;
 #define PICO_RP2350B 1
@@ -99,7 +99,7 @@ extern int probeRev;
 #define MAX_DNI 8 // max number of doNotIntersect rules
 #define MAX_DUPLICATE 25 // max number of duplicates
 
-#define MAX_NETS_FOR_WIRES 14
+#define MAX_NETS_FOR_WIRES 18
 #define MAX_PATHS_FOR_WIRES 38
 #define LASTCOMMANDADDRESS 1
 #define CLEARBEFORECOMMANDADDRESS 4

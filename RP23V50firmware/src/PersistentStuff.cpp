@@ -1,6 +1,6 @@
 #include "PersistentStuff.h"
 #include "FileParsing.h"
-#include "JumperlessDefinesRP2040.h"
+#include "JumperlessDefines.h"
 #include "LEDs.h"
 #include "NetManager.h"
 #include "Probing.h"
@@ -17,7 +17,7 @@ void debugFlagInit(int forceDefaults) {
 
   if (EEPROM.read(FIRSTSTARTUPADDRESS) != 0xAA || forceDefaults == 1) {
     EEPROM.write(FIRSTSTARTUPADDRESS, 0xAA);
-    
+
     EEPROM.write(REVISIONADDRESS, REV);
 
     EEPROM.write(DEBUG_FILEPARSINGADDRESS, 0);
@@ -46,7 +46,7 @@ void debugFlagInit(int forceDefaults) {
 
     EEPROM.commit();
     delay(5);
-  }
+    }
 
 #ifdef EEPROMSTUFF
 
@@ -56,8 +56,8 @@ void debugFlagInit(int forceDefaults) {
   debugNM = EEPROM.read(DEBUG_NETMANAGERADDRESS);
   debugNMtime = EEPROM.read(TIME_NETMANAGERADDRESS);
 
-   debugNTCC = EEPROM.read(DEBUG_NETTOCHIPCONNECTIONSADDRESS);
-   debugNTCC2 = EEPROM.read(DEBUG_NETTOCHIPCONNECTIONSALTADDRESS);
+  debugNTCC = EEPROM.read(DEBUG_NETTOCHIPCONNECTIONSADDRESS);
+  debugNTCC2 = EEPROM.read(DEBUG_NETTOCHIPCONNECTIONSALTADDRESS);
 
   LEDbrightnessRail = EEPROM.read(RAILBRIGHTNESSADDRESS);
   LEDbrightness = EEPROM.read(LEDBRIGHTNESSADDRESS);
@@ -84,7 +84,7 @@ void debugFlagInit(int forceDefaults) {
 
 
 
-menuBrightnessSetting = EEPROM.read(MENUBRIGHTNESS_ADDRESS) - 100;
+  menuBrightnessSetting = EEPROM.read(MENUBRIGHTNESS_ADDRESS) - 100;
 
   dacSpread[1] = EEPROM.get(DAC0_SPREAD_ADDRESS, dacSpread[0]);
   dacSpread[1] = EEPROM.get(DAC1_SPREAD_ADDRESS, dacSpread[1]);
@@ -94,12 +94,12 @@ menuBrightnessSetting = EEPROM.read(MENUBRIGHTNESS_ADDRESS) - 100;
   dacZero[0] = EEPROM.get(DAC0_ZERO_ADDRESS, dacZero[0]);
   dacZero[1] = EEPROM.get(DAC1_ZERO_ADDRESS, dacZero[1]);
   dacZero[2] = EEPROM.get(TOP_RAIL_ZERO_ADDRESS, dacZero[2]);
-  dacZero[3] = EEPROM.get(BOTTOM_RAIL_ZERO_ADDRESS,dacZero[3]);
+  dacZero[3] = EEPROM.get(BOTTOM_RAIL_ZERO_ADDRESS, dacZero[3]);
 
   for (int i = 0; i < 4; i++) {
     if (dacSpread[i] < 12.0 || dacSpread[i] > 28.0 || dacSpread[i] != dacSpread[i]) {
       // delay(2000);
-      
+
       // Serial.print("dacSpread[");
       // Serial.print(i);
       // Serial.print("] out of range = ");
@@ -107,7 +107,7 @@ menuBrightnessSetting = EEPROM.read(MENUBRIGHTNESS_ADDRESS) - 100;
       dacSpread[i] = 21.0;
       EEPROM.put(DAC0_SPREAD_ADDRESS + (i * 8), dacSpread[i]);
       //EEPROM.put(CALIBRATED_ADDRESS, 0);
-    }
+      }
     if (dacZero[i] < 1000 || dacZero[i] > 2000) {
 
       // Serial.print("dacZero[");
@@ -116,33 +116,33 @@ menuBrightnessSetting = EEPROM.read(MENUBRIGHTNESS_ADDRESS) - 100;
       // Serial.println(dacZero[i]);
       dacZero[i] = 1630;
       EEPROM.put(DAC0_ZERO_ADDRESS + (i * 4), 1630);
-     // EEPROM.put(CALIBRATED_ADDRESS, 0);
+      // EEPROM.put(CALIBRATED_ADDRESS, 0);
+      }
     }
-  }
-if (showProbeCurrent != 0 && showProbeCurrent != 1)
-  {
+  if (showProbeCurrent != 0 && showProbeCurrent != 1)
+    {
     EEPROM.write(SHOW_PROBE_CURRENT_ADDRESS, 0);
     showProbeCurrent = 0;
-  }
-// delay(3000);
-// Serial.print("pathDuplicates: ");
-// Serial.println(pathDuplicates);
-// Serial.print("dacDuplicates: ");
-// Serial.println(dacDuplicates);
-// Serial.print("powerDuplicates: ");
-// Serial.println(powerDuplicates);
-// Serial.print("dacPriority: ");
-// Serial.println(dacPriority);
-// Serial.print("powerPriority: ");
-// Serial.println(powerPriority);
+    }
+  // delay(3000);
+  // Serial.print("pathDuplicates: ");
+  // Serial.println(pathDuplicates);
+  // Serial.print("dacDuplicates: ");
+  // Serial.println(dacDuplicates);
+  // Serial.print("powerDuplicates: ");
+  // Serial.println(powerDuplicates);
+  // Serial.print("dacPriority: ");
+  // Serial.println(dacPriority);
+  // Serial.print("powerPriority: ");
+  // Serial.println(powerPriority);
 
-if (pathDuplicates < 0 || pathDuplicates > 20) {
-  Serial.print("pathDuplicates out of range (");
-  Serial.print(pathDuplicates);
-  Serial.println("), setting to 3");
+  if (pathDuplicates < 0 || pathDuplicates > 20) {
+    Serial.print("pathDuplicates out of range (");
+    Serial.print(pathDuplicates);
+    Serial.println("), setting to 3");
     EEPROM.write(PATH_DUPLICATE_ADDRESS, 3);
     pathDuplicates = 3;
-  }
+    }
   if (dacDuplicates < 0 || dacDuplicates > 20) {
     Serial.print("dacDuplicates out of range (");
     Serial.print(dacDuplicates);
@@ -150,16 +150,16 @@ if (pathDuplicates < 0 || pathDuplicates > 20) {
 
     EEPROM.write(DAC_DUPLICATE_ADDRESS, 0);
     dacDuplicates = 0;
-  }
+    }
   if (powerDuplicates < 0 || powerDuplicates > 20) {
     Serial.print("powerDuplicates out of range (");
     Serial.print(powerDuplicates);
     Serial.println("), setting to 3");
 
-    
+
     EEPROM.write(POWER_DUPLICATE_ADDRESS, 3);
     powerDuplicates = 3;
-  }
+    }
   if (dacPriority < 1 || dacPriority > 10) {
 
     Serial.print("dacPriority out of range (");
@@ -168,7 +168,7 @@ if (pathDuplicates < 0 || pathDuplicates > 20) {
 
     EEPROM.write(DAC_PRIORITY_ADDRESS, 1);
     dacPriority = 1;
-  }
+    }
   if (powerPriority < 1 || powerPriority > 10) {
 
     Serial.print("powerPriority out of range (");
@@ -177,7 +177,7 @@ if (pathDuplicates < 0 || pathDuplicates > 20) {
 
     EEPROM.write(POWER_PRIORITY_ADDRESS, 1);
     powerPriority = 1;
-  }
+    }
 
 
   if (revisionNumber <= 0 || revisionNumber > 10) {
@@ -189,246 +189,246 @@ if (pathDuplicates < 0 || pathDuplicates > 20) {
     Serial.print("), setting to revision ");
     EEPROM.write(REVISIONADDRESS, REV);
     revisionNumber = REV;
-    
+
     Serial.println(revisionNumber);
-  }
+    }
 
 
   if (debugFP != 0 && debugFP != 1)
-  {
+    {
     EEPROM.write(DEBUG_FILEPARSINGADDRESS, 0);
 
-debugFP = false;
-  }
+    debugFP = false;
+    }
   if (debugFPtime != 0 && debugFPtime != 1)
-  {
+    {
     EEPROM.write(TIME_FILEPARSINGADDRESS, 0);
     debugFPtime = false;
-  }
+    }
 
   if (debugNM != 0 && debugNM != 1)
-  {
+    {
     EEPROM.write(DEBUG_NETMANAGERADDRESS, 0);
     debugNM = false;
-  }
+    }
 
   if (debugNMtime != 0 && debugNMtime != 1)
-  {
+    {
     EEPROM.write(TIME_NETMANAGERADDRESS, 0);
     debugNMtime = false;
-  }
+    }
 
   if (debugNTCC != 0 && debugNTCC != 1)
-  {
+    {
     EEPROM.write(DEBUG_NETTOCHIPCONNECTIONSADDRESS, 0);
     debugNTCC = false;
-  }
+    }
 
   if (debugNTCC2 != 0 && debugNTCC2 != 1)
-  {
+    {
     EEPROM.write(DEBUG_NETTOCHIPCONNECTIONSALTADDRESS, 0);
     debugNTCC2 = false;
-  }
+    }
 
   if (debugLEDs != 0 && debugLEDs != 1)
-  {
+    {
 
     EEPROM.write(DEBUG_LEDSADDRESS, 0);
     debugLEDs = false;
-  }
+    }
 
   if (LEDbrightnessRail < 0 || LEDbrightnessRail > 200) {
     EEPROM.write(RAILBRIGHTNESSADDRESS, DEFAULTRAILBRIGHTNESS);
 
     LEDbrightnessRail = DEFAULTRAILBRIGHTNESS;
-  }
+    }
   if (LEDbrightness < 0 || LEDbrightness > 200) {
     EEPROM.write(LEDBRIGHTNESSADDRESS, DEFAULTBRIGHTNESS);
     LEDbrightness = DEFAULTBRIGHTNESS;
-  }
+    }
 
   if (LEDbrightnessSpecial < 0 || LEDbrightnessSpecial > 200) {
     EEPROM.write(SPECIALBRIGHTNESSADDRESS, DEFAULTSPECIALNETBRIGHTNESS);
     LEDbrightnessSpecial = DEFAULTSPECIALNETBRIGHTNESS;
-  }
-    // delay(3000);
-    // Serial.print("menuBrightnessSetting out of range = ");
-    // Serial.println(menuBrightnessSetting);
+    }
+  // delay(3000);
+  // Serial.print("menuBrightnessSetting out of range = ");
+  // Serial.println(menuBrightnessSetting);
   if (menuBrightnessSetting < -100 || menuBrightnessSetting > 100) {
 
 
     EEPROM.write(MENUBRIGHTNESS_ADDRESS, 100);
     menuBrightnessSetting = 0;
-  }
+    }
 
-  
+
   if (rotaryEncoderMode != 0 && rotaryEncoderMode != 1) {
     EEPROM.write(ROTARYENCODER_MODE_ADDRESS, 0);
     rotaryEncoderMode = 0;
-  }
+    }
   if (displayMode != 0 && displayMode != 1) {
     EEPROM.write(DISPLAYMODE_ADDRESS, 1);
     displayMode = 0;
-  }
+    }
   if (netColorMode != 0 && netColorMode != 1) {
     EEPROM.write(NETCOLORMODE_ADDRESS, 0);
     netColorMode = 0;
-  }
+    }
 
 #endif
 
 
-readVoltages();
-readLogoBindings();
+  readVoltages();
+  readLogoBindings();
   EEPROM.commit();
   delayMicroseconds(100);
 
   //loadConfig();
 
-}
+  }
 
 void saveDacCalibration(void)
-{
-    // Save to EEPROM
-    EEPROM.put(DAC0_SPREAD_ADDRESS, dacSpread[0]);
-    EEPROM.put(DAC1_SPREAD_ADDRESS, dacSpread[1]);
-    EEPROM.put(TOP_RAIL_SPREAD_ADDRESS, dacSpread[2]);
-    EEPROM.put(BOTTOM_RAIL_SPREAD_ADDRESS, dacSpread[3]);
+  {
+  // Save to EEPROM
+  EEPROM.put(DAC0_SPREAD_ADDRESS, dacSpread[0]);
+  EEPROM.put(DAC1_SPREAD_ADDRESS, dacSpread[1]);
+  EEPROM.put(TOP_RAIL_SPREAD_ADDRESS, dacSpread[2]);
+  EEPROM.put(BOTTOM_RAIL_SPREAD_ADDRESS, dacSpread[3]);
 
-    EEPROM.put(DAC0_ZERO_ADDRESS, dacZero[0]);
-    EEPROM.put(DAC1_ZERO_ADDRESS, dacZero[1]);
-    EEPROM.put(TOP_RAIL_ZERO_ADDRESS, dacZero[2]);
-    EEPROM.put(BOTTOM_RAIL_ZERO_ADDRESS, dacZero[3]);
+  EEPROM.put(DAC0_ZERO_ADDRESS, dacZero[0]);
+  EEPROM.put(DAC1_ZERO_ADDRESS, dacZero[1]);
+  EEPROM.put(TOP_RAIL_ZERO_ADDRESS, dacZero[2]);
+  EEPROM.put(BOTTOM_RAIL_ZERO_ADDRESS, dacZero[3]);
 
-    EEPROM.put(CALIBRATED_ADDRESS, 0x55);
+  EEPROM.put(CALIBRATED_ADDRESS, 0x55);
 
-    EEPROM.commit();
-    delayMicroseconds(100);
+  EEPROM.commit();
+  delayMicroseconds(100);
 
-    // Also save to config file
-    jumperlessConfig.calibration.dac_0_spread = dacSpread[0];
-    jumperlessConfig.calibration.dac_1_spread = dacSpread[1];
-    jumperlessConfig.calibration.top_rail_spread = dacSpread[2];
-    jumperlessConfig.calibration.bottom_rail_spread = dacSpread[3];
-    jumperlessConfig.calibration.dac_0_zero = dacZero[0];
-    jumperlessConfig.calibration.dac_1_zero = dacZero[1];
-    jumperlessConfig.calibration.top_rail_zero = dacZero[2];
-    jumperlessConfig.calibration.bottom_rail_zero = dacZero[3];
-    jumperlessConfig.calibration.probe_max = 0.0f;
-    jumperlessConfig.calibration.probe_min = 0.0f;
+  // Also save to config file
+  jumperlessConfig.calibration.dac_0_spread = dacSpread[0];
+  jumperlessConfig.calibration.dac_1_spread = dacSpread[1];
+  jumperlessConfig.calibration.top_rail_spread = dacSpread[2];
+  jumperlessConfig.calibration.bottom_rail_spread = dacSpread[3];
+  jumperlessConfig.calibration.dac_0_zero = dacZero[0];
+  jumperlessConfig.calibration.dac_1_zero = dacZero[1];
+  jumperlessConfig.calibration.top_rail_zero = dacZero[2];
+  jumperlessConfig.calibration.bottom_rail_zero = dacZero[3];
+  jumperlessConfig.calibration.probe_max = 0.0f;
+  jumperlessConfig.calibration.probe_min = 0.0f;
 
-    saveConfig();
-    //Serial.println("DAC calibration saved to both EEPROM and config file");
-}
+  saveConfig();
+  //Serial.println("DAC calibration saved to both EEPROM and config file");
+  }
 
 void debugFlagSet(int flag) {
   int flagStatus;
   switch (flag) {
-  case 1: {
+    case 1: {
     flagStatus = EEPROM.read(DEBUG_FILEPARSINGADDRESS);
     if (flagStatus == 0) {
       EEPROM.write(DEBUG_FILEPARSINGADDRESS, 1);
 
       debugFP = true;
-    } else {
+      } else {
       EEPROM.write(DEBUG_FILEPARSINGADDRESS, 0);
 
       debugFP = false;
-    }
+      }
 
     break;
-  }
+    }
 
-  case 2: {
+    case 2: {
     flagStatus = EEPROM.read(DEBUG_NETMANAGERADDRESS);
 
     if (flagStatus == 0) {
       EEPROM.write(DEBUG_NETMANAGERADDRESS, 1);
 
       debugNM = true;
-    } else {
+      } else {
       EEPROM.write(DEBUG_NETMANAGERADDRESS, 0);
 
       debugNM = false;
-    }
+      }
     break;
-  }
+    }
 
-  case 3: {
+    case 3: {
     flagStatus = EEPROM.read(DEBUG_NETTOCHIPCONNECTIONSADDRESS);
 
     if (flagStatus == 0) {
       EEPROM.write(DEBUG_NETTOCHIPCONNECTIONSADDRESS, 1);
 
       debugNTCC = true;
-    } else {
+      } else {
       EEPROM.write(DEBUG_NETTOCHIPCONNECTIONSADDRESS, 0);
 
       debugNTCC = false;
-    }
+      }
 
     break;
-  }
-  case 4: {
+    }
+    case 4: {
     flagStatus = EEPROM.read(DEBUG_NETTOCHIPCONNECTIONSALTADDRESS);
 
     if (flagStatus == 0) {
       EEPROM.write(DEBUG_NETTOCHIPCONNECTIONSALTADDRESS, 1);
 
       debugNTCC2 = true;
-    } else {
+      } else {
       EEPROM.write(DEBUG_NETTOCHIPCONNECTIONSALTADDRESS, 0);
 
       debugNTCC2 = false;
-    }
+      }
     break;
-  }
+    }
 
-  case 5: {
+    case 5: {
     flagStatus = EEPROM.read(DEBUG_LEDSADDRESS);
 
     if (flagStatus == 0) {
       EEPROM.write(DEBUG_LEDSADDRESS, 1);
 
       debugLEDs = true;
-    } else {
+      } else {
       EEPROM.write(DEBUG_LEDSADDRESS, 0);
 
       debugLEDs = false;
-    }
+      }
     break;
-  }
+    }
 
-  // case 6: {
-  //   flagStatus = EEPROM.read(PROBESWAPADDRESS);
+          // case 6: {
+          //   flagStatus = EEPROM.read(PROBESWAPADDRESS);
 
-  //   if (flagStatus == 0) {
-  //     EEPROM.write(PROBESWAPADDRESS, 1);
+          //   if (flagStatus == 0) {
+          //     EEPROM.write(PROBESWAPADDRESS, 1);
 
-  //     probeSwap = true;
-  //   } else {
-  //     EEPROM.write(PROBESWAPADDRESS, 0);
+          //     probeSwap = true;
+          //   } else {
+          //     EEPROM.write(PROBESWAPADDRESS, 0);
 
-  //     probeSwap = false;
-  //   }
-  //   break;
-  // }
-  case 6: {
+          //     probeSwap = false;
+          //   }
+          //   break;
+          // }
+    case 6: {
     flagStatus = EEPROM.read(SHOW_PROBE_CURRENT_ADDRESS);
 
     if (flagStatus == 0) {
       EEPROM.write(SHOW_PROBE_CURRENT_ADDRESS, 1);
 
       showProbeCurrent = 1;
-    } else {
+      } else {
       EEPROM.write(SHOW_PROBE_CURRENT_ADDRESS, 0);
 
       showProbeCurrent = 0;
-    }
+      }
     break;
-  }
+    }
 
-  case 0: {
+    case 0: {
     EEPROM.write(DEBUG_FILEPARSINGADDRESS, 0);
     EEPROM.write(TIME_FILEPARSINGADDRESS, 0);
     EEPROM.write(DEBUG_NETMANAGERADDRESS, 0);
@@ -448,9 +448,9 @@ void debugFlagSet(int flag) {
     showProbeCurrent = 0;
 
     break;
-  }
+    }
 
-  case 9: {
+    case 9: {
     EEPROM.write(DEBUG_FILEPARSINGADDRESS, 1);
     EEPROM.write(TIME_FILEPARSINGADDRESS, 1);
     EEPROM.write(DEBUG_NETMANAGERADDRESS, 1);
@@ -468,76 +468,76 @@ void debugFlagSet(int flag) {
     debugLEDs = true;
     showProbeCurrent = 1;
     break;
-  }
-  case 10: {
-    {
-      EEPROM.write(ROTARYENCODER_MODE_ADDRESS, 0);
+    }
+    case 10: {
+        {
+        EEPROM.write(ROTARYENCODER_MODE_ADDRESS, 0);
 
-      rotaryEncoderMode = 0;
+        rotaryEncoderMode = 0;
+        }
+        break;
+    }
+    case 11: {
+        {
+        EEPROM.write(ROTARYENCODER_MODE_ADDRESS, 1);
+
+        rotaryEncoderMode = 1;
+        }
+        break;
+    }
+    case 12: {
+
+    EEPROM.write(DISPLAYMODE_ADDRESS, displayMode);
+
+
+
+    break;
+    }
+    case 13:
+    {
+    EEPROM.write(NETCOLORMODE_ADDRESS, netColorMode);
+
+
     }
     break;
-  }
-  case 11: {
-    {
-      EEPROM.write(ROTARYENCODER_MODE_ADDRESS, 1);
-
-      rotaryEncoderMode = 1;
     }
-    break;
-  }
-  case 12: {
-    
-      EEPROM.write(DISPLAYMODE_ADDRESS, displayMode);
-
-      
-    
-    break;
-  }
-  case 13: 
-    {
-      EEPROM.write(NETCOLORMODE_ADDRESS, netColorMode);
-
-      
-    }
-    break;
-  }
   delayMicroseconds(100);
   EEPROM.commit();
   delayMicroseconds(100);
   return;
-}
+  }
 
 void saveVoltages(float top, float bot, float dac0, float dac1) {
-//#ifdef EEPROMSTUFF
-    EEPROM.put(TOP_RAIL_ADDRESS0, top);
-    EEPROM.put(BOTTOM_RAIL_ADDRESS0, bot);
-    EEPROM.put(DAC0_ADDRESS0, dac0);
-    EEPROM.put(DAC1_ADDRESS0, dac1);
-    EEPROM.commit();
-    delayMicroseconds(100);
-//#endif
+  //#ifdef EEPROMSTUFF
+  EEPROM.put(TOP_RAIL_ADDRESS0, top);
+  EEPROM.put(BOTTOM_RAIL_ADDRESS0, bot);
+  EEPROM.put(DAC0_ADDRESS0, dac0);
+  EEPROM.put(DAC1_ADDRESS0, dac1);
+  EEPROM.commit();
+  delayMicroseconds(100);
+  //#endif
 
-    // Save to config file
-    jumperlessConfig.dac_settings.top_rail = top;
-    jumperlessConfig.dac_settings.bottom_rail = bot;
-    jumperlessConfig.dac_settings.dac_0 = dac0;
-    jumperlessConfig.dac_settings.dac_1 = dac1;
+      // Save to config file
+  jumperlessConfig.dac_settings.top_rail = top;
+  jumperlessConfig.dac_settings.bottom_rail = bot;
+  jumperlessConfig.dac_settings.dac_0 = dac0;
+  jumperlessConfig.dac_settings.dac_1 = dac1;
 
-    configChanged = true;
-   // saveConfig();
-}
+  configChanged = true;
+  // saveConfig();
+  }
 
 void saveDuplicateSettings(int forceDefaults) {
 #ifdef EEPROMSTUFF
-    if (forceDefaults == 1) {
-        EEPROM.write(PATH_DUPLICATE_ADDRESS, 2);
-        EEPROM.write(DAC_DUPLICATE_ADDRESS, 0);
-        EEPROM.write(POWER_DUPLICATE_ADDRESS, 3);
-        EEPROM.write(DAC_PRIORITY_ADDRESS, 1);
-        EEPROM.write(POWER_PRIORITY_ADDRESS, 1);
-        EEPROM.commit();
-        delayMicroseconds(100);
-       // return;
+  if (forceDefaults == 1) {
+    EEPROM.write(PATH_DUPLICATE_ADDRESS, 2);
+    EEPROM.write(DAC_DUPLICATE_ADDRESS, 0);
+    EEPROM.write(POWER_DUPLICATE_ADDRESS, 3);
+    EEPROM.write(DAC_PRIORITY_ADDRESS, 1);
+    EEPROM.write(POWER_PRIORITY_ADDRESS, 1);
+    EEPROM.commit();
+    delayMicroseconds(100);
+    // return;
     } else {
     EEPROM.write(PATH_DUPLICATE_ADDRESS, pathDuplicates);
     EEPROM.write(DAC_DUPLICATE_ADDRESS, dacDuplicates);
@@ -549,65 +549,65 @@ void saveDuplicateSettings(int forceDefaults) {
     }
 #endif
 
-    // Save to config file
-    jumperlessConfig.routing_settings.stack_paths = pathDuplicates;
-    jumperlessConfig.routing_settings.stack_rails = dacDuplicates;
-    jumperlessConfig.routing_settings.stack_dacs = powerDuplicates;
-    jumperlessConfig.routing_settings.rail_priority = dacPriority;
+  // Save to config file
+  jumperlessConfig.routing_settings.stack_paths = pathDuplicates;
+  jumperlessConfig.routing_settings.stack_rails = dacDuplicates;
+  jumperlessConfig.routing_settings.stack_dacs = powerDuplicates;
+  jumperlessConfig.routing_settings.rail_priority = dacPriority;
 
-   // saveConfig();
-}
+  // saveConfig();
+  }
 
 void readVoltages(void) {
 
 
-//delay(1000);
-//#ifdef EEPROMSTUFF
- delayMicroseconds(200);
-   EEPROM.get(TOP_RAIL_ADDRESS0, railVoltage[0]);
+  //delay(1000);
+  //#ifdef EEPROMSTUFF
+  delayMicroseconds(200);
+  EEPROM.get(TOP_RAIL_ADDRESS0, railVoltage[0]);
 
 
-   EEPROM.get(BOTTOM_RAIL_ADDRESS0, railVoltage[1]);
-   EEPROM.get(DAC0_ADDRESS0, dacOutput[0]);
-   EEPROM.get(DAC1_ADDRESS0, dacOutput[1]);
-   delayMicroseconds(200);
+  EEPROM.get(BOTTOM_RAIL_ADDRESS0, railVoltage[1]);
+  EEPROM.get(DAC0_ADDRESS0, dacOutput[0]);
+  EEPROM.get(DAC1_ADDRESS0, dacOutput[1]);
+  delayMicroseconds(200);
 
-///#endif
+  ///#endif
 
-// jumperlessConfig.dac_settings.top_rail = railVoltage[0];
-// jumperlessConfig.dac_settings.bottom_rail = railVoltage[1];
-// jumperlessConfig.dac_settings.dac_0 = dacOutput[0];
-// jumperlessConfig.dac_settings.dac_1 = dacOutput[1];
+  // jumperlessConfig.dac_settings.top_rail = railVoltage[0];
+  // jumperlessConfig.dac_settings.bottom_rail = railVoltage[1];
+  // jumperlessConfig.dac_settings.dac_0 = dacOutput[0];
+  // jumperlessConfig.dac_settings.dac_1 = dacOutput[1];
 
-int needsInit = 0;
-if (railVoltage[0] > 8.0f || railVoltage[0] < -8.0f ){//|| (uint32_t)railVoltage[0] == 0x00000000 || (uint32_t)railVoltage[0] == 0xFFFFFFFF) {
-Serial.println(railVoltage[0]);
+  int needsInit = 0;
+  if (railVoltage[0] > 8.0f || railVoltage[0] < -8.0f) {//|| (uint32_t)railVoltage[0] == 0x00000000 || (uint32_t)railVoltage[0] == 0xFFFFFFFF) {
+    Serial.println(railVoltage[0]);
 
     railVoltage[0] = 0.0f;
     needsInit = 1;
-    
+
     //Serial.println("rail voltage 0 out of range");
-  }
-  if (railVoltage[1] > 8.0f || railVoltage[1] < -8.0f){// || (uint32_t)railVoltage[1] == 0x00000000 || (uint32_t)railVoltage[1] == 0xFFFFFFFF) {
+    }
+  if (railVoltage[1] > 8.0f || railVoltage[1] < -8.0f) {// || (uint32_t)railVoltage[1] == 0x00000000 || (uint32_t)railVoltage[1] == 0xFFFFFFFF) {
     railVoltage[1] = 0.0f;
     needsInit = 1;
     //Serial.println("rail voltage 1 out of range");
-  }
-  if (dacOutput[0] > 5.0f || dacOutput[0] < 0.0f){// || (uint32_t)dacOutput[0] == 0x00000000 || (uint32_t)dacOutput[0] == 0xFFFFFFFF) {
+    }
+  if (dacOutput[0] > 5.0f || dacOutput[0] < 0.0f) {// || (uint32_t)dacOutput[0] == 0x00000000 || (uint32_t)dacOutput[0] == 0xFFFFFFFF) {
     dacOutput[0] = 0.0f;
     needsInit = 1;
     //Serial.println("dac 0 out of range");
-  }
-  if (dacOutput[1] > 8.0f || dacOutput[1] < -8.0f){// || (uint32_t)dacOutput[1] == 0x00000000 || (uint32_t)dacOutput[1] == 0xFFFFFFFF) {
+    }
+  if (dacOutput[1] > 8.0f || dacOutput[1] < -8.0f) {// || (uint32_t)dacOutput[1] == 0x00000000 || (uint32_t)dacOutput[1] == 0xFFFFFFFF) {
     dacOutput[1] = 0.0f;
     needsInit = 1;
     //Serial.println("dac 1 out of range");
-  }
+    }
 
   // if (needsInit == 1)
   // {
     //Serial.println("needs init");
-saveVoltages(railVoltage[0],railVoltage[1],dacOutput[0],dacOutput[1]);
+  saveVoltages(railVoltage[0], railVoltage[1], dacOutput[0], dacOutput[1]);
   //}
 //Serial.println(sizeof(float));
 
@@ -626,32 +626,32 @@ saveVoltages(railVoltage[0],railVoltage[1],dacOutput[0],dacOutput[1]);
 // setDac0_5Vvoltage(dacOutput[0]);
 // setDac1_8Vvoltage(dacOutput[1]);
   return;
-}
+  }
 
 void saveLogoBindings(void) {
 #ifdef EEPROMSTUFF
-    EEPROM.put(LOGO_TOP_ADDRESS0, logoTopSetting[0]);
-    EEPROM.put(LOGO_TOP_ADDRESS1, logoTopSetting[1]);
-    EEPROM.put(LOGO_BOTTOM_ADDRESS0, logoBottomSetting[0]);
-    EEPROM.put(LOGO_BOTTOM_ADDRESS1, logoBottomSetting[1]);
-    EEPROM.put(BUILDING_TOP_ADDRESS0, buildingTopSetting[0]);
-    EEPROM.put(BUILDING_TOP_ADDRESS1, buildingTopSetting[1]);
-    EEPROM.put(BUILDING_BOTTOM_ADDRESS0, buildingBottomSetting[0]);
-    EEPROM.put(BUILDING_BOTTOM_ADDRESS1, buildingBottomSetting[1]);
-    EEPROM.commit();
-    delayMicroseconds(100);
+  EEPROM.put(LOGO_TOP_ADDRESS0, logoTopSetting[0]);
+  EEPROM.put(LOGO_TOP_ADDRESS1, logoTopSetting[1]);
+  EEPROM.put(LOGO_BOTTOM_ADDRESS0, logoBottomSetting[0]);
+  EEPROM.put(LOGO_BOTTOM_ADDRESS1, logoBottomSetting[1]);
+  EEPROM.put(BUILDING_TOP_ADDRESS0, buildingTopSetting[0]);
+  EEPROM.put(BUILDING_TOP_ADDRESS1, buildingTopSetting[1]);
+  EEPROM.put(BUILDING_BOTTOM_ADDRESS0, buildingBottomSetting[0]);
+  EEPROM.put(BUILDING_BOTTOM_ADDRESS1, buildingBottomSetting[1]);
+  EEPROM.commit();
+  delayMicroseconds(100);
 #endif
 
-    // Save to config file
-    jumperlessConfig.logo_pad_settings.top_guy = logoTopSetting[0];
-    jumperlessConfig.logo_pad_settings.bottom_guy = logoBottomSetting[0];
-    jumperlessConfig.logo_pad_settings.building_pad_top = buildingTopSetting[0];
-    jumperlessConfig.logo_pad_settings.building_pad_bottom = buildingBottomSetting[0];
+  // Save to config file
+  jumperlessConfig.logo_pad_settings.top_guy = logoTopSetting[0];
+  jumperlessConfig.logo_pad_settings.bottom_guy = logoBottomSetting[0];
+  jumperlessConfig.logo_pad_settings.building_pad_top = buildingTopSetting[0];
+  jumperlessConfig.logo_pad_settings.building_pad_bottom = buildingBottomSetting[0];
 
   configChanged = true;
 
   //  saveConfig();
-}
+  }
 
 void readLogoBindings(void) {
   EEPROM.get(LOGO_TOP_ADDRESS0, logoTopSetting[0]);
@@ -659,92 +659,144 @@ void readLogoBindings(void) {
   EEPROM.get(LOGO_TOP_ADDRESS1, logoTopSetting[1]);
   if (logoTopSetting[0] == 2) {
     //gpioState[logoTopSetting[1]] = 0;
-  }
+    }
   EEPROM.get(LOGO_BOTTOM_ADDRESS0, logoBottomSetting[0]);
   EEPROM.get(LOGO_BOTTOM_ADDRESS1, logoBottomSetting[1]);
   if (logoBottomSetting[0] == 2) {
-   // gpioState[logoBottomSetting[1]] = 0;
-  }
+    // gpioState[logoBottomSetting[1]] = 0;
+    }
   EEPROM.get(BUILDING_TOP_ADDRESS0, buildingTopSetting[0]);
   EEPROM.get(BUILDING_TOP_ADDRESS1, buildingTopSetting[1]);
 
   if (buildingTopSetting[0] == 2) {
     //gpioState[buildingTopSetting[1]] = 0;
-  }
+    }
   EEPROM.get(BUILDING_BOTTOM_ADDRESS0, buildingBottomSetting[0]);
   EEPROM.get(BUILDING_BOTTOM_ADDRESS1, buildingBottomSetting[1]);
   if (buildingBottomSetting[0] == 2) {
     //gpioState[buildingBottomSetting[1]] = 0;
-  }
+    }
   return;
-} 
+  }
 
 void saveLEDbrightness(int forceDefaults) {
 #ifdef EEPROMSTUFF
-    if (forceDefaults == 1) {
-        LEDbrightness = DEFAULTBRIGHTNESS;
-        LEDbrightnessRail = DEFAULTRAILBRIGHTNESS;
-        LEDbrightnessSpecial = DEFAULTSPECIALNETBRIGHTNESS;
-        menuBrightnessSetting = 0;
+  if (forceDefaults == 1) {
+    LEDbrightness = DEFAULTBRIGHTNESS;
+    LEDbrightnessRail = DEFAULTRAILBRIGHTNESS;
+    LEDbrightnessSpecial = DEFAULTSPECIALNETBRIGHTNESS;
+    menuBrightnessSetting = 0;
     }
 
-    EEPROM.write(MENUBRIGHTNESS_ADDRESS, menuBrightnessSetting+100);
-    EEPROM.write(LEDBRIGHTNESSADDRESS, LEDbrightness);
-    EEPROM.write(RAILBRIGHTNESSADDRESS, LEDbrightnessRail);
-    EEPROM.write(SPECIALBRIGHTNESSADDRESS, LEDbrightnessSpecial);
-    EEPROM.commit();
-    delayMicroseconds(100);
+  EEPROM.write(MENUBRIGHTNESS_ADDRESS, menuBrightnessSetting + 100);
+  EEPROM.write(LEDBRIGHTNESSADDRESS, LEDbrightness);
+  EEPROM.write(RAILBRIGHTNESSADDRESS, LEDbrightnessRail);
+  EEPROM.write(SPECIALBRIGHTNESSADDRESS, LEDbrightnessSpecial);
+  EEPROM.commit();
+  delayMicroseconds(100);
 #endif
 
-    // Save to config file
-    jumperlessConfig.display_settings.led_brightness = LEDbrightness;
-    jumperlessConfig.display_settings.rail_brightness = LEDbrightnessRail;
-    jumperlessConfig.display_settings.special_net_brightness = LEDbrightnessSpecial;
-    jumperlessConfig.display_settings.menu_brightness = menuBrightnessSetting;
+  // Save to config file
+  jumperlessConfig.display_settings.led_brightness = LEDbrightness;
+  jumperlessConfig.display_settings.rail_brightness = LEDbrightnessRail;
+  jumperlessConfig.display_settings.special_net_brightness = LEDbrightnessSpecial;
+  jumperlessConfig.display_settings.menu_brightness = menuBrightnessSetting;
 
-    configChanged = true;
-    //saveConfig();
-}
+  configChanged = true;
+  //saveConfig();
+  }
 
 
 
 void updateGPIOConfigFromState(void) {
-  for (int i = 0; i < 8; i++) {
+  for (int i = 0; i < 10; i++) {  // Changed from 8 to 10 to include UART pins
     // Map gpioState to direction and pull settings
-    switch (gpioState[i]) {
-      case 0: // output low
-        jumperlessConfig.gpio.direction[i] = 0; // output
-        jumperlessConfig.gpio.pulls[i] = 2; // no pull
-        break;
-      case 1: // output high
-        jumperlessConfig.gpio.direction[i] = 0; // output
-        jumperlessConfig.gpio.pulls[i] = 2; 
-        break;
-      case 2: // input
-        jumperlessConfig.gpio.direction[i] = 1; // input
-        jumperlessConfig.gpio.pulls[i] = 2; // no pull
-        break;
-      case 3: // input pullup
-        jumperlessConfig.gpio.direction[i] = 1; // input
-        jumperlessConfig.gpio.pulls[i] = 1; // pullup
-        break;
-      case 4: // input pulldown
-        jumperlessConfig.gpio.direction[i] = 1; // input
-        jumperlessConfig.gpio.pulls[i] = 0; // pulldown
-        break;
-      case 5: // unknown
-        jumperlessConfig.gpio.direction[i] = 1; // default to input
-        jumperlessConfig.gpio.pulls[i] = 2; // no pull
-        break;
+    if (i < 8) {  // Regular GPIO pins 0-7 are on pins 20-27
+      int gpio_pin = i + 20;  // Map GPIO 0-7 to pins 20-27
+      switch (gpioState[i]) {
+        case 0: // output low
+          jumperlessConfig.gpio.direction[i] = 0; // output
+          jumperlessConfig.gpio.pulls[i] = 2; // no pull
+          gpio_set_dir(gpio_pin, true);  // Set as output
+          gpio_set_pulls(gpio_pin, false, false);  // No pulls
+          break;
+        case 1: // output high
+          jumperlessConfig.gpio.direction[i] = 0; // output
+          jumperlessConfig.gpio.pulls[i] = 2;
+          gpio_set_dir(gpio_pin, true);  // Set as output
+          gpio_set_pulls(gpio_pin, false, false);  // No pulls
+          break;
+        case 2: // input
+          jumperlessConfig.gpio.direction[i] = 1; // input
+          jumperlessConfig.gpio.pulls[i] = 2; // no pull
+          gpio_set_dir(gpio_pin, false);  // Set as input
+          gpio_set_pulls(gpio_pin, false, false);  // No pulls
+          break;
+        case 3: // input pullup
+          jumperlessConfig.gpio.direction[i] = 1; // input
+          jumperlessConfig.gpio.pulls[i] = 1; // pullup
+          gpio_set_dir(gpio_pin, false);  // Set as input
+          gpio_set_pulls(gpio_pin, true, false);  // Pull up
+          break;
+        case 4: // input pulldown
+          jumperlessConfig.gpio.direction[i] = 1; // input
+          jumperlessConfig.gpio.pulls[i] = 0; // pulldown
+          gpio_set_dir(gpio_pin, false);  // Set as input
+          gpio_set_pulls(gpio_pin, false, true);  // Pull down
+          break;
+        case 5: // unknown
+          jumperlessConfig.gpio.direction[i] = 1; // default to input
+          jumperlessConfig.gpio.pulls[i] = 2; // no pull
+          gpio_set_dir(gpio_pin, false);  // Set as input
+          gpio_set_pulls(gpio_pin, false, false);  // No pulls
+          break;
+        }
+      } else {  // UART pins (TX=0, RX=1)
+      int uart_pin = (i == 8) ? 0 : 1;  // Map UART TX to pin 0, RX to pin 1
+      if (i == 8) {  // UART TX
+        jumperlessConfig.gpio.direction[i] = 0;  // output
+        switch (gpioState[i]) {
+          case 3: // input pullup
+            jumperlessConfig.gpio.pulls[i] = 1; // pullup
+            gpio_set_pulls(uart_pin, true, false);  // Pull up
+            break;
+          case 4: // input pulldown
+            jumperlessConfig.gpio.pulls[i] = 0; // pulldown
+            gpio_set_pulls(uart_pin, false, true);  // Pull down
+            break;
+          default:
+            jumperlessConfig.gpio.pulls[i] = 2;  // no pull
+            gpio_set_pulls(uart_pin, false, false);  // No pulls
+            break;
+          }
+        gpio_set_dir(uart_pin, true);  // Set as output
+        } else {  // UART RX
+        jumperlessConfig.gpio.direction[i] = 1;  // input
+        switch (gpioState[i]) {
+          case 3: // input pullup
+            jumperlessConfig.gpio.pulls[i] = 1; // pullup
+            gpio_set_pulls(uart_pin, true, false);  // Pull up
+            break;
+          case 4: // input pulldown
+            jumperlessConfig.gpio.pulls[i] = 0; // pulldown
+            gpio_set_pulls(uart_pin, false, true);  // Pull down
+            break;
+          default:
+            jumperlessConfig.gpio.pulls[i] = 2;  // no pull
+            gpio_set_pulls(uart_pin, false, false);  // No pulls
+            break;
+          }
+        gpio_set_dir(uart_pin, false);  // Set as input
+        }
+      }
     }
-  }
   configChanged = true; // Mark config as changed so it will be saved
-}
+  }
 
 void runCommandAfterReset(char command) {
   if (EEPROM.read(CLEARBEFORECOMMANDADDRESS) == 1) {
     return;
-  } else {
+    } else {
 
     EEPROM.write(CLEARBEFORECOMMANDADDRESS, 1);
     EEPROM.write(LASTCOMMANDADDRESS, command);
@@ -755,8 +807,8 @@ void runCommandAfterReset(char command) {
     digitalWrite(RESETPIN, LOW);
 
     AIRCR_Register = 0x5FA0004; // hard reset
+    }
   }
-}
 
 char lastCommandRead(void) {
 
@@ -765,11 +817,11 @@ char lastCommandRead(void) {
   Serial.println((char)EEPROM.read(LASTCOMMANDADDRESS));
 
   return EEPROM.read(LASTCOMMANDADDRESS);
-}
+  }
 void lastCommandWrite(char lastCommand) {
 
   EEPROM.write(LASTCOMMANDADDRESS, lastCommand);
-}
+  }
 
 void readSettingsFromConfig() {
   // Debug flags
@@ -813,33 +865,41 @@ void readSettingsFromConfig() {
   dacOutput[1] = jumperlessConfig.dac_settings.dac_1;
 
   // GPIO settings
-  for (int i = 0; i < 8; i++) {
+  for (int i = 0; i < 10; i++) {  // Changed from 8 to 10 to include UART pins
+
     // Combine direction and pull settings into a single value
     // 0 = output low, 1 = output high, 2 = input, 3 = input pullup, 4 = input pulldown
-    if (jumperlessConfig.gpio.direction[i] == 0) { // output
-      gpioState[i] = jumperlessConfig.gpio.pulls[i] ? 1 : 0; // 1 for high, 0 for low
-      gpio_set_dir(20+i, true);
-    } else if (jumperlessConfig.gpio.direction[i] == 1) { // input
-      gpio_set_dir(20+i, false);
-      if (jumperlessConfig.gpio.pulls[i] == 2) { // no pull
-        gpioState[i] = 2;
-        gpio_set_pulls(20+i, false, false);
-      } else if (jumperlessConfig.gpio.pulls[i] == 1) { // pullup
-        gpioState[i] = 3;
-        gpio_set_pulls(20+i, true, false);
-      } else if (jumperlessConfig.gpio.pulls[i] == 0) { // pulldown
-        gpioState[i] = 4;
-        gpio_set_pulls(20+i, false, true);
-      } else {
-        gpioState[i] = 5; // unknown
-        gpio_set_pulls(20+i, false, false);
-        
-      }
-    } else {
-      gpioState[i] = 5; // unknown
-      gpio_set_dir(20+i, false);
-      gpio_set_pulls(20+i, false, false);
+
+    int gpio_pin = 20 + i;
+    if (i == 8) {
+      gpio_pin = 0; // UART TX
+      } else if (i == 9) {
+        gpio_pin = 1; // UART RX
+        }
+      if (jumperlessConfig.gpio.direction[i] == 0) { // output
+        gpioState[i] = jumperlessConfig.gpio.pulls[i] ? 1 : 0; // 1 for high, 0 for low
+        gpio_set_dir(gpio_pin, true);
+        } else if (jumperlessConfig.gpio.direction[i] == 1) { // input
+          gpio_set_dir(gpio_pin, false);
+          if (jumperlessConfig.gpio.pulls[i] == 2) { // no pull
+            gpioState[i] = 2;
+            gpio_set_pulls(gpio_pin, false, false);
+            } else if (jumperlessConfig.gpio.pulls[i] == 1) { // pullup
+              gpioState[i] = 3;
+              gpio_set_pulls(gpio_pin, true, false);
+              } else if (jumperlessConfig.gpio.pulls[i] == 0) { // pulldown
+                gpioState[i] = 4;
+                gpio_set_pulls(gpio_pin, false, true);
+                } else {
+                gpioState[i] = 5; // unknown
+                gpio_set_pulls(gpio_pin, false, false);
+                }
+          } else {
+          gpioState[i] = 5; // unknown
+          gpio_set_dir(gpio_pin, false);
+          gpio_set_pulls(gpio_pin, false, false);
+          }
     }
+
   }
-}
 /// 0 = output low, 1 = output high, 2 = input, 3 = input pullup, 4 = input pulldown, 5 = unknown

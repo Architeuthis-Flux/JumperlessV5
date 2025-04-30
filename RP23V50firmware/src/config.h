@@ -2,7 +2,7 @@
 #define CONFIG_H
 
 //Jumperless config
-#include "JumperlessDefinesRP2040.h"
+#include "JumperlessDefines.h"
 
 
 // extern int hwRevision;
@@ -77,14 +77,14 @@ struct config {
     struct display_settings {
         int lines_wires = 1;
         int menu_brightness = 100;
-        int led_brightness = 10;
-        int rail_brightness = 15;
-        int special_net_brightness = 20;
+        int led_brightness = 50;
+        int rail_brightness = 55;
+        int special_net_brightness = 80;
         int net_color_mode = 0;
     } display_settings;
 
     struct gpio {
-        int direction[8] = {
+        int direction[10] = {
             1, //gpio_0 1 = input 0 = output
             1, //gpio_1
             1, //gpio_2
@@ -93,9 +93,11 @@ struct config {
             1, //gpio_5
             1, //gpio_6
             1, //gpio_7
+            0, //uart_tx
+            1, //uart_rx
         };
-        int pulls[8] = {
-            0, //gpio_0 0 = pull up 1 = pull down 2 = none
+        int pulls[10] = {
+            0, //gpio_0 0 = pull down 1 = pull up 2 = none
             0, //gpio_1
             0, //gpio_2
             0, //gpio_3
@@ -103,11 +105,13 @@ struct config {
             0, //gpio_5
             0, //gpio_6
             0, //gpio_7
+            2, //uart_tx - no pull
+            2, //uart_rx - no pull
         };
-        int uart_tx_pin = 0;
-        int uart_rx_pin = 1;
-        int uart_tx_pull = 2;
-        int uart_rx_pull = 2;
+        // int uart_tx_pin = 0;
+        // int uart_rx_pin = 1;
+        // int uart_tx_pull = 2;
+        // int uart_rx_pull = 2;
         int uart_tx_function = 0; //0 = tx, 1 = rx, 2 = gpio_in, 3 = gpio_out
         int uart_rx_function = 1;
     } gpio;

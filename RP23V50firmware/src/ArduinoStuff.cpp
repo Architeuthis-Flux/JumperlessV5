@@ -1,10 +1,16 @@
 // SPDX-License-Identifier: MIT
 
-#include "ArduinoStuff.h"
-#include "LEDs.h"
-#include "MatrixStateRP2040.h"
-#include "NetsToChipConnections.h"
 
+#include "LEDs.h"
+#include "MatrixState.h"
+#include "NetsToChipConnections.h"
+#include "config.h"
+#include "ArduinoStuff.h"
+#include "JumperlessDefines.h"
+#include "Peripherals.h"
+
+#include "Commands.h"
+//#include "FileParsing.h"
 Adafruit_USBD_CDC USBSer1;
 Adafruit_USBD_CDC USBSer2;
 
@@ -32,12 +38,20 @@ void initSecondSerial(void) {
   USBSer1.setStringDescriptor("JL Arduino");  //Not working
   USBSer2.setStringDescriptor("JL Routable"); //Not working
 
+if (jumperlessConfig.serial.serial_1.function != 0) {
   USBSer1.begin(baudRateUSBSer1, getSerial1Config());
-  Serial1.begin(baudRateUSBSer1, getSerial1Config());
+  // if (jumperlessConfig.gpio.uart1_tx_function != 2) {
+
+    Serial1.begin(baudRateUSBSer1, getSerial1Config());
+  //}
+}
 
 
+if (jumperlessConfig.serial.serial_2.function != 0) {
   USBSer2.begin(baudRateUSBSer2, getSerial2Config());
   Serial2.begin(baudRateUSBSer2, getSerial2Config());
+}
+
 #endif
 }
 
@@ -302,10 +316,21 @@ void checkForConfigChangesUSBSer2(bool print) {
   }
 }
 
+unsigned long serial1LEDTimer = 0;
+unsigned long lastSerial1TxRead = 0;
+unsigned long lastSerial1RxRead = 0;
+unsigned long lastSerial2TxRead = 0;
+unsigned long lastSerial2RxRead = 0;
+
 void secondSerialHandler(void) {
 
+  if (jumperlessConfig.serial.serial_1.function != 0) {
   checkForConfigChangesUSBSer1();
+  }
+  if (jumperlessConfig.serial.serial_2.function != 0) {
   checkForConfigChangesUSBSer2();
+  }
+
 
   bool actArduinoDTR = USBSer1.dtr();
   bool actRouteableDTR = USBSer2.dtr();
@@ -344,17 +369,40 @@ void secondSerialHandler(void) {
   }
 
 
+  if (jumperlessConfig.serial.serial_1.function != 0) {
   if (USBSer1.available()) {
     char c = USBSer1.read();
     Serial1.write(c);
+    gpioReadingColors[8] = 0x1f1900;
+    gpioReading[8] = 1;
+    lastSerial1TxRead = millis();
+    showLEDsCore2 = 2;
     // Serial1.print(c);
+  } else {
+    if (millis() - lastSerial1TxRead > 50) {
+      gpioReadingColors[8] = 0x080501;
+      gpioReading[8] = 0;
+      //showLEDsCore2 = 2;
+    }
   }
   if (Serial1.available()) {
     char c = Serial1.read();
     USBSer1.write(c);
+    gpioReadingColors[9] = 0x00191f;
+    gpioReading[9] = 1;
+    lastSerial1RxRead = millis();
+    showLEDsCore2 = 2;
     //  Serial.print(c);
+  } else {
+    if (millis() - lastSerial1RxRead > 50) {
+      gpioReadingColors[9] = 0x010508;
+      gpioReading[9] = 0;
+      //showLEDsCore2 = 2;
+    }
+  }
   }
 
+  if (jumperlessConfig.serial.serial_2.function != 0) {
   if (USBSer2.available()) {
     char c = USBSer2.read();
     Serial2.write(c);
@@ -365,6 +413,7 @@ void secondSerialHandler(void) {
     USBSer2.write(c);
     //  Serial.print(c);
   }
+}
 }
 
 void SetArduinoResetLine(bool state){

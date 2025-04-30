@@ -72,6 +72,7 @@ void printRawRow(uint8_t data, int row, uint32_t color, uint32_t bg, int scale =
         uint32_t frames[15] = {0xffffff};
         unsigned long lastFrameTime;
         unsigned long frameInterval = 100;
+        int type;
 
         
     };

@@ -1,11 +1,10 @@
 // SPDX-License-Identifier: MIT
 
 #include "Peripherals.h"
-
 #include "Adafruit_INA219.h"
 
 #include "LEDs.h"
-#include "MatrixStateRP2040.h"
+#include "MatrixState.h"
 #include "NetManager.h"
 
 #include "hardware/adc.h"
@@ -73,8 +72,8 @@ int revisionNumber = 0;
 int showReadings = 0;
 
 int showADCreadings[8] = {1, 1, 1, 1};
-uint32_t adcReadingColors[8] = {0x010101, 0x010101, 0x010101,
-                                0x010101, 0x010101, 0x010101};
+uint32_t adcReadingColors[8] = {0x050505, 0x050505, 0x050505,
+                                0x050505, 0x050505, 0x050505};
 float adcReadingRanges[8][2] = {
     {-8.0, 8.0}, {-8.0, 8.0}, {-8.0, 8.0}, {-8.0, 8.0}, {0.0, 5.0},
 };
@@ -129,29 +128,48 @@ uint16_t sine0[360];
 uint16_t sine1[360];
 
 void initGPIO(void) {
-  for (int i = 0; i < 8; i++) {
-    switch (gpioState[i]) {
-      case 0: // output low
-        pinMode(20 + i, OUTPUT);
-        digitalWrite(20 + i, LOW);
-        break;
-      case 1: // output high
-        pinMode(20 + i, OUTPUT);
-        digitalWrite(20 + i, HIGH);
-        break;
-      case 2: // input
-        pinMode(20 + i, INPUT);
-        break;
-      case 3: // input pullup
-        pinMode(20 + i, INPUT_PULLUP);
-        break;
-      case 4: // input pulldown
-        pinMode(20 + i, INPUT_PULLDOWN);
-        break;
-      case 5: // unknown - default to input
-        pinMode(20 + i, INPUT);
-        break;
+  for (int i = 0; i < 10; i++) {
+    int gpio_pin = 0;
+    if (i < 8) {  // Regular GPIO pins 0-7 are on pins 20-27
+      gpio_pin = i + 20;  // Map GPIO 0-7 to pins 20-27
+
+    } else if (i == 8) {  // UART TX (pin 0)
+      gpio_pin = 0;
+    } else if (i == 9) {  // UART RX (pin 1)
+      gpio_pin = 1;
     }
+      gpio_init(gpio_pin);
+      switch (gpioState[i]) {
+        case 0: // output low
+          gpio_set_dir(gpio_pin, true);  // Set as output
+          gpio_set_pulls(gpio_pin, false, false);  // No pulls
+          gpio_put(gpio_pin, false);  // Set low
+          break;
+        case 1: // output high
+          gpio_set_dir(gpio_pin, true);  // Set as output
+          gpio_set_pulls(gpio_pin, false, false);  // No pulls
+          gpio_put(gpio_pin, true);  // Set high
+          break;
+        case 2: // input
+          gpio_set_dir(gpio_pin, false);  // Set as input
+          gpio_set_pulls(gpio_pin, false, false);  // No pulls
+          break;
+        case 3: // input pullup
+          gpio_set_dir(gpio_pin, false);  // Set as input
+          gpio_set_pulls(gpio_pin, true, false);  // Pull up
+          break;
+        case 4: // input pulldown
+          gpio_set_dir(gpio_pin, false);  // Set as input
+          gpio_set_pulls(gpio_pin, false, true);  // Pull down
+          break;
+        case 5: // unknown - default to input
+          gpio_set_dir(gpio_pin, false);  // Set as input
+          gpio_set_pulls(gpio_pin, false, false);  // No pulls
+          break;
+      }
+    
+      
+    
   }
 }
 int reads2[30][2];
@@ -421,19 +439,50 @@ return state;
 
 
 
-uint32_t gpioReadingColors[10] = {0x010101, 0x010101, 0x010101, 0x010101,
-                                  0x010101, 0x010101, 0x010101, 0x010101,
-                                  0x010101, 0x010101};
+uint32_t gpioReadingColors[10] = {0x050507, 0x050507, 0x050507, 0x050507,
+                                  0x050507, 0x050507, 0x050507, 0x050507,
+                                  0x050507, 0x050507};
+
+uint32_t gpioIdleColors[10] = {0x050206, 0x050307, 0x040407, 0x040407,
+                               0x040407, 0x040407, 0x040407, 0x040407,
+                               0x040407, 0x040407};
+
+uint8_t gpioIdleHues[10] = {0, 25, 50, 75, 100, 125, 150, 175, 200, 225};
 
 void readGPIO(void) {
   // Serial.println("\n\n\n\rreadGPIO\n\n\n\n\n\r");
   // return;
-  for (int i = 0; i < 8; i++) {
+  for (int i = 0; i < 8; i++) { //if you want to read the UART pins, set this to 10
     // if (gpioNet[i] != -1 &&
     //     (gpioState[i] == 2 || gpioState[i] == 3 || gpioState[i] == 4)) {
     //   int reading = digitalRead(GPIO_1_PIN + i); // readFloatingOrState(20 + i); //this is a regular read
           if (gpioNet[i] != -1 && (gpioState[i] == 2 || gpioState[i] == 3 || gpioState[i] == 4)) {
-      int reading = gpioReadWithFloating(20 + i); //check if the pin is floating or has a state
+            int reading = 0;
+            if (i == 8 ) {
+              continue;
+              if (gpio_get_dir(0) == 0) {
+                reading = digitalRead(0);
+              } else {
+                reading = gpio_get_out_level(0);
+              }
+            } else if (i == 9) {
+              if (gpioReading[i] == 0) {
+              reading = gpioReadWithFloating(1);
+              } else {
+                continue;
+              }
+              // if (gpio_get_dir(1) == 0) {
+              //   //reading = digitalRead(1);
+              //   reading = gpioReadWithFloating(1);
+              // } else {
+              //   reading = gpio_get_out_level(1);
+              // }
+            
+            } else {
+              reading = gpioReadWithFloating(20 + i); //check if the pin is floating or has a state
+            }
+
+      delayMicroseconds(10);
       // Serial.print("gpioNet[");
       // Serial.print(i);
       // Serial.print("]: ");
@@ -450,7 +499,7 @@ void readGPIO(void) {
 
       case 0:
         gpioReading[i] = 0;
-        gpioReadingColors[i] = 0x001801;
+        gpioReadingColors[i] = 0x002004;
                 //         net[gpioNet[i]].color = {0x00, 0x0f, 0x05};
                 // netColors[gpioNet[i]] = {0x00, 0x0f, 0x05};
         // lightUpNet(gpioNet[i], -1, 1, 22, 0, 0, 0x000f05);
@@ -458,7 +507,7 @@ void readGPIO(void) {
       case 1:
 
         gpioReading[i] = 1;
-        gpioReadingColors[i] = 0x3a0001;
+        gpioReadingColors[i] = 0x200400;
         //         net[gpioNet[i]].color = {0x22, 0x00, 0x05};
         //         netColors[gpioNet[i]] = {0x22, 0x00, 0x05};
         // lightUpNet(gpioNet[i], -1, 1, 22, 0, 0, 0x220005);
@@ -466,11 +515,11 @@ void readGPIO(void) {
       case 2:
 
         gpioReading[i] = 2;
-        gpioReadingColors[i] = 0x010103;
-        //  net[gpioNet[i]].color = {0x00, 0x00, 0x05};
-        //  netColors[gpioNet[i]] = {0x00, 0x00, 0x05};
+        // hsvColor hsv = {gpioIdleHues[i], 37, 7};
+        // gpioReadingColors[i] = HsvToRaw(hsv); //this is handled in showRowAnimations() in Graphics.cpp
+
         //  lightUpNet(gpioNet[i]);
-        
+        gpioReadingColors[i] = 0x040408; //just in case it isn't
         break;
       }
     } else {

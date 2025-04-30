@@ -1,7 +1,8 @@
 // SPDX-License-Identifier: MIT
 
 #include "NetManager.h"
-#include "MatrixStateRP2040.h"
+//#include "FileParsing.h"
+#include "MatrixState.h"
 #include "NetsToChipConnections.h"
 #include "Peripherals.h"
 #include "SafeString.h"
@@ -475,6 +476,15 @@ void populateSpecialFunctions(int net, int node) {
     gpioNet[7] = net;
     foundGPIO = 1;
     break;
+    case RP_UART_TX:
+    gpioNet[8] = net;
+    foundGPIO = 1;
+    break;
+    case RP_UART_RX:
+    gpioNet[9] = net;
+    foundGPIO = 1;
+    break;
+    
   }
   if (foundGPIO == 1) {
     //     for (int i = 0; i < 8; i++)

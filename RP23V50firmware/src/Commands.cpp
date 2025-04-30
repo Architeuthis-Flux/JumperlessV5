@@ -2,9 +2,9 @@
 #include "CH446Q.h"
 #include "FileParsing.h"
 #include "Graphics.h"
-#include "JumperlessDefinesRP2040.h"
+#include "JumperlessDefines.h"
 #include "LEDs.h"
-#include "MatrixStateRP2040.h"
+#include "MatrixState.h"
 #include "Menus.h"
 #include "NetManager.h"
 #include "NetsToChipConnections.h"
@@ -352,6 +352,20 @@ bool checkFloating(int node) {
   case RP_GPIO_4:
     gpioPin = GPIO_4_PIN;
     break;
+  case RP_GPIO_5:
+    gpioPin = GPIO_5_PIN;
+    break;
+  case RP_GPIO_6:
+    gpioPin = GPIO_6_PIN;
+    break;
+  case RP_GPIO_7:
+    gpioPin = GPIO_7_PIN;
+    break;
+  case RP_GPIO_8:
+    gpioPin = GPIO_8_PIN;
+    break;
+    
+    
   case RP_UART_RX:
     gpioPin = GPIO_RX_PIN;
     break;

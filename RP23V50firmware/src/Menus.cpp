@@ -9,13 +9,13 @@
 #include "FatFS.h"
 #include "FileParsing.h"
 #include "Graphics.h"
-#include "JumperlessDefinesRP2040.h"
+#include "JumperlessDefines.h"
 #include "LEDs.h"
 #include "Peripherals.h"
 #include "PersistentStuff.h"
 #include "Probing.h"
 #include "RotaryEncoder.h"
-#include "MatrixStateRP2040.h"
+#include "MatrixState.h"
 #include "NetManager.h"
 #include "NetsToChipConnections.h"
 #include "configManager.h"
@@ -1097,52 +1097,7 @@ int getMenuSelection(void) {
   return -1;
   }
 
-// char *findSubMenuString(int menuPosition, int selection) {
-//   String subMenuStrings[8];
-//   int menuOptionLengths[8];
-//   int maxMenuOptionLength = 0;
-//   for (int i = 0; i < 8; i++) {
-//     subMenuStrings[i] = " ";
-//   }
-//   for (int i = 0; i < 20; i++) {
-//     submenuBuffer[i] = 0;
-//   }
 
-//   int shiftStars = -2;
-//   int lastOption = 0;
-//   for (int i = 0; i < 8; i++) {
-//     int optionStart = -1;
-//     int optionEnd = -1;
-
-//     for (int j = lastOption; j < 32; j++) {
-//       if (bitRead(optionSlpitLocations[menuPosition], j) == 1) {
-//         if (optionStart == -1) {
-//           optionStart = j;
-//           shiftStars++;
-//         } else {
-//           optionEnd = j;
-//           shiftStars++;
-//           lastOption = j + 1;
-//           break;
-//         }
-//       }
-//     }
-//     // Serial.print("optionStart: ");
-//     // Serial.println(optionStart);
-//     if (optionStart != -1 && optionEnd != -1) {
-//       subMenuStrings[i] = menuLines[menuPosition].substring(
-//           optionStart - shiftStars, optionEnd - shiftStars - 1);
-//       if (subMenuStrings[i].length() > maxMenuOptionLength) {
-//         menuOptionLengths[i] = subMenuStrings[i].length();
-//         maxMenuOptionLength = subMenuStrings[i].length();
-//       }
-//     }
-//   }
-
-//   subMenuStrings[selection].toCharArray(submenuBuffer, 20, 0);
-
-//   return submenuBuffer;
-// }
 
 uint32_t nodeSelectionColors[10] = {
     0x0f0700, 0x00090f, 0x0a000f, 0x050d00,
@@ -1153,7 +1108,9 @@ uint32_t nodeSelectionColorsHeader[10] = {
     0x180d00, 0x0000af, 0x1a004f, 0x061f29,
   };
 
-int selectSubmenuOption(int menuPosition, int menuLevel) {
+//!todo highlight the rails as you select them
+
+int selectSubmenuOption(int menuPosition, int menuLevel) { 
 
   rotaryDivider = 4;
   delayMicroseconds(3000);
@@ -1354,22 +1311,22 @@ int selectSubmenuOption(int menuPosition, int menuLevel) {
 
                 switch (highlightedOption) {
                   case 0:
-                    menuBrightnessSetting = -80;
+                    menuBrightnessSetting = -70;
                     break;
                   case 1:
-                    menuBrightnessSetting = -65;
-                    break;
-                  case 2:
                     menuBrightnessSetting = -55;
                     break;
-                  case 3:
+                  case 2:
                     menuBrightnessSetting = -45;
                     break;
+                  case 3:
+                    menuBrightnessSetting = -35;
+                    break;
                   case 4:
-                    menuBrightnessSetting = -30;
+                    menuBrightnessSetting = -15;
                     break;
                   case 5:
-                    menuBrightnessSetting = -15;
+                    menuBrightnessSetting = -5;
                     break;
                   case 6:
                     menuBrightnessSetting = 0;

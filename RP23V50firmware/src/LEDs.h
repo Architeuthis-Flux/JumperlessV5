@@ -4,7 +4,7 @@
 
 #include "Adafruit_NeoMatrix.h"
 #include "Adafruit_NeoPixel.h"
-#include "JumperlessDefinesRP2040.h"
+#include "JumperlessDefines.h"
 #include "NetsToChipConnections.h"
 #include "RotaryEncoder.h"
 #include <Arduino.h>
@@ -59,7 +59,7 @@ class ledClass { //I'm literally copying this from Adafruit_NeoPixel.h so I can 
   uint32_t getPixelColor(uint16_t n);
   uint16_t numPixels(void);
   void fill(uint32_t c = 0, uint16_t first = 0, uint16_t count = 0);
-  void setBrightness(uint8_t);
+  void setBrightness(uint8_t = 254);
   void clear(void);
   void end(void);
 
@@ -280,6 +280,7 @@ uint32_t scaleDownBrightness(uint32_t hexColor, int scaleFactor = 8,
                              int maxBrightness = 15);
 void showSkippedNodes(uint32_t onColor = 0x0f1f2f, uint32_t offColor =  0x040007);
 void clearLEDsExceptRails();
+uint32_t HsvToRaw(hsvColor hsv);
 
 uint32_t packRgb(uint8_t r, uint8_t g, uint8_t b);
 void startupColors(void);

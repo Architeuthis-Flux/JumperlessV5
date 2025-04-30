@@ -42,11 +42,11 @@ KevinC@ppucc.io
 
 #include "ArduinoStuff.h"
 #include "FileParsing.h"
-#include "Graphics.h"
-#include "JumperlessDefinesRP2040.h"
+#include "Graphics.h" 
+#include "JumperlessDefines.h"
 #include "LEDs.h"
 #include "MachineCommands.h"
-#include "MatrixStateRP2040.h"
+#include "MatrixState.h"
 #include "Menus.h"
 #include "NetManager.h"
 #include "NetsToChipConnections.h"
@@ -64,40 +64,9 @@ KevinC@ppucc.io
 #endif
 #include "UserCode.h"
 
-// #include <usb-descriptors.c>
-//  #include <FreeRTOS.h>
-
-//  #include "hardware/flash.h"
-//   #include "pico/multicore.h"
-//   #include <picosdk/src/rp2_common/hardware_flash.h>
-
-// #include "AdcUsb.h"
-// #include "logic_analyzer.h"
-// LogicAnalyzer logicAnalyzer;
-// Capture capture(MAX_FREQ, MAX_FREQ_THRESHOLD);
-
-// #include "pico/multicore.h"
-// #include "hardware/watchdog.h"
-
-// using namespace logic_analyzer;
 
 bread b;
 
-// bool core1_separate_stack = true;
-
-// SerialUSB Serial;
-//  SerialUSB Serial5;
-// SerialUSB Serial3;
-
-// PluggableUSBModule PluggableUSB(2, 2, 0);
-
-// RawHID_::RawHID_(void) : PluggableUSBModule(1, 1, epType),
-// protocol(HID_REPORT_PROTOCOL), idle(1), dataLength(0), dataAvailable(0),
-// featureReport(NULL), featureLength(0)
-// {
-// 	epType[0] = EP_TYPE_INTERRUPT_IN;
-
-// }
 
 int supplySwitchPosition = 0;
 volatile bool core1busy = false;
@@ -126,15 +95,15 @@ void setup() {
   pinMode(RESETPIN, OUTPUT_12MA);
 
   digitalWrite(RESETPIN, HIGH);
-  /// multicore_lockout_victim_init();
+
   //delayMicroseconds(800);
   // Serial.setTimeout(8000);
   //  USB_PID = 0xACAB;
   //  USB_VID = 0x1D50;
   //  USB_MANUFACTURER = "Architeuthis Flux";
   //  USB_PRODUCT = "Jumperless";
-  //  USBSetup
-  // Serial.ignoreFlowControl(true);
+
+
   Serial.begin(115200);
 
   // Initialize FatFS
@@ -184,9 +153,9 @@ void setup() {
     }
 
   clearAllNTCC();
-  pinMode(probePin, OUTPUT_8MA);
+  pinMode(PROBE_PIN, OUTPUT_8MA);
   // pinMode(buttonPin, INPUT_PULLDOWN);
-  digitalWrite(probePin, HIGH);
+  digitalWrite(PROBE_PIN, HIGH);
 
   initRotaryEncoder();
 
@@ -222,6 +191,8 @@ void setupCore2stuff() {
   initRowAnimations();
   setupSwirlColors();
   initSecondSerial();
+
+  
   // delay(4);
   }
 
@@ -247,7 +218,7 @@ int readInNodesArduino = 0;
 
 int restoredNodeFile = 0;
 
-const char firmwareVersion[] = "5.1.0.6"; // remember to update this
+const char firmwareVersion[] = "5.1.0.7"; // remember to update this
 
 int firstLoop = 1;
 
@@ -307,16 +278,16 @@ menu:
 
     }
 
-  for (int i = 0; i < 8; i++) {
-    Serial.print("gpioState[");
-    Serial.print(i);
-    Serial.print("]: ");
-    Serial.println(gpioState[i]);
-    Serial.print("gpioNet[");
-    Serial.print(i);
-    Serial.print("]: ");
-    Serial.println(gpioNet[i]);
-    }
+  // for (int i = 0; i < 10; i++) {
+  //   Serial.print("gpioState[");
+  //   Serial.print(i);
+  //   Serial.print("]: ");
+  //   Serial.print(gpioState[i]);
+  //   Serial.print("\tgpioNet[");
+  //   Serial.print(i);
+  //   Serial.print("]: ");
+  //   Serial.println(gpioNet[i]);
+  //   }
 
   Serial.print("\n\n\r");
   //b.clear();
@@ -324,7 +295,10 @@ menu:
 
   if (firstLoop == 1) {
     firstLoop = 0;
-    // delay(100);
+    // while (Serial.available() == 0) {
+    //   startupColorsV5();
+    //   delay(100);
+    //   }
     //setRailsAndDACs();
     if (attract == 1) {
       defconDisplay = 0;
@@ -1213,10 +1187,10 @@ void core2stuff() // core 2 handles the LEDs and the CH446Q8
               // showAllRowAnimations();
               }
             } else {
-            // readGPIO();
+             
             }
           schedulerTimer = micros();
-
+// readGPIO();
     }
   }
 

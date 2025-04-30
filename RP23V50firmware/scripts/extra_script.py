@@ -1,5 +1,5 @@
 Import("env")
-#import serial
+import serial
 
 
 #env = DefaultEnvironment()
@@ -62,7 +62,7 @@ def after_upload(source, target, env):
             break
 
 
-env.AddPostAction("upload", after_upload)
+#env.AddPostAction("upload", after_upload)
 
 
 # Custom HEX from ELF

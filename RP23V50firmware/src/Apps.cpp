@@ -1,12 +1,11 @@
-#include "Commands.h"
 #include "FileParsing.h"
 #include "Graphics.h"
-#include "MatrixStateRP2040.h"
+#include "MatrixState.h"
 #include "NetManager.h"
 #include "NetsToChipConnections.h"
 #include "Peripherals.h"
 #include "Probing.h"
-#include "JumperlessDefinesRP2040.h"
+#include "JumperlessDefines.h"
 #include "PersistentStuff.h"
 #include "MachineCommands.h"
 #include "ArduinoStuff.h"
@@ -17,6 +16,8 @@
 #include "Menus.h"
 #include "CH446Q.h"
 #include "configManager.h"
+#include "FileParsing.h"
+#include "Commands.h"
 
 #include <PNGdec.h>
 // #include <PNGDisplay.h>
