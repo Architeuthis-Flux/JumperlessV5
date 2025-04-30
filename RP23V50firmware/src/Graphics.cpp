@@ -11,45 +11,45 @@
 #include "leds.h"
 #include "Menus.h"  
 #include "Peripherals.h"
-
+#include "Images.h"
 /* clang-format off */
 
-const int screenMap[445] = 
-    { 300, 300, 301, 302, 303, 304, 305, 305, 306, 307, 308, 309, 310, 310, 311, 312, 313, 314, 315, 315, 316, 317, 318, 319, 320, 320, 321, 322, 323, 324, 
-      325, 325, 326, 327, 328, 329, 330, 330, 331, 332, 333, 334, 335, 335, 336, 337, 338, 339, 340, 340, 341, 342, 343, 344, 345, 345, 346, 347, 348, 349,
-        0,   5,  10,  15,  20,  25,  30,  35,  40,  45,  50,  55,  60,  65,  70,  75,  80,  85,  90,  95, 100, 105, 110, 115, 120, 125, 130, 135, 140, 145,
-        1,   6,  11,  16,  21,  26,  31,  36,  41,  46,  51,  56,  61,  66,  71,  76,  81,  86,  91,  96, 101, 106, 111, 116, 121, 126, 131, 136, 141, 146,
-        2,   7,  12,  17,  22,  27,  32,  37,  42,  47,  52,  57,  62,  67,  72,  77,  82,  87,  92,  97, 102, 107, 112, 117, 122, 127, 132, 137, 142, 147,
-        3,   8,  13,  18,  23,  28,  33,  38,  43,  48,  53,  58,  63,  68,  73,  78,  83,  88,  93,  98, 103, 108, 113, 118, 123, 128, 133, 138, 143, 148,
-        4,   9,  14,  19,  24,  29,  34,  39,  44,  49,  54,  59,  64,  69,  74,  79,  84,  89,  94,  99, 104, 109, 114, 119, 124, 129, 134, 139, 144, 149,
+const int screenMap[445] =
+  { 300, 300, 301, 302, 303, 304, 305, 305, 306, 307, 308, 309, 310, 310, 311, 312, 313, 314, 315, 315, 316, 317, 318, 319, 320, 320, 321, 322, 323, 324,
+    325, 325, 326, 327, 328, 329, 330, 330, 331, 332, 333, 334, 335, 335, 336, 337, 338, 339, 340, 340, 341, 342, 343, 344, 345, 345, 346, 347, 348, 349,
+      0,   5,  10,  15,  20,  25,  30,  35,  40,  45,  50,  55,  60,  65,  70,  75,  80,  85,  90,  95, 100, 105, 110, 115, 120, 125, 130, 135, 140, 145,
+      1,   6,  11,  16,  21,  26,  31,  36,  41,  46,  51,  56,  61,  66,  71,  76,  81,  86,  91,  96, 101, 106, 111, 116, 121, 126, 131, 136, 141, 146,
+      2,   7,  12,  17,  22,  27,  32,  37,  42,  47,  52,  57,  62,  67,  72,  77,  82,  87,  92,  97, 102, 107, 112, 117, 122, 127, 132, 137, 142, 147,
+      3,   8,  13,  18,  23,  28,  33,  38,  43,  48,  53,  58,  63,  68,  73,  78,  83,  88,  93,  98, 103, 108, 113, 118, 123, 128, 133, 138, 143, 148,
+      4,   9,  14,  19,  24,  29,  34,  39,  44,  49,  54,  59,  64,  69,  74,  79,  84,  89,  94,  99, 104, 109, 114, 119, 124, 129, 134, 139, 144, 149,
 
-      150, 155, 160, 165, 170, 175, 180, 185, 190, 195, 200, 205, 210, 215, 220, 225, 230, 235, 240, 245, 250, 255, 260, 265, 270, 275, 280, 285, 290, 295,
-      151, 156, 161, 166, 171, 176, 181, 186, 191, 196, 201, 206, 211, 216, 221, 226, 231, 236, 241, 246, 251, 256, 261, 266, 271, 276, 281, 286, 291, 296,
-      152, 157, 162, 167, 172, 177, 182, 187, 192, 197, 202, 207, 212, 217, 222, 227, 232, 237, 242, 247, 252, 257, 262, 267, 272, 277, 282, 287, 292, 297,
-      153, 158, 163, 168, 173, 178, 183, 188, 193, 198, 203, 208, 213, 218, 223, 228, 233, 238, 243, 248, 253, 258, 263, 268, 273, 278, 283, 288, 293, 298,
-      154, 159, 164, 169, 174, 179, 184, 189, 194, 199, 204, 209, 214, 219, 224, 229, 234, 239, 244, 249, 254, 259, 264, 269, 274, 279, 284, 289, 294, 299,  
+    150, 155, 160, 165, 170, 175, 180, 185, 190, 195, 200, 205, 210, 215, 220, 225, 230, 235, 240, 245, 250, 255, 260, 265, 270, 275, 280, 285, 290, 295,
+    151, 156, 161, 166, 171, 176, 181, 186, 191, 196, 201, 206, 211, 216, 221, 226, 231, 236, 241, 246, 251, 256, 261, 266, 271, 276, 281, 286, 291, 296,
+    152, 157, 162, 167, 172, 177, 182, 187, 192, 197, 202, 207, 212, 217, 222, 227, 232, 237, 242, 247, 252, 257, 262, 267, 272, 277, 282, 287, 292, 297,
+    153, 158, 163, 168, 173, 178, 183, 188, 193, 198, 203, 208, 213, 218, 223, 228, 233, 238, 243, 248, 253, 258, 263, 268, 273, 278, 283, 288, 293, 298,
+    154, 159, 164, 169, 174, 179, 184, 189, 194, 199, 204, 209, 214, 219, 224, 229, 234, 239, 244, 249, 254, 259, 264, 269, 274, 279, 284, 289, 294, 299,
 
-    
-      350, 350, 351, 352, 353, 354, 355, 355, 356, 357, 358, 359, 360, 360, 361, 362, 363, 364, 365, 365, 366, 367, 368, 369, 370, 370, 371, 372, 373, 374,
-      375, 375, 376, 377, 378, 379, 380, 380, 381, 382, 383, 384, 385, 385, 386, 387, 388, 389, 390, 390, 391, 392, 393, 394, 395, 395, 396, 397, 398, 399,
-    
-};
 
-const int screenMapNoRails[445] = 
-    {   0,   5,  10,  15,  20,  25,  30,  35,  40,  45,  50,  55,  60,  65,  70,  75,  80,  85,  90,  95, 100, 105, 110, 115, 120, 125, 130, 135, 140, 145,
-        1,   6,  11,  16,  21,  26,  31,  36,  41,  46,  51,  56,  61,  66,  71,  76,  81,  86,  91,  96, 101, 106, 111, 116, 121, 126, 131, 136, 141, 146,
-        2,   7,  12,  17,  22,  27,  32,  37,  42,  47,  52,  57,  62,  67,  72,  77,  82,  87,  92,  97, 102, 107, 112, 117, 122, 127, 132, 137, 142, 147,
-        3,   8,  13,  18,  23,  28,  33,  38,  43,  48,  53,  58,  63,  68,  73,  78,  83,  88,  93,  98, 103, 108, 113, 118, 123, 128, 133, 138, 143, 148,
-        4,   9,  14,  19,  24,  29,  34,  39,  44,  49,  54,  59,  64,  69,  74,  79,  84,  89,  94,  99, 104, 109, 114, 119, 124, 129, 134, 139, 144, 149,
+    350, 350, 351, 352, 353, 354, 355, 355, 356, 357, 358, 359, 360, 360, 361, 362, 363, 364, 365, 365, 366, 367, 368, 369, 370, 370, 371, 372, 373, 374,
+    375, 375, 376, 377, 378, 379, 380, 380, 381, 382, 383, 384, 385, 385, 386, 387, 388, 389, 390, 390, 391, 392, 393, 394, 395, 395, 396, 397, 398, 399,
 
-      150, 155, 160, 165, 170, 175, 180, 185, 190, 195, 200, 205, 210, 215, 220, 225, 230, 235, 240, 245, 250, 255, 260, 265, 270, 275, 280, 285, 290, 295,
-      151, 156, 161, 166, 171, 176, 181, 186, 191, 196, 201, 206, 211, 216, 221, 226, 231, 236, 241, 246, 251, 256, 261, 266, 271, 276, 281, 286, 291, 296,
-      152, 157, 162, 167, 172, 177, 182, 187, 192, 197, 202, 207, 212, 217, 222, 227, 232, 237, 242, 247, 252, 257, 262, 267, 272, 277, 282, 287, 292, 297,
-      153, 158, 163, 168, 173, 178, 183, 188, 193, 198, 203, 208, 213, 218, 223, 228, 233, 238, 243, 248, 253, 258, 263, 268, 273, 278, 283, 288, 293, 298,
-      154, 159, 164, 169, 174, 179, 184, 189, 194, 199, 204, 209, 214, 219, 224, 229, 234, 239, 244, 249, 254, 259, 264, 269, 274, 279, 284, 289, 294, 299,  
+  };
 
-    
-};
+const int screenMapNoRails[445] =
+  { 0,   5,  10,  15,  20,  25,  30,  35,  40,  45,  50,  55,  60,  65,  70,  75,  80,  85,  90,  95, 100, 105, 110, 115, 120, 125, 130, 135, 140, 145,
+      1,   6,  11,  16,  21,  26,  31,  36,  41,  46,  51,  56,  61,  66,  71,  76,  81,  86,  91,  96, 101, 106, 111, 116, 121, 126, 131, 136, 141, 146,
+      2,   7,  12,  17,  22,  27,  32,  37,  42,  47,  52,  57,  62,  67,  72,  77,  82,  87,  92,  97, 102, 107, 112, 117, 122, 127, 132, 137, 142, 147,
+      3,   8,  13,  18,  23,  28,  33,  38,  43,  48,  53,  58,  63,  68,  73,  78,  83,  88,  93,  98, 103, 108, 113, 118, 123, 128, 133, 138, 143, 148,
+      4,   9,  14,  19,  24,  29,  34,  39,  44,  49,  54,  59,  64,  69,  74,  79,  84,  89,  94,  99, 104, 109, 114, 119, 124, 129, 134, 139, 144, 149,
+
+    150, 155, 160, 165, 170, 175, 180, 185, 190, 195, 200, 205, 210, 215, 220, 225, 230, 235, 240, 245, 250, 255, 260, 265, 270, 275, 280, 285, 290, 295,
+    151, 156, 161, 166, 171, 176, 181, 186, 191, 196, 201, 206, 211, 216, 221, 226, 231, 236, 241, 246, 251, 256, 261, 266, 271, 276, 281, 286, 291, 296,
+    152, 157, 162, 167, 172, 177, 182, 187, 192, 197, 202, 207, 212, 217, 222, 227, 232, 237, 242, 247, 252, 257, 262, 267, 272, 277, 282, 287, 292, 297,
+    153, 158, 163, 168, 173, 178, 183, 188, 193, 198, 203, 208, 213, 218, 223, 228, 233, 238, 243, 248, 253, 258, 263, 268, 273, 278, 283, 288, 293, 298,
+    154, 159, 164, 169, 174, 179, 184, 189, 194, 199, 204, 209, 214, 219, 224, 229, 234, 239, 244, 249, 254, 259, 264, 269, 274, 279, 284, 289, 294, 299,
+
+
+  };
 
 
 uint8_t upperCase[30][3] = { {
@@ -501,63 +501,63 @@ void drawWires(int net) {
 
 
 int animationOrder[26] = {
-    TOP_RAIL, GND, BOTTOM_RAIL, GND, 
+    TOP_RAIL, GND, BOTTOM_RAIL, GND,
     RP_GPIO_1, RP_GPIO_2, RP_GPIO_3, RP_GPIO_4, RP_GPIO_5, RP_GPIO_6, RP_GPIO_7, RP_GPIO_8,
     RP_UART_TX, RP_UART_RX,
-    DAC0, DAC1, 
-    ROUTABLE_BUFFER_IN, ROUTABLE_BUFFER_OUT, 
-    ISENSE_PLUS, ISENSE_MINUS, 
+    DAC0, DAC1,
+    ROUTABLE_BUFFER_IN, ROUTABLE_BUFFER_OUT,
+    ISENSE_PLUS, ISENSE_MINUS,
     ADC0, ADC1, ADC2, ADC3, ADC4, ADC7 };
 
 /* clang-format off */
 
 uint32_t animations[26][15] = {
-//top rail
-    {0x080001, 0x080002, 0x070003, 0x080002, 0x080001,
-     0x090000, 0x090000, 0x080100, 0x070200, 0x060300,
-     0x070200, 0x080100, 0x080000, 0x090000, 0x080000},
-//gnd
-    {0x000900, 0x000a00, 0x020b00, 0x000a00, 0x000900,
-     0x000901, 0x000702, 0x000603, 0x000702, 0x000801,
-     0x000800, 0x010800, 0x020800, 0x020800, 0x010800},
-//bottom rail
-    {0x080001, 0x080002, 0x070003, 0x080002, 0x080001,
-     0x090000, 0x090000, 0x080100, 0x070200, 0x060300,
-     0x070200, 0x080100, 0x080000, 0x090000, 0x080000},
+  //top rail
+      {0x080001, 0x080002, 0x070003, 0x080002, 0x080001,
+       0x090000, 0x090000, 0x080100, 0x070200, 0x060300,
+       0x070200, 0x080100, 0x080000, 0x090000, 0x080000},
+       //gnd
+           {0x000900, 0x000a00, 0x020b00, 0x000a00, 0x000900,
+            0x000901, 0x000702, 0x000603, 0x000702, 0x000801,
+            0x000800, 0x010800, 0x020800, 0x020800, 0x010800},
+            //bottom rail
+                {0x080001, 0x080002, 0x070003, 0x080002, 0x080001,
+                 0x090000, 0x090000, 0x080100, 0x070200, 0x060300,
+                 0x070200, 0x080100, 0x080000, 0x090000, 0x080000},
   };
 
-uint8_t gpioAnimationBaseHues[10] = {6, 32, 58, 84, 110, 136, 162, 188, 214, 240};
+uint8_t gpioAnimationBaseHues[10] = { 6, 32, 58, 84, 110, 136, 162, 188, 214, 240 };
 
 /* clang-format on */
 
-uint32_t satValues[15] = {15, 25, 45, 65, 85, 105, 125, 145, 165, 185, 200, 190, 170, 80, 40};
+uint32_t satValues[15] = { 15, 25, 45, 65, 85, 105, 125, 145, 165, 185, 200, 190, 170, 80, 40 };
 
 unsigned long lastRowAnimationTime = 0;
 unsigned long rowAnimationInterval = 150;
 
 void initRowAnimations() {
   // 0=top rail, 1= gnd, 2 = bottom rail, 3 = gnd again, 4 = gpio 1, 5 = gpio 2, 6 = gpio 3, 7 = gpio 4, 8 = gpio 5, 9 = gpio 6, 10 = gpio 7, 11 = gpio 8,
-uint8_t maxSat = 250;
-uint8_t minSat = 3;
-uint8_t gpioIdleBrightness = 8;
+  uint8_t maxSat = 250;
+  uint8_t minSat = 3;
+  uint8_t gpioIdleBrightness = 8;
 
-// delay(1000);
+  // delay(1000);
 
-for (int i = 0; i < 10; i++) { //make the array of raw uint32_t values for the animations
-  for (int j = 0; j < 15; j++) {
-    hsvColor colorHSV;
+  for (int i = 0; i < 10; i++) { //make the array of raw uint32_t values for the animations
+    for (int j = 0; j < 15; j++) {
+      hsvColor colorHSV;
 
-      colorHSV = {gpioAnimationBaseHues[i], satValues[j], gpioIdleBrightness};
-    
-    
-    uint32_t color = HsvToRaw(colorHSV);
-    
-    animations[i+3][j] = color;
-    // Serial.print(color, HEX);
-    // Serial.print(" ");
+      colorHSV = { gpioAnimationBaseHues[i], satValues[j], gpioIdleBrightness };
+
+
+      uint32_t color = HsvToRaw(colorHSV);
+
+      animations[i + 3][j] = color;
+      // Serial.print(color, HEX);
+      // Serial.print(" ");
+      }
+    // Serial.println();
     }
-  // Serial.println();
-}
 
   for (int i = 0; i < 3; i++) {
     rowAnimations[i].index = i;
@@ -577,16 +577,16 @@ for (int i = 0; i < 10; i++) { //make the array of raw uint32_t values for the a
   rowAnimations[2].frameInterval = 160;
 
   for (int i = 0; i < 10; i++) {
-    rowAnimations[i+3].index = i+3;
-    rowAnimations[i+3].net = animationOrder[i+3];
-    rowAnimations[i+3].currentFrame = i;
-    rowAnimations[i+3].numberOfFrames = 15;
-    rowAnimations[i+3].type = 2; // gpio idle
+    rowAnimations[i + 3].index = i + 3;
+    rowAnimations[i + 3].net = animationOrder[i + 3];
+    rowAnimations[i + 3].currentFrame = i;
+    rowAnimations[i + 3].numberOfFrames = 15;
+    rowAnimations[i + 3].type = 2; // gpio idle
     for (int j = 0; j < 15; j++) {
-      rowAnimations[i+3].frames[j] = animations[i+3][j];
+      rowAnimations[i + 3].frames[j] = animations[i + 3][j];
       }
-    rowAnimations[i+3].direction = 1;
-    rowAnimations[i+3].frameInterval = 110;
+    rowAnimations[i + 3].direction = 1;
+    rowAnimations[i + 3].frameInterval = 110;
     }
 
 
@@ -630,7 +630,7 @@ void showRowAnimation(int index, int net) {
           return;
           }
         }
-    }
+      }
 
 
 
@@ -1469,7 +1469,7 @@ void showArray(uint8_t* array, int size) {
           leds.setPixelColor(array[screenMap[i]], array[i]);
           }
         }
-    showLEDsCore2 = -3;
+      showLEDsCore2 = -3;
   }
 
 
@@ -1904,3 +1904,263 @@ void playDoom(void) {
   // core1busy = 0;
   core2busy = 0;
   }
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+uint8_t rainbowr[30] = { 30, 29, 26, 23, 20, 17, 14, 11,  8,  5,  2,  0,  0,  0,  0,  0,  0,  0,  0,  2,  5,  8, 11, 14, 17, 20, 23, 26, 29, 30 };
+uint8_t rainbowg[30] = { 0,   1,  2,  5, 11, 14, 17, 20, 23, 26, 29, 30, 29, 26, 23, 20, 17, 14, 11,  8,  5,  2,  0,  0,  0,  0,  0,  0,  0,  0 };
+uint8_t rainbowb[30] = { 3,   2,  1,  0,  0,  1,  2,  3,  4,  6,  8, 11, 14, 17, 20, 23, 26, 29, 30, 29, 26, 23, 20, 17, 14, 11,  9,  7,  5,  4 };
+
+int cycleCount = 0;
+int brightnessSetLogo[45] = { -100, -99, -97, -95, -90, -85, -78, -72, -62, -52, -42, -32, -17, -2, 13, 28, 28, 28, 28, 28, 28, 28, 28, 28, 28, 28, 28, 28, 28, 28, 28, 28, 28,  28, 26, 23, 20, 12, 4, -5, -12, -20, -25, -30, -32 };
+int brightnessSetLogo2[45] = { -100, -99, -97, -95, -90, -85, -78, -72, -62, -52, -42, -32, -17, -2, 13,  23, 28, 28,28,28,28,28,29, 32, 35, 39, 44, 47, 50, 55, 57, 59, 61, 63, 65, 67, 69, 71, 73, 75, 77, 79, 81, 83, 85 };
+int brightnessSetHeader[45] = { -100, -99, -97, -95, -90, -85, -78, -72, -62, -52, -42, -32, -17, -2, 13,  23, 28, 28,28,28,28,28,28,28,28, 23, 18, 13, 8, 3, -2, -7, -12, -17, -22, -27, -32, -37, -42, -47, -57, -70, -85, -95, -100 };
+int brightnessSet = -100;
+
+
+void drawAnimatedImage(int imageIndex) {
+  showLEDsCore2 = -3;
+  leds.clear();
+  leds.show();
+  // delay(100);
+  cycleCount = 0;
+  brightnessSet = -100;
+  for (int i = startupFrameLEN - 1; i >= 0; i--) {
+    drawImage(i);
+    //showLEDsCore2 = 3;
+    leds.show();
+    delayMicroseconds(2000 + (cycleCount * 200));
+    }
+  //lightUpRail();
+  ///leds.clear();
+  showLEDsCore2 = -1;
+  }
+
+
+void drawImage(int imageIndex) {
+
+  int skipLines[21] = { 1, 0, 0, 1, 1, 0, 0, 0, 0, 0, 1, 1, 0, 0, 0, 0, 0, 1, 1, 0, 0, };
+  int lineIndex = 0;
+
+  for (int i = 1; i < 21; i++) {
+
+    if (skipLines[i] == 1) {
+      continue;
+      }
+    for (int j = 0; j < 30; j++) {
+
+      leds.setPixelColor(screenMap[lineIndex * 30 + j], scaleBrightness(startupFrameArray[imageIndex][i * 32 + j + 1], -93));
+
+      }
+    if (skipLines[i] == 0) {
+      lineIndex++;
+      }
+    }
+
+  // int brightnessCurve[45] = { -75, -50, -15, 10, 35, 50, 75, 75, 75, 75, 75, 70,  65, 55, 50, 45, 30, 10, -15, -75, -100 };
+  // int brightnessCurve[45] = { 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 };
+
+  if (cycleCount < 4) {
+    brightnessSet += 2;
+    } else if (cycleCount < 8) {
+      brightnessSet += 5;
+      } else if (cycleCount < 12) {
+        brightnessSet += 10;
+        } else if (cycleCount < 16) {
+          brightnessSet += 15;
+          }
+
+        // else if (cycleCount >= startupFrameLEN - 6) {
+        //   brightnessSet -= 2;
+        //   } else if (cycleCount >= startupFrameLEN - 16) {
+    // brightnessSet -=6;
+    // }
+        // Serial.print(brightnessSet);
+        // Serial.print(", ");
+
+        for (int i = 400; i < 445; i++) {
+
+          uint8_t pixel_r = rainbowr[(cycleCount + i + 19) % 30];
+          uint8_t pixel_g = rainbowg[(cycleCount + i + 19) % 30];
+          uint8_t pixel_b = rainbowb[(cycleCount + i + 19) % 30];
+          uint32_t pixel = (pixel_r & 0b11111111) << 16 | (pixel_g & 0b11111111) << 8 | (pixel_b & 0b11111111);
+
+          // if (i > 439) {
+          if (i < LOGO_LED_END && i > LOGO_LED_START) {
+          pixel = scaleBrightness(pixel, brightnessSetLogo[cycleCount]);
+          }
+          // } else {}
+          //   pixel = scaleBrightness(pixel, 0);
+          //   }
+          else if (i == ADC_LED_0 || i == ADC_LED_1) {
+            pixel_r = rainbowr[(cycleCount + i + 7) % 30];
+            pixel_g = rainbowg[(cycleCount + i + 7) % 30];
+            pixel_b = rainbowb[(cycleCount + i + 7) % 30];
+            pixel = (pixel_r & 0b11111111) << 16 | (pixel_g & 0b11111111) << 8 | (pixel_b & 0b11111111);
+
+            pixel = scaleBrightness(pixel, brightnessSetLogo2[cycleCount]);
+            }
+          else  if (i == DAC_LED_0 || i == DAC_LED_1) {
+            pixel_r = rainbowr[(cycleCount + i + 10) % 30];
+            pixel_g = rainbowg[(cycleCount + i + 10) % 30];
+            pixel_b = rainbowb[(cycleCount + i + 10) % 30];
+            pixel = (pixel_r & 0b11111111) << 16 | (pixel_g & 0b11111111) << 8 | (pixel_b & 0b11111111);
+
+            pixel = scaleBrightness(pixel, brightnessSetLogo2[cycleCount]);
+            }
+          else if (i == GPIO_LED_0 || i == GPIO_LED_1) {
+            pixel_r = rainbowr[(cycleCount + i + 15) % 30];
+            pixel_g = rainbowg[(cycleCount + i + 15) % 30];
+            pixel_b = rainbowb[(cycleCount + i + 15) % 30];
+            pixel = (pixel_r & 0b11111111) << 16 | (pixel_g & 0b11111111) << 8 | (pixel_b & 0b11111111);
+
+            pixel = scaleBrightness(pixel, brightnessSetLogo2[cycleCount]);
+            }
+          else if ( i == GND_T_LED || i == VIN_LED   ) {
+
+            pixel = scaleBrightness(pixel, brightnessSetLogo2[cycleCount]);
+            }
+            
+          else if (i == RST_0_LED || i == RST_1_LED || i == GND_B_LED || i == V3V3_LED || i == V5V_LED) {
+
+            pixel = scaleBrightness(pixel, brightnessSetLogo[cycleCount]);
+            } else {
+              pixel = scaleBrightness(pixel, brightnessSetHeader[cycleCount]);
+              }
+
+
+          
+          leds.setPixelColor(i, pixel);
+          }
+
+        cycleCount++;
+
+  }
+
+
+
+
+
+
+
+// int downsample_w = 10;
+// int downsample_h = 13;
+
+// int offset_w = 0;//SCREENWIDTH / downsample_w;
+// int offset_h = 0;//SCREENHEIGHT / downsample_h;
+
+// offset_h = 0;
+// downsample_h = 12;
+
+
+// for (int i = 0; i < 30; i++) {
+
+//   int downscanline = ((scanline + offset_h) / downsample_h) + 0;
+
+//   if (downscanline < 0) {
+//     continue;
+//     }
+
+//   if (scanlineOrder[downscanline] == 99) {
+//     continue;
+
+//     }
+
+//   if (scanlineOrder[downscanline] >= 14) {
+//     return;
+
+//     }
+
+
+//   if (scanlineOrder[downscanline] < 5) {
+
+//     screen[(i * 5) + scanlineOrder[downscanline]] = line[(i * downsample_w) + offset_w];
+
+//     } else if (scanlineOrder[downscanline] < 10) {
+//       screen[(((i + 29) * 5) + scanlineOrder[downscanline])] = line[(i * downsample_w) + offset_w];
+
+//       } else if (scanlineOrder[downscanline] < 14) {
+
+//         if (i < 25) {
+//           screen[(300 + ((scanlineOrder[downscanline] - 10) * 25) + i)] = line[(i * downsample_w) - (downsample_w / 2) + offset_w];
+//           }
+
+//         }
+//   }
+
+// for (int i = 0; i < (NUM_PIXELS); i++) {
+
+//     // if (i >= 150 && i < 210) {
+//     //     continue;
+//     // }
+//         if (buttonPressPause == 1) {
+//     continue;
+//     }
+//     if (i < 400) {
+//         if (buttonPressPause == 1) {
+//             put_pixel(pio, sm, 0x11111, 1);
+//             } else {
+//             put_pixel(pio, sm, screen[i], 1);
+//             }
+//         }
+//     //  put_pixel(pio, sm, screen[i], 1);
+//       // if (i > 300 && i < 400) {
+//       //     pio_sm_put_blocking(pio, sm, 0x00030303);
+//       //     }
+//     else if (i >= 400 && i < 446) {
+//         uint8_t pixel_r = 3;
+//         uint8_t pixel_g = 0;
+//         uint8_t pixel_b = 1;
+//         // switch (((i-400)+(framecountforusb/8))%3) {
+//         //     case 0:
+//         //         pixel_r = ((framecountforusb/8)%255);
+//         //         pixel_g = ((framecountforusb/8)%128);
+//         //         pixel_b = 0;//(i%64);
+//         //        // put_pixel(pio, sm, pixel_r, 1);
+//         //         break;
+//         //     case 1:
+//         //         pixel_b = ((framecountforusb/8)%255);
+//         //         pixel_r = ((framecountforusb/8)%128);
+//         //         pixel_g = 0;//(i%64);
+//         //         //put_pixel(pio, sm, pixel_g, 1);
+//         //         break;
+//         //     case 2:
+//         //         pixel_g = ((framecountforusb/8)%255);
+//         //         pixel_b = ((framecountforusb/8)%128);
+//         //         pixel_r = 0;//(i%64);
+//         //         //put_pixel(pio, sm, pixel_b, 1);
+//         //         break;
+//         //     }
+
+//         if (i > 429) {
+//             int index = (i - 400);
+//             pixel_r = rainbowr[(cycleCounter + index) % 30] / 4;
+//             pixel_g = rainbowg[(cycleCounter + index) % 30] / 4;
+//             pixel_b = rainbowb[(cycleCounter + index) % 30] / 4;
+//             } else {
+
+//             }
+
+
+
+
+//         uint16_t pixel = (pixel_r & 0b00011111) << 11 | (pixel_g & 0b00011111) << 6 | (pixel_b & 0b00011111);
+
+
+//             put_pixel(pio, sm, pixel, 0);
+
+
+//         //pio_sm_put_blocking(pio, sm, i );
+//         }
+//     }

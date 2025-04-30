@@ -2051,53 +2051,56 @@ void lightUpRail(int logo, int rail, int onOff, int brightness2,
   //       leds.setPixelColor(i, rawOtherColors[0]);
   //     }
   //   }
-  leds.setPixelColor(402, scaleDownBrightness(0x2000b9, 4, 35));
-  leds.setPixelColor(427, scaleDownBrightness(0x0020f9, 4, 35));
 
-  leds.setPixelColor(403, scaleDownBrightness(rawSpecialNetColors[1], 2, 35));
-  leds.setPixelColor(428, scaleDownBrightness(rawSpecialNetColors[1], 2, 35));
-  leds.setPixelColor(429, scaleDownBrightness(0xa0a000, 5, 35));
-  leds.setPixelColor(416, scaleDownBrightness(rawSpecialNetColors[3], 5, 35));
-  leds.setPixelColor(426, scaleDownBrightness(rawSpecialNetColors[2], 5, 35));
+
+  
+  leds.setPixelColor(RST_0_LED, scaleDownBrightness(0x2000b9, 4, 35));
+  leds.setPixelColor(RST_1_LED, scaleDownBrightness(0x0020f9, 4, 35));
+
+  leds.setPixelColor(GND_T_LED, scaleDownBrightness(rawSpecialNetColors[1], 2, 35));
+  leds.setPixelColor(GND_B_LED, scaleDownBrightness(rawSpecialNetColors[1], 2, 35));
+  leds.setPixelColor(VIN_LED, scaleDownBrightness(0xa0a000, 5, 35));
+  leds.setPixelColor(V3V3_LED, scaleDownBrightness(rawSpecialNetColors[3], 5, 35));
+  leds.setPixelColor(V5V_LED, scaleDownBrightness(rawSpecialNetColors[2], 5, 35));
 
   if (sfProbeMenu == 1) {
-    leds.setPixelColor(430, scaleBrightness(rawOtherColors[8], -40));
-    leds.setPixelColor(431, scaleBrightness(rawOtherColors[11], -40));
-    leds.setPixelColor(432, 0);
-    leds.setPixelColor(433, 0);
-    leds.setPixelColor(434, 0);
-    leds.setPixelColor(435, 0);
+    leds.setPixelColor(ADC_LED_0, scaleBrightness(rawOtherColors[8], -40));
+    leds.setPixelColor(ADC_LED_1, scaleBrightness(rawOtherColors[11], -40));
+    leds.setPixelColor(DAC_LED_0, 0);
+    leds.setPixelColor(DAC_LED_1, 0);
+    leds.setPixelColor(GPIO_LED_0, 0);
+    leds.setPixelColor(GPIO_LED_1, 0);
 
   } else if (sfProbeMenu == 2) {
-    leds.setPixelColor(430, 0);
-    leds.setPixelColor(431, 0);
-    leds.setPixelColor(432, scaleBrightness(rawOtherColors[9], -40));
-    leds.setPixelColor(433, scaleBrightness(rawOtherColors[12], -40));
-    leds.setPixelColor(434, 0);
-    leds.setPixelColor(435, 0);
+    leds.setPixelColor(ADC_LED_0, 0);
+    leds.setPixelColor(ADC_LED_1, 0);
+    leds.setPixelColor(DAC_LED_0, scaleBrightness(rawOtherColors[9], -40));
+    leds.setPixelColor(DAC_LED_1, scaleBrightness(rawOtherColors[12], -40));
+    leds.setPixelColor(GPIO_LED_0, 0);
+    leds.setPixelColor(GPIO_LED_1, 0);
   } else if (sfProbeMenu == 3) {
-    leds.setPixelColor(430, 0);
-    leds.setPixelColor(431, 0);
-    leds.setPixelColor(432, 0);
-    leds.setPixelColor(433, 0);
-    leds.setPixelColor(434, scaleBrightness(rawOtherColors[10], -40));
-    leds.setPixelColor(435, scaleBrightness(rawOtherColors[13], -40));
+    leds.setPixelColor(ADC_LED_0, 0);
+    leds.setPixelColor(ADC_LED_1, 0);
+    leds.setPixelColor(DAC_LED_0, 0);
+    leds.setPixelColor(DAC_LED_1, 0);
+    leds.setPixelColor(GPIO_LED_0, scaleBrightness(rawOtherColors[10], -40));
+    leds.setPixelColor(GPIO_LED_1, scaleBrightness(rawOtherColors[13], -40));
 
   } else {
-    if (photos == true && false) {
-      leds.setPixelColor(430, scaleBrightness(rawOtherColors[8], -40));
-      leds.setPixelColor(431, scaleBrightness(rawOtherColors[11], -40));
-      leds.setPixelColor(432, scaleBrightness(rawOtherColors[9], -40));
-      leds.setPixelColor(433, scaleBrightness(rawOtherColors[12], -40));
-      leds.setPixelColor(434, scaleBrightness(rawOtherColors[10], -40));
-      leds.setPixelColor(435, scaleBrightness(rawOtherColors[13], -40));
+    if (photos == true && false) {  
+      leds.setPixelColor(ADC_LED_0, scaleBrightness(rawOtherColors[8], -40));
+      leds.setPixelColor(ADC_LED_1, scaleBrightness(rawOtherColors[11], -40));
+      leds.setPixelColor(DAC_LED_0, scaleBrightness(rawOtherColors[9], -40));
+      leds.setPixelColor(DAC_LED_1, scaleBrightness(rawOtherColors[12], -40));
+      leds.setPixelColor(GPIO_LED_0, scaleBrightness(rawOtherColors[10], -40));
+      leds.setPixelColor(GPIO_LED_1, scaleBrightness(rawOtherColors[13], -40));
     } else {
-      leds.setPixelColor(430, scaleBrightness(rawOtherColors[8], -40));
-      leds.setPixelColor(431, scaleBrightness(rawOtherColors[11], -40));
-      leds.setPixelColor(432, scaleBrightness(rawOtherColors[9], -40));
-      leds.setPixelColor(433, scaleBrightness(rawOtherColors[12], -40));
-      leds.setPixelColor(434, scaleBrightness(rawOtherColors[10], -40));
-      leds.setPixelColor(435, scaleBrightness(rawOtherColors[13], -40));
+      leds.setPixelColor(ADC_LED_0, scaleBrightness(rawOtherColors[8], -40));
+      leds.setPixelColor(ADC_LED_1, scaleBrightness(rawOtherColors[11], -40));
+      leds.setPixelColor(DAC_LED_0, scaleBrightness(rawOtherColors[9], -40));
+      leds.setPixelColor(DAC_LED_1, scaleBrightness(rawOtherColors[12], -40));
+      leds.setPixelColor(GPIO_LED_0, scaleBrightness(rawOtherColors[10], -40));
+      leds.setPixelColor(GPIO_LED_1, scaleBrightness(rawOtherColors[13], -40));
     }
   }
   // if (switchPosition == 2) //+-8V

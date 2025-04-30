@@ -1001,9 +1001,12 @@ for (int i = 0; i < 8; i++) {
     adcReading = readAdcVoltage(i, samples);
     color = measurementToColor(adcReading, adcRange[i][0], adcRange[i][1]);
 
-    int brightness = LEDbrightnessSpecial + (int)abs(adcReading*5.0);//map(abs((adcReading*10)), 0, 80, -LEDbrightnessSpecial, 150);
+    //int brightness = LEDbrightnessSpecial;// + (int)abs(adcReading*3.0);//map(abs((adcReading*10)), 0, 80, -LEDbrightnessSpecial, 150);
+    int brightness = LEDbrightnessSpecial + (int)abs(adcReading*2.0);//map(abs((adcReading*10)), 0, 80, -LEDbrightnessSpecial, 150);
     if (brightness <= 4) {
       brightness = 4;
+    } else if (brightness > 100) {
+      brightness = 100;
     }
 
     if (displayMode == 0 || numberOfShownNets > MAX_NETS_FOR_WIRES) {

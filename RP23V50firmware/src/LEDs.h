@@ -14,6 +14,28 @@
 #define LED_PIN_TOP 3
 #define PROBE_LED_PIN 2
 
+
+  #define RST_0_LED 402
+  #define RST_1_LED 427
+
+  #define VIN_LED 429
+  #define GND_B_LED 428
+  #define GND_T_LED 403
+
+  #define V3V3_LED 416
+  #define V5V_LED 426
+
+
+  #define ADC_LED_0 430
+  #define ADC_LED_1 431
+  #define DAC_LED_0 432
+  #define DAC_LED_1 433
+  #define GPIO_LED_0 434
+  #define GPIO_LED_1 435
+
+  #define LOGO_LED_START 436
+  #define LOGO_LED_END 445
+
 #define LED_COUNT 300
 #define LED_COUNT_TOP 145
 extern bool splitLEDs;

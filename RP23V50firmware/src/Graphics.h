@@ -109,7 +109,8 @@ void defcon(int start, int spread, int color = 0, int nudge = 1);
 void printTextFromMenu(void);
 int attractMode(void);
 
-
+void drawImage(int imageIndex = 0);
+void drawAnimatedImage(int imageIndex = 0);
 
 
 

@@ -91,6 +91,8 @@ volatile bool core2initFinished = false;
 
 volatile bool configLoaded = false;
 
+volatile int startupAnimationFinished = 0;
+
 void setup() {
   pinMode(RESETPIN, OUTPUT_12MA);
 
@@ -119,7 +121,7 @@ void setup() {
   loadConfig();
   //readSettingsFromConfig();
   configLoaded = 1;
-  delayMicroseconds(2000);
+  delayMicroseconds(200);
 
 
   backpowered = 0;
@@ -134,10 +136,11 @@ void setup() {
 
 
   initDAC();
-  pinMode(probePin, OUTPUT_8MA);
-  pinMode(10, OUTPUT_8MA);
-
-  digitalWrite(10, HIGH);
+  pinMode(PROBE_PIN, OUTPUT_8MA);
+  pinMode(BUTTON_PIN, INPUT_PULLDOWN);
+  // pinMode(buttonPin, INPUT_PULLDOWN);
+  digitalWrite(PROBE_PIN, HIGH);
+ // digitalWrite(BUTTON_PIN, HIGH);
 
 
   initINA219();
@@ -152,10 +155,11 @@ void setup() {
     // delayMicroseconds(1);
     }
 
+      drawAnimatedImage(0);
+  startupAnimationFinished = 1;
+
   clearAllNTCC();
-  pinMode(PROBE_PIN, OUTPUT_8MA);
-  // pinMode(buttonPin, INPUT_PULLDOWN);
-  digitalWrite(PROBE_PIN, HIGH);
+
 
   initRotaryEncoder();
 
@@ -175,6 +179,7 @@ void setup() {
   routableBufferPower(1, 1);
 
   getNothingTouched();
+ 
 
   }
 
@@ -192,6 +197,8 @@ void setupCore2stuff() {
   setupSwirlColors();
   initSecondSerial();
 
+
+
   
   // delay(4);
   }
@@ -202,6 +209,10 @@ void setup1() {
   setupCore2stuff();
 
   core2initFinished = 1;
+
+
+    while (startupAnimationFinished == 0) {
+    }
 
   }
 
@@ -218,7 +229,7 @@ int readInNodesArduino = 0;
 
 int restoredNodeFile = 0;
 
-const char firmwareVersion[] = "5.1.0.7"; // remember to update this
+const char firmwareVersion[] = "5.1.0.8"; // remember to update this
 
 int firstLoop = 1;
 
@@ -272,8 +283,8 @@ menu:
     Serial.print("\tu = scan board\n\r");
     Serial.print("\tv = toggle show readings\n\r");
     Serial.print("\t- = clear all connections\n\r");
-    Serial.print("\t~ = print config\n\r");
-    Serial.print("\t` = edit config\n\r");
+    Serial.print("\t\b\b`/~ = print / edit config\n\r");
+    //Serial.print("\t` = edit config\n\r");
 
 
     }
@@ -295,10 +306,14 @@ menu:
 
   if (firstLoop == 1) {
     firstLoop = 0;
+    
     // while (Serial.available() == 0) {
-    //   startupColorsV5();
-    //   delay(100);
-    //   }
+      //  startupColorsV5();             //! write a cool startup animation
+      //  delay(100);
+      //  while (Serial.available() == 0) {
+      //   drawAnimatedImage(0);
+      //   delay(1000);
+      //   }
     //setRailsAndDACs();
     if (attract == 1) {
       defconDisplay = 0;
@@ -431,6 +446,13 @@ skipinput:
 
   switch (input) {
 
+    case '\'': {
+      pauseCore2 = 1;
+      delay(1);
+    drawAnimatedImage(0);
+    pauseCore2 = 0;
+    break;
+    }
     case '-': {
     digitalWrite(RESETPIN, HIGH);
     delay(1);
@@ -947,12 +969,17 @@ int lastTemp = 0;
 void loop1() {
   // int timer = micros();
 
+  // while (startupAnimationFinished == 0) {
+  
+  //   }
+
   if (doomOn == 1) {
     playDoom();
     doomOn = 0;
-    } else {
-    core2stuff();
-    }
+    } else if (pauseCore2 == 0) {
+      core2stuff();
+      }
+    
   // leds.clear();
   // leds.show();
 
