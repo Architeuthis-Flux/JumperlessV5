@@ -317,10 +317,12 @@ extern int probeRev;
 
 #define RP_GPIO_0 114
 
+#define ARDUINO_RESET_0_PIN 18
+#define ARDUINO_RESET_1_PIN 19
 
 
-#define RP_GPIO_18 118 // these aren't actually connected to anything
-#define RP_GPIO_19 119 // but we might as well define names for them
+#define RP_GPIO_18 118 // these are the reset lines for the arduino
+#define RP_GPIO_19 119 // 
 
 #define SUPPLY_8V_P 120 // not actually connected to anything
 #define SUPPLY_8V_N 121 // not actually connected to anything

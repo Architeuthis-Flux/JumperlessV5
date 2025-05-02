@@ -128,7 +128,7 @@ uint16_t sine0[360];
 uint16_t sine1[360];
 
 void initGPIO(void) {
-  for (int i = 0; i < 10; i++) {
+  for (int i = 0; i < 8; i++) {
     int gpio_pin = 0;
     if (i < 8) {  // Regular GPIO pins 0-7 are on pins 20-27
       gpio_pin = i + 20;  // Map GPIO 0-7 to pins 20-27

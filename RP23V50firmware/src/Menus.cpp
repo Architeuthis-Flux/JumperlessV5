@@ -363,7 +363,7 @@ int clickMenu(int menuType, int menuOption, int extraOptions) {
     // while(Serial.available() == 0) ;
 
     returnedMenuPosition = getMenuSelection();
-    while (returnedMenuPosition == -1 && Serial.available() == 0) {
+    while (returnedMenuPosition == -1 && Serial.available() == 0 && arduinoInReset == 0) {
       // delayMicroseconds(5000);
       if (checkProbeButton() == 1) {
         Serial.println("Probe button pressed");

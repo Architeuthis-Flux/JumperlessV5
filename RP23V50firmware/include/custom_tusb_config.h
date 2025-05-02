@@ -133,7 +133,7 @@ extern "C" {
 // bit rate = 115200, 1 stop bit, no parity, 8 bit data width
 // This need Pico-PIO-USB at least 0.5.1
 #define CFG_TUH_CDC_LINE_CODING_ON_ENUM                                        \
-  { 115200, CDC_LINE_CONDING_STOP_BITS_1, CDC_LINE_CODING_PARITY_NONE, 8 }
+  { 115200, CDC_LINE_CONDING_STOP_BITS_0, CDC_LINE_CODING_PARITY_NONE, 8 }
 
 #ifdef __cplusplus
 }

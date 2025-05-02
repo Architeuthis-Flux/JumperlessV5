@@ -90,7 +90,8 @@ class ledClass { //I'm literally copying this from Adafruit_NeoPixel.h so I can 
 };
   
 
-
+extern uint32_t headerColors[7];
+extern uint32_t rstColors[2];
 extern ledClass leds;
 
 //extern CRGB probeLEDs[1];

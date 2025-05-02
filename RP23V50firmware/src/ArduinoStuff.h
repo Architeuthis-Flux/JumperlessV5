@@ -16,7 +16,7 @@ extern volatile int backpowered;
 extern Adafruit_USBD_CDC USBSer1;
 extern Adafruit_USBD_CDC USBSer2;
 #endif
-
+extern volatile int arduinoInReset;
 
 void initArduino(void);
 
@@ -33,9 +33,10 @@ void arduinoPrint(void);
 void uploadArduino(void);
 void setBaudRate(int baudRate);
 void ESPReset(void);
-void SetArduinoResetLine(bool state);
+void SetArduinoResetLine(bool state, int topBottomBoth = 2);
+void flashArduino(unsigned long timeout);
 
-
+void resetArduino(int topBottomBoth = 2);
 
 
 

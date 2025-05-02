@@ -2018,50 +2018,40 @@ int brightenNet(int node, int addBrightness) {
   return 0;
 }
 
+// uint32_t rawSpecialNetColors[8] = // dim
+//     {0x000000, 0x001C04, 0x1C0702, 0x1C0107,
+//      0x231111, 0x230913, 0x232323, 0x232323};
+uint32_t rstColors[2] = {0x2000b9, 0x0020f9, };
+
+///0 = rst_b 1 = rst_t  2 = vin  3 = 3v3  4 = 5v  5 = gnd_t  6 = gnd_b
+uint32_t headerColors[7] = {0x2000b9, 0x0020f9, 0xa0a000,  0x1C0107,0x1C0702, 0x001C04,0x001C04 };
+unsigned long colorFlash[2] = {0,0};
+
 void lightUpRail(int logo, int rail, int onOff, int brightness2,
                  int switchPosition) {
-  /*
-  brightness2 = (uint8_t)LEDbrightnessRail;
-  Serial.print("\n\rbrightness2: ");
-  Serial.print(brightness2);
-  Serial.print("\n\r");
-  Serial.print("\n\rled brightness: ");
-  Serial.print(LEDbrightness);
-*/
-  // if (brightness2 == -1)
-  // {
-  //   brightness2 = LEDbrightnessRail;
-  // }
 
-  if (logo == -1 && logoFlash == 0) {
-    // leds.setPixelColor(436, rawOtherColors[1]);
-    // leds.setPixelColor(437, rawOtherColors[1]);
-    // leds.setPixelColor(438, rawOtherColors[1]);
-    // leds.setPixelColor(439, rawOtherColors[1]);
-    // leds.setPixelColor(440, rawOtherColors[1]);
-    // leds.setPixelColor(441, rawOtherColors[1]);
-    // leds.setPixelColor(442, rawOtherColors[1]);
-    // leds.setPixelColor(443, rawOtherColors[1]);
-    // Serial.println(RgbToHsv(unpackRgb(0x550008)).v);
-  }
-
-  //   for (int i = 400; i <= 429; i++) {
-  //     if (leds.getPixelColor(i) == 0 &&
-  //         leds.getPixelColor(i) != rawOtherColors[0]) {
-  //       leds.setPixelColor(i, rawOtherColors[0]);
-  //     }
-  //   }
-
-
+if (rstColors[0] != headerColors[0] && colorFlash[0] == 0) {
+  colorFlash[0] = millis();
+} else if (rstColors[0] != headerColors[0] && millis() - colorFlash[0] > 150) {
+  colorFlash[0] = 0;
+  rstColors[0] = headerColors[0];
+}
+if (rstColors[1] != headerColors[1] && colorFlash[1] == 0) {
+  colorFlash[1] = millis();
+} else if (rstColors[1] != headerColors[1] && millis() - colorFlash[1] > 150) {
+  colorFlash[1] = 0;
+  rstColors[1] = headerColors[1];
+}
   
-  leds.setPixelColor(RST_0_LED, scaleDownBrightness(0x2000b9, 4, 35));
-  leds.setPixelColor(RST_1_LED, scaleDownBrightness(0x0020f9, 4, 35));
+  
+  leds.setPixelColor(RST_0_LED, scaleDownBrightness(rstColors[0], 4, 55));
+  leds.setPixelColor(RST_1_LED, scaleDownBrightness(rstColors[1], 4, 55));
 
-  leds.setPixelColor(GND_T_LED, scaleDownBrightness(rawSpecialNetColors[1], 2, 35));
-  leds.setPixelColor(GND_B_LED, scaleDownBrightness(rawSpecialNetColors[1], 2, 35));
-  leds.setPixelColor(VIN_LED, scaleDownBrightness(0xa0a000, 5, 35));
-  leds.setPixelColor(V3V3_LED, scaleDownBrightness(rawSpecialNetColors[3], 5, 35));
-  leds.setPixelColor(V5V_LED, scaleDownBrightness(rawSpecialNetColors[2], 5, 35));
+  leds.setPixelColor(GND_T_LED, scaleDownBrightness(headerColors[5], 2, 35));
+  leds.setPixelColor(GND_B_LED, scaleDownBrightness(headerColors[6], 2, 35));
+  leds.setPixelColor(VIN_LED, scaleDownBrightness(headerColors[2], 5, 35));
+  leds.setPixelColor(V3V3_LED, scaleDownBrightness(headerColors[3], 5, 35));
+  leds.setPixelColor(V5V_LED, scaleDownBrightness(headerColors[4], 5, 35));
 
   if (sfProbeMenu == 1) {
     leds.setPixelColor(ADC_LED_0, scaleBrightness(rawOtherColors[8], -40));

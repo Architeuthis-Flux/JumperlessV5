@@ -140,12 +140,12 @@ void setup() {
   pinMode(BUTTON_PIN, INPUT_PULLDOWN);
   // pinMode(buttonPin, INPUT_PULLDOWN);
   digitalWrite(PROBE_PIN, HIGH);
- // digitalWrite(BUTTON_PIN, HIGH);
+  // digitalWrite(BUTTON_PIN, HIGH);
 
 
   initINA219();
 
-  initArduino();
+
 
   delayMicroseconds(100);
 
@@ -155,7 +155,7 @@ void setup() {
     // delayMicroseconds(1);
     }
 
-      drawAnimatedImage(0);
+  drawAnimatedImage(0);
   startupAnimationFinished = 1;
 
   clearAllNTCC();
@@ -171,15 +171,15 @@ void setup() {
   initMenu();
   initADC();
 
-  pinMode(18, INPUT_PULLUP); //reset lines for arduino
-  pinMode(19, INPUT_PULLUP);
+  // pinMode(18, INPUT_PULLUP); //reset lines for arduino
+  // pinMode(19, INPUT_PULLUP);
 
 
   //routableBufferPower(1, 0);
   routableBufferPower(1, 1);
 
   getNothingTouched();
- 
+
 
   }
 
@@ -191,15 +191,16 @@ void setupCore2stuff() {
   while (configLoaded == 0) {
     delayMicroseconds(1);
     }
-
+    initArduino();
+  initSecondSerial();
   initLEDs();
   initRowAnimations();
   setupSwirlColors();
-  initSecondSerial();
 
 
 
-  
+
+
   // delay(4);
   }
 
@@ -211,7 +212,7 @@ void setup1() {
   core2initFinished = 1;
 
 
-    while (startupAnimationFinished == 0) {
+  while (startupAnimationFinished == 0) {
     }
 
   }
@@ -255,7 +256,7 @@ void loop() {
 
 
 menu:
-
+    while (arduinoInReset == 1);
 
 
   Serial.print("\n\n\r\t\tMenu\n\r");
@@ -306,7 +307,7 @@ menu:
 
   if (firstLoop == 1) {
     firstLoop = 0;
-    
+
     // while (Serial.available() == 0) {
       //  startupColorsV5();             //! write a cool startup animation
       //  delay(100);
@@ -342,6 +343,16 @@ dontshowmenu:
   connectFromArduino = '\0';
   // showLEDsCore2 = 1;
   while (Serial.available() == 0 && connectFromArduino == '\0' && slotChanged == 0) {
+
+
+// if (arduinoInReset == 1) {
+//   resetArduino();
+//   delay(10);
+//   flashArduino(1000);
+//   arduinoInReset = 0;
+// }
+    // while (arduinoInReset == 1);
+
 
     if (attract == 1) {
       // rotaryEncoderStuff();
@@ -447,8 +458,8 @@ skipinput:
   switch (input) {
 
     case '\'': {
-      pauseCore2 = 1;
-      delay(1);
+    pauseCore2 = 1;
+    delay(1);
     drawAnimatedImage(0);
     pauseCore2 = 0;
     break;
@@ -540,13 +551,45 @@ skipinput:
     // Serial.println(netSlot);
     break;
     }
+    case 'r': {
+      if (Serial.available() > 0) {
+        char c = Serial.read();
+        if (c == '0' || c == '2' || c == 't') {
+          resetArduino(0);
+        }
+        if (c == '1' || c == '2' ||c == 'b') {
+          resetArduino(1);
+        } 
+        } else {
+          resetArduino();
+          }
+        
+    break;
+    }
     case 'u': {
     // setRailVoltage(0, 2.0);
     sketchOne();
     break;
     }
+    case 'A': {
+    removeBridgeFromNodeFile(NANO_D1, RP_UART_RX, netSlot, 0);
+    removeBridgeFromNodeFile(NANO_D0, RP_UART_TX, netSlot, 0);
+    addBridgeToNodeFile(RP_UART_RX, NANO_D1, netSlot, 0, 1);
+    addBridgeToNodeFile(RP_UART_TX, NANO_D0, netSlot, 0, 1);
+    //ManualArduinoReset = true;
+   // goto loadfile;
+   refreshConnections(-1);
+    break;
+    }
     case 'a': {
-    ManualArduinoReset = true;
+    removeBridgeFromNodeFile(NANO_D1, RP_UART_RX, netSlot, 0);
+    removeBridgeFromNodeFile(NANO_D0, RP_UART_TX, netSlot, 0);
+    // removeBridgeFromNodeFile(RP_UART_RX, -1, netSlot, 0);
+    // removeBridgeFromNodeFile(RP_UART_TX, -1, netSlot, 0);
+    //refreshLocalConnections(-1);
+    refreshConnections(-1);
+
+    //goto loadfile;
     break;
     }
 
@@ -933,7 +976,7 @@ skipinput:
 
 unsigned long logoFlashTimer = 0;
 
-int arduinoReset = 0;
+//int arduinoReset = 0;
 unsigned long lastTimeReset = 0;
 
 unsigned long lastSwirlTime = 0;
@@ -970,7 +1013,7 @@ void loop1() {
   // int timer = micros();
 
   // while (startupAnimationFinished == 0) {
-  
+
   //   }
 
   if (doomOn == 1) {
@@ -979,49 +1022,48 @@ void loop1() {
     } else if (pauseCore2 == 0) {
       core2stuff();
       }
-    
-  // leds.clear();
-  // leds.show();
+
 
   secondSerialHandler();
 
-  // core2busy = true;
-  // rotaryEncoderStuff();
-  // core2busy = false;
 
-  if (blockProbingTimer > 0) {
-    if (millis() - blockProbingTimer > blockProbing) {
-      blockProbing = 0;
-      blockProbingTimer = 0;
-      // Serial.println("probing unblocked");
+    // core2busy = true;
+    // rotaryEncoderStuff();
+    // core2busy = false;
+
+    if (blockProbingTimer > 0) {
+      if (millis() - blockProbingTimer > blockProbing) {
+        blockProbing = 0;
+        blockProbingTimer = 0;
+        // Serial.println("probing unblocked");
+        }
       }
-    }
 
-  // if( millis() - probeRainbowTimer > 7)
-  // {
-  // hsvProbe++;
-  // showProbeLEDs = 7;
-  // probeRainbowTimer = millis();
+    // if( millis() - probeRainbowTimer > 7)
+    // {
+    // hsvProbe++;
+    // showProbeLEDs = 7;
+    // probeRainbowTimer = millis();
 
-  // }
+    // }
 
-  // if (millis() - tempTimer > 5000) {
-  //     tempTimer = millis();
-  //     Serial.print(" ");
+    // if (millis() - tempTimer > 5000) {
+    //     tempTimer = millis();
+    //     Serial.print(" ");
 
-  //     float temp = 0;
-  //     for (int i = 0; i < 20; i++) {
-  //       temp += analogReadTemp();
-  //       delay(10);
-  //     }
-  //     temp = temp / 20;
-  //     float tempF = (temp * 1.8) + 32;
-  //     Serial.print(tempF);
-  //     Serial.print(" F  \t");
-  //     Serial.print(millis()/1000);
+    //     float temp = 0;
+    //     for (int i = 0; i < 20; i++) {
+    //       temp += analogReadTemp();
+    //       delay(10);
+    //     }
+    //     temp = temp / 20;
+    //     float tempF = (temp * 1.8) + 32;
+    //     Serial.print(tempF);
+    //     Serial.print(" F  \t");
+    //     Serial.print(millis()/1000);
 
-  //     for (int i = 0; i < ((tempF - 100.0)*5); i++) {
-  // Serial.print(" ");
+    //     for (int i = 0; i < ((tempF - 100.0)*5); i++) {
+    // Serial.print(" ");
   }
 
 void core2stuff() // core 2 handles the LEDs and the CH446Q8
@@ -1214,10 +1256,10 @@ void core2stuff() // core 2 handles the LEDs and the CH446Q8
               // showAllRowAnimations();
               }
             } else {
-             
+
             }
           schedulerTimer = micros();
-// readGPIO();
+          // readGPIO();
     }
   }
 

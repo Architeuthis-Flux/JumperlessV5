@@ -865,7 +865,7 @@ void readSettingsFromConfig() {
   dacOutput[1] = jumperlessConfig.dac_settings.dac_1;
 
   // GPIO settings
-  for (int i = 0; i < 10; i++) {  // Changed from 8 to 10 to include UART pins
+  for (int i = 0; i < 8; i++) {  // Changed from 8 to 10 to include UART pins
 
     // Combine direction and pull settings into a single value
     // 0 = output low, 1 = output high, 2 = input, 3 = input pullup, 4 = input pulldown

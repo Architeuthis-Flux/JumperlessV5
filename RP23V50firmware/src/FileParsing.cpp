@@ -613,6 +613,8 @@ void savePreformattedNodeFile(int source, int slot, int keepEncoder) {
   // }
   // core1busy = true;
   // nodeFile = FatFS.open("nodeFileSlot" + String(slot) + ".txt", "w");
+
+      specialFunctionsString.clear();
   openFileThreadSafe(w, slot);
   // Serial.println("Slot " + String(slot));
 
@@ -629,7 +631,8 @@ void savePreformattedNodeFile(int source, int slot, int keepEncoder) {
     Serial.print("source = ");
     Serial.println(source);
   }
-
+  // char reads[20] = {' ', ' ', ' ', ' ', ' ', ' ', ' ', ' ', ' ', ' ', ' ', ' ', ' ', ' ', ' ', ' ', ' ', ' ', ' ', ' '};
+  // int readsIndex = 0;
   if (source == 0) {
     int charCount = 0;
     while (Serial.available() == 0 || Serial.peek() == 'f') {
@@ -638,6 +641,12 @@ void savePreformattedNodeFile(int source, int slot, int keepEncoder) {
     while (Serial.available() > 0) {
       // nodeFile.write(Serial.read());
       uint8_t c = Serial.read();
+      // reads[readsIndex] = c;
+      // readsIndex++;
+      // if (readsIndex > 19) {
+      //   readsIndex = 0;
+      // }
+      
        
       if (c != 'f' && c != '}' && c != '{' && c != ' ' && c != '\n' &&
           c != '\r' && c != '\t') {
@@ -645,7 +654,8 @@ void savePreformattedNodeFile(int source, int slot, int keepEncoder) {
              continue;
              
            }
-        nodeFile.write(c);
+        ///nodeFile.write(c);
+        specialFunctionsString.write(c);
         charCount++;
         Serial.write(c);
       }
@@ -654,33 +664,71 @@ void savePreformattedNodeFile(int source, int slot, int keepEncoder) {
     }
   }
   if (source == 1) {
-    nodeFile.print("f 117-D1, 116-D0,");
+    nodeFile.print("f 117-71, 116-70,");
     while (Serial1.available() == 0) {
     }
     delayMicroseconds(90);
     // Serial.println("waiting for Arduino to send file");
     while (Serial1.available() > 0) {
-      nodeFile.write(Serial1.read());
+
+     
+char c = Serial1.read();
+      //nodeFile.write(c);
+      specialFunctionsString.write(c);
       delayMicroseconds(10);
       // Serial.println(Serial1.available());
     }
 
     while (Serial1.available() > 0) {
       Serial1.read();
-      delay(1);
+      delayMicroseconds(10);
     }
   }
+
+
 
   // nodeFile.write("\n\r");
 
   // nodeFile.seek(0);
   //  nodeFileString.read(nodeFile);
   // Serial.println(nodeFileString);
+  if (specialFunctionsString.endsWith(",") == -1) {
+    specialFunctionsString.concat(" , ");
+  }
 
-  nodeFile.print(" , } ");
+// Serial.println("\n\n\rbefore replaceSFNamesWithDefinedInts");
+//   specialFunctionsString.printTo(Serial);
+
+ replaceSFNamesWithDefinedInts();
+ replaceNanoNamesWithDefinedInts();
+
+//  Serial.println("\n\n\rafter replaceSFNamesWithDefinedInts");
+
+//   specialFunctionsString.printTo(Serial);
+
+
+
+  specialFunctionsString.printTo(nodeFile);
+
+
+  nodeFile.print(" } ");
+  
   // Serial.println(" keeping encoder");
 
+
+ 
+
+
+  
+
+  // nodeFile.close();
+
+
   nodeFile.close();
+
+
+
+  
   core1busy = false;
   // Serial.println("Slot " + String(slot) + " saved");
   // printNodeFile(slot);
@@ -707,7 +755,7 @@ int getSlotLength(int slot, int flashOrLocal) {
   return slotLength;
 }
 
-void printNodeFile(int slot, int printOrString, int flashOrLocal) {
+void printNodeFile(int slot, int printOrString, int flashOrLocal, int definesInts) {
 
   if (flashOrLocal == 0) {
     while (core2busy == true) {
@@ -741,7 +789,7 @@ void printNodeFile(int slot, int printOrString, int flashOrLocal) {
   // Serial.println(specialFunctionsString.indexOf(","));
   // Serial.println(specialFunctionsString.charAt(specialFunctionsString.indexOf(",")+1));
   // Serial.println(specialFunctionsString.indexOf(","));
-  if (debugFP == 0) {
+  if (debugFP == 0 || definesInts == 0) {
 
     // specialFunctionsString.replace("116-80, 117-82, 114-83, 85-100, 81-100,",
     // "rotEnc_0,");
