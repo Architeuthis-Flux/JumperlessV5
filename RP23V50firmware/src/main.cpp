@@ -179,7 +179,7 @@ void setup() {
   routableBufferPower(1, 1);
 
   getNothingTouched();
-
+  createSlots(-1, 0);
 
   }
 
@@ -191,7 +191,7 @@ void setupCore2stuff() {
   while (configLoaded == 0) {
     delayMicroseconds(1);
     }
-    initArduino();
+  initArduino();
   initSecondSerial();
   initLEDs();
   initRowAnimations();
@@ -230,7 +230,7 @@ int readInNodesArduino = 0;
 
 int restoredNodeFile = 0;
 
-const char firmwareVersion[] = "5.1.0.8"; // remember to update this
+const char firmwareVersion[] = "5.1.0.9"; // remember to update this
 
 int firstLoop = 1;
 
@@ -251,59 +251,6 @@ int attract = 0;
 #include <hardware/adc.h>
 #include <hardware/gpio.h>
 void loop() {
-
-
-
-
-menu:
-    while (arduinoInReset == 1);
-
-
-  Serial.print("\n\n\r\t\tMenu\n\r");
-
-  Serial.print("\n\r");
-  Serial.print("\tn = show netlist\n\r");
-  Serial.print("\tb = show bridge array\n\r");
-  Serial.print("\tf = load node file\n\r");
-  Serial.print("\tm = show this menu\n\r");
-  Serial.print("\td = toggle debug flags\n\r");
-  Serial.print("\te = extra menu options\n\r");
-
-  if (showExtraMenu == 1) {
-    Serial.println();
-    Serial.print("\t\b\bz/x = cycle slots\n\r");
-    Serial.print("\t$ = calibrate DACs\n\r");
-
-    Serial.print("\t# = print text from menu\n\r");
-    Serial.print("\tl = LED brightness / test\n\r");
-    Serial.print("\t^ = set DAC voltage\n\r");
-    Serial.print("\t? = show firmware version\n\r");
-    Serial.print("\t! = print node file\n\r");
-    Serial.print("\ts = show all slot files\n\r");
-    Serial.print("\to = load node file by slot\n\r");
-    Serial.print("\tu = scan board\n\r");
-    Serial.print("\tv = toggle show readings\n\r");
-    Serial.print("\t- = clear all connections\n\r");
-    Serial.print("\t\b\b`/~ = print / edit config\n\r");
-    //Serial.print("\t` = edit config\n\r");
-
-
-    }
-
-  // for (int i = 0; i < 10; i++) {
-  //   Serial.print("gpioState[");
-  //   Serial.print(i);
-  //   Serial.print("]: ");
-  //   Serial.print(gpioState[i]);
-  //   Serial.print("\tgpioNet[");
-  //   Serial.print(i);
-  //   Serial.print("]: ");
-  //   Serial.println(gpioNet[i]);
-  //   }
-
-  Serial.print("\n\n\r");
-  //b.clear();
-    //Serial.println(yesNoMenu());
 
   if (firstLoop == 1) {
     firstLoop = 0;
@@ -327,9 +274,99 @@ menu:
     goto loadfile;
     }
 
+
+menu:
+  
+
+
+  Serial.print("\n\n\r\t\tMenu\n\r");
+
+  Serial.print("\n\r");
+  Serial.print("\tm = show this menu\n\r");
+
+  //Serial.println();
+
+  Serial.print("\tn = show net list\n\r");
+  Serial.print("\tb = show bridge array\n\r");
+  //Serial.print("\t! = print node file\n\r");
+  Serial.print("\ts = show all slot files\n\r");
+  Serial.print("\t\b\b</> = cycle slots\n\r");
+
+  Serial.println();
+
+  Serial.print("\t? = show firmware version\n\r");
+  Serial.print("\t' = show startup animation\n\r");
+  Serial.print("\td = set debug flags\n\r");
+  Serial.print("\tl = LED brightness / test\n\r");
+  Serial.print("\t\b\b`/~ = print / edit config\n\r");
+
+  Serial.println();
+
+  //Serial.print("\t$ = calibrate DACs\n\r");
+  Serial.print("\t^ = set DAC 1 voltage\n\r");
+  Serial.print("\tv = get ADC reading\n\r");
+
+ // Serial.println();
+
+  Serial.print("\t# = print text from menu\n\r");
+  //Serial.print("\t\b\b\b\b[0-9] = run app by index\n\r");
+  Serial.print("\tr = reset Arduino (rt/rb)\n\r");
+  Serial.print("\t\b\ba/A = dis/connect UART to D0/D1\n\r");
+  
+
+  Serial.println();
+
+  Serial.print("\tf = load node file\n\r");
+  Serial.print("\tx = clear all connections\n\r");
+  Serial.print("\t+ = add connections\n\r");
+  Serial.print("\t- = remove connections\n\r");
+
+  //Serial.print("\te = extra menu options\n\r");
+
+  //if (showExtraMenu == 1) {
+    //Serial.println();
+
+
+
+
+
+
+
+
+    //Serial.print("\to = load node file by slot\n\r");
+   // Serial.print("\tu = scan board\n\r");
+
+
+
+
+
+    //Serial.print("\t` = edit config\n\r");
+
+
+   // }
+
+  // for (int i = 0; i < 10; i++) {
+  //   Serial.print("gpioState[");
+  //   Serial.print(i);
+  //   Serial.print("]: ");
+  //   Serial.print(gpioState[i]);
+  //   Serial.print("\tgpioNet[");
+  //   Serial.print(i);
+  //   Serial.print("]: ");
+  //   Serial.println(gpioNet[i]);
+  //   }
+
+  Serial.print("\n\n\r");
+  //b.clear();
+    //Serial.println(yesNoMenu());
+
+
+
   if (configChanged == true) {
-    Serial.println("config changed, saving...\n\n\r");
+    Serial.print("config changed, saving...");
     saveConfig();
+    Serial.println("\r                             \rconfig saved!\n\r");
+    Serial.flush();
     configChanged = false;
     }
 dontshowmenu:
@@ -345,13 +382,13 @@ dontshowmenu:
   while (Serial.available() == 0 && connectFromArduino == '\0' && slotChanged == 0) {
 
 
-// if (arduinoInReset == 1) {
-//   resetArduino();
-//   delay(10);
-//   flashArduino(1000);
-//   arduinoInReset = 0;
-// }
-    // while (arduinoInReset == 1);
+    // if (arduinoInReset == 1) {
+    //   resetArduino();
+    //   delay(10);
+    //   flashArduino(1000);
+    //   arduinoInReset = 0;
+    // }
+        // while (arduinoInReset == 1);
 
 
     if (attract == 1) {
@@ -403,7 +440,7 @@ dontshowmenu:
             connectOrClearProbe = 1;
             probeActive = 1;
             showProbeLEDs = 1;
-            input = 'p';
+            input = '}';
             probingTimer = millis();
             goto skipinput;
             } else if (probeButton == 1) {
@@ -411,7 +448,7 @@ dontshowmenu:
               connectOrClearProbe = 0;
               showProbeLEDs = 2;
               probeActive = 1;
-              input = 'c';
+              input = '{';
               probingTimer = millis();
               // Serial.println("probing\n\r");
 
@@ -430,8 +467,8 @@ dontshowmenu:
       }
 
     if (showReadings >= 1) {
-      chooseShownReadings();
-      showMeasurements();
+      //chooseShownReadings();
+      showMeasurements(8, 2, 0);
       }
     }
 
@@ -464,7 +501,7 @@ skipinput:
     pauseCore2 = 0;
     break;
     }
-    case '-': {
+    case 'x': {
     digitalWrite(RESETPIN, HIGH);
     delay(1);
 
@@ -476,6 +513,22 @@ skipinput:
 
     break;
     }
+
+    case '+': {
+
+    readStringFromSerial(0, 0);
+    goto loadfile;
+
+    break;
+    }
+
+    case '-': {
+    readStringFromSerial(0, 1);
+    goto loadfile;
+    break;
+    }
+
+
     case '~': {
     core1busy = 1;
     waitCore2();
@@ -513,7 +566,7 @@ skipinput:
     f1 = atof(f);
     Serial.print("f = ");
     Serial.println(f1);
-    setDac0voltage(f1);
+    setDac1voltage(f1);
     // playDoom();
     // doomOn = 0;
     break;
@@ -552,25 +605,21 @@ skipinput:
     break;
     }
     case 'r': {
-      if (Serial.available() > 0) {
-        char c = Serial.read();
-        if (c == '0' || c == '2' || c == 't') {
-          resetArduino(0);
+    if (Serial.available() > 0) {
+      char c = Serial.read();
+      if (c == '0' || c == '2' || c == 't') {
+        resetArduino(0);
         }
-        if (c == '1' || c == '2' ||c == 'b') {
-          resetArduino(1);
-        } 
-        } else {
-          resetArduino();
-          }
-        
+      if (c == '1' || c == '2' || c == 'b') {
+        resetArduino(1);
+        }
+      } else {
+      resetArduino();
+      }
+
     break;
     }
-    case 'u': {
-    // setRailVoltage(0, 2.0);
-    sketchOne();
-    break;
-    }
+
     case 'A': {
     removeBridgeFromNodeFile(NANO_D1, RP_UART_RX, netSlot, 0);
     removeBridgeFromNodeFile(NANO_D0, RP_UART_TX, netSlot, 0);
@@ -578,7 +627,7 @@ skipinput:
     addBridgeToNodeFile(RP_UART_TX, NANO_D0, netSlot, 0, 1);
     //ManualArduinoReset = true;
    // goto loadfile;
-   refreshConnections(-1);
+    refreshConnections(-1);
     break;
     }
     case 'a': {
@@ -593,35 +642,7 @@ skipinput:
     break;
     }
 
-    case '+': {
-    if (lightUpName == true)
-      {
-      lightUpName = false;
-      } else {
-      lightUpName = true;
-      }
 
-
-
-#ifdef USE_FATFS
-    refreshConnections();
-    saveLocalNodeFile();
-
-    printNodeFile();
-    delay(10);
-    usbFSbegin();
-    delay(10);
-    while (Serial.available() == 0) {
-      USBloop();
-      }
-    delay(10);
-    USBdisconnect();
-    delay(10);
-    goto loadfile;
-    refreshConnections();
-#endif
-    break;
-    }
 
     case 'i': {
 
@@ -666,6 +687,52 @@ skipinput:
     break;
     }
     case 'v':
+    if (Serial.available() > 0) {
+      char c = Serial.read();
+
+      if (isdigit(c) == 1) {
+        int adc = c - '0';
+        if (adc >= 0 && adc <=4) { 
+        Serial.print(" adc");
+        Serial.print(adc);
+        Serial.print(" = ");
+        float adcVoltage = readAdcVoltage(adc, 32);
+        if (adcVoltage > 0.00) {
+          Serial.print(" ");
+        }
+        Serial.println(adcVoltage);
+        } else if (c == 'p') {
+          Serial.print(" probe = ");
+          float probeVoltage = readAdcVoltage(7, 32);
+          if (probeVoltage > 0.00) {
+            Serial.print(" ");
+          }
+          Serial.println(probeVoltage);
+        }
+      }
+      Serial.flush();
+    } else {
+      Serial.println();
+      for (int i = 0; i < 5; i++) {
+        Serial.print("adc");
+        Serial.print(i);
+        Serial.print(" = ");
+        float adcVoltage = readAdcVoltage(i, 32);
+        if (adcVoltage > 0.00) {
+          Serial.print(" ");
+        }
+        Serial.println(adcVoltage);
+        }
+      Serial.print("probe = ");
+      float probeVoltage = readAdcVoltage(7, 32);
+      if (probeVoltage > 0.00) {
+        Serial.print(" ");
+      }
+      Serial.println(probeVoltage);
+      }
+      Serial.flush();
+      goto dontshowmenu;
+      break;
 
       if (showReadings >= 3 || (inaConnected == 0 && showReadings >= 1)) {
         showReadings = 0;
@@ -679,7 +746,7 @@ skipinput:
         goto dontshowmenu;
         // break;
         }
-    case 'p': {
+    case '}': {
     // probeActive = 1;
     //   Serial.print("pdebugLEDs = ");
     //  Serial.println(debugLEDs);
@@ -695,7 +762,7 @@ skipinput:
     // showLEDsCore2 = 1;
     break;
     }
-    case 'c': {
+    case '{': {
     // removeBridgeFromNodeFile(19, 1);
     // probeActive = 1;
     delayMicroseconds(5);
@@ -771,7 +838,7 @@ skipinput:
     break;
     }
 
-    case 'x': {
+    case '>': {
 
     if (netSlot == NUM_SLOTS - 1) {
       netSlot = 0;
@@ -785,7 +852,7 @@ skipinput:
     slotPreview = netSlot;
     goto loadfile;
     }
-    case 'z': {
+    case '<': {
 
     if (netSlot == 0) {
       netSlot = NUM_SLOTS - 1;
@@ -1024,7 +1091,7 @@ void loop1() {
       }
 
 
-  secondSerialHandler();
+    secondSerialHandler();
 
 
     // core2busy = true;

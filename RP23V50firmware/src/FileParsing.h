@@ -21,7 +21,7 @@ int openFileThreadSafe(int openTypeEnum, int slot = 0, int flashOrLocal = 0);
 void createLocalNodeFile(int slot = 0);
 void saveLocalNodeFile(int slot = 0);   
 void writeMenuTree(void);
-void createSlots(int slot = -1, int addRotaryConnections = 0);
+void createSlots(int slot = -1,  int overwrite = 0);
 void inputNodeFileList(int addRotaryConnections = 0);
 //this just opens the file, takes out all the bullshit, and then populates the newBridge array
 void parseWokwiFileToNodeFile();
@@ -30,6 +30,11 @@ void writeToNodeFile(int slot = 0, int flashOrLocal = 0);
 int removeBridgeFromNodeFile(int node1, int node2 = -1, int slot = 0, int flashOrLocal = 0, int onlyCheck = 0);
 int addBridgeToNodeFile(int node1, int node2, int slot = 0, int flashOrLocal = 0, int allowDuplicates = 1); //returns 1 if duplicate was found
 void savePreformattedNodeFile (int source = 0, int slot = 0, int keepEncoder = 1);
+
+void readStringFromSerial(int source = 0, int addRemove = 0);
+// void addStringToNodeFile(String str);
+// void removeStringFromNodeFile(String str);
+int parseStringToNode(int source = 0);
 
 int getSlotLength(int slot, int flashOrLocal = 0);
 void openNodeFile(int slot = 0, int flashOrLocal = 0);
@@ -46,7 +51,7 @@ void parseStringToBridges();
 void clearNodeFile(int slot = 0, int flashOrLocal = 0);
 int lenHelper(int);
 int printLen(int);
-
+int isNodeValid(int node);
 
 
 

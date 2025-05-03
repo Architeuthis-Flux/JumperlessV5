@@ -1110,7 +1110,7 @@ uint32_t nodeSelectionColorsHeader[10] = {
 
 //!todo highlight the rails as you select them
 
-int selectSubmenuOption(int menuPosition, int menuLevel) { 
+int selectSubmenuOption(int menuPosition, int menuLevel) {
 
   rotaryDivider = 4;
   delayMicroseconds(3000);
@@ -2877,33 +2877,36 @@ char LEDbrightnessMenu(void) {
   Serial.print("\n\r\t\tLED Brightness Menu \t\n\n\r");
   Serial.print("\n\r\tl = LED brightness        =   ");
   Serial.print(LEDbrightness);
-  Serial.print("\n\r\tr = Rail brightness       =   ");
+  Serial.print("\n\r\tr = rail brightness       =   ");
   Serial.print(LEDbrightnessRail);
-  Serial.print("\n\r\ts = Special brightness    =   ");
+  Serial.print("\n\r\ts = special brightness    =   ");
   Serial.print(LEDbrightnessSpecial);
-  Serial.print("\n\r\tc = Click menu brightness =   ");
+  Serial.print("\n\r\tc = click menu brightness =   ");
   Serial.print(menuBrightnessSetting);
-  Serial.print("\n\r\tt = All types\t");
-  Serial.print("\n\n\r\td = Reset to defaults");
-  Serial.print("\n\n\r\tb = Rainbow Bounce test");
-  Serial.print("\n\r\tc = Random Color test\n\r");
-
-  Serial.print("\n\r\tx = Exit\n\n\r");
+  Serial.print("\n\r\tt = all types\t");
+  Serial.println();
+  Serial.print("\n\r\td = reset to defaults");
+  Serial.println();
+  Serial.print("\n\r\tb = bounce logo");
+  Serial.print("\n\r\tc = random colors");
+  Serial.print("\n\r\t? = is this?");
+  Serial.println();
+  Serial.print("\n\r\tm = return to main menu\n\n\r");
   // Serial.print(leds.getBrightness());
   if (LEDbrightness > 50 || LEDbrightnessRail > 50 ||
       LEDbrightnessSpecial > 70) {
     // Serial.print("\tBrightness settings above ~50 will cause significant
     // heating, it's not recommended\n\r");
-    delay(10);
+   /// delay(10);
     }
 
   while (Serial.available() == 0) {
-    delayMicroseconds(10);
+    //delayMicroseconds(10);
     }
 
   input = Serial.read();
 
-  if (input == 'x') {
+  if (input == 'm') {
     saveLEDbrightness(0);
 
     return ' ';
@@ -2912,7 +2915,8 @@ char LEDbrightnessMenu(void) {
 
       return ' ';
       } else if (input == 'l') {
-        Serial.print("\n\r\t+ = increase\n\r\t- = decrease\n\r\tx = exit\n\r");
+        Serial.print("\n\r\t+ = increase\n\r\t- = decrease\n\r\tm = exit\n\n\r");
+        Serial.flush();
         while (input == 'l') {
 
           while (Serial.available() == 0)
@@ -2925,6 +2929,12 @@ char LEDbrightnessMenu(void) {
 
               LEDbrightness = 200;
               }
+            Serial.print("\r                            \r");
+            Serial.print("LED brightness:  ");
+            Serial.print(LEDbrightness);
+            Serial.print("   ");
+            //Serial.print("\n\r");
+            Serial.flush();
 
             showLEDsCore2 = 2;
             } else if (input2 == '-') {
@@ -2933,13 +2943,19 @@ char LEDbrightnessMenu(void) {
               if (LEDbrightness < 2) {
                 LEDbrightness = 1;
                 }
+              Serial.print("\r                            \r");
+              Serial.print("LED brightness:  ");
+              Serial.print(LEDbrightness);
+              Serial.print("   ");
+              //Serial.print("\n\r");
+              Serial.flush();
 
               showLEDsCore2 = 2;
               } else if (input2 == 'x' || input2 == ' ' || input2 == 'm') {
                 input = ' ';
                 } else {
                 }
-              showNets();
+              //showNets();
 
               // for (int i = 8; i <= numberOfNets; i++) {
               //   lightUpNet(i, -1, 1, LEDbrightness, 0);
@@ -2947,10 +2963,12 @@ char LEDbrightnessMenu(void) {
               showLEDsCore2 = 1;
 
               if (Serial.available() == 0) {
-
+                Serial.print("\r                            \r");
                 Serial.print("LED brightness:  ");
                 Serial.print(LEDbrightness);
-                Serial.print("\n\r");
+                Serial.print("   ");
+                //Serial.print("\n\r");
+                Serial.flush();
                 if (LEDbrightness > 50) {
                   // Serial.print("Brightness settings above ~50 will cause
                   // significant heating, it's not recommended\n\r");
@@ -2958,13 +2976,13 @@ char LEDbrightnessMenu(void) {
                 }
           }
         } else if (input == 'r') {
-          Serial.print("\n\r\t+ = increase\n\r\t- = decrease\n\r\tx = exit\n\r");
+          Serial.print("\n\r\t+ = increase\n\r\t- = decrease\n\r\tm = exit\n\n\r");
           while (input == 'r') {
 
             while (Serial.available() == 0)
               ;
             char input2 = Serial.read();
-            if (input2 == '+') {
+            if (input2 == '+' || input2 == '=') {
 
               LEDbrightnessRail += 1;
 
@@ -2972,15 +2990,27 @@ char LEDbrightnessMenu(void) {
 
                 LEDbrightnessRail = 200;
                 }
+                Serial.print("\r                            \r");
+                Serial.print("Rail brightness:  ");
+                Serial.print(LEDbrightnessRail);
+                Serial.print("   ");
+                //Serial.print("\n\r");
+                Serial.flush();
 
               showLEDsCore2 = 2;
-              } else if (input2 == '-') {
+              } else if (input2 == '-' || input2 == '_') {
 
                 LEDbrightnessRail -= 1;
 
                 if (LEDbrightnessRail < 2) {
                   LEDbrightnessRail = 1;
                   }
+                Serial.print("\r                            \r");
+                Serial.print("Rail brightness:  ");
+                Serial.print(LEDbrightnessRail);
+                Serial.print("   ");
+                //Serial.print("\n\r");
+                Serial.flush();
 
                 showLEDsCore2 = 2;
                 } else if (input2 == 'x') {
@@ -2990,10 +3020,11 @@ char LEDbrightnessMenu(void) {
                 lightUpRail(-1, -1, 1, LEDbrightnessRail);
 
                 if (Serial.available() == 0) {
-
+                  Serial.print("\r                            \r");
                   Serial.print("Rail brightness:  ");
                   Serial.print(LEDbrightnessRail);
-                  Serial.print("\n\r");
+                        //Serial.print("\n\r");
+                        Serial.flush();
                   if (LEDbrightnessRail > 50) {
                     // Serial.println("Brightness settings above ~50 will cause
                     // significant heating, it's not recommended\n\n\r");
@@ -3002,9 +3033,9 @@ char LEDbrightnessMenu(void) {
             }
 
           // Serial.print(input);
-          Serial.print("\n\r");
-          } else if (input == 'c') {
-            Serial.print("\n\r\t+ = increase\n\r\t- = decrease\n\r\tx = exit\n\r");
+            //Serial.print("\n\r");
+          } else if (input == 'h') {
+            Serial.print("\n\r\t+ = increase\n\r\t- = decrease\n\r\tm = exit\n\n\r");
             b.clear();
             b.print("B", menuColors[0], 0xffffff, 0, 0, 1);
             b.print("r", menuColors[1], 0xffffff, 1, 0, 1);
@@ -3019,7 +3050,7 @@ char LEDbrightnessMenu(void) {
             b.print("s", menuColors[0], 0xffffff, 4, 1, 2);
 
             showLEDsCore2 = 2;
-            while (input == 'c') {
+            while (input == 'h') {
 
               while (Serial.available() == 0)
                 ;
@@ -3133,7 +3164,7 @@ char LEDbrightnessMenu(void) {
               Serial.print("\n\r");
               } else if (input == 't') {
 
-                Serial.print("\n\r\t+ = increase\n\r\t- = decrease\n\r\tx = exit\n\n\r");
+                Serial.print("\n\r\t+ = increase\n\r\t- = decrease\n\r\tm = exit\n\n\r");
                 while (input == 't') {
 
                   while (Serial.available() == 0)
@@ -3202,7 +3233,8 @@ char LEDbrightnessMenu(void) {
                         Serial.print("\n\r");
                         Serial.print("Special brightness:  ");
                         Serial.print(LEDbrightnessSpecial);
-                        Serial.print("\n\r");
+                        Serial.print("    ");
+                        Serial.flush();
                         if (LEDbrightness > 50 || LEDbrightnessRail > 50 ||
                             LEDbrightnessSpecial > 70) {
                           // Serial.print("Brightness settings above ~50 will cause
@@ -3213,25 +3245,39 @@ char LEDbrightnessMenu(void) {
                 } else if (input == 'b') {
                   Serial.print("\n\rPress any key to exit\n\n\r");
                   leds.clear();
+                  pauseCore2 = 1;
                   while (Serial.available() == 0) {
-                    startupColorsV5();
-                    clearLEDsExceptRails();
-                    showLEDsCore2 = 1;
+                    //startupColorsV5();
+                    drawAnimatedImage(0);
+                    delay(80);
+                    drawAnimatedImage(1);
+                    //  delay(100);
 
-                    delay(2000);
+                   // clearLEDsExceptRails();
+                    //showLEDsCore2 = 1;
+
+                   // delay(2000);
                     // rainbowBounce(3);
                     }
-                  showNets();
-                  lightUpRail(-1, -1, 1);
-                  showLEDsCore2 = 1;
+                    pauseCore2 = 0;
+                  //showNets();
+                  //lightUpRail(-1, -1, 1);
+                  showLEDsCore2 = -1;
 
                   input = '!'; // this tells the main fuction to reset the leds
                   } else if (input == 'c') {
                     Serial.print("\n\rPress any key to exit\n\n\r");
+                    pauseCore2 = 1;
                     while (Serial.available() == 0) {
-                      randomColors(0, 90);
+                      
+                      randomColors();
+                      leds.show();
+                      delayMicroseconds(random(500, 80000));
+                      showLEDsCore2 = -3;
                       }
-                    delay(100);
+                    pauseCore2 = 0;
+                    showLEDsCore2 = -1;
+                    //delay(100);
                     input = '!';
                     } else if (input == 'p') {
                       for (int i = 0; i < LED_COUNT; i++) {
@@ -3261,6 +3307,12 @@ char LEDbrightnessMenu(void) {
                         }
 
                       return ' ';
+                      } else if (input == '?') {
+                        showLoss();
+                        while (Serial.available() == 0) {
+                        }
+                        showLEDsCore2 = -1;
+                        return ' ';
                       } else {
                       saveLEDbrightness(0);
                       assignNetColors();
@@ -3270,14 +3322,18 @@ char LEDbrightnessMenu(void) {
                     return input;
   }
 
+
+
+
+
 void showLoss(void) {
   b.clear();
-
-  uint32_t guyColor = 0x000011;
-  uint32_t hairColor = 0x000011;
-  uint32_t nurseColor = 0x08010f;
-  uint32_t doctorColor = 0x050509;
-  uint32_t patientColor = 0x04060f;
+  showLEDsCore2 = -3;
+  uint32_t guyColor = 0x0a0a1a;
+  uint32_t hairColor = 0x1a0902;
+  uint32_t nurseColor = 0x1a0207;
+  uint32_t doctorColor = 0x1b0a1e;
+  uint32_t patientColor = 0x070a0f;
 
   b.printRawRow(0b00001111, 5, guyColor, hairColor);
 

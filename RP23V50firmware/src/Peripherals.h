@@ -83,7 +83,7 @@ float readAdcVoltage(int channel, int samples = 8);
 int readAdc(int channel, int samples = 8);
 
 void chooseShownReadings(void);
-void showMeasurements(int samples = 8, int printOrBB = 2);// 0 = print, 1 = breadboard 2 = both
+void showMeasurements(int samples = 8, int printOrBB = 2, int oneShot = 0);// 0 = print, 1 = breadboard 2 = both
 void showLEDmeasurements(void);
 
 uint32_t measurementToColor(float measurement, float min = -8.0, float max = 8.0);

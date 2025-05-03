@@ -2382,21 +2382,21 @@ hsvColor RgbToHsv(rgbColor rgb) {
   return hsv;
 }
 
-void randomColors(uint32_t color, int wait) {
+void randomColors(void) {
 
   int count = 0;
+  uint32_t color = 0;
+  for (int i = 0; i < 445; i++) {
 
-  for (int i = 0; i < leds.numPixels(); i++) {
-
-    count = random(0, 10);
+    count = random(0, 25);
     // if (i > 80)
     // {
     //     count = random(0, 22);
     // }
 
-    byte colorValR = random(2, 0x10);
-    byte colorValG = random(2, 0x10);
-    byte colorValB = random(2, 0x10);
+    byte colorValR = random(0, 52);
+    byte colorValG = random(0, 52);
+    byte colorValB = random(0, 52);
 
     color = colorValR << 16 | colorValG << 8 | colorValB;
     switch (count) {
@@ -2418,6 +2418,34 @@ void randomColors(uint32_t color, int wait) {
     case 5:
       color = color & 0xff0000;
       break;
+    case 6:
+      color = color & 0x000f0f;
+      break;
+    case 7:
+      color = color & 0x0f000f;
+      break;
+    case 8:
+      color = color & 0x0f0f00;
+      break;
+    case 9:
+      color = color & 0x0000f0;
+      break;
+    case 10:
+      color = color & 0x00f000;
+      break;
+    case 11:
+      color = color & 0xf00000;
+      break;
+    case 12:
+      color = color & 0xaaaaaa;
+      break;
+    case 13:
+      color = color & 0x555555;
+      break;
+    case 14:
+      break;
+
+      
     default:
       color = color & 0x000000;
       break;
@@ -2426,11 +2454,11 @@ void randomColors(uint32_t color, int wait) {
 
     leds.setPixelColor(i, color); //  Set pixel's color (in RAM)
     // lightUpRail(-1, -1, 1, LEDbrightnessRail);
-    showLEDsCore2 = 2; //  Update strip to match
+    showLEDsCore2 = 3; //  Update strip to match
                        //  Pause for a moment
   }
   // delay(500);
-  delay(wait);
+ // delay(wait);
 }
 
 void rainbowy(int saturation, int brightness, int wait) {

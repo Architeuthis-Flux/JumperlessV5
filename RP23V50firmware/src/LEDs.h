@@ -274,7 +274,7 @@ void refreshSavedColors(int slot = -1);
 int saveRawColors(int slot = -1);
 void showSavedColors(int slot = -1);
 void clearLEDs(void);
-void randomColors(uint32_t color, int wait);
+void randomColors(void);
 void rainbowy(int, int, int wait);
 void showNets(void);
 void assignNetColors(int preview = 0);

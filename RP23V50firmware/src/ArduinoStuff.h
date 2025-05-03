@@ -24,8 +24,8 @@ void initSecondSerial(void);
 uint16_t getSerial1Config(void);
 uint16_t getSerial2Config(void);
 
-void checkForConfigChangesUSBSer1(bool print = true);
-void checkForConfigChangesUSBSer2(bool print = true);
+void checkForConfigChangesUSBSer1(bool print = false);
+void checkForConfigChangesUSBSer2(bool print = false);
 void secondSerialHandler(void);
 uint16_t makeSerialConfig(uint8_t numbits = 8, uint8_t paritytype = 0,
                           uint8_t stopbits = 1);

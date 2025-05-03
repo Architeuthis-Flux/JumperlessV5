@@ -530,7 +530,7 @@ uint8_t gpioAnimationBaseHues[10] = { 6, 32, 58, 84, 110, 136, 162, 188, 214, 24
 
 /* clang-format on */
 
-uint32_t satValues[15] = { 15, 25, 45, 65, 85, 105, 125, 145, 165, 185, 200, 190, 170, 80, 40 };
+uint8_t satValues[15] = { 15, 25, 45, 65, 85, 105, 125, 145, 165, 185, 200, 190, 170, 80, 40 };
 
 unsigned long lastRowAnimationTime = 0;
 unsigned long rowAnimationInterval = 150;
@@ -1934,14 +1934,25 @@ void drawAnimatedImage(int imageIndex) {
   leds.clear();
   leds.show();
   // delay(100);
+  if (imageIndex == 0) {
   cycleCount = 0;
   brightnessSet = -100;
   for (int i = startupFrameLEN - 1; i >= 0; i--) {
     drawImage(i);
     //showLEDsCore2 = 3;
+    cycleCount++;
     leds.show();
     delayMicroseconds(2000 + (cycleCount * 200));
     }
+  } else { // play the animation backwards
+    cycleCount = 44;
+    for (int i = 0; i < 45; i++) {
+      drawImage(i);
+      leds.show();
+      cycleCount--;
+      delayMicroseconds(2000 + (cycleCount * 00));
+      }
+  }
   //lightUpRail();
   ///leds.clear();
   showLEDsCore2 = -1;
@@ -2044,7 +2055,7 @@ void drawImage(int imageIndex) {
           leds.setPixelColor(i, pixel);
           }
 
-        cycleCount++;
+        //cycleCount++;
 
   }
 

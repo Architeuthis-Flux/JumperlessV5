@@ -2379,8 +2379,8 @@ int getNothingTouched(int samples) {
     }
 
   } while ((nothingTouchedReading > 80 || rejects > samples / 2) && loops < 4);
-   Serial.print("nothingTouchedReading: ");
-   Serial.println(nothingTouchedReading);
+  //  Serial.print("nothingTouchedReading: ");
+  //  Serial.println(nothingTouchedReading);
   return nothingTouchedReading;
 }
 unsigned long doubleTimeout = 0;

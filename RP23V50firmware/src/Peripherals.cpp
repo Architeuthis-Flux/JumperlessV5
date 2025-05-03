@@ -1089,7 +1089,7 @@ int shift = 228;
   return color;
 }
 
-void showMeasurements(int samples, int printOrBB) {
+void showMeasurements(int samples, int printOrBB, int oneShot) {
   unsigned long startMillis = millis();
   int printInterval = 250;
   while (Serial.available() == 0 && Serial1.available() == 0 &&
@@ -1097,8 +1097,8 @@ void showMeasurements(int samples, int printOrBB) {
 
   {
 
-    Serial.print("\r                                                           "
-                 "            \r");
+    Serial.print("\r                                                                      \r");
+    Serial.flush();
     int adc0ReadingUnscaled;
     float adc0Reading;
 
@@ -1284,7 +1284,9 @@ float readAdcVoltage(int channel, int samples) {
   int adcReadingUnscaled = readAdc(channel, samples);
 
   float adcReading = (adcReadingUnscaled) * (adcSpread[channel] / 4095);
-  adcReading -= adcSpread[channel] / 2; // offset
+  if (channel != 4) {
+    adcReading -= adcSpread[channel] / 2; // offset
+  }
 
   // float adcReading = (adcReadingUnscaled) * (adcSpread[channel] / 4095);
   // adcReading -= adcZero[channel]; // offset
