@@ -41,6 +41,20 @@ unsigned long waitCore2() {
 
 int lastSlot = netSlot;
 
+void refresh(int flashOrLocal, int ledShowOption, int fillUnused) {
+
+  if (flashOrLocal == 1) {
+    if (ledShowOption == 0){
+      refreshBlind(1, fillUnused);
+    } else {
+      refreshLocalConnections(ledShowOption, fillUnused);
+    }
+  
+  } else {
+    refreshConnections(ledShowOption, fillUnused);
+  }
+}
+
 void refreshConnections(int ledShowOption, int fillUnused) {
 
   waitCore2();
@@ -84,15 +98,10 @@ void refreshLocalConnections(int ledShowOption, int fillUnused) {
   openNodeFile(netSlot, 1);
 
   getNodesToConnect();
-
+  
   bridgesToPaths();
+  assignNetColors();
   chooseShownReadings();
-  //assignNetColors();
-
-  //  if (lastSlot != netSlot) {
-  //   createLocalNodeFile(netSlot);
-  //   lastSlot = netSlot;
-  // }
 
   core1busy = false;
   if (ledShowOption != 0) {

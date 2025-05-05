@@ -124,7 +124,7 @@ void updateConfigFromFile(const char* filename) {
         line[bytesRead] = '\0';
         trim(line);
         
-        if (line[0] == '\0' || line[0] == '#') continue;
+        if (line[0] == '\0' || line[0] == '#' || (line[0] == '/' && line[1] == '/')) continue;
 
         if (line[0] == '[' && line[strlen(line)-1] == ']') {
             strncpy(section, line+1, strlen(line)-2);
@@ -200,11 +200,18 @@ void updateConfigFromFile(const char* filename) {
             else if (strcmp(key, "pulls") == 0) parseCommaSeparatedInts(value, jumperlessConfig.gpio.pulls, 10);
             else if (strcmp(key, "uart_tx_function") == 0) jumperlessConfig.gpio.uart_tx_function = parseInt(value);
             else if (strcmp(key, "uart_rx_function") == 0) jumperlessConfig.gpio.uart_rx_function = parseInt(value);
-        } else if (strcmp(section, "serial") == 0) {
-            if (strcmp(key, "serial_1.function") == 0) jumperlessConfig.serial.serial_1.function = parseInt(value);
-            else if (strcmp(key, "serial_1.baud_rate") == 0) jumperlessConfig.serial.serial_1.baud_rate = parseInt(value);
-            else if (strcmp(key, "serial_2.function") == 0) jumperlessConfig.serial.serial_2.function = parseInt(value);
-            else if (strcmp(key, "serial_2.baud_rate") == 0) jumperlessConfig.serial.serial_2.baud_rate = parseInt(value);
+        } else if (strcmp(section, "serial_1") == 0) {
+            if (strcmp(key, "function") == 0) jumperlessConfig.serial_1.function = parseInt(value);
+            else if (strcmp(key, "baud_rate") == 0) jumperlessConfig.serial_1.baud_rate = parseInt(value);
+            else if (strcmp(key, "print_passthrough") == 0) jumperlessConfig.serial_1.print_passthrough = parseInt(value);
+            else if (strcmp(key, "connect_on_boot") == 0) jumperlessConfig.serial_1.connect_on_boot = parseInt(value);
+            else if (strcmp(key, "lock_connection") == 0) jumperlessConfig.serial_1.lock_connection = parseInt(value);
+        } else if (strcmp(section, "serial_2") == 0) {
+            if (strcmp(key, "function") == 0) jumperlessConfig.serial_2.function = parseInt(value);
+            else if (strcmp(key, "baud_rate") == 0) jumperlessConfig.serial_2.baud_rate = parseInt(value);
+            else if (strcmp(key, "print_passthrough") == 0) jumperlessConfig.serial_2.print_passthrough = parseInt(value);
+            else if (strcmp(key, "connect_on_boot") == 0) jumperlessConfig.serial_2.connect_on_boot = parseInt(value);
+            else if (strcmp(key, "lock_connection") == 0) jumperlessConfig.serial_2.lock_connection = parseInt(value);
         }
     }
     file.close();
@@ -314,12 +321,19 @@ void saveConfigToFile(const char* filename) {
     file.println();
 
     // Write serial section
-    file.println("[serial]");
-    file.print("serial_1.function="); file.print(jumperlessConfig.serial.serial_1.function); file.println(";");
-    file.print("serial_1.baud_rate="); file.print(jumperlessConfig.serial.serial_1.baud_rate); file.println(";");
-    file.print("serial_2.function="); file.print(jumperlessConfig.serial.serial_2.function); file.println(";");
-    file.print("serial_2.baud_rate="); file.print(jumperlessConfig.serial.serial_2.baud_rate); file.println(";");
+    file.println("[serial_1]");
+    file.print("function="); file.print(jumperlessConfig.serial_1.function); file.println(";");
+    file.print("baud_rate="); file.print(jumperlessConfig.serial_1.baud_rate); file.println(";");
+    file.print("print_passthrough="); file.print(jumperlessConfig.serial_1.print_passthrough); file.println(";");
+    file.print("connect_on_boot="); file.print(jumperlessConfig.serial_1.connect_on_boot); file.println(";");
+    file.print("lock_connection="); file.print(jumperlessConfig.serial_1.lock_connection); file.println(";");
 
+    file.println("[serial_2]");
+    file.print("function="); file.print(jumperlessConfig.serial_2.function); file.println(";");
+    file.print("baud_rate="); file.print(jumperlessConfig.serial_2.baud_rate); file.println(";");
+    file.print("print_passthrough="); file.print(jumperlessConfig.serial_2.print_passthrough); file.println(";");
+    file.print("connect_on_boot="); file.print(jumperlessConfig.serial_2.connect_on_boot); file.println(";");
+    file.print("lock_connection="); file.print(jumperlessConfig.serial_2.lock_connection); file.println(";");
     file.close();
     core1busy = false;
 }
@@ -355,7 +369,8 @@ int parseSectionName(const char* sectionName) {
     else if (strcmp(sectionName, "logo_pad_settings") == 0) return 5;
     else if (strcmp(sectionName, "display_settings") == 0) return 6;
     else if (strcmp(sectionName, "gpio") == 0) return 7;
-    else if (strcmp(sectionName, "serial") == 0) return 8;
+    else if (strcmp(sectionName, "serial_1") == 0) return 8;
+    else if (strcmp(sectionName, "serial_2") == 0) return 9;
     return -1;
 }
 
@@ -461,11 +476,21 @@ void printConfigSectionToSerial(int section) {
 
     // Print serial section
     if (section == -1 || section == 8) {
-        Serial.println("\n[serial]");
-        Serial.print("serial_1.function="); Serial.print(jumperlessConfig.serial.serial_1.function); Serial.println(";");
-        Serial.print("serial_1.baud_rate="); Serial.print(jumperlessConfig.serial.serial_1.baud_rate); Serial.println(";");
-        Serial.print("serial_2.function="); Serial.print(jumperlessConfig.serial.serial_2.function); Serial.println(";");
-        Serial.print("serial_2.baud_rate="); Serial.print(jumperlessConfig.serial.serial_2.baud_rate); Serial.println(";");
+        Serial.println("\n[serial_1]");
+        Serial.print("function="); Serial.print(jumperlessConfig.serial_1.function); Serial.println(";");
+        Serial.print("baud_rate="); Serial.print(jumperlessConfig.serial_1.baud_rate); Serial.println(";");
+        Serial.print("print_passthrough="); Serial.print(jumperlessConfig.serial_1.print_passthrough); Serial.println(";");
+        Serial.print("connect_on_boot="); Serial.print(jumperlessConfig.serial_1.connect_on_boot); Serial.println(";");
+        Serial.print("lock_connection="); Serial.print(jumperlessConfig.serial_1.lock_connection); Serial.println(";");
+    }
+
+    if (section == -1 || section == 9) {
+        Serial.println("\n[serial_2]");
+        Serial.print("function="); Serial.print(jumperlessConfig.serial_2.function); Serial.println(";");
+        Serial.print("baud_rate="); Serial.print(jumperlessConfig.serial_2.baud_rate); Serial.println(";");
+        Serial.print("print_passthrough="); Serial.print(jumperlessConfig.serial_2.print_passthrough); Serial.println(";");
+        Serial.print("connect_on_boot="); Serial.print(jumperlessConfig.serial_2.connect_on_boot); Serial.println(";");
+        Serial.print("lock_connection="); Serial.print(jumperlessConfig.serial_2.lock_connection); Serial.println(";");
     }
 
     if (section == -1) {
@@ -800,7 +825,7 @@ void readConfigFromSerial() {
 
 void updateConfigValue(const char* section, const char* key, const char* value) {
     char oldValue[64] = {0};
-    
+    //int timeToStart = micros();
     // Get old value
     if (strcmp(section, "hardware_version") == 0) {
         if (strcmp(key, "generation") == 0) sprintf(oldValue, "%d", jumperlessConfig.hardware_version.generation);
@@ -880,13 +905,20 @@ void updateConfigValue(const char* section, const char* key, const char* value) 
         else if (strcmp(key, "uart_tx_function") == 0) sprintf(oldValue, "%d", jumperlessConfig.gpio.uart_tx_function);
         else if (strcmp(key, "uart_rx_function") == 0) sprintf(oldValue, "%d", jumperlessConfig.gpio.uart_rx_function);
     }
-    else if (strcmp(section, "serial") == 0) {
-        if (strcmp(key, "serial_1.function") == 0) sprintf(oldValue, "%d", jumperlessConfig.serial.serial_1.function);
-        else if (strcmp(key, "serial_1.baud_rate") == 0) sprintf(oldValue, "%d", jumperlessConfig.serial.serial_1.baud_rate);
-        else if (strcmp(key, "serial_2.function") == 0) sprintf(oldValue, "%d", jumperlessConfig.serial.serial_2.function);
-        else if (strcmp(key, "serial_2.baud_rate") == 0) sprintf(oldValue, "%d", jumperlessConfig.serial.serial_2.baud_rate);
+    else if (strcmp(section, "serial_1") == 0) {
+        if (strcmp(key, "function") == 0) sprintf(oldValue, "%d", jumperlessConfig.serial_1.function);
+        else if (strcmp(key, "baud_rate") == 0) sprintf(oldValue, "%d", jumperlessConfig.serial_1.baud_rate);
+        else if (strcmp(key, "print_passthrough") == 0) sprintf(oldValue, "%d", jumperlessConfig.serial_1.print_passthrough);
+        else if (strcmp(key, "connect_on_boot") == 0) sprintf(oldValue, "%d", jumperlessConfig.serial_1.connect_on_boot);
+        else if (strcmp(key, "lock_connection") == 0) sprintf(oldValue, "%d", jumperlessConfig.serial_1.lock_connection);
     }
-
+    else if (strcmp(section, "serial_2") == 0) {
+        if (strcmp(key, "function") == 0) sprintf(oldValue, "%d", jumperlessConfig.serial_2.function);
+        else if (strcmp(key, "baud_rate") == 0) sprintf(oldValue, "%d", jumperlessConfig.serial_2.baud_rate);
+        else if (strcmp(key, "print_passthrough") == 0) sprintf(oldValue, "%d", jumperlessConfig.serial_2.print_passthrough);
+        else if (strcmp(key, "connect_on_boot") == 0) sprintf(oldValue, "%d", jumperlessConfig.serial_2.connect_on_boot);
+        else if (strcmp(key, "lock_connection") == 0) sprintf(oldValue, "%d", jumperlessConfig.serial_2.lock_connection);
+    }
     // Update the config structure
     if (strcmp(section, "hardware_version") == 0) {
         if (strcmp(key, "generation") == 0) jumperlessConfig.hardware_version.generation = parseInt(value);
@@ -953,121 +985,42 @@ void updateConfigValue(const char* section, const char* key, const char* value) 
         else if (strcmp(key, "uart_tx_function") == 0) jumperlessConfig.gpio.uart_tx_function = parseInt(value);
         else if (strcmp(key, "uart_rx_function") == 0) jumperlessConfig.gpio.uart_rx_function = parseInt(value);
     }
-    else if (strcmp(section, "serial") == 0) {
-        if (strcmp(key, "serial_1.function") == 0) jumperlessConfig.serial.serial_1.function = parseInt(value);
-        else if (strcmp(key, "serial_1.baud_rate") == 0) jumperlessConfig.serial.serial_1.baud_rate = parseInt(value);
-        else if (strcmp(key, "serial_2.function") == 0) jumperlessConfig.serial.serial_2.function = parseInt(value);
-        else if (strcmp(key, "serial_2.baud_rate") == 0) jumperlessConfig.serial.serial_2.baud_rate = parseInt(value);
+    else if (strcmp(section, "serial_1") == 0) {
+        if (strcmp(key, "function") == 0) jumperlessConfig.serial_1.function = parseInt(value);
+        else if (strcmp(key, "baud_rate") == 0) jumperlessConfig.serial_1.baud_rate = parseInt(value);
+        else if (strcmp(key, "connect_on_boot") == 0) jumperlessConfig.serial_1.connect_on_boot = parseInt(value);
+        else if (strcmp(key, "lock_connection") == 0) jumperlessConfig.serial_1.lock_connection = parseInt(value);
     }
+    else if (strcmp(section, "serial_2") == 0) {
+        if (strcmp(key, "function") == 0) jumperlessConfig.serial_2.function = parseInt(value);
+        else if (strcmp(key, "baud_rate") == 0) jumperlessConfig.serial_2.baud_rate = parseInt(value);
+        else if (strcmp(key, "connect_on_boot") == 0) jumperlessConfig.serial_2.connect_on_boot = parseInt(value);
+        else if (strcmp(key, "lock_connection") == 0) jumperlessConfig.serial_2.lock_connection = parseInt(value);
+    }
+
+    // int timeToEnd = micros();
+    // Serial.print("Time to update config: ");
+    // Serial.println(timeToEnd - timeToStart);
+    // Serial.println("--------------------------------");
+    // Serial.println();
+    // timeToStart = micros();
 
     // Save the updated config to the permanent file
     saveConfigToFile("/config.txt");
-    
+    // timeToEnd = micros();
+    // Serial.print("Time to save config: ");
+    // Serial.println(timeToEnd - timeToStart);
+    // Serial.println("--------------------------------");
+    // Serial.println();
+    // timeToStart = micros();
+
     // Print the change
     printSettingChange(section, key, oldValue, value);
+    // timeToEnd = micros();
+    // Serial.print("Time to print change: ");
+    // Serial.println(timeToEnd - timeToStart);
+    // Serial.println("--------------------------------");
+    // Serial.println();
+    // timeToStart = micros();
+    
 }
-
-void printConfigStructToSerial() {
-  Serial.println("\nJumperless Config (RAM):");
-  Serial.println("-------------------");
-
-  // Hardware version
-  Serial.println("[hardware_version]");
-  Serial.print("generation = ");
-  Serial.println(jumperlessConfig.hardware_version.generation);
-  Serial.print("hardware_revision = ");
-  Serial.println(jumperlessConfig.hardware_version.hardware_revision);
-  Serial.print("probe_version = ");
-  Serial.println(jumperlessConfig.hardware_version.probe_version);
-  Serial.println();
-
-  // Debug flags
-  Serial.println("[debug_flags]");
-  Serial.print("file_parsing = ");
-  Serial.println(jumperlessConfig.debug_flags.file_parsing);
-  Serial.print("net_manager = ");
-  Serial.println(jumperlessConfig.debug_flags.net_manager);
-  Serial.print("net_to_chip_connections = ");
-  Serial.println(jumperlessConfig.debug_flags.net_to_chip_connections);
-  Serial.print("net_to_chip_connections_alt = ");
-  Serial.println(jumperlessConfig.debug_flags.net_to_chip_connections_alt);
-  Serial.print("leds = ");
-  Serial.println(jumperlessConfig.debug_flags.leds);
-  Serial.println();
-
-  // Display settings
-  Serial.println("[display_settings]");
-  Serial.print("led_brightness = ");
-  Serial.println(jumperlessConfig.display_settings.led_brightness);
-  Serial.print("rail_brightness = ");
-  Serial.println(jumperlessConfig.display_settings.rail_brightness);
-  Serial.print("special_net_brightness = ");
-  Serial.println(jumperlessConfig.display_settings.special_net_brightness);
-  Serial.print("menu_brightness = ");
-  Serial.println(jumperlessConfig.display_settings.menu_brightness);
-  Serial.print("net_color_mode = ");
-  Serial.println(jumperlessConfig.display_settings.net_color_mode);
-  Serial.println();
-
-  // Routing settings
-  Serial.println("[routing_settings]");
-  Serial.print("stack_paths = ");
-  Serial.println(jumperlessConfig.routing_settings.stack_paths);
-  Serial.print("stack_rails = ");
-  Serial.println(jumperlessConfig.routing_settings.stack_rails);
-  Serial.print("stack_dacs = ");
-  Serial.println(jumperlessConfig.routing_settings.stack_dacs);
-  Serial.print("rail_priority = ");
-  Serial.println(jumperlessConfig.routing_settings.rail_priority);
-  Serial.println();
-
-  // Calibration
-  Serial.println("[calibration]");
-  Serial.print("dac_0_spread = ");
-  Serial.println(jumperlessConfig.calibration.dac_0_spread);
-  Serial.print("dac_1_spread = ");
-  Serial.println(jumperlessConfig.calibration.dac_1_spread);
-  Serial.print("top_rail_spread = ");
-  Serial.println(jumperlessConfig.calibration.top_rail_spread);
-  Serial.print("bottom_rail_spread = ");
-  Serial.println(jumperlessConfig.calibration.bottom_rail_spread);
-  Serial.print("dac_0_zero = ");
-  Serial.println(jumperlessConfig.calibration.dac_0_zero);
-  Serial.print("dac_1_zero = ");
-  Serial.println(jumperlessConfig.calibration.dac_1_zero);
-  Serial.print("top_rail_zero = ");
-  Serial.println(jumperlessConfig.calibration.top_rail_zero);
-  Serial.print("bottom_rail_zero = ");
-  Serial.println(jumperlessConfig.calibration.bottom_rail_zero);
-  Serial.println();
-
-  // DAC settings
-  Serial.println("[dac_settings]");
-  Serial.print("top_rail = ");
-  Serial.println(jumperlessConfig.dac_settings.top_rail);
-  Serial.print("bottom_rail = ");
-  Serial.println(jumperlessConfig.dac_settings.bottom_rail);
-  Serial.print("dac_0 = ");
-  Serial.println(jumperlessConfig.dac_settings.dac_0);
-  Serial.print("dac_1 = ");
-  Serial.println(jumperlessConfig.dac_settings.dac_1);
-  Serial.println();
-
-  // GPIO settings
-  Serial.println("[gpio]");
-  Serial.print("direction = [");
-  for (int i = 0; i < 10; i++) {
-    Serial.print(jumperlessConfig.gpio.direction[i]);
-    if (i < 9) Serial.print(", ");
-  }
-  Serial.println("]");
-  Serial.print("pulls = [");
-  for (int i = 0; i < 10; i++) {
-    Serial.print(jumperlessConfig.gpio.pulls[i]);
-    if (i < 9) Serial.print(", ");
-  }
-  Serial.println("]");
-  Serial.println();
-
-  Serial.println("END");
-} 

@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: MIT
 
 #include "Peripherals.h"
-#include "Adafruit_INA219.h"
+//#include "Adafruit_INA219.h"
 
 #include "LEDs.h"
 #include "MatrixState.h"
@@ -14,8 +14,8 @@
 #include <Arduino.h>
 #include <stdio.h>
 
-#include "MCP_DAC.h"
-#include "mcp4725.hpp"
+//#include "MCP_DAC.h"
+//#include "mcp4725.hpp"
 // #include "AdcUsb.h"
 
 #include <Adafruit_MCP4728.h>

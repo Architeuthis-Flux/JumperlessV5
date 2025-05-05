@@ -16,6 +16,8 @@ void refreshBlind(int disconnectFirst = -1, int fillUnused = 0);
 
 unsigned long waitCore2(void);
 
+void refresh(int flashOrLocal = 0, int ledShowOption = -1, int fillUnused = 1);
+
 void refreshConnections(int ledShowOption = 1,int fillUnused = 1);
 void refreshLocalConnections(int ledShowOption = 1, int fillUnused = 1);
 void updateLEDs(void);

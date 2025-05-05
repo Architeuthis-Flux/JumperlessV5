@@ -20,5 +20,5 @@ void sendAllPaths(void); // should we sort them by chip? for now, no
 void sendPath(int path, int setOrClear = 1, int newOrLast = 0);
 void findDifferentPaths(void);
 void createXYarray(void);
-
+void refreshPaths(void);
 #endif

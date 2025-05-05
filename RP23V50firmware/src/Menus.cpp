@@ -820,6 +820,7 @@ int getMenuSelection(void) {
 
                 if (actions[menuPosition] == 3 && subSelection != -1) {
 
+
                   // Serial.println("get float voltage");
                   getActionFloat(menuPosition);
                   }
@@ -1112,6 +1113,7 @@ uint32_t nodeSelectionColorsHeader[10] = {
 
 int selectSubmenuOption(int menuPosition, int menuLevel) {
 
+  int railMenu = 0;
   rotaryDivider = 4;
   delayMicroseconds(3000);
   int optionSelected = -1;
@@ -1221,6 +1223,7 @@ int selectSubmenuOption(int menuPosition, int menuLevel) {
 
       brightnessMenu = 1;
       }
+
     // Serial.print("menuType: ");
     // Serial.println(menuType);
     // Serial.println("selected Submenu Option\n\r");
@@ -2020,11 +2023,12 @@ int selectNodeAction(int whichSelection) {
 
 float getActionFloat(int menuPosition, int rail) {
   float currentChoice = -0.1;
-
+  float snapValues[9] = {1.0, 2.0, 3.0, 3.3, 4.0, 5.0, 6.0, 7.0};
   char floatString[8] = "0.0";
   rotaryDivider = 3;
   b.clear(1);
   int firstTime = 1;
+  int snapToValue = 0;
 
   uint32_t posColor = 0x090600;
   uint32_t negColor = 0x04000f;
@@ -2084,6 +2088,12 @@ float getActionFloat(int menuPosition, int rail) {
         if (encoderDirectionState == UP || firstTime == 1) {
 
           encoderDirectionState = NONE;
+          if (snapToValue > 0) {
+            snapToValue --;
+            continue;
+            } else {
+            snapToValue = 0;
+            }
           if (micros() - lastScrollTime < scrollAccelTime) {
             scrollAcceleration += 0.1;
             if (scrollAcceleration > 0.6) {
@@ -2131,7 +2141,7 @@ float getActionFloat(int menuPosition, int rail) {
                           // } else if (currentChoice > 0.05) {
                           //   numberColor = posColor;
                           // }
-                          if (currentChoice == -0.0) {
+                          if (currentChoice > -0.05 && currentChoice < 0.05) {
                             currentChoice = 0.0;
                             }
                           if (currentChoice <= 0.0) {
@@ -2168,7 +2178,13 @@ float getActionFloat(int menuPosition, int rail) {
 
 
                                 }
-
+                              if (snapToValue == 0) {
+                                for (int i = 0; i < 8; i++) {
+                                  if ((abs(currentChoice) > snapValues[i] - 0.05 && abs(currentChoice) < snapValues[i] + 0.05)) {
+                                    snapToValue = 3;
+                                    }
+                                  }
+                                }
                               showLEDsCore2 = 2;
 
 
@@ -2177,6 +2193,12 @@ float getActionFloat(int menuPosition, int rail) {
 
           } else if (encoderDirectionState == DOWN) {
             encoderDirectionState = NONE;
+            if (snapToValue > 0) {
+              snapToValue --;
+              continue;
+              } else {
+              snapToValue = 0;
+              }
             if (micros() - lastScrollTime < scrollAccelTime) {
               scrollAcceleration += 0.1;
               if (scrollAcceleration > 0.6) {
@@ -2209,6 +2231,7 @@ float getActionFloat(int menuPosition, int rail) {
                       }
 
                     if (currentChoice > -0.05 && currentChoice < 0.05) {
+                      currentChoice = 0.0;
                       numberColor = zeroColor;
                       } else if (currentChoice > 3.25 && currentChoice < 3.35) {
                         numberColor = threeColor;
@@ -2254,6 +2277,14 @@ float getActionFloat(int menuPosition, int rail) {
 
 
                                   }
+                              if (snapToValue == 0) {
+                                for (int i = 0; i < 8; i++) {
+                                  if ((abs(currentChoice) > snapValues[i] - 0.05 && abs(currentChoice) < snapValues[i] + 0.05)) {
+                                    snapToValue = 3;
+                                    }
+                                  }
+                                }
+
 
                                 showLEDsCore2 = 2;
             } else if (encoderButtonState == RELEASED &&
@@ -3013,8 +3044,10 @@ char LEDbrightnessMenu(void) {
                 Serial.flush();
 
                 showLEDsCore2 = 2;
-                } else if (input2 == 'x') {
+                } else if (input2 == 'x' || input2 == ' ' || input2 == 'm') {
                   input = ' ';
+                  saveLEDbrightness(0);
+                  return ' ';
                   } else {
                   }
                 lightUpRail(-1, -1, 1, LEDbrightnessRail);
@@ -3139,8 +3172,10 @@ char LEDbrightnessMenu(void) {
                       }
 
                     // showLEDsCore2 = 2;
-                    } else if (input2 == 'x') {
+                    } else if (input2 == 'x' || input2 == ' ' || input2 == 'm') {
                       input = ' ';
+                      saveLEDbrightness(0);
+                      return ' ';
                       } else {
                       }
 
@@ -3210,6 +3245,8 @@ char LEDbrightnessMenu(void) {
                       } else if (input2 == 'x' || input2 == ' ' || input2 == 'm' ||
                                  input2 == 'l') {
                       input = ' ';
+                      saveLEDbrightness(0);
+                      return ' ';
                       } else {
                         }
 

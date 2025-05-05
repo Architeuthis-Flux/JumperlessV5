@@ -44,6 +44,7 @@ void isrFromPio(void) {
 }
 
 struct pathStruct lastPath[MAX_BRIDGES];
+struct pathStruct emptyPath = {99, 99, 99, 99, 99, 99, 99, 99, 99, 99, 99, 99, 99, 99, 99, 99};
 //struct pathStruct newPath[MAX_BRIDGES];
 int lastPathNumber = 0;
 int changedPaths[MAX_BRIDGES];
@@ -95,7 +96,16 @@ void initCH446Q(void) {
 
 }
 
-
+void refreshPaths(void) {
+  for (int i = 0; i < MAX_BRIDGES; i++) {
+    changedPaths[i] = -2;
+  }
+  lastPathNumber = 0;
+  for (int i = 0; i < MAX_BRIDGES; i++) {
+    lastPath[i] = emptyPath;
+  }
+ sendAllPaths();
+}
 
 void sendAllPaths(void) // should we sort them by chip? for now, no
 {
@@ -117,49 +127,49 @@ void sendAllPaths(void) // should we sort them by chip? for now, no
     // }
 
     if (changedPaths[i] == -1) {
-      //continue;
+      continue;
     }
     sendPath(i, 1);
     // delay(1);
-    if (debugNTCC)
+    if (debugNTCC )
     {
       Serial.print("lastPath ");
-      Serial.print(i);
-      Serial.print(" \n\r");
-      printPathType(i);
-      Serial.print(" \n\r");
-      for (int j = 0; j < 4; j++) {
-        printChipNumToChar(lastPath[i].chip[j]);
-        Serial.print("  x[");
-        Serial.print(j);
-        Serial.print("]:");
-        Serial.print(lastPath[i].x[j]);
-        Serial.print("   y[");
-        Serial.print(j);
-        Serial.print("]:");
-        Serial.print(lastPath[i].y[j]);
-        Serial.println(" \t ");
-      }
-      Serial.print("\n\n\r");
+      Serial.println(i);
+      // Serial.print(" \n\r");
+      // printPathType(i);
+      // Serial.print(" \n\r");
+      // for (int j = 0; j < 4; j++) {
+      //   printChipNumToChar(lastPath[i].chip[j]);
+      //   Serial.print("  x[");
+      //   Serial.print(j);
+      //   Serial.print("]:");
+      //   Serial.print(lastPath[i].x[j]);
+      //   Serial.print("   y[");
+      //   Serial.print(j);
+      //   Serial.print("]:");
+      //   Serial.print(lastPath[i].y[j]);
+      //   Serial.println(" \t ");
+      // }
+      // Serial.print("\n\n\r");
 
-      Serial.print("path ");
-      Serial.print(i);
-      Serial.print(" \t");
-      printPathType(i);
-      Serial.print(" \n\r");
-      for (int j = 0; j < 4; j++) {
-        printChipNumToChar(path[i].chip[j]);
-        Serial.print("  x[");
-        Serial.print(j);
-        Serial.print("]:");
-        Serial.print(path[i].x[j]);
-        Serial.print("   y[");
-        Serial.print(j);
-        Serial.print("]:");
-        Serial.print(path[i].y[j]);
-        Serial.println(" \t ");
-      }
-      Serial.print("\n\n\r");
+      // Serial.print("path ");
+      // Serial.print(i);
+      // Serial.print(" \t");
+      // printPathType(i);
+      // Serial.print(" \n\r");
+      // for (int j = 0; j < 4; j++) {
+      //   printChipNumToChar(path[i].chip[j]);
+      //   Serial.print("  x[");
+      //   Serial.print(j);
+      //   Serial.print("]:");
+      //   Serial.print(path[i].x[j]);
+      //   Serial.print("   y[");
+      //   Serial.print(j);
+      //   Serial.print("]:");
+      //   Serial.print(path[i].y[j]);
+      //   Serial.println(" \t ");
+      // }
+      // Serial.print("\n\n\r");
     }
   }
 }
