@@ -11,8 +11,8 @@ extern volatile int sendAllPathsCore2;
 
 
 
-#define REV 4
-#define PROBE_REV 4
+#define REV 5
+#define PROBE_REV 5
 
 extern int rev;
 extern int probeRev;

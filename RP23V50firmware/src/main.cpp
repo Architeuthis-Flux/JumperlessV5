@@ -181,6 +181,8 @@ void setup() {
   getNothingTouched();
   createSlots(-1, 0);
 
+
+
   }
 
 void setupCore2stuff() {
@@ -191,14 +193,14 @@ void setupCore2stuff() {
   while (configLoaded == 0) {
     delayMicroseconds(1);
     }
-  initArduino();
-  initSecondSerial();
+
   initLEDs();
   initRowAnimations();
   setupSwirlColors();
 
 
-
+    initArduino();
+  initSecondSerial();
 
 
   // delay(4);
@@ -230,7 +232,7 @@ int readInNodesArduino = 0;
 
 int restoredNodeFile = 0;
 
-const char firmwareVersion[] = "5.1.0.9"; // remember to update this
+const char firmwareVersion[] = "5.1.0.10"; // remember to update this
 
 int firstLoop = 1;
 
@@ -263,6 +265,12 @@ void loop() {
       //   delay(1000);
       //   }
     //setRailsAndDACs();
+    if (jumperlessConfig.serial_1.connect_on_boot == 1) {
+      connectArduino(0);
+      }
+    if (jumperlessConfig.serial_2.connect_on_boot == 1) {
+      connectArduino(1);
+      }
     if (attract == 1) {
       defconDisplay = 0;
       netSlot = -1;
@@ -311,7 +319,19 @@ menu:
   Serial.print("\t# = print text from menu\n\r");
   //Serial.print("\t\b\b\b\b[0-9] = run app by index\n\r");
   Serial.print("\tr = reset Arduino (rt/rb)\n\r");
+
   Serial.print("\t\b\ba/A = dis/connect UART to D0/D1\n\r");
+    Serial.print("\t    print passthrough");
+  if (printSerial1Passthrough == 1) {
+    Serial.print(" - on");
+  } else if (printSerial1Passthrough == 2) {
+    Serial.print(" - flashing only");
+  } else if (printSerial1Passthrough == 3){
+    Serial.print(" - both");
+  } else {
+    Serial.print(" - off");
+    }
+  Serial.println();
   
 
   Serial.println();
@@ -473,6 +493,7 @@ dontshowmenu:
     }
 
   if (slotChanged == 1) {
+    refreshPaths();
     goto loadfile;
     }
 
@@ -494,6 +515,11 @@ skipinput:
 
   switch (input) {
 
+    case '_': {
+      printMicrosPerByte();
+      break;
+      }
+
     case '\'': {
     pauseCore2 = 1;
     delay(1);
@@ -504,9 +530,9 @@ skipinput:
     case 'x': {
     digitalWrite(RESETPIN, HIGH);
     delay(1);
-
+    refreshPaths();
     clearAllNTCC();
-
+    
     clearNodeFile(netSlot, 0);
     refreshConnections(-1);
     digitalWrite(RESETPIN, LOW);
@@ -621,22 +647,24 @@ skipinput:
     }
 
     case 'A': {
-    removeBridgeFromNodeFile(NANO_D1, RP_UART_RX, netSlot, 0);
-    removeBridgeFromNodeFile(NANO_D0, RP_UART_TX, netSlot, 0);
-    addBridgeToNodeFile(RP_UART_RX, NANO_D1, netSlot, 0, 1);
-    addBridgeToNodeFile(RP_UART_TX, NANO_D0, netSlot, 0, 1);
-    //ManualArduinoReset = true;
-   // goto loadfile;
-    refreshConnections(-1);
+      connectArduino(0);
+  //   removeBridgeFromNodeFile(NANO_D1, RP_UART_RX, netSlot, 0);
+  //   removeBridgeFromNodeFile(NANO_D0, RP_UART_TX, netSlot, 0);
+  //   addBridgeToNodeFile(RP_UART_RX, NANO_D1, netSlot, 0, 1);
+  //   addBridgeToNodeFile(RP_UART_TX, NANO_D0, netSlot, 0, 1);
+  //   //ManualArduinoReset = true;
+  //  // goto loadfile;
+  //   refreshConnections(-1);
     break;
     }
     case 'a': {
-    removeBridgeFromNodeFile(NANO_D1, RP_UART_RX, netSlot, 0);
-    removeBridgeFromNodeFile(NANO_D0, RP_UART_TX, netSlot, 0);
-    // removeBridgeFromNodeFile(RP_UART_RX, -1, netSlot, 0);
-    // removeBridgeFromNodeFile(RP_UART_TX, -1, netSlot, 0);
-    //refreshLocalConnections(-1);
-    refreshConnections(-1);
+      disconnectArduino(0);
+    // removeBridgeFromNodeFile(NANO_D1, RP_UART_RX, netSlot, 0);
+    // removeBridgeFromNodeFile(NANO_D0, RP_UART_TX, netSlot, 0);
+    // // removeBridgeFromNodeFile(RP_UART_RX, -1, netSlot, 0);
+    // // removeBridgeFromNodeFile(RP_UART_TX, -1, netSlot, 0);
+    // //refreshLocalConnections(-1);
+    // refreshConnections(-1);
 
     //goto loadfile;
     break;
@@ -968,22 +996,43 @@ skipinput:
 
   debugFlags:
 
-    Serial.print("\n\r0.   all off");
+    int lastSerial1Passthrough = jumperlessConfig.serial_1.print_passthrough;
+    int lastSerial2Passthrough = jumperlessConfig.serial_2.print_passthrough;
+    printSerial1Passthrough = 0;
+    printSerial2Passthrough = 0;
+
+    Serial.print("\n\n\r0.   all off");
     Serial.print("\n\r9.   all on");
     Serial.print("\n\ra-z. exit\n\r");
 
-    Serial.print("\n\r1. file parsing           =    ");
+    Serial.print("\n\r1. file parsing               =    ");
     Serial.print(debugFP);
-    Serial.print("\n\r2. net manager            =    ");
+    Serial.print("\n\r2. net manager                =    ");
     Serial.print(debugNM);
-    Serial.print("\n\r3. chip connections       =    ");
+    Serial.print("\n\r3. chip connections           =    ");
     Serial.print(debugNTCC);
-    Serial.print("\n\r4. chip conns alt paths   =    ");
+    Serial.print("\n\r4. chip conns alt paths       =    ");
     Serial.print(debugNTCC2);
-    Serial.print("\n\r5. LEDs                   =    ");
+    Serial.print("\n\r5. LEDs                       =    ");
     Serial.print(debugLEDs);
-    Serial.print("\n\r6. show probe current     =    ");
+    Serial.print("\n\r6. show probe current         =    ");
     Serial.print(showProbeCurrent);
+    Serial.print("\n\n\r7. print serial 1 passthrough =    ");
+    if (jumperlessConfig.serial_1.print_passthrough == 1) {
+      Serial.print("on");
+    } else if (jumperlessConfig.serial_1.print_passthrough == 2) {
+      Serial.print("flashing only");
+    } else if (jumperlessConfig.serial_1.print_passthrough == 0) {
+      Serial.print("off");
+    }
+    Serial.print("\n\r8. print serial 2 passthrough =    ");
+    if (jumperlessConfig.serial_2.print_passthrough == 1) {
+      Serial.print("on");
+    } else if (jumperlessConfig.serial_2.print_passthrough == 2) {
+      Serial.print("flashing only");
+    } else if (jumperlessConfig.serial_2.print_passthrough == 0) {
+      Serial.print("off");
+    }
     // Serial.print("\n\n\r6. swap probe pin         =    ");
     // if (probeSwap == 0) {
     //   Serial.print("19");
@@ -991,7 +1040,8 @@ skipinput:
     //   Serial.print("18");
     // }
 
-    Serial.print("\n\n\n\r");
+    Serial.println("\n\n\n\r");
+    Serial.flush();
 
     while (Serial.available() == 0)
       ;
@@ -1008,6 +1058,8 @@ skipinput:
 
       goto debugFlags;
       } else {
+      printSerial1Passthrough = lastSerial1Passthrough;
+      printSerial2Passthrough = lastSerial2Passthrough;
       break;
       }
     }
@@ -1090,8 +1142,10 @@ void loop1() {
       core2stuff();
       }
 
-
     secondSerialHandler();
+    // if (Serial1Available > 0 || USBSer1Available > 0) {
+    //   secondSerialHandler();
+    //   }
 
 
     // core2busy = true;
@@ -1203,9 +1257,6 @@ void core2stuff() // core 2 handles the LEDs and the CH446Q8
             clearBeforeSend = 0;
             }
 
-          // Serial.println("showNets");
-          // delay(100);
-
           readGPIO(); //if want, I can make this update the LEDs like 10 times faster by putting outside this loop, 
           showLEDmeasurements();
 
@@ -1298,26 +1349,12 @@ void core2stuff() // core 2 handles the LEDs and the CH446Q8
               if (probeCycle > 4) {
                 probeCycle = 1;
                 }
-              // setGPIO();
-              // showLEDsCore2 = 1;
-
-              //  readGPIO();
+  
               }
 
-            // readGPIO();
-            // multicore_lockout_start_blocking();
-            // core2busy = true;
+
             rotaryEncoderStuff();
-            // core2busy = false;
-            //  multicore_lockout_end_blocking();
 
-            // if (probeActive == 0 && measureModeActive == 0) {
-            //   if (millis() - measureLEDTimer > 50) {
-            //     measureLEDTimer = millis();
-
-            //     showLEDmeasurements();
-            //   }
-            // }
             if (inClickMenu == 0 && loadingFile == 0 && showLEDsCore2 == 0 &&
                 core1busy == false) {
               // showAllRowAnimations();
@@ -1335,18 +1372,7 @@ void sendPaths(void) {
   while (core1busy == true) {
     }
   core2busy = true;
-  // if (sendAllPathsCore2 != -1) {
 
-  // Serial.println("sendPaths");
-  // multicore_lockout_start_blocking();
-  // multicore_lockout_start_timeout_us(1000);
-
-  // digitalWrite(RESETPIN, HIGH);
-  // delayMicroseconds(50);
-  // digitalWrite(RESETPIN, LOW);
-  // delayMicroseconds(2200);
-
-  //}
   unsigned long pathTimer = micros();
 
   sendAllPaths();

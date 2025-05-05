@@ -116,16 +116,24 @@ struct config {
         int uart_rx_function = 1;
     } gpio;
 
-    struct serial {
+    
         struct serial_1 {
             int function = 1; 
             int baud_rate = 115200;
+            int print_passthrough = 0;
+            int connect_on_boot = 0;
+            int lock_connection = 0;
         } serial_1;
+
+        
         struct serial_2 {
             int function = 0; // 0 = off
             int baud_rate = 115200;
+            int print_passthrough = 0;
+            int connect_on_boot = 0;
+            int lock_connection = 0;
         } serial_2;
-    } serial;
+    
 };
 
 #endif // CONFIG_H

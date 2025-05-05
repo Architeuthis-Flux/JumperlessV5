@@ -16,6 +16,9 @@
 #include <EEPROM.h>
 #include <FatFS.h>
 #include "Peripherals.h"
+#include "ArduinoStuff.h"
+#include "config.h"
+#include "CH446Q.h"
 volatile bool netsUpdated = true;
 
 bool debugFP = EEPROM.read(DEBUG_FILEPARSINGADDRESS);
@@ -279,6 +282,7 @@ void createSlots(int slot,  int overwrite) {
 
       nodeFile.close();
       core1busy = false;
+      refreshPaths();
     }
   } else {
     // while (core2busy == true) {
@@ -305,6 +309,7 @@ void createSlots(int slot,  int overwrite) {
 
     nodeFile.close();
     core1busy = false;
+    refreshPaths();
   }
 }
 
@@ -360,17 +365,6 @@ int checkIfBridgeExists(int node1, int node2, int slot, int flashOrLocal) {
     //nodeFile.readStringUntil
   }
 
-  
-
-
-
-
-
-
-
-
-
-
 
 return 0;
 
@@ -390,30 +384,10 @@ void inputNodeFileList(int addRotaryConnections) {
     }
   }
   nodeFileString.clear();
-  // if (addRotaryConnections > 0)
-  // {
-  //     for (int i = 0; i < 59 ; i++)
-  //     {
-  //     nodeFileString.write(rotaryConnectionString[i]);
-  //     Serial.print(rotaryConnectionString[i]);
-  //     }
-  // }
+
   int startInsertion = 0;
-  // while (Serial.available() > 0) {
-  //   uint8_t c = Serial.read();
-  //   // if (c == '{' && addRotaryConnections > 0)
-  //   // {
-  //   //     // startInsertion = 1;
-  //   //     for (int i = 0; i < 53; i++)
-  //   //     {
-  //   //         nodeFileString.write(rotaryConnectionString[i]);
-  //   //         // Serial.print(rotaryConnectionString[i]);
-  //   //     }
-  //   //     continue;
-  //   // }
-  //   nodeFileString.write(c);
-  //   delayMicroseconds(90);
-  // }
+
+
   nodeFileString.read(Serial);
 
   // Serial.println("\n\r\n\rnodeFileString");
@@ -598,6 +572,7 @@ void saveCurrentSlotToSlot(int slotFrom, int slotTo, int flashOrLocalfrom,
   nodeFileString.printTo(nodeFile);
   nodeFile.close();
   core1busy = false;
+ // refreshPaths();
 }
 
 void savePreformattedNodeFile(int source, int slot, int keepEncoder) {
@@ -612,6 +587,7 @@ void savePreformattedNodeFile(int source, int slot, int keepEncoder) {
   // Serial.println("Slot " + String(slot));
 
   // Serial.println(nodeFile);
+
 
   if (keepEncoder == 1) {
     // nodeFile.print("{ D12-D7, D7-ADC0, ADC0-UART_RX, D11-GND, D10-ADC2,
@@ -631,6 +607,9 @@ void savePreformattedNodeFile(int source, int slot, int keepEncoder) {
     while (Serial.available() == 0 || Serial.peek() == 'f') {
     }
     nodeFile.print("{");
+    if (jumperlessConfig.serial_1.lock_connection == 1) {
+      nodeFile.print("116-70, 117-71, ");
+      }
     while (Serial.available() > 0) {
       // nodeFile.write(Serial.read());
       uint8_t c = Serial.read();
@@ -653,14 +632,14 @@ void savePreformattedNodeFile(int source, int slot, int keepEncoder) {
         Serial.write(c);
       }
 
-      delayMicroseconds(10);
+      delayMicroseconds(microsPerByteSerial1);
     }
   }
   if (source == 1) {
-    nodeFile.print("f 117-71, 116-70,");
+    nodeFile.print("{117-71, 116-70,");
     while (Serial1.available() == 0) {
     }
-    delayMicroseconds(90);
+    delayMicroseconds(microsPerByteSerial1);
     // Serial.println("waiting for Arduino to send file");
     while (Serial1.available() > 0) {
 
@@ -668,13 +647,13 @@ void savePreformattedNodeFile(int source, int slot, int keepEncoder) {
 char c = Serial1.read();
       //nodeFile.write(c);
       specialFunctionsString.write(c);
-      delayMicroseconds(10);
+      delayMicroseconds(microsPerByteSerial1);
       // Serial.println(Serial1.available());
     }
 
     while (Serial1.available() > 0) {
       Serial1.read();
-      delayMicroseconds(10);
+      delayMicroseconds(microsPerByteSerial1);
     }
   }
 
@@ -685,12 +664,13 @@ char c = Serial1.read();
   // nodeFile.seek(0);
   //  nodeFileString.read(nodeFile);
   // Serial.println(nodeFileString);
-  if (specialFunctionsString.endsWith(",") == -1) {
-    specialFunctionsString.concat(" , ");
+  specialFunctionsString.trim();
+  if (specialFunctionsString.endsWith(",") == 0) {
+    specialFunctionsString.concat(",");
   }
 
 // Serial.println("\n\n\rbefore replaceSFNamesWithDefinedInts");
-//   specialFunctionsString.printTo(Serial);
+   //specialFunctionsString.printTo(Serial);
 
  replaceSFNamesWithDefinedInts();
  replaceNanoNamesWithDefinedInts();
@@ -723,6 +703,7 @@ char c = Serial1.read();
 
   
   core1busy = false;
+  //refreshPaths();
   // Serial.println("Slot " + String(slot) + " saved");
   // printNodeFile(slot);
 }
@@ -1133,7 +1114,11 @@ void clearNodeFile(int slot, int flashOrLocal) {
   if (flashOrLocal == 0) {
     openFileThreadSafe(w, slot);
     // nodeFile = FatFS.open("nodeFileSlot" + String(slot) + ".txt", "w");
-    nodeFile.print(" { } ");
+    nodeFile.print("{");
+    if (jumperlessConfig.serial_1.lock_connection == 1) {
+      nodeFile.print("116-70, 117-71, ");
+    }
+    nodeFile.print("} ");
     nodeFile.close();
   } else {
     nodeFileString.clear();
@@ -1179,10 +1164,10 @@ int removeBridgeFromNodeFile(int node1, int node2, int slot, int flashOrLocal, i
     nodeFile.setTimeout(8);
   }
 if (onlyCheck == 1) {
-  Serial.print("Checking for bridge between ");
-  Serial.print(node1);
-  Serial.print(" and ");
-  Serial.println(node2);
+  // Serial.print("Checking for bridge between ");
+  // Serial.print(node1);
+  // Serial.print(" and ");
+  // Serial.println(node2);
 }
   timerEnd[0] = millis() - timerStart;
 
@@ -1694,8 +1679,8 @@ void readStringFromSerial(int source, int addRemove) {
     //serialString.readUntil(specialFunctionsString, "-"); 
    //serialString.removeLast(1);
     serialString.toInt(node1);
-    serialString.printTo(Serial);
-    Serial.println();
+    //serialString.printTo(Serial);
+    //Serial.println();
     //nodeFileString.printTo(Serial);
     // Serial.println();
     //nodeFileString.clear();
@@ -1710,8 +1695,8 @@ void readStringFromSerial(int source, int addRemove) {
       specialFunctionsString.substring(serialString, dashIndex + 1, commaIndex);
     }
 
-    specialFunctionsString.printTo(Serial);
-    Serial.println();
+    //specialFunctionsString.printTo(Serial);
+    //Serial.println();
 
     if (specialFunctionsString.indexOfCharFrom("-" ,dashIndex+1) != -1) {
       specialFunctionsString.removeBefore(commaIndex+1);
@@ -1721,14 +1706,14 @@ void readStringFromSerial(int source, int addRemove) {
       finished = 1;
     }
 
-    specialFunctionsString.printTo(Serial);
-    Serial.println();
+    //specialFunctionsString.printTo(Serial);
+    //Serial.println();
 
     serialString.toInt(node2);
-    serialString.printTo(Serial);
-    Serial.println();
-    Serial.print("node1 = ");
-    Serial.println(node1);
+    //serialString.printTo(Serial);
+    //Serial.println();
+    //Serial.print("node1 = ");
+    //Serial.println(node1);
     Serial.print("node2 = ");
     Serial.println(node2);
     }

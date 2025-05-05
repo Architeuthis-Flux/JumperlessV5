@@ -8,6 +8,8 @@
 #include <EEPROM.h>
 #include "Graphics.h"
 #include "configManager.h"
+#include "config.h"
+#include "ArduinoStuff.h"
 
 
 
@@ -335,7 +337,7 @@ void debugFlagSet(int flag) {
 
       debugFP = false;
       }
-
+    jumperlessConfig.debug_flags.file_parsing = debugFP;
     break;
     }
 
@@ -351,6 +353,7 @@ void debugFlagSet(int flag) {
 
       debugNM = false;
       }
+    jumperlessConfig.debug_flags.net_manager = debugNM;
     break;
     }
 
@@ -366,7 +369,7 @@ void debugFlagSet(int flag) {
 
       debugNTCC = false;
       }
-
+    jumperlessConfig.debug_flags.net_to_chip_connections = debugNTCC;
     break;
     }
     case 4: {
@@ -381,6 +384,7 @@ void debugFlagSet(int flag) {
 
       debugNTCC2 = false;
       }
+    jumperlessConfig.debug_flags.net_to_chip_connections_alt = debugNTCC2;
     break;
     }
 
@@ -396,6 +400,7 @@ void debugFlagSet(int flag) {
 
       debugLEDs = false;
       }
+    jumperlessConfig.debug_flags.leds = debugLEDs;
     break;
     }
 
@@ -425,8 +430,33 @@ void debugFlagSet(int flag) {
 
       showProbeCurrent = 0;
       }
+    //jumperlessConfig.debug_flags.show_probe_current = showProbeCurrent;
     break;
     }
+
+    case 7: {
+      if (jumperlessConfig.serial_1.print_passthrough == 0) {
+        jumperlessConfig.serial_1.print_passthrough = 2;
+      } else if (jumperlessConfig.serial_1.print_passthrough == 1) {
+        jumperlessConfig.serial_1.print_passthrough = 0;
+      } else if (jumperlessConfig.serial_1.print_passthrough == 2) {
+        jumperlessConfig.serial_1.print_passthrough = 1;
+      }
+   // printSerial1Passthrough = jumperlessConfig.serial.serial_1.print_passthrough;
+    break;
+    }
+    case 8: {
+      if (jumperlessConfig.serial_2.print_passthrough == 0) {
+        jumperlessConfig.serial_2.print_passthrough = 2;
+      } else if (jumperlessConfig.serial_2.print_passthrough == 1) {
+        jumperlessConfig.serial_2.print_passthrough = 0;
+      } else if (jumperlessConfig.serial_2.print_passthrough == 2) {
+        jumperlessConfig.serial_2.print_passthrough = 1;
+      }
+    //printSerial2Passthrough = jumperlessConfig.serial.serial_2.print_passthrough;
+    break;
+    }
+    
 
     case 0: {
     EEPROM.write(DEBUG_FILEPARSINGADDRESS, 0);
@@ -446,6 +476,12 @@ void debugFlagSet(int flag) {
     debugNTCC2 = false;
     debugLEDs = false;
     showProbeCurrent = 0;
+    jumperlessConfig.debug_flags.file_parsing = false;
+    jumperlessConfig.debug_flags.net_manager = false;
+    jumperlessConfig.debug_flags.net_to_chip_connections = false;
+    jumperlessConfig.debug_flags.net_to_chip_connections_alt = false;
+    jumperlessConfig.debug_flags.leds = false;
+    //jumperlessConfig.debug_flags.show_probe_current = false;
 
     break;
     }
@@ -467,6 +503,12 @@ void debugFlagSet(int flag) {
     debugNTCC2 = true;
     debugLEDs = true;
     showProbeCurrent = 1;
+    jumperlessConfig.debug_flags.file_parsing = true;
+    jumperlessConfig.debug_flags.net_manager = true;
+    jumperlessConfig.debug_flags.net_to_chip_connections = true;
+    jumperlessConfig.debug_flags.net_to_chip_connections_alt = true;
+    jumperlessConfig.debug_flags.leds = true;
+    //jumperlessConfig.debug_flags.show_probe_current = true;
     break;
     }
     case 10: {
@@ -488,7 +530,7 @@ void debugFlagSet(int flag) {
     case 12: {
 
     EEPROM.write(DISPLAYMODE_ADDRESS, displayMode);
-
+    //jumperlessConfig.display_settings.display_mode = displayMode;
 
 
     break;
@@ -496,7 +538,7 @@ void debugFlagSet(int flag) {
     case 13:
     {
     EEPROM.write(NETCOLORMODE_ADDRESS, netColorMode);
-
+    //jumperlessConfig.display_settings.net_color_mode = netColorMode;
 
     }
     break;
@@ -900,6 +942,16 @@ void readSettingsFromConfig() {
           gpio_set_pulls(gpio_pin, false, false);
           }
     }
+
+  // Serial
+  baudRateUSBSer1 = jumperlessConfig.serial_1.baud_rate;
+  baudRateUSBSer2 = jumperlessConfig.serial_2.baud_rate;
+  printSerial1Passthrough = jumperlessConfig.serial_1.print_passthrough;
+  printSerial2Passthrough = jumperlessConfig.serial_2.print_passthrough;
+  connectOnBoot1 = jumperlessConfig.serial_1.connect_on_boot;
+  connectOnBoot2 = jumperlessConfig.serial_2.connect_on_boot;
+  lockConnection1 = jumperlessConfig.serial_1.lock_connection;
+  lockConnection2 = jumperlessConfig.serial_2.lock_connection;
 
   }
 /// 0 = output low, 1 = output high, 2 = input, 3 = input pullup, 4 = input pulldown, 5 = unknown

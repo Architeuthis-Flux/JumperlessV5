@@ -2,7 +2,7 @@
 #ifndef LEDS_H
 #define LEDS_H
 
-#include "Adafruit_NeoMatrix.h"
+//#include "Adafruit_NeoMatrix.h"
 #include "Adafruit_NeoPixel.h"
 #include "JumperlessDefines.h"
 #include "NetsToChipConnections.h"
