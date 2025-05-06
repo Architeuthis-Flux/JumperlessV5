@@ -30,6 +30,10 @@ extern Adafruit_USBD_CDC USBSer2;
 #endif
 extern volatile int arduinoInReset;
 
+extern char arduinoCommandStrings[10][50];
+
+
+int checkForArduinoCommands(uint8_t serialBuffer[], int serialBufferIndex);
 void initArduino(void);
 
 void initSecondSerial(void);
@@ -49,7 +53,7 @@ void SetArduinoResetLine(bool state, int topBottomBoth = 2);
 void flashArduino(unsigned long timeout);
 
 void resetArduino(int topBottomBoth = 2);
-void connectArduino(int flashOrLocal = 1);
+void connectArduino(int flashOrLocal = 1, int refreshConnections = 1);
 void disconnectArduino(int flashOrLocal =  1);
 int checkIfArduinoIsConnected(void);
 

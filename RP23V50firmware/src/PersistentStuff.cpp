@@ -597,6 +597,8 @@ void saveDuplicateSettings(int forceDefaults) {
   jumperlessConfig.routing_settings.stack_dacs = powerDuplicates;
   jumperlessConfig.routing_settings.rail_priority = dacPriority;
 
+  configChanged = true;
+
   // saveConfig();
   }
 
@@ -751,46 +753,65 @@ void saveLEDbrightness(int forceDefaults) {
 
 
 void updateGPIOConfigFromState(void) {
+  int changed = 0;
   for (int i = 0; i < 10; i++) {  // Changed from 8 to 10 to include UART pins
     // Map gpioState to direction and pull settings
     if (i < 8) {  // Regular GPIO pins 0-7 are on pins 20-27
       int gpio_pin = i + 20;  // Map GPIO 0-7 to pins 20-27
       switch (gpioState[i]) {
         case 0: // output low
+        if (jumperlessConfig.gpio.direction[i] != 0 || jumperlessConfig.gpio.pulls[i] != 2) {
+          changed = 1;
+          }
           jumperlessConfig.gpio.direction[i] = 0; // output
           jumperlessConfig.gpio.pulls[i] = 2; // no pull
           gpio_set_dir(gpio_pin, true);  // Set as output
           gpio_set_pulls(gpio_pin, false, false);  // No pulls
           break;
         case 1: // output high
+          if (jumperlessConfig.gpio.direction[i] != 0 || jumperlessConfig.gpio.pulls[i] != 2) {
+            changed = 1;
+            }
           jumperlessConfig.gpio.direction[i] = 0; // output
           jumperlessConfig.gpio.pulls[i] = 2;
           gpio_set_dir(gpio_pin, true);  // Set as output
           gpio_set_pulls(gpio_pin, false, false);  // No pulls
           break;
         case 2: // input
+          if (jumperlessConfig.gpio.direction[i] != 1 || jumperlessConfig.gpio.pulls[i] != 2) {
+            changed = 1;
+            }
           jumperlessConfig.gpio.direction[i] = 1; // input
           jumperlessConfig.gpio.pulls[i] = 2; // no pull
           gpio_set_dir(gpio_pin, false);  // Set as input
           gpio_set_pulls(gpio_pin, false, false);  // No pulls
           break;
         case 3: // input pullup
+          if (jumperlessConfig.gpio.direction[i] != 1 || jumperlessConfig.gpio.pulls[i] != 1) {
+            changed = 1;
+            }
           jumperlessConfig.gpio.direction[i] = 1; // input
           jumperlessConfig.gpio.pulls[i] = 1; // pullup
           gpio_set_dir(gpio_pin, false);  // Set as input
           gpio_set_pulls(gpio_pin, true, false);  // Pull up
           break;
         case 4: // input pulldown
+          if (jumperlessConfig.gpio.direction[i] != 1 || jumperlessConfig.gpio.pulls[i] != 0) {
+            changed = 1;
+            }
           jumperlessConfig.gpio.direction[i] = 1; // input
           jumperlessConfig.gpio.pulls[i] = 0; // pulldown
           gpio_set_dir(gpio_pin, false);  // Set as input
           gpio_set_pulls(gpio_pin, false, true);  // Pull down
           break;
         case 5: // unknown
+          if (jumperlessConfig.gpio.direction[i] != 1 || jumperlessConfig.gpio.pulls[i] != 0) {
+            changed = 1;
+            }
           jumperlessConfig.gpio.direction[i] = 1; // default to input
-          jumperlessConfig.gpio.pulls[i] = 2; // no pull
+          jumperlessConfig.gpio.pulls[i] = 0; // default to pulldown
           gpio_set_dir(gpio_pin, false);  // Set as input
-          gpio_set_pulls(gpio_pin, false, false);  // No pulls
+          gpio_set_pulls(gpio_pin, false, true);  // Pull down
           break;
         }
       } else {  // UART pins (TX=0, RX=1)
@@ -799,14 +820,23 @@ void updateGPIOConfigFromState(void) {
         jumperlessConfig.gpio.direction[i] = 0;  // output
         switch (gpioState[i]) {
           case 3: // input pullup
+            if (jumperlessConfig.gpio.pulls[i] != 1) {
+              changed = 1;
+              }
             jumperlessConfig.gpio.pulls[i] = 1; // pullup
             gpio_set_pulls(uart_pin, true, false);  // Pull up
             break;
           case 4: // input pulldown
+            if (jumperlessConfig.gpio.pulls[i] != 0) {
+              changed = 1;
+              }
             jumperlessConfig.gpio.pulls[i] = 0; // pulldown
             gpio_set_pulls(uart_pin, false, true);  // Pull down
             break;
           default:
+            if (jumperlessConfig.gpio.pulls[i] != 2) {
+              changed = 1;
+              }
             jumperlessConfig.gpio.pulls[i] = 2;  // no pull
             gpio_set_pulls(uart_pin, false, false);  // No pulls
             break;
@@ -816,14 +846,23 @@ void updateGPIOConfigFromState(void) {
         jumperlessConfig.gpio.direction[i] = 1;  // input
         switch (gpioState[i]) {
           case 3: // input pullup
+            if (jumperlessConfig.gpio.pulls[i] != 1) {
+              changed = 1;
+              }
             jumperlessConfig.gpio.pulls[i] = 1; // pullup
             gpio_set_pulls(uart_pin, true, false);  // Pull up
             break;
           case 4: // input pulldown
+            if (jumperlessConfig.gpio.pulls[i] != 0) {
+              changed = 1;
+              }
             jumperlessConfig.gpio.pulls[i] = 0; // pulldown
             gpio_set_pulls(uart_pin, false, true);  // Pull down
             break;
           default:
+            if (jumperlessConfig.gpio.pulls[i] != 2) {
+              changed = 1;
+              }
             jumperlessConfig.gpio.pulls[i] = 2;  // no pull
             gpio_set_pulls(uart_pin, false, false);  // No pulls
             break;
@@ -832,7 +871,9 @@ void updateGPIOConfigFromState(void) {
         }
       }
     }
-  configChanged = true; // Mark config as changed so it will be saved
+  if (changed == 1) {
+    configChanged = true; // Mark config as changed so it will be saved
+    }
   }
 
 void runCommandAfterReset(char command) {

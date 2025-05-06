@@ -12,14 +12,14 @@ struct rowLEDs {
   uint32_t color[5];
 
 };
-void refreshBlind(int disconnectFirst = -1, int fillUnused = 0);
+void refreshBlind(int disconnectFirst = -1, int fillUnused = 0, int clean = 0);
 
 unsigned long waitCore2(void);
 
-void refresh(int flashOrLocal = 0, int ledShowOption = -1, int fillUnused = 1);
+void refresh(int flashOrLocal = 0, int ledShowOption = -1, int fillUnused = 1, int clean = 0);
 
-void refreshConnections(int ledShowOption = 1,int fillUnused = 1);
-void refreshLocalConnections(int ledShowOption = 1, int fillUnused = 1);
+void refreshConnections(int ledShowOption = 1,int fillUnused = 1, int clean = 0);
+void refreshLocalConnections(int ledShowOption = 1, int fillUnused = 1, int clean = 0);
 void updateLEDs(void);
 void printSlots(int fileNo = -1);
 bool checkFloating(int node);

@@ -33,7 +33,9 @@
         "format": "cpp",
         "cstdint": "cpp",
         "algorithm": "cpp",
-        "random": "cpp"
+        "random": "cpp",
+        "span": "cpp",
+        "text_encoding": "cpp"
     },
     "cortex-debug.registerUseNaturalFormat": false,
     "C_Cpp.errorSquiggles": "disabled",

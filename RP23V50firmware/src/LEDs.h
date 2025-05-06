@@ -40,9 +40,11 @@
 #define LED_COUNT_TOP 145
 extern bool splitLEDs;
 
-#define DEFAULTBRIGHTNESS 10
-#define DEFAULTRAILBRIGHTNESS 15
-#define DEFAULTSPECIALNETBRIGHTNESS 20
+#define DEFAULTMENUBRIGHTNESS 100
+
+#define DEFAULTBRIGHTNESS 50
+#define DEFAULTRAILBRIGHTNESS 55
+#define DEFAULTSPECIALNETBRIGHTNESS 60
 
 extern volatile bool core2busy;
 // #define PCBEXTINCTION 0 //extra brightness for to offset the extinction

@@ -22,6 +22,8 @@
 #include "Apps.h"
 #include "UserCode.h"
 
+#include "menuTree.h"
+
 
 int inClickMenu = 0;
 
@@ -30,7 +32,7 @@ int menuLength = 0;
 char menuChars[1000];
 
 int menuLineIndex = 0;
-String menuLines[150];
+//String menuLines[150];
 int menuLevels[150];
 int stayOnTop[150];
 uint8_t numberOfChoices[150];
@@ -60,60 +62,15 @@ struct action {
   float analogVoltage;
   };
 
-//>n nodes //>b baud //>v voltage //$Stay on top$ //*choices*
 
-// enum actionCategories {
-//   SHOWACTION,
-//   RAILSACTION,
-//   SLOTSACTION,
-//   OUTPUTACTION,
-//   ARDUINOACTION,
-//   PROBEACTION,
-//   NOCATEGORY
-// };
-
-// enum showOptions {
-//   VOLTAGE,
-//   CURRENT,
-//   GPIO5V,
-//   GPIO3V3,
-//   SHOWUART,
-//   SHOWI2C,
-//   NOSHOW
-// };
-// enum railOptions { TOP, BOTTOM, BOTH, NORAIL };
-// enum slotOptions { SAVETO, LOADFROM, CLEAR, NOSLOT };
-// enum outputOptions {
-//   VOLTAGE8V,
-//   VOLTAGE5V,
-//   DIGITAL5V,
-//   DIGITAL3V3,
-//   OUTPUTUART,
-//   OUTPUTI2C,
-//   NOOUTPUT
-// };
-// enum arduinoOptions { RESET, ARDUINOUART, NOARDUINO };
-// enum probeOptions { PROBECONNECT, PROBECLEAR, PROBECALIBRATE, NOPROBE };
-
-// struct action {
-//   actionCategories Category;
-//   showOptions Show;
-//   railOptions Rail;
-//   slotOptions Slot;
-//   outputOptions Output;
-//   arduinoOptions Arduino;
-//   probeOptions Probe;
-//   float floatValue;
-//   int intValues[10];
-// };
-
-void readMenuFile(void) {
+void readMenuFile(int flashOrLocal) {
   // FatFS.begin();
   // delay(10);
+  if (flashOrLocal == 0) {
   writeMenuTree();
-  while (core2busy == true) {
-    // Serial.println("waiting for core2 to finish");
-    }
+  // while (core2busy == true) {
+  //   // Serial.println("waiting for core2 to finish");
+  //   }
   core1busy = true;
   File menuFile = FatFS.open("/MenuTree.txt", "r");
   if (!menuFile) {
@@ -134,6 +91,58 @@ void readMenuFile(void) {
 
   menuFile.close();
   core1busy = false;
+  } else {
+
+    menuLineIndex = 0;
+
+    for (int i = 0; i < 150; i++) {
+      // Serial.print(i);
+      // Serial.print(": ");
+      // Serial.println(menuLines[i]);
+      if (menuLines[i] == "end") {
+        menuLines[i] = "";
+        break;
+      } else {
+       // menuLines[i] = String(menuTreeStrings[i]);
+        menuLineIndex++;
+        }
+      }
+    //Serial.println(menuLineIndex);
+    // Split menuTree into lines and store in menuLines[]
+  //   int menuIndex = 0;
+  //   int bufferIndex = 0;
+  //   char buffer[256];
+  //   menuLineIndex = 0;
+  //   while (menuTree[menuIndex] != '\0') {
+  //     if (menuTree[menuIndex] == '\n' || menuTree[menuIndex] == '\r') {
+  //       if (bufferIndex > 0) {
+  //         buffer[bufferIndex] = '\0';
+  //         menuLines[menuLineIndex] = String(buffer);
+  //         menuLineIndex++;
+  //         bufferIndex = 0;
+  //       }
+  //       // Skip consecutive newlines
+  //       menuIndex++;
+  //       continue;
+  //     }
+  //     buffer[bufferIndex++] = menuTree[menuIndex++];
+  //     // Prevent buffer overflow
+  //     if (bufferIndex >= 255) {
+  //       buffer[255] = '\0';
+  //       menuLines[menuLineIndex] = String(buffer);
+  //       menuLineIndex++;
+  //       bufferIndex = 0;
+  //     }
+  //   }
+  //   // Add last line if any
+  //   if (bufferIndex > 0) {
+  //     buffer[bufferIndex] = '\0';
+  //     menuLines[menuLineIndex] = String(buffer);
+  //     menuLineIndex++;
+  //   }
+  //   menuLineIndex--;
+  // }
+  }
   }
 
 int menuParsed = 0;
@@ -310,7 +319,7 @@ void initMenu(void) {
   if (menuRead == 0) {
     // Serial.println(menuLines);
     //delay(1);
-    readMenuFile();
+    readMenuFile(1);
     // return 0;
     }
   if (menuParsed == 0) {
@@ -2024,6 +2033,9 @@ int selectNodeAction(int whichSelection) {
 float getActionFloat(int menuPosition, int rail) {
   float currentChoice = -0.1;
   float snapValues[9] = {1.0, 2.0, 3.0, 3.3, 4.0, 5.0, 6.0, 7.0};
+
+  int snap = 0; //!make this a config variable
+
   char floatString[8] = "0.0";
   rotaryDivider = 3;
   b.clear(1);
@@ -2178,7 +2190,7 @@ float getActionFloat(int menuPosition, int rail) {
 
 
                                 }
-                              if (snapToValue == 0) {
+                              if (snapToValue == 0 && snap != 0) {
                                 for (int i = 0; i < 8; i++) {
                                   if ((abs(currentChoice) > snapValues[i] - 0.05 && abs(currentChoice) < snapValues[i] + 0.05)) {
                                     snapToValue = 3;
@@ -2193,7 +2205,7 @@ float getActionFloat(int menuPosition, int rail) {
 
           } else if (encoderDirectionState == DOWN) {
             encoderDirectionState = NONE;
-            if (snapToValue > 0) {
+            if (snapToValue > 0 && snap != 0) {
               snapToValue --;
               continue;
               } else {
@@ -2277,7 +2289,7 @@ float getActionFloat(int menuPosition, int rail) {
 
 
                                   }
-                              if (snapToValue == 0) {
+                              if (snapToValue == 0 && snap != 0) {
                                 for (int i = 0; i < 8; i++) {
                                   if ((abs(currentChoice) > snapValues[i] - 0.05 && abs(currentChoice) < snapValues[i] + 0.05)) {
                                     snapToValue = 3;
@@ -2740,6 +2752,7 @@ int doMenuAction(int menuPosition, int selection) {
                                             dacPriority = 1;
                                             }
                                           }
+                                          
                                     }
                                   Serial.print("\n\rDuplicate Rails: ");
                                   Serial.print(powerDuplicates);

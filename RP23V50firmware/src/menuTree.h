@@ -1,4 +1,6 @@
+#ifndef MENUTREE_H
 
+#define MENUTREE_H
 
 
 char menuTree[] = {"\n\
@@ -48,7 +50,7 @@ Show\n\
 \n\
 --$GPIO$\n\
 ---*0**1**2**3**4**5**6**7*\n\
----->n4\n\
+---->n8\n\
 \n\
 --$UART$\n\
 ---*Tx* *Rx*\n\
@@ -136,6 +138,120 @@ RoutingOptions\n\
 --$Paths$\n\
 ---*0**1**2**3**4**Max *\n\0"};
 
+String menuLines[] = {
+  "$Rails$",
+  "-*Both* *Top* *Bottom*",
+  "-->v1",
+  "Apps",
+  "-Custom App",
+  "-Calib  DACs",
+  
+  "-Show   Image",
+
+//   "-Oscill oscope",
+//   "-MIDI   Synth", 
+//   "-I2C    Scanner",
+//   "-Self   Dstruct",
+//   "-EEPROM Dumper",
+//   "-7 Seg  Mapper",
+//   "-Rick   Roll",
+//   "-$Circuts>$",
+//   "--555",
+//   "--Op Amp",
+//   "--$7400$",
+//   "---*74x109**74x161**74x42**74x595*",
+  "-$Games  >$",
+  "--*DOOM*", //*Pong**Tetris**Snake*",
+  //"-$Manage >$",
+//   "--Delete",
+//   "--->a3",
+//   "--Upload",
+//   "--->a4",
+//   "-Logic  Analyzr",
+
+"-Scan",
+
+  "Slots",
+  "-$Load$",
+  "--*0**1**2**3**4**5**6**7*>s",
+  "-$Clear$",
+  "--*0**1**2**3**4**5**6**7*>s",
+  "-$Save to$",
+  "--*0**1**2**3**4**5**6**7*>s",
+
+  "Show",
+  "-$Digital$",
+  "--$GPIO$",
+  "---*1**2**3**4**5**6**7**8*",
+  "---->n8",
+  "-$UART$",
+  "---*Tx* *Rx*",
+  "---->n2",
+  "-$I2C$",
+  "---*SDA* *SCL*",
+  "---->n2",
+  "-$Current$",
+  "--*Pos* *Neg*",
+  "--->n2",
+  "-$Voltage$",
+  "--*0**1**2**3**4*",
+  "--->n4",
+//   "-$Options$",
+//   "--Analog Display",
+//   "---$Type$",
+  
+  
+
+
+  "Output",
+  "-$GPIO$",
+  "--*0**1**2**3**4**5**6**7*",
+  "--->n8",
+  "-$UART$",
+  "--*Tx* *Rx*",
+  "---Nodes>n2",
+//   "----*USB 2*  *Print*",
+//   "-----*9600* *115200*",
+  "-$Buffer$",
+  "--*In* *Out*",
+  "--->n2",
+  "--DigitalOptions",
+  "---Output",
+  "----*USB 2*  *Print*",
+  "---$UART$",
+  "----$Baud$",
+  "-----*9600**19200**57600**115200*",
+  "---$I2C$",
+  "----$Speed$",
+  "-----*100 K**400 K**1   M**3.4 M*",
+  "-$Voltage$",
+  "--$DAC$",
+  "--*0* *1*",
+  "--->v2",
+  "---->n1",
+
+
+  "DisplayOptions",
+  "-$DEFCON$",
+  "--*On**Off**Fuck*",
+  "-$Colors$",
+  "--*Rainbow**Shuffle*",
+  "-$Jumpers$",
+  "--*Wires* *Lines*",
+  "-$Bright$",
+  "--*1**2**3**4**5**6**7**8*",
+
+
+  "RoutingOptions",
+  "-Stack",
+  "--$Rails$",
+  "---*0**1**2**3**4**Max *",
+  "--$DACs$",
+  "---*0**1**2**3**4**Max *",
+  "--$Paths$",
+  "---*0**1**2**3**4**Max *",
+  "end"
+};
 
 
 /*
@@ -266,4 +382,7 @@ DisplayOptions\n\
 --*Wires* *Lines*\n\
 -$Bright$\n\
 --*1**2**3**4**5**6**7**8*\n\0"};
+
 */
+
+#endif

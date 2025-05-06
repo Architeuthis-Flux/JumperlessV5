@@ -437,7 +437,9 @@ void scanBoard(void) {
             struct rowLEDs currentRow = getRowLEDdata(i);
 
             //b.printRawRow(0b00100, i - 1, 0x100010, 0xFFFFFF);
-
+            // addBridgeToNodeFile(i, 2, netSlot, 1);
+                    // printNodeOrName(i);
+                    // Serial.println();
             float measuredVoltage = measureVoltage(2, i, true);
 
             if (measuredVoltage == 0xFFFFFFFF) {
@@ -448,13 +450,11 @@ void scanBoard(void) {
 
                     } else {
 
-                    //printNodeOrName(lastRow);
-
                     }
                 } else {
 
                 printNodeOrName(lastRow);
-                Serial.println("\tfloating");
+                Serial.print("\tfloating");
                 lastFloat = -1;
                 Serial.print("\t\t\t");
 
@@ -478,7 +478,7 @@ void scanBoard(void) {
             if (encoderButtonState == PRESSED) {
                 break;
                 }
-            // showLEDsCore2 = 2;
+             showLEDsCore2 = -2;
 
             lastRow = i;
             }
@@ -797,7 +797,7 @@ void calibrateDacs(void) {
 
 
 
-    createSlots(8, 0);
+    createSlots(8, 1);
     // for (int i = 0; i < 4; i++) {
 
     // Serial.print("netSlot: ");
@@ -843,10 +843,11 @@ void calibrateDacs(void) {
             b.print("DAC ", dacColors[d], 0x000000, 0, 1, -1);
 
             b.print(d, dacColors[d], 5, 1, -1);
-
+            refreshPaths();
             clearAllNTCC();
-            createSlots(netSlot, 0);
-
+            createSlots(netSlot, 1);
+            delay(10);
+            
             switch (d) {
                 case 0:
 
@@ -875,8 +876,8 @@ void calibrateDacs(void) {
                     break;
                 }
 
-            refreshConnections(0);
-            delay(100);
+            refreshConnections(0,0,1);
+            delay(80);
             printPathsCompact();
             // Serial.print("\n\n\r\tDAC ");
             // Serial.println(d);
@@ -1000,52 +1001,7 @@ void calibrateDacs(void) {
                                     // dacSpread[d] = dacSpread[d] + (abs((reading / 1000) - setVoltage));
                                     }
                 }
-            // dacSpread[d] = 20.6;
 
-            //   spreadFound = 0;
-            //   float toleranceF = 200.0; // mV
-
-            //   Serial.println("\n\n\rfinding spread\n\r");
-
-            //   // setDacByNumber(d, 7.0, 0);
-            //   // delay(80);
-
-            //   while (spreadFound < 3) {
-            //     if (spreadFound == 1) {
-            //       setVoltage = 3.0;
-            //     } else {
-            //       setVoltage = 7.0;
-            //     }
-
-            //     float setMillivoltage = setVoltage * 1000;
-
-            //     if (adcSpread[d] < 12.0 || adcSpread[d] > 25.0 ||
-            //         adcSpread[d] != adcSpread[d]) {
-            //       adcSpread[d] = 18.0;
-            //     }
-            //     setDacByNumber(d, setVoltage, 0);
-            //     delay(80);
-            //     // delay(20 * (spreadFound + 1));
-
-            //     float reading = readAdcVoltage(d, 32) * 1000;
-
-            //     Serial.print("adcSpread: ");
-            //     Serial.print(adcSpread[d], 3);
-            //     Serial.print(" V\tmeasured: ");
-            //     Serial.print(reading, 2);
-            //     Serial.print(" mV\t");
-            //     Serial.print("setVoltage: ");
-            //     Serial.println(setVoltage);
-
-            //     if (reading <= (setMillivoltage + toleranceF) &&
-            //         reading >= (setMillivoltage - toleranceF)) {
-            //       spreadFound++;
-            //     } else if (reading <= setMillivoltage) {
-            //       adcSpread[d] = adcSpread[d] + 0.01;
-            //     } else if (reading >= setMillivoltage) {
-            //       adcSpread[d] = adcSpread[d] - 0.01;
-            //     }
-            //   }
             }
 
         Serial.println("\n\n\tCalibration Values\n\n\r");
@@ -1167,7 +1123,7 @@ void calibrateDacs(void) {
 
             int nextRow = 0;
 
-            for (int i = -3; i <= 8; i++) {
+            for (int i = -1; i <= 8; i++) {
                 setVoltage = i * 1.0;
                 setDacByNumber(d, setVoltage, 0);
                 Serial.print("set : ");
@@ -1207,7 +1163,7 @@ void calibrateDacs(void) {
                 Serial.print("INA measured: ");
                 Serial.print(reading);
                 Serial.print(" V");
-                delay(120);
+                delay(320);
                 reading = readAdcVoltage(d, 16);
                 Serial.print("\tADC measured: ");
                 if (i < 0) {
@@ -1244,10 +1200,11 @@ void calibrateDacs(void) {
     INA0.setBusADC(0x0b);
     INA1.setBusADC(0x0b);
     // removeBridgeFromNodeFile(ISENSE_PLUS, -1, netSlot);
-    createSlots(netSlot, 0);
+    createSlots(netSlot, 1);
     clearAllNTCC();
     netSlot = lastNetSlot;
     refreshConnections(-1);
+    configChanged = true;
     // printPathsCompact();
     }
 

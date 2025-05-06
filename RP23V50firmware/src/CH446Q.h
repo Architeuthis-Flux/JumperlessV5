@@ -11,14 +11,17 @@ extern int hueShiftC2;
 extern int lightUpNetCore2;
 
 
-void sendPaths(void);
+void sendPaths(int clean = 0);
 void initCH446Q(void);
 void sendXYraw(int chip, int x, int y, int setorclear);
 
-void sendAllPaths(void); // should we sort them by chip? for now, no
+void sendAllPaths(int clean = 0); // should we sort them by chip? for now, no
 
 void sendPath(int path, int setOrClear = 1, int newOrLast = 0);
 void findDifferentPaths(void);
 void createXYarray(void);
 void refreshPaths(void);
+void sortPathsByChipXY(void);
+void printChipStateArray(void);
+void updateChipStateArray(void);
 #endif

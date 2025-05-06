@@ -93,6 +93,8 @@ volatile bool configLoaded = false;
 
 volatile int startupAnimationFinished = 0;
 
+unsigned long startupTimers[10];
+
 void setup() {
   pinMode(RESETPIN, OUTPUT_12MA);
 
@@ -107,7 +109,7 @@ void setup() {
 
 
   Serial.begin(115200);
-
+  startupTimers[0] = millis();
   // Initialize FatFS
   if (!FatFS.begin()) {
     Serial.println("Failed to initialize FatFS");
@@ -118,11 +120,17 @@ void setup() {
   //debugFlagInit(0); //these will be overridden by the config file
 
   // Load configuration
+  // delay(1000);
+  // unsigned long start = millis();
+
   loadConfig();
   //readSettingsFromConfig();
   configLoaded = 1;
+  startupTimers[1] = millis();
   delayMicroseconds(200);
-
+  // Serial.print("config loaded in ");
+  // Serial.print(millis() - start);
+  // Serial.println("ms");
 
   backpowered = 0;
   // USBDevice.setProductDescriptor("Jumperless");
@@ -142,10 +150,10 @@ void setup() {
   digitalWrite(PROBE_PIN, HIGH);
   // digitalWrite(BUTTON_PIN, HIGH);
 
-
+  startupTimers[2] = millis();
   initINA219();
 
-
+  startupTimers[3] = millis();
 
   delayMicroseconds(100);
 
@@ -157,50 +165,60 @@ void setup() {
 
   drawAnimatedImage(0);
   startupAnimationFinished = 1;
-
+  startupTimers[4] = millis();
   clearAllNTCC();
 
 
   initRotaryEncoder();
-
-  // delay(10);
+  startupTimers[5] = millis();
 
   delayMicroseconds(100);
 
   // delay(100);
   initMenu();
+  startupTimers[6] = millis();
   initADC();
+  startupTimers[7] = millis();
 
   // pinMode(18, INPUT_PULLUP); //reset lines for arduino
   // pinMode(19, INPUT_PULLUP);
 
 
   //routableBufferPower(1, 0);
-  routableBufferPower(1, 1);
+  routableBufferPower(1, 0);
 
   getNothingTouched();
+  startupTimers[8] = millis();
   createSlots(-1, 0);
+  startupTimers[9] = millis();
 
 
 
   }
 
+  unsigned long startupCore2timers[10];
+
 void setupCore2stuff() {
   // delay(2000);
+  startupCore2timers[0] = millis();
   initCH446Q();
-
+  startupCore2timers[1] = millis();
   //delay(1);
   while (configLoaded == 0) {
     delayMicroseconds(1);
     }
 
   initLEDs();
+  startupCore2timers[2] = millis();
   initRowAnimations();
+  startupCore2timers[3] = millis();
   setupSwirlColors();
+  startupCore2timers[4] = millis();
 
-
-    initArduino();
+  initArduino();
+  startupCore2timers[5] = millis();
   initSecondSerial();
+  startupCore2timers[6] = millis();
 
 
   // delay(4);
@@ -216,6 +234,8 @@ void setup1() {
 
   while (startupAnimationFinished == 0) {
     }
+
+  startupCore2timers[7] = millis();
 
   }
 
@@ -256,21 +276,56 @@ void loop() {
 
   if (firstLoop == 1) {
     firstLoop = 0;
+    // Serial.println("firstLoop");
+    // Serial.println(millis());
+    // Serial.print("startupTimers[0] = ");
+    // Serial.println(startupTimers[0]);
+    // Serial.print("startupTimers[1] = ");
+    // Serial.println(startupTimers[1]);
+    // Serial.print("startupTimers[2] = ");
+    // Serial.println(startupTimers[2]);
+    // Serial.print("startupTimers[3] = ");
+    // Serial.println(startupTimers[3]);
+    // Serial.print("startupTimers[4] = ");
+    // Serial.println(startupTimers[4]);
+    // Serial.print("startupTimers[5] = ");
+    // Serial.println(startupTimers[5]);
+    // Serial.print("startupTimers[6] = ");
+    // Serial.println(startupTimers[6]);
+    // Serial.print("startupTimers[7] = ");
+    // Serial.println(startupTimers[7]);
+    // Serial.print("startupTimers[8] = ");
+    // Serial.println(startupTimers[8]);
+    // Serial.print("startupTimers[9] = ");
+    // Serial.println(startupTimers[9]);
 
-    // while (Serial.available() == 0) {
-      //  startupColorsV5();             //! write a cool startup animation
-      //  delay(100);
-      //  while (Serial.available() == 0) {
-      //   drawAnimatedImage(0);
-      //   delay(1000);
-      //   }
-    //setRailsAndDACs();
+    // Serial.print("\n\rstartupCore2timers[0] = ");
+    // Serial.println(startupCore2timers[0]);
+    // Serial.print("startupCore2timers[1] = ");
+    // Serial.println(startupCore2timers[1]);
+    // Serial.print("startupCore2timers[2] = ");
+    // Serial.println(startupCore2timers[2]);
+    // Serial.print("startupCore2timers[3] = ");
+    // Serial.println(startupCore2timers[3]);
+    // Serial.print("startupCore2timers[4] = ");
+    // Serial.println(startupCore2timers[4]);
+    // Serial.print("startupCore2timers[5] = ");
+    // Serial.println(startupCore2timers[5]);
+    // Serial.print("startupCore2timers[6] = ");
+    // Serial.println(startupCore2timers[6]);
+    // Serial.print("startupCore2timers[7] = ");
+    // Serial.println(startupCore2timers[7]);
+    
+    // Serial.println("--------------------------------");
+
     if (jumperlessConfig.serial_1.connect_on_boot == 1) {
-      connectArduino(0);
+      connectArduino(0, 0);
       }
     if (jumperlessConfig.serial_2.connect_on_boot == 1) {
-      connectArduino(1);
+      connectArduino(0, 0);
       }
+    
+    routableBufferPower(1, 1);
     if (attract == 1) {
       defconDisplay = 0;
       netSlot = -1;
@@ -515,8 +570,18 @@ skipinput:
 
   switch (input) {
 
+    case '|': {
+      printChipStateArray();
+      break;
+      }
+
     case '_': {
       printMicrosPerByte();
+      break;
+      }
+
+    case 'g': {
+      printGPIOState();
       break;
       }
 
@@ -1207,9 +1272,9 @@ void core2stuff() // core 2 handles the LEDs and the CH446Q8
       showLEDsCore2 == 4 ||
       showLEDsCore2 == 6 && core1busy == false && core1request == 0) {
 
-    if (((showLEDsCore2 >= 1 && loadingFile == 0) || showLEDsCore2 == 3 ||
+    if ((((showLEDsCore2 >= 1 && loadingFile == 0) || showLEDsCore2 == 3 ||
          (swirled == 1) && sendAllPathsCore2 == 0) ||
-        showProbeLEDs != lastProbeLEDs) {
+        showProbeLEDs != lastProbeLEDs ) && sendAllPathsCore2 == 0) {
 
       // Serial.println(showLEDsCore2);
 
@@ -1294,7 +1359,15 @@ void core2stuff() // core 2 handles the LEDs and the CH446Q8
       core2busy = false;
 
       } else if (sendAllPathsCore2 != 0) {
-        sendPaths();
+
+          if (sendAllPathsCore2 == 1) {
+            sendPaths(0);
+          } else if (sendAllPathsCore2 == -1) {
+            sendPaths(1);
+          } else {
+            sendPaths(sendAllPathsCore2);
+          }
+          sendAllPathsCore2 = 0;
 
         } else if (millis() - lastSwirlTime > 51 && loadingFile == 0 &&
                    showLEDsCore2 == 0 && core1busy == false) {
@@ -1367,23 +1440,3 @@ void core2stuff() // core 2 handles the LEDs and the CH446Q8
     }
   }
 
-void sendPaths(void) {
-  // if (sendAllPathsCore2 == 1) {
-  while (core1busy == true) {
-    }
-  core2busy = true;
-
-  unsigned long pathTimer = micros();
-
-  sendAllPaths();
-  core2busy = false;
-  // core2busy = false;
-  unsigned long pathTime = micros() - pathTimer;
-
-  // delayMicroseconds(3200);
-  //  Serial.print("pathTime = ");
-  //  Serial.println(pathTime);
-  sendAllPathsCore2 = 0;
-
-  // }
-  }

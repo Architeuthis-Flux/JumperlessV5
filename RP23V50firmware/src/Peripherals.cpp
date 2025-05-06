@@ -357,7 +357,7 @@ void setGPIO(void) {
 
 
 
-int gpioReadWithFloating(int pin, unsigned long usDelay = 10) { //2 = floating, 1 = high, 0 = low
+int gpioReadWithFloating(int pin, unsigned long usDelay) { //2 = floating, 1 = high, 0 = low
   enum measuredState state = unknownState;
   int settleDelay = 12;
      int reading = -1;
@@ -435,7 +435,74 @@ return state;
 }
 
 
+void printGPIOState(void) {
 
+readGPIO();
+
+  Serial.println("\tGPIO States ");
+  Serial.println("          \t0\t1\t2\t3\t4\t5\t6\t7\tTx\tRx");
+  Serial.print("gpioState: ");
+  for (int i = 0; i < 8; i++) {
+
+    Serial.print(gpioState[i]);
+    Serial.print("\t");
+  }
+  Serial.println();
+  Serial.print("      net:\t");
+  for (int i = 0; i < 8; i++) {
+    Serial.print(gpioNet[i]);
+    Serial.print("\t");
+  }
+  Serial.println();
+  Serial.print("direction:\t");
+  for (int i = 0; i < 8; i++) {
+    switch (jumperlessConfig.gpio.direction[i]) {
+      case 0:
+        Serial.print("out");
+        break;
+      case 1:
+        Serial.print("in");
+        break;
+    }
+    Serial.print("\t");
+  }
+  Serial.println();
+  Serial.print("    pulls:\t");
+  for (int i = 0; i < 8; i++) {
+    switch (jumperlessConfig.gpio.pulls[i]) {
+      case 0:
+        Serial.print("up");
+        break;
+      case 1:
+        Serial.print("down");
+        break;
+      case 2:
+        Serial.print("none");
+        break;
+    }
+    Serial.print("\t");
+  }
+  Serial.println();
+  Serial.print("  reading:\t");
+  for (int i = 0; i < 8; i++) {
+    switch (gpioReading[i]) {
+      case 0:
+        Serial.print("low");
+        break;
+      case 1:
+        Serial.print("high");
+        break;
+      case 2:
+        Serial.print("float");
+        break;
+      case 3:
+        Serial.print("?");
+        break;
+    }
+    Serial.print("\t");
+  }
+  Serial.println();
+}
 
 
 
@@ -456,6 +523,10 @@ void readGPIO(void) {
     // if (gpioNet[i] != -1 &&
     //     (gpioState[i] == 2 || gpioState[i] == 3 || gpioState[i] == 4)) {
     //   int reading = digitalRead(GPIO_1_PIN + i); // readFloatingOrState(20 + i); //this is a regular read
+if (gpioNet[i] == -1) {
+    gpioState[i] = 4;
+    continue;
+}
           if (gpioNet[i] != -1 && (gpioState[i] == 2 || gpioState[i] == 3 || gpioState[i] == 4)) {
             int reading = 0;
             if (i == 8 ) {
@@ -977,6 +1048,20 @@ void chooseShownReadings(void) {
     showINA0[2] = 0;
     // showReadings = 3;
   }
+int changed = 0;
+for (int i = 0; i < 8; i++) {
+  if (gpioNet[i] == -1) {
+    gpioState[i] = 4;
+    changed = 1;
+  }
+}
+if (changed == 1) {
+  updateGPIOConfigFromState();
+}
+
+
+
+
 }
 
 float railSpread = 17.88;

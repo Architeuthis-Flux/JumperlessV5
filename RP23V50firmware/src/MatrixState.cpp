@@ -47,7 +47,7 @@ CHIP_K, CHIP_L };                                           //60
 
 int senseRevision(void) { //unused, this doesn't work
 
-return 0;
+  return 0;
   // pinMode(3, INPUT_PULLUP);
   // int senseRev1 = digitalRead(3);
   // pinMode(3, INPUT_PULLDOWN);
@@ -197,9 +197,9 @@ int rev5plusXmap[12][16] = {
     {CHIP_A, CHIP_A, CHIP_B, CHIP_K, CHIP_C, CHIP_C, CHIP_D, CHIP_L, CHIP_E, CHIP_E, CHIP_I, CHIP_J, CHIP_G, CHIP_G, CHIP_H, CHIP_H},
     {CHIP_A, CHIP_L, CHIP_B, CHIP_B, CHIP_C, CHIP_K, CHIP_D, CHIP_D, CHIP_E, CHIP_E, CHIP_F, CHIP_F, CHIP_I, CHIP_J, CHIP_H, CHIP_H},
     {CHIP_A, CHIP_A, CHIP_B, CHIP_L, CHIP_C, CHIP_C, CHIP_D, CHIP_K, CHIP_E, CHIP_E, CHIP_F, CHIP_F, CHIP_G, CHIP_G, CHIP_I, CHIP_J},
-    {NANO_A0, NANO_D1, NANO_A2, NANO_D3, NANO_A4, NANO_D5, NANO_A6, NANO_D7, NANO_D11, NANO_D9, NANO_D13,ISENSE_PLUS/*NANO_RESET_0*/ , CHIP_L, CHIP_J, CHIP_K,RP_UART_RX }, 
-    {NANO_D0, NANO_A1, NANO_D2, NANO_A3, NANO_D4, NANO_A5, NANO_D6, NANO_A7, NANO_D8, NANO_D10, NANO_D12, ISENSE_MINUS/*NANO_RESET_1*/ , CHIP_L, CHIP_I, CHIP_K, RP_UART_TX},  
-    {29, 59, ROUTABLE_BUFFER_IN, NANO_AREF, TOP_RAIL, BOTTOM_RAIL, DAC1, DAC0, ADC0, ADC1, ADC2, ADC3, CHIP_L, CHIP_I, CHIP_J, GND}, 
+    {NANO_A0, NANO_D1, NANO_A2, NANO_D3, NANO_A4, NANO_D5, NANO_A6, NANO_D7, NANO_D11, NANO_D9, NANO_D13,ISENSE_PLUS/*NANO_RESET_0*/ , CHIP_L, CHIP_J, CHIP_K,RP_UART_RX },
+    {NANO_D0, NANO_A1, NANO_D2, NANO_A3, NANO_D4, NANO_A5, NANO_D6, NANO_A7, NANO_D8, NANO_D10, NANO_D12, ISENSE_MINUS/*NANO_RESET_1*/ , CHIP_L, CHIP_I, CHIP_K, RP_UART_TX},
+    {29, 59, ROUTABLE_BUFFER_IN, NANO_AREF, TOP_RAIL, BOTTOM_RAIL, DAC1, DAC0, ADC0, ADC1, ADC2, ADC3, CHIP_L, CHIP_I, CHIP_J, GND},
     {30, 60, ROUTABLE_BUFFER_OUT, ADC4_5V, RP_GPIO_20, RP_GPIO_21, RP_GPIO_22, RP_GPIO_23, RP_GPIO_24, RP_GPIO_25, RP_GPIO_26, RP_GPIO_27, CHIP_I, CHIP_J, CHIP_K, GND},
   };
 
@@ -217,7 +217,95 @@ int rev4minusXmap[12][16] = {
   {29, 59, ROUTABLE_BUFFER_OUT, NANO_AREF, TOP_RAIL, BOTTOM_RAIL, DAC1, DAC0, ADC0, ADC1, ADC2, ADC3, CHIP_L, CHIP_I, CHIP_J, GND}, //this is for V5r1 change this for V5r2
   {30, 60, ROUTABLE_BUFFER_IN, ADC4_5V, RP_GPIO_20, RP_GPIO_21, RP_GPIO_22, RP_GPIO_23, RP_GPIO_24, RP_GPIO_25, RP_GPIO_26, RP_GPIO_27, CHIP_I, CHIP_J, CHIP_K, GND},
 
-};
+  };
+
+const char* connectionNamesX[12][16] = {
+  { "AI",  "AJ",  "AB0", "AB1", "AC0",  "AC1",  "AD0",  "AD1",  "AE0",  "AK",   "AF0",  "AF1",  "AG0",  "AL",   "AH0",  "AH1"  }, // A
+  { "AB0", "AB1", "BI",  "BJ",  "BC0",  "BC1",  "BD0",  "BD1",  "BE0",  "BE1",  "BF0",  "BK",   "BG0",  "BG1",  "BH0",  "BL"   }, // B
+  { "AC0", "AC1", "BC0", "BC1", "CI",   "CJ",   "CD0",  "CD1",  "CE0",  "CL",   "CF0",  "CF1",  "CG0",  "CK",   "CH0",  "CH1"  }, // C
+  { "AD0", "AD1", "BD0", "BD1", "CD0",  "CD1",  "DI",   "DJ",   "DE0",  "DE1",  "DF0",  "DL",   "DG0",  "DK",   "DH0",  "DH1"  }, // D
+  { "AE0", "EK",  "BE0", "BE1", "CE0",  "EL",   "DE0",  "DE1",  "EI",   "EJ",   "EF0",  "EF1",  "EG0",  "EG1",  "EH0",  "EH1"  }, // E
+  { "AF0", "AF1", "BF0", "FK",  "CF0",  "CF1",  "DF0",  "FL",   "EF0",  "EF1",  "FI",   "FJ",   "FG0",  "FG1",  "FH0",  "FH1"  }, // F
+  { "AG0", "GL",  "BG0", "BG1", "CG0",  "GK",   "DG0",  "DG1",  "EG0",  "EG1",  "FG0",  "FG1",  "GI",   "GJ",   "GH0",  "GH1"  }, // G
+  { "AH0", "AH1", "BH0", "HL",  "CH0",  "CH1",  "DH0",  "HK",   "EH0",  "EH1",  "FH0",  "FH1",  "GH0",  "GH1",  "HI",   "HJ"   }, // H
+
+  { "nA0", "nD1", "nA2", "nD3", "nA4",  "nD5",  "nA6",  "nD7",  "nD11", "nD9",  "nD13", "I+",   "IL",   "IJ",   "IK",   "uRX"  }, // I
+  { "nD0", "nA1", "nD2", "nA3", "nD4",  "nA5",  "nD6",  "nA7",  "nD8",  "nD10", "nD12", "I-",   "JL",   "IJ",   "JK",   "uTX"  }, // J
+  { "29",  "59",  "BFi", "ARF", "TRl",  "BRl",  "Da1",  "Da0",  "Ad0",  "Ad1",  "Ad2",  "Ad3",  "KL",   "KI",   "KJ",   "GND"  }, // K
+  { "30",  "60",  "BFo",  "5V", "GP1",  "GP2",  "GP3",  "GP4",  "GP5",  "GP6",  "GP7",  "GP8",  "LI",   "LJ",   "LK",   "GND"  }  // L
+  };
+
+const char* connectionNamesY[12][8] = {
+  { "u", "1",  "2",  "3",  "4",  "5",  "6",  "7"  },  // A
+  { "u", "8",  "9",  "10", "11", "12", "13", "14" },  // B
+  { "u", "15", "16", "17", "18", "19", "20", "21" },  // C
+  { "u", "22", "23", "24", "25", "26", "27", "28" },  // D
+  { "u", "31", "32", "33", "34", "35", "36", "37" },  // E
+  { "u", "38", "39", "40", "41", "42", "43", "44" },  // F
+  { "u", "45", "46", "47", "48", "49", "50", "51" },  // G
+  { "u", "52", "53", "54", "55", "56", "57", "58" },  // H
+  // Fill in the rest as needed for I, J, K, L
+  { "AI", "BI", "CI", "DI", "EI", "FI", "GI", "HI" }, // I
+  { "AJ", "BJ", "CJ", "DJ", "EJ", "FJ", "GJ", "HJ" }, // J
+  { "AK", "BK", "CK", "DK", "EK", "FK", "GK", "HK" }, // K
+  { "AL", "BL", "CL", "DL", "EL", "FL", "GL", "HL" }  // L
+  };
+
+char returnName[4] = "  ";
+
+char* yName(int chip, int y) {
+  returnName[0] = ' ';
+  returnName[1] = ' ';
+  returnName[2] = ' ';
+  returnName[3] = '\0';
+  if (chip >= 0 && chip < 12) {
+    if (y >= 0 && y < 8) {
+      const char* src = connectionNamesY[chip][y];
+      int i = 0;
+      for (; i < 3 && src[i] != '\0'; ++i) {
+        returnName[i] = src[i];
+      }
+      // Pad with spaces if shorter than 3
+      for (; i < 3; ++i) {
+        returnName[i] = ' ';
+      }
+      returnName[3] = '\0';
+      return returnName;
+    }
+  }
+  return returnName;
+}
+
+char* xName(int chip, int x) {
+  returnName[0] = ' ';
+  returnName[1] = ' ';
+  returnName[2] = ' ';
+  returnName[3] = '\0';
+  if (chip >= 0 && chip < 12) {
+    if (x >= 0 && x < 16) {
+      const char* src = connectionNamesX[chip][x];
+      int i = 0;
+      for (; i < 3 && src[i] != '\0'; ++i) {
+        returnName[i] = src[i];
+      }
+      // Pad with spaces if shorter than 3
+      for (; i < 3; ++i) {
+        returnName[i] = ' ';
+      }
+      returnName[3] = '\0';
+      return returnName;
+    }
+  }
+  return returnName;
+}
+
+
+
+
+
+
+
+
 
 //#if PROTOTYPE_VERSION <= 4
 void initChipStatus(void) {
@@ -226,8 +314,8 @@ void initChipStatus(void) {
     for (int i = 0; i < 12; i++) {
       for (int j = 0; j < 16; j++) {
         ch[i].xMap[j] = rev4minusXmap[i][j];
+        }
       }
-    }
     //#endif
     // Serial.println("initChipStatus");
     // Serial.println(jumperlessConfig.hardware_version.hardware_revision);

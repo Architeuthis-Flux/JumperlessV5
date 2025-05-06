@@ -43,12 +43,13 @@ extern int baudRate;
 
 void setGPIO(void);
 void readGPIO(void);
+void printGPIOState(void);
 
 int initI2C(int sdaPin = 22, int sclPin = 23, int speed = 100000);
 
 
 int readFloatingOrStateMCP (int pin = 0);
-
+int gpioReadWithFloating(int pin, unsigned long usDelay = 10);
 void setCSex(int chip, int value);
 void initGPIOex(void);
 void writeGPIOex(int value, uint8_t pin);

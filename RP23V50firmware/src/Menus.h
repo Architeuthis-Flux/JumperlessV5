@@ -84,7 +84,7 @@ enum probeOptions { PROBECONNECT, PROBECLEAR, PROBECALIBRATE, NOPROBE };
 extern int inClickMenu;
 extern int selectingRotaryNode;
 
-void readMenuFile(void);
+void readMenuFile(int flashOrLocal);
 void parseMenuFile(void);
 
 

@@ -98,6 +98,24 @@ int uncommittedHops; //store the path number of the uncommitted hop
 
 };
 
+// struct justXY{
+// int8_t xStatus[16]; //store the bb row or nano conn this is eventually connected to so they can be stacked if conns are redundant
+
+// int8_t yStatus[8];  //store the row/nano it's connected to
+
+// };
+
+extern const char *connectionNamesX[12][16];
+
+extern const char *connectionNamesY[12][8];
+
+char* xName(int chip, int x);
+
+char* yName(int chip, int y);
+
+
+extern struct justXY justXY[MAX_BRIDGES];
+
 extern struct chipStatus ch[12];
 
 void initChipStatus(void);

@@ -11,7 +11,7 @@
 #include "Probing.h"
 #include "RotaryEncoder.h"
 #include "SafeString.h"
-#include "menuTree.h"
+//#include "menuTree.h"
 #include <Arduino.h>
 #include <EEPROM.h>
 #include <FatFS.h>
@@ -149,11 +149,13 @@ void writeMenuTree(void) {
     // }
   }
   int menuIndex = 0;
-  while (menuTree[menuIndex] != '\0') {
-    menuTreeFile.print(menuTree[menuIndex]);
-    // Serial.print(menuTree[menuIndex]);
-    menuIndex++;
-  }
+
+  // while (menuTree[menuIndex] != '\0') {
+  //   menuTreeFile.print(menuTree[menuIndex]);
+  //   // Serial.print(menuTree[menuIndex]);
+  //   menuIndex++;
+  // }
+
   // menuTreeFile.write(menuTree);
   // menuTreeFile.print(menuTreeString);
   menuTreeFile.close();
@@ -1833,7 +1835,9 @@ void openNodeFile(int slot, int flashOrLocal) {
   //   // Serial.println("waiting for core2 to finish");
   // }
   // core1busy = true;
-  if (flashOrLocal == 0) {
+  if ((nodeFileString.length() < 3 && flashOrLocal == 1) || flashOrLocal == 0) {
+
+    // if (flashOrLocal == 0) {
     // multicore_lockout_start_blocking();
     // Serial.println("opening nodeFileSlot" + String(slot) + ".txt");
 
@@ -1867,6 +1871,9 @@ void openNodeFile(int slot, int flashOrLocal) {
   // Serial.println();
   //   Serial.println("nodeFileString = ");
   // nodeFileString.printTo(Serial);
+
+
+  
 
   splitStringToFields();
   core1busy = false;

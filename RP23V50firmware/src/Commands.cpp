@@ -12,6 +12,8 @@
 #include "PersistentStuff.h"
 #include "Probing.h"
 #include "RotaryEncoder.h"
+
+
 volatile int sendAllPathsCore2 =
     0; // this signals the core 2 to send all the paths to the CH446Q
 volatile int showLEDsCore2 = 0; // this signals the core 2 to show the LEDs
@@ -41,21 +43,21 @@ unsigned long waitCore2() {
 
 int lastSlot = netSlot;
 
-void refresh(int flashOrLocal, int ledShowOption, int fillUnused) {
+void refresh(int flashOrLocal, int ledShowOption, int fillUnused, int clean) {
 
   if (flashOrLocal == 1) {
     if (ledShowOption == 0){
-      refreshBlind(1, fillUnused);
+      refreshBlind(1, fillUnused, clean);
     } else {
-      refreshLocalConnections(ledShowOption, fillUnused);
+      refreshLocalConnections(ledShowOption, fillUnused, clean);
     }
   
   } else {
-    refreshConnections(ledShowOption, fillUnused);
+    refreshConnections(ledShowOption, fillUnused, clean);
   }
 }
 
-void refreshConnections(int ledShowOption, int fillUnused) {
+void refreshConnections(int ledShowOption, int fillUnused, int clean) {
 
   waitCore2();
   core1busy = true;
@@ -81,14 +83,18 @@ core1busy = false;
     showLEDsCore2 = ledShowOption;
     waitCore2();
   }
-  sendAllPathsCore2 = 1;
+  if (clean == 1) {
+    sendAllPathsCore2 = -1;
+  } else {
+    sendAllPathsCore2 = 1;
+  }
 
   
   
   // sendPaths();
 }
 
-void refreshLocalConnections(int ledShowOption, int fillUnused) {
+void refreshLocalConnections(int ledShowOption, int fillUnused, int clean) {
 
    waitCore2();
    
@@ -109,7 +115,11 @@ void refreshLocalConnections(int ledShowOption, int fillUnused) {
     showLEDsCore2 = ledShowOption;
     waitCore2();
   }
-  sendAllPathsCore2 = 1;
+  if (clean == 1) {
+    sendAllPathsCore2 = -1;
+  } else {
+    sendAllPathsCore2 = 1;
+  }
 
   // sendPaths();
   
@@ -118,7 +128,8 @@ void refreshLocalConnections(int ledShowOption, int fillUnused) {
 
 void refreshBlind(
     int disconnectFirst,
-    int fillUnused) { // this doesn't actually touch the flash so we don't
+    int fillUnused,
+    int clean) { // this doesn't actually touch the flash so we don't
   // need to wait for core 2
   waitCore2();
   //core1busy = true;
@@ -136,12 +147,17 @@ void refreshBlind(
   //   createLocalNodeFile(netSlot);
   //   lastSlot = netSlot;
   // }
-  if (disconnectFirst == 1) {
-    sendAllPathsCore2 = 1;
-  } else if (disconnectFirst == 0) {
-    sendAllPathsCore2 = 1;
+  // if (disconnectFirst == 1) {
+  //   sendAllPathsCore2 = 1;
+  // } else if (disconnectFirst == 0) {
+  //   sendAllPathsCore2 = 1;
+  // } else {
+  //   sendAllPathsCore2 = 1; // disconnectFirst;
+  // }
+  if (clean == 1) {
+    sendAllPathsCore2 = -1;
   } else {
-    sendAllPathsCore2 = 1; // disconnectFirst;
+    sendAllPathsCore2 = 1;
   }
 
   chooseShownReadings();
@@ -241,6 +257,9 @@ float measureVoltage(int adcNumber, int node, bool checkForFloating) {
   int adcDefine = 0;
 
   switch (adcNumber) {
+  case 0:
+    adcDefine = ADC0;
+    break;
   case 1:
     adcDefine = ADC1;
     break;
@@ -271,24 +290,22 @@ float measureVoltage(int adcNumber, int node, bool checkForFloating) {
   // delay(2);
   waitCore2();
   addBridgeToNodeFile(node, adcDefine, netSlot, 1);
-  //refreshLocalConnections(-1 , 0);
-  refreshBlind(-1);
+  refreshLocalConnections(0 , 0, 0);
+  waitCore2();
+  //refreshBlind(-1);
   //         printPathsCompact();
   // printChipStatus();
 
   // Serial.println(readAdc(adcNumber, 32) * (5.0 / 4095));
   // core1busy = true;
-  float voltage = 0.0;
-  if (adcDefine == ADC1) {
-    voltage = (float)((readAdc(adcNumber, 4) - 50) * (5.0 / 4096));
-  } else {
-    voltage = (float)((readAdc(adcNumber, 4)) * (16.0 / 4096));
-    voltage -= 8.0;
-  }
+  float voltage = readAdcVoltage(adcNumber, 8);
+
+  // Serial.print("voltage = ");
+  // Serial.println(voltage);
 
   int floating = 0;
   if (checkForFloating == true) {
-    if (voltage < 0.8 && voltage > -0.8) {
+    if (voltage < 0.3 && voltage > -0.3) {
 
       if (checkFloating(node) == true) {
         floating = 1;
@@ -297,7 +314,9 @@ float measureVoltage(int adcNumber, int node, bool checkForFloating) {
     waitCore2();
   }
   removeBridgeFromNodeFile(node, adcDefine, netSlot, 1);
-  refreshBlind();
+  refreshLocalConnections(0, 0, 1);
+  //refreshBlind();
+  waitCore2();
 
   if (floating == 1) {
 
@@ -316,7 +335,7 @@ bool checkFloating(int node) {
 
   switch (node) {
 
-  case 1 ... 60: {
+  case 1 ... 93: {
     for (int i = 0; i < 4; i++) {
       if (ch[11].xStatus[i + 4] == -1) {
         gpioNumber = RP_GPIO_1 + i;
@@ -326,21 +345,23 @@ bool checkFloating(int node) {
     break;
   }
 
-  case 70 ... 120: {
-    for (int i = 0; i < 12; i++) {
-      if (ch[8].xMap[i] == node) {
-        gpioNumber = RP_UART_RX;
-        break;
-      }
-      if (ch[9].xMap[i] == node) {
-        gpioNumber = RP_UART_TX;
-        break;
-      }
-    }
+  // case 70 ... 120: {
+  //   for (int i = 0; i < 12; i++) {
+  //     if (ch[8].xMap[i] == node) {
+  //       gpioNumber = RP_UART_RX;
+  //       break;
+  //     }
+  //     if (ch[9].xMap[i] == node) {
+  //       gpioNumber = RP_UART_TX;
+  //       break;
+  //     }
+  //   }
 
-    break;
-  }
+  //   break;
+  // }
   default:
+  // Serial.print("cant find node = ");
+  // Serial.println(node);
     return true;
   }
   // Serial.print("gpioNumber = ");
@@ -387,22 +408,41 @@ bool checkFloating(int node) {
 
   // removeBridgeFromNodeFile(gpioNumber, -1, netSlot, 1);
   addBridgeToNodeFile(node, gpioNumber, netSlot, 1);
-  refreshBlind();
-
-  pinMode(gpioPin, INPUT_PULLUP);
-  delayMicroseconds(30);
-  int reading = digitalRead(gpioPin);
-
+  refreshLocalConnections(0, 0, 0); 
+  //refreshBlind(0, 0, 0);
   waitCore2();
-  if (reading == HIGH) {
+  //delay(100);
 
-    removeBridgeFromNodeFile(node, gpioNumber, netSlot, 1);
+  int floating = gpioReadWithFloating(gpioPin, 100);
+  // Serial.print("floating = ");
+  // Serial.println(floating);
 
+removeBridgeFromNodeFile(node, gpioNumber, netSlot, 1);
+refreshLocalConnections(0, 0, 0);
+waitCore2();
+
+  if (floating == 2) {
     return true;
   } else {
-    removeBridgeFromNodeFile(node, gpioNumber, netSlot, 1);
     return false;
   }
+
+  
+
+  // return floating;
+  // delayMicroseconds(30);
+  // int reading = digitalRead(gpioPin);
+
+  
+  // if (reading == HIGH) {
+
+  //   removeBridgeFromNodeFile(node, gpioNumber, netSlot, 1);
+
+  //   return true;
+  // } else {
+  //   removeBridgeFromNodeFile(node, gpioNumber, netSlot, 1);
+  //   return false;
+  // }
 }
 
 float measureCurrent(int node1, int node2) { return 0; }

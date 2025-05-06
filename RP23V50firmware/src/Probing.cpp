@@ -1303,12 +1303,12 @@ int chooseGPIOinputOutput(int gpioChosen) {
     if (reading != -1) {
       switch (reading) {
       case 9 ... 29: {
-        gpioState[gpioChosen - 1] = 2;
+        gpioState[gpioChosen - 1] = 4;
         settingOption = 4;
         break;
       }
       case 35 ... 59: {
-        gpioState[gpioChosen - 1] = 1;
+        gpioState[gpioChosen - 1] = 0;
         settingOption = 0;
         break;
       }
@@ -1805,12 +1805,14 @@ void routableBufferPower(int offOn, int flash) {
       addBridgeToNodeFile(ROUTABLE_BUFFER_IN, DAC0, netSlot, 0, 0);
       // addBridgeToNodeFile(ROUTABLE_BUFFER_IN, RP_GPIO_8, netSlot, 1, 0);
 
-      refreshConnections();
+      refreshConnections(0, 0, 0);
     } else {
 
       addBridgeToNodeFile(ROUTABLE_BUFFER_IN, DAC0, netSlot, 1, 0);
       // addBridgeToNodeFile(ROUTABLE_BUFFER_IN, RP_GPIO_8, netSlot, 1, 0);
-      refreshBlind(1, 0);
+      //refreshBlind(0, 0);
+      refreshLocalConnections(0, 0, 0);
+      //saveLocalConnections();
     }
     // addBridgeToNodeFile(ROUTABLE_BUFFER_IN, DAC0, netSlot, 1, 0);
 
@@ -1825,7 +1827,7 @@ void routableBufferPower(int offOn, int flash) {
     removeBridgeFromNodeFile(ROUTABLE_BUFFER_IN, DAC0, netSlot, 0);
     setDac0voltage(0.0, 1);
     bufferPowerConnected = false;
-    refreshBlind();
+    refreshConnections(0, 0, 0);
   }
 }
 

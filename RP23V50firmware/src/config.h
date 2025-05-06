@@ -24,14 +24,14 @@ struct serial;
 struct config {
     struct hardware_version {
         int generation = 5;
-        int hardware_revision = 4;
-        int probe_version = 4;
+        int hardware_revision = 5;
+        int probe_version = 5;
     } hardware_version;
 
     struct dac_settings {
         float top_rail = 0.00;
         float bottom_rail = 0.00;
-        float dac_0 = 0.00;
+        float dac_0 = 3.33;
         float dac_1 = 0.00;
         bool set_dacs_on_startup = false;
         bool set_rails_on_startup = true;
