@@ -310,7 +310,7 @@ char* xName(int chip, int x) {
 //#if PROTOTYPE_VERSION <= 4
 void initChipStatus(void) {
 
-  if (jumperlessConfig.hardware_version.hardware_revision <= 4) {
+  if (jumperlessConfig.hardware.revision <= 4) {
     for (int i = 0; i < 12; i++) {
       for (int j = 0; j < 16; j++) {
         ch[i].xMap[j] = rev4minusXmap[i][j];
@@ -318,8 +318,8 @@ void initChipStatus(void) {
       }
     //#endif
     // Serial.println("initChipStatus");
-    // Serial.println(jumperlessConfig.hardware_version.hardware_revision);
-    // Serial.println(jumperlessConfig.hardware_version.probe_version);
+    // Serial.println(jumperlessConfig.hardware.revision);
+    // Serial.println(jumperlessConfig.hardware.probe_revision);
 
     //#if PROTOTYPE_VERSION > 4
 

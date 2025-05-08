@@ -131,7 +131,13 @@ int encoderStepsToChangePosition = 2;
 
 int lastRotaryDivider = 8;
 int rotaryDivider = 8;
+
+bool resetEncoderPosition = false;
+int32_t encoderPositionOffset = 0;
+volatile int32_t encoderPosition = 0;
+
 volatile int numberOfSteps = 0;
+
 volatile encoderDirectionStates encoderDirectionState = NONE;
 volatile encoderButtonStates encoderButtonState = IDLE;
 
@@ -210,6 +216,7 @@ void rotaryEncoderStuff(void) {
     encoderRaw = encoderRaw / rotaryDivider;
     lastPositionEncoder = encoderRaw;
 
+
     // quadrature_program_init(pioEnc, smEnc, offsetEnc, QUADRATURE_A_PIN,
     // QUADRATURE_B_PIN);
   }
@@ -234,6 +241,12 @@ void rotaryEncoderStuff(void) {
   // }
 
   encoderRaw = quadrature_encoder_get_count(pioEnc, smEnc);
+
+  encoderPosition = quadrature_encoder_get_count(pioEnc, smEnc) - encoderPositionOffset;
+  if (resetEncoderPosition == true) {
+    encoderPositionOffset = quadrature_encoder_get_count(pioEnc, smEnc);
+    resetEncoderPosition = false;
+  }
 
   encoderRaw = encoderRaw / rotaryDivider;
 //encoderRaw -= positionOffset;

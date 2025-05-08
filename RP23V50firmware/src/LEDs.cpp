@@ -40,7 +40,7 @@ void ledClass::end(void) {
 
 void ledClass::begin(void) {
 
-  if (jumperlessConfig.hardware_version.hardware_revision <= 3) {
+  if (jumperlessConfig.hardware.revision <= 3) {
     splitLEDs = 0;
 
     } else {

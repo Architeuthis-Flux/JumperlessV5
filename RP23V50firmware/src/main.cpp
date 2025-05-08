@@ -56,7 +56,7 @@ KevinC@ppucc.io
 #include "RotaryEncoder.h"
 #include "Apps.h"
 #include "configManager.h"
-
+#include "oled.h"
 //#define USE_FATFS 1
 #ifdef USE_FATFS
 #include "FatFS.h"
@@ -318,6 +318,11 @@ void loop() {
     
     // Serial.println("--------------------------------");
 
+    if (jumperlessConfig.top_oled.connect_on_boot == 1) {
+      //Serial.println("Initializing OLED");
+      oled.init();
+      }
+
     if (jumperlessConfig.serial_1.connect_on_boot == 1) {
       connectArduino(0, 0);
       }
@@ -465,7 +470,7 @@ dontshowmenu:
     // }
         // while (arduinoInReset == 1);
 
-
+    checkPads();
     if (attract == 1) {
       // rotaryEncoderStuff();
       if (attractMode() == 1) {
@@ -569,6 +574,16 @@ skipinput:
     }
 
   switch (input) {
+
+    case '.': {
+      //initOLED();
+      
+      oled.init();
+      oled.print("FUCK");
+      oled.show();
+      oled.test();
+      break;
+      }
 
     case '|': {
       printChipStateArray();
@@ -739,7 +754,9 @@ skipinput:
 
     case 'i': {
 
-    oledTest(17, 18, 22, 23);
+
+
+    oledTest(NANO_D2, NANO_D3, 22, 23);
 
     break;
     }

@@ -35,7 +35,8 @@
         "algorithm": "cpp",
         "random": "cpp",
         "span": "cpp",
-        "text_encoding": "cpp"
+        "text_encoding": "cpp",
+        "ostream": "cpp"
     },
     "cortex-debug.registerUseNaturalFormat": false,
     "C_Cpp.errorSquiggles": "disabled",

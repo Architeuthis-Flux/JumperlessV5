@@ -38,7 +38,7 @@ void trim(char* str);
 void toLower(char* str); 
 void updateConfigValue(const char* section, const char* key, const char* value);
 int parseTrueFalse(const char* value);
-
+void printArbitraryFunctionTable(void);
 // Template function to get string from a value and a table (auto-deduces table size)
 template <size_t N>
 const char* getStringFromTable(int value, const StringIntEntry (&table)[N]);

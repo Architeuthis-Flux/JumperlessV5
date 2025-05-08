@@ -6,7 +6,7 @@
 #include "Commands.h"
 #include "FileParsing.h"
 #include "configManager.h"
-
+#include "NetManager.h"
 // Define the global configuration instance
 
 bool configChanged = false;
@@ -82,6 +82,12 @@ static int printFromTable(const StringIntEntry* table, int tableSize, const char
     return -1;
 }
 
+int parseHex(const char* str) {
+    if (str[0] == '0' && str[1] == 'x') {
+        return strtol(str, NULL, 16);
+    }
+    return atoi(str);
+}
 
 bool parseBool(const char* str) {
     int result = parseFromTable(boolTable, boolTableSize, str, 1, 0);
@@ -106,7 +112,13 @@ int parseArbitraryFunction(const char* str) {
 
 
 
-
+void printArbitraryFunctionTable(void) {
+    for (int i = 0; i < arbitraryFunctionTableSize; i++) {
+        Serial.print(arbitraryFunctionTable[i].name);
+        Serial.print(" = ");
+        Serial.println(arbitraryFunctionTable[i].value);
+    }
+}
 
 int printArbitraryFunction(int function) {
     for (int i = 0; i < arbitraryFunctionTableSize; i++) {
@@ -127,9 +139,9 @@ int parseInt(const char* str) {
 
 void resetConfigToDefaults(void) {
     // Save current hardware version values
-    int saved_generation = jumperlessConfig.hardware_version.generation;
-    int saved_hardware_revision = jumperlessConfig.hardware_version.hardware_revision;
-    int saved_probe_version = jumperlessConfig.hardware_version.probe_version;
+    int saved_generation = jumperlessConfig.hardware.generation;
+    int saved_revision = jumperlessConfig.hardware.revision;
+    int saved_probe_revision = jumperlessConfig.hardware.probe_revision;
 
     //save calibration values
     int saved_top_rail_zero = jumperlessConfig.calibration.top_rail_zero;
@@ -148,9 +160,9 @@ void resetConfigToDefaults(void) {
     jumperlessConfig = config();
     
     // Restore hardware version values
-    jumperlessConfig.hardware_version.generation = saved_generation;
-    jumperlessConfig.hardware_version.hardware_revision = saved_hardware_revision;
-    jumperlessConfig.hardware_version.probe_version = saved_probe_version;
+    jumperlessConfig.hardware.generation = saved_generation;
+    jumperlessConfig.hardware.revision = saved_revision;
+    jumperlessConfig.hardware.probe_revision = saved_probe_revision;
 
     // Restore calibration values
     jumperlessConfig.calibration.top_rail_zero = saved_top_rail_zero;
@@ -204,34 +216,34 @@ void updateConfigFromFile(const char* filename) {
         toLower(key);
 
         // Update config based on section and key
-        if (strcmp(section, "hardware_version") == 0) {
-            if (strcmp(key, "generation") == 0) jumperlessConfig.hardware_version.generation = parseInt(value);
-            else if (strcmp(key, "hardware_revision") == 0) jumperlessConfig.hardware_version.hardware_revision = parseInt(value);
-            else if (strcmp(key, "probe_version") == 0) jumperlessConfig.hardware_version.probe_version = parseInt(value);
-        } else if (strcmp(section, "dac_settings") == 0) {
-            if (strcmp(key, "top_rail") == 0) jumperlessConfig.dac_settings.top_rail = parseFloat(value);
-            else if (strcmp(key, "bottom_rail") == 0) jumperlessConfig.dac_settings.bottom_rail = parseFloat(value);
-            else if (strcmp(key, "dac_0") == 0) jumperlessConfig.dac_settings.dac_0 = parseFloat(value);
-            else if (strcmp(key, "dac_1") == 0) jumperlessConfig.dac_settings.dac_1 = parseFloat(value);
-            else if (strcmp(key, "set_dacs_on_startup") == 0) jumperlessConfig.dac_settings.set_dacs_on_startup = parseBool(value);
-            else if (strcmp(key, "set_rails_on_startup") == 0) jumperlessConfig.dac_settings.set_rails_on_startup = parseBool(value);
-            else if (strcmp(key, "limit_max") == 0) jumperlessConfig.dac_settings.limit_max = parseFloat(value);
-            else if (strcmp(key, "limit_min") == 0) jumperlessConfig.dac_settings.limit_min = parseFloat(value);
-        } else if (strcmp(section, "debug_flags") == 0) {
-            if (strcmp(key, "file_parsing") == 0) jumperlessConfig.debug_flags.file_parsing = parseBool(value);
-            else if (strcmp(key, "net_manager") == 0) jumperlessConfig.debug_flags.net_manager = parseBool(value);
-            else if (strcmp(key, "net_to_chip_connections") == 0) jumperlessConfig.debug_flags.net_to_chip_connections = parseBool(value);
-            else if (strcmp(key, "net_to_chip_connections_alt") == 0) jumperlessConfig.debug_flags.net_to_chip_connections_alt = parseBool(value);
-            else if (strcmp(key, "leds") == 0) jumperlessConfig.debug_flags.leds = parseBool(value);
-        } else if (strcmp(section, "routing_settings") == 0) {
+        if (strcmp(section, "hardware") == 0) {
+            if (strcmp(key, "generation") == 0) jumperlessConfig.hardware.generation = parseInt(value);
+            else if (strcmp(key, "revision") == 0) jumperlessConfig.hardware.revision = parseInt(value);
+            else if (strcmp(key, "probe_revision") == 0) jumperlessConfig.hardware.probe_revision = parseInt(value);
+        } else if (strcmp(section, "dacs") == 0) {
+            if (strcmp(key, "top_rail") == 0) jumperlessConfig.dacs.top_rail = parseFloat(value);
+            else if (strcmp(key, "bottom_rail") == 0) jumperlessConfig.dacs.bottom_rail = parseFloat(value);
+            else if (strcmp(key, "dac_0") == 0) jumperlessConfig.dacs.dac_0 = parseFloat(value);
+            else if (strcmp(key, "dac_1") == 0) jumperlessConfig.dacs.dac_1 = parseFloat(value);
+            else if (strcmp(key, "set_dacs_on_boot") == 0) jumperlessConfig.dacs.set_dacs_on_boot = parseBool(value);
+            else if (strcmp(key, "set_rails_on_boot") == 0) jumperlessConfig.dacs.set_rails_on_boot = parseBool(value);
+            else if (strcmp(key, "limit_max") == 0) jumperlessConfig.dacs.limit_max = parseFloat(value);
+            else if (strcmp(key, "limit_min") == 0) jumperlessConfig.dacs.limit_min = parseFloat(value);
+        } else if (strcmp(section, "debug") == 0) {
+            if (strcmp(key, "file_parsing") == 0) jumperlessConfig.debug.file_parsing = parseBool(value);
+            else if (strcmp(key, "net_manager") == 0) jumperlessConfig.debug.net_manager = parseBool(value);
+            else if (strcmp(key, "nets_to_chips") == 0) jumperlessConfig.debug.nets_to_chips = parseBool(value);
+            else if (strcmp(key, "nets_to_chips_alt") == 0) jumperlessConfig.debug.nets_to_chips_alt = parseBool(value);
+            else if (strcmp(key, "leds") == 0) jumperlessConfig.debug.leds = parseBool(value);
+        } else if (strcmp(section, "routing") == 0) {
             if (strcmp(key, "stack_paths") == 0) {
-                jumperlessConfig.routing_settings.stack_paths = parseInt(value);
+                jumperlessConfig.routing.stack_paths = parseInt(value);
                 Serial.print("Updated stack_paths to: ");
-                Serial.println(jumperlessConfig.routing_settings.stack_paths);
+                Serial.println(jumperlessConfig.routing.stack_paths);
             }
-            else if (strcmp(key, "stack_rails") == 0) jumperlessConfig.routing_settings.stack_rails = parseInt(value);
-            else if (strcmp(key, "stack_dacs") == 0) jumperlessConfig.routing_settings.stack_dacs = parseInt(value);
-            else if (strcmp(key, "rail_priority") == 0) jumperlessConfig.routing_settings.rail_priority = parseInt(value);
+            else if (strcmp(key, "stack_rails") == 0) jumperlessConfig.routing.stack_rails = parseInt(value);
+            else if (strcmp(key, "stack_dacs") == 0) jumperlessConfig.routing.stack_dacs = parseInt(value);
+            else if (strcmp(key, "rail_priority") == 0) jumperlessConfig.routing.rail_priority = parseInt(value);
         } else if (strcmp(section, "calibration") == 0) {
             if (strcmp(key, "top_rail_zero") == 0) jumperlessConfig.calibration.top_rail_zero = parseInt(value);
             else if (strcmp(key, "top_rail_spread") == 0) jumperlessConfig.calibration.top_rail_spread = parseFloat(value);
@@ -243,18 +255,18 @@ void updateConfigFromFile(const char* filename) {
             else if (strcmp(key, "dac_1_spread") == 0) jumperlessConfig.calibration.dac_1_spread = parseFloat(value);
             else if (strcmp(key, "probe_max") == 0) jumperlessConfig.calibration.probe_max = parseInt(value);
             else if (strcmp(key, "probe_min") == 0) jumperlessConfig.calibration.probe_min = parseInt(value);
-        } else if (strcmp(section, "logo_pad_settings") == 0) {
-            if (strcmp(key, "top_guy") == 0) jumperlessConfig.logo_pad_settings.top_guy = parseArbitraryFunction(value);
-            else if (strcmp(key, "bottom_guy") == 0) jumperlessConfig.logo_pad_settings.bottom_guy = parseArbitraryFunction(value);
-            else if (strcmp(key, "building_pad_top") == 0) jumperlessConfig.logo_pad_settings.building_pad_top = parseArbitraryFunction(value);
-            else if (strcmp(key, "building_pad_bottom") == 0) jumperlessConfig.logo_pad_settings.building_pad_bottom = parseArbitraryFunction(value);
-        } else if (strcmp(section, "display_settings") == 0) {
-            if (strcmp(key, "lines_wires") == 0) jumperlessConfig.display_settings.lines_wires = parseLinesWires(value);
-            else if (strcmp(key, "menu_brightness") == 0) jumperlessConfig.display_settings.menu_brightness = parseInt(value);
-            else if (strcmp(key, "led_brightness") == 0) jumperlessConfig.display_settings.led_brightness = parseInt(value);
-            else if (strcmp(key, "rail_brightness") == 0) jumperlessConfig.display_settings.rail_brightness = parseInt(value);
-            else if (strcmp(key, "special_net_brightness") == 0) jumperlessConfig.display_settings.special_net_brightness = parseInt(value);
-            else if (strcmp(key, "net_color_mode") == 0) jumperlessConfig.display_settings.net_color_mode = parseNetColorMode(value);
+        } else if (strcmp(section, "logo_pads") == 0) {
+            if (strcmp(key, "top_guy") == 0) jumperlessConfig.logo_pads.top_guy = parseArbitraryFunction(value);
+            else if (strcmp(key, "bottom_guy") == 0) jumperlessConfig.logo_pads.bottom_guy = parseArbitraryFunction(value);
+            else if (strcmp(key, "building_pad_top") == 0) jumperlessConfig.logo_pads.building_pad_top = parseArbitraryFunction(value);
+            else if (strcmp(key, "building_pad_bottom") == 0) jumperlessConfig.logo_pads.building_pad_bottom = parseArbitraryFunction(value);
+        } else if (strcmp(section, "display") == 0) {
+            if (strcmp(key, "lines_wires") == 0) jumperlessConfig.display.lines_wires = parseLinesWires(value);
+            else if (strcmp(key, "menu_brightness") == 0) jumperlessConfig.display.menu_brightness = parseInt(value);
+            else if (strcmp(key, "led_brightness") == 0) jumperlessConfig.display.led_brightness = parseInt(value);
+            else if (strcmp(key, "rail_brightness") == 0) jumperlessConfig.display.rail_brightness = parseInt(value);
+            else if (strcmp(key, "special_net_brightness") == 0) jumperlessConfig.display.special_net_brightness = parseInt(value);
+            else if (strcmp(key, "net_color_mode") == 0) jumperlessConfig.display.net_color_mode = parseNetColorMode(value);
         } else if (strcmp(section, "gpio") == 0) {
             if (strcmp(key, "direction") == 0) parseCommaSeparatedInts(value, jumperlessConfig.gpio.direction, 10);
             else if (strcmp(key, "pulls") == 0) parseCommaSeparatedInts(value, jumperlessConfig.gpio.pulls, 10);
@@ -272,6 +284,16 @@ void updateConfigFromFile(const char* filename) {
             else if (strcmp(key, "print_passthrough") == 0) jumperlessConfig.serial_2.print_passthrough = parseBool(value);
             else if (strcmp(key, "connect_on_boot") == 0) jumperlessConfig.serial_2.connect_on_boot = parseBool(value);
             else if (strcmp(key, "lock_connection") == 0) jumperlessConfig.serial_2.lock_connection = parseBool(value);
+        } else if (strcmp(section, "top_oled") == 0) {
+            if (strcmp(key, "i2c_address") == 0) jumperlessConfig.top_oled.i2c_address = parseInt(value);
+            else if (strcmp(key, "width") == 0) jumperlessConfig.top_oled.width = parseInt(value);
+            else if (strcmp(key, "height") == 0) jumperlessConfig.top_oled.height = parseInt(value);
+            else if (strcmp(key, "sda_pin") == 0) jumperlessConfig.top_oled.sda_pin = parseInt(value);
+            else if (strcmp(key, "scl_pin") == 0) jumperlessConfig.top_oled.scl_pin = parseInt(value);
+            else if (strcmp(key, "gpio_sda") == 0) jumperlessConfig.top_oled.gpio_sda = parseInt(value);
+            else if (strcmp(key, "gpio_scl") == 0) jumperlessConfig.top_oled.gpio_scl = parseInt(value);
+            else if (strcmp(key, "connect_on_boot") == 0) jumperlessConfig.top_oled.connect_on_boot = parseBool(value);
+            else if (strcmp(key, "lock_connection") == 0) jumperlessConfig.top_oled.lock_connection = parseBool(value);
         }
     }
     file.close();
@@ -294,39 +316,39 @@ void saveConfigToFile(const char* filename) {
     }
 
     // Write hardware version section
-    file.println("[hardware_version]");
-    file.print("generation = "); file.print(jumperlessConfig.hardware_version.generation); file.println(";");
-    file.print("hardware_revision = "); file.print(jumperlessConfig.hardware_version.hardware_revision); file.println(";");
-    file.print("probe_version = "); file.print(jumperlessConfig.hardware_version.probe_version); file.println(";");
+    file.println("[hardware]");
+    file.print("generation = "); file.print(jumperlessConfig.hardware.generation); file.println(";");
+    file.print("revision = "); file.print(jumperlessConfig.hardware.revision); file.println(";");
+    file.print("probe_revision = "); file.print(jumperlessConfig.hardware.probe_revision); file.println(";");
     file.println();
 
     // Write DAC settings section
-    file.println("[dac_settings]");
-    file.print("top_rail = "); file.print(jumperlessConfig.dac_settings.top_rail); file.println(";");
-    file.print("bottom_rail = "); file.print(jumperlessConfig.dac_settings.bottom_rail); file.println(";");
-    file.print("dac_0 = "); file.print(jumperlessConfig.dac_settings.dac_0); file.println(";");
-    file.print("dac_1 = "); file.print(jumperlessConfig.dac_settings.dac_1); file.println(";");
-    file.print("set_dacs_on_startup = "); file.print(jumperlessConfig.dac_settings.set_dacs_on_startup ? 1:0); file.println(";");
-    file.print("set_rails_on_startup = "); file.print(jumperlessConfig.dac_settings.set_rails_on_startup ? 1:0); file.println(";");
-    file.print("limit_max = "); file.print(jumperlessConfig.dac_settings.limit_max); file.println(";");
-    file.print("limit_min = "); file.print(jumperlessConfig.dac_settings.limit_min); file.println(";");
+    file.println("[dacs]");
+    file.print("top_rail = "); file.print(jumperlessConfig.dacs.top_rail); file.println(";");
+    file.print("bottom_rail = "); file.print(jumperlessConfig.dacs.bottom_rail); file.println(";");
+    file.print("dac_0 = "); file.print(jumperlessConfig.dacs.dac_0); file.println(";");
+    file.print("dac_1 = "); file.print(jumperlessConfig.dacs.dac_1); file.println(";");
+    file.print("set_dacs_on_boot = "); file.print(jumperlessConfig.dacs.set_dacs_on_boot ? 1:0); file.println(";");
+    file.print("set_rails_on_boot = "); file.print(jumperlessConfig.dacs.set_rails_on_boot ? 1:0); file.println(";");
+    file.print("limit_max = "); file.print(jumperlessConfig.dacs.limit_max); file.println(";");
+    file.print("limit_min = "); file.print(jumperlessConfig.dacs.limit_min); file.println(";");
     file.println();
 
     // Write debug flags section
-    file.println("[debug_flags]");
-    file.print("file_parsing = "); file.print(jumperlessConfig.debug_flags.file_parsing ? 1:0); file.println(";");
-    file.print("net_manager = "); file.print(jumperlessConfig.debug_flags.net_manager ? 1:0); file.println(";");
-    file.print("net_to_chip_connections = "); file.print(jumperlessConfig.debug_flags.net_to_chip_connections ? 1:0); file.println(";");
-    file.print("net_to_chip_connections_alt = "); file.print(jumperlessConfig.debug_flags.net_to_chip_connections_alt ? 1:0); file.println(";");
-    file.print("leds = "); file.print(jumperlessConfig.debug_flags.leds ? 1:0); file.println(";");
+    file.println("[debug]");
+    file.print("file_parsing = "); file.print(jumperlessConfig.debug.file_parsing ? 1:0); file.println(";");
+    file.print("net_manager = "); file.print(jumperlessConfig.debug.net_manager ? 1:0); file.println(";");
+    file.print("nets_to_chips = "); file.print(jumperlessConfig.debug.nets_to_chips ? 1:0); file.println(";");
+    file.print("nets_to_chips_alt = "); file.print(jumperlessConfig.debug.nets_to_chips_alt ? 1:0); file.println(";");
+    file.print("leds = "); file.print(jumperlessConfig.debug.leds ? 1:0); file.println(";");
     file.println();
 
     // Write routing settings section
-    file.println("[routing_settings]");
-    file.print("stack_paths = "); file.print(jumperlessConfig.routing_settings.stack_paths); file.println(";");
-    file.print("stack_rails = "); file.print(jumperlessConfig.routing_settings.stack_rails); file.println(";");
-    file.print("stack_dacs = "); file.print(jumperlessConfig.routing_settings.stack_dacs); file.println(";");
-    file.print("rail_priority = "); file.print(jumperlessConfig.routing_settings.rail_priority); file.println(";");
+    file.println("[routing]");
+    file.print("stack_paths = "); file.print(jumperlessConfig.routing.stack_paths); file.println(";");
+    file.print("stack_rails = "); file.print(jumperlessConfig.routing.stack_rails); file.println(";");
+    file.print("stack_dacs = "); file.print(jumperlessConfig.routing.stack_dacs); file.println(";");
+    file.print("rail_priority = "); file.print(jumperlessConfig.routing.rail_priority); file.println(";");
     file.println();
 
     // Write calibration section
@@ -344,21 +366,21 @@ void saveConfigToFile(const char* filename) {
     file.println();
 
     // Write logo pad settings section
-    file.println("[logo_pad_settings]");
-    file.print("top_guy = "); file.print(jumperlessConfig.logo_pad_settings.top_guy); file.println(";");
-    file.print("bottom_guy = "); file.print(jumperlessConfig.logo_pad_settings.bottom_guy); file.println(";");
-    file.print("building_pad_top = "); file.print(jumperlessConfig.logo_pad_settings.building_pad_top); file.println(";");
-    file.print("building_pad_bottom = "); file.print(jumperlessConfig.logo_pad_settings.building_pad_bottom); file.println(";");
+    file.println("[logo_pads]");
+    file.print("top_guy = "); file.print(jumperlessConfig.logo_pads.top_guy); file.println(";");
+    file.print("bottom_guy = "); file.print(jumperlessConfig.logo_pads.bottom_guy); file.println(";");
+    file.print("building_pad_top = "); file.print(jumperlessConfig.logo_pads.building_pad_top); file.println(";");
+    file.print("building_pad_bottom = "); file.print(jumperlessConfig.logo_pads.building_pad_bottom); file.println(";");
     file.println();
 
     // Write display settings section
-    file.println("[display_settings]");
-    file.print("lines_wires = "); file.print(jumperlessConfig.display_settings.lines_wires); file.println(";");
-    file.print("menu_brightness = "); file.print(jumperlessConfig.display_settings.menu_brightness); file.println(";");
-    file.print("led_brightness = "); file.print(jumperlessConfig.display_settings.led_brightness); file.println(";");
-    file.print("rail_brightness = "); file.print(jumperlessConfig.display_settings.rail_brightness); file.println(";");
-    file.print("special_net_brightness = "); file.print(jumperlessConfig.display_settings.special_net_brightness); file.println(";");
-    file.print("net_color_mode = "); file.print(jumperlessConfig.display_settings.net_color_mode); file.println(";");
+    file.println("[display]");
+    file.print("lines_wires = "); file.print(jumperlessConfig.display.lines_wires); file.println(";");
+    file.print("menu_brightness = "); file.print(jumperlessConfig.display.menu_brightness); file.println(";");
+    file.print("led_brightness = "); file.print(jumperlessConfig.display.led_brightness); file.println(";");
+    file.print("rail_brightness = "); file.print(jumperlessConfig.display.rail_brightness); file.println(";");
+    file.print("special_net_brightness = "); file.print(jumperlessConfig.display.special_net_brightness); file.println(";");
+    file.print("net_color_mode = "); file.print(jumperlessConfig.display.net_color_mode); file.println(";");
     file.println();
 
     // Write GPIO section
@@ -394,17 +416,31 @@ void saveConfigToFile(const char* filename) {
     file.print("print_passthrough = "); file.print(jumperlessConfig.serial_2.print_passthrough); file.println(";");
     file.print("connect_on_boot = "); file.print(jumperlessConfig.serial_2.connect_on_boot); file.println(";");
     file.print("lock_connection = "); file.print(jumperlessConfig.serial_2.lock_connection); file.println(";");
+
+    // Write top_oled section
+    file.println("[top_oled]");
+    file.print("i2c_address = "); file.print(jumperlessConfig.top_oled.i2c_address); file.println(";");
+    file.print("width = "); file.print(jumperlessConfig.top_oled.width); file.println(";");
+    file.print("height = "); file.print(jumperlessConfig.top_oled.height); file.println(";");
+    file.print("sda_pin = "); file.print(jumperlessConfig.top_oled.sda_pin); file.println(";");
+    file.print("scl_pin = "); file.print(jumperlessConfig.top_oled.scl_pin); file.println(";");
+    file.print("gpio_sda = "); file.print(jumperlessConfig.top_oled.gpio_sda); file.println(";");
+    file.print("gpio_scl = "); file.print(jumperlessConfig.top_oled.gpio_scl); file.println(";");
+    file.print("sda_row = "); file.print(jumperlessConfig.top_oled.sda_row); file.println(";");
+    file.print("scl_row = "); file.print(jumperlessConfig.top_oled.scl_row); file.println(";");
+    file.print("connect_on_boot = "); file.print(jumperlessConfig.top_oled.connect_on_boot ? 1:0); file.println(";");
+    file.print("lock_connection = "); file.print(jumperlessConfig.top_oled.lock_connection ? 1:0); file.println(";");
     file.close();
     core1busy = false;
 }
 
 void saveConfig(void) {
-    int hwRevision = jumperlessConfig.hardware_version.hardware_revision;
+    int hwRevision = jumperlessConfig.hardware.revision;
     saveConfigToFile("/config.txt");
     
     readSettingsFromConfig();
     ///initChipStatus();
-    //if (jumperlessConfig.hardware_version.hardware_revision != hwRevision ) {
+    //if (jumperlessConfig.hardware.hardware_revision != hwRevision ) {
         // leds.clear();
         // leds.end();
         // leds.begin();
@@ -421,16 +457,17 @@ void loadConfig(void) {
 }
 
 int parseSectionName(const char* sectionName) {
-    if (strcmp(sectionName, "hardware_version") == 0) return 0;
-    else if (strcmp(sectionName, "dac_settings") == 0) return 1;
-    else if (strcmp(sectionName, "debug_flags") == 0) return 2;
-    else if (strcmp(sectionName, "routing_settings") == 0) return 3;
+    if (strcmp(sectionName, "hardware") == 0) return 0;
+    else if (strcmp(sectionName, "dacs") == 0) return 1;
+    else if (strcmp(sectionName, "debug") == 0) return 2;
+    else if (strcmp(sectionName, "routing") == 0) return 3;
     else if (strcmp(sectionName, "calibration") == 0) return 4;
-    else if (strcmp(sectionName, "logo_pad_settings") == 0) return 5;
-    else if (strcmp(sectionName, "display_settings") == 0) return 6;
+    else if (strcmp(sectionName, "logo_pads") == 0) return 5;
+    else if (strcmp(sectionName, "display") == 0) return 6;
     else if (strcmp(sectionName, "gpio") == 0) return 7;
     else if (strcmp(sectionName, "serial_1") == 0) return 8;
     else if (strcmp(sectionName, "serial_2") == 0) return 9;
+    else if (strcmp(sectionName, "top_oled") == 0) return 10;
     return -1;
 }
 
@@ -448,42 +485,42 @@ void printConfigSectionToSerial(int section, bool showNames) {
 
     // Print hardware version section
     if (section == -1 || section == 0) {
-        Serial.println("\n[hardware_version]");
-        Serial.print("generation = "); Serial.print(jumperlessConfig.hardware_version.generation); Serial.println(";");
-        Serial.print("hardware_revision = "); Serial.print(jumperlessConfig.hardware_version.hardware_revision); Serial.println(";");
-        Serial.print("probe_version = "); Serial.print(jumperlessConfig.hardware_version.probe_version); Serial.println(";");
+        Serial.println("\n[hardware]");
+        Serial.print("generation = "); Serial.print(jumperlessConfig.hardware.generation); Serial.println(";");
+        Serial.print("revision = "); Serial.print(jumperlessConfig.hardware.revision); Serial.println(";");
+        Serial.print("probe_revision = "); Serial.print(jumperlessConfig.hardware.probe_revision); Serial.println(";");
     }
 
     // Print DAC settings section
     if (section == -1 || section == 1) {
-        Serial.println("\n[dac_settings]");
-        Serial.print("top_rail = "); Serial.print(jumperlessConfig.dac_settings.top_rail); Serial.println(";");
-        Serial.print("bottom_rail = "); Serial.print(jumperlessConfig.dac_settings.bottom_rail); Serial.println(";");
-        Serial.print("dac_0 = "); Serial.print(jumperlessConfig.dac_settings.dac_0); Serial.println(";");
-        Serial.print("dac_1 = "); Serial.print(jumperlessConfig.dac_settings.dac_1); Serial.println(";");
-        Serial.print("set_dacs_on_startup = "); Serial.print(getStringFromTable(jumperlessConfig.dac_settings.set_dacs_on_startup, boolTable)); Serial.println(";");
-        Serial.print("set_rails_on_startup = "); Serial.print(getStringFromTable(jumperlessConfig.dac_settings.set_rails_on_startup, boolTable)); Serial.println(";");
-        Serial.print("limit_max = "); Serial.print(jumperlessConfig.dac_settings.limit_max); Serial.println(";");
-        Serial.print("limit_min = "); Serial.print(jumperlessConfig.dac_settings.limit_min); Serial.println(";");
+        Serial.println("\n[dacs]");
+        Serial.print("top_rail = "); Serial.print(jumperlessConfig.dacs.top_rail); Serial.println(";");
+        Serial.print("bottom_rail = "); Serial.print(jumperlessConfig.dacs.bottom_rail); Serial.println(";");
+        Serial.print("dac_0 = "); Serial.print(jumperlessConfig.dacs.dac_0); Serial.println(";");
+        Serial.print("dac_1 = "); Serial.print(jumperlessConfig.dacs.dac_1); Serial.println(";");
+        Serial.print("set_dacs_on_boot = "); Serial.print(getStringFromTable(jumperlessConfig.dacs.set_dacs_on_boot, boolTable)); Serial.println(";");
+        Serial.print("set_rails_on_boot = "); Serial.print(getStringFromTable(jumperlessConfig.dacs.set_rails_on_boot, boolTable)); Serial.println(";");
+        Serial.print("limit_max = "); Serial.print(jumperlessConfig.dacs.limit_max); Serial.println(";");
+        Serial.print("limit_min = "); Serial.print(jumperlessConfig.dacs.limit_min); Serial.println(";");
     }
 
     // Print debug flags section
     if (section == -1 || section == 2) {
-        Serial.println("\n[debug_flags]");
-        Serial.print("file_parsing = "); Serial.print(getStringFromTable(jumperlessConfig.debug_flags.file_parsing, boolTable)); Serial.println(";");
-        Serial.print("net_manager = "); Serial.print(getStringFromTable(jumperlessConfig.debug_flags.net_manager, boolTable)); Serial.println(";");
-        Serial.print("net_to_chip_connections = "); Serial.print(getStringFromTable(jumperlessConfig.debug_flags.net_to_chip_connections, boolTable)); Serial.println(";");
-        Serial.print("net_to_chip_connections_alt = "); Serial.print(getStringFromTable(jumperlessConfig.debug_flags.net_to_chip_connections_alt, boolTable)); Serial.println(";");
-        Serial.print("leds = "); Serial.print(getStringFromTable(jumperlessConfig.debug_flags.leds, boolTable)); Serial.println(";");
+        Serial.println("\n[debug]");
+        Serial.print("file_parsing = "); Serial.print(getStringFromTable(jumperlessConfig.debug.file_parsing, boolTable)); Serial.println(";");
+        Serial.print("net_manager = "); Serial.print(getStringFromTable(jumperlessConfig.debug.net_manager, boolTable)); Serial.println(";");
+        Serial.print("nets_to_chips = "); Serial.print(getStringFromTable(jumperlessConfig.debug.nets_to_chips, boolTable)); Serial.println(";");
+        Serial.print("nets_to_chips_alt = "); Serial.print(getStringFromTable(jumperlessConfig.debug.nets_to_chips_alt, boolTable)); Serial.println(";");
+        Serial.print("leds = "); Serial.print(getStringFromTable(jumperlessConfig.debug.leds, boolTable)); Serial.println(";");
     }
 
     // Print routing settings section
     if (section == -1 || section == 3) {
-        Serial.println("\n[routing_settings]");
-        Serial.print("stack_paths = "); Serial.print(jumperlessConfig.routing_settings.stack_paths); Serial.println(";");
-        Serial.print("stack_rails = "); Serial.print(jumperlessConfig.routing_settings.stack_rails); Serial.println(";");
-        Serial.print("stack_dacs = "); Serial.print(jumperlessConfig.routing_settings.stack_dacs); Serial.println(";");
-        Serial.print("rail_priority = "); Serial.print(jumperlessConfig.routing_settings.rail_priority); Serial.println(";");
+        Serial.println("\n[routing]");
+        Serial.print("stack_paths = "); Serial.print(jumperlessConfig.routing.stack_paths); Serial.println(";");
+        Serial.print("stack_rails = "); Serial.print(jumperlessConfig.routing.stack_rails); Serial.println(";");
+        Serial.print("stack_dacs = "); Serial.print(jumperlessConfig.routing.stack_dacs); Serial.println(";");
+        Serial.print("rail_priority = "); Serial.print(jumperlessConfig.routing.rail_priority); Serial.println(";");
     }
 
     // Print calibration section
@@ -503,22 +540,22 @@ void printConfigSectionToSerial(int section, bool showNames) {
 
     // Print logo pad settings section
     if (section == -1 || section == 5) {
-        Serial.println("\n[logo_pad_settings]");
-        Serial.print("top_guy = "); Serial.print(getStringFromTable(jumperlessConfig.logo_pad_settings.top_guy, arbitraryFunctionTable)); Serial.println(";");
-        Serial.print("bottom_guy = "); Serial.print(getStringFromTable(jumperlessConfig.logo_pad_settings.bottom_guy, arbitraryFunctionTable)); Serial.println(";");
-        Serial.print("building_pad_top = "); Serial.print(getStringFromTable(jumperlessConfig.logo_pad_settings.building_pad_top, arbitraryFunctionTable)); Serial.println(";");
-        Serial.print("building_pad_bottom = "); Serial.print(getStringFromTable(jumperlessConfig.logo_pad_settings.building_pad_bottom, arbitraryFunctionTable)); Serial.println(";");
+        Serial.println("\n[logo_pads]");
+        Serial.print("top_guy = "); Serial.print(getStringFromTable(jumperlessConfig.logo_pads.top_guy, arbitraryFunctionTable)); Serial.println(";");
+        Serial.print("bottom_guy = "); Serial.print(getStringFromTable(jumperlessConfig.logo_pads.bottom_guy, arbitraryFunctionTable)); Serial.println(";");
+        Serial.print("building_pad_top = "); Serial.print(getStringFromTable(jumperlessConfig.logo_pads.building_pad_top, arbitraryFunctionTable)); Serial.println(";");
+        Serial.print("building_pad_bottom = "); Serial.print(getStringFromTable(jumperlessConfig.logo_pads.building_pad_bottom, arbitraryFunctionTable)); Serial.println(";");
     }
 
     // Print display settings section
     if (section == -1 || section == 6) {
-        Serial.println("\n[display_settings]");
-        Serial.print("lines_wires = "); Serial.print(getStringFromTable(jumperlessConfig.display_settings.lines_wires, linesWiresTable)); Serial.println(";");
-        Serial.print("menu_brightness = "); Serial.print(jumperlessConfig.display_settings.menu_brightness); Serial.println(";");
-        Serial.print("led_brightness = "); Serial.print(jumperlessConfig.display_settings.led_brightness); Serial.println(";");
-        Serial.print("rail_brightness = "); Serial.print(jumperlessConfig.display_settings.rail_brightness); Serial.println(";");
-        Serial.print("special_net_brightness = "); Serial.print(jumperlessConfig.display_settings.special_net_brightness); Serial.println(";");
-        Serial.print("net_color_mode = "); Serial.print(getStringFromTable(jumperlessConfig.display_settings.net_color_mode, netColorModeTable)); Serial.println(";");
+        Serial.println("\n[display]");
+        Serial.print("lines_wires = "); Serial.print(getStringFromTable(jumperlessConfig.display.lines_wires, linesWiresTable)); Serial.println(";");
+        Serial.print("menu_brightness = "); Serial.print(jumperlessConfig.display.menu_brightness); Serial.println(";");
+        Serial.print("led_brightness = "); Serial.print(jumperlessConfig.display.led_brightness); Serial.println(";");
+        Serial.print("rail_brightness = "); Serial.print(jumperlessConfig.display.rail_brightness); Serial.println(";");
+        Serial.print("special_net_brightness = "); Serial.print(jumperlessConfig.display.special_net_brightness); Serial.println(";");
+        Serial.print("net_color_mode = "); Serial.print(getStringFromTable(jumperlessConfig.display.net_color_mode, netColorModeTable)); Serial.println(";");
     }
 
     // Print GPIO section
@@ -557,6 +594,21 @@ void printConfigSectionToSerial(int section, bool showNames) {
         Serial.print("print_passthrough = "); Serial.print(getStringFromTable(jumperlessConfig.serial_2.print_passthrough, boolTable)); Serial.println(";");
         Serial.print("connect_on_boot = "); Serial.print(getStringFromTable(jumperlessConfig.serial_2.connect_on_boot, boolTable)); Serial.println(";");
         Serial.print("lock_connection = "); Serial.print(getStringFromTable(jumperlessConfig.serial_2.lock_connection, boolTable)); Serial.println(";");
+    }
+
+    if (section == -1 || section == 10) {
+        Serial.println("\n[top_oled]");
+        Serial.print("i2c_address = "); Serial.print("0x"); Serial.print(jumperlessConfig.top_oled.i2c_address, HEX); Serial.println(";");
+        Serial.print("width = "); Serial.print(jumperlessConfig.top_oled.width); Serial.println(";");
+        Serial.print("height = "); Serial.print(jumperlessConfig.top_oled.height); Serial.println(";");
+        Serial.print("sda_pin = "); Serial.print(definesToChar(jumperlessConfig.top_oled.sda_pin, 0)); Serial.println(";");
+        Serial.print("scl_pin = "); Serial.print(definesToChar(jumperlessConfig.top_oled.scl_pin, 0)); Serial.println(";");
+        Serial.print("gpio_sda = "); Serial.print(definesToChar(jumperlessConfig.top_oled.gpio_sda, 0)); Serial.println(";");
+        Serial.print("gpio_scl = "); Serial.print(definesToChar(jumperlessConfig.top_oled.gpio_scl, 0)); Serial.println(";");
+        Serial.print("sda_row = "); Serial.print(definesToChar(jumperlessConfig.top_oled.sda_row, 0)); Serial.println(";");
+        Serial.print("scl_row = "); Serial.print(definesToChar(jumperlessConfig.top_oled.scl_row, 0)); Serial.println(";");
+        Serial.print("connect_on_boot = "); Serial.print(getStringFromTable(jumperlessConfig.top_oled.connect_on_boot, boolTable)); Serial.println(";");
+        Serial.print("lock_connection = "); Serial.print(getStringFromTable(jumperlessConfig.top_oled.lock_connection, boolTable)); Serial.println(";");
     }
 
     if (section == -1) {
@@ -678,21 +730,21 @@ void printSettingChange(const char* section, const char* key, const char* oldVal
     // Try to print names for enums/bools if possible
     const char* oldName = nullptr;
     const char* newName = nullptr;
-    if (strcmp(section, "display_settings") == 0 && strcmp(key, "lines_wires") == 0) {
+    if (strcmp(section, "display") == 0 && strcmp(key, "lines_wires") == 0) {
         oldName = getStringFromTable(atoi(oldValue), linesWiresTable);
         newName = getStringFromTable(atoi(newValue), linesWiresTable);
-    } else if (strcmp(section, "display_settings") == 0 && strcmp(key, "net_color_mode") == 0) {
+    } else if (strcmp(section, "display") == 0 && strcmp(key, "net_color_mode") == 0) {
         oldName = getStringFromTable(atoi(oldValue), netColorModeTable);
         newName = getStringFromTable(atoi(newValue), netColorModeTable);
     } else if ((strcmp(section, "serial_1") == 0 || strcmp(section, "serial_2") == 0 || strcmp(section, "gpio") == 0) && (strstr(key, "function") != NULL)) {
         oldName = getStringFromTable(atoi(oldValue), uartFunctionTable);
         newName = getStringFromTable(atoi(newValue), uartFunctionTable);
-    } else if (strcmp(section, "logo_pad_settings") == 0) {
+    } else if (strcmp(section, "logo_pads") == 0) {
         oldName = getStringFromTable(atoi(oldValue), arbitraryFunctionTable);
         newName = getStringFromTable(atoi(newValue), arbitraryFunctionTable);
     } else if (
-        (strcmp(section, "dac_settings") == 0 && (strcmp(key, "set_dacs_on_startup") == 0 || strcmp(key, "set_rails_on_startup") == 0)) ||
-        (strcmp(section, "debug_flags") == 0) ||
+        (strcmp(section, "dacs") == 0 && (strcmp(key, "set_dacs_on_startup") == 0 || strcmp(key, "set_rails_on_startup") == 0)) ||
+        (strcmp(section, "debug") == 0) ||
         (strcmp(section, "serial_1") == 0 && (strcmp(key, "print_passthrough") == 0 || strcmp(key, "connect_on_boot") == 0 || strcmp(key, "lock_connection") == 0)) ||
         (strcmp(section, "serial_2") == 0 && (strcmp(key, "print_passthrough") == 0 || strcmp(key, "connect_on_boot") == 0 || strcmp(key, "lock_connection") == 0))
     ) {
@@ -712,7 +764,7 @@ void printSettingChange(const char* section, const char* key, const char* oldVal
 void printConfigHelp() {
     Serial.println("\n\r");
     Serial.println("         ~ = show current config");
-    Serial.println("~[section] = show specific section (e.g. ~[routing_settings])");
+    Serial.println("~[section] = show specific section (e.g. ~[routing])");
     Serial.println("         ` = enter config settings");
     Serial.println("        ~? = show this help\n\r");
     Serial.println("    ~reset = reset to defaults");
@@ -721,9 +773,9 @@ void printConfigHelp() {
     Serial.println("\n    config setting formats (prefix with ` to paste from main menu)\n\r");    
     Serial.println("`[serial_1]connect_on_boot = true;");
     Serial.println("\n\r\tor you can use dot notation\n\r");
-    Serial.println("`config.routing_settings.stack_paths = 1;");
+    Serial.println("`config.routing.stack_paths = 1;");
     Serial.println("\n\r\tor paste a whole section\n\r");
-    Serial.println("`[dac_settings]");
+    Serial.println("`[dacs]");
     Serial.println("top_rail = 5.0;");
     Serial.println("bottom_rail = 3.3;");
     Serial.println("dac_0 = -2.0;");
@@ -942,33 +994,33 @@ int parseTrueFalse(const char* value) {
 void updateConfigValue(const char* section, const char* key, const char* value) {
     char oldValue[64] = {0};
     // Get old value
-    if (strcmp(section, "hardware_version") == 0) {
-        if (strcmp(key, "generation") == 0) sprintf(oldValue, "%d", jumperlessConfig.hardware_version.generation);
-        else if (strcmp(key, "hardware_revision") == 0) sprintf(oldValue, "%d", jumperlessConfig.hardware_version.hardware_revision);
-        else if (strcmp(key, "probe_version") == 0) sprintf(oldValue, "%d", jumperlessConfig.hardware_version.probe_version);
+    if (strcmp(section, "hardware") == 0) {
+        if (strcmp(key, "generation") == 0) sprintf(oldValue, "%d", jumperlessConfig.hardware.generation);
+        else if (strcmp(key, "revision") == 0) sprintf(oldValue, "%d", jumperlessConfig.hardware.revision);
+        else if (strcmp(key, "probe_revision") == 0) sprintf(oldValue, "%d", jumperlessConfig.hardware.probe_revision);
     }
-    else if (strcmp(section, "dac_settings") == 0) {
-        if (strcmp(key, "top_rail") == 0) sprintf(oldValue, "%.2f", jumperlessConfig.dac_settings.top_rail);
-        else if (strcmp(key, "bottom_rail") == 0) sprintf(oldValue, "%.2f", jumperlessConfig.dac_settings.bottom_rail);
-        else if (strcmp(key, "dac_0") == 0) sprintf(oldValue, "%.2f", jumperlessConfig.dac_settings.dac_0);
-        else if (strcmp(key, "dac_1") == 0) sprintf(oldValue, "%.2f", jumperlessConfig.dac_settings.dac_1);
-        else if (strcmp(key, "set_dacs_on_startup") == 0) sprintf(oldValue, "%d", jumperlessConfig.dac_settings.set_dacs_on_startup);
-        else if (strcmp(key, "set_rails_on_startup") == 0) sprintf(oldValue, "%d", jumperlessConfig.dac_settings.set_rails_on_startup);
-        else if (strcmp(key, "limit_max") == 0) sprintf(oldValue, "%.2f", jumperlessConfig.dac_settings.limit_max);
-        else if (strcmp(key, "limit_min") == 0) sprintf(oldValue, "%.2f", jumperlessConfig.dac_settings.limit_min);
+    else if (strcmp(section, "dacs") == 0) {
+        if (strcmp(key, "top_rail") == 0) sprintf(oldValue, "%.2f", jumperlessConfig.dacs.top_rail);
+        else if (strcmp(key, "bottom_rail") == 0) sprintf(oldValue, "%.2f", jumperlessConfig.dacs.bottom_rail);
+        else if (strcmp(key, "dac_0") == 0) sprintf(oldValue, "%.2f", jumperlessConfig.dacs.dac_0);
+        else if (strcmp(key, "dac_1") == 0) sprintf(oldValue, "%.2f", jumperlessConfig.dacs.dac_1);
+        else if (strcmp(key, "set_dacs_on_boot") == 0) sprintf(oldValue, "%d", jumperlessConfig.dacs.set_dacs_on_boot);
+        else if (strcmp(key, "set_rails_on_boot") == 0) sprintf(oldValue, "%d", jumperlessConfig.dacs.set_rails_on_boot);
+        else if (strcmp(key, "limit_max") == 0) sprintf(oldValue, "%.2f", jumperlessConfig.dacs.limit_max);
+        else if (strcmp(key, "limit_min") == 0) sprintf(oldValue, "%.2f", jumperlessConfig.dacs.limit_min);
     }
-    else if (strcmp(section, "debug_flags") == 0) {
-        if (strcmp(key, "file_parsing") == 0) sprintf(oldValue, "%d", jumperlessConfig.debug_flags.file_parsing);
-        else if (strcmp(key, "net_manager") == 0) sprintf(oldValue, "%d", jumperlessConfig.debug_flags.net_manager);
-        else if (strcmp(key, "net_to_chip_connections") == 0) sprintf(oldValue, "%d", jumperlessConfig.debug_flags.net_to_chip_connections);
-        else if (strcmp(key, "net_to_chip_connections_alt") == 0) sprintf(oldValue, "%d", jumperlessConfig.debug_flags.net_to_chip_connections_alt);
-        else if (strcmp(key, "leds") == 0) sprintf(oldValue, "%d", jumperlessConfig.debug_flags.leds);
+    else if (strcmp(section, "debug") == 0) {
+        if (strcmp(key, "file_parsing") == 0) sprintf(oldValue, "%d", jumperlessConfig.debug.file_parsing);
+        else if (strcmp(key, "net_manager") == 0) sprintf(oldValue, "%d", jumperlessConfig.debug.net_manager);
+        else if (strcmp(key, "nets_to_chips") == 0) sprintf(oldValue, "%d", jumperlessConfig.debug.nets_to_chips);
+        else if (strcmp(key, "nets_to_chips_alt") == 0) sprintf(oldValue, "%d", jumperlessConfig.debug.nets_to_chips_alt);
+        else if (strcmp(key, "leds") == 0) sprintf(oldValue, "%d", jumperlessConfig.debug.leds);
     }
-    else if (strcmp(section, "routing_settings") == 0) {
-        if (strcmp(key, "stack_paths") == 0) sprintf(oldValue, "%d", jumperlessConfig.routing_settings.stack_paths);
-        else if (strcmp(key, "stack_rails") == 0) sprintf(oldValue, "%d", jumperlessConfig.routing_settings.stack_rails);
-        else if (strcmp(key, "stack_dacs") == 0) sprintf(oldValue, "%d", jumperlessConfig.routing_settings.stack_dacs);
-        else if (strcmp(key, "rail_priority") == 0) sprintf(oldValue, "%d", jumperlessConfig.routing_settings.rail_priority);
+    else if (strcmp(section, "routing") == 0) {
+        if (strcmp(key, "stack_paths") == 0) sprintf(oldValue, "%d", jumperlessConfig.routing.stack_paths);
+        else if (strcmp(key, "stack_rails") == 0) sprintf(oldValue, "%d", jumperlessConfig.routing.stack_rails);
+        else if (strcmp(key, "stack_dacs") == 0) sprintf(oldValue, "%d", jumperlessConfig.routing.stack_dacs);
+        else if (strcmp(key, "rail_priority") == 0) sprintf(oldValue, "%d", jumperlessConfig.routing.rail_priority);
     }
     else if (strcmp(section, "calibration") == 0) {
         if (strcmp(key, "top_rail_zero") == 0) sprintf(oldValue, "%d", jumperlessConfig.calibration.top_rail_zero);
@@ -982,19 +1034,19 @@ void updateConfigValue(const char* section, const char* key, const char* value) 
         else if (strcmp(key, "probe_max") == 0) sprintf(oldValue, "%d", jumperlessConfig.calibration.probe_max);
         else if (strcmp(key, "probe_min") == 0) sprintf(oldValue, "%d", jumperlessConfig.calibration.probe_min);
     }
-    else if (strcmp(section, "logo_pad_settings") == 0) {
-        if (strcmp(key, "top_guy") == 0) sprintf(oldValue, "%d", jumperlessConfig.logo_pad_settings.top_guy);
-        else if (strcmp(key, "bottom_guy") == 0) sprintf(oldValue, "%d", jumperlessConfig.logo_pad_settings.bottom_guy);
-        else if (strcmp(key, "building_pad_top") == 0) sprintf(oldValue, "%d", jumperlessConfig.logo_pad_settings.building_pad_top);
-        else if (strcmp(key, "building_pad_bottom") == 0) sprintf(oldValue, "%d", jumperlessConfig.logo_pad_settings.building_pad_bottom);
+    else if (strcmp(section, "logo_pads") == 0) {
+        if (strcmp(key, "top_guy") == 0) sprintf(oldValue, "%d", jumperlessConfig.logo_pads.top_guy);
+        else if (strcmp(key, "bottom_guy") == 0) sprintf(oldValue, "%d", jumperlessConfig.logo_pads.bottom_guy);
+        else if (strcmp(key, "building_pad_top") == 0) sprintf(oldValue, "%d", jumperlessConfig.logo_pads.building_pad_top);
+        else if (strcmp(key, "building_pad_bottom") == 0) sprintf(oldValue, "%d", jumperlessConfig.logo_pads.building_pad_bottom);
     }
-    else if (strcmp(section, "display_settings") == 0) {
-        if (strcmp(key, "lines_wires") == 0) sprintf(oldValue, "%d", jumperlessConfig.display_settings.lines_wires);
-        else if (strcmp(key, "menu_brightness") == 0) sprintf(oldValue, "%d", jumperlessConfig.display_settings.menu_brightness);
-        else if (strcmp(key, "led_brightness") == 0) sprintf(oldValue, "%d", jumperlessConfig.display_settings.led_brightness);
-        else if (strcmp(key, "rail_brightness") == 0) sprintf(oldValue, "%d", jumperlessConfig.display_settings.rail_brightness);
-        else if (strcmp(key, "special_net_brightness") == 0) sprintf(oldValue, "%d", jumperlessConfig.display_settings.special_net_brightness);
-        else if (strcmp(key, "net_color_mode") == 0) sprintf(oldValue, "%d", jumperlessConfig.display_settings.net_color_mode);
+    else if (strcmp(section, "display") == 0) {
+        if (strcmp(key, "lines_wires") == 0) sprintf(oldValue, "%d", jumperlessConfig.display.lines_wires);
+        else if (strcmp(key, "menu_brightness") == 0) sprintf(oldValue, "%d", jumperlessConfig.display.menu_brightness);
+        else if (strcmp(key, "led_brightness") == 0) sprintf(oldValue, "%d", jumperlessConfig.display.led_brightness);
+        else if (strcmp(key, "rail_brightness") == 0) sprintf(oldValue, "%d", jumperlessConfig.display.rail_brightness);
+        else if (strcmp(key, "special_net_brightness") == 0) sprintf(oldValue, "%d", jumperlessConfig.display.special_net_brightness);
+        else if (strcmp(key, "net_color_mode") == 0) sprintf(oldValue, "%d", jumperlessConfig.display.net_color_mode);
     }
     else if (strcmp(section, "gpio") == 0) {
         if (strcmp(key, "direction") == 0) {
@@ -1034,35 +1086,46 @@ void updateConfigValue(const char* section, const char* key, const char* value) 
         else if (strcmp(key, "connect_on_boot") == 0) sprintf(oldValue, "%d", jumperlessConfig.serial_2.connect_on_boot);
         else if (strcmp(key, "lock_connection") == 0) sprintf(oldValue, "%d", jumperlessConfig.serial_2.lock_connection);
     }
+    else if (strcmp(section, "top_oled") == 0) {
+        if (strcmp(key, "i2c_address") == 0) sprintf(oldValue, "%d", jumperlessConfig.top_oled.i2c_address);
+        else if (strcmp(key, "width") == 0) sprintf(oldValue, "%d", jumperlessConfig.top_oled.width);
+        else if (strcmp(key, "height") == 0) sprintf(oldValue, "%d", jumperlessConfig.top_oled.height);
+        else if (strcmp(key, "sda_pin") == 0) sprintf(oldValue, "%d", jumperlessConfig.top_oled.sda_pin);
+        else if (strcmp(key, "scl_pin") == 0) sprintf(oldValue, "%d", jumperlessConfig.top_oled.scl_pin);
+        else if (strcmp(key, "sda_row") == 0) sprintf(oldValue, "%d", jumperlessConfig.top_oled.sda_row);
+        else if (strcmp(key, "scl_row") == 0) sprintf(oldValue, "%d", jumperlessConfig.top_oled.scl_row);
+        else if (strcmp(key, "connect_on_boot") == 0) sprintf(oldValue, "%d", jumperlessConfig.top_oled.connect_on_boot);
+        else if (strcmp(key, "lock_connection") == 0) sprintf(oldValue, "%d", jumperlessConfig.top_oled.lock_connection);
+    }
     // Update the config structure
     // Accept string names for enums/bools and convert to int
-    if (strcmp(section, "hardware_version") == 0) {
-        if (strcmp(key, "generation") == 0) jumperlessConfig.hardware_version.generation = parseInt(value);
-        else if (strcmp(key, "hardware_revision") == 0) jumperlessConfig.hardware_version.hardware_revision = parseInt(value);
-        else if (strcmp(key, "probe_version") == 0) jumperlessConfig.hardware_version.probe_version = parseInt(value);
+    if (strcmp(section, "hardware") == 0) {
+        if (strcmp(key, "generation") == 0) jumperlessConfig.hardware.generation = parseInt(value);
+        else if (strcmp(key, "revision") == 0) jumperlessConfig.hardware.revision = parseInt(value);
+        else if (strcmp(key, "probe_revision") == 0) jumperlessConfig.hardware.probe_revision = parseInt(value);
     }
-    else if (strcmp(section, "dac_settings") == 0) {
-        if (strcmp(key, "top_rail") == 0) jumperlessConfig.dac_settings.top_rail = parseFloat(value);
-        else if (strcmp(key, "bottom_rail") == 0) jumperlessConfig.dac_settings.bottom_rail = parseFloat(value);
-        else if (strcmp(key, "dac_0") == 0) jumperlessConfig.dac_settings.dac_0 = parseFloat(value);
-        else if (strcmp(key, "dac_1") == 0) jumperlessConfig.dac_settings.dac_1 = parseFloat(value);
-        else if (strcmp(key, "set_dacs_on_startup") == 0) jumperlessConfig.dac_settings.set_dacs_on_startup = parseBool(value);
-        else if (strcmp(key, "set_rails_on_startup") == 0) jumperlessConfig.dac_settings.set_rails_on_startup = parseBool(value);
-        else if (strcmp(key, "limit_max") == 0) jumperlessConfig.dac_settings.limit_max = parseFloat(value);
-        else if (strcmp(key, "limit_min") == 0) jumperlessConfig.dac_settings.limit_min = parseFloat(value);
+    else if (strcmp(section, "dacs") == 0) {
+        if (strcmp(key, "top_rail") == 0) jumperlessConfig.dacs.top_rail = parseFloat(value);
+        else if (strcmp(key, "bottom_rail") == 0) jumperlessConfig.dacs.bottom_rail = parseFloat(value);
+        else if (strcmp(key, "dac_0") == 0) jumperlessConfig.dacs.dac_0 = parseFloat(value);
+        else if (strcmp(key, "dac_1") == 0) jumperlessConfig.dacs.dac_1 = parseFloat(value);
+        else if (strcmp(key, "set_dacs_on_boot") == 0) jumperlessConfig.dacs.set_dacs_on_boot = parseBool(value);
+        else if (strcmp(key, "set_rails_on_boot") == 0) jumperlessConfig.dacs.set_rails_on_boot = parseBool(value);
+        else if (strcmp(key, "limit_max") == 0) jumperlessConfig.dacs.limit_max = parseFloat(value);
+        else if (strcmp(key, "limit_min") == 0) jumperlessConfig.dacs.limit_min = parseFloat(value);
     }
-    else if (strcmp(section, "debug_flags") == 0) {
-        if (strcmp(key, "file_parsing") == 0) jumperlessConfig.debug_flags.file_parsing = parseBool(value);
-        else if (strcmp(key, "net_manager") == 0) jumperlessConfig.debug_flags.net_manager = parseBool(value);
-        else if (strcmp(key, "net_to_chip_connections") == 0) jumperlessConfig.debug_flags.net_to_chip_connections = parseBool(value);
-        else if (strcmp(key, "net_to_chip_connections_alt") == 0) jumperlessConfig.debug_flags.net_to_chip_connections_alt = parseBool(value);
-        else if (strcmp(key, "leds") == 0) jumperlessConfig.debug_flags.leds = parseBool(value);
+    else if (strcmp(section, "debug") == 0) {
+        if (strcmp(key, "file_parsing") == 0) jumperlessConfig.debug.file_parsing = parseBool(value);
+        else if (strcmp(key, "net_manager") == 0) jumperlessConfig.debug.net_manager = parseBool(value);
+        else if (strcmp(key, "nets_to_chips") == 0) jumperlessConfig.debug.nets_to_chips = parseBool(value);
+        else if (strcmp(key, "nets_to_chips_alt") == 0) jumperlessConfig.debug.nets_to_chips_alt = parseBool(value);
+        else if (strcmp(key, "leds") == 0) jumperlessConfig.debug.leds = parseBool(value);
     }
-    else if (strcmp(section, "routing_settings") == 0) {
-        if (strcmp(key, "stack_paths") == 0) jumperlessConfig.routing_settings.stack_paths = parseInt(value);
-        else if (strcmp(key, "stack_rails") == 0) jumperlessConfig.routing_settings.stack_rails = parseInt(value);
-        else if (strcmp(key, "stack_dacs") == 0) jumperlessConfig.routing_settings.stack_dacs = parseInt(value);
-        else if (strcmp(key, "rail_priority") == 0) jumperlessConfig.routing_settings.rail_priority = parseInt(value);
+    else if (strcmp(section, "routing") == 0) {
+        if (strcmp(key, "stack_paths") == 0) jumperlessConfig.routing.stack_paths = parseInt(value);
+        else if (strcmp(key, "stack_rails") == 0) jumperlessConfig.routing.stack_rails = parseInt(value);
+        else if (strcmp(key, "stack_dacs") == 0) jumperlessConfig.routing.stack_dacs = parseInt(value);
+        else if (strcmp(key, "rail_priority") == 0) jumperlessConfig.routing.rail_priority = parseInt(value);
     }
     else if (strcmp(section, "calibration") == 0) {
         if (strcmp(key, "top_rail_zero") == 0) jumperlessConfig.calibration.top_rail_zero = parseInt(value);
@@ -1076,19 +1139,19 @@ void updateConfigValue(const char* section, const char* key, const char* value) 
         else if (strcmp(key, "probe_max") == 0) jumperlessConfig.calibration.probe_max = parseInt(value);
         else if (strcmp(key, "probe_min") == 0) jumperlessConfig.calibration.probe_min = parseInt(value);
     }
-    else if (strcmp(section, "logo_pad_settings") == 0) {
-        if (strcmp(key, "top_guy") == 0) jumperlessConfig.logo_pad_settings.top_guy = parseArbitraryFunction(value);
-        else if (strcmp(key, "bottom_guy") == 0) jumperlessConfig.logo_pad_settings.bottom_guy = parseArbitraryFunction(value);
-        else if (strcmp(key, "building_pad_top") == 0) jumperlessConfig.logo_pad_settings.building_pad_top = parseArbitraryFunction(value);
-        else if (strcmp(key, "building_pad_bottom") == 0) jumperlessConfig.logo_pad_settings.building_pad_bottom = parseArbitraryFunction(value);
+    else if (strcmp(section, "logo_pads") == 0) {
+        if (strcmp(key, "top_guy") == 0) jumperlessConfig.logo_pads.top_guy = parseArbitraryFunction(value);
+        else if (strcmp(key, "bottom_guy") == 0) jumperlessConfig.logo_pads.bottom_guy = parseArbitraryFunction(value);
+        else if (strcmp(key, "building_pad_top") == 0) jumperlessConfig.logo_pads.building_pad_top = parseArbitraryFunction(value);
+        else if (strcmp(key, "building_pad_bottom") == 0) jumperlessConfig.logo_pads.building_pad_bottom = parseArbitraryFunction(value);
     }
-    else if (strcmp(section, "display_settings") == 0) {
-        if (strcmp(key, "lines_wires") == 0) jumperlessConfig.display_settings.lines_wires = parseLinesWires(value);
-        else if (strcmp(key, "menu_brightness") == 0) jumperlessConfig.display_settings.menu_brightness = parseInt(value);
-        else if (strcmp(key, "led_brightness") == 0) jumperlessConfig.display_settings.led_brightness = parseInt(value);
-        else if (strcmp(key, "rail_brightness") == 0) jumperlessConfig.display_settings.rail_brightness = parseInt(value);
-        else if (strcmp(key, "special_net_brightness") == 0) jumperlessConfig.display_settings.special_net_brightness = parseInt(value);
-        else if (strcmp(key, "net_color_mode") == 0) jumperlessConfig.display_settings.net_color_mode = parseNetColorMode(value);
+    else if (strcmp(section, "display") == 0) {
+        if (strcmp(key, "lines_wires") == 0) jumperlessConfig.display.lines_wires = parseLinesWires(value);
+        else if (strcmp(key, "menu_brightness") == 0) jumperlessConfig.display.menu_brightness = parseInt(value);
+        else if (strcmp(key, "led_brightness") == 0) jumperlessConfig.display.led_brightness = parseInt(value);
+        else if (strcmp(key, "rail_brightness") == 0) jumperlessConfig.display.rail_brightness = parseInt(value);
+        else if (strcmp(key, "special_net_brightness") == 0) jumperlessConfig.display.special_net_brightness = parseInt(value);
+        else if (strcmp(key, "net_color_mode") == 0) jumperlessConfig.display.net_color_mode = parseNetColorMode(value);
     }
     else if (strcmp(section, "gpio") == 0) {
         if (strcmp(key, "direction") == 0) {
@@ -1113,6 +1176,19 @@ void updateConfigValue(const char* section, const char* key, const char* value) 
         else if (strcmp(key, "print_passthrough") == 0) jumperlessConfig.serial_2.print_passthrough = parseBool(value);
         else if (strcmp(key, "connect_on_boot") == 0) jumperlessConfig.serial_2.connect_on_boot = parseBool(value);
         else if (strcmp(key, "lock_connection") == 0) jumperlessConfig.serial_2.lock_connection = parseBool(value);
+    }
+    else if (strcmp(section, "top_oled") == 0) {
+        if (strcmp(key, "i2c_address") == 0) jumperlessConfig.top_oled.i2c_address = parseHex(value);
+        else if (strcmp(key, "width") == 0) jumperlessConfig.top_oled.width = parseInt(value);
+        else if (strcmp(key, "height") == 0) jumperlessConfig.top_oled.height = parseInt(value);
+        else if (strcmp(key, "sda_pin") == 0) jumperlessConfig.top_oled.sda_pin = parseInt(value);
+        else if (strcmp(key, "scl_pin") == 0) jumperlessConfig.top_oled.scl_pin = parseInt(value);
+        else if (strcmp(key, "gpio_sda") == 0) jumperlessConfig.top_oled.gpio_sda = parseInt(value);
+        else if (strcmp(key, "gpio_scl") == 0) jumperlessConfig.top_oled.gpio_scl = parseInt(value);
+        else if (strcmp(key, "sda_row") == 0) jumperlessConfig.top_oled.sda_row = parseInt(value);
+        else if (strcmp(key, "scl_row") == 0) jumperlessConfig.top_oled.scl_row = parseInt(value);
+        else if (strcmp(key, "connect_on_boot") == 0) jumperlessConfig.top_oled.connect_on_boot = parseBool(value);
+        else if (strcmp(key, "lock_connection") == 0) jumperlessConfig.top_oled.lock_connection = parseBool(value);
     }
     saveConfigToFile("/config.txt");
     printSettingChange(section, key, oldValue, value);

@@ -26,7 +26,7 @@ void customApp(void);
 
 void displayImage(void);
 
-int oledTest(int sdaRow = -1, int sclRow = -1, int sdaPin = 22, int sclPin = 23, int leaveConnections = 0);
+
 int i2cScan(int sdaRow = -1 , int sclRow = -1, int sdaPin = 22, int sclPin = 23, int leaveConnections = 0);
 
 

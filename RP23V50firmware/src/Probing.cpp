@@ -41,6 +41,21 @@ int probeToRowMap2[102] = {
     69, 70, 71, 72, 73, 74, 75, 76, 77, 78, 79, 80, 81, 82, 83,  84,  85,
     86, 87, 88, 89, 90, 91, 92, 93, 94, 95, 96, 97, 98, 99, 100, 101,
 };
+
+/* clang-format off */
+
+int probeRowMap[108] = {
+    -1, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, TOP_RAIL, GND,
+    BOTTOM_RAIL, GND, 31, 32, 33, 34, 35, 36, 37, 38, 39, 40, 41, 42, 43, 44, 45, 46, 47, 48, 49, 50, 51, 52, 53, 54, 55, 56, 57, 58, 59, 60, 
+    NANO_D1, NANO_D0, NANO_RESET_1, GND, NANO_D2, NANO_D3, NANO_D4, NANO_D5, NANO_D6, NANO_D7, NANO_D8, NANO_D9, NANO_D10, NANO_D11, NANO_D12, 
+    NANO_D13, NANO_3V3, NANO_AREF, NANO_A0, NANO_A1, NANO_A2, NANO_A3, NANO_A4, NANO_A5, NANO_A6, NANO_A7,NANO_5V, NANO_RESET_0, GND, NANO_VIN, 
+    LOGO_PAD_BOTTOM, LOGO_PAD_TOP, GPIO_PAD, DAC_PAD, ADC_PAD, BUILDING_PAD_TOP, BUILDING_PAD_BOTTOM, -1, -1, -1, -1
+};
+
+/* clang-format on */
+ int minProbeReadingMap = 15;
+int maxProbeReadingMap = 4060;
+
 int lastReadRaw = 0;
 int probeSwap = 0;
 int probeHalfPeriodus = 20;
@@ -99,8 +114,7 @@ volatile int removeFade = 0;
 int probeMode(int pin, int setOrClear) {
 
 
-extern int minProbeReadingMap;
-extern int maxProbeReadingMap;
+
 
 
 
@@ -814,11 +828,11 @@ int selectSFprobeMenu(int function) {
 
     // delay(800);
 
-    // function = attachPadsToSettings(function);
-    //  node1or2 = 0;
-    //  nodesToConnect[0] = function;
-    //  nodesToConnect[1] = -1;
-    //  connectedRowsIndex = 1;
+     function = attachPadsToSettings(function);
+     node1or2 = 0;
+     nodesToConnect[0] = function;
+     nodesToConnect[1] = -1;
+     connectedRowsIndex = 1;
 
     // Serial.print("function!!!!!: ");
     // printNodeOrName(function, 1);
@@ -996,35 +1010,35 @@ int attachPadsToSettings(int pad) {
   case 2: {
     switch (gpioChosen) {
     case 1: {
-      function = 135;
+      function = RP_GPIO_1;
       break;
     }
     case 2: {
-      function = 136;
+      function = RP_GPIO_2;
       break;
     }
     case 3: {
-      function = 137;
+      function = RP_GPIO_3;
       break;
     }
     case 4: {
-      function = 138;
+      function = RP_GPIO_4;
       break;
     }
     case 5: {
-      function = 122;
+      function = RP_GPIO_5;
       break;
     }
     case 6: {
-      function = 123;
+      function = RP_GPIO_6;
       break;
     }
     case 7: {
-      function = 124;
+      function = RP_GPIO_7;
       break;
     }
     case 8: {
-      function = 125;
+      function = RP_GPIO_8;
       break;
     }
     }
@@ -1042,27 +1056,24 @@ int attachPadsToSettings(int pad) {
 
   switch (pad) {
   case 128: {
-    logoTopSetting[0] = functionSetting;
-    logoTopSetting[1] = settingOption;
+    jumperlessConfig.logo_pads.top_guy = function;
+   // jumperlessConfig.logo_pads.top_guy = settingOption;
 
     break;
   }
   case 129: {
-    logoBottomSetting[0] = functionSetting;
-    logoBottomSetting[1] = settingOption;
-
+    jumperlessConfig.logo_pads.bottom_guy = function;
+   // jumperlessConfig.logo_pads.bottom_guy = settingOption;
     break;
   }
   case 133: {
-    buildingTopSetting[0] = functionSetting;
-    buildingTopSetting[1] = settingOption;
-
+    jumperlessConfig.logo_pads.building_pad_top = function;
+    //jumperlessConfig.logo_pads.building_pad_top= settingOption;
     break;
   }
   case 134: {
-    buildingBottomSetting[0] = functionSetting;
-    buildingBottomSetting[1] = settingOption;
-
+    jumperlessConfig.logo_pads.building_pad_bottom = function;
+   // jumperlessConfig.logo_pads.building_pad_bottom_setting = settingOption;
     break;
   }
   }
@@ -2104,7 +2115,7 @@ int checkProbeButton(void) {
     // Serial.println(buttonState2);
     // Serial.println(" ");
     // Serial.println("disconnect button");
-    if (jumperlessConfig.hardware_version.probe_version >= 4) {
+    if (jumperlessConfig.hardware.probe_revision >= 4) {
       return 2;
     } else {
       return 1;
@@ -2119,7 +2130,7 @@ int checkProbeButton(void) {
     // Serial.println(" ");
     // Serial.println("connect button");
 
-    if (jumperlessConfig.hardware_version.probe_version >= 4) {
+    if (jumperlessConfig.hardware.probe_revision >= 4) {
       return 1;
     } else {
       return 2;
@@ -2281,8 +2292,8 @@ void clearLastFound() {}
 
 int probeADCmap[102];
 
-int nothingTouchedReading = 35;
-int mapFrom = 35;
+int nothingTouchedReading = 15;
+int mapFrom = 15;
 // int calibrateProbe() {
 //   /* clang-format off */
 
@@ -2385,62 +2396,90 @@ int getNothingTouched(int samples) {
   //  Serial.println(nothingTouchedReading);
   return nothingTouchedReading;
 }
+
+
+
+
 unsigned long doubleTimeout = 0;
 
 unsigned long padTimeout = 0;
-int padTimeoutLength = 250;
+int padTimeoutLength = 50;
 
 int state = 0;
 int lastPadTouched = 0;
 unsigned long padNoTouch = 0;
+int lastPadTouchedTime = 0;
+int samePadCount = 0;
+
 
 void checkPads(void) {
   // startProbe();
   checkingPads = 1;
+
+  
   int probeReading = readProbeRaw();
+
+   // lastReadRaw = -1;
   if (probeReading == -1) {
-
     checkingPads = 0;
-    padNoTouch++;
-
-    if (millis() - padTimeout > padTimeoutLength) {
-      padTimeout = millis();
-      lastReadRaw = 0;
-    }
     return;
   }
+
+  //   checkingPads = 0;
+  //   padNoTouch++;
+
+  //   if (millis() - padTimeout > padTimeoutLength) {
+  //     padTimeout = millis();
+  //     lastReadRaw = 0;
+  //   }
+  //   return;
+  // }
+  // Serial.print("probeReading: ");
+  // Serial.println(probeReading);
   // Serial.print("padNoTouch: ");
   // Serial.println(padNoTouch);
   padNoTouch = 0;
 
   /* clang-format off */
-  int probeRowMap[103] = {
+  // int probeRowMap[103] = {
 
-      -1,        1,         2,        3,        4,        5,        6,        7,       8,
-       9,       10,        11,       12,       13,       14,       15,       16,
-      17,       18,        19,       20,       21,       22,       23,       24,
-      25,       26,        27,       28,       29,       30,       TOP_RAIL,       TOP_RAIL_GND,
-      BOTTOM_RAIL,       BOTTOM_RAIL_GND,      31,       32,       33,       34,       35,       36,
-      37,       38,       39,       40,        41,       42,       43,       44,       45,
-      46,       47,       48,       49,        50,       51,       52,       53,       54,
-      55,       56,       57,       58,        59,       60,       NANO_D1,       NANO_D0,       NANO_RESET_1,
-      GND,       NANO_D2,       NANO_D3,       NANO_D4,       NANO_D5,       NANO_D6,       NANO_D7,       NANO_D8,
-      NANO_D9,	      NANO_D10,	      NANO_D11,	      NANO_D12,	      NANO_D13,	      NANO_3V3,	      NANO_AREF,	      NANO_A0,
-      NANO_A1,	      NANO_A2,	      NANO_A3,	      NANO_A4,	      NANO_A5,	      NANO_A6,	      NANO_A7,	      NANO_5V,
-      NANO_RESET_0,	      GND,	      NANO_VIN,	      LOGO_PAD_BOTTOM,	      LOGO_PAD_TOP,	      GPIO_PAD,	      DAC_PAD,
-      ADC_PAD,	      BUILDING_PAD_TOP,	      BUILDING_PAD_BOTTOM,
-  };
+  //     -1,        1,         2,        3,        4,        5,        6,        7,       8,
+  //      9,       10,        11,       12,       13,       14,       15,       16,
+  //     17,       18,        19,       20,       21,       22,       23,       24,
+  //     25,       26,        27,       28,       29,       30,       TOP_RAIL,       TOP_RAIL_GND,
+  //     BOTTOM_RAIL,       BOTTOM_RAIL_GND,      31,       32,       33,       34,       35,       36,
+  //     37,       38,       39,       40,        41,       42,       43,       44,       45,
+  //     46,       47,       48,       49,        50,       51,       52,       53,       54,
+  //     55,       56,       57,       58,        59,       60,       NANO_D1,       NANO_D0,       NANO_RESET_1,
+  //     GND,       NANO_D2,       NANO_D3,       NANO_D4,       NANO_D5,       NANO_D6,       NANO_D7,       NANO_D8,
+  //     NANO_D9,	      NANO_D10,	      NANO_D11,	      NANO_D12,	      NANO_D13,	      NANO_3V3,	      NANO_AREF,	      NANO_A0,
+  //     NANO_A1,	      NANO_A2,	      NANO_A3,	      NANO_A4,	      NANO_A5,	      NANO_A6,	      NANO_A7,	      NANO_5V,
+  //     NANO_RESET_0,	      GND,	      NANO_VIN,	      LOGO_PAD_BOTTOM,	      LOGO_PAD_TOP,	      GPIO_PAD,	      DAC_PAD,
+  //     ADC_PAD,	      BUILDING_PAD_TOP,	      BUILDING_PAD_BOTTOM, -1, 
+  // };
 
   /* clang-format on */
-  probeReading = probeRowMap[map(probeReading, 30, 4050, 101, 0)];
-
+  //probeReading = probeRowMap[map(probeReading, 30, 4050, 101, 0)];
+  probeReading = probeRowMap[map(probeReading, jumperlessConfig.calibration.probe_min, jumperlessConfig.calibration.probe_max, 101, 0)];
   // stopProbe();
-  if (probeReading < LOGO_PAD_TOP || probeReading > BUILDING_PAD_BOTTOM) {
-    padTimeout = millis();
-    lastReadRaw = 0;
-    checkingPads = 0;
-    return;
+
+
+  if (probeReading != lastPadTouched) {
+    lastPadTouchedTime = millis();
+    samePadCount = 0;
+  } else {
+    samePadCount++;
   }
+  lastPadTouched = probeReading;
+  // Serial.print("probeReading: ");
+  // Serial.println(probeReading);
+  // Serial.flush();
+  // if (probeReading < LOGO_PAD_TOP || probeReading > BUILDING_PAD_BOTTOM) {
+  //   padTimeout = millis();
+  //   lastReadRaw = 0;
+  //   checkingPads = 0;
+  //   return;
+  // }
 
   padTimeout = millis();
   // Serial.print("probeReading: ");
@@ -2449,186 +2488,66 @@ void checkPads(void) {
   int foundAdc = 0;
   int foundDac = 0;
   // inPadMenu = 1;
+
+  Serial.print("\r                                 \r");
+
   switch (probeReading) {
-
-  case LOGO_PAD_TOP: {
-    switch (logoTopSetting[0]) {
-    case -1:
+    case LOGO_PAD_TOP:
+      Serial.print("Top guy");
       break;
-    case 0: {
-      foundDac = 1;
-      if (logoTopSetting[1] >= 0 && logoTopSetting[1] <= 1) {
-
-        // probeActive = 1;
-        sfProbeMenu = 1;
-        clearLEDsExceptRails();
-        // checkingPads = 0;
-        if (logoTopSetting[1] == 0) {
-
-          dacOutput[0] = voltageSelect(5);
-
-        } else {
-          dacOutput[1] = voltageSelect(8);
-        }
-
-        setRailsAndDACs();
-      }
+    case LOGO_PAD_BOTTOM:
+      Serial.print("Bottom guy");
+      break;
+    case GPIO_PAD:
+      Serial.print("GPIO pad");
+      break;
+    case DAC_PAD:
+      Serial.print("DAC pad");
+      break;
+    case ADC_PAD:
+      Serial.print("ADC pad");
+      break;
+    case BUILDING_PAD_TOP:
+      Serial.print("Building top");
+      break;
+    case BUILDING_PAD_BOTTOM:
+      Serial.print("Building bottom");
 
       break;
-    }
-    case 1: {
-      foundAdc = 1;
-      if (logoTopSetting[1] >= 0 && logoTopSetting[1] <= 3) {
-        adcRange[logoTopSetting[1]][1] += 0.1;
-      }
-      break;
-    }
-    case 2: {
-      foundGpio = 1;
-      if (logoTopSetting[1] >= 0 && logoTopSetting[1] <= 8) {
-        if (gpioState[logoTopSetting[1]] == 0) {
-          gpioState[logoTopSetting[1]] = 1;
-        } else {
-          gpioState[logoTopSetting[1]] = 0;
-        }
-      }
-      setGPIO();
-      break;
-    }
-    }
-    break;
   }
 
-  case LOGO_PAD_BOTTOM: {
-    switch (logoBottomSetting[0]) {
-    case -1:
-      break;
-    case 0: {
-      foundDac = 1;
-      if (logoBottomSetting[1] >= 0 && logoBottomSetting[1] <= 1) {
-        // probeActive = 1;
-        // sfProbeMenu = 1;
-        clearLEDsExceptRails();
-        // checkingPads = 0;
-        if (logoBottomSetting[1] == 0) {
-          dacOutput[2] = voltageSelect(5);
-        } else {
-          dacOutput[3] = voltageSelect(8);
-        }
-        setRailsAndDACs();
-      }
-      break;
-    }
-    case 1: {
-      foundAdc = 1;
-      if (logoBottomSetting[1] >= 0 && logoBottomSetting[1] <= 3) {
-        adcRange[logoBottomSetting[1]][1] += 0.1;
-      }
-      break;
-    }
-    case 2: {
-      foundGpio = 1;
-      if (logoBottomSetting[1] >= 0 && logoBottomSetting[1] <= 8) {
-        if (gpioState[logoBottomSetting[1]] == 0) {
-          gpioState[logoBottomSetting[1]] = 1;
-        } else {
-          gpioState[logoBottomSetting[1]] = 0;
-        }
-      }
-      setGPIO();
-      break;
-    }
-    }
-    break;
-  }
-  case BUILDING_PAD_TOP: {
-    switch (buildingTopSetting[0]) {
-    case -1:
-      break;
-    case 0: {
-      foundDac = 1;
-      if (buildingTopSetting[1] >= 0 && buildingTopSetting[1] <= 1) {
-        // probeActive = 1;
-        // sfProbeMenu = 1;
-        clearLEDsExceptRails();
-        // checkingPads = 0;
-        if (buildingTopSetting[1] == 0) {
-          dacOutput[4] = voltageSelect(5);
-        } else {
-          dacOutput[5] = voltageSelect(8);
-        }
-        setRailsAndDACs();
-      }
-      break;
-    }
-    case 1: {
-      foundAdc = 1;
-      if (buildingTopSetting[1] >= 0 && buildingTopSetting[1] <= 3) {
-        adcRange[buildingTopSetting[1]][1] += 0.1;
-      }
-      break;
-    }
-    case 2: {
-      foundGpio = 1;
-      if (buildingTopSetting[1] >= 0 && buildingTopSetting[1] <= 8) {
-        if (gpioState[buildingTopSetting[1]] == 0) {
-          gpioState[buildingTopSetting[1]] = 1;
-        } else {
-          gpioState[buildingTopSetting[1]] = 0;
-        }
-      }
-      setGPIO();
-      break;
-    }
-    }
-    break;
-  }
-  case BUILDING_PAD_BOTTOM: {
-    switch (buildingBottomSetting[0]) {
-    case -1:
-      break;
-    case 0: {
-      foundDac = 1;
-      if (buildingBottomSetting[1] >= 0 && buildingBottomSetting[1] <= 1) {
-        // probeActive = 1;
-        // sfProbeMenu = 1;
-        clearLEDsExceptRails();
-        // checkingPads = 0;
-        if (buildingBottomSetting[1] == 0) {
-          dacOutput[6] = voltageSelect(5);
-        } else {
-          dacOutput[7] = voltageSelect(8);
-        }
-        setRailsAndDACs();
-      }
-      break;
-    }
-    case 1: {
-      foundAdc = 1;
-      if (buildingBottomSetting[1] >= 0 && buildingBottomSetting[1] <= 3) {
-        adcRange[buildingBottomSetting[1]][1] += 0.1;
-      }
-      break;
-    }
-    case 2: {
-      foundGpio = 1;
-      if (buildingBottomSetting[1] >= 0 && buildingBottomSetting[1] <= 8) {
-        if (gpioState[buildingBottomSetting[1]] == 0) {
-          gpioState[buildingBottomSetting[1]] = 1;
-        } else {
-          gpioState[buildingBottomSetting[1]] = 0;
-        }
-      }
-      setGPIO();
-      break;
-    }
-    }
-    break;
-  }
-  }
-  inPadMenu = 0;
-  //  delay(1000);
+  Serial.print("\t");
+  Serial.print(samePadCount);
+  Serial.print("\t");
+  Serial.print(millis() - lastPadTouchedTime);
+  Serial.flush();
+
+// if (ju
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+  // Serial.println();
+
+   checkingPads = 0;
 }
+float longRunningAverage = 0.0;
+int longRunningAverageDamping = 10;
 
 int readProbeRaw(int readNothingTouched) {
   // nothingTouchedReading = 165;
@@ -2640,50 +2559,66 @@ int readProbeRaw(int readNothingTouched) {
 
     for (int i = 0; i < 4; i++) {
       measurements[i] = readAdc(5, 16);
-      delayMicroseconds(30);
+      delayMicroseconds(5);
     }
+    // Serial.print("connect: ");
   } else if (checkingPads == 1) {
     for (int i = 0; i < 4; i++) {
-      measurements[i] = readAdc(5, 128);
-      delayMicroseconds(30);
+      measurements[i] = readAdc(5, 32);
+      delayMicroseconds(5);
     }
-
+    // Serial.print("Pads: ");
+  
   } else {
     for (int i = 0; i < 4; i++) {
       measurements[i] = readAdc(5, 8);
-      delayMicroseconds(30);
+      delayMicroseconds(5);
     }
   }
 
+  int sum = 0;
   int maxVariance = 0;
-  int average = 0;
   int variance = 0;
-  for (int i = 0; i < 3; i++) {
-    variance = abs(measurements[i] - measurements[i + 1]);
-    if (variance > maxVariance) {
-      maxVariance = variance;
+  for (int i = 0; i < 4; i++) {
+    sum += measurements[i];
+    if (i < 3) {
+      variance = abs(measurements[i] - measurements[i + 1]);
+      if (variance > maxVariance) {
+        maxVariance = variance;
+      }
     }
-    average = average + measurements[i];
   }
-  average = average / 3;
+  int average = sum / 4;
   // Serial.print("average ");
   // Serial.println(average);
   int rowProbed = -1;
   // if (average < 90 && abs(average - nothingTouchedReading) > 10) {
-  //   Serial.print("average ");
-  //   Serial.println(average);
+  // Serial.print("var: ");
+  // Serial.print(maxVariance);
+  // Serial.print(" average: ");
+  // Serial.println(average);
   // }
 
-  if (maxVariance < 4 && (abs(average - nothingTouchedReading) > 30) &&
-      (abs(average - lastReadRaw) > 5)) {
-    lastReadRaw = average;
+  if (maxVariance <= 4 &&  ((abs(average - lastReadRaw) > 5) || checkingPads == 1) && (average >= MINIMUM_PROBE_READING)) {
+
+    // if (checkingPads != 1) {
+      lastReadRaw = average;
+  // }
     //      Serial.println("  ");
 
-    //  Serial.println(average);
+      //Serial.println(average);
 
     return average;
 
   } else {
+
+    // Serial.print("nothingTouchedReading: ");
+    // Serial.println(nothingTouchedReading);
+    // longRunningAverageCount = 10;
+    // longRunningAverage += ((float)average - longRunningAverage) / longRunningAverageCount;
+    // Serial.print("longRunningAverage: ");
+    // Serial.println(longRunningAverage);
+
     // Serial.print("average ");
     // Serial.println(average);
     return -1;
@@ -2712,114 +2647,7 @@ int convertPadsToRows(int pad) {
 unsigned long lastProbeTime = millis();
 
 int justReadProbe() {
-  int probeRowMap[108] = {
 
-      -1,
-      1,
-      2,
-      3,
-      4,
-      5,
-      6,
-      7,
-      8,
-      9,
-      10,
-      11,
-      12,
-      13,
-      14,
-      15,
-      16,
-      17,
-      18,
-      19,
-      20,
-      21,
-      22,
-      23,
-      24,
-      25,
-      26,
-      27,
-      28,
-      29,
-      30,
-      TOP_RAIL,
-      GND,
-      BOTTOM_RAIL,
-      GND,
-      31,
-      32,
-      33,
-      34,
-      35,
-      36,
-      37,
-      38,
-      39,
-      40,
-      41,
-      42,
-      43,
-      44,
-      45,
-      46,
-      47,
-      48,
-      49,
-      50,
-      51,
-      52,
-      53,
-      54,
-      55,
-      56,
-      57,
-      58,
-      59,
-      60,
-      NANO_D1,
-      NANO_D0,
-      NANO_RESET_1,
-      GND,
-      NANO_D2,
-      NANO_D3,
-      NANO_D4,
-      NANO_D5,
-      NANO_D6,
-      NANO_D7,
-      NANO_D8,
-      NANO_D9,
-      NANO_D10,
-      NANO_D11,
-      NANO_D12,
-      NANO_D13,
-      NANO_3V3,
-      NANO_AREF,
-      NANO_A0,
-      NANO_A1,
-      NANO_A2,
-      NANO_A3,
-      NANO_A4,
-      NANO_A5,
-      NANO_A6,
-      NANO_A7,
-      NANO_5V,
-      NANO_RESET_0,
-      GND,
-      -1,
-      LOGO_PAD_BOTTOM,
-      LOGO_PAD_TOP,
-      GPIO_PAD,
-      DAC_PAD,
-      ADC_PAD,
-      BUILDING_PAD_TOP,
-      BUILDING_PAD_BOTTOM,
-      -1,
-      -1,
-      -1,
-      -1};
   if (blockProbing > 0) {
     return -1;
   }
@@ -2837,10 +2665,10 @@ int justReadProbe() {
   // Serial.println(rowProbed);
 
   if (rowProbed <= 0 || rowProbed > sizeof(probeRowMap)) {
-    if (debugProbing == 1) {
+    //if (debugProbing == 1) {
       Serial.print("out of bounds of probeRowMap[");
       Serial.println(rowProbed);
-    }
+    //}
     return -1;
   }
 
@@ -2859,22 +2687,22 @@ int readProbe() {
   }
   /* clang-format off */
   
-  int probeRowMap[108] = {
+  // int probeRowMap[108] = {
 
-      -1,        1,         2,        3,        4,        5,        6,        7,       8,
-       9,       10,        11,       12,       13,       14,       15,       16,
-      17,       18,        19,       20,       21,       22,       23,       24,
-      25,       26,        27,       28,       29,       30,       TOP_RAIL,       TOP_RAIL_GND,
-      BOTTOM_RAIL,       BOTTOM_RAIL_GND,      31,       32,       33,       34,       35,       36,
-      37,       38,       39,       40,        41,       42,       43,       44,       45,
-      46,       47,       48,       49,        50,       51,       52,       53,       54,
-      55,       56,       57,       58,        59,       60,       NANO_D1,       NANO_D0,       NANO_RESET_1,
-      GND,       NANO_D2,       NANO_D3,       NANO_D4,       NANO_D5,       NANO_D6,       NANO_D7,       NANO_D8,
-      NANO_D9,	      NANO_D10,	      NANO_D11,	      NANO_D12,	      NANO_D13,	      NANO_3V3,	      NANO_AREF,	      NANO_A0,
-      NANO_A1,	      NANO_A2,	      NANO_A3,	      NANO_A4,	      NANO_A5,	      NANO_A6,	      NANO_A7,	      NANO_5V,
-      NANO_RESET_0,	      GND,	     -1,	      LOGO_PAD_BOTTOM,	      LOGO_PAD_TOP,	      GPIO_PAD,	      DAC_PAD,
-      ADC_PAD,	    -1,-1, -1, -1 , -1, -1
-  };// BUILDING_PAD_TOP,	      BUILDING_PAD_BOTTOM,  i took this out
+  //     -1,        1,         2,        3,        4,        5,        6,        7,       8,
+  //      9,       10,        11,       12,       13,       14,       15,       16,
+  //     17,       18,        19,       20,       21,       22,       23,       24,
+  //     25,       26,        27,       28,       29,       30,       TOP_RAIL,       TOP_RAIL_GND,
+  //     BOTTOM_RAIL,       BOTTOM_RAIL_GND,      31,       32,       33,       34,       35,       36,
+  //     37,       38,       39,       40,        41,       42,       43,       44,       45,
+  //     46,       47,       48,       49,        50,       51,       52,       53,       54,
+  //     55,       56,       57,       58,        59,       60,       NANO_D1,       NANO_D0,       NANO_RESET_1,
+  //     GND,       NANO_D2,       NANO_D3,       NANO_D4,       NANO_D5,       NANO_D6,       NANO_D7,       NANO_D8,
+  //     NANO_D9,	      NANO_D10,	      NANO_D11,	      NANO_D12,	      NANO_D13,	      NANO_3V3,	      NANO_AREF,	      NANO_A0,
+  //     NANO_A1,	      NANO_A2,	      NANO_A3,	      NANO_A4,	      NANO_A5,	      NANO_A6,	      NANO_A7,	      NANO_5V,
+  //     NANO_RESET_0,	      GND,	     -1,	      LOGO_PAD_BOTTOM,	      LOGO_PAD_TOP,	      GPIO_PAD,	      DAC_PAD,
+  //     ADC_PAD,BUILDING_PAD_TOP,	      BUILDING_PAD_BOTTOM,	    -1,-1, -1, -1 , -1, -1
+  // };// BUILDING_PAD_TOP,	      BUILDING_PAD_BOTTOM,  i took this out
 
   /* clang-format on */
 

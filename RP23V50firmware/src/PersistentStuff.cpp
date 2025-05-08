@@ -337,7 +337,7 @@ void debugFlagSet(int flag) {
 
       debugFP = false;
       }
-    jumperlessConfig.debug_flags.file_parsing = debugFP;
+    jumperlessConfig.debug.file_parsing = debugFP;
     break;
     }
 
@@ -353,7 +353,7 @@ void debugFlagSet(int flag) {
 
       debugNM = false;
       }
-    jumperlessConfig.debug_flags.net_manager = debugNM;
+    jumperlessConfig.debug.net_manager = debugNM;
     break;
     }
 
@@ -369,7 +369,7 @@ void debugFlagSet(int flag) {
 
       debugNTCC = false;
       }
-    jumperlessConfig.debug_flags.net_to_chip_connections = debugNTCC;
+    jumperlessConfig.debug.nets_to_chips = debugNTCC;
     break;
     }
     case 4: {
@@ -384,7 +384,7 @@ void debugFlagSet(int flag) {
 
       debugNTCC2 = false;
       }
-    jumperlessConfig.debug_flags.net_to_chip_connections_alt = debugNTCC2;
+    jumperlessConfig.debug.nets_to_chips_alt = debugNTCC2;
     break;
     }
 
@@ -400,7 +400,7 @@ void debugFlagSet(int flag) {
 
       debugLEDs = false;
       }
-    jumperlessConfig.debug_flags.leds = debugLEDs;
+    jumperlessConfig.debug.leds = debugLEDs;
     break;
     }
 
@@ -476,11 +476,11 @@ void debugFlagSet(int flag) {
     debugNTCC2 = false;
     debugLEDs = false;
     showProbeCurrent = 0;
-    jumperlessConfig.debug_flags.file_parsing = false;
-    jumperlessConfig.debug_flags.net_manager = false;
-    jumperlessConfig.debug_flags.net_to_chip_connections = false;
-    jumperlessConfig.debug_flags.net_to_chip_connections_alt = false;
-    jumperlessConfig.debug_flags.leds = false;
+    jumperlessConfig.debug.file_parsing = false;
+    jumperlessConfig.debug.net_manager = false;
+    jumperlessConfig.debug.nets_to_chips = false;
+    jumperlessConfig.debug.nets_to_chips_alt = false;
+    jumperlessConfig.debug.leds = false;
     //jumperlessConfig.debug_flags.show_probe_current = false;
 
     break;
@@ -503,11 +503,11 @@ void debugFlagSet(int flag) {
     debugNTCC2 = true;
     debugLEDs = true;
     showProbeCurrent = 1;
-    jumperlessConfig.debug_flags.file_parsing = true;
-    jumperlessConfig.debug_flags.net_manager = true;
-    jumperlessConfig.debug_flags.net_to_chip_connections = true;
-    jumperlessConfig.debug_flags.net_to_chip_connections_alt = true;
-    jumperlessConfig.debug_flags.leds = true;
+    jumperlessConfig.debug.file_parsing = true;
+    jumperlessConfig.debug.net_manager = true;
+    jumperlessConfig.debug.nets_to_chips = true;
+    jumperlessConfig.debug.nets_to_chips_alt = true;
+    jumperlessConfig.debug.leds = true;
     //jumperlessConfig.debug_flags.show_probe_current = true;
     break;
     }
@@ -560,10 +560,10 @@ void saveVoltages(float top, float bot, float dac0, float dac1) {
   //#endif
 
       // Save to config file
-  jumperlessConfig.dac_settings.top_rail = top;
-  jumperlessConfig.dac_settings.bottom_rail = bot;
-  jumperlessConfig.dac_settings.dac_0 = dac0;
-  jumperlessConfig.dac_settings.dac_1 = dac1;
+  jumperlessConfig.dacs.top_rail = top;
+  jumperlessConfig.dacs.bottom_rail = bot;
+  jumperlessConfig.dacs.dac_0 = dac0;
+  jumperlessConfig.dacs.dac_1 = dac1;
 
   configChanged = true;
   // saveConfig();
@@ -592,10 +592,10 @@ void saveDuplicateSettings(int forceDefaults) {
 #endif
 
   // Save to config file
-  jumperlessConfig.routing_settings.stack_paths = pathDuplicates;
-  jumperlessConfig.routing_settings.stack_rails = dacDuplicates;
-  jumperlessConfig.routing_settings.stack_dacs = powerDuplicates;
-  jumperlessConfig.routing_settings.rail_priority = dacPriority;
+  jumperlessConfig.routing.stack_paths = pathDuplicates;
+  jumperlessConfig.routing.stack_rails = dacDuplicates;
+  jumperlessConfig.routing.stack_dacs = powerDuplicates;
+  jumperlessConfig.routing.rail_priority = dacPriority;
 
   configChanged = true;
 
@@ -687,10 +687,10 @@ void saveLogoBindings(void) {
 #endif
 
   // Save to config file
-  jumperlessConfig.logo_pad_settings.top_guy = logoTopSetting[0];
-  jumperlessConfig.logo_pad_settings.bottom_guy = logoBottomSetting[0];
-  jumperlessConfig.logo_pad_settings.building_pad_top = buildingTopSetting[0];
-  jumperlessConfig.logo_pad_settings.building_pad_bottom = buildingBottomSetting[0];
+  jumperlessConfig.logo_pads.top_guy = logoTopSetting[0];
+  jumperlessConfig.logo_pads.bottom_guy = logoBottomSetting[0];
+  jumperlessConfig.logo_pads.building_pad_top = buildingTopSetting[0];
+  jumperlessConfig.logo_pads.building_pad_bottom = buildingBottomSetting[0];
 
   configChanged = true;
 
@@ -741,10 +741,10 @@ void saveLEDbrightness(int forceDefaults) {
 #endif
 
   // Save to config file
-  jumperlessConfig.display_settings.led_brightness = LEDbrightness;
-  jumperlessConfig.display_settings.rail_brightness = LEDbrightnessRail;
-  jumperlessConfig.display_settings.special_net_brightness = LEDbrightnessSpecial;
-  jumperlessConfig.display_settings.menu_brightness = menuBrightnessSetting;
+  jumperlessConfig.display.led_brightness = LEDbrightness;
+  jumperlessConfig.display.rail_brightness = LEDbrightnessRail;
+  jumperlessConfig.display.special_net_brightness = LEDbrightnessSpecial;
+  jumperlessConfig.display.menu_brightness = menuBrightnessSetting;
 
   configChanged = true;
   //saveConfig();
@@ -812,6 +812,8 @@ void updateGPIOConfigFromState(void) {
           jumperlessConfig.gpio.pulls[i] = 0; // default to pulldown
           gpio_set_dir(gpio_pin, false);  // Set as input
           gpio_set_pulls(gpio_pin, false, true);  // Pull down
+          break;
+        case 6: // do nothing
           break;
         }
       } else {  // UART pins (TX=0, RX=1)
@@ -908,27 +910,27 @@ void lastCommandWrite(char lastCommand) {
 
 void readSettingsFromConfig() {
   // Debug flags
-  debugFP = jumperlessConfig.debug_flags.file_parsing;
+  debugFP = jumperlessConfig.debug.file_parsing;
   //debugFPtime = jumperlessConfig.debug_flags.file_parsing_time;
-  debugNM = jumperlessConfig.debug_flags.net_manager;
+  debugNM = jumperlessConfig.debug.net_manager;
   //debugNMtime = jumperlessConfig.debug_flags.net_manager_time;
-  debugNTCC = jumperlessConfig.debug_flags.net_to_chip_connections;
-  debugNTCC2 = jumperlessConfig.debug_flags.net_to_chip_connections_alt;
-  debugLEDs = jumperlessConfig.debug_flags.leds;
+  debugNTCC = jumperlessConfig.debug.nets_to_chips;
+  debugNTCC2 = jumperlessConfig.debug.nets_to_chips_alt;
+  debugLEDs = jumperlessConfig.debug.leds;
   // showProbeCurrent = jumperlessConfig.debug_flags.show_probe_current;
 
   // Display settings
-  LEDbrightness = jumperlessConfig.display_settings.led_brightness;
-  LEDbrightnessRail = jumperlessConfig.display_settings.rail_brightness;
-  LEDbrightnessSpecial = jumperlessConfig.display_settings.special_net_brightness;
-  menuBrightnessSetting = jumperlessConfig.display_settings.menu_brightness;
-  netColorMode = jumperlessConfig.display_settings.net_color_mode;
+  LEDbrightness = jumperlessConfig.display.led_brightness;
+  LEDbrightnessRail = jumperlessConfig.display.rail_brightness;
+  LEDbrightnessSpecial = jumperlessConfig.display.special_net_brightness;
+  menuBrightnessSetting = jumperlessConfig.display.menu_brightness;
+  netColorMode = jumperlessConfig.display.net_color_mode;
 
   // Routing settings
-  pathDuplicates = jumperlessConfig.routing_settings.stack_paths;
-  dacDuplicates = jumperlessConfig.routing_settings.stack_rails;
-  powerDuplicates = jumperlessConfig.routing_settings.stack_dacs;
-  dacPriority = jumperlessConfig.routing_settings.rail_priority;
+  pathDuplicates = jumperlessConfig.routing.stack_paths;
+  dacDuplicates = jumperlessConfig.routing.stack_rails;
+  powerDuplicates = jumperlessConfig.routing.stack_dacs;
+  dacPriority = jumperlessConfig.routing.rail_priority;
 
   // DAC calibration
   dacSpread[0] = jumperlessConfig.calibration.dac_0_spread;
@@ -942,10 +944,10 @@ void readSettingsFromConfig() {
   dacZero[3] = jumperlessConfig.calibration.bottom_rail_zero;
 
   // DAC voltages
-  railVoltage[0] = jumperlessConfig.dac_settings.top_rail;
-  railVoltage[1] = jumperlessConfig.dac_settings.bottom_rail;
-  dacOutput[0] = jumperlessConfig.dac_settings.dac_0;
-  dacOutput[1] = jumperlessConfig.dac_settings.dac_1;
+  railVoltage[0] = jumperlessConfig.dacs.top_rail;
+  railVoltage[1] = jumperlessConfig.dacs.bottom_rail;
+  dacOutput[0] = jumperlessConfig.dacs.dac_0;
+  dacOutput[1] = jumperlessConfig.dacs.dac_1;
 
   // GPIO settings
   for (int i = 0; i < 8; i++) {  // Changed from 8 to 10 to include UART pins

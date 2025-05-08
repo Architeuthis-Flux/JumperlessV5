@@ -11,48 +11,53 @@
 
 extern struct config jumperlessConfig;
 // Forward declarations of nested structs
-struct hardware_version;
-struct dac_settings;
-struct debug_flags;
-struct routing_settings;
+struct hardware;
+struct dacs;
+struct debug;
+struct routing;
 struct calibration;
-struct logo_pad_settings;
+struct logo_pads;
 struct display_settings;
 struct gpio;
-struct serial;
+struct serial_1;
+struct serial_2;
+struct top_oled;
 
 struct config {
-    struct hardware_version {
+    struct hardware {
         int generation = 5;
-        int hardware_revision = 5;
-        int probe_version = 5;
-    } hardware_version;
+        int revision = 5;
+        int probe_revision = 5;
+    } hardware;
 
-    struct dac_settings {
+    struct dacs {
         float top_rail = 0.00;
         float bottom_rail = 0.00;
         float dac_0 = 3.33;
         float dac_1 = 0.00;
-        bool set_dacs_on_startup = false;
-        bool set_rails_on_startup = true;
+        bool set_dacs_on_boot = false;
+        bool set_rails_on_boot = true;
         float limit_max = 8.00;
         float limit_min = -8.00;
-    } dac_settings;
+    } dacs;
 
-    struct debug_flags {
+    struct debug {
         bool file_parsing = false;
         bool net_manager = false;
-        bool net_to_chip_connections = false;
-        bool net_to_chip_connections_alt = false;
+        bool nets_to_chips = false;
+        bool nets_to_chips_alt = false;
         bool leds = false;
-    } debug_flags;
+        bool probing = false;
+        bool oled = false;
+        bool logo_pads = false;
+    } debug;
 
-    struct routing_settings {
-        int stack_paths = 2;
+    struct routing {
+        int stack_paths = 0;
         int stack_rails = 2;
-        int stack_dacs = 1;
-        int rail_priority = 2;
-    } routing_settings;
+        int stack_dacs = 0;
+        int rail_priority = 1;
+    } routing;
 
     struct calibration {
         int top_rail_zero = 1650;
@@ -63,25 +68,26 @@ struct config {
         float dac_0_spread = 21.5;
         int dac_1_zero = 1650;
         float dac_1_spread = 21.5;
-        int probe_max = 4028;
-        int probe_min = 26;
+        int probe_max = 4060;
+        int probe_min = 15;
     } calibration;
 
-    struct logo_pad_settings {
+    struct logo_pads {
         int top_guy = 0; // 0 = uart tx, 1 = uart rx, others as I think of them
         int bottom_guy = 1;
-        int building_pad_top = 2;
-        int building_pad_bottom = 3;
-    } logo_pad_settings;
+        int building_pad_top = -1;
+        int building_pad_bottom = -1;
+        int repeat_ms = 100;
+    } logo_pads;
 
-    struct display_settings {
+    struct display {
         int lines_wires = 1;
         int menu_brightness = 100;
         int led_brightness = 50;
         int rail_brightness = 55;
         int special_net_brightness = 80;
         int net_color_mode = 0;
-    } display_settings;
+    } display;
 
     struct gpio {
         int direction[10] = {
@@ -133,6 +139,20 @@ struct config {
             int connect_on_boot = 0;
             int lock_connection = 0;
         } serial_2;
+
+        struct top_oled {
+            int i2c_address = 0x3C;
+            int width = 128;
+            int height = 32;
+            int sda_pin = 26;
+            int scl_pin = 27;
+            int gpio_sda = RP_GPIO_26;
+            int gpio_scl = RP_GPIO_27;
+            int sda_row = NANO_D2;
+            int scl_row = NANO_D3;
+            int connect_on_boot = 1;
+            int lock_connection = 0;
+        } top_oled;
     
 };
 

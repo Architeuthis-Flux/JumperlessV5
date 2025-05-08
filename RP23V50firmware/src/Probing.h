@@ -2,6 +2,9 @@
 // SPDX-License-Identifier: MIT
 #ifndef PROBING_H
 #define PROBING_H
+#include "JumperlessDefines.h"
+
+#define MINIMUM_PROBE_READING 48
 
 extern volatile int sfProbeMenu;
 extern unsigned long probingTimer;
@@ -92,5 +95,8 @@ extern int lastProbeLEDs;
 
 void probeLEDhandler(void); 
 void highlightNets(int probeReading);
+
+extern int probeRowMap[108];
+  
 
 #endif

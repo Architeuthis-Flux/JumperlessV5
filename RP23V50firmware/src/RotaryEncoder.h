@@ -17,6 +17,9 @@ extern int encoderRaw;
 extern volatile int numberOfSteps;
 extern volatile bool resetPosition;
 
+extern volatile long encoderPosition;
+extern long encoderPositionOffset;
+extern bool resetEncoderPosition;
 enum encoderDirectionStates { NONE,UP,DOWN };
 
 enum encoderButtonStates { IDLE, PRESSED, HELD, RELEASED, DOUBLECLICKED};

@@ -45,8 +45,8 @@ void setGPIO(void);
 void readGPIO(void);
 void printGPIOState(void);
 
-int initI2C(int sdaPin = 22, int sclPin = 23, int speed = 100000);
-
+int initI2C(int sdaPin = 26, int sclPin = 27, int speed = 100000);
+int findI2CAddress(int sdaPin = 26, int sclPin = 27, int i2cNumber = 1);
 
 int readFloatingOrStateMCP (int pin = 0);
 int gpioReadWithFloating(int pin, unsigned long usDelay = 10);

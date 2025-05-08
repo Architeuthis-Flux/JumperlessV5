@@ -13,6 +13,18 @@ extern int newBridgeIndex;
 extern bool debugNM;
 extern bool debugNMtime;
 
+extern const char *defNanoToCharShort[35];
+extern const char *defSpecialToCharShort[49];
+
+extern const char *defNanoToCharLong[35];
+extern const char *defSpecialToCharLong[49];
+extern const char *emptyNet[];
+
+
+
+
+
+
 
 
 int findNodeInNet(uint16_t node);

@@ -1025,15 +1025,6 @@ int printNodeOrName(
   // Serial.println(node);
 }
 
-char same[12] = "           ";
-const char *
-definesToChar(int defined,
-              int longOrShort) // converts the internally used #defined numbers
-                               // into human readable strings
-{
-  // Serial.print("defined = ");
-  // Serial.println(defined);
-
   const char *defNanoToCharShort[35] = {
       "VIN",  "D0",   "D1",   "D2",     "D3",     "D4",       "D5",     "D6",
       "D7",   "D8",   "D9",   "D10",    "D11",    "D12",      "D13",    "RESET",
@@ -1072,7 +1063,17 @@ definesToChar(int defined,
       "GPIO_2",      "GPIO_3",       "GPIO_4",       "BUFFER_IN",
       "BUFFER_OUT",  "fuck",         "fuck2",        "Fuck3"};
 
-  const char *emptyNet[] = {"EMPTY_NET", "?"};
+  const char *emptyNet[3] = {"EMPTY_NET", "?"};
+
+char same[12] = "           ";
+const char *definesToChar(int defined,
+              int longOrShort) // converts the internally used #defined numbers
+                               // into human readable strings
+{
+  // Serial.print("defined = ");
+  // Serial.println(defined);
+
+
 
   if (defined >= 70 && defined <= 99) {
     if (longOrShort == 1) {
