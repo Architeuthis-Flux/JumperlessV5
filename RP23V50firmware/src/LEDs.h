@@ -292,6 +292,7 @@ void lightUpNet(int netNumber = 0, int node = -1, int onOff = 1,
 void lightUpNode(int node, uint32_t color);
 rgbColor pcbColorCorrect(rgbColor colorToCorrect);
 hsvColor RgbToHsv(rgbColor rgb);
+hsvColor RgbToHsv(uint32_t color);
 rgbColor HsvToRgb(hsvColor hsv);
 void applyBrightness(int brightness);
 rgbColor unpackRgb(uint32_t color);

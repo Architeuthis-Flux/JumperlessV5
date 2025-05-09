@@ -7,6 +7,7 @@
 #include "FileParsing.h"
 #include "configManager.h"
 #include "NetManager.h"
+#include "Peripherals.h"
 // Define the global configuration instance
 
 bool configChanged = false;
@@ -137,7 +138,7 @@ int parseInt(const char* str) {
     return atoi(str);
 }
 
-void resetConfigToDefaults(void) {
+void resetConfigToDefaults(int clearCalibration, int clearHardware) {
     // Save current hardware version values
     int saved_generation = jumperlessConfig.hardware.generation;
     int saved_revision = jumperlessConfig.hardware.revision;
@@ -160,15 +161,28 @@ void resetConfigToDefaults(void) {
     jumperlessConfig = config();
     
     // Restore hardware version values
+    if (clearHardware == 0) {
     jumperlessConfig.hardware.generation = saved_generation;
     jumperlessConfig.hardware.revision = saved_revision;
     jumperlessConfig.hardware.probe_revision = saved_probe_revision;
-
+    }
     // Restore calibration values
+    if (clearCalibration == 0) {
+
     jumperlessConfig.calibration.top_rail_zero = saved_top_rail_zero;
     jumperlessConfig.calibration.bottom_rail_zero = saved_bottom_rail_zero;
     jumperlessConfig.calibration.dac_0_zero = saved_dac_0_zero;
     jumperlessConfig.calibration.dac_1_zero = saved_dac_1_zero;
+    jumperlessConfig.calibration.probe_max = saved_probe_max;
+    jumperlessConfig.calibration.probe_min = saved_probe_min;
+    jumperlessConfig.calibration.top_rail_spread = saved_top_rail_spread;
+    jumperlessConfig.calibration.bottom_rail_spread = saved_bottom_rail_spread;
+    jumperlessConfig.calibration.dac_0_spread = saved_dac_0_spread;
+    jumperlessConfig.calibration.dac_1_spread = saved_dac_1_spread;
+
+    } 
+
+
 
     saveConfig();
 }
@@ -285,7 +299,8 @@ void updateConfigFromFile(const char* filename) {
             else if (strcmp(key, "connect_on_boot") == 0) jumperlessConfig.serial_2.connect_on_boot = parseBool(value);
             else if (strcmp(key, "lock_connection") == 0) jumperlessConfig.serial_2.lock_connection = parseBool(value);
         } else if (strcmp(section, "top_oled") == 0) {
-            if (strcmp(key, "i2c_address") == 0) jumperlessConfig.top_oled.i2c_address = parseInt(value);
+            if (strcmp(key, "enabled") == 0) jumperlessConfig.top_oled.enabled = parseBool(value);
+            else if (strcmp(key, "i2c_address") == 0) jumperlessConfig.top_oled.i2c_address = parseInt(value);
             else if (strcmp(key, "width") == 0) jumperlessConfig.top_oled.width = parseInt(value);
             else if (strcmp(key, "height") == 0) jumperlessConfig.top_oled.height = parseInt(value);
             else if (strcmp(key, "sda_pin") == 0) jumperlessConfig.top_oled.sda_pin = parseInt(value);
@@ -304,7 +319,7 @@ void updateConfigFromFile(const char* filename) {
 }
 
 void saveConfigToFile(const char* filename) {
-    core1busy = true;
+    //core1busy = true;
     if (FatFS.exists(filename)) {
         FatFS.remove(filename);
     }
@@ -419,6 +434,7 @@ void saveConfigToFile(const char* filename) {
 
     // Write top_oled section
     file.println("[top_oled]");
+    file.print("enabled = "); file.print(jumperlessConfig.top_oled.enabled); file.println(";");
     file.print("i2c_address = "); file.print(jumperlessConfig.top_oled.i2c_address); file.println(";");
     file.print("width = "); file.print(jumperlessConfig.top_oled.width); file.println(";");
     file.print("height = "); file.print(jumperlessConfig.top_oled.height); file.println(";");
@@ -431,7 +447,7 @@ void saveConfigToFile(const char* filename) {
     file.print("connect_on_boot = "); file.print(jumperlessConfig.top_oled.connect_on_boot ? 1:0); file.println(";");
     file.print("lock_connection = "); file.print(jumperlessConfig.top_oled.lock_connection ? 1:0); file.println(";");
     file.close();
-    core1busy = false;
+    //core1busy = false;
 }
 
 void saveConfig(void) {
@@ -451,6 +467,7 @@ void saveConfig(void) {
 
 void loadConfig(void) {
     updateConfigFromFile("/config.txt");
+    readSettingsFromConfig();
     initChipStatus();
 
 
@@ -471,7 +488,7 @@ int parseSectionName(const char* sectionName) {
     return -1;
 }
 
-void printConfigSectionToSerial(int section, bool showNames) {
+void printConfigSectionToSerial(int section, bool showNames, bool pasteable) {
     // If section is -1, try to parse input
     if (showNames) {
         showNames = 1;
@@ -485,129 +502,198 @@ void printConfigSectionToSerial(int section, bool showNames) {
 
     // Print hardware version section
     if (section == -1 || section == 0) {
-        Serial.println("\n[hardware]");
+        Serial.print("\n`[hardware] ");
+        if (pasteable == false) Serial.println();
         Serial.print("generation = "); Serial.print(jumperlessConfig.hardware.generation); Serial.println(";");
+        if (pasteable == true) Serial.print("`[hardware] ");
         Serial.print("revision = "); Serial.print(jumperlessConfig.hardware.revision); Serial.println(";");
+        if (pasteable == true) Serial.print("`[hardware] ");
         Serial.print("probe_revision = "); Serial.print(jumperlessConfig.hardware.probe_revision); Serial.println(";");
     }
 
     // Print DAC settings section
     if (section == -1 || section == 1) {
-        Serial.println("\n[dacs]");
+        Serial.print("\n`[dacs] ");
+        if (pasteable == false) Serial.println();
         Serial.print("top_rail = "); Serial.print(jumperlessConfig.dacs.top_rail); Serial.println(";");
+        if (pasteable == true) Serial.print("`[dacs] ");
         Serial.print("bottom_rail = "); Serial.print(jumperlessConfig.dacs.bottom_rail); Serial.println(";");
+        if (pasteable == true) Serial.print("`[dacs] ");
         Serial.print("dac_0 = "); Serial.print(jumperlessConfig.dacs.dac_0); Serial.println(";");
+        if (pasteable == true) Serial.print("`[dacs] ");
         Serial.print("dac_1 = "); Serial.print(jumperlessConfig.dacs.dac_1); Serial.println(";");
+        if (pasteable == true) Serial.print("`[dacs] ");
         Serial.print("set_dacs_on_boot = "); Serial.print(getStringFromTable(jumperlessConfig.dacs.set_dacs_on_boot, boolTable)); Serial.println(";");
+        if (pasteable == true) Serial.print("`[dacs] ");
         Serial.print("set_rails_on_boot = "); Serial.print(getStringFromTable(jumperlessConfig.dacs.set_rails_on_boot, boolTable)); Serial.println(";");
+        if (pasteable == true) Serial.print("`[dacs] ");
         Serial.print("limit_max = "); Serial.print(jumperlessConfig.dacs.limit_max); Serial.println(";");
+        if (pasteable == true) Serial.print("`[dacs] ");
         Serial.print("limit_min = "); Serial.print(jumperlessConfig.dacs.limit_min); Serial.println(";");
     }
 
     // Print debug flags section
     if (section == -1 || section == 2) {
-        Serial.println("\n[debug]");
+        Serial.print("\n`[debug] ");
+        if (pasteable == false) Serial.println();
         Serial.print("file_parsing = "); Serial.print(getStringFromTable(jumperlessConfig.debug.file_parsing, boolTable)); Serial.println(";");
+        if (pasteable == true) Serial.print("`[debug] ");
         Serial.print("net_manager = "); Serial.print(getStringFromTable(jumperlessConfig.debug.net_manager, boolTable)); Serial.println(";");
+        if (pasteable == true) Serial.print("`[debug] ");
         Serial.print("nets_to_chips = "); Serial.print(getStringFromTable(jumperlessConfig.debug.nets_to_chips, boolTable)); Serial.println(";");
+        if (pasteable == true) Serial.print("`[debug] ");
         Serial.print("nets_to_chips_alt = "); Serial.print(getStringFromTable(jumperlessConfig.debug.nets_to_chips_alt, boolTable)); Serial.println(";");
+        if (pasteable == true) Serial.print("`[debug] ");
         Serial.print("leds = "); Serial.print(getStringFromTable(jumperlessConfig.debug.leds, boolTable)); Serial.println(";");
     }
 
     // Print routing settings section
     if (section == -1 || section == 3) {
-        Serial.println("\n[routing]");
+        Serial.print("\n`[routing] ");
+        if (pasteable == false) Serial.println();
         Serial.print("stack_paths = "); Serial.print(jumperlessConfig.routing.stack_paths); Serial.println(";");
+        if (pasteable == true) Serial.print("`[routing] ");
         Serial.print("stack_rails = "); Serial.print(jumperlessConfig.routing.stack_rails); Serial.println(";");
+        if (pasteable == true) Serial.print("`[routing] ");
         Serial.print("stack_dacs = "); Serial.print(jumperlessConfig.routing.stack_dacs); Serial.println(";");
+        if (pasteable == true) Serial.print("`[routing] ");
         Serial.print("rail_priority = "); Serial.print(jumperlessConfig.routing.rail_priority); Serial.println(";");
     }
 
     // Print calibration section
     if (section == -1 || section == 4) {
-        Serial.println("\n[calibration]");
+        Serial.print("\n[calibration] ");
+        if (pasteable == false) Serial.println();
         Serial.print("top_rail_zero = "); Serial.print(jumperlessConfig.calibration.top_rail_zero); Serial.println(";");
+        if (pasteable == true) Serial.print("`[calibration] ");
         Serial.print("top_rail_spread = "); Serial.print(jumperlessConfig.calibration.top_rail_spread); Serial.println(";");
+        if (pasteable == true) Serial.print("`[calibration] ");
         Serial.print("bottom_rail_zero = "); Serial.print(jumperlessConfig.calibration.bottom_rail_zero); Serial.println(";");
+        if (pasteable == true) Serial.print("`[calibration] ");
         Serial.print("bottom_rail_spread = "); Serial.print(jumperlessConfig.calibration.bottom_rail_spread); Serial.println(";");
+        if (pasteable == true) Serial.print("`[calibration] ");
         Serial.print("dac_0_zero = "); Serial.print(jumperlessConfig.calibration.dac_0_zero); Serial.println(";");
+        if (pasteable == true) Serial.print("`[calibration] ");
         Serial.print("dac_0_spread = "); Serial.print(jumperlessConfig.calibration.dac_0_spread); Serial.println(";");
+        if (pasteable == true) Serial.print("`[calibration] ");
         Serial.print("dac_1_zero = "); Serial.print(jumperlessConfig.calibration.dac_1_zero); Serial.println(";");
+        if (pasteable == true) Serial.print("`[calibration] ");
         Serial.print("dac_1_spread = "); Serial.print(jumperlessConfig.calibration.dac_1_spread); Serial.println(";");
+        if (pasteable == true) Serial.print("`[calibration] ");
         Serial.print("probe_max = "); Serial.print(jumperlessConfig.calibration.probe_max); Serial.println(";");
+        if (pasteable == true) Serial.print("`[calibration] ");
         Serial.print("probe_min = "); Serial.print(jumperlessConfig.calibration.probe_min); Serial.println(";");
     }
 
     // Print logo pad settings section
     if (section == -1 || section == 5) {
-        Serial.println("\n[logo_pads]");
+        Serial.print("\n`[logo_pads] ");
+        if (pasteable == false) Serial.println();   
         Serial.print("top_guy = "); Serial.print(getStringFromTable(jumperlessConfig.logo_pads.top_guy, arbitraryFunctionTable)); Serial.println(";");
+        if (pasteable == true) Serial.print("`[logo_pads] ");
         Serial.print("bottom_guy = "); Serial.print(getStringFromTable(jumperlessConfig.logo_pads.bottom_guy, arbitraryFunctionTable)); Serial.println(";");
+        if (pasteable == true) Serial.print("`[logo_pads] ");
         Serial.print("building_pad_top = "); Serial.print(getStringFromTable(jumperlessConfig.logo_pads.building_pad_top, arbitraryFunctionTable)); Serial.println(";");
+        if (pasteable == true) Serial.print("`[logo_pads] ");
         Serial.print("building_pad_bottom = "); Serial.print(getStringFromTable(jumperlessConfig.logo_pads.building_pad_bottom, arbitraryFunctionTable)); Serial.println(";");
     }
 
     // Print display settings section
     if (section == -1 || section == 6) {
-        Serial.println("\n[display]");
+        Serial.print("\n`[display] ");
+        if (pasteable == false) Serial.println();
         Serial.print("lines_wires = "); Serial.print(getStringFromTable(jumperlessConfig.display.lines_wires, linesWiresTable)); Serial.println(";");
+        if (pasteable == true) Serial.print("`[display] ");
         Serial.print("menu_brightness = "); Serial.print(jumperlessConfig.display.menu_brightness); Serial.println(";");
+        if (pasteable == true) Serial.print("`[display] ");
         Serial.print("led_brightness = "); Serial.print(jumperlessConfig.display.led_brightness); Serial.println(";");
+        if (pasteable == true) Serial.print("`[display] ");
         Serial.print("rail_brightness = "); Serial.print(jumperlessConfig.display.rail_brightness); Serial.println(";");
+        if (pasteable == true) Serial.print("`[display] ");
         Serial.print("special_net_brightness = "); Serial.print(jumperlessConfig.display.special_net_brightness); Serial.println(";");
+        if (pasteable == true) Serial.print("`[display] ");
         Serial.print("net_color_mode = "); Serial.print(getStringFromTable(jumperlessConfig.display.net_color_mode, netColorModeTable)); Serial.println(";");
     }
 
     // Print GPIO section
     if (section == -1 || section == 7) {
-        Serial.println("\n[gpio]");
+        Serial.print("\n`[gpio] ");
+        if (pasteable == false) Serial.println();
         Serial.print("direction = ");
         for (int i = 0; i < 10; i++) {
             if (i > 0) Serial.print(",");
             Serial.print(jumperlessConfig.gpio.direction[i]);
         }
         Serial.println(";");
+        if (pasteable == true) Serial.print("`[gpio] ");
         Serial.print("pulls = ");
         for (int i = 0; i < 10; i++) {
             if (i > 0) Serial.print(",");
             Serial.print(jumperlessConfig.gpio.pulls[i]);
         }
         Serial.println(";");
+        if (pasteable == true) Serial.print("`[gpio] ");
         Serial.print("uart_tx_function = "); Serial.print(getStringFromTable(jumperlessConfig.gpio.uart_tx_function, uartFunctionTable)); Serial.println(";");
+        if (pasteable == true) Serial.print("`[gpio] ");
         Serial.print("uart_rx_function = "); Serial.print(getStringFromTable(jumperlessConfig.gpio.uart_rx_function, uartFunctionTable)); Serial.println(";");
     }
 
-    // Print serial section
+    // Print serial_1 section
     if (section == -1 || section == 8) {
-        Serial.println("\n[serial_1]");
+        Serial.print("\n`[serial_1] ");
+        if (pasteable == false) Serial.println();
         Serial.print("function = "); Serial.print(getStringFromTable(jumperlessConfig.serial_1.function, uartFunctionTable)); Serial.println(";");
+        if (pasteable == true) Serial.print("`[serial_1] ");
         Serial.print("baud_rate = "); Serial.print(jumperlessConfig.serial_1.baud_rate); Serial.println(";");
+        if (pasteable == true) Serial.print("`[serial_1] ");
         Serial.print("print_passthrough = "); Serial.print(getStringFromTable(jumperlessConfig.serial_1.print_passthrough, boolTable)); Serial.println(";");
+        if (pasteable == true) Serial.print("`[serial_1] ");
         Serial.print("connect_on_boot = "); Serial.print(getStringFromTable(jumperlessConfig.serial_1.connect_on_boot, boolTable)); Serial.println(";");
+        if (pasteable == true) Serial.print("`[serial_1] ");
         Serial.print("lock_connection = "); Serial.print(getStringFromTable(jumperlessConfig.serial_1.lock_connection, boolTable)); Serial.println(";");
     }
 
+    // Print serial_2 section
     if (section == -1 || section == 9) {
-        Serial.println("\n[serial_2]");
+        Serial.print("\n`[serial_2] ");
+        if (pasteable == false) Serial.println();
         Serial.print("function = "); Serial.print(getStringFromTable(jumperlessConfig.serial_2.function, uartFunctionTable)); Serial.println(";");
+        if (pasteable == true) Serial.print("`[serial_2] ");
         Serial.print("baud_rate = "); Serial.print(jumperlessConfig.serial_2.baud_rate); Serial.println(";");
+        if (pasteable == true) Serial.print("`[serial_2] ");
         Serial.print("print_passthrough = "); Serial.print(getStringFromTable(jumperlessConfig.serial_2.print_passthrough, boolTable)); Serial.println(";");
+        if (pasteable == true) Serial.print("`[serial_2] ");
         Serial.print("connect_on_boot = "); Serial.print(getStringFromTable(jumperlessConfig.serial_2.connect_on_boot, boolTable)); Serial.println(";");
+        if (pasteable == true) Serial.print("`[serial_2] ");
         Serial.print("lock_connection = "); Serial.print(getStringFromTable(jumperlessConfig.serial_2.lock_connection, boolTable)); Serial.println(";");
     }
 
+    // Print top_oled section
     if (section == -1 || section == 10) {
-        Serial.println("\n[top_oled]");
-        Serial.print("i2c_address = "); Serial.print("0x"); Serial.print(jumperlessConfig.top_oled.i2c_address, HEX); Serial.println(";");
+        Serial.print("\n`[top_oled] ");
+        if (pasteable == false) Serial.println();
+        Serial.print("enabled = "); Serial.print(getStringFromTable(jumperlessConfig.top_oled.enabled, boolTable)); Serial.println(";");
+        if (pasteable == true) Serial.print("`[top_oled] ");
+        Serial.print("i2c_address = 0x"); Serial.print(jumperlessConfig.top_oled.i2c_address, HEX); Serial.println(";");
+        if (pasteable == true) Serial.print("`[top_oled] ");
         Serial.print("width = "); Serial.print(jumperlessConfig.top_oled.width); Serial.println(";");
+        if (pasteable == true) Serial.print("`[top_oled] ");
         Serial.print("height = "); Serial.print(jumperlessConfig.top_oled.height); Serial.println(";");
+        if (pasteable == true) Serial.print("`[top_oled] ");
         Serial.print("sda_pin = "); Serial.print(definesToChar(jumperlessConfig.top_oled.sda_pin, 0)); Serial.println(";");
+        if (pasteable == true) Serial.print("`[top_oled] ");
         Serial.print("scl_pin = "); Serial.print(definesToChar(jumperlessConfig.top_oled.scl_pin, 0)); Serial.println(";");
+        if (pasteable == true) Serial.print("`[top_oled] ");
         Serial.print("gpio_sda = "); Serial.print(definesToChar(jumperlessConfig.top_oled.gpio_sda, 0)); Serial.println(";");
+        if (pasteable == true) Serial.print("`[top_oled] ");
         Serial.print("gpio_scl = "); Serial.print(definesToChar(jumperlessConfig.top_oled.gpio_scl, 0)); Serial.println(";");
+        if (pasteable == true) Serial.print("`[top_oled] ");
         Serial.print("sda_row = "); Serial.print(definesToChar(jumperlessConfig.top_oled.sda_row, 0)); Serial.println(";");
+        if (pasteable == true) Serial.print("`[top_oled] ");
         Serial.print("scl_row = "); Serial.print(definesToChar(jumperlessConfig.top_oled.scl_row, 0)); Serial.println(";");
+        if (pasteable == true) Serial.print("`[top_oled] ");
         Serial.print("connect_on_boot = "); Serial.print(getStringFromTable(jumperlessConfig.top_oled.connect_on_boot, boolTable)); Serial.println(";");
+        if (pasteable == true) Serial.print("`[top_oled] ");
         Serial.print("lock_connection = "); Serial.print(getStringFromTable(jumperlessConfig.top_oled.lock_connection, boolTable)); Serial.println(";");
     }
 
@@ -770,16 +856,16 @@ void printConfigHelp() {
     Serial.println("    ~reset = reset to defaults");
     Serial.println("    ~names = show names for settings");
     Serial.println("  ~numbers = show numbers for settings");
-    Serial.println("\n    config setting formats (prefix with ` to paste from main menu)\n\r");    
+    Serial.println("\n    config setting format (prefix with ` to paste from main menu)\n\r");    
     Serial.println("`[serial_1]connect_on_boot = true;");
-    Serial.println("\n\r\tor you can use dot notation\n\r");
-    Serial.println("`config.routing.stack_paths = 1;");
-    Serial.println("\n\r\tor paste a whole section\n\r");
-    Serial.println("`[dacs]");
-    Serial.println("top_rail = 5.0;");
-    Serial.println("bottom_rail = 3.3;");
-    Serial.println("dac_0 = -2.0;");
-    Serial.println("dac_1 = 3.33;");
+    // Serial.println("\n\r\tor you can use dot notation\n\r");
+    // Serial.println("`config.routing.stack_paths = 1;");
+    // Serial.println("\n\r\tor paste a whole section\n\r");
+    // Serial.println("`[dacs]");
+    // Serial.println("top_rail = 5.0;");
+    // Serial.println("bottom_rail = 3.3;");
+    // Serial.println("dac_0 = -2.0;");
+    // Serial.println("dac_1 = 3.33;");
     Serial.println("\n\r");
     delayMicroseconds(3000);
 }
@@ -981,6 +1067,13 @@ void readConfigFromSerial() {
         Serial.read();
         delayMicroseconds(100);
     }
+   // configChanged = true;
+   readSettingsFromConfig();
+//    Serial.println(railVoltage[0]);
+//    Serial.println(railVoltage[1]);
+//    Serial.println(dacOutput[0]);
+//    Serial.println(dacOutput[1]);
+    setRailsAndDACs(0);
 }
 
 int parseTrueFalse(const char* value) {
@@ -1178,6 +1271,7 @@ void updateConfigValue(const char* section, const char* key, const char* value) 
         else if (strcmp(key, "lock_connection") == 0) jumperlessConfig.serial_2.lock_connection = parseBool(value);
     }
     else if (strcmp(section, "top_oled") == 0) {
+        if (strcmp(key, "enabled") == 0) jumperlessConfig.top_oled.enabled = parseBool(value);
         if (strcmp(key, "i2c_address") == 0) jumperlessConfig.top_oled.i2c_address = parseHex(value);
         else if (strcmp(key, "width") == 0) jumperlessConfig.top_oled.width = parseInt(value);
         else if (strcmp(key, "height") == 0) jumperlessConfig.top_oled.height = parseInt(value);

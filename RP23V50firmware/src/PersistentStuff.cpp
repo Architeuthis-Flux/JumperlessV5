@@ -11,13 +11,14 @@
 #include "config.h"
 #include "ArduinoStuff.h"
 
-
+bool firstStart = false;
 
 void debugFlagInit(int forceDefaults) {
 
   EEPROM.begin(512);
 
   if (EEPROM.read(FIRSTSTARTUPADDRESS) != 0xAA || forceDefaults == 1) {
+    firstStart = true;
     EEPROM.write(FIRSTSTARTUPADDRESS, 0xAA);
 
     EEPROM.write(REVISIONADDRESS, REV);
@@ -949,7 +950,7 @@ void readSettingsFromConfig() {
   dacOutput[0] = jumperlessConfig.dacs.dac_0;
   dacOutput[1] = jumperlessConfig.dacs.dac_1;
 
-  // GPIO settings
+  //GPIO settings
   for (int i = 0; i < 8; i++) {  // Changed from 8 to 10 to include UART pins
 
     // Combine direction and pull settings into a single value
@@ -965,7 +966,7 @@ void readSettingsFromConfig() {
         gpioState[i] = jumperlessConfig.gpio.pulls[i] ? 1 : 0; // 1 for high, 0 for low
         gpio_set_dir(gpio_pin, true);
         } else if (jumperlessConfig.gpio.direction[i] == 1) { // input
-          gpio_set_dir(gpio_pin, false);
+        gpio_set_dir(gpio_pin, false);
           if (jumperlessConfig.gpio.pulls[i] == 2) { // no pull
             gpioState[i] = 2;
             gpio_set_pulls(gpio_pin, false, false);
@@ -995,6 +996,10 @@ void readSettingsFromConfig() {
   connectOnBoot2 = jumperlessConfig.serial_2.connect_on_boot;
   lockConnection1 = jumperlessConfig.serial_1.lock_connection;
   lockConnection2 = jumperlessConfig.serial_2.lock_connection;
+
+
+
+
 
   }
 /// 0 = output low, 1 = output high, 2 = input, 3 = input pullup, 4 = input pulldown, 5 = unknown

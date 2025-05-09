@@ -115,13 +115,10 @@ int probeMode(int pin, int setOrClear) {
 
 
 
-
-
-
-  if (checkingPads == 1) {
-    Serial.println("checkingPads\n\r");
-    return -1;
-  }
+  // if (checkingPads == 1) {
+  //  // Serial.println("checkingPads\n\r");
+  //   return -1;
+  // }
 
   int deleteMisses[20] = {
       -1, -1, -1, -1, -1, -1, -1, -1, -1, -1,
@@ -133,12 +130,12 @@ int probeMode(int pin, int setOrClear) {
   // startProbe();
 
   // createLocalNodeFile(netSlot);
-  routableBufferPower(1);
+  // routableBufferPower(1);
 
-  if (checkSwitchPosition() == 1) {
-    routableBufferPower(1);
-    // Serial.println("Select");
-  } else {
+  // if (checkSwitchPosition() == 1) {
+  //   routableBufferPower(1);
+  //   // Serial.println("Select");
+  // } else {
     // showProbeLEDs = 3;
     // probeActive = 0;
     // Serial.println("Measure");
@@ -147,13 +144,16 @@ int probeMode(int pin, int setOrClear) {
     // measureMode();
     // showProbeLEDs = 6;
     // return -1;
-  }
+  //}
   // calibrateDac0();
 restartProbing:
+  //Serial.println(numberOfNets);
+
   connectOrClearProbe = setOrClear;
   probeActive = 1;
   brightenNet(-1);
-  if (bufferPowerConnected == false) {
+  if (removeBridgeFromNodeFile(ROUTABLE_BUFFER_IN, DAC0, netSlot, 0, 1) == 0 ) {
+    Serial.println("routable buffer power on");
     routableBufferPower(1);
   }
   probeHighlight = -1;
@@ -291,10 +291,12 @@ restartProbing:
             // showLEDsCore2 = -1;
           }
           // clearLEDsExceptMiddle(deleteMisses[i], -1);
+
+          //Serial.println(fadeOffset);
+          //b.printRawRow(0b00001010, deleteMisses[i] - 1, deleteFadeSides[fadeOffset], 0xfffffe);
           b.printRawRow(0b00000100, deleteMisses[i] - 1, deleteFade[fadeOffset],
                         0xfffffe);
-          b.printRawRow(0b00001010, deleteMisses[i] - 1, deleteFadeSides[fadeOffset],
-                        0xfffffe);
+         
           //   Serial.print(i);
           //   Serial.print("   ");
           //   Serial.print(deleteMisses[i]);
@@ -623,13 +625,13 @@ restartProbing:
   brightenNet(-1);
 
   // showLEDsCore2 = -1;
-  refreshLocalConnections(0);
+  //refreshLocalConnections(-1);
   // delay(10);
   saveLocalNodeFile();
   // delay(10);
-  refreshConnections(0);
+  refreshConnections(-1, 1,0);
   row[1] = -2;
-  showLEDsCore2 = -1;
+ // showLEDsCore2 = -1;
   // sprintf(oledBuffer, "        ");
   // drawchar();
 
@@ -1806,7 +1808,7 @@ void routableBufferPower(int offOn, int flash) {
     // Serial.println("power on\n\r");
     //  delay(10);
 
-    setDac0voltage(3.33, 1, 0);
+    setDac0voltage(3.3, 1, 0);
 
     // removeBridgeFromNodeFile(DAC0, -1, netSlot, 1);
     //   pinMode(27, OUTPUT);
@@ -3016,7 +3018,7 @@ volatile int showingProbeLEDs = 0;
 
 void probeLEDhandler(void) {
 
-  core2busy = true;
+  //core2busy = true;
   // pinMode(2, OUTPUT);
   // pinMode(9, INPUT);
   showingProbeLEDs = 1;

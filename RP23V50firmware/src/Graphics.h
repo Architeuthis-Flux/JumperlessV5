@@ -110,7 +110,7 @@ void printTextFromMenu(void);
 int attractMode(void);
 
 void drawImage(int imageIndex = 0);
-void drawAnimatedImage(int imageIndex = 0);
+void drawAnimatedImage(int imageIndex = 0, int speed = 2000);
 
 
 

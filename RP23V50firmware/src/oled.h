@@ -6,7 +6,9 @@
 #include "JumperlessDefines.h"
 #include "Arduino.h"
 #include "Wire.h"
-
+//#include <Fonts/TomThumb.h>
+//#include "fonts/BerkeleyMono8pt7b.h"
+#include "fonts/Eurostile_Next_LT_Com_Light_Extended6pt7b.h"
 class Adafruit_SSD1306;
 
 extern bool oledConnected;
@@ -41,8 +43,9 @@ class oled {
   void disconnect(void);
   void printf(const char* format, ...);
   void clrPrintfsh(const char* format, ...);
-  void clearPrintShow(const char* c, int size = 2, int x_pos = 4, int y_pos = 3, bool clear = true);
-
+  void clearPrintShow(const char* c, int size = 2, int x_pos = 4, int y_pos = 3, bool clear = true, bool show = true, bool center = false);
+  void clearPrintShow(String s, int textSize = 2, int x_pos = 4, int y_pos = 3, bool clear = true, bool show = true, bool center = false);
+  bool checkConnection(void);
 
   // Store config
   int address = -1;
@@ -50,8 +53,18 @@ class oled {
   int scl_pin = -1;
   int sda_row = -1;
   int scl_row = -1;
+  int textSize = 2;
+  int charPos = 0;
 
-  bool connected = false;
+  unsigned long lastConnectionCheck = 0;
+  unsigned long connectionCheckInterval = 500;
+
+  const GFXfont* currentFont = &Eurostile_Next_LT_Com_Light_Extended6pt7b;
+
+  bool oledConnected = false;
+
+  int connectionRetries = 0;
+  int maxConnectionRetries = 4;
 };
 
 extern const unsigned char jogo255[];

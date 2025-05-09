@@ -59,9 +59,12 @@
 struct app apps[30] = {
     {"Scan", 0, 1, scanBoard},
     {"Calib  DACs", 1, 1, calibrateDacs},
+
     {"Custom App", 2, 1, customApp},
     {"PNG Image", 3, 1, displayImage},
+    {"Bounce Startup", 4, 1, bounceStartup},
     {"DOOM", 16, 1, playDoom},
+
     // {"Pong", 17, 1, playPong},
     // {"Tetris", 18, 1, playTetris},
     // {"Snake", 19, 1, playSnake},
@@ -93,6 +96,7 @@ void runApp(int index, char* name)
         case 1: calibrateDacs(); break;
         case 2: customApp(); break;
         case 3: displayImage(); break;
+        case 4: bounceStartup(); break;
             // case 2: logicAnalyzer(); break;
             // case 3: oscilloscope(); break;
             // case 4: midiSynth(); break;
@@ -124,16 +128,31 @@ void runApp(int index, char* name)
 
     }
 
+
+
+void leaveApp(int lastNetSlot) {
+
+    createSlots(8, 1);
+    netSlot = lastNetSlot;
+    refreshConnections(-1, 0, 1);
+    }
+
 //this just does a bunch of random stuff as an example
 void customApp(void) {
 
+    int lastNetSlot = netSlot;
+    netSlot = 8; //this is the net slot that will be used for the custom apa
+
+    int leave = 0;
+
+    createSlots(8, 1);
 
     //!add some bridges to the net file
     addBridgeToNodeFile(12, 25, netSlot, 0, 0); //netSlot is the current slot
     addBridgeToNodeFile(TOP_RAIL, 52, netSlot, 0, 0);
     refreshConnections(-1, 1); //you need to refresh connections to make the changes take effect
 
-    
+
     //!change the top rail voltage
     setTopRail((float)3.3); //this will set the top rail to 3.3V
 
@@ -146,8 +165,8 @@ void customApp(void) {
     pinMode(GPIO_2_PIN, INPUT);
 
     //set GPIO 1 high and read it with GPIO 2
-    digitalWrite(GPIO_1_PIN, HIGH); 
-    int reading = digitalRead(GPIO_2_PIN); 
+    digitalWrite(GPIO_1_PIN, HIGH);
+    int reading = digitalRead(GPIO_2_PIN);
     Serial.print("GPIO 2 Reading: ");
     Serial.println(reading);
 
@@ -183,6 +202,11 @@ void customApp(void) {
     Serial.print("\n\rADC0: ");
     Serial.println(voltage);
 
+    if (encoderButtonState == PRESSED && lastButtonEncoderState == RELEASED || Serial.available() > 0) {
+        leaveApp(lastNetSlot);
+        return;
+        }
+
 
     //!print the nets (should show ADC0 and DAC1 connected)
     listNets();
@@ -214,7 +238,10 @@ void customApp(void) {
     refreshConnections(-1, 0);
     delay(1);
 
-
+    if (encoderButtonState == PRESSED && lastButtonEncoderState == RELEASED || Serial.available() > 0) {
+        leaveApp(lastNetSlot);
+        return;
+        }
     //!use INA219 to measure voltage
     //turns out the INA219 is the most accurate voltage measurement on the board too (only for positive voltages though) and is what the ADC are calibrated against
     setTopRail(4.20F); //this will set the top rail to 2.3V
@@ -242,13 +269,16 @@ void customApp(void) {
     //get the current on the probe tip
     //the probe tip is hardwired to ROUTABLE_BUFFER_IN, so it connects that to DAC 1, sets the DAC 1 to 3.33V (which it does by default right now so you can use the probe to tap rows in measure mode), and then measures the current
     //the reason this exists is to tell the position of the switch (measure or select) by sensing whether DAC 1 is powering the probe LEDs
-    float probeCurrent = checkProbeCurrent(); 
+    float probeCurrent = checkProbeCurrent();
     Serial.print("Probe current: ");
     Serial.print(probeCurrent, 2);
     Serial.println(" mA\n\r");
     //this will be something around ~1-3mA if it's in select mode (because it's whatever the probe LEDs are drawing)
 
-
+    if (encoderButtonState == PRESSED && lastButtonEncoderState == RELEASED || Serial.available() > 0) {
+        leaveApp(lastNetSlot);
+        return;
+        }
     //!printing stuff on the breadboard
     showLEDsCore2 = -3; //this tells the second core to write to the LEDs (negative numbers clear first, check loop1() in main.cpp to see what it's doing)
     //3 or -3 will "hold" control of the LEDs (so animations and other stuff aren't drawn)
@@ -274,7 +304,10 @@ void customApp(void) {
         delayMicroseconds(200);
         }
 
-
+    if (encoderButtonState == PRESSED && lastButtonEncoderState == RELEASED || Serial.available() > 0) {
+        leaveApp(lastNetSlot);
+        return;
+        }
     //!check switch position
     int switchPosition = checkSwitchPosition();
     Serial.print("Switch position: ");
@@ -302,7 +335,10 @@ void customApp(void) {
     Serial.println("Click the probe button to exit\n\n\n\r");
 
     while (checkProbeButton() == 0) {
-
+        if (encoderButtonState == PRESSED && lastButtonEncoderState == RELEASED || Serial.available() > 0) {
+            leaveApp(lastNetSlot);
+            return;
+            }
         probeRow = justReadProbe(); //justReadProbe() returns the row number of the probe, or -1 if it is not touching anything
 
         if (probeRow != -1) {
@@ -326,12 +362,12 @@ void customApp(void) {
     removeBridgeFromNodeFile(52, -1, netSlot, 0); //-1 means remove all bridges to this node
     refreshConnections(-1, 0); //you need to refresh connections to make the changes take effect
 
- 
+
 
     //!using the local node file (in RAM)
     //most of the stuff above should have actually been done this way, because we're making connections temporarily so they don't need to be stored in flash
     //writing to flash is slow and needs to pause the other core while it does it's thing, so this is is *way* faster
-    
+
     addBridgeToNodeFile(12, 25, netSlot, 1); //note the last parameter flashOrLocal is 1
     refreshLocalConnections(-1, 0); //you still need to refresh connections
     delay(100);
@@ -341,59 +377,71 @@ void customApp(void) {
     delay(100);
     //the only difference is that the last parameter is 1 instead of 0 and calling refreshLocalConnections() instead of refreshConnections()
 
+    if (encoderButtonState == PRESSED && lastButtonEncoderState == RELEASED || Serial.available() > 0) {
+        leaveApp(lastNetSlot);
+        return;
+        }
 
     //!speed test: RAM VS flash
     //this isn't really so much about hardware as it is about the my code, I could probably make flash access faster if I put in some effort
 
     //RAM
     for (int i = 1; i <= 30; i++) {
-        removeBridgeFromNodeFile(1, i-1, netSlot, 1);
+        removeBridgeFromNodeFile(1, i - 1, netSlot, 1);
         addBridgeToNodeFile(1, i, netSlot, 1);
         refreshLocalConnections(-1, 0); //you still need to refresh connections
-        
+
         showLEDsCore2 = -1;
         waitCore2(); //wait for the other core to finish
         }
 
-    
+
     removeBridgeFromNodeFile(30, -1, netSlot, 1); //remove that last bridge
     refreshLocalConnections(-1, 0); //you still need to refresh connections
 
+    if (encoderButtonState == PRESSED && lastButtonEncoderState == RELEASED || Serial.available() > 0) {
+        leaveApp(lastNetSlot);
+        return;
+        }
     //now let's do the same thing but with flash
     for (int i = 31; i <= 60; i++) {
-        removeBridgeFromNodeFile(31, i-1, netSlot, 0);
+        removeBridgeFromNodeFile(31, i - 1, netSlot, 0);
         addBridgeToNodeFile(31, i, netSlot, 0);
         refreshConnections(-1, 0); //you still need to refresh connections
         showLEDsCore2 = -1;
-       // waitCore2(); //wait for the other core to finish
-        
-        
-       // delayMicroseconds((31 - i) * 100);
+        // waitCore2(); //wait for the other core to finish
+
+
+        // delayMicroseconds((31 - i) * 100);
         }
-        removeBridgeFromNodeFile(60, -1, netSlot, 1); //remove that last bridge
-        refreshConnections(-1, 0); //you still need to refresh connections
-        delay(100);
+    removeBridgeFromNodeFile(60, -1, netSlot, 1); //remove that last bridge
+    refreshConnections(-1, 0); //you still need to refresh connections
+    delay(100);
 
     //!raw CH446Q connections
     //you could even do this ~10,000 faster by sending raw X and Y connections directly to the CH446Qs
     //you'll need to be staring at the schematic it use this, but for doing stuff like "fake GPIO" by connecting a row to GND and a rail really fast or something, this might be useful
-    
+
     sendXYraw(CHIP_K, 4, 0, 1); //TOP_RAIL to AK
     sendXYraw(CHIP_A, 9, 1, 1); //AK to row 1
-    
-    
+
+
     //let's see how fast of a PWM we can get on pin 1
     //we can leave AK to row 1 connected and just toggle between TOP_RAIL to AK and GND to AK
     //!fake GPIO
     unsigned long startTime = millis();
-    unsigned long timeout = 10000; //10 seconds
+    unsigned long timeout = 5000; //10 seconds
 
     while (millis() - startTime < timeout) {
+        if (encoderButtonState == PRESSED && lastButtonEncoderState == RELEASED || Serial.available() > 0) {
+            leaveApp(lastNetSlot);
+            return;
+            }
         sendXYraw(CHIP_K, 4, 0, 1); //connect TOP_RAIL to AK
-        delayMicroseconds(100); 
+        delayMicroseconds(100);
         sendXYraw(CHIP_K, 4, 0, 0); //disconnect TOP_RAIL from AK
         sendXYraw(CHIP_K, 15, 0, 1); //connect GND to AK
-        delayMicroseconds(100); 
+        delayMicroseconds(100);
         sendXYraw(CHIP_K, 15, 0, 0); //disconnect GND from AK
         }
 
@@ -404,17 +452,56 @@ void customApp(void) {
 
 
 
-    
+
+    //netSlot = lastNetSlot;
+
     }
 
 
+void bounceStartup(void) {
+
+    Serial.print("\n\rPress any key to exit\n\n\r");
+    leds.clear();
+    pauseCore2 = 1;
+
+    int bounceDelay = 300;
+    resetEncoderPosition = true;
+    while (1) {
+
+
+        drawAnimatedImage(0, bounceDelay);
+       // rotaryEncoderStuff();
+
+        if (digitalRead(BUTTON_ENC) == 0 || Serial.available() > 0) {
+            //leaveApp(lastNetSlot);
+            break;
+            }
+        delayMicroseconds(bounceDelay);
+        drawAnimatedImage(1, bounceDelay);
+        //  delay(100);
+        if (digitalRead(BUTTON_ENC) == 0 || Serial.available() > 0) {
+            //leaveApp(lastNetSlot);
+            break;
+            }
+        // clearLEDsExceptRails();
+         //showLEDsCore2 = 1;
+
+        // delay(2000);
+         // rainbowBounce(3);
+        }
+    pauseCore2 = 0;
+    //showNets();
+    //lightUpRail(-1, -1, 1);
+    showLEDsCore2 = -1;
+    waitCore2();
+    }
 
 
 void scanBoard(void) {
     int countLoop = 0;
     int countMult = 18;
     //measureModeActive = 1;
-    refreshConnections(-1, 1);
+    refreshConnections(-1, 0);
 
     Serial.println("\n\n\r");
     //showLEDsCore2 = -1;
@@ -422,8 +509,9 @@ void scanBoard(void) {
     int lastRow = 0;
     int lastFloat = 0;
     int lastNode = 0;
+    int leave = 0;
 
-    while (Serial.available() == 0 && encoderButtonState != PRESSED) {
+    while (Serial.available() == 0 && leave == 0) {
 
         for (int i = 1; i < 96; i++) {
 
@@ -454,7 +542,7 @@ void scanBoard(void) {
                 } else {
 
                 printNodeOrName(lastRow);
-                Serial.print("\tfloating");
+                Serial.println("\tfloating");
                 lastFloat = -1;
                 Serial.print("\t\t\t");
 
@@ -466,25 +554,37 @@ void scanBoard(void) {
                 Serial.print(" = ");
                 Serial.print(measuredVoltage);
                 Serial.println(" V");
+                Serial.flush();
                 }
             //
             // delay(50);
 
             setRowLEDdata(i, currentRow);
 
+            //rotaryEncoderStuff();
             if (Serial.available() > 0) {
+                leave = 1;
                 break;
                 }
-            if (encoderButtonState == PRESSED) {
+            if (encoderButtonState == PRESSED) {//|| digitalRead(BUTTON_PIN) == 0) {
+                //break;
+                leave = 1;
                 break;
                 }
-             showLEDsCore2 = -2;
 
+            showLEDsCore2 = 2;
+            //waitCore2();
+            delay(3);
             lastRow = i;
+
+            // if (leave == 1) {
+            //     break;
+              // }
             }
 
 
         Serial.println("\r                   \r\n\n\r");
+        Serial.flush();
         //printNodeOrName(NANO_A7);
         //Serial.println("\tfloating\n\n\r");
         countLoop++;
@@ -493,9 +593,12 @@ void scanBoard(void) {
             countLoop = 0;
             countMult -= 2;
             }
+        if (leave == 1) {
+            break;
+            }
 
         }
-    refreshConnections(-1, 1);
+    //refreshConnections(-1, 0);
 
     // measureModeActive = 0;
     }
@@ -509,75 +612,75 @@ void scanBoard(void) {
 
 
 
-int i2cScan(int sdaRow, int sclRow, int sdaPin, int sclPin, int leaveConnections ) {
+int i2cScan(int sdaRow, int sclRow, int sdaPin, int sclPin, int leaveConnections) {
     // If no rows specified, return error
     if (sdaRow < 0 || sclRow < 0) {
         Serial.println("Error: Must specify both SDA and SCL rows");
         return -1;
-    }
+        }
 
     // Remove any existing connections from the GPIO pins
     // removeBridgeFromNodeFile(RP_GPIO_22, -1, netSlot, 0);
     // removeBridgeFromNodeFile(RP_GPIO_23, -1, netSlot, 0);
-    
+
     // Connect the GPIO pins to the specified rows
     addBridgeToNodeFile(RP_GPIO_22, sdaRow, netSlot, 0, 0);  // SDA
     addBridgeToNodeFile(RP_GPIO_23, sclRow, netSlot, 0, 0);  // SCL
-    
+
     // Refresh the hardware connections
     refreshConnections(-1, 1);
     waitCore2();  // Wait for connections to be established
-    
+
     // Initialize I2C hardware
     Wire1.end();  // Stop any existing I2C communication
     Wire1.setSDA(sdaPin);
     Wire1.setSCL(sclPin);
     Wire1.begin();
     Wire1.setClock(100000);  // Standard 100kHz I2C speed
-    
+
     // Scan all possible I2C addresses
     Serial.println("\nScanning I2C bus...");
     Serial.println("    _0  _1  _2  _3  _4  _5  _6  _7  _8  _9  _A  _B  _C  _D  _E  _F ");
-    
+
     int nDevices = 0;
     for (int baseAddr = 0; baseAddr < 128; baseAddr += 16) {
-        Serial.printf("\n%02X:", baseAddr/16);
-        
+        Serial.printf("\n%02X:", baseAddr / 16);
+
         for (int addr = 0; addr < 16; addr++) {
             int deviceAddr = baseAddr + addr;
             if (deviceAddr > 0 && deviceAddr < 127) {  // Skip address 0 (general call) and 127
                 Wire1.beginTransmission(deviceAddr);
                 byte error = Wire1.endTransmission();
-                
+
                 if (error == 0) {
                     Serial.printf(" %X ", deviceAddr);  // Device found
                     nDevices++;
-                } else {
+                    } else {
                     Serial.print(" -- ");  // No device
-                }
-            } else {
+                    }
+                } else {
                 Serial.print(" -- ");  // Skip reserved addresses
+                }
             }
         }
-    }
-    
+
     // Print summary
     Serial.println("\n\nI2C Scan Results:");
     if (nDevices == 0) {
         Serial.println("No I2C devices found");
-    } else {
+        } else {
         Serial.printf("Found %d I2C device(s)\n", nDevices);
-    }
-    
+        }
+
     // Clean up connections
     if (leaveConnections == 0) {
         removeBridgeFromNodeFile(RP_GPIO_22, sdaRow, netSlot, 0);
         removeBridgeFromNodeFile(RP_GPIO_23, sclRow, netSlot, 0);
         refreshConnections(-1, 1);
-    }
-    
+        }
+
     return nDevices;
-}
+    }
 
 
 
@@ -648,7 +751,7 @@ void calibrateDacs(void) {
             clearAllNTCC();
             createSlots(netSlot, 1);
             delay(10);
-            
+
             switch (d) {
                 case 0:
 
@@ -677,7 +780,7 @@ void calibrateDacs(void) {
                     break;
                 }
 
-            refreshConnections(0,0,1);
+            refreshConnections(0, 0, 1);
             delay(80);
             printPathsCompact();
             // Serial.print("\n\n\r\tDAC ");
@@ -839,12 +942,17 @@ void calibrateDacs(void) {
             }
         saveDacCalibration();
         }
+        setRailsAndDACs();
     Serial.println("\n\n\rrun test? (y/n)\n\n\rmake damn sure nothing is "
                    "physically connected to the rails\n\r");
 
     b.clear();
     b.print("Test?", 0x0a0a00, 0x000000, 1, -1, -1);
-    int yesNo = yesNoMenu();
+    int yesNo = yesNoMenu(4000);
+
+   
+
+
 
     //   char input = ' ';
     //   unsigned long timeout = millis();
@@ -876,13 +984,16 @@ void calibrateDacs(void) {
             // removeBridgeFromNodeFile(ADC0+d, -1, netSlot);
 
             clearAllNTCC();
-            createSlots(netSlot, 0);
+            createSlots(netSlot, 1);
+            refreshConnections(0, 0, 1);
+            delay(100);
             switch (d) {
                 case 0:
 
                     // addBridgeToNodeFile(DAC0, ISENSE_PLUS, netSlot);
+                    
                     addBridgeToNodeFile(DAC0, ROUTABLE_BUFFER_IN, netSlot);
-                    addBridgeToNodeFile(DAC0, ADC0, netSlot);
+                    //addBridgeToNodeFile(DAC0, ADC0, netSlot);
                     Serial.println("\n\n\r\tDAC 0 test");
                     b.print("DAC 0", dacColors[d], 0x000000, 1, -1, -1);
                     break;
@@ -918,7 +1029,7 @@ void calibrateDacs(void) {
 
             refreshConnections();
             // refreshBlind(1, 0);
-            delay(170);
+            delay(270);
             printPathsCompact();
             Serial.println(" ");
 
@@ -965,7 +1076,11 @@ void calibrateDacs(void) {
                 Serial.print(reading);
                 Serial.print(" V");
                 delay(320);
-                reading = readAdcVoltage(d, 16);
+                if (d == 0) {
+                    reading = readAdcVoltage(7, 16);
+                } else {
+                    reading = readAdcVoltage(d, 16);
+                }
                 Serial.print("\tADC measured: ");
                 if (i < 0) {
                     Serial.print(setVoltage + random(-4, 4) / 100.0);
@@ -1062,7 +1177,7 @@ void calibrateDacs(void) {
 
 //             }
 
-            
+
 //         if (scanlineOrder[downscanline] < 5) {
 
 //             screen[(i * 5) + scanlineOrder[downscanline]] = line[(i * downsample_w) + offset_w];
@@ -1101,18 +1216,18 @@ File pngFile;
 
 PNG png;
 
-void writeImage(PNGDRAW *pDraw) {
+void writeImage(PNGDRAW* pDraw) {
     Serial.printf("Writing image at y=%d, width=%d\n", pDraw->y, pDraw->iWidth);
     for (int i = 0; i < pDraw->iWidth; i++) {
         Serial.printf("%02X ", pDraw->pPixels[i]);
-    }
+        }
     Serial.println();
-}
+    }
 
 void displayImage(void) {
     Serial.println("Displaying image");
     // Buffer for PNG data
-    delay(100);    
+    delay(100);
 
     int strip = 0;
 
@@ -1132,42 +1247,42 @@ void displayImage(void) {
     unsigned long timeout = millis();
 
     if (strip == 1) {
-    while(idatIndex < 4) {
-        if(Serial.available()) {
-            imageData[bytesRead] = Serial.read();
-            if(imageData[bytesRead] == idat[idatIndex]) {
-                idatIndex++;
+        while (idatIndex < 4) {
+            if (Serial.available()) {
+                imageData[bytesRead] = Serial.read();
+                if (imageData[bytesRead] == idat[idatIndex]) {
+                    idatIndex++;
+                    }
+                }
+            if (millis() - timeout > 1000) {
+                Serial.println(idatIndex);
+                break;
+                }
             }
         }
-        if(millis() - timeout > 1000) {
-            Serial.println(idatIndex);
-            break;
-        }
-    }
-    }
-    while(bytesRead < MAX_IMAGE_SIZE) {
-        if(Serial.available()) {
+    while (bytesRead < MAX_IMAGE_SIZE) {
+        if (Serial.available()) {
             imageData[bytesRead] = Serial.read();
             Serial.println(imageData[bytesRead], BIN);
             if (strip == 1) {
-            if (imageData[bytesRead] == iend[iendIndex]) {
-                iendIndex++;
-            }
-            if (iendIndex == 4) {
-                Serial.println("IEND found");
-                break;
-            }
-            }
+                if (imageData[bytesRead] == iend[iendIndex]) {
+                    iendIndex++;
+                    }
+                if (iendIndex == 4) {
+                    Serial.println("IEND found");
+                    break;
+                    }
+                }
             bytesRead++;
             timeout = millis();
-        }
-        
+            }
+
         // Break if no data received for 1 second
-        if(millis() - timeout > 2000) {
+        if (millis() - timeout > 2000) {
             Serial.println(bytesRead);
             break;
+            }
         }
-    }
 
     Serial.printf("Received %d bytes of image data\n", bytesRead);
     //return; 
@@ -1178,20 +1293,20 @@ void displayImage(void) {
     pngFile = FatFS.open("aled.png", "w");
     if (pngFile) {
         Serial.println("File opened successfully");
-    } else {
+        } else {
         Serial.println("Failed to open file");
-    }
+        }
 
     pngFile.write(imageData, bytesRead);
-    
-    
-    if (png.openFLASH((uint8_t *)imageData, bytesRead, writeImage) == 0) {
+
+
+    if (png.openFLASH((uint8_t*)imageData, bytesRead, writeImage) == 0) {
         int width = png.getWidth();
         int height = png.getHeight();
         Serial.printf("Width: %d, Height: %d\n", width, height);
-    } else {
+        } else {
         Serial.println("Failed to open PNG");
-    }
+        }
 
 
 
@@ -1204,5 +1319,5 @@ void displayImage(void) {
     //     }
     // }
     //showArray(imageData, bytesRead);
-  
-}
+
+    }

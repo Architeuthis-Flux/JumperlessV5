@@ -24,7 +24,7 @@ extern bool debugMM;
 
 extern int probeSwap;
 
-
+extern bool firstStart;
 
 
 

@@ -20,7 +20,7 @@ void runApp (int index = -1, char* name = nullptr);
 
 void scanBoard(void);
 void calibrateDacs(void);
-
+void bounceStartup(void);
 
 void customApp(void);
 

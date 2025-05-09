@@ -1932,7 +1932,7 @@ int brightenNet(int node, int addBrightness) {
     brightenedRail = -1;
     return -1;
     }
-  addBrightness = 00;
+  addBrightness = 0;
 
   for (int i = 0; i <= numberOfPaths; i++) {
 
@@ -2166,7 +2166,7 @@ void lightUpRail(int logo, int rail, int onOff, int brightness2,
               int powerRail = j / 2;
 
               if (railVoltage[powerRail] < 0.0) { //flipped when the voltage is negative
-                if ((i == 24 - (abs((int)(railVoltage[powerRail] * 5)))) && (abs((int)railVoltage[powerRail]) < 5.0)) {
+                if ((i == 24 - (abs((int)(railVoltage[powerRail] * 5)))) && (abs((int)railVoltage[powerRail]) <= 5.0)) {
 
                   leds.setPixelColor(railsToPixelMap[j][i], scaleBrightness(dotColor, 250));
 
@@ -2195,7 +2195,7 @@ void lightUpRail(int logo, int rail, int onOff, int brightness2,
 
 
 
-                } else if ((i == abs((int)((railVoltage[powerRail] - 0.1) * 5))) && (abs((int)railVoltage[powerRail]) < 5.0)) {
+                } else if ((i == abs((int)((railVoltage[powerRail] - 0.1) * 5))) && (abs((int)railVoltage[powerRail]) <= 5.0)) {
 
                   leds.setPixelColor(railsToPixelMap[j][i], scaleBrightness(dotColor, scaleScale(250)));
 
@@ -2205,14 +2205,14 @@ void lightUpRail(int logo, int rail, int onOff, int brightness2,
 
                     } else if (i < abs((int)(((railVoltage[powerRail] + 0.1) * 5) - 1)) && (abs((int)railVoltage[powerRail]) < 5.0)) {
 
-                      leds.setPixelColor(railsToPixelMap[j][i], scaleBrightness(railColorsV5[j][3], scaleScale(0)));
+                      leds.setPixelColor(railsToPixelMap[j][i], scaleBrightness(railColorsV5[j][3], scaleScale(15)));
 
                       } else if (i < (abs((int)(((railVoltage[powerRail] - 4.9) * 5) - 1))) && (abs(railVoltage[powerRail]) >= 5.0)) {
 
                         leds.setPixelColor(railsToPixelMap[j][i], scaleBrightness(railColorsV5[j][2], scaleScale(30)));
                         } else if (i > (abs((int)(((railVoltage[powerRail] - 4.9) * 5) - 1))) && (abs(railVoltage[powerRail]) >= 5.0)) {
 
-                          leds.setPixelColor(railsToPixelMap[j][i], scaleBrightness(railColorsV5[j][3], scaleScale(0)));
+                          leds.setPixelColor(railsToPixelMap[j][i], scaleBrightness(railColorsV5[j][3], scaleScale(15)));
 
                           } else {
 
@@ -2466,6 +2466,14 @@ hsvColor RgbToHsv(rgbColor rgb) {
 
   return hsv;
   }
+
+hsvColor RgbToHsv(uint32_t color) {
+  rgbColor rgb;
+  rgb.r = (color >> 16) & 0xFF;
+  rgb.g = (color >> 8) & 0xFF;
+  rgb.b = color & 0xFF;
+  return RgbToHsv(rgb);
+}
 
 void randomColors(void) {
 

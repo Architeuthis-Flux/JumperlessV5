@@ -17,14 +17,14 @@ struct StringIntEntry {
 // Core configuration functions
 void loadConfig(void);
 void saveConfig(void);
-void resetConfigToDefaults(void);
+void resetConfigToDefaults(int clearCalibration = 0, int clearHardware = 0);
 
 // File operations
 void updateConfigFromFile(const char* filename);
 void saveConfigToFile(const char* filename);
 
 // Serial operations
-void printConfigSectionToSerial(int section, bool showNames = true);
+void printConfigSectionToSerial(int section, bool showNames = true, bool pasteable = true);
 void readConfigFromSerial(void);
 void printConfigToSerial(bool showNames = true);
 void printConfigStructToSerial(bool showNames = true);

@@ -82,10 +82,10 @@ struct config {
 
     struct display {
         int lines_wires = 1;
-        int menu_brightness = 100;
-        int led_brightness = 50;
+        int menu_brightness = -10;
+        int led_brightness = 10;
         int rail_brightness = 55;
-        int special_net_brightness = 80;
+        int special_net_brightness = 20;
         int net_color_mode = 0;
     } display;
 
@@ -141,6 +141,7 @@ struct config {
         } serial_2;
 
         struct top_oled {
+            int enabled = 0;
             int i2c_address = 0x3C;
             int width = 128;
             int height = 32;

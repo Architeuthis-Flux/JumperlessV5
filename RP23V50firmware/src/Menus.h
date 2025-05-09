@@ -83,7 +83,8 @@ enum probeOptions { PROBECONNECT, PROBECLEAR, PROBECALIBRATE, NOPROBE };
 
 extern int inClickMenu;
 extern int selectingRotaryNode;
-
+extern int brightnessOptionMap[];
+extern int menuBrightnessOptionMap[];
 void readMenuFile(int flashOrLocal);
 void parseMenuFile(void);
 
@@ -115,7 +116,7 @@ int findSubMenu(int level, int index);
 
 void showLoss(void);
 
-int yesNoMenu(void);
+int yesNoMenu(unsigned long timeout = 4000);
 
 
 

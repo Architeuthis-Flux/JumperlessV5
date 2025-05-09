@@ -153,7 +153,7 @@ const wchar_t fontMap[120] = {
   0x06, 0x18, 0x06, },{ 0x12, 0x1a, 0x16, },{ //z
 
   0x00, 0x17, 0x00, },{ 0x16, 0x1f, 0x0d, },{
-  0x19, 0x04, 0x13, },{ 0x02, 0x01, 0x02, },{ 0x02, 0x07, 0x02, },{ 0x10, 0x10, 0x10, },{
+  0x19, 0x04, 0x13, },{ 0x02, 0x01, 0x02, },{ 0x02, 0x07, 0x02, },{ 0x04, 0x04, 0x04, },{
   0x04, 0x04, 0x04, },{ 0x04, 0x0e, 0x04, },{ 0x04, 0x15, 0x04, },{ 0x0a, 0x04, 0x0a, },{
   0x0a, 0x0a, 0x0a, },{ 0x12, 0x17, 0x12, },{ 0x01, 0x1d, 0x07, },{ 0x04, 0x0a, 0x11, },{
   0x11, 0x0a, 0x04, },{ 0x12, 0x17, 0x12, },{ 0x01, 0x02, 0x00, },{ 0x10, 0x08, 0x00, },{
@@ -227,6 +227,9 @@ void drawWires(int net) {
   // Serial.println(probeActive);
   // Serial.print("numberOfShownNets = ");
   // Serial.println(numberOfShownNets);
+
+  // Serial.print("numberOfPaths = ");
+  // Serial.println(numberOfPaths);
 
   int fillSequence[6] = { 0, 1, 2, 3, 4, 0 };
   int fillIndex = 0;
@@ -1043,7 +1046,7 @@ void bread::printMenuReminder(int menuDepth, uint32_t color) {
 
 void bread::printRawRow(uint8_t data, int row, uint32_t color, uint32_t bg, int scale) {
 
-  color = scaleBrightness(color, (menuBrightnessSetting / scale));
+  //color = scaleBrightness(color, (menuBrightnessSetting / scale));
   if (row <= 60) {
     printGraphicsRow(data, row, color, bg);
     } else {
@@ -1929,7 +1932,7 @@ int brightnessSetHeader[45] = { -100, -99, -97, -95, -90, -85, -78, -72, -62, -5
 int brightnessSet = -100;
 
 
-void drawAnimatedImage(int imageIndex) {
+void drawAnimatedImage(int imageIndex, int speed) {
   showLEDsCore2 = -3;
   leds.clear();
   leds.show();
@@ -1942,7 +1945,7 @@ void drawAnimatedImage(int imageIndex) {
     //showLEDsCore2 = 3;
     cycleCount++;
     leds.show();
-    delayMicroseconds(2000 + (cycleCount * 200));
+    delayMicroseconds(speed + (cycleCount * 200));
     }
   } else { // play the animation backwards
     cycleCount = 44;
@@ -1950,7 +1953,7 @@ void drawAnimatedImage(int imageIndex) {
       drawImage(i);
       leds.show();
       cycleCount--;
-      delayMicroseconds(2000 + (cycleCount * 00));
+      delayMicroseconds(speed + (cycleCount * 200));
       }
   }
   //lightUpRail();

@@ -283,14 +283,14 @@ int findI2CAddress(int sdaPin, int sclPin, int i2cNumber) {
 int initI2C(int sdaPin, int sclPin, int speed) {
 
 
-  Serial.println("initI2C");
+ // Serial.println("initI2C");
   static int i2c1Pins[3] = { 26, 27, 100000 };
   static int i2c0Pins[3] = { 4, 5, 100000 };
   // pin, {0=SDA, 1=SCL}, {I2C0, I2C1}
-  Serial.print("sdaPin: ");
-  Serial.println(sdaPin);
-  Serial.print("sclPin: ");
-  Serial.println(sclPin);
+  // Serial.print("sdaPin: ");
+  // Serial.println(sdaPin);
+  // Serial.print("sclPin: ");
+  // Serial.println(sclPin);
 
   int gpioI2Cmap[15][3] = {
       {0,  0, 0}, {1,  1, 0},
@@ -321,19 +321,19 @@ int initI2C(int sdaPin, int sclPin, int speed) {
       }
     }
 
-  Serial.print("sdaFound: ");
-  Serial.println(sdaFound);
-  Serial.print("sclFound: ");
-  Serial.println(sclFound);
+  // Serial.print("sdaFound: ");
+  // Serial.println(sdaFound);
+  // Serial.print("sclFound: ");
+  // Serial.println(sclFound);
 
-  Serial.print("portFound: ");
-  Serial.println(portFound);
+  // Serial.print("portFound: ");
+  // Serial.println(portFound);
 
 
 
 
   if (sdaFound == 0 || sclFound == 0) {
-    Serial.println("Failed to find I2C pins");
+    // Serial.println("Failed to find I2C pins");
     return -1;
     } else if (portFound == 0) {
 
@@ -378,7 +378,7 @@ int initI2C(int sdaPin, int sclPin, int speed) {
 
 
 
-      Serial.println("Failed to find I2C pins");
+      // Serial.println("Failed to find I2C pins");
       return -1;
 
 
@@ -487,7 +487,7 @@ void printGPIOState(void) {
 
   Serial.println("\tGPIO States ");
   Serial.println("          \t0\t1\t2\t3\t4\t5\t6\t7\tTx\tRx");
-  Serial.print("gpioState: ");
+  Serial.print("gpioState:\t");
   for (int i = 0; i < 8; i++) {
 
     Serial.print(gpioState[i]);
@@ -517,10 +517,10 @@ void printGPIOState(void) {
   for (int i = 0; i < 8; i++) {
     switch (jumperlessConfig.gpio.pulls[i]) {
       case 0:
-        Serial.print("up");
+        Serial.print("down");
         break;
       case 1:
-        Serial.print("down");
+        Serial.print("up");
         break;
       case 2:
         Serial.print("none");
@@ -581,11 +581,13 @@ void readGPIO(void) {
           } else if (jumperlessConfig.gpio.direction[i] == 0) {
             continue;
             }
-        if (gpioNet[i] != -1 && (gpioState[i] == 2 || gpioState[i] == 3 || gpioState[i] == 4)) {
+
+        if (gpioNet[i] >= 0 && (gpioState[i] == 2 || gpioState[i] == 3 || gpioState[i] == 4)) {
           int reading = 0;
           if (i == 8) {
             continue;
             if (gpio_get_dir(0) == 0) {
+              
               reading = digitalRead(0);
               } else {
               reading = gpio_get_out_level(0);
@@ -1156,8 +1158,14 @@ void showLEDmeasurements(void) {
         if (displayMode == 0 || numberOfShownNets > MAX_NETS_FOR_WIRES) {
           lightUpNet(showADCreadings[i], -1, 1, brightness, 0, 0, color);
           }
+        //Serial.println(brightness);
+        int scaleVoltage = map((int)abs(adcReading), 0, 8, -30, 70);
+        //Serial.println(scaleVoltage);
+          int scaledBrightness = map(brightness, LEDbrightnessSpecial, LEDbrightnessSpecial + 45, -50, 50);
 
-        color = scaleBrightness(color, map(brightness, LEDbrightnessSpecial, LEDbrightnessSpecial + 45, -90, 100));
+        color = scaleBrightness(color, scaleVoltage);
+
+        //Serial.println(scaledBrightness);
         // Serial.println((color, map(brightness, LEDbrightnessSpecial, LEDbrightnessSpecial+45, -90, 100)));
         netColors[showADCreadings[i]] = unpackRgb(color);
         adcReadingColors[i] = color;
@@ -1181,10 +1189,10 @@ uint32_t measurementToColor(float measurement, float min, float max) {
   int measurementInt = measurement * 10;
 
 
-  if (measurement < min) {
-    measurement = min;
-    } else if (measurement > max) {
-      measurement = max;
+  if (measurement < jumperlessConfig.dacs.limit_min) {
+    measurement = jumperlessConfig.dacs.limit_min;
+    } else if (measurement > jumperlessConfig.dacs.limit_max) {
+      measurement = jumperlessConfig.dacs.limit_max;
       }
 
 
@@ -1222,8 +1230,8 @@ uint32_t measurementToColor(float measurement, float min, float max) {
       // hsv.s = 255;
 
       hsv.h = hsv.h % 256;
-      hsv.v = 255;
-      // Serial.println(hsv.h);
+      hsv.v = jumperlessConfig.display.special_net_brightness;
+       //Serial.println(hsv.h);
        // int measurementInt = measurement * 10;
        // int distance = abs(0 - measurementInt);
        // hsv.v = map(distance, min*11, max*11, 0, 100);

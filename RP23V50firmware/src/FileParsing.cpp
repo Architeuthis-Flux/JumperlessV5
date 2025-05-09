@@ -1135,7 +1135,9 @@ int removeBridgeFromNodeFile(int node1, int node2, int slot, int flashOrLocal, i
 
   for (int i = 0; i < 8; i++) { //idk if I should do this here but YOLO
     if (node1 == RP_GPIO_1 + i || node2 == RP_GPIO_1 + i) {
+      if (gpioNet[i] != -2) {
       gpioNet[i] = -1;
+      }
     }
     }
   // Serial.print("Slot = ");

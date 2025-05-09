@@ -27,9 +27,10 @@ unsigned long waitCore2() {
   // delayMicroseconds(60);
   unsigned long timeout = micros();
   core1request = 1;
-  while (core2busy || sendAllPathsCore2 != 0) {
+  while (core2busy || (sendAllPathsCore2 != 0)) {
     // Serial.println("waiting for core2 to finish");
-    if (micros() - timeout > 1000000) {
+    if (micros() - timeout > 50000) {
+      //Serial.println("wait core2 timeout");
       core2busy = false;
       sendAllPathsCore2 = 0;
       break;
@@ -60,14 +61,14 @@ void refresh(int flashOrLocal, int ledShowOption, int fillUnused, int clean) {
 void refreshConnections(int ledShowOption, int fillUnused, int clean) {
 
   waitCore2();
-  core1busy = true;
+  //core1busy = true;
   clearAllNTCC();
-
+  //core1busy = true;
   // return;
   openNodeFile(netSlot, 0);
 
   getNodesToConnect();
-
+//core1busy = false;
   bridgesToPaths();
   chooseShownReadings();
   //assignNetColors();
@@ -76,7 +77,7 @@ void refreshConnections(int ledShowOption, int fillUnused, int clean) {
   //   createLocalNodeFile(netSlot);
   //   lastSlot = netSlot;
   // }
-core1busy = false;
+
 
   if (ledShowOption != 0) {
 
@@ -100,7 +101,7 @@ void refreshLocalConnections(int ledShowOption, int fillUnused, int clean) {
    
 
   clearAllNTCC();
-
+  //core1busy = true;
   openNodeFile(netSlot, 1);
 
   getNodesToConnect();
@@ -109,16 +110,18 @@ void refreshLocalConnections(int ledShowOption, int fillUnused, int clean) {
   assignNetColors();
   chooseShownReadings();
 
-  core1busy = false;
+  //core1busy = false;
   if (ledShowOption != 0) {
 
     showLEDsCore2 = ledShowOption;
-    waitCore2();
+    //waitCore2();
   }
   if (clean == 1) {
     sendAllPathsCore2 = -1;
+    //waitCore2();
   } else {
     sendAllPathsCore2 = 1;
+    //waitCore2();
   }
 
   // sendPaths();
@@ -136,13 +139,13 @@ void refreshBlind(
   // fillUnused = 0;
   clearAllNTCC();
   openNodeFile(netSlot, 1);
-  core1busy = true;
+  //core1busy = true;
   getNodesToConnect();
   bridgesToPaths();
   assignNetColors();
 
   // printPathsCompact();
-  core1busy = false;
+  //core1busy = false;
   //   if (lastSlot != netSlot) {
   //   createLocalNodeFile(netSlot);
   //   lastSlot = netSlot;
@@ -288,9 +291,10 @@ float measureVoltage(int adcNumber, int node, bool checkForFloating) {
   // removeBridgeFromNodeFile(adcDefine, -1, netSlot, 0);
 
   // delay(2);
-  waitCore2();
+  //waitCore2();
+  removeBridgeFromNodeFile(adcDefine, -1, netSlot, 1);
   addBridgeToNodeFile(node, adcDefine, netSlot, 1);
-  refreshLocalConnections(0 , 0, 0);
+  refreshLocalConnections(1 , 0, 0);
   waitCore2();
   //refreshBlind(-1);
   //         printPathsCompact();
@@ -314,7 +318,7 @@ float measureVoltage(int adcNumber, int node, bool checkForFloating) {
     waitCore2();
   }
   removeBridgeFromNodeFile(node, adcDefine, netSlot, 1);
-  refreshLocalConnections(0, 0, 1);
+  refreshLocalConnections(0, 0, 0);
   //refreshBlind();
   waitCore2();
 

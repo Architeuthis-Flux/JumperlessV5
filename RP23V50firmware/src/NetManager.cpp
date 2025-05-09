@@ -437,62 +437,80 @@ void addBridgeToNet(uint16_t netToAddBridge, int16_t node1,
 
 void populateSpecialFunctions(int net, int node) {
   int foundGPIO = 0;
-//   Serial.println("populating special functions\n\r");
-//   Serial.print("node = ");
-//     Serial.println(node);
+  // Serial.println("populating special functions\n\r");
+  // Serial.print("node = ");
+  //   Serial.println(node);
 
   switch (node) {
   case 135:
+    if (gpioNet[0] != -2) {
     gpioNet[0] = net;
     foundGPIO = 1;
+    }
     break;
   case 136:
-
+    if (gpioNet[1] != -2) {
     gpioNet[1] = net;
     foundGPIO = 1;
+    }
     break;
   case 137:
-
+    if (gpioNet[2] != -2) {
     gpioNet[2] = net;
     foundGPIO = 1;
+    }
     break;
   case 138:
+    if (gpioNet[3] != -2) {
     gpioNet[3] = net;
     foundGPIO = 1;
+    }
     break;
   case 122:
+    if (gpioNet[4] != -2) {
     gpioNet[4] = net;
     foundGPIO = 1;
+    }
     break;
   case 123:
+    if (gpioNet[5] != -2) {
     gpioNet[5] = net;
     foundGPIO = 1;
+    }
     break;
   case 124:
+    if (gpioNet[6] != -2) {
     gpioNet[6] = net;
     foundGPIO = 1;
+    }
     break;
   case 125:
+    if (gpioNet[7] != -2) {
     gpioNet[7] = net;
     foundGPIO = 1;
+    }
     break;
     case RP_UART_TX:
+    if (gpioNet[8] != -2) {
     gpioNet[8] = net;
     foundGPIO = 1;
+    }
     break;
     case RP_UART_RX:
+    if (gpioNet[9] != -2) {
     gpioNet[9] = net;
     foundGPIO = 1;
+    }
     break;
     
   }
   if (foundGPIO == 1) {
     //     for (int i = 0; i < 8; i++)
     //     {
-    // Serial.print("gpioNet[");
-    // Serial.print(i);
-    // Serial.print("] = ");
-    // Serial.println(gpioNet[i]);
+    // // Serial.print("gpioNet[");
+    // // Serial.print(i);
+    // // Serial.print("] = ");
+    // // Serial.println(gpioNet[i]);
 
     //     }
   }

@@ -18,6 +18,9 @@
 #include <cstdarg>
 #include <cstdio>
 #include <cstring>
+
+//#include <Jokerman8pt7b.h>
+#include "Adafruit_GFX.h"
 bool oledConnected = false;
 
 // On an arduino LEONARDO:   2(SDA),  3(SCL), ...
@@ -45,7 +48,9 @@ class oled oled;
 oled::oled() {}
 
 int oled::init() {
-
+    if (jumperlessConfig.top_oled.enabled == 0) {
+        return 0;
+    }
     int success = 0;
     address = jumperlessConfig.top_oled.i2c_address;
     sda_pin = jumperlessConfig.top_oled.sda_pin;
@@ -53,11 +58,25 @@ int oled::init() {
     sda_row = jumperlessConfig.top_oled.sda_row;
     scl_row = jumperlessConfig.top_oled.scl_row;
     success = connect();
+
+    if (checkConnection() == false) {
+        oledConnected = false;
+        disconnect();
+       // refreshConnections(-1, 0, 0);
+        return 0;
+    }
     ///delay(10);
     display.begin(SSD1306_SWITCHCAPVCC, address, false, false);
     display.setTextColor(SSD1306_WHITE);
     display.setCursor(3, 3);
-    display.invertDisplay(true);
+    display.invertDisplay(false);
+    display.setFont(currentFont);    
+    display.clearDisplay();
+    display.drawBitmap(0, 0, jogo32h, 128, 32, SSD1306_WHITE);
+    display.display();
+    Wire1.setTimeout(25);
+    // display.drawBitmap(0, 0, jogo32h, 128, 32, SSD1306_WHITE);
+    // display.display();
     // display.clearDisplay();
     // display.print("Fuck");
     // display.display();
@@ -92,48 +111,165 @@ void oled::test() {
     display.display();
     oledTest(sda_row, scl_row, sda_pin, scl_pin, 1);
 }
-void oled::clearPrintShow(const char* c, int size, int x_pos, int y_pos, bool clear) {
+
+// Helper to get current font height
+int getFontHeight(const GFXfont* font) {
+    if (!font) return 8; // Default font height
+    return font->yAdvance;
+}
+
+// Helper to check I2C communication with Wire1
+bool oled::checkConnection(void) {
+    if (jumperlessConfig.top_oled.enabled == 0) {
+        oledConnected = false;
+        return false;
+    }
+    if (millis() - lastConnectionCheck > 1000) {
+        Wire1.beginTransmission(address);
+    
+        if (Wire1.endTransmission() != 0) {
+           // Serial.println("oled connection lost");
+            lastConnectionCheck = millis();
+            oledConnected = false;
+          //  disconnect();
+            return false;
+        }
+        lastConnectionCheck = millis();
+        oledConnected = true;
+    }
+    return true;
+}
+
+void oled::clearPrintShow(const char* c, int size, int x_pos, int y_pos, bool clear, bool show, bool center) {
+    if (oledConnected == false) {
+        return;
+    }
+
+
     if (clear) {
+        charPos = 0;
         display.clearDisplay();
     }
+    int strLen = strlen(c);
+    int charWidth = 6 * size;
+    int displayWidth = display.width();
+    int displayHeight = display.height();
+    int textPixelWidth = strLen * charWidth;
+    int fontHeight = getFontHeight(currentFont);
+
+    // Check if text fits, else look for capital letter to split
+    bool split = false;
+    int splitIdx = -1;
+    if (textPixelWidth > displayWidth && strLen > 2) {
+        // Look for a capital letter in the middle (not first or last char)
+        for (int i = 1; i < strLen - 1; ++i) {
+            if (c[i] >= 'A' && c[i] <= 'Z') {
+                split = true;
+                splitIdx = i;
+                break;
+            }
+        }
+    }
+
+    if (split) {
+        // Split string at splitIdx
+        String first = String(c).substring(0, splitIdx);
+        String second = String(c).substring(splitIdx);
+        // Center vertically: total height = 2 lines * fontHeight
+        int totalHeight = 2 * fontHeight;
+        int y_start = (displayHeight - totalHeight) / 2;
+        if (y_start < 0) y_start = 0;
+        // Center and print first line
+        int firstLen = first.length();
+        int firstPixelWidth = firstLen * charWidth;
+        int nudge1 = 0;
+        if (center && firstPixelWidth < displayWidth) {
+            nudge1 = (displayWidth - firstPixelWidth) / (2 * charWidth);
+        }
+        char shift1[40] = "                                     ";
+        shift1[nudge1] = '\0';
+        display.setTextSize(size);
+        display.setCursor(x_pos, y_start + fontHeight - 1); // Top align
+        display.print(String(shift1) + first);
+        // Center and print second line
+        int secondLen = second.length();
+        int secondPixelWidth = secondLen * charWidth;
+        int nudge2 = 0;
+        if (center && secondPixelWidth < displayWidth) {
+            nudge2 = (displayWidth - secondPixelWidth) / (2 * charWidth);
+        }
+        char shift2[40] = "                                     ";
+        shift2[nudge2] = '\0';
+        display.setCursor(x_pos, y_start + fontHeight + fontHeight - 1); // Next line, top align
+        display.print(String(shift2) + second);
+        if (show) {
+            display.display();
+        }
+        charPos += strLen;
+        return;
+    }
+
+    // Reduce text size if needed to fit
+    while (textPixelWidth > displayWidth && size > 1) {
+        size--;
+        charWidth = 6 * size;
+        textPixelWidth = strLen * charWidth;
+        Serial.println(textPixelWidth);
+        Serial.println(size);
+    }
+    int nudge = 0;
+    if (center) {
+        if (textPixelWidth < displayWidth) {
+            nudge = (displayWidth - textPixelWidth) / (2 * charWidth);
+        } else {
+            nudge = 0;
+        }
+    }
     display.setTextSize(size);
-    display.setCursor(x_pos, y_pos);
-    display.print(c);
-    display.display();
+    display.setCursor(x_pos, y_pos + fontHeight - 1); // Top align
+    char shift[40] = "                                     "; // up to 40 spaces
+    shift[charPos + nudge] = '\0';
+    display.print(String(shift) + String(c));
+    charPos += strLen;
+    if (show) {
+        display.display();
+    }
 }
 
-
-void oled::printf(const char* format, ...) {
+void oled::clearPrintShow(String s, int textSize, int x_pos, int y_pos, bool clear, bool show, bool center) {
     if (oledConnected == false) {
         return;
     }
-    char buf[128];
-    va_list args;
-    va_start(args, format);
-    vsnprintf(buf, sizeof(buf), format, args);
-    va_end(args);
-    display.print(buf);
+    clearPrintShow(s.c_str(), textSize, x_pos, y_pos, clear, show, center);
 }
 
-void oled::clrPrintfsh(const char* format, ...) {
-    if (oledConnected == false) {
-        return;
-    }
-    display.clearDisplay();
-    display.setCursor(2, 2);
-    char buf[128];
-    va_list args;
-    va_start(args, format);
-    vsnprintf(buf, sizeof(buf), format, args);
-    va_end(args);
-    display.print(buf);
-    display.display();
-}
+// void oled::printf(const char* format, ...) {
+//     if (oledConnected == false) {
+//         return;
+//     }
+//     char buf[128];
+//     va_list args;
+//     va_start(args, format);
+//     vsnprintf(buf, sizeof(buf), format, args);
+//     va_end(args);
+//     display.print(buf);
+// }
+
+// void oled::clrPrintfsh(const String& msg) {
+//     if (!oledConnected) {
+//         return;
+//     }
+//     display.clearDisplay();
+//     display.setCursor(2, 2);
+//     display.print(msg);
+//     display.display();
+// }
 void oled::print(const char* s) {
     if (oledConnected == false) {
         return;
     }
     display.print(s);
+    charPos += strlen(s);
    // display.display();
 }
 
@@ -142,6 +278,7 @@ void oled::print(int i) {
         return;
     }
     display.print(i);
+    charPos += String(i).length();
    // display.display();
 }
 
@@ -150,6 +287,7 @@ void oled::print(const char c) {
         return;
     }
     display.print(c);
+    charPos += 1;
    // display.display();
 }
 
@@ -159,6 +297,7 @@ void oled::print(const char c, int position) {
     }
     display.setCursor(position, 0);
     display.print(c);
+    charPos += 1;
    // display.display();
 }
 
@@ -173,6 +312,7 @@ void oled::showJogo32h() {
     if (oledConnected == false) {
         return;
     }
+    display.clearDisplay();
     display.drawBitmap(0, 0, jogo32h, 128, 32, SSD1306_WHITE);
     display.display();
 }
@@ -236,7 +376,7 @@ void oled::show() {
 }
 
 bool oled::isConnected() const {
-    return connected;
+    return oledConnected;
 }
 
 void oled::sendCommand(uint8_t cmd) {
@@ -254,9 +394,12 @@ void oled::invertDisplay(bool inv) {
 }
 
 int oled::connect(void) {
+    if (jumperlessConfig.top_oled.enabled == 0) {
+        return 0;
+    }
     int found = -1;
-    gpioNet[1] = -2;
-    gpioNet[2] = -2;
+    gpioNet[jumperlessConfig.top_oled.gpio_sda - 20] = -2;
+    gpioNet[jumperlessConfig.top_oled.gpio_scl - 20] = -2;
     removeBridgeFromNodeFile(jumperlessConfig.top_oled.gpio_sda, -1, netSlot, 0);
     removeBridgeFromNodeFile(jumperlessConfig.top_oled.gpio_scl, -1, netSlot, 0);
     addBridgeToNodeFile(jumperlessConfig.top_oled.gpio_sda, jumperlessConfig.top_oled.sda_row, netSlot, 0, 0);
@@ -268,10 +411,10 @@ int oled::connect(void) {
     //delay(100);
     //address = findI2CAddress(jumperlessConfig.top_oled.sda_pin, jumperlessConfig.top_oled.scl_pin, 1);
     // waitCore2();
-    gpioNet[1] = -2;
-    gpioNet[2] = -2;
-    gpioState[1] = 6;
-    gpioState[2] = 6;
+    gpioNet[jumperlessConfig.top_oled.gpio_sda - 20] = -2;
+    gpioNet[jumperlessConfig.top_oled.gpio_scl - 20] = -2;
+    gpioState[jumperlessConfig.top_oled.gpio_sda - 20] = 6;
+    gpioState[jumperlessConfig.top_oled.gpio_scl - 20] = 6;
     // delay(10);
     // Serial.print("oled Address: ");
     // Serial.println(address, HEX);
@@ -295,12 +438,17 @@ int oled::connect(void) {
 }
 
 void oled::disconnect(void) {
+    if (jumperlessConfig.top_oled.enabled == 0) {
+        return;
+    }
     removeBridgeFromNodeFile(jumperlessConfig.top_oled.gpio_sda, jumperlessConfig.top_oled.sda_row, netSlot, 0);
     removeBridgeFromNodeFile(jumperlessConfig.top_oled.gpio_scl, jumperlessConfig.top_oled.scl_row, netSlot, 0);
-    gpioNet[1] = -1;
-    gpioNet[2] = -1;
-    gpioState[1] = 4;
-    gpioState[2] = 4;
+    gpioNet[jumperlessConfig.top_oled.gpio_sda - 20] = -1;
+    gpioNet[jumperlessConfig.top_oled.gpio_scl - 20] = -1;
+    gpioState[jumperlessConfig.top_oled.gpio_sda - 20] = 4;
+    gpioState[jumperlessConfig.top_oled.gpio_scl - 20] = 4;
+    oledConnected = false;
+    refreshConnections(-1, 0, 0);
 }
 
 int initOLED(void) {
@@ -357,7 +505,7 @@ int oledTest(int sdaRow, int sclRow, int sdaPin, int sclPin, int leaveConnection
             oled.setTextSize(1);
             oled.print("Encoder: ");
            
-           oled.setTextSize(4);
+           oled.setTextSize(1);
             oled.print((int)encoderPosition);
             // Serial.print("\r                          \r");
             //  Serial.print(encoderPosition);
@@ -475,7 +623,6 @@ const unsigned char jogo255 [] PROGMEM = {
 	0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x01, 0xff, 0xff, 0xe0, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 
 	0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x3f, 0xff, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 
 	0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x01, 0xe0, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 
-	0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 
 	0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 
 	0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 
 	0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00

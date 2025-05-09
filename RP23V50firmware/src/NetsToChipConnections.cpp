@@ -198,13 +198,19 @@ void clearAllNTCC(void) {
   // printChipStatus();
 
   for (int i = 0; i < 8; i++) {
+    if (gpioNet[i] != -2) {
     gpioNet[i] = -1;
+    }
     showADCreadings[i] = -1;
     gpioReading[i] = -1;
     gpioReadingColors[i] = 0x010101;
     }
+  if (gpioNet[8] != -2) {
   gpioNet[8] = -1;
+  }
+  if (gpioNet[9] != -2) {
   gpioNet[9] = -1;
+  }
   gpioReading[8] = -1;
   gpioReading[9] = -1;
   gpioReadingColors[8] = 0x010101;

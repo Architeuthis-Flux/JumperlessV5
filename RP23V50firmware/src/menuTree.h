@@ -127,6 +127,7 @@ DisplayOptions\n\
 -$Jumpers$\n\
 --*Wires* *Lines*\n\
 -$Bright$\n\
+--*Menu**Rails*Wires**Special*\n\
 --*1**2**3**4**5**6**7**8*\n\
 \n\
 RoutingOptions\n\
@@ -146,7 +147,8 @@ String menuLines[] = {
   "-Custom App",
   "-Calib  DACs",
   
-  "-Show   Image",
+  //"-Show   Image",
+  "-Bounce Startup",
 
 //   "-Oscill oscope",
 //   "-MIDI   Synth", 
@@ -212,34 +214,50 @@ String menuLines[] = {
   "---Nodes>n2",
 //   "----*USB 2*  *Print*",
 //   "-----*9600* *115200*",
-  "-$Buffer$",
-  "--*In* *Out*",
-  "--->n2",
-  "--DigitalOptions",
-  "---Output",
-  "----*USB 2*  *Print*",
-  "---$UART$",
-  "----$Baud$",
-  "-----*9600**19200**57600**115200*",
-  "---$I2C$",
-  "----$Speed$",
-  "-----*100 K**400 K**1   M**3.4 M*",
+  // "-$Buffer$",
+  // "--*In* *Out*",
+  // "--->n2",
+  // "--DigitalOptions",
+  // "---Output",
+  // "----*USB 2*  *Print*",
+  // "---$UART$",
+  // "----$Baud$",
+  // "-----*9600**19200**57600**115200*",
+  // "---$I2C$",
+  // "----$Speed$",
+  // "-----*100 K**400 K**1   M**3.4 M*",
   "-$Voltage$",
   "--$DAC$",
   "--*0* *1*",
   "--->v2",
   "---->n1",
+  "-Limits",
+  "--$Min Max$",
+  "---*0 _ 3V3**0 _ +5V** ~ 5V** ~ 8V*",
+  // "--$*Min**Max*$",
+  // "--->v2",
+
+
+  
 
 
   "DisplayOptions",
-  "-$DEFCON$",
+  "-$Demo$",
   "--*On**Off**Fuck*",
   "-$Colors$",
   "--*Rainbow**Shuffle*",
   "-$Jumpers$",
   "--*Wires* *Lines*",
   "-$Bright$",
-  "--*1**2**3**4**5**6**7**8*",
+  "--$Menu$",
+  "---*1**2**3**4**5**6**7**8*",
+  "--$Special$",
+  "---*1**2**3**4**5**6**7**8*",
+  "--$Rails$",
+  "---*1**2**3**4**5**6**7**8*",
+  "--$Wires$",
+  "---*1**2**3**4**5**6**7**8*",
+
 
 
   "RoutingOptions",

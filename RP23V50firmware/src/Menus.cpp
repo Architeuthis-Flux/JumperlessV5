@@ -47,6 +47,8 @@ int selectMultipleIndex = 0;
 
 char hardCodeOptions[10][10] = { "Tx",  "Rx", "SDA",   "SCL",  "5V",
                                 "3V3", "8V", "USB 2", "Print" };
+int brightnessOptionMap[] = { 3, 4, 6, 9, 10, 14, 18, 26, 32, 42, 48 };
+int menuBrightnessOptionMap[] = {  -80, -60, -30, -15, 0, 20, 50, 100, 150, 200};
 
 struct action {
   int previousMenuPositions[10];
@@ -378,11 +380,15 @@ int clickMenu(int menuType, int menuOption, int extraOptions) {
         Serial.println("Probe button pressed");
         return -3;
         }
+      //oled.showJogo32h();
       returnedMenuPosition = getMenuSelection();
       }
     if (returnedMenuPosition == -2) {
       showLEDsCore2 = 1;
       inClickMenu = 0;
+
+      oled.showJogo32h();
+
       return -2;
       }
 
@@ -406,6 +412,9 @@ int clickMenu(int menuType, int menuOption, int extraOptions) {
     // getMenuSelection();
     }
   inClickMenu = 0;
+
+  //oled.showJogo32h();
+
   return returnedMenuPosition;
   }
 
@@ -572,6 +581,8 @@ int getMenuSelection(void) {
   clearAction();
 
   clearLEDsExceptRails();
+  showLEDsCore2 = -2;
+  waitCore2();
   // delay(100);
   if (returnToMenuPosition != -1 && returnToMenuLevel != -1) {
     menuPosition = returnToMenuPosition;
@@ -621,16 +632,6 @@ int getMenuSelection(void) {
 
       previousMenuSelection[menuLevel] = menuPosition;
 
-      // Serial.print("[ ");
-      // for (int i = 0; i < 10; i++) {
-      //   if (previousMenuSelection[i] != -1) {
-      //   Serial.print(menuLines[previousMenuSelection[i]]);
-      //   Serial.print(", ");
-      //   }
-      // }
-
-      // Serial.print(" ]\n\r");
-      // Serial.println(menuPosition);
 
       menuLevel++;
 
@@ -735,18 +736,21 @@ int getMenuSelection(void) {
       if (actions[menuPosition] == 0) {
         Serial.print("\r                                              \r");
 
-
+       // oled.clear();
         for (int j = 0; j <= menuLevels[menuPosition]; j++) {
           Serial.print(">");
+
           if (j > 8) {
             break;
             }
           }
 
         Serial.print(menuLines[menuPosition]);
+        oled.clearPrintShow(menuLines[menuPosition], 2, 5, 8, true, true, true);
         } else {
         //Serial.println(menuLines[menuPosition-1]);
         Serial.println(" ");
+        //oled.print(" ");
 
         }
 
@@ -869,19 +873,22 @@ int getMenuSelection(void) {
         Serial.print(" ");
         if (actions[menuPosition] == 0 && numberOfChoices[menuPosition] == 0) {
           Serial.print("\r                                              \r");
+          // oled.clear();
 
           for (int j = 0; j <= menuLevels[menuPosition]; j++) {
             Serial.print(">");
+            // oled.clearPrintShow(">", 2, 5, 8, false, false);
             if (j > 8) {
               break;
               }
             }
 
           Serial.print(menuLines[menuPosition]);
+          oled.clearPrintShow(menuLines[menuPosition], 2, 5, 8, true, true, true);
           } else {
           //Serial.println(menuLines[menuPosition-1]);
           Serial.println(" ");
-
+         // oled.print(" ");
           }
 
 
@@ -1229,10 +1236,27 @@ int selectSubmenuOption(int menuPosition, int menuLevel) {
       menuType = 3;
       }
 
-    if (menuLines[previousMenuSelection[1]].indexOf("Bright") != -1) {
+    if (menuLines[previousMenuSelection[menuLevel-2]].indexOf("Bright") != -1 && menuLines[previousMenuSelection[menuLevel-1]].indexOf("Menu") != -1 ){
 
       brightnessMenu = 1;
       }
+
+    if (menuLines[previousMenuSelection[menuLevel-2]].indexOf("Bright") != -1 && menuLines[previousMenuSelection[menuLevel-1]].indexOf("Rails") != -1 ){
+
+      brightnessMenu = 2;
+      }
+
+    if (menuLines[previousMenuSelection[menuLevel-2]].indexOf("Bright") != -1 && menuLines[previousMenuSelection[menuLevel-1]].indexOf("Wires") != -1 ){
+
+      brightnessMenu = 3;
+      }
+      
+      
+    if (menuLines[previousMenuSelection[menuLevel-2]].indexOf("Bright") != -1 && menuLines[previousMenuSelection[menuLevel-1]].indexOf("Special") != -1 ){
+
+      brightnessMenu = 4;
+      }
+
 
     // Serial.print("menuType: ");
     // Serial.println(menuType);
@@ -1317,14 +1341,14 @@ int selectSubmenuOption(int menuPosition, int menuLevel) {
 
             if (menuType == 0) {
 
-              if (brightnessMenu == 1) {
+              if (brightnessMenu > 0) {
                 // Serial.println();
                 // Serial.println(highlightedOption);
                 // Serial.println();
-
-                switch (highlightedOption) {
-                  case 0:
-                    menuBrightnessSetting = -70;
+                if (brightnessMenu == 1) {
+                  switch (highlightedOption) {
+                    case 0:
+                      menuBrightnessSetting = -70;
                     break;
                   case 1:
                     menuBrightnessSetting = -55;
@@ -1358,25 +1382,89 @@ int selectSubmenuOption(int menuPosition, int menuLevel) {
                     break;
                   }
 
+                                  b.clear();
+                b.print("B", scaleBrightness(menuColors[0], menuBrightnessOptionMap[highlightedOption]), 0xffffff, 0, 0, 3);
+                b.print("r", scaleBrightness(menuColors[1], menuBrightnessOptionMap[highlightedOption]), 0xffffff, 1, 0, 3);
+                b.print("i", scaleBrightness(menuColors[2], menuBrightnessOptionMap[highlightedOption]), 0xffffff, 2, 0, 3);
+                b.print("g", scaleBrightness(menuColors[3], menuBrightnessOptionMap[highlightedOption]), 0xffffff, 3, 0, 3);
+                b.print("h", scaleBrightness(menuColors[4], menuBrightnessOptionMap[highlightedOption]), 0xffffff, 4, 0, 3);
+                b.print("t", scaleBrightness(menuColors[5], menuBrightnessOptionMap[highlightedOption]), 0xffffff, 5, 0, 3);
+
+                b.printMenuReminder(menuLevel, scaleBrightness(menuColors[menuLevel], menuBrightnessSetting));
+
+
+                } else {
+                  uint32_t scaledColor[6];
+                  hsvColor scaledColorHsv[6];
+                  switch (brightnessMenu) {
+                    case 2:
+                      LEDbrightnessRail = (int)(highlightedOption * 1.35) + 50;
+                      jumperlessConfig.display.rail_brightness = LEDbrightnessRail;
+                      
+                      // for (int i = 0; i < 6; i++) {
+                      //   scaledColorHsv[i] = RgbToHsv(menuColors[i]);
+                      //   scaledColorHsv[i].v = LEDbrightnessRail;  
+                      //   scaledColor[i] = HsvToRaw(scaledColorHsv[i]);
+                      // }
+
+                                      b.clear();
+                b.print("B", scaleBrightness(menuColors[0], menuBrightnessOptionMap[highlightedOption]), 0xffffff, 0, 0, 3);
+                b.print("r", scaleBrightness(menuColors[1], menuBrightnessOptionMap[highlightedOption]), 0xffffff, 1, 0, 3);
+                b.print("i", scaleBrightness(menuColors[2], menuBrightnessOptionMap[highlightedOption]), 0xffffff, 2, 0, 3);
+                b.print("g", scaleBrightness(menuColors[3], menuBrightnessOptionMap[highlightedOption]), 0xffffff, 3, 0, 3);
+                b.print("h", scaleBrightness(menuColors[4], menuBrightnessOptionMap[highlightedOption]), 0xffffff, 4, 0, 3);
+                b.print("t", scaleBrightness(menuColors[5], menuBrightnessOptionMap[highlightedOption]), 0xffffff, 5, 0, 3);
+
+                b.printMenuReminder(menuLevel, scaleBrightness(menuColors[menuLevel], menuBrightnessSetting));
+
+                      break;
+                    case 3:
+                      LEDbrightness = highlightedOption * 3 + 3;
+                      jumperlessConfig.display.led_brightness = LEDbrightness;
+                      
+                      for (int i = 0; i < 6; i++) {
+                          scaledColorHsv[i] = RgbToHsv(menuColors[i]);
+                        scaledColorHsv[i].v = LEDbrightness;  
+                        scaledColor[i] = HsvToRaw(scaledColorHsv[i]);
+                      }
+
+                      b.clear();
+                b.print("B", scaledColor[0], 0xffffff, 0, 0, 3);
+                b.print("r", scaledColor[1], 0xffffff, 1, 0, 3);
+                b.print("i", scaledColor[2], 0xffffff, 2, 0, 3);
+                b.print("g", scaledColor[3], 0xffffff, 3, 0, 3);
+                b.print("h", scaledColor[4], 0xffffff, 4, 0, 3);
+                b.print("t", scaledColor[5], 0xffffff, 5, 0, 3);
+                    case 4:
+                      LEDbrightnessSpecial = highlightedOption * 5 + 5;
+                      jumperlessConfig.display.special_net_brightness = LEDbrightnessSpecial;
+                      
+                      for (int i = 0; i < 6; i++) {
+                        scaledColorHsv[i] = RgbToHsv(menuColors[i]);
+                        scaledColorHsv[i].v = LEDbrightnessSpecial;  
+                        scaledColor[i] = HsvToRaw(scaledColorHsv[i]);
+                      }
+
+                      b.clear();
+                b.print("B", scaledColor[0], 0xffffff, 0, 0, 3);
+                b.print("r", scaledColor[1], 0xffffff, 1, 0, 3);
+                b.print("i", scaledColor[2], 0xffffff, 2, 0, 3);
+                b.print("g", scaledColor[3], 0xffffff, 3, 0, 3);
+                b.print("h", scaledColor[4], 0xffffff, 4, 0, 3);
+                b.print("t", scaledColor[5], 0xffffff, 5, 0, 3);
+                      break;
+                  }
+                }
                 // b.print("Bright" , menuColors[menuLevel-1],
                 //         0xFFFFFF, 0, -1, 3);
                 // b.printMenuReminder(menuLevel, menuColors[menuLevel]);
-                b.clear();
-                b.print("B", menuColors[0], 0xffffff, 0, 0, 3);
-                b.print("r", menuColors[1], 0xffffff, 1, 0, 3);
-                b.print("i", menuColors[2], 0xffffff, 2, 0, 3);
-                b.print("g", menuColors[3], 0xffffff, 3, 0, 3);
-                b.print("h", menuColors[4], 0xffffff, 4, 0, 3);
-                b.print("t", menuColors[5], 0xffffff, 5, 0, 3);
-
-                b.printMenuReminder(menuLevel, menuColors[menuLevel]);
 
                 // b.print("n", menuColors[6], 0xffffff, 1, 1, 2);
                 // b.print("e", menuColors[4], 0xffffff, 2, 1, 2);
                 // b.print("s", menuColors[2], 0xffffff, 3, 1, 2);
                 // b.print("s", menuColors[0], 0xffffff, 4, 1, 2);
 
-                if (highlightedOption == 0) {
+                if (highlightedOption == 0) {//!
                   selectColor = subMenuColors[(menuLevel + 5) % 8] & 0x030303;
                   } else if (highlightedOption == 1) {
                     selectColor = subMenuColors[(menuLevel + 5) % 8] & 0x070707;
@@ -1408,7 +1496,7 @@ int selectSubmenuOption(int menuPosition, int menuLevel) {
               Serial.print(" ");
 
               Serial.print(subMenuStrings[highlightedOption]);
-
+              oled.clearPrintShow(subMenuStrings[highlightedOption], 2, 5, 8, true, true);
               for (int i = 0; i < 7; i++) {
 
                 if (i != (3)) {
@@ -1452,6 +1540,7 @@ int selectSubmenuOption(int menuPosition, int menuLevel) {
                   }
                 Serial.print(" ");
                 Serial.print(subMenuStrings[highlightedOption]);
+                oled.clearPrintShow(subMenuStrings[highlightedOption], 2, 5, 8, true, true);
 
                 for (int i = 0; i < numberOfChoices[menuPosition]; i++) {
 
@@ -1485,6 +1574,7 @@ int selectSubmenuOption(int menuPosition, int menuLevel) {
                           backgroundColor, 0, 1, 1);
 
                   Serial.print("\r                      \r");
+                  oled.clear();
                   for (int j = 0; j <= menuLevels[menuPosition]; j++) {
                     Serial.print(">");
                     if (j > 8) {
@@ -1494,7 +1584,7 @@ int selectSubmenuOption(int menuPosition, int menuLevel) {
                     }
                   Serial.print(" ");
                   Serial.print(subMenuStrings[highlightedOption]);
-
+                  oled.clearPrintShow(subMenuStrings[highlightedOption], 2, 5, 8, true, true);
                   } else if (menuType == 3) {
                     // Serial.println(subMenuColors[(highlightedOption + menuLevel) % 8],
 
@@ -1531,7 +1621,7 @@ int selectSubmenuOption(int menuPosition, int menuLevel) {
     return optionSelected;
   }
 
-int yesNoMenu(void)
+int yesNoMenu(unsigned long timeout)
   {
   inClickMenu = 1;
 
@@ -1547,8 +1637,13 @@ int yesNoMenu(void)
   uint32_t noColorBright = 0x1f0008;
   uint32_t backgroundColor = 0x000002;
   int firstTime = 1;
+  unsigned long startTime = millis();
   while (optionSelected == -1)
     {
+    if (millis() - startTime > timeout) {
+      inClickMenu = 0;
+      return -1;
+      }
 
 
 
@@ -1779,13 +1874,13 @@ int selectNodeAction(int whichSelection) {
 
         if (encoderDirectionState == DOWN &&
             lastScrollAccelerationDirection == NONE) {
-          for (int i = 0; i < 30; i++) {
-            if (leds.getPixelColor(bbPixelToNodesMapV5[i][1]) == highlightedNodeColor) {
-              leds.setPixelColor(bbPixelToNodesMapV5[i][1], 0x000000);
+          //for (int i = 0; i < 30; i++) {
+            //if (leds.getPixelColor(bbPixelToNodesMapV5[i][1]) == highlightedNodeColor) {
+          leds.setPixelColor(bbPixelToNodesMapV5[highlightedNode - 70][1], 0x000000);
 
-              }
-            // leds.setPixelColor(bbPixelToNodesMapV5[i][1], 0x000000);
-            }
+          // }
+         // leds.setPixelColor(bbPixelToNodesMapV5[i][1], 0x000000);
+       //  }
           highlightedNode -= scrollAcceleration;
           if (highlightedNode < 0) {
             highlightedNode = NANO_RESET_0;
@@ -1818,20 +1913,22 @@ int selectNodeAction(int whichSelection) {
 
           Serial.print(">>>> ");
           printNodeOrName(highlightedNode, 1);
-
-          oled.clrPrintfsh(">>>> %s", definesToChar(highlightedNode, 1));
+          oled.clearPrintShow("> ", 2, 5, 8, true, false);
+          oled.clearPrintShow(definesToChar(highlightedNode, 0), 3, 8, 6, false, true);
+          // oled.clrPrintfsh(">>>> %s", definesToChar(highlightedNode, 1));
           //oled.show();
          // oled.clearPrintShow(">>>>", 3, 5, 5, true);
 
           } else if (encoderDirectionState == UP &&
                      lastScrollAccelerationDirection == NONE) {
+          leds.setPixelColor(bbPixelToNodesMapV5[highlightedNode - 70][1], 0x000000);
 
           highlightedNode += scrollAcceleration;
 
-          for (int i = 0; i < 30; i++) {
+          //for (int i = 0; i < 30; i++) {
 
-            leds.setPixelColor(bbPixelToNodesMapV5[i][1], 0x000000);
-            }
+            //leds.setPixelColor(bbPixelToNodesMapV5[i][1], 0x000000);
+          //  }
           if (highlightedNode > 59 && inNanoHeader == 0) {
 
             highlightedNode = NANO_D0;
@@ -1869,7 +1966,11 @@ int selectNodeAction(int whichSelection) {
           Serial.print(">>>> ");
           printNodeOrName(highlightedNode, 1);
 
-          oled.clrPrintfsh(">>>> %s", definesToChar(highlightedNode, 1));
+          oled.clearPrintShow("> ", 2, 5, 8, true, false);
+
+          oled.clearPrintShow(definesToChar(highlightedNode, 0), 2, 5, 6, false, true);
+
+          // oled.clrPrintfsh(">>>> %s", definesToChar(highlightedNode, 1));
 
           }
         }
@@ -1897,8 +1998,8 @@ int selectNodeAction(int whichSelection) {
             } else if (subMenuChoices[a] != -1 && subMenuChoices[a] < 60) {
               b.printRawRow(0b00000100, (subMenuChoices[a] - 1), middleColor,
                             nodeSelectionColors[a]);
-              } else { //!make this not clear things that are already lit up
-                leds.setPixelColor(bbPixelToNodesMapV5[highlightedNode - 70][1], 0x000000);
+              } else { //make this not clear things that are already lit up
+              // leds.setPixelColor(bbPixelToNodesMapV5[highlightedNode - 70][1], 0x000000);
               }
           }
         leds.setPixelColor(bbPixelToNodesMapV5[highlightedNode - 70][1],
@@ -2076,8 +2177,14 @@ float getActionFloat(int menuPosition, int rail) {
             scrollAcceleration = 0.1;
             }
           lastScrollTime = micros();
+  currentChoice += scrollAcceleration;
+          if (currentChoice < jumperlessConfig.dacs.limit_max) {
+            //currentChoice += scrollAcceleration;
+            } else {
+            currentChoice = jumperlessConfig.dacs.limit_max;
+            }
 
-          currentChoice += scrollAcceleration;
+          //currentChoice += scrollAcceleration;
 
           if (currentChoice > max) {
             currentChoice = max;
@@ -2128,7 +2235,7 @@ float getActionFloat(int menuPosition, int rail) {
                           Serial.print(floatString);
                           // oled.setTextSize(3);
                           // oled.clrPrintfsh("%s", floatString);
-                          oled.clearPrintShow(floatString, 3, 5, 5, true);
+                          oled.clearPrintShow(floatString, 2, 5, 5, true, true, true);
                           if (rail == 0) {
                             railVoltage[0] = currentChoice;
                             railVoltage[1] = currentChoice;
@@ -2169,6 +2276,7 @@ float getActionFloat(int menuPosition, int rail) {
 
           } else if (encoderDirectionState == DOWN) {
             encoderDirectionState = NONE;
+            
             if (snapToValue > 0 && snap != 0) {
               snapToValue--;
               continue;
@@ -2185,8 +2293,14 @@ float getActionFloat(int menuPosition, int rail) {
               scrollAcceleration = 0.1;
               }
             lastScrollTime = micros();
+currentChoice -= scrollAcceleration;
+            if (currentChoice > jumperlessConfig.dacs.limit_min) {
+              
+              } else {
+              currentChoice = jumperlessConfig.dacs.limit_min;
+              }
 
-            currentChoice -= scrollAcceleration;
+            
 
             if (currentChoice > max) {
               currentChoice = max;
@@ -2233,7 +2347,7 @@ float getActionFloat(int menuPosition, int rail) {
                             //oled.clearPrintShow(floatString, 1, 0, 0, true);
                             // oled.setTextSize(3);
                             // oled.clrPrintfsh("%s", floatString);
-                            oled.clearPrintShow(floatString, 3, 5, 5, true);
+                            oled.clearPrintShow(floatString, 2, 5, 5, true, true, true);
                             // Serial.println(currentChoice);
                             if (rail == 0) {
                               railVoltage[0] = currentChoice;
@@ -2647,6 +2761,31 @@ int doMenuAction(int menuPosition, int selection) {
                                     // break;
                                     }
                                   }
+                                } else if (menuLines[currentAction.previousMenuPositions[1]].indexOf("Limits") != -1) {
+                                  if (menuLines[currentAction.previousMenuPositions[2]].indexOf("Min Max") != -1) {
+                                    Serial.print("Min Max\n\r");
+                                    if (currentAction.from[0] == 0) {
+                                      jumperlessConfig.dacs.limit_min = 0.0;
+                                      } else if (currentAction.from[0] == 1) {
+                                        jumperlessConfig.dacs.limit_min = 0.0;
+                                        } else if (currentAction.from[0] == 2) {
+                                          jumperlessConfig.dacs.limit_min = -5.0;
+                                          } else if (currentAction.from[0] == 3) {
+                                            jumperlessConfig.dacs.limit_min = -8.0;
+                                            }
+
+                                    if (currentAction.from[0] == 0) {
+                                      jumperlessConfig.dacs.limit_max = 3.3;
+                                      } else if (currentAction.from[0] == 1) {
+                                        jumperlessConfig.dacs.limit_max = 5.0;
+                                        } else if (currentAction.from[0] == 2) {
+                                          jumperlessConfig.dacs.limit_max = 5.0;
+                                          } else if (currentAction.from[0] == 3) {
+                                            jumperlessConfig.dacs.limit_max = 8.0;
+                                            }
+
+                            configChanged = true;
+                                  }
                                 }
 
                           } else if (currentCategory == APPSACTION) {
@@ -2676,6 +2815,8 @@ int doMenuAction(int menuPosition, int selection) {
                             for (int i = 0; i < NUM_APPS; i++) {
                               if (menuLines[currentAction.previousMenuPositions[1]].indexOf(apps[i].name) != -1) {
                                 runApp(i);
+                                //showLEDsCore2 = -1;
+                                refreshConnections(-1, 0);
                                 break;
                                 }
                               }
@@ -2748,6 +2889,12 @@ int doMenuAction(int menuPosition, int selection) {
 
                                   } else if (currentCategory == DISPLAYACTION) {
 
+                                      
+                                       
+                                        // LEDbrightness = (brightnessOptionMap[currentAction.from[0]]);
+                                        // LEDbrightnessSpecial = (specialBrightnessOptionMap[currentAction.from[0]]);
+
+
                                     if (menuLines[currentAction.previousMenuPositions[1]].indexOf("Jumpers") !=
                                         -1) {
                                       if (currentAction.from[0] == 0) {
@@ -2756,48 +2903,21 @@ int doMenuAction(int menuPosition, int selection) {
                                         displayMode = 0;
                                         }
                                       debugFlagSet(12);
+
+
                                       } else if (menuLines[currentAction.previousMenuPositions[1]].indexOf(
                                         "Bright") != -1) {
-                                        int brightnessOptionMap[] = { 3, 4, 6, 9, 10, 14, 18, 26, 32, 42, 48 };
-                                        int specialBrightnessOptionMap[] = { 3, 4, 6, 9, 10, 14, 18, 26, 32, 42, 48 };
-                                        LEDbrightness = (brightnessOptionMap[currentAction.from[0]]);
-                                        LEDbrightnessSpecial = (specialBrightnessOptionMap[currentAction.from[0]]);
 
-                                        switch (currentAction.from[0]) {
-                                          case 0:
-                                            menuBrightnessSetting = -70;
-                                            break;
-                                          case 1:
-                                            menuBrightnessSetting = -55;
-                                            break;
-                                          case 2:
-                                            menuBrightnessSetting = -40;
-                                            break;
-                                          case 3:
-                                            menuBrightnessSetting = -25;
-                                            break;
-                                          case 4:
-                                            menuBrightnessSetting = -10;
-                                            break;
-                                          case 5:
-                                            menuBrightnessSetting = -5;
-                                            break;
-                                          case 6:
-                                            menuBrightnessSetting = 10;
-                                            break;
-                                          case 7:
-                                            menuBrightnessSetting = 30;
-                                            break;
-                                          case 8:
-                                            menuBrightnessSetting = 65;
-                                            break;
-                                          case 9:
-                                            menuBrightnessSetting = 80;
-                                            break;
-                                          default:
-                                            menuBrightnessSetting = 0;
-                                            break;
+                                        if (menuLines[currentAction.previousMenuPositions[2]].indexOf("Rails") != -1) {
+                                          //LEDbrightnessRail = currentAction.from[0] * 10 + 30;
+                                        } else if (menuLines[currentAction.previousMenuPositions[2]].indexOf("Wires") != -1) {
+                                          //LEDbrightness = currentAction.from[0] * 5 + 5;
+                                        } else if (menuLines[currentAction.previousMenuPositions[2]].indexOf("Special") != -1) {
+                                         // LEDbrightnessSpecial = currentAction.from[0] * 5 + 5;
+                                        } else if (menuLines[currentAction.previousMenuPositions[2]].indexOf("Menu") != -1) {
+                                          menuBrightnessSetting = menuBrightnessOptionMap[currentAction.from[0]];
                                           }
+                                        
 
                                         saveLEDbrightness(0);
                                         showNets();
