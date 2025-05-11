@@ -144,11 +144,11 @@ String menuLines[] = {
   "-*Both* *Top* *Bottom*",
   "-->v1",
   "Apps",
-  "-Custom App",
-  "-Calib  DACs",
-  
-  //"-Show   Image",
   "-Bounce Startup",
+  "-Calib  DACs",
+   "-Custom App",
+  //"-Show   Image",
+ 
 
 //   "-Oscill oscope",
 //   "-MIDI   Synth", 
@@ -172,6 +172,7 @@ String menuLines[] = {
 //   "-Logic  Analyzr",
 
 "-Scan",
+  "-I2C    Scan",
 
   "Slots",
   "-$Load$",

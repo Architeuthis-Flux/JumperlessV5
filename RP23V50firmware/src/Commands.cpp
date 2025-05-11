@@ -47,11 +47,11 @@ int lastSlot = netSlot;
 void refresh(int flashOrLocal, int ledShowOption, int fillUnused, int clean) {
 
   if (flashOrLocal == 1) {
-    if (ledShowOption == 0){
-      refreshBlind(1, fillUnused, clean);
-    } else {
+    //if (ledShowOption == 0){
+      //refreshBlind(1, fillUnused, clean);
+    //} else {
       refreshLocalConnections(ledShowOption, fillUnused, clean);
-    }
+    //}
   
   } else {
     refreshConnections(ledShowOption, fillUnused, clean);

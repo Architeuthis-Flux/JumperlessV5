@@ -185,7 +185,7 @@ void setup() {
 
 
   //routableBufferPower(1, 0);
-  routableBufferPower(1, 0);
+  routableBufferPower(1, 1);
 
   getNothingTouched();
   startupTimers[8] = millis();
@@ -252,7 +252,7 @@ int readInNodesArduino = 0;
 
 int restoredNodeFile = 0;
 
-const char firmwareVersion[] = "5.1.1.0"; // remember to update this
+const char firmwareVersion[] = "5.1.1.1"; // remember to update this
 
 int firstLoop = 1;
 
@@ -350,7 +350,11 @@ void loop() {
 
 menu:
 
-
+  if (lastProbePowerDAC != probePowerDAC) {
+    probePowerDACChanged = true;
+    Serial.print("probePowerDACChanged = "); Serial.println(probePowerDACChanged);
+    routableBufferPower(1, 0);
+    }
 
   Serial.print("\n\n\r\t\tMenu\n\r");
 
@@ -373,12 +377,16 @@ menu:
   Serial.print("\t' = show startup animation\n\r");
   Serial.print("\td = set debug flags\n\r");
   Serial.print("\tl = LED brightness / test\n\r");
-  Serial.print("\t\b\b`/~ = print / edit config\n\r");
+  Serial.print("\t\b\b`/~ = edit / print config\n\r");
 
   Serial.println();
 
   //Serial.print("\t$ = calibrate DACs\n\r");
-  Serial.print("\t^ = set DAC 1 voltage\n\r");
+  if (probePowerDAC == 0) {
+    Serial.print("\t^ = set DAC 1 voltage\n\r");
+  } else if (probePowerDAC == 1) {
+    Serial.print("\t^ = set DAC 0 voltage\n\r");
+  }
   Serial.print("\tv = get ADC reading\n\r");
 
   // Serial.println();
@@ -499,6 +507,8 @@ menu:
         int probeReading = justReadProbe();
 
         if (probeReading > 0) {
+          // Serial.print("probeReading = ");
+          // Serial.println(probeReading);
           highlightNets(probeReading);
           }
 
@@ -606,6 +616,15 @@ menu:
         }
 
       switch (input) {
+        case 'k': {
+          if (probePowerDAC == 0) {
+            probePowerDAC = 1;
+          } else {
+            probePowerDAC = 0;
+          }
+          break;
+          }
+
 
         case '.': {
         //initOLED();
@@ -711,11 +730,17 @@ menu:
         f1 = atof(f);
         Serial.print("f = ");
         Serial.println(f1);
-        setDac1voltage(f1);
+        if (probePowerDAC == 0) {
+          setDac0voltage(f1);
+        } else if (probePowerDAC == 1) {
+          setDac1voltage(f1);
+        }
         // playDoom();
         // doomOn = 0;
         break;
         }
+
+
         case '?': {
         Serial.print("Jumperless firmware version: ");
         Serial.println(firmwareVersion);
@@ -909,6 +934,7 @@ menu:
         // assignNetColors();
         // showNets();
         // showLEDsCore2 = 1;
+        //goto dontshowmenu;
         break;
         }
         case '{': {
@@ -922,6 +948,7 @@ menu:
         // assignNetColors();
         // showNets();
         // showLEDsCore2 = 1;
+        //goto dontshowmenu;
         break;
         }
         case 'n':

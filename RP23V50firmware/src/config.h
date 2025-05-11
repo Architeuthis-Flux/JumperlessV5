@@ -37,6 +37,7 @@ struct config {
         float dac_1 = 0.00;
         bool set_dacs_on_boot = false;
         bool set_rails_on_boot = true;
+        int probe_power_dac = 0;
         float limit_max = 8.00;
         float limit_min = -8.00;
     } dacs;
@@ -151,7 +152,7 @@ struct config {
             int gpio_scl = RP_GPIO_27;
             int sda_row = NANO_D2;
             int scl_row = NANO_D3;
-            int connect_on_boot = 1;
+            int connect_on_boot = 0;
             int lock_connection = 0;
         } top_oled;
     

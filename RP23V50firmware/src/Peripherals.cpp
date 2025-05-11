@@ -765,9 +765,18 @@ void setBotRail(float value, int save, int saveEEPROM) {
 // uint16_t lastInputCode0 = 0;
 // uint16_t lastInputCode1 = offset[1] + calib[1];
 
-void setDac0voltage(float voltage, int save, int saveEEPROM) {
+void setDac0voltage(float voltage, int save, int saveEEPROM, bool checkProbePower) {
   // int dacValue = (voltage * 4095 / 19.8) + 1641;
   int dacValue = (voltage * 4095 / dacSpread[0]) + dacZero[0];
+
+  if (checkProbePower && probePowerDAC == 0 && (voltage > 5.0 || voltage < -0.01)) {
+      Serial.println("DAC 0 connected to probe LEDs, swapping LED power to DAC 1");
+      //removeBridgeFromNodeFile(DAC0, ROUTABLE_BUFFER_IN, netSlot, 0, 0);
+      probePowerDAC = 1;
+      probePowerDACChanged = true;
+      routableBufferPower(1, 0);
+
+  }
   // Serial.print(dacSpread[0]);
   // Serial.print(" ");
   // Serial.print(dacZero[0]);
@@ -809,7 +818,7 @@ void setDac0voltage(uint16_t inputCode) {
   digitalWrite(LDAC, LOW);
   }
 
-void setDac1voltage(float voltage, int save, int saveEEPROM) {
+void setDac1voltage(float voltage, int save, int saveEEPROM, bool checkProbePower) {
 
   int dacValue = (voltage * 4095 / dacSpread[1]) + dacZero[1];
 
@@ -819,6 +828,16 @@ void setDac1voltage(float voltage, int save, int saveEEPROM) {
   if (dacValue < 0) {
     dacValue = 0;
     }
+  if (checkProbePower && probePowerDAC == 1 && (voltage > 5.0 || voltage < -0.01)) {
+
+      Serial.println("DAC 1 connected to probe LEDs, \n\rswapping LED power to DAC 0");
+      //removeBridgeFromNodeFile(DAC0, ROUTABLE_BUFFER_IN, netSlot, 0, 0);
+      probePowerDAC = 0;
+      probePowerDACChanged = true;
+      routableBufferPower(1, 0);
+  
+  }
+
   // Serial.print(voltage);
   // Serial.print(" ");
   // Serial.print(dacValue);
@@ -909,13 +928,13 @@ void initINA219(void) {
   }
 
 
-void setDacByNumber(int dac, float voltage, int save, int saveEEPROM) {
+void setDacByNumber(int dac, float voltage, int save, int saveEEPROM, bool checkProbePower) {
   switch (dac) {
     case 0:
-      setDac0voltage(voltage, save, saveEEPROM);
+      setDac0voltage(voltage, save, saveEEPROM, checkProbePower);
       break;
     case 1:
-      setDac1voltage(voltage, save, saveEEPROM);
+      setDac1voltage(voltage, save, saveEEPROM, checkProbePower);
       break;
     case 2:
       setTopRail(voltage, save, saveEEPROM);

@@ -32,6 +32,10 @@ extern volatile int measureModeActive;
 extern int minProbeReadingMap;
 extern int maxProbeReadingMap;
 
+extern int probePowerDAC;
+extern int lastProbePowerDAC;
+extern bool probePowerDACChanged;
+
 extern volatile int removeFade;
 
 extern volatile bool bufferPowerConnected;

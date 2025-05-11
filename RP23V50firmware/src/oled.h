@@ -23,12 +23,17 @@ class oled {
   int init();
   void test();
   void print(const char* s);
+  void print(const char* s, int position);
   void print(int i);
   void print(const char c);
   void print(const char c, int position);
+  void println(const char* s);
+  void println(const char c);
+
   void displayBitmap(int x, int y, const unsigned char* bitmap, int width, int height);
   void showJogo32h();
   void clear();
+  void fullClear();
   void setCursor(int x, int y);
   void setTextColor(uint32_t color);
   void setTextSize(uint8_t size);
@@ -43,7 +48,7 @@ class oled {
   void disconnect(void);
   void printf(const char* format, ...);
   void clrPrintfsh(const char* format, ...);
-  void clearPrintShow(const char* c, int size = 2, int x_pos = 4, int y_pos = 3, bool clear = true, bool show = true, bool center = false);
+  int clearPrintShow(const char* c, int size = 2, int x_pos = 4, int y_pos = 3, bool clear = true, bool show = true, bool center = false);
   void clearPrintShow(String s, int textSize = 2, int x_pos = 4, int y_pos = 3, bool clear = true, bool show = true, bool center = false);
   bool checkConnection(void);
 

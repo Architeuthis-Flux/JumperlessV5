@@ -70,9 +70,9 @@ void dacSine(int resolution = 9);
 
 void dacTriangle(void);
 
-void setDacByNumber(int dac, float voltage = 0.0, int save = 1, int saveEEPROM = 0);
-void setDac0voltage(float value = 0.0, int save = 1, int saveEEPROM = 0);
-void setDac1voltage(float value = 0.0, int save = 1, int saveEEPROM = 0);
+void setDacByNumber(int dac, float voltage = 0.0, int save = 1, int saveEEPROM = 0, bool checkProbePower = false);
+void setDac0voltage(float value = 0.0, int save = 1, int saveEEPROM = 0, bool checkProbePower = false);
+void setDac1voltage(float value = 0.0, int save = 1, int saveEEPROM = 0, bool checkProbePower = false);
 void setDac0voltage(uint16_t value);
 void setDac1voltage(uint16_t value);
 

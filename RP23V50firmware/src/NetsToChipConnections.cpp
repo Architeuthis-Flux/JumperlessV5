@@ -10,6 +10,7 @@
 #include "MatrixState.h"
 #include "NetManager.h"
 #include "Peripherals.h"
+#include "Probing.h"
 // don't try to understand this, it's still a mess
 bool debugNTCC5 = false;
 int startEndChip[2] = { -1, -1 };
@@ -296,11 +297,17 @@ void sortPathsByNet(
         path[pathIndex].node2 = net[j].bridges[k][1];
         path[pathIndex].duplicate = 0;
 
+        if (probePowerDAC == 0) {
         if ((path[pathIndex].node1 == ROUTABLE_BUFFER_IN && path[pathIndex].node2 == DAC0) ||
             (path[pathIndex].node1 == DAC0 && path[pathIndex].node2 == ROUTABLE_BUFFER_IN)) {
           routableBufferPowerFound = pathIndex;
           }
-
+        } else if (probePowerDAC == 1) {
+        if ((path[pathIndex].node1 == ROUTABLE_BUFFER_IN && path[pathIndex].node2 == DAC1) ||
+            (path[pathIndex].node1 == DAC1 && path[pathIndex].node2 == ROUTABLE_BUFFER_IN)) {
+          routableBufferPowerFound = pathIndex;
+          }
+        }
         if (path[pathIndex].net <= 5) {
           lastPowerPath = pathIndex;
           }
@@ -719,14 +726,21 @@ void fillUnusedPaths(int duplicatePathsOverride, int duplicatePathsPower,
           }
 
         //! make it add the the priority so the connections are mixed
-
+        if (probePowerDAC == 0) {
         if (newBridges[i][j][0] == ROUTABLE_BUFFER_IN &&
                 newBridges[i][j][1] == DAC0 ||
             newBridges[i][j][0] == DAC0 &&
                 newBridges[i][j][1] == ROUTABLE_BUFFER_IN) {
           continue;
           }
-
+        } else if (probePowerDAC == 1) {
+        if (newBridges[i][j][0] == ROUTABLE_BUFFER_IN &&
+                newBridges[i][j][1] == DAC1 ||
+            newBridges[i][j][0] == DAC1 &&
+                newBridges[i][j][1] == ROUTABLE_BUFFER_IN) {
+          continue;
+          }
+        }
         if (newBridges[i][j][0] != 0 || newBridges[i][j][1] != 0) {
           path[numberOfPaths].net = i;
           path[numberOfPaths].node1 = newBridges[i][j][0];

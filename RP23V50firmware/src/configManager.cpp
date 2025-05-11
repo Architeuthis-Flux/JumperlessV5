@@ -155,6 +155,10 @@ void resetConfigToDefaults(int clearCalibration, int clearHardware) {
     float saved_dac_1_spread = jumperlessConfig.calibration.dac_1_spread;
     int saved_probe_max = jumperlessConfig.calibration.probe_max;
     int saved_probe_min = jumperlessConfig.calibration.probe_min;
+    // Serial.print("saved_probe_min = ");
+    // Serial.println(saved_probe_min);
+    // Serial.print("saved_probe_max = ");
+    // Serial.println(saved_probe_max);
     
     
     // Initialize with default values from config.h
@@ -167,7 +171,15 @@ void resetConfigToDefaults(int clearCalibration, int clearHardware) {
     jumperlessConfig.hardware.probe_revision = saved_probe_revision;
     }
     // Restore calibration values
+
+        if (saved_probe_min == 0 || saved_probe_max == 0) {
+        jumperlessConfig.calibration.probe_min = 15;
+        jumperlessConfig.calibration.probe_max = 4060;
+    } 
+
+
     if (clearCalibration == 0) {
+
 
     jumperlessConfig.calibration.top_rail_zero = saved_top_rail_zero;
     jumperlessConfig.calibration.bottom_rail_zero = saved_bottom_rail_zero;
@@ -241,6 +253,7 @@ void updateConfigFromFile(const char* filename) {
             else if (strcmp(key, "dac_1") == 0) jumperlessConfig.dacs.dac_1 = parseFloat(value);
             else if (strcmp(key, "set_dacs_on_boot") == 0) jumperlessConfig.dacs.set_dacs_on_boot = parseBool(value);
             else if (strcmp(key, "set_rails_on_boot") == 0) jumperlessConfig.dacs.set_rails_on_boot = parseBool(value);
+            else if (strcmp(key, "probe_power_dac") == 0) jumperlessConfig.dacs.probe_power_dac = parseInt(value);
             else if (strcmp(key, "limit_max") == 0) jumperlessConfig.dacs.limit_max = parseFloat(value);
             else if (strcmp(key, "limit_min") == 0) jumperlessConfig.dacs.limit_min = parseFloat(value);
         } else if (strcmp(section, "debug") == 0) {
@@ -345,6 +358,7 @@ void saveConfigToFile(const char* filename) {
     file.print("dac_1 = "); file.print(jumperlessConfig.dacs.dac_1); file.println(";");
     file.print("set_dacs_on_boot = "); file.print(jumperlessConfig.dacs.set_dacs_on_boot ? 1:0); file.println(";");
     file.print("set_rails_on_boot = "); file.print(jumperlessConfig.dacs.set_rails_on_boot ? 1:0); file.println(";");
+    file.print("probe_power_dac = "); file.print(jumperlessConfig.dacs.probe_power_dac == 0 ? 0 : 1); file.println(";");
     file.print("limit_max = "); file.print(jumperlessConfig.dacs.limit_max); file.println(";");
     file.print("limit_min = "); file.print(jumperlessConfig.dacs.limit_min); file.println(";");
     file.println();
@@ -452,6 +466,11 @@ void saveConfigToFile(const char* filename) {
 
 void saveConfig(void) {
     int hwRevision = jumperlessConfig.hardware.revision;
+
+    if (jumperlessConfig.calibration.probe_min == 0 || jumperlessConfig.calibration.probe_max == 0) {
+        jumperlessConfig.calibration.probe_min = 15;
+        jumperlessConfig.calibration.probe_max = 4060;
+    }
     saveConfigToFile("/config.txt");
     
     readSettingsFromConfig();
@@ -467,6 +486,12 @@ void saveConfig(void) {
 
 void loadConfig(void) {
     updateConfigFromFile("/config.txt");
+
+    if (jumperlessConfig.calibration.probe_min == 0 || jumperlessConfig.calibration.probe_max == 0) {
+        jumperlessConfig.calibration.probe_min = 15;
+        jumperlessConfig.calibration.probe_max = 4060;
+    }
+    
     readSettingsFromConfig();
     initChipStatus();
 
@@ -496,10 +521,13 @@ void printConfigSectionToSerial(int section, bool showNames, bool pasteable) {
     else {
         showNames = 0;
     }
+
+    if (pasteable == true) {
+        Serial.println("\n\rcopy / edit / paste any of these lines \n\rinto the main menu to change a setting\n\r");
+    }
     if (section == -1) {
         Serial.println("Jumperless Config:\n\r");
     }
-
     // Print hardware version section
     if (section == -1 || section == 0) {
         Serial.print("\n`[hardware] ");
@@ -526,6 +554,8 @@ void printConfigSectionToSerial(int section, bool showNames, bool pasteable) {
         Serial.print("set_dacs_on_boot = "); Serial.print(getStringFromTable(jumperlessConfig.dacs.set_dacs_on_boot, boolTable)); Serial.println(";");
         if (pasteable == true) Serial.print("`[dacs] ");
         Serial.print("set_rails_on_boot = "); Serial.print(getStringFromTable(jumperlessConfig.dacs.set_rails_on_boot, boolTable)); Serial.println(";");
+        if (pasteable == true) Serial.print("`[dacs] ");
+        Serial.print("probe_power_dac = "); Serial.print(jumperlessConfig.dacs.probe_power_dac); Serial.println(";");
         if (pasteable == true) Serial.print("`[dacs] ");
         Serial.print("limit_max = "); Serial.print(jumperlessConfig.dacs.limit_max); Serial.println(";");
         if (pasteable == true) Serial.print("`[dacs] ");
@@ -562,7 +592,7 @@ void printConfigSectionToSerial(int section, bool showNames, bool pasteable) {
 
     // Print calibration section
     if (section == -1 || section == 4) {
-        Serial.print("\n[calibration] ");
+        Serial.print("\n`[calibration] ");
         if (pasteable == false) Serial.println();
         Serial.print("top_rail_zero = "); Serial.print(jumperlessConfig.calibration.top_rail_zero); Serial.println(";");
         if (pasteable == true) Serial.print("`[calibration] ");
@@ -989,7 +1019,25 @@ void readConfigFromSerial() {
                     memset(line, 0, sizeof(line));
                     lineIndex = 0;
                     continue;
-                } 
+                } else if (strcmp(line, "clear_calibration") == 0 || strcmp(line, "clear_cal") == 0) {
+                    resetConfigToDefaults(1, 0);
+                    Serial.println("Done. Calibration has been cleared");
+                    memset(line, 0, sizeof(line));
+                    lineIndex = 0;
+                    continue;
+                } else if (strcmp(line, "clear_hardware") == 0 || strcmp(line, "clear_hw") == 0) {
+                    resetConfigToDefaults(0, 1);
+                    Serial.println("Done. Hardware has been cleared");
+                    memset(line, 0, sizeof(line));
+                    lineIndex = 0;
+                    continue;
+                } else if (strcmp(line, "clear_all") == 0) {
+                    resetConfigToDefaults(1, 1);
+                    Serial.println("Done. All settings have been cleared");
+                    memset(line, 0, sizeof(line));
+                    lineIndex = 0;
+                    continue;
+                }
             }
             // ... existing code ...
                         // Process line when newline or semicolon is received
@@ -1099,6 +1147,7 @@ void updateConfigValue(const char* section, const char* key, const char* value) 
         else if (strcmp(key, "dac_1") == 0) sprintf(oldValue, "%.2f", jumperlessConfig.dacs.dac_1);
         else if (strcmp(key, "set_dacs_on_boot") == 0) sprintf(oldValue, "%d", jumperlessConfig.dacs.set_dacs_on_boot);
         else if (strcmp(key, "set_rails_on_boot") == 0) sprintf(oldValue, "%d", jumperlessConfig.dacs.set_rails_on_boot);
+        else if (strcmp(key, "probe_power_dac") == 0) sprintf(oldValue, "%d", jumperlessConfig.dacs.probe_power_dac);
         else if (strcmp(key, "limit_max") == 0) sprintf(oldValue, "%.2f", jumperlessConfig.dacs.limit_max);
         else if (strcmp(key, "limit_min") == 0) sprintf(oldValue, "%.2f", jumperlessConfig.dacs.limit_min);
     }
@@ -1204,6 +1253,7 @@ void updateConfigValue(const char* section, const char* key, const char* value) 
         else if (strcmp(key, "dac_1") == 0) jumperlessConfig.dacs.dac_1 = parseFloat(value);
         else if (strcmp(key, "set_dacs_on_boot") == 0) jumperlessConfig.dacs.set_dacs_on_boot = parseBool(value);
         else if (strcmp(key, "set_rails_on_boot") == 0) jumperlessConfig.dacs.set_rails_on_boot = parseBool(value);
+        else if (strcmp(key, "probe_power_dac") == 0) jumperlessConfig.dacs.probe_power_dac = parseInt(value);
         else if (strcmp(key, "limit_max") == 0) jumperlessConfig.dacs.limit_max = parseFloat(value);
         else if (strcmp(key, "limit_min") == 0) jumperlessConfig.dacs.limit_min = parseFloat(value);
     }

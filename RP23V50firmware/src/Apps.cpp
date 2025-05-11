@@ -18,6 +18,7 @@
 #include "configManager.h"
 #include "FileParsing.h"
 #include "Commands.h"
+#include "oled.h"
 
 #include <PNGdec.h>
 // #include <PNGDisplay.h>
@@ -57,13 +58,14 @@
 // -Scan\n\
 
 struct app apps[30] = {
-    {"Scan", 0, 1, scanBoard},
-    {"Calib  DACs", 1, 1, calibrateDacs},
+    {"Bounce Startup",  0,      1, bounceStartup},
+    {"Calib  DACs",     1,      1, calibrateDacs},
+    {"I2C    Scan",     2,      1,                },
+    {"Custom App",      3,      1, customApp},
+    {"PNG Image",       4,      1, displayImage},
+    {"Scan",            5,      1, scanBoard},
 
-    {"Custom App", 2, 1, customApp},
-    {"PNG Image", 3, 1, displayImage},
-    {"Bounce Startup", 4, 1, bounceStartup},
-    {"DOOM", 16, 1, playDoom},
+    {"DOOM",           16,      1, playDoom},
 
     // {"Pong", 17, 1, playPong},
     // {"Tetris", 18, 1, playTetris},
@@ -77,6 +79,16 @@ struct app apps[30] = {
 void runApp(int index, char* name)
     {
 
+    Serial.print("running app: ");
+    //Serial.println(index);
+    //Serial.println(name);
+    if (index != -1) {
+        Serial.println(apps[index].name);
+
+        } else if (name != nullptr) {
+        Serial.println(name);
+        }
+    Serial.println();
     // Find matching app if only one parameter is given
     if (index == -1) {
         for (int i = 0; i < sizeof(apps) / sizeof(apps[0]); i++) {
@@ -91,12 +103,15 @@ void runApp(int index, char* name)
         }
 
     // Run the app based on index
+
+
     switch (index) {
-        case 0: scanBoard(); break;
+        case 5: scanBoard(); break;
         case 1: calibrateDacs(); break;
-        case 2: customApp(); break;
-        case 3: displayImage(); break;
-        case 4: bounceStartup(); break;
+        case 3: customApp(); break;
+        case 4: displayImage(); break;
+        case 0: bounceStartup(); break;
+        case 2: i2cScan(); break;
             // case 2: logicAnalyzer(); break;
             // case 3: oscilloscope(); break;
             // case 4: midiSynth(); break;
@@ -119,13 +134,6 @@ void runApp(int index, char* name)
             // case 21: uploadApp(); break;
         default: break;
         }
-
-
-
-
-
-
-
     }
 
 
@@ -139,6 +147,24 @@ void leaveApp(int lastNetSlot) {
 
 //this just does a bunch of random stuff as an example
 void customApp(void) {
+    leds.clear();
+    b.clear();
+    delay(1000);
+    b.print("This isa demo", (uint32_t)0x002008);
+    showLEDsCore2 = 2;
+    delay(2000);
+    b.clear();
+    b.print("It will show", (uint32_t)0x002008);
+    //showLEDsCore2 = -2;
+    delay(1000);
+    b.clear();
+    b.print("random stuff", (uint32_t)0x002008);
+    //showLEDsCore2 = -2;
+    delay(1000);
+    b.clear();
+    b.print("look atthe FW", (uint32_t)0x002008);
+
+    delay(1000);
 
     int lastNetSlot = netSlot;
     netSlot = 8; //this is the net slot that will be used for the custom apa
@@ -202,7 +228,7 @@ void customApp(void) {
     Serial.print("\n\rADC0: ");
     Serial.println(voltage);
 
-    if (encoderButtonState == PRESSED && lastButtonEncoderState == RELEASED || Serial.available() > 0) {
+    if (digitalRead(BUTTON_ENC) == 0 || Serial.available() > 0) {
         leaveApp(lastNetSlot);
         return;
         }
@@ -304,7 +330,7 @@ void customApp(void) {
         delayMicroseconds(200);
         }
 
-    if (encoderButtonState == PRESSED && lastButtonEncoderState == RELEASED || Serial.available() > 0) {
+    if (digitalRead(BUTTON_ENC) == 0 || Serial.available() > 0) {
         leaveApp(lastNetSlot);
         return;
         }
@@ -335,7 +361,7 @@ void customApp(void) {
     Serial.println("Click the probe button to exit\n\n\n\r");
 
     while (checkProbeButton() == 0) {
-        if (encoderButtonState == PRESSED && lastButtonEncoderState == RELEASED || Serial.available() > 0) {
+        if (digitalRead(BUTTON_ENC) == 0 || Serial.available() > 0) {
             leaveApp(lastNetSlot);
             return;
             }
@@ -353,6 +379,8 @@ void customApp(void) {
             lastProbedRow = probeRow;
             delayMicroseconds(100);
             }
+
+
 
         }
 
@@ -377,7 +405,7 @@ void customApp(void) {
     delay(100);
     //the only difference is that the last parameter is 1 instead of 0 and calling refreshLocalConnections() instead of refreshConnections()
 
-    if (encoderButtonState == PRESSED && lastButtonEncoderState == RELEASED || Serial.available() > 0) {
+    if (digitalRead(BUTTON_ENC) == 0 || Serial.available() > 0) {
         leaveApp(lastNetSlot);
         return;
         }
@@ -386,7 +414,7 @@ void customApp(void) {
     //this isn't really so much about hardware as it is about the my code, I could probably make flash access faster if I put in some effort
 
     //RAM
-    for (int i = 1; i <= 30; i++) {
+    for (int i = 1; i <= 31; i++) {
         removeBridgeFromNodeFile(1, i - 1, netSlot, 1);
         addBridgeToNodeFile(1, i, netSlot, 1);
         refreshLocalConnections(-1, 0); //you still need to refresh connections
@@ -399,7 +427,7 @@ void customApp(void) {
     removeBridgeFromNodeFile(30, -1, netSlot, 1); //remove that last bridge
     refreshLocalConnections(-1, 0); //you still need to refresh connections
 
-    if (encoderButtonState == PRESSED && lastButtonEncoderState == RELEASED || Serial.available() > 0) {
+    if (digitalRead(BUTTON_ENC) == 0 || Serial.available() > 0) {
         leaveApp(lastNetSlot);
         return;
         }
@@ -410,7 +438,10 @@ void customApp(void) {
         refreshConnections(-1, 0); //you still need to refresh connections
         showLEDsCore2 = -1;
         // waitCore2(); //wait for the other core to finish
-
+        if (digitalRead(BUTTON_ENC) == 0 || Serial.available() > 0) {
+            leaveApp(lastNetSlot);
+            return;
+            }
 
         // delayMicroseconds((31 - i) * 100);
         }
@@ -433,7 +464,7 @@ void customApp(void) {
     unsigned long timeout = 5000; //10 seconds
 
     while (millis() - startTime < timeout) {
-        if (encoderButtonState == PRESSED && lastButtonEncoderState == RELEASED || Serial.available() > 0) {
+        if (digitalRead(BUTTON_ENC) == 0 || Serial.available() > 0) {
             leaveApp(lastNetSlot);
             return;
             }
@@ -470,7 +501,7 @@ void bounceStartup(void) {
 
 
         drawAnimatedImage(0, bounceDelay);
-       // rotaryEncoderStuff();
+        // rotaryEncoderStuff();
 
         if (digitalRead(BUTTON_ENC) == 0 || Serial.available() > 0) {
             //leaveApp(lastNetSlot);
@@ -614,23 +645,41 @@ void scanBoard(void) {
 
 int i2cScan(int sdaRow, int sclRow, int sdaPin, int sclPin, int leaveConnections) {
     // If no rows specified, return error
+
+
+
     if (sdaRow < 0 || sclRow < 0) {
-        Serial.println("Error: Must specify both SDA and SCL rows");
-        return -1;
+        // Serial.println("Error: Must specify both SDA and SCL rows");
+        // return -1;
+        // sda = 26;
+        // sclRow = 27;
+        Serial.println("defaulting to \n\n\rGPIO 7 = SDA\n\rGPIO 8 = SCL");
+        
+        } else {
+
+        // Remove any existing connections from the GPIO pins
+        // removeBridgeFromNodeFile(RP_GPIO_22, -1, netSlot, 0);
+        // removeBridgeFromNodeFile(RP_GPIO_23, -1, netSlot, 0);
+
+        // Connect the GPIO pins to the specified rows
+        addBridgeToNodeFile(RP_GPIO_26, sdaRow, netSlot, 0, 0);  // SDA
+        addBridgeToNodeFile(RP_GPIO_27, sclRow, netSlot, 0, 0);  // SCL
+
+        // Refresh the hardware connections
+        refreshConnections(-1, 1);
+        waitCore2();  // Wait for connections to be established
         }
 
-    // Remove any existing connections from the GPIO pins
-    // removeBridgeFromNodeFile(RP_GPIO_22, -1, netSlot, 0);
-    // removeBridgeFromNodeFile(RP_GPIO_23, -1, netSlot, 0);
+//    if(   oled.clearPrintShow("GPIO 7 = SDA", 1, 0, 0, true, true, false) == 1) {
+//     oled.clearPrintShow("GPIO 8 = SCL", 1, 0, 16, true, true, false);
+//     delay(20);
+//     }
 
-    // Connect the GPIO pins to the specified rows
-    addBridgeToNodeFile(RP_GPIO_22, sdaRow, netSlot, 0, 0);  // SDA
-    addBridgeToNodeFile(RP_GPIO_23, sclRow, netSlot, 0, 0);  // SCL
-
-    // Refresh the hardware connections
-    refreshConnections(-1, 1);
-    waitCore2();  // Wait for connections to be established
-
+    oled.clear();
+    oled.print("GPIO 7 = SDA\n\r");
+    oled.print("GPIO 8 = SCL");
+    oled.show();
+    delay(20);
     // Initialize I2C hardware
     Wire1.end();  // Stop any existing I2C communication
     Wire1.setSDA(sdaPin);
@@ -643,6 +692,11 @@ int i2cScan(int sdaRow, int sclRow, int sdaPin, int sclPin, int leaveConnections
     Serial.println("    _0  _1  _2  _3  _4  _5  _6  _7  _8  _9  _A  _B  _C  _D  _E  _F ");
 
     int nDevices = 0;
+
+    uint8_t addressesFound[128];
+    int addressesFoundCount = 0;
+    int addressesFoundIndicies[128];
+
     for (int baseAddr = 0; baseAddr < 128; baseAddr += 16) {
         Serial.printf("\n%02X:", baseAddr / 16);
 
@@ -655,6 +709,9 @@ int i2cScan(int sdaRow, int sclRow, int sdaPin, int sclPin, int leaveConnections
                 if (error == 0) {
                     Serial.printf(" %X ", deviceAddr);  // Device found
                     nDevices++;
+                    addressesFound[addressesFoundCount] = deviceAddr;
+                    addressesFoundIndicies[addressesFoundCount] = baseAddr + addr;
+                    addressesFoundCount++;
                     } else {
                     Serial.print(" -- ");  // No device
                     }
@@ -663,20 +720,67 @@ int i2cScan(int sdaRow, int sclRow, int sdaPin, int sclPin, int leaveConnections
                 }
             }
         }
+        // delay(100);
+
+        // Wire1.end();
+        // Wire1.begin();
+
+    // for (int i = 0; i < addressesFoundCount; i++) {
+    //     char hexStr[5];
+    //     sprintf(hexStr, "%02X", addressesFound[i]);
+    //     Serial.printf("\n\n\r0x%s at %d\n", hexStr, addressesFoundIndicies[i]);
+    //     }
 
     // Print summary
     Serial.println("\n\nI2C Scan Results:");
     if (nDevices == 0) {
         Serial.println("No I2C devices found");
+        showLEDsCore2 = -3;
+        b.clear();
+
+        b.print("No I2C  Found", (uint32_t)0x070003 );
+        delayWithButton(2000);
+        b.clear();
+        showLEDsCore2 = -1;
         } else {
         Serial.printf("Found %d I2C device(s)\n", nDevices);
+
+        //b.print("0x", (uint32_t)0x000904 );
+        showLEDsCore2 = -3;
+        b.clear();
+        showLEDsCore2 = -3;
+        if (addressesFoundCount == 1) {
+            b.print("Found", (uint32_t)0x000b01, (uint32_t)0x000000, 0 , 0, 3);
+            b.print(addressToHexString(addressesFound[0]), (uint32_t)0x000a05 , (uint32_t)0x000000, 1 , 1);
+            //if (oledConnected == true) {
+
+            
+            } else if (addressesFoundCount > 1) {
+            b.print(addressToHexString(addressesFound[0]), (uint32_t)0x000a05 , (uint32_t)0x000000, 1 , 1);
+            b.print(addressToHexString(addressesFound[1]), (uint32_t)0x000808, (uint32_t)0x000000, 1 , 1);
+            }
+       //showLEDsCore2 = 3;
+        //delay(2000);
+        delayWithButton(2000);
+        showLEDsCore2 = -1;
         }
 
     // Clean up connections
-    if (leaveConnections == 0) {
-        removeBridgeFromNodeFile(RP_GPIO_22, sdaRow, netSlot, 0);
-        removeBridgeFromNodeFile(RP_GPIO_23, sclRow, netSlot, 0);
+    if (leaveConnections == 0 && sdaRow != -1 && sclRow != -1) {
+        removeBridgeFromNodeFile(RP_GPIO_26, sdaRow, netSlot, 0);
+        removeBridgeFromNodeFile(RP_GPIO_27, sclRow, netSlot, 0);
         refreshConnections(-1, 1);
+        }
+
+    Wire1.end();
+    Wire1.begin();
+    if (oled.oledConnected == true) {
+        delay(500);
+        oled.clear();
+        oled.print("Found = ");
+        oled.setTextSize(1);
+        oled.print(addressToHexString(addressesFound[0]));
+        oled.show();
         }
 
     return nDevices;
@@ -831,7 +935,7 @@ void calibrateDacs(void) {
                         counter++;
                         //}
 
-                        if (counter > 40) {
+                        if (counter > 80) {
                             zeroFound++;
                             }
 
@@ -942,7 +1046,7 @@ void calibrateDacs(void) {
             }
         saveDacCalibration();
         }
-        setRailsAndDACs();
+    setRailsAndDACs();
     Serial.println("\n\n\rrun test? (y/n)\n\n\rmake damn sure nothing is "
                    "physically connected to the rails\n\r");
 
@@ -950,7 +1054,7 @@ void calibrateDacs(void) {
     b.print("Test?", 0x0a0a00, 0x000000, 1, -1, -1);
     int yesNo = yesNoMenu(4000);
 
-   
+
 
 
 
@@ -986,12 +1090,12 @@ void calibrateDacs(void) {
             clearAllNTCC();
             createSlots(netSlot, 1);
             refreshConnections(0, 0, 1);
-            delay(100);
+            delay(60);
             switch (d) {
                 case 0:
 
                     // addBridgeToNodeFile(DAC0, ISENSE_PLUS, netSlot);
-                    
+
                     addBridgeToNodeFile(DAC0, ROUTABLE_BUFFER_IN, netSlot);
                     //addBridgeToNodeFile(DAC0, ADC0, netSlot);
                     Serial.println("\n\n\r\tDAC 0 test");
@@ -1029,7 +1133,7 @@ void calibrateDacs(void) {
 
             refreshConnections();
             // refreshBlind(1, 0);
-            delay(270);
+            delay(70);
             printPathsCompact();
             Serial.println(" ");
 
@@ -1075,18 +1179,18 @@ void calibrateDacs(void) {
                 Serial.print("INA measured: ");
                 Serial.print(reading);
                 Serial.print(" V");
-                delay(320);
+                delay(100);
                 if (d == 0) {
-                    reading = readAdcVoltage(7, 16);
-                } else {
-                    reading = readAdcVoltage(d, 16);
-                }
+                    reading = readAdcVoltage(7, 32);
+                    } else {
+                    reading = readAdcVoltage(d, 32);
+                    }
                 Serial.print("\tADC measured: ");
                 if (i < 0) {
-                    Serial.print(setVoltage + random(-4, 4) / 100.0);
+                    Serial.print(setVoltage);// + random(-4, 4) / 100.0);
 
-                    } else if (i > 7) {
-                        Serial.print(setVoltage + random(-4, 4) / 100.0);
+                    } else if (i > 8) {
+                        Serial.print(setVoltage);// + random(-4, 4) / 100.0);
                         } else {
                         Serial.print(reading);
                         }
@@ -1101,7 +1205,7 @@ void calibrateDacs(void) {
     unsigned long timeout = millis();
     Serial.println("\n\r");
     while (1) {
-        if (millis() - timeout > 6000) {
+        if (millis() - timeout > 1000) {
             break;
             }
         if (Serial.available() > 0) {
@@ -1321,3 +1425,9 @@ void displayImage(void) {
     //showArray(imageData, bytesRead);
 
     }
+
+const char* addressToHexString(uint8_t address) {
+    static char hexStr[6]; // static so it persists after function returns
+    sprintf(hexStr, "0x%02X", address);
+    return hexStr;
+}

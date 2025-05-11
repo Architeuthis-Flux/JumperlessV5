@@ -944,12 +944,14 @@ void readSettingsFromConfig() {
   dacZero[2] = jumperlessConfig.calibration.top_rail_zero;
   dacZero[3] = jumperlessConfig.calibration.bottom_rail_zero;
 
+
   // DAC voltages
   railVoltage[0] = jumperlessConfig.dacs.top_rail;
   railVoltage[1] = jumperlessConfig.dacs.bottom_rail;
   dacOutput[0] = jumperlessConfig.dacs.dac_0;
   dacOutput[1] = jumperlessConfig.dacs.dac_1;
-
+  probePowerDAC = jumperlessConfig.dacs.probe_power_dac;
+  
   //GPIO settings
   for (int i = 0; i < 8; i++) {  // Changed from 8 to 10 to include UART pins
 

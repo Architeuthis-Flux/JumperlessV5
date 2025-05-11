@@ -75,6 +75,7 @@ int oled::init() {
     display.drawBitmap(0, 0, jogo32h, 128, 32, SSD1306_WHITE);
     display.display();
     Wire1.setTimeout(25);
+    charPos = 0;
     // display.drawBitmap(0, 0, jogo32h, 128, 32, SSD1306_WHITE);
     // display.display();
     // display.clearDisplay();
@@ -140,9 +141,9 @@ bool oled::checkConnection(void) {
     return true;
 }
 
-void oled::clearPrintShow(const char* c, int size, int x_pos, int y_pos, bool clear, bool show, bool center) {
+int oled::clearPrintShow(const char* c, int size, int x_pos, int y_pos, bool clear, bool show, bool center) {
     if (oledConnected == false) {
-        return;
+        return 0;
     }
 
 
@@ -160,13 +161,33 @@ void oled::clearPrintShow(const char* c, int size, int x_pos, int y_pos, bool cl
     // Check if text fits, else look for capital letter to split
     bool split = false;
     int splitIdx = -1;
+
+        if (textPixelWidth > displayWidth && strLen > 2) {
+        // Look for a capital letter in the middle (not first or last char)
+        for (int i = 1; i < strLen - 1; ++i) {
+            
+            if (c[i] == ' ' || c[i] == '\0' || c[i] == '\n' || c[i] == '\r' || c[i] == '\t' ) { //first look for a space or other non-letter character
+        
+                    split = true;
+                    splitIdx = i;
+                    break;
+                }
+            }
+        }
+
+        if (splitIdx == -1) {
+
+
     if (textPixelWidth > displayWidth && strLen > 2) {
         // Look for a capital letter in the middle (not first or last char)
         for (int i = 1; i < strLen - 1; ++i) {
+
             if (c[i] >= 'A' && c[i] <= 'Z') {
-                split = true;
-                splitIdx = i;
-                break;
+        
+                    split = true;
+                    splitIdx = i;
+                    break;
+                }
             }
         }
     }
@@ -200,13 +221,13 @@ void oled::clearPrintShow(const char* c, int size, int x_pos, int y_pos, bool cl
         }
         char shift2[40] = "                                     ";
         shift2[nudge2] = '\0';
-        display.setCursor(x_pos, y_start + fontHeight + fontHeight - 1); // Next line, top align
+        display.setCursor(x_pos, y_start + fontHeight + fontHeight ); // Next line, top align
         display.print(String(shift2) + second);
         if (show) {
             display.display();
         }
         charPos += strLen;
-        return;
+        return 1;
     }
 
     // Reduce text size if needed to fit
@@ -234,6 +255,7 @@ void oled::clearPrintShow(const char* c, int size, int x_pos, int y_pos, bool cl
     if (show) {
         display.display();
     }
+    return 1;
 }
 
 void oled::clearPrintShow(String s, int textSize, int x_pos, int y_pos, bool clear, bool show, bool center) {
@@ -273,6 +295,14 @@ void oled::print(const char* s) {
    // display.display();
 }
 
+void oled::print(const char* s, int position) {
+    if (oledConnected == false) {
+        return;
+    }
+    display.setCursor(position, display.getCursorY());
+    display.print(s);
+}
+
 void oled::print(int i) {
     if (oledConnected == false) {
         return;
@@ -301,6 +331,24 @@ void oled::print(const char c, int position) {
    // display.display();
 }
 
+void oled::println(const char* s) {
+    if (oledConnected == false) {
+        return;
+    }
+    print(s);
+    print("\n");
+}
+
+void oled::println(const char c) {
+    if (oledConnected == false) {
+        return;
+    }
+    print(c);
+    print("\n");
+}
+
+
+
 void oled::displayBitmap(int x, int y, const unsigned char* bitmap, int width, int height) {
     if (oledConnected == false) {
         return;
@@ -319,12 +367,29 @@ void oled::showJogo32h() {
 
 void oled::clear() {
     if (oledConnected == false) {
+        charPos = 0;
         return;
     }
+    charPos = 0;
     display.clearDisplay();
+    display.setCursor(0, getFontHeight(currentFont));
+
    // display.display();
 }
 
+void oled::fullClear() {
+    if (oledConnected == false) {
+        return;
+    }
+    charPos = 0;
+
+    display.~Adafruit_SSD1306();
+    delay(10);
+    display.begin(SSD1306_SWITCHCAPVCC, address, false, false);
+    delay(10);
+    display.clearDisplay();
+    display.display();
+}
 void oled::setCursor(int x, int y) {
     if (oledConnected == false) {
         return;
