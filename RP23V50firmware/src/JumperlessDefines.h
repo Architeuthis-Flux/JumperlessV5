@@ -279,13 +279,22 @@ extern int probeRev;
 
 #define NANO_VIN 69
 
-#define LOGO_PAD_TOP 128
-#define LOGO_PAD_BOTTOM 129
-#define GPIO_PAD 130
-#define DAC_PAD 131
-#define ADC_PAD 132
-#define BUILDING_PAD_TOP 133
-#define BUILDING_PAD_BOTTOM 134
+#define LOGO_PAD_TOP 142
+#define LOGO_PAD_BOTTOM 143
+#define GPIO_PAD 144
+#define DAC_PAD 145
+#define ADC_PAD 146
+#define BUILDING_PAD_TOP 147
+#define BUILDING_PAD_BOTTOM 148
+
+// #define LOGO_PAD_TOP 122
+// #define LOGO_PAD_BOTTOM 129
+// #define GPIO_PAD 130
+// #define DAC_PAD 131
+// #define ADC_PAD 132
+// #define BUILDING_PAD_TOP 133
+// #define BUILDING_PAD_BOTTOM 134
+
 
 #define GND 100
 #define TOP_RAIL 101
@@ -337,26 +346,26 @@ extern int probeRev;
 #define GPIO_TX_PIN 0
 #define GPIO_RX_PIN 1
 
-#define RP_GPIO_20 135
-#define RP_GPIO_21 136
-#define RP_GPIO_22 137
-#define RP_GPIO_23 138
+#define RP_GPIO_20 131
+#define RP_GPIO_21 132
+#define RP_GPIO_22 133
+#define RP_GPIO_23 134
 
-#define RP_GPIO_24 122
-#define RP_GPIO_25 123
-#define RP_GPIO_26 124
-#define RP_GPIO_27 125
+#define RP_GPIO_24 135
+#define RP_GPIO_25 136
+#define RP_GPIO_26 137
+#define RP_GPIO_27 138
 
 
-#define RP_GPIO_1 135
-#define RP_GPIO_2 136
-#define RP_GPIO_3 137
-#define RP_GPIO_4 138
+#define RP_GPIO_1 131
+#define RP_GPIO_2 132
+#define RP_GPIO_3 133
+#define RP_GPIO_4 134
 
-#define RP_GPIO_5 122
-#define RP_GPIO_6 123
-#define RP_GPIO_7 124
-#define RP_GPIO_8 125
+#define RP_GPIO_5 135
+#define RP_GPIO_6 136
+#define RP_GPIO_7 137
+#define RP_GPIO_8 138
 
 #define GPIO_1_PIN 20
 #define GPIO_2_PIN 21

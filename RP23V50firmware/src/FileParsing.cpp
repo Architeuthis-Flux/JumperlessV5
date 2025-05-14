@@ -111,7 +111,7 @@ int openFileThreadSafe(int openTypeEnum, int slot, int flashOrLocal) {
 
   if (!nodeFile) {
     // if (debugFP)
-    Serial.println("\n\n\rFailed to open nodeFile\n\n\r");
+  //  Serial.println("\n\n\rFailed to open nodeFile\n\n\r");
     // openFileThreadSafe(w, slot);
     core1busy = false;
     return 0;
@@ -345,7 +345,7 @@ int checkIfBridgeExists(int node1, int node2, int slot, int flashOrLocal) {
 
     if (!nodeFile) {
       if (debugFP) {
-        Serial.println("Failed to open nodeFile (removeBridgeFromNodeFile)");
+       // Serial.println("Failed to open nodeFile (removeBridgeFromNodeFile)");
       }
 
       return -1;
@@ -1148,7 +1148,7 @@ int removeBridgeFromNodeFile(int node1, int node2, int slot, int flashOrLocal, i
 
     if (!nodeFile) {
       if (debugFP) {
-        Serial.println("Failed to open nodeFile (removeBridgeFromNodeFile)");
+       // Serial.println("Failed to open nodeFile (removeBridgeFromNodeFile)");
       }
 
       return -1;
@@ -1424,7 +1424,7 @@ timerStart[0] = micros();
     // Serial.println(slot);
     if (!nodeFile) {
       // if (debugFP) {
-      Serial.println("Failed to open nodeFile (addBridgeToNodeFile)");
+     // Serial.println("Failed to open nodeFile (addBridgeToNodeFile)");
       //  }
       // reateSlots(slot, 0);
       //  delay(10);
@@ -2001,25 +2001,25 @@ void replaceSFNamesWithDefinedInts(void) {
   specialFunctionsString.replace("ADC4", "114");
   specialFunctionsString.replace("ADC7", "115");
 
-  specialFunctionsString.replace("GPIO_1", "138");
-  specialFunctionsString.replace("GPIO_2", "139");
-  specialFunctionsString.replace("GPIO_3", "140");
-  specialFunctionsString.replace("GPIO_4", "141");
+  specialFunctionsString.replace("GPIO_1", "131");
+  specialFunctionsString.replace("GPIO_2", "132");
+  specialFunctionsString.replace("GPIO_3", "133");
+  specialFunctionsString.replace("GPIO_4", "134");
 
-  specialFunctionsString.replace("GPIO1", "138");
-  specialFunctionsString.replace("GPIO2", "139");
-  specialFunctionsString.replace("GPIO3", "140");
-  specialFunctionsString.replace("GPIO4", "141");
+  specialFunctionsString.replace("GPIO1", "131");
+  specialFunctionsString.replace("GPIO2", "132");
+  specialFunctionsString.replace("GPIO3", "133");
+  specialFunctionsString.replace("GPIO4", "134");
 
-  specialFunctionsString.replace("GPIO_5", "122");
-  specialFunctionsString.replace("GPIO_6", "123");
-  specialFunctionsString.replace("GPIO_7", "124");
-  specialFunctionsString.replace("GPIO_8", "125");
+  specialFunctionsString.replace("GPIO_5", "135");
+  specialFunctionsString.replace("GPIO_6", "136");
+  specialFunctionsString.replace("GPIO_7", "137");
+  specialFunctionsString.replace("GPIO_8", "138");
 
-  specialFunctionsString.replace("GPIO5", "122");
-  specialFunctionsString.replace("GPIO6", "123");
-  specialFunctionsString.replace("GPIO7", "124");
-  specialFunctionsString.replace("GPIO8", "125");
+  specialFunctionsString.replace("GPIO5", "135");
+  specialFunctionsString.replace("GPIO6", "136");
+  specialFunctionsString.replace("GPIO7", "137");
+  specialFunctionsString.replace("GPIO8", "138");
 
   specialFunctionsString.replace("+5V", "105");
   specialFunctionsString.replace("5V", "105");

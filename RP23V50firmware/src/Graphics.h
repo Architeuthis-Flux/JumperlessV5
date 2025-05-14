@@ -85,6 +85,10 @@ extern char defconString[16];
 extern const uint8_t font[][3];
 extern volatile int doomOn;
 
+extern uint32_t gpioReadingColors[10]; 
+extern uint8_t gpioAnimationBaseHues[10];
+
+
 extern int menuBrightnessSetting;
 extern bread b;
 

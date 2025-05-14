@@ -58,10 +58,10 @@ int dacZero[4] = { 1650, 1650, 1650, 1650 };
 float adcSpread[8] = { 18.28, 18.28, 18.28, 18.28, 5.0, 17.28, 17.28, 17.28 };
 float adcZero[8] = { 8.0, 8.0, 8.0, 8.0, 0.0, 8.0, 8.0, 8.0 };
 
+/// 0 = output low, 1 = output high, 2 = input, 3 = input pullup, 4 = input pulldown, 5 = unknown
 uint8_t gpioState[10] = {
     0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff,
-  }; /// 0 = output low, 1 = output high, 2 = input, 3 = input
-/// pullup, 4 = input pulldown, 5 = unknown
+  }; 
 uint8_t gpioReading[10] = {
     3, 3, 3, 3, 3, 3, 3, 3, 3, 3 }; // 0 = low, 1 = high 2 = floating 3 = unknown
 
@@ -71,7 +71,10 @@ int revisionNumber = 0;
 
 int showReadings = 0;
 
-int showADCreadings[8] = { 1, 1, 1, 1 };
+float adcReadings[8] = {0, 0, 0, 0, 0, 0, 0, 0};
+
+
+int showADCreadings[8] = {0, 0, 0, 0, 0, 0, 0, 0};
 uint32_t adcReadingColors[8] = { 0x050505, 0x050505, 0x050505,
                                 0x050505, 0x050505, 0x050505 };
 float adcReadingRanges[8][2] = {
@@ -1164,6 +1167,7 @@ void showLEDmeasurements(void) {
     if (showADCreadings[i] > 0 && showADCreadings[i] <= numberOfNets) {
       numReadings++;
       adcReading = readAdcVoltage(i, samples);
+      adcReadings[i] = adcReading;
       color = measurementToColor(adcReading, adcRange[i][0], adcRange[i][1]);
 
       //int brightness = LEDbrightnessSpecial;// + (int)abs(adcReading*3.0);//map(abs((adcReading*10)), 0, 80, -LEDbrightnessSpecial, 150);

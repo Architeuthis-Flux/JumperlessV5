@@ -977,6 +977,10 @@ void readConfigFromSerial() {
 
     while (Serial.available() == 0) {
         // delayMicroseconds(10);
+        if (millis() - lastCharTime > 400) {
+            printConfigHelp();
+            return;
+        }
     }
     int timedOut = 0;
     while (true) {
@@ -987,7 +991,7 @@ void readConfigFromSerial() {
                 // Serial.println("New line");
             }
 
-            lastCharTime = millis();
+            //lastCharTime = millis();
 
             // Handle backspace
             if (c == '\b' || c == 0x7F) {
@@ -1104,9 +1108,17 @@ void readConfigFromSerial() {
         } else if (millis() - lastCharTime > 10) {
             lastCharTime = millis();
             timedOut++;
-        }
+           
 
+        }
+ //Serial.println(timedOut);
         if (timedOut > timeout) {
+            printConfigHelp();
+            Serial.println("\n\r");
+            Serial.flush();
+            memset(line, 0, sizeof(line));
+            lineIndex = 0;
+
             break;
         }
     }

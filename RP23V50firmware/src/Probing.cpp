@@ -30,8 +30,8 @@ volatile unsigned long blockProbing = 0;
 volatile unsigned long blockProbingTimer = 0;
 
 int probePowerDAC = 0;
-int lastProbePowerDAC = 1;
-bool probePowerDACChanged = 1;
+int lastProbePowerDAC = 0;
+bool probePowerDACChanged = 0;
 
 int switchPosition = 1;
 int showProbeCurrent = 0;
@@ -758,7 +758,7 @@ int selectSFprobeMenu(int function) {
   inPadMenu = 1;
   switch (function) {
 
-    case 132: {
+    case ADC_PAD: {
     inPadMenu = 1;
     function = chooseADC();
     blockProbing = 800;
@@ -768,7 +768,7 @@ int selectSFprobeMenu(int function) {
 
     break;
     }
-    case 131: {
+    case DAC_PAD: {
     inPadMenu = 1;
     function = chooseDAC();
     blockProbing = 800;
@@ -778,7 +778,7 @@ int selectSFprobeMenu(int function) {
 
     break;
     }
-    case 130: {
+    case GPIO_PAD: {
 
     function = chooseGPIO();
     blockProbing = 800;
@@ -787,15 +787,15 @@ int selectSFprobeMenu(int function) {
 
     break;
     }
-    case 128 ... 129:
-    case 133 ... 134: {
+    case LOGO_PAD_TOP:
+    case LOGO_PAD_BOTTOM: {
     // b.clear();
     //     function = -1;
     // break;
     // b.clear();
     clearLEDsExceptRails();
     switch (function) {
-      case 128: {
+      case LOGO_PAD_TOP: {
       inPadMenu = 1;
       b.print("UART", sfOptionColors[3], 0xFFFFFF, 0, 0, 0);
       b.print("Tx", sfOptionColors[7], 0xFFFFFF, 0, 1, 0);
@@ -811,7 +811,7 @@ int selectSFprobeMenu(int function) {
       function = RP_UART_TX;
       break;
       }
-      case 129: {
+      case LOGO_PAD_BOTTOM: {
       inPadMenu = 1;
       b.print("UART", sfOptionColors[3], 0xFFFFFF, 0, 0, -1);
       b.print("Rx", sfOptionColors[5], 0xFFFFFF, 0, 1, -1);
@@ -835,7 +835,7 @@ int selectSFprobeMenu(int function) {
       function = RP_UART_RX;
       break;
       }
-      case 133: {
+      case BUILDING_PAD_TOP: {
       inPadMenu = 1;
       b.print("Buildng", sfOptionColors[6], 0xFFFFFF, 0, 1, -1);
       b.print("Top", sfOptionColors[7], 0xFFFFFF, 0, 0, 1);
@@ -852,7 +852,7 @@ int selectSFprobeMenu(int function) {
 
       break;
       }
-      case 134: {
+      case BUILDING_PAD_BOTTOM: {
       inPadMenu = 1;
       b.print("Buildng", sfOptionColors[6], 0xFFFFFF, 0, 1, -1);
       b.print("Bottom", sfOptionColors[5], 0xFFFFFF, 0, 0, -1);
@@ -912,8 +912,8 @@ int selectSFprobeMenu(int function) {
     function = -1;
     break;
     }
-    case 104:
-    case 126: {
+    case TOP_RAIL_GND:
+    case BOTTOM_RAIL_GND: {
     function = 100;
     break;
     }
@@ -1005,12 +1005,20 @@ int attachPadsToSettings(int pad) {
         // b.clear();
         clearLEDsExceptRails();
         // showLEDsCore2 = 2;
-        if (gpioChosen >= 122 && gpioChosen <= 125) {
-          gpioChosen = gpioChosen - 122 + 5;
-          } else if (gpioChosen >= 135 && gpioChosen <= 138) {
-            gpioChosen = gpioChosen - 134;
-            }
-          if (gpioState[gpioChosen] != 0) {
+        // if (gpioChosen >= 122 && gpioChosen <= 125) {
+        //   gpioChosen = gpioChosen - 122 + 5;
+        //   } else if (gpioChosen >= 135 && gpioChosen <= 138) {
+        //     gpioChosen = gpioChosen - 134;
+        //     }
+        if (gpioChosen >= RP_GPIO_1 && gpioChosen <= RP_GPIO_8) {
+          gpioChosen = gpioChosen - RP_GPIO_1 + 1;
+          }
+
+          Serial.print("gpioChosen: ");
+          Serial.println(gpioChosen);
+          Serial.print("gpioState[gpioChosen]: ");
+          Serial.println(gpioState[gpioChosen - 1]);
+          if (gpioState[gpioChosen - 1] != 0) {
             clearLEDsExceptRails();
             // showLEDsCore2 = 2;
             Serial.print("Set GP");
@@ -1035,8 +1043,11 @@ int attachPadsToSettings(int pad) {
 
             } else {
             }
-          gpioState[gpioChosen] = 0;
-          settingOption = gpioChosen;
+          Serial.print("gpioChosen - 1: ");
+          Serial.println(gpioChosen - 1);
+          Serial.flush();
+          gpioState[gpioChosen - 1] = 0;
+          settingOption = gpioChosen - 1;
           setGPIO();
           clearLEDsExceptRails();
 
@@ -1111,23 +1122,23 @@ int attachPadsToSettings(int pad) {
     }
 
   switch (pad) {
-    case 128: {
+    case LOGO_PAD_TOP: {
     jumperlessConfig.logo_pads.top_guy = function;
     // jumperlessConfig.logo_pads.top_guy = settingOption;
 
     break;
     }
-    case 129: {
+    case LOGO_PAD_BOTTOM: {
     jumperlessConfig.logo_pads.bottom_guy = function;
     // jumperlessConfig.logo_pads.bottom_guy = settingOption;
     break;
     }
-    case 133: {
+    case BUILDING_PAD_TOP: {
     jumperlessConfig.logo_pads.building_pad_top = function;
     //jumperlessConfig.logo_pads.building_pad_top= settingOption;
     break;
     }
-    case 134: {
+    case BUILDING_PAD_BOTTOM: {
     jumperlessConfig.logo_pads.building_pad_bottom = function;
     // jumperlessConfig.logo_pads.building_pad_bottom_setting = settingOption;
     break;
@@ -1200,8 +1211,8 @@ int chooseDAC(int justPickOne) {
     if (reading != -1) {
       switch (reading) {
         case 31 ... 43: {
-        selected = 106;
-        function = 106;
+        selected = DAC0;
+        function = DAC0;
         if (justPickOne == 1) {
           return function;
           }
@@ -1384,9 +1395,9 @@ int chooseGPIOinputOutput(int gpioChosen) {
     }
 
 
-  Serial.print("gpioChosen: ");
+  Serial.print("gpioChosen (chooseGPIOinputOutput): ");
   Serial.println(gpioChosen);
-
+  Serial.flush();
   // clearLEDsExceptRails();
   // showNets();
   // showLEDsCore2 = 1;
@@ -1472,18 +1483,19 @@ int chooseGPIO(int skipInputOutput) {
 
     int gpioChosen = -1;
 
-    switch (function) {
-      case 135 ... 138: {
-      gpioChosen = function - 134;
-      break;
+        switch (function) {
+          case RP_GPIO_1 ... RP_GPIO_8: {
+          gpioChosen = function - RP_GPIO_1 + 1;
+          break;
+          }
+        // case 122 ... 125: {
+        // gpioChosen = function - 117;
+        // break;
+        // }
       }
-      case 122 ... 125: {
-      gpioChosen = function - 117;
-      break;
-      }
-      }
-    // Serial.print("gpioChosen: ");
-    // Serial.println(gpioChosen);
+    Serial.print("gpioChosen (chooseGPIO): ");
+    Serial.println(gpioChosen);
+    Serial.flush();
     clearLEDsExceptRails();
     chooseGPIOinputOutput(gpioChosen);
     }
@@ -2530,6 +2542,9 @@ int getNothingTouched(int samples) {
 
     nothingTouchedReading = nothingTouchedReading / (samples - rejects);
     mapFrom = nothingTouchedReading;
+    // Serial.print("mapFrom: ");
+    // Serial.println(mapFrom);
+    jumperlessConfig.calibration.probe_min = mapFrom;
 
     if (loops > 5) {
       break;
@@ -2604,7 +2619,7 @@ void checkPads(void) {
 
   /* clang-format on */
   //probeReading = probeRowMap[map(probeReading, 30, 4050, 101, 0)];
-  probeReading = probeRowMap[map(probeReading, jumperlessConfig.calibration.probe_min, jumperlessConfig.calibration.probe_max, 101, 0)];
+  probeReading = probeRowMap[map(probeReading, mapFrom, jumperlessConfig.calibration.probe_max, 101, 0)];
   // stopProbe();
 
 

@@ -529,7 +529,7 @@ uint32_t animations[26][15] = {
                  0x070200, 0x080100, 0x080000, 0x090000, 0x080000},
   };
 
-uint8_t gpioAnimationBaseHues[10] = { 6, 32, 58, 84, 110, 136, 162, 188, 214, 240 };
+uint8_t gpioAnimationBaseHues[10] = { 6, 28, 58, 84, 110, 146, 185, 204, 22, 131 };
 
 /* clang-format on */
 
@@ -550,12 +550,12 @@ void initRowAnimations() {
     for (int j = 0; j < 15; j++) {
       hsvColor colorHSV;
 
-      colorHSV = { gpioAnimationBaseHues[i], satValues[j], gpioIdleBrightness };
+      colorHSV = { gpioAnimationBaseHues[i], (uint8_t)(satValues[j]+35), gpioIdleBrightness };
 
 
       uint32_t color = HsvToRaw(colorHSV);
 
-      animations[i + 3][j] = color;
+      animations[i + 4][j] = color;
       // Serial.print(color, HEX);
       // Serial.print(" ");
       }

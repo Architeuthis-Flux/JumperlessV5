@@ -264,6 +264,12 @@ extern rgbColor specialNetColors[8];
 
 void printColorName(uint32_t color);
 void printColorName(int hue);
+void printColorNameDimmedDemo(int rangeStart=0, int rangeEnd=255, uint8_t brightness=40);
+char* colorToName(uint32_t color, int length = -1);
+char* colorToName(int hue, int length = -1);
+char* colorToName(rgbColor color, int length = -1);
+void dumpLEDdata(void);
+
 
 int brightenNet(int node, int addBrightness = 5);
 
@@ -298,7 +304,7 @@ void applyBrightness(int brightness);
 rgbColor unpackRgb(uint32_t color);
 
 //uint32_t packRgb(uint8_t r, uint8_t g, uint8_t b); 
-uint32_t packRgb(rgbColor color);
+
 
 uint32_t scaleUpBrightness(uint32_t hexColor, int scaleFactor = 8,
                            int minBrightness = 25);
@@ -308,7 +314,9 @@ void showSkippedNodes(uint32_t onColor = 0x0f1f2f, uint32_t offColor =  0x040007
 void clearLEDsExceptRails();
 uint32_t HsvToRaw(hsvColor hsv);
 
+uint32_t packRgb(rgbColor color);
 uint32_t packRgb(uint8_t r, uint8_t g, uint8_t b);
+
 void startupColors(void);
 void startupColorsV5(void);
 void rainbowBounce(int wait, int logo = 0);

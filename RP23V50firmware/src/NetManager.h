@@ -7,6 +7,13 @@
 #include "JumperlessDefines.h"
 //#include "MatrixStateRP2040.h"
 
+// Define a struct that holds both the long and short strings as well as the defined value
+struct DefineInfo {
+    const char* shortName;
+    const char* longName;
+    int defineValue;
+};
+
 extern int newBridge[MAX_BRIDGES][3]; // node1, node2, net
 extern int newBridgeLength;
 extern int newBridgeIndex;
@@ -20,12 +27,9 @@ extern const char *defNanoToCharLong[35];
 extern const char *defSpecialToCharLong[49];
 extern const char *emptyNet[];
 
-
-
-
-
-
-
+// Arrays of DefineInfo structs
+extern const DefineInfo specialDefines[];
+extern const DefineInfo nanoDefines[];
 
 int findNodeInNet(uint16_t node);
 
@@ -71,7 +75,6 @@ void printBridgeArray();
 
 void populateSpecialFunctions(int net, int node);
 
-
 void checkIfNodesAreABridge(); //if both of those nodes make up a memberBridge[][] pair. if not, warn and exit
 
 void deleteBridgeAndShift(); //shift the remaining bridges over so they're left justified and we don't need to search the entire memberBridges[] every time
@@ -79,8 +82,6 @@ void deleteBridgeAndShift(); //shift the remaining bridges over so they're left 
 void deleteNodesAndShift(); //shift the remaining nodes over so they're left justified and we don't need to search the entire memberNodes[MAX_NODES] every time
 
 void deleteAllBridgesConnectedToNode(); //search bridges for node and delete any that contain it
-
-void deleteNodesAndShift(); //shift the remaining nodes over so they're left justified and we don't need to search the entire memberNodes[MAX_NODES] every time
 
 void checkForSplitNets(); //if the newly deleted nodes wold split a net into 2 or more non-intersecting nets, we'll need to split them up. return numberOfNewNets check memberBridges[][] https://www.geeksforgeeks.org/check-removing-given-edge-disconnects-given-graph/#
 
@@ -90,10 +91,15 @@ void deleteNodesAndShift(); //delete the nodes and bridges that were copied from
 
 void leftShiftNodesBridgesNets();
 
-void listNets();
+void listNets(int liveUpdate = 1);
 
 void listSpecialNets();
 
+// Test function for the DefineInfo structs
+void testDefineInfoStructs();
+
+// Helper function to find a DefineInfo by its define value
+const DefineInfo* findDefineInfoByValue(int defineValue);
 
 #endif
 

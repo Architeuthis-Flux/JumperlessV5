@@ -20,6 +20,7 @@ extern int showINA1[3]; // 0 = current, 1 = voltage, 2 = power
 extern int showDAC0;
 extern int showDAC1;
 
+extern float adcReadings[8];
 extern int showADCreadings[8];
 extern uint32_t adcReadingColors[8];
 extern float adcReadingRanges[8][2];
@@ -30,6 +31,7 @@ extern float railVoltage[2];
 extern uint8_t gpioState[10];
 extern uint8_t gpioReading[10];
 extern int gpioNet[10];
+
 extern float adcSpread[8];
 extern float adcZero[8];
 extern float dacSpread[4];

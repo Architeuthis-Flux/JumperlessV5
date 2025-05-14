@@ -109,6 +109,7 @@ void setup() {
 
 
   Serial.begin(115200);
+
   startupTimers[0] = millis();
   // Initialize FatFS
   if (!FatFS.begin()) {
@@ -133,14 +134,6 @@ void setup() {
   // Serial.println("ms");
 
   backpowered = 0;
-  // USBDevice.setProductDescriptor("Jumperless");
-  // USBDevice.setManufacturerDescriptor("Architeuthis Flux");
-  // USBDevice.setSerialDescriptor("0");
-  // USBDevice.setID(0x1D50, 0xACAB);
-  // USBDevice.addStringDescriptor("Jumperless");
-  // USBDevice.addStringDescriptor("Architeuthis Flux");
-  // USBDevice.begin();
-  // stdio_usb_init();
 
 
   initDAC();
@@ -148,6 +141,8 @@ void setup() {
   pinMode(BUTTON_PIN, INPUT_PULLDOWN);
   // pinMode(buttonPin, INPUT_PULLDOWN);
   digitalWrite(PROBE_PIN, HIGH);
+
+  routableBufferPower(1, 1);
   // digitalWrite(BUTTON_PIN, HIGH);
 
   startupTimers[2] = millis();
@@ -185,16 +180,17 @@ void setup() {
 
 
   //routableBufferPower(1, 0);
-  routableBufferPower(1, 1);
+  //routableBufferPower(1, 1);
 
   getNothingTouched();
   startupTimers[8] = millis();
   createSlots(-1, 0);
   startupTimers[9] = millis();
 
-
-
-  }
+  // Test the new DefineInfo structs
+  //testDefineInfoStructs();
+  
+}
 
 unsigned long startupCore2timers[10];
 
@@ -239,18 +235,14 @@ void setup1() {
 
   }
 
-unsigned long teardownTimer = 0;
-unsigned long lastTeardown = 0;
-unsigned long teardownTime = 2000;
 
 char connectFromArduino = '\0';
 
-char input;
+char input = '\0';
 
 int serSource = 0;
 int readInNodesArduino = 0;
 
-int restoredNodeFile = 0;
 
 const char firmwareVersion[] = "5.1.1.1"; // remember to update this
 
@@ -259,9 +251,8 @@ int firstLoop = 1;
 volatile int probeActive = 0;
 
 int showExtraMenu = 1;
-int tearDownToggle = 0;
 
-int tinyUSB = 0;
+
 unsigned long timer = 0;
 int lastProbeButton = 0;
 unsigned long waitTimer = 0;
@@ -335,7 +326,7 @@ void loop() {
       connectArduino(0, 0);
       }
 
-    routableBufferPower(1, 1);
+    //routableBufferPower(1, 1);
     if (attract == 1) {
       defconDisplay = 0;
       netSlot = -1;
@@ -352,8 +343,9 @@ menu:
 
   if (lastProbePowerDAC != probePowerDAC) {
     probePowerDACChanged = true;
+    //delay(1000);
     Serial.print("probePowerDACChanged = "); Serial.println(probePowerDACChanged);
-    routableBufferPower(1, 0);
+    routableBufferPower(1, 1);
     }
 
   Serial.print("\n\n\r\t\tMenu\n\r");
@@ -615,16 +607,23 @@ menu:
         return;
         }
 
+
+
       switch (input) {
         case 'k': {
-          if (probePowerDAC == 0) {
-            probePowerDAC = 1;
-          } else {
-            probePowerDAC = 0;
-          }
-          break;
-          }
+          // for (int i = 0; i < 255; i++) {
+          //   Serial.print(i);
+          //   Serial.print(": ");
+          //   char* name = colorToName(i, -1);
+          //   Serial.println(name);
+          //   }
 
+          // Call the demo function directly - it will check for range input itself
+          Serial.println("Displaying color names (enter range like '10-200' for specific range)");
+          printColorNameDimmedDemo(0, 255);
+          
+          break;
+        }
 
         case '.': {
         //initOLED();
@@ -817,6 +816,12 @@ menu:
 
 
         case 'i': {
+          if (oled.isConnected() == false) {
+             if (oled.init() == false) {
+              Serial.println("Failed to initialize OLED");
+              break;
+              }
+            }
 
 
 
@@ -1241,25 +1246,22 @@ menu:
       goto menu;
   }
 
-unsigned long logoFlashTimer = 0;
 
-//int arduinoReset = 0;
-unsigned long lastTimeReset = 0;
+
+
 
 unsigned long lastSwirlTime = 0;
 
 int swirlCount = 42;
 int spread = 13;
 
-int csCycle = 0;
-int onOff = 0;
-float topRailVoltage = 0.0;
-float botRailVoltage = 0.0;
+
 
 int readcounter = 0;
 unsigned long schedulerTimer = 0;
 unsigned long schedulerUpdateTime = 6300;
-int rowProbed = 0;
+
+
 int swirled = 0;
 int countsss = 0;
 
@@ -1269,9 +1271,7 @@ int netUpdateRefreshCount = 0;
 int tempDD = 0;
 int clearBeforeSend = 0;
 
-unsigned long measureLEDTimer = 0;
 
-unsigned long ardTimer = 0;
 
 unsigned long tempTimer = 0;
 int lastTemp = 0;
@@ -1291,14 +1291,6 @@ void loop1() {
       }
 
     secondSerialHandler();
-    // if (Serial1Available > 0 || USBSer1Available > 0) {
-    //   secondSerialHandler();
-    //   }
-
-
-    // core2busy = true;
-    // rotaryEncoderStuff();
-    // core2busy = false;
 
     if (blockProbingTimer > 0) {
       if (millis() - blockProbingTimer > blockProbing) {
