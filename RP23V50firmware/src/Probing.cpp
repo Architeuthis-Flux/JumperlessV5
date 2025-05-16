@@ -2721,7 +2721,19 @@ void checkPads(void) {
     case BUILDING_PAD_BOTTOM:
       Serial.print("Building bottom");
       clearColorOverrides(1,1,0);
-      colorPicker();
+           if (brightenedNet != -1) {
+        hsvColor hsv = RgbToHsv(netColors[brightenedNet]);
+        changedNetColors[brightenedNet] = colorPicker(hsv.h, jumperlessConfig.display.led_brightness);
+        netColors[brightenedNet] = unpackRgb(changedNetColors[brightenedNet]);
+        Serial.print("changedNetColors[");
+        Serial.print(brightenedNet);
+        Serial.print("]: ");
+        Serial.printf("%06x\n", changedNetColors[brightenedNet]);
+
+
+        } else {
+       colorPicker(225, jumperlessConfig.display.led_brightness);
+        }
       break;
       default:
       clearColorOverrides(1,1,0);
