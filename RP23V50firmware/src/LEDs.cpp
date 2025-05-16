@@ -17,6 +17,47 @@
 // CRGB probeLEDs[1];
 
 // bool splitLEDs;
+volatile int hideNets = 0;
+
+///-2 will set to default
+volatile uint32_t logoColorOverride = -1;
+///-2 will set to default
+volatile uint32_t logoColorOverrideTop = -1;
+///-2 will set to default
+volatile uint32_t logoColorOverrideBottom = -1;
+
+uint32_t logoColorOverrideDefault = 0x4050b0;
+uint32_t logoColorOverrideTopDefault = 0x302000;
+uint32_t logoColorOverrideBottomDefault = 0x002540;
+
+///-2 will set to default
+volatile uint32_t ADCcolorOverride0 = -1;
+///-2 will set to default
+volatile uint32_t ADCcolorOverride1 = -1;
+///-2 will set to default
+volatile uint32_t DACcolorOverride0 = -1;
+///-2 will set to default
+volatile uint32_t DACcolorOverride1 = -1;
+///-2 will set to default
+volatile uint32_t GPIOcolorOverride0 = -1;
+///-2 will set to default
+volatile uint32_t GPIOcolorOverride1 = -1;
+
+uint32_t RST0colorOverride = -1;
+uint32_t RST1colorOverride = -1;
+uint32_t GNDTcolorOverride = -1;
+uint32_t GNDBcolorOverride = -1;
+uint32_t VINcolorOverride = -1;
+uint32_t V3V3colorOverride = -1;
+uint32_t V5VcolorOverride = -1;
+
+uint32_t ADCcolorOverride0Default = 0x4050b0;
+uint32_t ADCcolorOverride1Default = 0x453080;
+uint32_t DACcolorOverride0Default = 0x4050b0;
+uint32_t DACcolorOverride1Default = 0x458040;
+uint32_t GPIOcolorOverride0Default = 0x4050b0;
+uint32_t GPIOcolorOverride1Default = 0x2560a0;
+
 
 // #if REV < 4
 // bool splitLEDs = 0;
@@ -121,7 +162,7 @@ ledClass leds;
 
 
 
-
+uint32_t changedNetColors[MAX_NETS] = { 0 };
 rgbColor netColors[MAX_NETS] = { 0 };
 
 uint8_t saturation = 254;
@@ -207,7 +248,7 @@ void initLEDs(void) {
   //   topleds.show();
   // }
 
-  int claimedSms[2][4] = { {0, 0, 0, 0}, {0, 0, 0, 0} };
+  //int claimedSms[2][4] = { {0, 0, 0, 0}, {0, 0, 0, 0} };
 
   // for (int i = 0; i < 4; i++) {
   //   if (pio_sm_is_claimed(pio0, i)) {
@@ -222,6 +263,8 @@ void initLEDs(void) {
   probeLEDs.begin();
   probeLEDs.setPixelColor(0, 0x111111);
   probeLEDs.show();
+
+
 
   // Serial.println("\n\rprobeLEDs.begin()\n\r");
 
@@ -269,22 +312,22 @@ uint32_t slotSelectionColors[12] = {
 
 
 int colorDistance(rgbColor a, rgbColor b) {
-    int dr = (int)a.r - (int)b.r;
-    int dg = (int)a.g - (int)b.g;
-    int db = (int)a.b - (int)b.b;
-    return dr * dr + dg * dg + db * db;
-}
+  int dr = (int)a.r - (int)b.r;
+  int dg = (int)a.g - (int)b.g;
+  int db = (int)a.b - (int)b.b;
+  return dr * dr + dg * dg + db * db;
+  }
 
-char *colorNameBuffer = (char *)malloc(10);
+char* colorNameBuffer = (char*)malloc(10);
 
 // Struct to keep color and name together
 struct NamedColor {
-    uint32_t color;    // Full brightness reference color
-    uint32_t dimColor; // Specially calibrated color for dim matching
-    const char* name;
-    uint8_t hueStart;  // Start of hue range (0-255)
-    uint8_t hueEnd;    // End of hue range (0-255)
-};
+  uint32_t color;    // Full brightness reference color
+  uint32_t dimColor; // Specially calibrated color for dim matching
+  const char* name;
+  uint8_t hueStart;  // Start of hue range (0-255)
+  uint8_t hueEnd;    // End of hue range (0-255)
+  };
 
 // Reference palette
 static const NamedColor colorNames[] = {
@@ -306,432 +349,1011 @@ static const NamedColor colorNames[] = {
     {0xFFFFFF, 0x404040, "white     ", 0, 0},    // Special case, no hue range
     {0x000000, 0x000000, "black     ", 0, 0},    // Special case, no hue range
     {0x808080, 0x202020, "grey      ", 0, 0}     // Special case, no hue range
-};
+  };
 
 // Helper: get the index of the closest palette color for a given hue
 int closestPaletteHueIdx(int hue) {
-    // First, try to find a direct match using the hue ranges
-    for (int i = 0; i < sizeof(colorNames) / sizeof(colorNames[0]); i++) {
-        // Skip special cases (white, black, grey)
-        if (colorNames[i].hueStart == 0 && colorNames[i].hueEnd == 0) {
-            continue;
+  // First, try to find a direct match using the hue ranges
+  for (int i = 0; i < sizeof(colorNames) / sizeof(colorNames[0]); i++) {
+    // Skip special cases (white, black, grey)
+    if (colorNames[i].hueStart == 0 && colorNames[i].hueEnd == 0) {
+      continue;
+      }
+
+    // Handle normal range
+    if (colorNames[i].hueStart < colorNames[i].hueEnd) {
+      if (hue >= colorNames[i].hueStart && hue <= colorNames[i].hueEnd) {
+        return i;
         }
-        
-        // Handle normal range
-        if (colorNames[i].hueStart < colorNames[i].hueEnd) {
-            if (hue >= colorNames[i].hueStart && hue <= colorNames[i].hueEnd) {
-                return i;
-            }
-        } 
-        // Handle wrapping range (e.g., red spans 250-10)
-        else if (colorNames[i].hueStart > colorNames[i].hueEnd) {
-            if (hue >= colorNames[i].hueStart || hue <= colorNames[i].hueEnd) {
-                return i;
-            }
+      }
+    // Handle wrapping range (e.g., red spans 250-10)
+    else if (colorNames[i].hueStart > colorNames[i].hueEnd) {
+      if (hue >= colorNames[i].hueStart || hue <= colorNames[i].hueEnd) {
+        return i;
         }
+      }
     }
-    
-    // If no direct match found, use the closest hue distance
-    int minDist = 256;
-    int minIdx = 0;
-    // Only consider non-special colors (skip white, black, grey)
-    for (int i = 0; i < 14; i++) {
-        // Find the center of the hue range for this color
-        int centerHue;
-        if (colorNames[i].hueStart < colorNames[i].hueEnd) {
-            centerHue = (colorNames[i].hueStart + colorNames[i].hueEnd) / 2;
-        } else {
-            // Handle wrapping range (e.g., red spans 250-10)
-            centerHue = (colorNames[i].hueStart + colorNames[i].hueEnd + 255) / 2;
-            if (centerHue > 255) centerHue -= 255;
-        }
-        
-        int dh = abs((int)hue - centerHue);
-        if (dh > 127) dh = 255 - dh; // wrap around hue circle
-        
-        if (dh < minDist) {
-            minDist = dh;
-            minIdx = i;
-        }
+
+  // If no direct match found, use the closest hue distance
+  int minDist = 256;
+  int minIdx = 0;
+  // Only consider non-special colors (skip white, black, grey)
+  for (int i = 0; i < 14; i++) {
+    // Find the center of the hue range for this color
+    int centerHue;
+    if (colorNames[i].hueStart < colorNames[i].hueEnd) {
+      centerHue = (colorNames[i].hueStart + colorNames[i].hueEnd) / 2;
+      } else {
+      // Handle wrapping range (e.g., red spans 250-10)
+      centerHue = (colorNames[i].hueStart + colorNames[i].hueEnd + 255) / 2;
+      if (centerHue > 255) centerHue -= 255;
+      }
+
+    int dh = abs((int)hue - centerHue);
+    if (dh > 127) dh = 255 - dh; // wrap around hue circle
+
+    if (dh < minDist) {
+      minDist = dh;
+      minIdx = i;
+      }
     }
-    return minIdx;
-}
+  return minIdx;
+  }
 
 char* colorToName(uint32_t color, int length)
-{
-    int numColors = sizeof(colorNames) / sizeof(colorNames[0]);
-    rgbColor input = unpackRgb(color);
+  {
+  int numColors = sizeof(colorNames) / sizeof(colorNames[0]);
+  rgbColor input = unpackRgb(color);
 
 
 
-    // Only return black if the color is exactly 0x000000
-    if (color == 0x000000) {
-        const char* black = "black";
-        strncpy(colorNameBuffer, black, strlen(black));
-        colorNameBuffer[strlen(black)] = '\0';
-        return colorNameBuffer;
+  // Only return black if the color is exactly 0x000000
+  if (color == 0x000000) {
+    const char* black = "black";
+    strncpy(colorNameBuffer, black, strlen(black));
+    colorNameBuffer[strlen(black)] = '\0';
+    return colorNameBuffer;
     }
-    // Return white if all channels are equal (and not zero)
-    if (input.r == input.g && input.g == input.b && input.r != 0) {
-        const char* white = "white";
-        strncpy(colorNameBuffer, white, strlen(white));
-        colorNameBuffer[strlen(white)] = '\0';
-        return colorNameBuffer;
+  // Return white if all channels are equal (and not zero)
+  if (input.r == input.g && input.g == input.b && input.r != 0) {
+    const char* white = "white";
+    strncpy(colorNameBuffer, white, strlen(white));
+    colorNameBuffer[strlen(white)] = '\0';
+    return colorNameBuffer;
     }
-    
-    // Convert input to HSV
-    hsvColor inputHsv = RgbToHsv(input);
 
-    // Serial.print("\n\rhsv: ");
-    // // Serial.print(inputHsv.h, DEC);
-    // // Serial.print(",");
-    // // Serial.print(inputHsv.s, DEC);
-    // // Serial.print(",");
-    // // Serial.println(inputHsv.v, DEC);
-    
-    // // Check if the hue falls directly within a defined range (for non-dim colors)
-    // if (inputHsv.s > 50 && inputHsv.v > 70) {
-    //     uint8_t hue = inputHsv.h;
-    //     // Serial.print("\n\rhue < 50 && v > 70: ");
-    //     // Serial.print(hue);
-    //     // Serial.print("\n\r");
-        
-    //     for (int i = 0; i < numColors; i++) {
-    //         // Skip special cases (white, black, grey)
-    //         if (colorNames[i].hueStart == 0 && colorNames[i].hueEnd == 0) {
-    //             continue;
-    //         }
-            
-    //         // Handle normal range
-    //         if (colorNames[i].hueStart < colorNames[i].hueEnd) {
-    //             if (hue >= colorNames[i].hueStart && hue <= colorNames[i].hueEnd) {
-    //                 const char* src = colorNames[i].name;
-    //                 int len = strlen(src);
-    //                 if (length == -1) {
-    //                     // Trim trailing spaces only
-    //                     int end = len - 1;
-    //                     while (end >= 0 && src[end] == ' ') end--;
-    //                     int trimmedLen = end + 1;
-    //                     strncpy(colorNameBuffer, src, trimmedLen);
-    //                     colorNameBuffer[trimmedLen] = '\0';
-    //                     return colorNameBuffer;
-    //                 } else {
-    //                     int padLen = length > len ? length : len;
-    //                     memset(colorNameBuffer, ' ', padLen);
-    //                     strncpy(colorNameBuffer, src, padLen);
-    //                     colorNameBuffer[padLen] = '\0';
-    //                     return colorNameBuffer;
-    //                 }
-    //             }
-    //         } 
-    //         // Handle wrapping range (e.g., red spans 250-10)
-    //         else if (colorNames[i].hueStart > colorNames[i].hueEnd) {
-    //             if (hue >= colorNames[i].hueStart || hue <= colorNames[i].hueEnd) {
-    //                 const char* src = colorNames[i].name;
-    //                 int len = strlen(src);
-    //                 if (length == -1) {
-    //                     // Trim trailing spaces only
-    //                     int end = len - 1;
-    //                     while (end >= 0 && src[end] == ' ') end--;
-    //                     int trimmedLen = end + 1;
-    //                     strncpy(colorNameBuffer, src, trimmedLen);
-    //                     colorNameBuffer[trimmedLen] = '\0';
-    //                     return colorNameBuffer;
-    //                 } else {
-    //                     int padLen = length > len ? length : len;
-    //                     memset(colorNameBuffer, ' ', padLen);
-    //                     strncpy(colorNameBuffer, src, padLen);
-    //                     colorNameBuffer[padLen] = '\0';
-    //                     return colorNameBuffer;
-    //                 }
-    //             }
-    //         }
-    //     }
-    // }
-    
-    // For dim colors or colors that don't match range, use the existing approach
-    // Determine if color is dim (low brightness)
-    bool isDim = inputHsv.v < 70;
-    // Serial.print("\n\r inputHsv.v: ");
-    // Serial.print(inputHsv.v);
-    // Serial.print("\n\r inputHsv.s: ");
-    // Serial.print(inputHsv.s);
-    // Serial.print("\n\r inputHsv.h: ");
-    // Serial.print(inputHsv.h);
-    // Serial.print("\n\r");
+  // Convert input to HSV
+  hsvColor inputHsv = RgbToHsv(input);
 
-    
-    int minDist = 0x7FFFFFFF;
-    int minIdx = 0;
-    
-    // Check if hue directly falls within a defined range
-    bool foundRange = false;
+  // For dim colors or colors that don't match range, use the existing approach
+  // Determine if color is dim (low brightness)
+  bool isDim = inputHsv.v < 70;
+  // Serial.print("\n\r inputHsv.v: ");
+  // Serial.print(inputHsv.v);
+  // Serial.print("\n\r inputHsv.s: ");
+  // Serial.print(inputHsv.s);
+  // Serial.print("\n\r inputHsv.h: ");
+  // Serial.print(inputHsv.h);
+  // Serial.print("\n\r");
+
+
+  int minDist = 0x7FFFFFFF;
+  int minIdx = 0;
+
+  // Check if hue directly falls within a defined range
+  bool foundRange = false;
+  for (int i = 0; i < numColors; i++) {
+    // Skip special cases (white, black, grey) if we have color information
+    if (colorNames[i].hueStart == 0 && colorNames[i].hueEnd == 0) {
+      if (inputHsv.s > 40 && inputHsv.v > 30) continue;
+      }
+
+    // Handle normal range
+    if (colorNames[i].hueStart < colorNames[i].hueEnd) {
+      if (inputHsv.h >= colorNames[i].hueStart && inputHsv.h <= colorNames[i].hueEnd) {
+        minIdx = i;
+        foundRange = true;
+        break;
+        }
+      }
+    // Handle wrapping range (e.g., red spans 253-12)
+    else if (colorNames[i].hueStart > colorNames[i].hueEnd) {
+      if (inputHsv.h >= colorNames[i].hueStart || inputHsv.h <= colorNames[i].hueEnd) {
+        minIdx = i;
+        foundRange = true;
+        break;
+        }
+      }
+    }
+
+  // If no range match was found, fall back to distance calculation
+  if (!foundRange) {
     for (int i = 0; i < numColors; i++) {
-        // Skip special cases (white, black, grey) if we have color information
-        if (colorNames[i].hueStart == 0 && colorNames[i].hueEnd == 0) {
-            if (inputHsv.s > 40 && inputHsv.v > 30) continue;
+      uint32_t refColor;
+      if (isDim) {
+        // Use dim reference colors for matching dim input colors
+        refColor = colorNames[i].dimColor;
+        } else {
+        // For brighter colors, compare with standard palette
+        refColor = colorNames[i].color;
         }
-        
-        // Handle normal range
-        if (colorNames[i].hueStart < colorNames[i].hueEnd) {
-            if (inputHsv.h >= colorNames[i].hueStart && inputHsv.h <= colorNames[i].hueEnd) {
-                minIdx = i;
-                foundRange = true;
-                break;
-            }
-        } 
-        // Handle wrapping range (e.g., red spans 253-12)
-        else if (colorNames[i].hueStart > colorNames[i].hueEnd) {
-            if (inputHsv.h >= colorNames[i].hueStart || inputHsv.h <= colorNames[i].hueEnd) {
-                minIdx = i;
-                foundRange = true;
-                break;
-            }
+
+      // For very dim colors, we'll compare RGB directly 
+      if (isDim) {
+        rgbColor refRgb = unpackRgb(refColor);
+        int dr = (int)input.r - (int)refRgb.r;
+        int dg = (int)input.g - (int)refRgb.g;
+        int db = (int)input.b - (int)refRgb.b;
+        int dist = dr * dr + dg * dg + db * db;
+
+        if (dist < minDist) {
+          minDist = dist;
+          minIdx = i;
+          }
+        } else {
+        // Force brightness to max for matching to avoid brightness bias
+        hsvColor compareHsv = inputHsv;
+        compareHsv.v = 254;
+
+        rgbColor refRgb = unpackRgb(refColor);
+        hsvColor refHsv = RgbToHsv(refRgb);
+
+        // Compare hue and saturation only
+        int dh = (int)compareHsv.h - (int)refHsv.h;
+        if (dh > 127) dh = 255 - dh; // wrap around hue circle
+        if (dh < -127) dh = 255 + dh;
+
+        int ds = (int)compareHsv.s - (int)refHsv.s;
+        int dist = dh * dh + ds * ds;
+
+        if (dist < minDist) {
+          minDist = dist;
+          minIdx = i;
+          }
         }
+      }
     }
-    
-    // If no range match was found, fall back to distance calculation
-    if (!foundRange) {
-        for (int i = 0; i < numColors; i++) {
-            uint32_t refColor;
-            if (isDim) {
-                // Use dim reference colors for matching dim input colors
-                refColor = colorNames[i].dimColor;
-            } else {
-                // For brighter colors, compare with standard palette
-                refColor = colorNames[i].color;
-            }
-            
-            // For very dim colors, we'll compare RGB directly 
-            if (isDim) {
-                rgbColor refRgb = unpackRgb(refColor);
-                int dr = (int)input.r - (int)refRgb.r;
-                int dg = (int)input.g - (int)refRgb.g;
-                int db = (int)input.b - (int)refRgb.b;
-                int dist = dr*dr + dg*dg + db*db;
-                
-                if (dist < minDist) {
-                    minDist = dist;
-                    minIdx = i;
-                }
-            } else {
-                // Force brightness to max for matching to avoid brightness bias
-                hsvColor compareHsv = inputHsv;
-                compareHsv.v = 254;
-                
-                rgbColor refRgb = unpackRgb(refColor);
-                hsvColor refHsv = RgbToHsv(refRgb);
-                
-                // Compare hue and saturation only
-                int dh = (int)compareHsv.h - (int)refHsv.h;
-                if (dh > 127) dh = 255 - dh; // wrap around hue circle
-                if (dh < -127) dh = 255 + dh;
-                
-                int ds = (int)compareHsv.s - (int)refHsv.s;
-                int dist = dh*dh + ds*ds;
-                
-                if (dist < minDist) {
-                    minDist = dist;
-                    minIdx = i;
-                }
-            }
-        }
-    }
-    
-    const char* src = colorNames[minIdx].name;
-        // Serial.print("\n\r");
-        // Serial.print(src);
-        // Serial.print("\n\r");
-    int len = strlen(src);
-    if (length == -1) {
-        // Trim trailing spaces only
-        int end = len - 1;
-        while (end >= 0 && src[end] == ' ') end--;
-        int trimmedLen = end + 1;
-        strncpy(colorNameBuffer, src, trimmedLen);
-        colorNameBuffer[trimmedLen] = '\0';
-        return colorNameBuffer;
+
+  const char* src = colorNames[minIdx].name;
+  // Serial.print("\n\r");
+  // Serial.print(src);
+  // Serial.print("\n\r");
+  int len = strlen(src);
+  if (length == -1) {
+    // Trim trailing spaces only
+    int end = len - 1;
+    while (end >= 0 && src[end] == ' ') end--;
+    int trimmedLen = end + 1;
+    strncpy(colorNameBuffer, src, trimmedLen);
+    colorNameBuffer[trimmedLen] = '\0';
+    return colorNameBuffer;
     } else {
-        int padLen = length > len ? length : len;
-        memset(colorNameBuffer, ' ', padLen);
-        strncpy(colorNameBuffer, src, padLen);
-        colorNameBuffer[padLen] = '\0';
-        return colorNameBuffer;
+    int padLen = length > len ? length : len;
+    memset(colorNameBuffer, ' ', padLen);
+    strncpy(colorNameBuffer, src, padLen);
+    colorNameBuffer[padLen] = '\0';
+    return colorNameBuffer;
     }
-}
+  }
 
 char* colorToName(rgbColor color, int length) {
-    return colorToName(packRgb(color.r, color.g, color.b), length);
-}
+  return colorToName(packRgb(color.r, color.g, color.b), length);
+  }
 
 char* colorToName(int hue, int length) {
-    // Serial.print("\n\n\rhueVersion: ");
-    // Serial.print(hue);
-    // Special case: black, white, grey
-    if (hue < 0) return colorToName(0x000000, length); // fallback
-    
-    // Find the color for this hue using direct range matching
-    for (int i = 0; i < sizeof(colorNames) / sizeof(colorNames[0]); i++) {
-        // Skip special cases (white, black, grey)
-        if (colorNames[i].hueStart == 0 && colorNames[i].hueEnd == 0) {
-            continue;
+  // Serial.print("\n\n\rhueVersion: ");
+  // Serial.print(hue);
+  // Special case: black, white, grey
+  if (hue < 0) return colorToName(0x000000, length); // fallback
+
+  // Find the color for this hue using direct range matching
+  for (int i = 0; i < sizeof(colorNames) / sizeof(colorNames[0]); i++) {
+    // Skip special cases (white, black, grey)
+    if (colorNames[i].hueStart == 0 && colorNames[i].hueEnd == 0) {
+      continue;
+      }
+
+    // Handle normal range
+    if (colorNames[i].hueStart < colorNames[i].hueEnd) {
+      if (hue >= colorNames[i].hueStart && hue <= colorNames[i].hueEnd) {
+        const char* src = colorNames[i].name;
+        int len = strlen(src);
+        if (length == -1) {
+          // Trim trailing spaces only
+          int end = len - 1;
+          while (end >= 0 && src[end] == ' ') end--;
+          int trimmedLen = end + 1;
+          strncpy(colorNameBuffer, src, trimmedLen);
+          colorNameBuffer[trimmedLen] = '\0';
+          return colorNameBuffer;
+          } else {
+          int padLen = length > len ? length : len;
+          memset(colorNameBuffer, ' ', padLen);
+          strncpy(colorNameBuffer, src, padLen);
+          colorNameBuffer[padLen] = '\0';
+          return colorNameBuffer;
+          }
         }
-        
-        // Handle normal range
-        if (colorNames[i].hueStart < colorNames[i].hueEnd) {
-            if (hue >= colorNames[i].hueStart && hue <= colorNames[i].hueEnd) {
-                const char* src = colorNames[i].name;
-                int len = strlen(src);
-                if (length == -1) {
-                    // Trim trailing spaces only
-                    int end = len - 1;
-                    while (end >= 0 && src[end] == ' ') end--;
-                    int trimmedLen = end + 1;
-                    strncpy(colorNameBuffer, src, trimmedLen);
-                    colorNameBuffer[trimmedLen] = '\0';
-                    return colorNameBuffer;
-                } else {
-                    int padLen = length > len ? length : len;
-                    memset(colorNameBuffer, ' ', padLen);
-                    strncpy(colorNameBuffer, src, padLen);
-                    colorNameBuffer[padLen] = '\0';
-                    return colorNameBuffer;
-                }
-            }
-        } 
-        // Handle wrapping range (e.g., red spans 250-10)
-        else if (colorNames[i].hueStart > colorNames[i].hueEnd) {
-            if (hue >= colorNames[i].hueStart || hue <= colorNames[i].hueEnd) {
-                const char* src = colorNames[i].name;
-                int len = strlen(src);
-                if (length == -1) {
-                    // Trim trailing spaces only
-                    int end = len - 1;
-                    while (end >= 0 && src[end] == ' ') end--;
-                    int trimmedLen = end + 1;
-                    strncpy(colorNameBuffer, src, trimmedLen);
-                    colorNameBuffer[trimmedLen] = '\0';
-                    return colorNameBuffer;
-                } else {
-                    int padLen = length > len ? length : len;
-                    memset(colorNameBuffer, ' ', padLen);
-                    strncpy(colorNameBuffer, src, padLen);
-                    colorNameBuffer[padLen] = '\0';
-                    return colorNameBuffer;
-                }
-            }
+      }
+    // Handle wrapping range (e.g., red spans 250-10)
+    else if (colorNames[i].hueStart > colorNames[i].hueEnd) {
+      if (hue >= colorNames[i].hueStart || hue <= colorNames[i].hueEnd) {
+        const char* src = colorNames[i].name;
+        int len = strlen(src);
+        if (length == -1) {
+          // Trim trailing spaces only
+          int end = len - 1;
+          while (end >= 0 && src[end] == ' ') end--;
+          int trimmedLen = end + 1;
+          strncpy(colorNameBuffer, src, trimmedLen);
+          colorNameBuffer[trimmedLen] = '\0';
+          return colorNameBuffer;
+          } else {
+          int padLen = length > len ? length : len;
+          memset(colorNameBuffer, ' ', padLen);
+          strncpy(colorNameBuffer, src, padLen);
+          colorNameBuffer[padLen] = '\0';
+          return colorNameBuffer;
+          }
         }
+      }
     }
-    
-    // If we get here, use the closest match
-    int idx = closestPaletteHueIdx(hue);
-    const char* src = colorNames[idx].name;
-    int len = strlen(src);
-    if (length == -1) {
-        int end = len - 1;
-        while (end >= 0 && src[end] == ' ') end--;
-        int trimmedLen = end + 1;
-        strncpy(colorNameBuffer, src, trimmedLen);
-        colorNameBuffer[trimmedLen] = '\0';
-        return colorNameBuffer;
+
+  // If we get here, use the closest match
+  int idx = closestPaletteHueIdx(hue);
+  const char* src = colorNames[idx].name;
+  int len = strlen(src);
+  if (length == -1) {
+    int end = len - 1;
+    while (end >= 0 && src[end] == ' ') end--;
+    int trimmedLen = end + 1;
+    strncpy(colorNameBuffer, src, trimmedLen);
+    colorNameBuffer[trimmedLen] = '\0';
+    return colorNameBuffer;
     } else {
-        int padLen = length > len ? length : len;
-        memset(colorNameBuffer, ' ', padLen);
-        strncpy(colorNameBuffer, src, padLen);
-        colorNameBuffer[padLen] = '\0';
-        return colorNameBuffer;
+    int padLen = length > len ? length : len;
+    memset(colorNameBuffer, ' ', padLen);
+    strncpy(colorNameBuffer, src, padLen);
+    colorNameBuffer[padLen] = '\0';
+    return colorNameBuffer;
     }
-}
+  }
 
 
-void printColorNameDimmedDemo(int rangeStart, int rangeEnd, uint8_t brightness) {
-    // Check if there's input in Serial to parse a range
-    if (Serial.available() > 0) {
-        String input = Serial.readStringUntil('\n');
-        input.trim();
-        
-        // Look for a dash character
-        int dashIndex = input.indexOf('-');
-        if (dashIndex > 0 && dashIndex < input.length() - 1) {
-            // Get the numbers before and after the dash
-            String startStr = input.substring(0, dashIndex);
-            String endStr = input.substring(dashIndex + 1);
-            
-            // Convert to integers
-            rangeStart = startStr.toInt();
-            rangeEnd = endStr.toInt();
-            
-            // Validate the range
-            if (rangeStart >= 0 && rangeStart <= 255 && rangeEnd >= 0 && rangeEnd <= 255) {
-                Serial.print("Displaying colors for range: ");
-                Serial.print(rangeStart);
-                Serial.print("-");
-                Serial.println(rangeEnd);
-            } else {
-                Serial.println("Invalid range. Using default range (0-255)");
-                rangeStart = 0;
-                rangeEnd = 255;
-            }
-        } else {
-            // No dash found or invalid format
-            Serial.println("Invalid format. Using default range (0-255)");
+// Declare global variables for scroll acceleration to avoid scope issues
+static int scrollLastDirection = 0;  // Previous scrolling direction
+static float scrollAccelerationFactor = 1.0f;  // Current acceleration multiplier
+static unsigned long scrollAccelerationLastTime = 0;  // Last time we updated acceleration
+
+uint32_t colorPicker(uint8_t startHue, uint8_t brightness) {
+  // Static precomputed data for all 256 possible hue values (0-255)
+  clearColorOverrides(1,1,0);
+  unsigned long holdConfirmTime = 1500;
+  static bool initialized = false;
+  static char allNames[256][12];
+  static uint32_t allColorValues[256];
+  static bool nameToggleState[256];
+  static char emptyStr[2] = " ";
+
+  if (startHue < 0) {
+    startHue = 225;
+    } else if (startHue > 255) {
+      startHue = 225;
+      }
+  int rangeStart = 0;
+  int rangeEnd = 255;
+  // One-time initialization of all possible hue data
+  if (!initialized) {
+    bool toggle = false;
+    char* lastName = nullptr;
+
+    // Precompute all color names, colors, and toggle states for all 256 hues
+    for (int h = 0; h < 256; h++) {
+      // Get color and name
+      hsvColor hsv = { (uint8_t)h, 254, brightness };
+      allColorValues[h] = HsvToRaw(hsv);
+
+      char* tempName = colorToName(allColorValues[h], 10);
+      strncpy(allNames[h], tempName, 11);
+      allNames[h][11] = '\0';
+
+      // Calculate toggle state based on name changes
+      if (lastName == nullptr || strcmp(allNames[h], lastName) != 0) {
+        toggle = !toggle;
         }
+      nameToggleState[h] = toggle;
+      lastName = allNames[h];
+      }
+
+    initialized = true;
     }
+
+  // Check if there's input in Serial to parse a range
+  if (Serial.available() > 0) {
+    String input = Serial.readStringUntil('\n');
+    input.trim();
+
+    // Look for a dash character
+    int dashIndex = input.indexOf('-');
+    if (dashIndex > 0 && dashIndex < input.length() - 1) {
+      // Get the numbers before and after the dash
+      String startStr = input.substring(0, dashIndex);
+      String endStr = input.substring(dashIndex + 1);
+
+      // Convert to integers
+      rangeStart = startStr.toInt();
+      rangeEnd = endStr.toInt();
+
+      // Validate the range
+      if (rangeStart >= 0 && rangeStart <= 255 && rangeEnd >= 0 && rangeEnd <= 255) {
+        Serial.print("Displaying colors for range: ");
+        Serial.print(rangeStart);
+        Serial.print("-");
+        Serial.println(rangeEnd);
+        } else {
+        Serial.println("Invalid range. Using default range (0-255)");
+        rangeStart = 0;
+        rangeEnd = 255;
+        }
+      } else {
+      // No dash found or invalid format
+      Serial.println("Invalid format. Using default range (0-255)");
+      }
+    }
+
+  b.clear();
+  // int lastNetSlot = netSlot;
+
+  // netSlot = 8;
+  // createSlots(netSlot, 1);
+//!dont show nets
+  hideNets = 1;
+  showLEDsCore2 = -2;
+  resetEncoderPosition = 1;
+
+  // Store original range for restoring when zooming out
+  static int originalRangeStart = -1;
+  static int originalRangeEnd = -1;
+  if (originalRangeStart == -1) {
+    // Always use full spectrum 0-255 as the base range for consistency
+    originalRangeStart = 0;
+    originalRangeEnd = 255;
+    }
+
+  // Center position and display state
+  
+  int centerRow = 45; // Start at middle row (0-59)
+  int zoom = 0;       // Initial zoom level (0-255)
+  bool zoomOrScroll = false;
+  int cursorRow = 0;
+
+  // If startHue is specified, find the row closest to it
+  if (startHue >= 0 && startHue <= 255) {
+    // Formula to convert hue to row: row = (hue * 60.0f) / 255.0f
+    // This is the inverse of the formula: hue = row * 255.0f / 60.0f
+    centerRow = round((startHue * 60.0f) / 255.0f);
     
-    char lastName[20] = "";
-    b.clear();
-    showLEDsCore2 = -3;
+    // Ensure centerRow stays within valid bounds (0-59)
+    if (centerRow < 0) centerRow = 0;
+    if (centerRow > 59) centerRow = 59;
+  }
 
-    bool sizeToggle = false;
+  // Use floating-point for precise positioning to avoid integer rounding errors
+  float preciseHue = centerRow * 255.0f / 60.0f;
+  int centerHue = (int)preciseHue; // Initial hue at center row
 
-Serial.println("row\t   hue\tname\n\r");
-    for (int i = 0; i < 60; i++) {
-        int hue = i * abs(rangeEnd - rangeStart) / 60;
-        hue += rangeStart; // Add the start value to offset the hue
-        hsvColor hsv = { (uint8_t)hue, 254, brightness }; // dimmed color
-        rgbColor rgb = HsvToRgb(hsv);
-        uint32_t color = packRgb(rgb);
-        char* name = colorToName((uint32_t)color, 10);
-        char* nameHue = colorToName(hue, 10);
-        if (strcmp(name, lastName) != 0) {
-           
-            sizeToggle = !sizeToggle;
-        } 
-            
+  float zoomCursorWidthf = 1.0f;
+  int zoomCursorWidth = 1;
 
-        if (sizeToggle) {
-            b.printRawRow(0b00001111, i , color, 0xffffff);
-            } else {
-            b.printRawRow(0b00011110, i , color, 0xffffff);
+  // Acceleration variables - using function local variables not static to avoid linter errors
+  int lastDirection = 0;  // Previous scrolling direction
+  float accelerationFactor = 1.0f;  // Current acceleration multiplier
+  unsigned long lastAccelerationTime = 0;  // Last time we updated acceleration
+  const float maxAcceleration = 6.0f;  // Maximum acceleration factor
+  const float accelerationRate = 0.0003f;  // How quickly acceleration builds up
+  const unsigned long accelerationTimeout = 10;  // Reset acceleration after this many ms of no movement
+int zoomWithProbe = 0;
+  Serial.println(" row\t hue\t name\t\t row\t hue\t name\n\r");
+
+
+
+  do {
+    // Calculate total range and manage zoom
+    int originalTotalRange = 255; // Use the full hue range (0-255)
+
+    // Map from row number to hue value - this is the key function
+    auto getHueForRow = [&](int row) -> int {
+      // Calculate zoom factor - non-linear for better control at low zoom levels
+      float zoomFactor = zoom * zoom / 100.0f;
+
+      // Convert zoom factor to visible percentage of the color range
+      float visiblePercentage = 1.0f - (zoomFactor / 255.0f);
+      if (visiblePercentage < 0.01f) visiblePercentage = 0.01f; // Prevent division by zero
+
+      // Current visible range based on zoom with floating point for smoother transitions
+      float zoomedRange = (float)originalTotalRange * visiblePercentage;
+
+      // Calculate relative row position from centerRow
+      // Use floating point for the entire calculation to avoid rounding errors
+      float rowFraction = (float)(row - centerRow) / 60.0f; // -0.5 to 0.5 based on distance from center
+
+      // Calculate final hue value using floating point precision
+      // Use preciseHue as the anchor to ensure exact center positioning
+      float hueFloat = preciseHue + (rowFraction * zoomedRange);
+
+      // Wrap around properly in the 0-255 range
+      while (hueFloat < 0) hueFloat += 255.0f;
+      while (hueFloat >= 255.0f) hueFloat -= 255.0f;
+
+      // Convert to integer without additional rounding
+      int hue = (int)hueFloat;
+
+      // Wrapping already handled in floating point, no need for additional wrapping here
+
+      return hue;
+
+      };
+
+    // Get hue ranges from the first and last rows for display
+    int displayRangeStart = getHueForRow(0);
+    int displayRangeEnd = getHueForRow(59);
+
+    // Render all rows using precomputed data
+    for (int row = 0; row < 60; row++) {
+      int hue = getHueForRow(row);
+
+      // Get precomputed data for this hue
+      uint32_t color = allColorValues[hue];
+      bool toggle = nameToggleState[hue];
+
+      // Apply alternating row pattern
+      if (toggle != nameToggleState[(row - 1) % 255]) {
+        b.printRawRow(0b00001110, row, color, 0xffffff);
+        } else {
+        b.printRawRow(0b00001110, row, color, 0xffffff);
+        b.printRawRow(0b00001110, row, color, 0xffffff);
+        }
+
+      // Highlight the center row
+      if (zoomOrScroll || zoomWithProbe != 0) {
+        // zoomCursorWidth = (zoom + 1 / 20)%60;
+        if (row == centerRow) {
+          b.printRawRow(0b00011111, row, scaleBrightness(color, 0), 0xffffff);
+
+          logoColorOverride = scaleBrightness(color, 0);
+
+          } else if (row < (centerRow + zoomCursorWidth) && row >(centerRow - zoomCursorWidth) ) {
+            b.printRawRow(0b00010001, row, scaleBrightness(color, 0), 0xffffff);
+            b.printRawRow(0b00001110, row, color, 0xfffffe);
             }
-            Serial.print("Row ");
-            Serial.print(i + 1);
-            Serial.print(":\t  ");
-            Serial.print(hue);
-            Serial.print("\t");
-            Serial.print(name);
-            // Serial.print(" ");
-            // Serial.print(hue);
+          // else if (row == (centerRow+ zoomCursorWidth)) {
+          // b.printRawRow(0b00011111, row, scaleBrightness(color, 200), 0xffffff);
+          // } else if (row == (centerRow- zoomCursorWidth)) {
+          // b.printRawRow(0b00011111, row, scaleBrightness(color, 200), 0xffffff);
+          // }
+        } else if (zoomOrScroll == false) {
+          if (row == centerRow) {
+            b.printRawRow(0b00011111, row, scaleBrightness(color, 300), 0xffffff);
+            logoColorOverride = scaleBrightness(color, 0);
+            }
+          }
+      }
 
-            Serial.println(" ");
+    // Clear the previous output
+    Serial.print("\033[J");
 
-            if (i == 29) {
-              Serial.println(" ");
+    // Display information for all rows
+    for (int i = 0; i < 30; i++) {
+      // Top rows (0-29)
+      int topHue = getHueForRow(i);
+      int bottomHue = getHueForRow(i + 30);
+
+      // Print row marker for center
+      if (i == centerRow && centerRow < 30) {
+        Serial.print("> ");
+        } else {
+        Serial.print("  ");
+        }
+
+      // Print top row info
+      Serial.print(i + 1);
+      Serial.print(":\t ");
+      Serial.print(topHue);
+      Serial.print("\t");
+
+      // if (!nameToggleState[topHue]) {
+      //   Serial.print(" ");
+      //   }
+      Serial.print(allNames[topHue]);
+
+      // Print bottom row marker for center
+      if (i + 30 == centerRow) {
+        Serial.print("\t> ");
+        } else {
+        Serial.print("\t  ");
+        }
+
+      // Print bottom row info
+      //Serial.print("\t ");
+      Serial.print(i + 31);
+      Serial.print(":\t  ");
+      Serial.print(bottomHue);
+      Serial.print("\t");
+
+      // if (!nameToggleState[bottomHue]) {
+      //   Serial.print(" ");
+      //   }
+      Serial.print(allNames[bottomHue]);
+
+      Serial.println();
+      }
+
+    // Print status information
+    int displayCenterHue = getHueForRow(centerRow);
+    Serial.print("Center: ");
+    Serial.print(centerRow + 1);
+    Serial.print(" (hue: ");
+    Serial.print(centerHue); // Display the anchor hue value that stays fixed
+    Serial.print(")");
+
+    if (zoom >= 0) {
+      // Calculate a smooth zoom percentage for display based on non-linear curve
+      // Higher zoom values produce increasingly finer granularity
+      float zoomPercentage = 100.0f * (1.0f - (zoom / 255.0f));
+
+      // // Special case for very low zoom values to make initial zoom smoother
+      // if (zoom < 10) {
+      //   // Slower initial decrease for finest control at beginning
+      //   zoomPercentage = 100.0f - (zoom * zoom / 25.0f);
+      // }
+
+      Serial.print(" | Zoom: ");
+      Serial.print(zoom);
+      Serial.print(" (");
+      Serial.print((int)zoomPercentage);
+      Serial.print("% range: ");
+
+      // Show more helpful range display, especially for wraparound ranges
+      if (zoom < 5) {
+        Serial.print("FULL SPECTRUM");
+        } else if (displayRangeStart > displayRangeEnd) {
+          Serial.print(displayRangeStart);
+          Serial.print(" - ");
+          Serial.print(displayRangeEnd);
+          } else {
+          Serial.print(displayRangeStart);
+          Serial.print("-");
+          Serial.print(displayRangeEnd);
+          }
+        Serial.print(")");
+      }
+
+    Serial.print(" | Mode: ");
+    Serial.print(zoomOrScroll ? "ZOOM" : "SCROLL");
+
+    Serial.println();
+    Serial.println();
+    Serial.flush();
+
+    // Handle encoder input for scrolling and zooming
+    int oldEncoderPosition = encoderPosition;
+    bool redraw = false;
+    unsigned long lastChangeTime = millis();
+    unsigned long lastMicroAdjust = millis();
+    const int encoderSensitivity = 3; // Base sensitivity for scroll mode
+
+    // Use acceleration variables defined at function scope
+
+    while (!redraw) {
+
+
+
+      // Poll encoder
+      //rotaryEncoderStuff();
+      int newPosition = encoderPosition;
+ zoomWithProbe = 0;
+      // Check for acceleration timeout
+      if (millis() - scrollAccelerationLastTime > accelerationTimeout) {
+        // Reset acceleration if user hasn't scrolled for a while
+        scrollAccelerationFactor = 1.0f;
+        scrollLastDirection = 0;
+        }
+
+      // Check for serial input to exit
+      if (Serial.available() > 0) {
+        redraw = true;
+        break;
+        }
+
+      // Handle button press with debounce
+      static unsigned long lastButtonPress = 0;
+      static bool buttonWasPressed = false;  // Track if button was previously pressed
+      static unsigned long buttonPressStartTime = 0; // Track when button was initially pressed
+      static int probeButtonWasPressed = 2; // Track if probe button was previously pressed
+      // Get current button state (LOW is pressed)
+      bool buttonIsPressed = (digitalRead(BUTTON_ENC) == LOW);
+
+      int probeButtonIsPressed = (checkProbeButton());
+
+
+
+
+      // Detect initial button press
+      if ((buttonIsPressed && !buttonWasPressed) || (probeButtonIsPressed > 0 && probeButtonWasPressed == 0)) {
+        // Button was just pressed (transition from released to pressed)
+
+        if (buttonIsPressed) {
+        zoomOrScroll = !zoomOrScroll;
+        }
+        lastButtonPress = millis();
+
+        // if (probeButtonIsPressed == 2) {
+        //   // Serial.print("probe button pressed: ");
+        //   // Serial.println(probeButtonIsPressed);
+        //   }
+
+        redraw = true;
+        // showLEDsCore2 = 2;
+        // waitCore2();
+        probeButtonWasPressed = probeButtonIsPressed;
+        buttonWasPressed = buttonIsPressed;
+        buttonPressStartTime = millis(); // Start timing the press
+
+        if (probeButtonIsPressed > 0)
+          {
+            if (probeButtonIsPressed == 2) {
+              zoomWithProbe = -1;
+            } else {
+              zoomWithProbe = 1;
+            }
+            // Serial.print("zoomWithProbe: ");
+            // Serial.println(zoomWithProbe);
+          holdConfirmTime = 900;
+          } else {
+          holdConfirmTime = 2000;
+          }
+
+        //lastButtonPress = millis();
+        while (buttonIsPressed || probeButtonIsPressed > 0) {
+          uint32_t color = allColorValues[centerHue];
+          uint32_t timerColor = 0x203050;
+
+          buttonIsPressed = (digitalRead(BUTTON_ENC) == LOW);
+          probeButtonIsPressed = (checkProbeButton());
+          logoColorOverride = scaleBrightness(color, 100);
+
+
+
+
+          if (millis() - buttonPressStartTime > (holdConfirmTime / 6) * 5 + 50) {
+
+            ADCcolorOverride1 = scaleBrightness(timerColor, 100);
+
+            } else if (millis() - buttonPressStartTime > (holdConfirmTime / 6) * 5) {
+
+              ADCcolorOverride0 = scaleBrightness(timerColor, 100);
+
+              } else if (millis() - buttonPressStartTime > (holdConfirmTime / 6) * 3 + 50) {
+
+                DACcolorOverride1 = scaleBrightness(timerColor, 100);
+
+                } else if (millis() - buttonPressStartTime > (holdConfirmTime / 6) * 3) {
+
+                  DACcolorOverride0 = scaleBrightness(timerColor, 100);
+
+                  } else if (millis() - buttonPressStartTime > (holdConfirmTime / 6) * 1 + 50) {
+
+                    GPIOcolorOverride1 = scaleBrightness(timerColor, 100);
+
+                    } else if (millis() - buttonPressStartTime > (holdConfirmTime / 6) * 1) {
+
+                      GPIOcolorOverride0 = scaleBrightness(timerColor, 100);
+                      }
+
+
+                    if (millis() - buttonPressStartTime > holdConfirmTime) {
+                      hideNets = 0;
+                      showLEDsCore2 = -1;
+                      clearColorOverrides(true, true, true);
+                      blockProbeButton = 5000;
+                      blockProbeButtonTimer = millis();
+                      // blockProbing = 1000;
+                      // blockProbingTimer = millis();
+                      //delay(100);
+                      return HsvToRaw(hsvColor{(uint8_t)(centerHue%255), 255, brightness});
+                      break;
+                      }
+
+          }
+        clearColorOverrides(false, true, true);
+        
+    
+        //break;
+
+        } else {
+
+        if (probeButtonIsPressed == 1 && probeButtonWasPressed == 0) {
+          zoomOrScroll = !zoomOrScroll;
+          redraw = true;
+          // break;
+          }
+        buttonWasPressed = buttonIsPressed;
+        probeButtonWasPressed = probeButtonIsPressed;
+
+        }
+
+
+
+
+      
+
+      int probeReading = justReadProbe(true);
+
+      // if (probeReading != -1){
+      //   // Serial.print("probeReading: ");
+      //   // Serial.println(probeReading);
+      // }
+
+      if (probeReading != -1 && probeReading > 0 && probeReading <= 60) {
+        // Calculate the row difference
+        int rowDiff = probeReading - 1 - centerRow;
+        //if (zoomOrScroll == 1){
+        // Move the centerRow to the tapped position
+
+
+        if (zoom > 0 && probeReading == 1)
+          {
+          centerRow = 59;
+          } else if (zoom > 0 && probeReading == 60) {
+            centerRow = 0;
+            } else {
+            centerRow = probeReading - 1;
+            }
+
+          // Calculate current visible range based on zoom level
+          float visiblePercentage = 1.0f - ((zoom * zoom / 100.0f) / 255.0f);
+          if (visiblePercentage < 0.01f) visiblePercentage = 0.01f;
+          float visibleRange = originalTotalRange * visiblePercentage;
+
+          // Calculate how much the hue needs to shift to keep colors in place
+          float hueIncrement = (visibleRange / 60.0f) * rowDiff;
+
+          // Adjust preciseHue to maintain color positions 
+          preciseHue += hueIncrement;
+
+          // Ensure proper wrapping of hue values
+          while (preciseHue < 0) preciseHue += 255.0f;
+          while (preciseHue >= 255.0f) preciseHue -= 255.0f;
+
+          // Update centerHue to match the new preciseHue
+          centerHue = (int)preciseHue;
+          // } else {
+
+
+
+          redraw = true;
+          // Serial.print("Probe reading: ");
+          // Serial.print(probeReading);
+
+        //}
+        }
+
+
+      // Handle encoder rotation
+      if (newPosition != oldEncoderPosition || zoomWithProbe != 0) {
+        // Adjust encoder sensitivity based on mode
+        int delta;
+        if (zoomOrScroll || zoomWithProbe != 0) {
+          // Higher sensitivity (smaller steps) for zoom mode
+          // Get raw encoder change first
+          if (zoomWithProbe != 0) {
+            delta = zoomWithProbe * 4;
+          } else {
+            delta = (newPosition - oldEncoderPosition);
+          }
+
+          if (delta > 0 && zoomWithProbe == 0) {
+            zoomCursorWidthf -= 0.28f;
+            } else if (delta < 0 && zoomWithProbe == 0) {
+              zoomCursorWidthf += 0.28f;
               }
-            strncpy(lastName, name, sizeof(lastName));
-            lastName[sizeof(lastName)-1] = '\0';
+          else if (zoomWithProbe != 0 && delta > 0) {
+            zoomCursorWidthf -= 1.1f;
+          } else if (zoomWithProbe != 0 && delta < 0) {
+            zoomCursorWidthf += 1.1f;
+          }
+
+            if (zoomCursorWidthf > 60) zoomCursorWidthf = 60;
+            if (zoomCursorWidthf < 2) zoomCursorWidthf = 2;
+
+            zoomCursorWidth = (int)zoomCursorWidthf % 60;
+
+            // Progressive zoom rate - faster at beginning, slower at higher zoom
+           // if (zoomWithProbe == 0) {
+            if (zoom >= 100 ) {
+              // Very slow changes at high zoom for precise control
+
+              if (zoomWithProbe == 0) {
+
+              delta = delta / 6;
+              } else {
+                if (delta < 0) {
+                  delta = delta / 2;
+                } else {
+                  delta = delta * 3;
+              }
+              }
+
+              if (delta == 0 && (newPosition != oldEncoderPosition)) {
+                delta = (newPosition > oldEncoderPosition) ? 1 : -1;
+                }
+
+
+            } else {
+
+              delta = delta * (((100 - zoom) / 10) + 1);
+
+            }
+              // } else if (zoom > 50) {
+              //   // Medium changes in the middle-high range
+              //   delta = delta * 4;
+              //   } else if (zoom > 25){
+              //     delta = delta * 6;
+              //   } else {
+              //   // Fast changes at lower zoom levels for quick adjustments
+              //   // Amplify delta for faster initial zooming
+              //   delta = delta * 10;
+              //   // Cap maximum change to prevent huge jumps
+              //   // if (delta > 15) delta = 15;
+              //   // if (delta < -15) delta = -15;
+              //   }
+           // }
+          } else if (zoomWithProbe == 0) {
+          // Normal sensitivity for scroll mode
+          int rawDelta = (newPosition - oldEncoderPosition);
+
+          // Determine current scrolling direction
+          int currentDirection = (rawDelta > 0) ? 1 : ((rawDelta < 0) ? -1 : 0);
+
+          // Update acceleration based on direction consistency
+          if (currentDirection != 0) {
+            if (currentDirection == scrollLastDirection) {
+              // Same direction - increase acceleration
+              scrollAccelerationFactor += accelerationRate;
+              if (scrollAccelerationFactor > maxAcceleration) {
+                scrollAccelerationFactor = maxAcceleration;
+                }
+              } else {
+              // Direction changed - reset acceleration
+              scrollAccelerationFactor = 1.0f;
+              }
+
+            // Remember current direction and time
+
+            scrollAccelerationLastTime = millis();
+            }
+          scrollLastDirection = currentDirection;
+          // Apply base sensitivity first
+          delta = rawDelta / encoderSensitivity;
+
+          // Then apply acceleration for larger movements
+
+            // Apply non-linear acceleration that affects larger movements more
+          float acceleratedDelta = (float)delta * scrollAccelerationFactor;
+
+          // Round to integer and ensure minimum movement of 1
+          delta = (int)acceleratedDelta;
+          if (delta == 0 && rawDelta != 0) {
+            delta = currentDirection;
+            }
+
+          }
+
+        if (delta != 0) {
+
+          if (zoomOrScroll || zoomWithProbe != 0) {
+            // Zoom mode - much more granular for smoother zooming
+            zoom -= delta;
+
+            // Clamp zoom value
+            if (zoom < 0) zoom = 0;
+            if (zoom > 255) zoom = 255;
+
+            // In zoom mode, we keep the center hue fixed
+            // preciseHue stays unchanged, ensuring the center color remains stable
+
+            redraw = true;
+            } else if (zoomWithProbe == 0) {
+            // Scroll mode - move one row at a time
+            centerRow -= delta;
+            cursorRow -= delta;
+
+            if (cursorRow < 0) cursorRow = 59;
+            if (cursorRow > 59) cursorRow = 0;
+            // Handle wrapping
+            if (centerRow < 0) centerRow = 59;
+            if (centerRow > 59) centerRow = 0;
+
+            // Update preciseHue (and subsequently centerHue) when scrolling
+            // The exact increment depends on the current zoom level
+
+            // Calculate current visible range based on zoom level
+            float visiblePercentage = 1.0f - ((zoom * zoom / 100.0f) / 255.0f);
+            if (visiblePercentage < 0.01f) visiblePercentage = 0.01f;
+            float visibleRange = originalTotalRange * visiblePercentage;
+
+            // At full zoom out (zoom near 0), one row = 255/60 hue units
+            // As we zoom in, the amount each row represents becomes smaller
+            float hueIncrement = (visibleRange / 60.0f) * delta;
+
+            // Update precise hue value using floating point to avoid rounding errors
+            preciseHue -= hueIncrement;
+
+            // Wrap around the color wheel properly using floating point
+            while (preciseHue < 0) preciseHue += 255.0f;
+            while (preciseHue >= 255.0f) preciseHue -= 255.0f;
+
+            // Update integer centerHue for display purposes
+            centerHue = (int)preciseHue;
+
+            redraw = true;
+            }
+
+          oldEncoderPosition = newPosition;
+          lastChangeTime = millis();
+          }
+        }
+
+      // // Adaptive delay to prevent CPU hogging while still being responsive
+      // unsigned long now = millis();
+      // if (now - lastChangeTime > 200) {
+      //   // Long delay when idle
+      //   delay(10);
+      //   } else if (now - lastChangeTime > 50) {
+      //     // Medium delay when recently active
+      //     delay(5);
+      //     } else {
+      //     // Short delay when very active
+      //     delayMicroseconds(500);
+      //     }
+      // }
+      }
+    // Move cursor up to overwrite previous output
+    Serial.print("\033[32A");
+
+    } while (Serial.available() == 0);
+
+  showLEDsCore2 = -1;
+  hideNets = 0;
+  clearColorOverrides();
+
+  return HsvToRaw(hsvColor{(uint8_t)(centerHue%255), 255, brightness});
+  }
+
+void clearColorOverrides(bool logo, bool pads, bool header) {
+  if (logo) {
+    logoColorOverride = -1;
+    logoColorOverrideTop = -1;
+    logoColorOverrideBottom = -1;
     }
-    Serial.println(" ");
-    while (Serial.available() == 0) {
+  if (pads) {
+    ADCcolorOverride0 = -1;
+    ADCcolorOverride1 = -1;
+    DACcolorOverride0 = -1;
+    DACcolorOverride1 = -1;
+    GPIOcolorOverride0 = -1;
+    GPIOcolorOverride1 = -1;
     }
-
-
-    showLEDsCore2 = -1;
-
-}
-
-
-
+  if (header) {
+    RST0colorOverride = -1;
+    RST1colorOverride = -1;
+    GNDTcolorOverride = -1;
+    GNDBcolorOverride = -1;
+    VINcolorOverride = -1;
+    V3V3colorOverride = -1;
+    V5VcolorOverride = -1;
+    }
+  }
 
 void printColorName(int hue) {
 
@@ -1235,8 +1857,15 @@ void assignNetColors(int preview) {
         netHsv.v += brightenedAmount;
         }
       // netHsv.v = 200;
-      net[i].color = HsvToRgb(netHsv);
-      netColors[i] = net[i].color;
+      
+      if (changedNetColors[i] != 0) {
+        net[i].color = unpackRgb(changedNetColors[i]);
+        netColors[i] = net[i].color;
+        } else {
+        net[i].color = HsvToRgb(netHsv);
+        netColors[i] = net[i].color;
+        }
+    //  netColors[i] = net[i].color;
 
       // leds.setPixelColor(i, netColors[i]);
 
@@ -2221,6 +2850,11 @@ void logoSwirl(int start, int spread, int probe) {
 
   // int fiddyNine = 58;
 
+
+
+
+
+    
   if (probe == 1) {
     int selectionBrightness = 13;
 
@@ -2353,18 +2987,44 @@ void logoSwirl(int start, int spread, int probe) {
         LOGO_LED_START + 7, dimLogoColor(
           logoColors[(start + (spread * 7)) % (LOGO_COLOR_LENGTH - 1)]));
     }
-  // Serial.println(start % 42);
-  // Serial.println((start + 5) % 42);
-  // Serial.println((start + 10) % 42);
-  // Serial.println((start + 15) % 42);
-  // Serial.println((start + 20) % 42);
-  // Serial.println((start + 25) % 42);
-  // Serial.println((start + 30) % 42);
-  // Serial.println((start + 35) % 42);
-  // Serial.println("\n\r");
-  // leds.show();
-  // delay(200);
-  //  showLEDsCore2 = 1;
+
+  if (logoColorOverride != -1) {
+    leds.setPixelColor(LOGO_LED_START, logoColorOverride);
+    leds.setPixelColor(LOGO_LED_START + 1, logoColorOverride);
+    leds.setPixelColor(LOGO_LED_START + 2, logoColorOverride);
+    leds.setPixelColor(LOGO_LED_START + 3, logoColorOverride);
+    leds.setPixelColor(LOGO_LED_START + 4, logoColorOverride);
+    leds.setPixelColor(LOGO_LED_START + 5, logoColorOverride);
+    leds.setPixelColor(LOGO_LED_START + 6, logoColorOverride);
+    leds.setPixelColor(LOGO_LED_START + 7, logoColorOverride);
+    //return;
+  }
+    
+      
+       if (logoColorOverrideTop == -2) {
+        leds.setPixelColor(LOGO_LED_START + 0, logoColorOverrideTopDefault);
+        leds.setPixelColor(LOGO_LED_START + 1, logoColorOverrideTopDefault);
+        leds.setPixelColor(LOGO_LED_START + 2, logoColorOverrideTopDefault);
+       } else if (logoColorOverrideTop != -1) {
+      leds.setPixelColor(LOGO_LED_START + 0, logoColorOverrideTop);
+      leds.setPixelColor(LOGO_LED_START + 1, logoColorOverrideTop);
+      leds.setPixelColor(LOGO_LED_START + 2, logoColorOverrideTop);
+     // leds.setPixelColor(LOGO_LED_START + 6, 0);
+      
+    } 
+    
+     if (logoColorOverrideBottom == -2) {
+      leds.setPixelColor(LOGO_LED_START + 3, logoColorOverrideBottomDefault);
+      leds.setPixelColor(LOGO_LED_START + 4, logoColorOverrideBottomDefault);
+      leds.setPixelColor(LOGO_LED_START + 5, logoColorOverrideBottomDefault);
+     } else if (logoColorOverrideBottom != -1) {
+      leds.setPixelColor(LOGO_LED_START + 3, logoColorOverrideBottom);
+      leds.setPixelColor(LOGO_LED_START + 4, logoColorOverrideBottom);
+      leds.setPixelColor(LOGO_LED_START + 5, logoColorOverrideBottom);
+      //leds.setPixelColor(LOGO_LED_START + 6, 0);
+    }
+
+
   }
 bool lightUpName = false;
 int brightenNet(int node, int addBrightness) {
@@ -2472,15 +3132,41 @@ void lightUpHeader(void) {
         rstColors[1] = headerColors[1];
         }
 
-
-      leds.setPixelColor(RST_0_LED, scaleDownBrightness(rstColors[0], 4, 55));
-      leds.setPixelColor(RST_1_LED, scaleDownBrightness(rstColors[1], 4, 55));
-
-      leds.setPixelColor(GND_T_LED, scaleDownBrightness(headerColors[5], 2, 35));
-      leds.setPixelColor(GND_B_LED, scaleDownBrightness(headerColors[6], 2, 35));
-      leds.setPixelColor(VIN_LED, scaleDownBrightness(headerColors[2], 5, 35));
-      leds.setPixelColor(V3V3_LED, scaleDownBrightness(headerColors[3], 5, 35));
-      leds.setPixelColor(V5V_LED, scaleDownBrightness(headerColors[4], 5, 35));
+      if (RST0colorOverride != -1) {
+        leds.setPixelColor(RST_0_LED, RST0colorOverride);
+        } else {
+        leds.setPixelColor(RST_0_LED, scaleDownBrightness(rstColors[0], 4, 55));
+        }
+      if (RST1colorOverride != -1) {
+        leds.setPixelColor(RST_1_LED, RST1colorOverride);
+        } else {
+        leds.setPixelColor(RST_1_LED, scaleDownBrightness(rstColors[1], 4, 55));
+        }
+      if (GNDTcolorOverride != -1) {
+        leds.setPixelColor(GND_T_LED, GNDTcolorOverride);
+        } else {
+        leds.setPixelColor(GND_T_LED, scaleDownBrightness(headerColors[5], 2, 35));
+        }
+      if (GNDBcolorOverride != -1) {
+        leds.setPixelColor(GND_B_LED, GNDBcolorOverride);
+        } else {
+        leds.setPixelColor(GND_B_LED, scaleDownBrightness(headerColors[6], 2, 35));
+        }
+      if (VINcolorOverride != -1) {
+        leds.setPixelColor(VIN_LED, VINcolorOverride);
+        } else {
+        leds.setPixelColor(VIN_LED, scaleDownBrightness(headerColors[2], 5, 35));
+        }
+      if (V3V3colorOverride != -1) {
+        leds.setPixelColor(V3V3_LED, V3V3colorOverride);
+        } else {
+        leds.setPixelColor(V3V3_LED, scaleDownBrightness(headerColors[3], 5, 35));
+        }
+      if (V5VcolorOverride != -1) {
+        leds.setPixelColor(V5V_LED, V5VcolorOverride);
+        } else {
+        leds.setPixelColor(V5V_LED, scaleDownBrightness(headerColors[4], 5, 35));
+        }
 
       if (sfProbeMenu == 1) {
         leds.setPixelColor(ADC_LED_0, scaleBrightness(rawOtherColors[8], -40));
@@ -2514,12 +3200,54 @@ void lightUpHeader(void) {
               leds.setPixelColor(GPIO_LED_0, scaleBrightness(rawOtherColors[10], -40));
               leds.setPixelColor(GPIO_LED_1, scaleBrightness(rawOtherColors[13], -40));
               } else {
-              leds.setPixelColor(ADC_LED_0, scaleBrightness(rawOtherColors[8], -40));
-              leds.setPixelColor(ADC_LED_1, scaleBrightness(rawOtherColors[11], -40));
-              leds.setPixelColor(DAC_LED_0, scaleBrightness(rawOtherColors[9], -40));
-              leds.setPixelColor(DAC_LED_1, scaleBrightness(rawOtherColors[12], -40));
-              leds.setPixelColor(GPIO_LED_0, scaleBrightness(rawOtherColors[10], -40));
-              leds.setPixelColor(GPIO_LED_1, scaleBrightness(rawOtherColors[13], -40));
+
+              if (ADCcolorOverride0 == -1) {
+                leds.setPixelColor(ADC_LED_0, scaleBrightness(rawOtherColors[8], -40));
+                } else if (ADCcolorOverride0 == -2) {
+                  leds.setPixelColor(ADC_LED_0, ADCcolorOverride0Default);
+                } else {
+                  leds.setPixelColor(ADC_LED_0, ADCcolorOverride0);
+                }
+                
+              if (ADCcolorOverride1 == -1) {
+                leds.setPixelColor(ADC_LED_1, scaleBrightness(rawOtherColors[11], -40));
+                } else if (ADCcolorOverride1 == -2) {
+                  leds.setPixelColor(ADC_LED_1, ADCcolorOverride1Default);
+                } else {
+                  leds.setPixelColor(ADC_LED_1, ADCcolorOverride1);
+                }
+                
+              if (DACcolorOverride0 == -1) {
+                leds.setPixelColor(DAC_LED_0, scaleBrightness(rawOtherColors[9], -40));
+                } else if (DACcolorOverride0 == -2) {
+                  leds.setPixelColor(DAC_LED_0, DACcolorOverride0Default);
+                } else {
+                  leds.setPixelColor(DAC_LED_0, DACcolorOverride0);
+                }
+                
+              if (DACcolorOverride1 == -1) {
+                leds.setPixelColor(DAC_LED_1, scaleBrightness(rawOtherColors[12], -40));
+                } else if (DACcolorOverride1 == -2) {
+                  leds.setPixelColor(DAC_LED_1, DACcolorOverride1Default);
+                } else {
+                  leds.setPixelColor(DAC_LED_1, DACcolorOverride1);
+                }
+                
+                if (GPIOcolorOverride0 == -1) {
+                leds.setPixelColor(GPIO_LED_0, scaleBrightness(rawOtherColors[10], -40));
+                } else if (GPIOcolorOverride0 == -2) {
+                  leds.setPixelColor(GPIO_LED_0, GPIOcolorOverride0Default);
+                } else {
+                  leds.setPixelColor(GPIO_LED_0, GPIOcolorOverride0);
+                }
+                
+                if (GPIOcolorOverride1 == -1) {
+                leds.setPixelColor(GPIO_LED_1, scaleBrightness(rawOtherColors[13], -40));
+                } else if (GPIOcolorOverride1 == -2) {
+                  leds.setPixelColor(GPIO_LED_1, GPIOcolorOverride1Default);
+                } else {
+                  leds.setPixelColor(GPIO_LED_1, GPIOcolorOverride1);
+                } 
               }
             }
 
@@ -2560,7 +3288,7 @@ int scaleScale(int value) {
   int scaled = value;
   //scaled = value / (abs(scaleFactor) + 1);
 
-    scaled = value + (int)(scaleFactor * (abs((float)value) / 8.0));
+  scaled = value + (int)(scaleFactor * (abs((float)value) / 8.0));
 
 
   // Serial.print("\n\rscaled ");
@@ -2663,7 +3391,7 @@ void lightUpRail(int logo, int rail, int onOff, int brightness2,
               } else {
               leds.setPixelColor(railsToPixelMap[j][i], scaleBrightness(railColorsV5[j][1], scaleScale(-50)));
               }
-            
+
             } else { //this is when the rails are not highlighted
             // Serial.println("brightness2");
             // Serial.println(brightness2);
@@ -2915,7 +3643,7 @@ hsvColor RgbToHsv(uint32_t color) {
   rgb.g = (color >> 8) & 0xFF;
   rgb.b = color & 0xFF;
   return RgbToHsv(rgb);
-}
+  }
 
 void randomColors(void) {
 
@@ -3473,35 +4201,35 @@ void checkSerialForColorRange() {
   if (Serial.available() > 0) {
     String input = Serial.readStringUntil('\n');
     input.trim();
-    
+
     // Look for a dash character
     int dashIndex = input.indexOf('-');
     if (dashIndex > 0 && dashIndex < input.length() - 1) {
       // Get the numbers before and after the dash
       String startStr = input.substring(0, dashIndex);
       String endStr = input.substring(dashIndex + 1);
-      
+
       // Convert to integers
       int rangeStart = startStr.toInt();
       int rangeEnd = endStr.toInt();
-      
+
       // Validate the range
       if (rangeStart >= 0 && rangeStart <= 255 && rangeEnd >= 0 && rangeEnd <= 255) {
         Serial.print("Displaying colors for range: ");
         Serial.print(rangeStart);
         Serial.print("-");
         Serial.println(rangeEnd);
-        
+
         // Call the demo function with the parsed range
-        printColorNameDimmedDemo(rangeStart, rangeEnd, 40);
-      } else {
+        colorPicker();
+        } else {
         Serial.println("Invalid range. Please use format: 0-255 (values between 0-255)");
-      }
-    } else {
+        }
+      } else {
       // No dash found or invalid format
       Serial.println("Invalid format. Please use: start-end (e.g., 0-255)");
+      }
     }
   }
-}
 
 

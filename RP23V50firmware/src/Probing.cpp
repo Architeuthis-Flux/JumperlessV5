@@ -29,6 +29,9 @@ int debugProbing = 0;
 volatile unsigned long blockProbing = 0;
 volatile unsigned long blockProbingTimer = 0;
 
+volatile unsigned long blockProbeButton = 0;
+volatile unsigned long blockProbeButtonTimer = 0;
+
 int probePowerDAC = 0;
 int lastProbePowerDAC = 0;
 bool probePowerDACChanged = 0;
@@ -118,12 +121,9 @@ int fadeIndex = 0;
 volatile int removeFade = 0;
 int probeMode(int pin, int setOrClear) {
 
+clearColorOverrides(1,1,0);
 
 
-  // if (checkingPads == 1) {
-  //  // Serial.println("checkingPads\n\r");
-  //   return -1;
-  // }
 
   int deleteMisses[20] = {
       -1, -1, -1, -1, -1, -1, -1, -1, -1, -1,
@@ -131,26 +131,7 @@ int probeMode(int pin, int setOrClear) {
     };
   int deleteMissesIndex = 0;
 
-  // clearLEDsExceptRails();
-  // startProbe();
 
-  // createLocalNodeFile(netSlot);
-  // routableBufferPower(1);
-
-  // if (checkSwitchPosition() == 1) {
-  //   routableBufferPower(1);
-  //   // Serial.println("Select");
-  // } else {
-    // showProbeLEDs = 3;
-    // probeActive = 0;
-    // Serial.println("Measure");
-
-    // routableBufferPower(0);
-    // measureMode();
-    // showProbeLEDs = 6;
-    // return -1;
-  //}
-  // calibrateDac0();
 restartProbing:
   //Serial.println(numberOfNets);
 
@@ -755,6 +736,8 @@ int selectSFprobeMenu(int function) {
     // inPadMenu = 0;
     return function;
     }
+
+  //bool selectFunction = false;
   inPadMenu = 1;
   switch (function) {
 
@@ -789,6 +772,7 @@ int selectSFprobeMenu(int function) {
     }
     case LOGO_PAD_TOP:
     case LOGO_PAD_BOTTOM: {
+
     // b.clear();
     //     function = -1;
     // break;
@@ -884,7 +868,7 @@ int selectSFprobeMenu(int function) {
 
     // delay(800);
 
-    function = attachPadsToSettings(function);
+    //function = attachPadsToSettings(function);
     node1or2 = 0;
     nodesToConnect[0] = function;
     nodesToConnect[1] = -1;
@@ -2163,8 +2147,13 @@ int longShortPress(int pressLength) {
   }
 int countLED = 0;
 volatile int checkingButton = 0;
+int lastProbeButtonState = 0;
 
+//// @brief checks the probe button and returns the state of the button, it's blocking but fast
+/// @return 0 = neither pressed, 1 = remove button, 2 = connect button
 int checkProbeButton(void) {
+
+
   int buttonState = 0;
   int buttonState2 = 0;
   int buttonState3 = 0;
@@ -2257,6 +2246,25 @@ int checkProbeButton(void) {
   // delayMicroseconds(500);
   // probeLEDs.show();
 
+  // Check if button is physically not being pressed (both states are not triggered)
+  bool buttonNotPressed = (buttonState != 1 || buttonState2 != 1 || buttonState3 != 1) && 
+                         (buttonState != 0 || buttonState2 != 0 || buttonState3 != 0);
+                         
+  // If button is not pressed and blockProbeButton is active, clear it
+  if (buttonNotPressed && blockProbeButton != 0) {
+    blockProbeButton = 0;
+  }
+  
+  // If blockProbeButton is active, ignore button press and return 0
+  if (blockProbeButton != 0) {
+    // Still check timer-based clearing as a fallback
+    if (millis() - blockProbeButtonTimer > blockProbeButton) {
+      blockProbeButton = 0;
+    } else {
+      return 0;
+    }
+  }
+
   // Serial.print(buttonState);
   // Serial.print(" ");
   // Serial.print(buttonState2);
@@ -2271,9 +2279,20 @@ int checkProbeButton(void) {
     // Serial.println(buttonState2);
     // Serial.println(" ");
     // Serial.println("disconnect button");
+  //   lastProbeButtonState = 1;
+  //   if (blockProbeButton != 0) {
+  //   if (millis() - blockProbeButtonTimer > blockProbeButton) {
+  //     blockProbeButton = 0;
+  //   }
+  //  // return 0;
+  // }
+
+
     if (jumperlessConfig.hardware.probe_revision >= 4) {
+      lastProbeButtonState = 2;
       return 2;
       } else {
+      lastProbeButtonState = 1;
       return 1;
       }
     // return 1;
@@ -2285,10 +2304,12 @@ int checkProbeButton(void) {
     // Serial.println(buttonState2);
     // Serial.println(" ");
     // Serial.println("connect button");
-
+    
     if (jumperlessConfig.hardware.probe_revision >= 4) {
+      lastProbeButtonState = 1;
       return 1;
       } else {
+        lastProbeButtonState = 2;
       return 2;
       }
     // return 2;
@@ -2653,25 +2674,57 @@ void checkPads(void) {
   switch (probeReading) {
     case LOGO_PAD_TOP:
       Serial.print("Top guy");
+      clearColorOverrides(1,1,0);
+      logoColorOverrideTop = -2;
       break;
     case LOGO_PAD_BOTTOM:
       Serial.print("Bottom guy");
+      clearColorOverrides(1,1,0);
+      logoColorOverrideBottom = -2;
       break;
-    case GPIO_PAD:
-      Serial.print("GPIO pad");
+          case ADC_PAD:
+      Serial.print("ADC pad");
+      clearColorOverrides(1,1,0);
+      ADCcolorOverride0 = -2;
+      ADCcolorOverride1 = -2;
       break;
     case DAC_PAD:
       Serial.print("DAC pad");
+      clearColorOverrides(1,1,0);
+      DACcolorOverride0 = -2;
+      DACcolorOverride1 = -2;
       break;
-    case ADC_PAD:
-      Serial.print("ADC pad");
+    case GPIO_PAD:
+      Serial.print("GPIO pad");
+      clearColorOverrides(1,1,0);
+      GPIOcolorOverride0 = -2;
+      GPIOcolorOverride1 = -2;
       break;
     case BUILDING_PAD_TOP:
       Serial.print("Building top");
+      clearColorOverrides(1,1,0);//!highlighted net
+      if (brightenedNet != -1) {
+        hsvColor hsv = RgbToHsv(netColors[brightenedNet]);
+        changedNetColors[brightenedNet] = colorPicker(hsv.h, jumperlessConfig.display.led_brightness);
+        netColors[brightenedNet] = unpackRgb(changedNetColors[brightenedNet]);
+        Serial.print("changedNetColors[");
+        Serial.print(brightenedNet);
+        Serial.print("]: ");
+        Serial.printf("%06x\n", changedNetColors[brightenedNet]);
+
+
+
+        } else {
+       colorPicker(45, jumperlessConfig.display.led_brightness);
+        }
       break;
     case BUILDING_PAD_BOTTOM:
       Serial.print("Building bottom");
-
+      clearColorOverrides(1,1,0);
+      colorPicker();
+      break;
+      default:
+      clearColorOverrides(1,1,0);
       break;
     }
 
@@ -2681,34 +2734,19 @@ void checkPads(void) {
   // Serial.print(millis() - lastPadTouchedTime);
   Serial.flush();
 
-  // if (ju
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 
     // Serial.println();
 
   checkingPads = 0;
   }
+
+
+
+
 float longRunningAverage = 0.0;
 int longRunningAverageDamping = 10;
 
-int readProbeRaw(int readNothingTouched) {
+int readProbeRaw(int readNothingTouched, bool allowDuplicates) {
   // nothingTouchedReading = 165;
   // lastReadRaw = 0;
 
@@ -2758,7 +2796,15 @@ int readProbeRaw(int readNothingTouched) {
     // Serial.println(average);
     // }
 
-    if (maxVariance <= 4 && ((abs(average - lastReadRaw) > 5) || checkingPads == 1) && (average >= MINIMUM_PROBE_READING)) {
+    // if (allowDuplicates){
+    //   Serial.print("allowDuplicates: ");
+    //   Serial.println(average);
+    //   return average;
+    //   //lastReadRaw = 4096;
+    // }
+
+
+  if (maxVariance <= 4 && ((abs(average - lastReadRaw) > 5) || checkingPads == 1) && (average >= MINIMUM_PROBE_READING)) {
 
       // if (checkingPads != 1) {
       lastReadRaw = average;
@@ -2769,7 +2815,13 @@ int readProbeRaw(int readNothingTouched) {
 
       return average;
 
-      } else {
+      } else {  
+
+            if ((abs(average - lastReadRaw) < 5) && allowDuplicates && (average >= MINIMUM_PROBE_READING)){
+              // Serial.print("allowDuplicates: ");
+              // Serial.println(average);
+              return average;
+            }
 
       // Serial.print("nothingTouchedReading: ");
       // Serial.println(nothingTouchedReading);
@@ -2804,15 +2856,22 @@ int convertPadsToRows(int pad) {
               return row;
   }
 unsigned long lastProbeTime = millis();
+int lastProbeRead = 0;
+int lastRowProbed = -1;
 
-int justReadProbe() {
+unsigned long lastDuplicateTime = millis();
+int lastDuplicateRead = 0;
+int justReadProbe(bool allowDuplicates) {
 
   if (blockProbing > 0) {
     return -1;
     }
-  int probeRead = readProbeRaw();
+  int probeRead = readProbeRaw(0,allowDuplicates);
+
+
 
   if (probeRead <= 0) {
+
     return -1;
     }
   //   Serial.print("probeRead: ");
@@ -2831,6 +2890,36 @@ int justReadProbe() {
     return -1;
     }
 
+
+  if (allowDuplicates){
+    // Check if the mapped row is the same, not just the raw reading
+    if (probeRowMap[rowProbed] == lastRowProbed){
+      // If the timer hasn't elapsed, reject the duplicate reading
+      if (millis() - lastDuplicateTime < 500) {
+        if (debugProbing == 1) {
+          Serial.print("Rejected duplicate row: ");
+          Serial.println(probeRowMap[rowProbed]);
+        }
+        return -1;
+      } else {
+        // Timer has elapsed, accept the reading and reset timer
+        lastDuplicateTime = millis();
+        lastProbeRead = probeRead;
+        // Return the same reading now that timer is complete
+        return probeRowMap[rowProbed];
+      }
+    } else {
+      // Different row, reset timer and update last values
+      lastDuplicateTime = millis();
+      lastProbeRead = probeRead;
+      lastRowProbed = probeRowMap[rowProbed];
+      return probeRowMap[rowProbed];
+    }
+  }
+  
+  // For non-allowDuplicates case
+  lastProbeRead = probeRead;
+  lastRowProbed = probeRowMap[rowProbed];
   return probeRowMap[rowProbed];
   }
 
@@ -2844,29 +2933,6 @@ int readProbe() {
   if (blockProbing > 0) {
     return -1;
     }
-  /* clang-format off */
-
-  // int probeRowMap[108] = {
-
-  //     -1,        1,         2,        3,        4,        5,        6,        7,       8,
-  //      9,       10,        11,       12,       13,       14,       15,       16,
-  //     17,       18,        19,       20,       21,       22,       23,       24,
-  //     25,       26,        27,       28,       29,       30,       TOP_RAIL,       TOP_RAIL_GND,
-  //     BOTTOM_RAIL,       BOTTOM_RAIL_GND,      31,       32,       33,       34,       35,       36,
-  //     37,       38,       39,       40,        41,       42,       43,       44,       45,
-  //     46,       47,       48,       49,        50,       51,       52,       53,       54,
-  //     55,       56,       57,       58,        59,       60,       NANO_D1,       NANO_D0,       NANO_RESET_1,
-  //     GND,       NANO_D2,       NANO_D3,       NANO_D4,       NANO_D5,       NANO_D6,       NANO_D7,       NANO_D8,
-  //     NANO_D9,	      NANO_D10,	      NANO_D11,	      NANO_D12,	      NANO_D13,	      NANO_3V3,	      NANO_AREF,	      NANO_A0,
-  //     NANO_A1,	      NANO_A2,	      NANO_A3,	      NANO_A4,	      NANO_A5,	      NANO_A6,	      NANO_A7,	      NANO_5V,
-  //     NANO_RESET_0,	      GND,	     -1,	      LOGO_PAD_BOTTOM,	      LOGO_PAD_TOP,	      GPIO_PAD,	      DAC_PAD,
-  //     ADC_PAD,BUILDING_PAD_TOP,	      BUILDING_PAD_BOTTOM,	    -1,-1, -1, -1 , -1, -1
-  // };// BUILDING_PAD_TOP,	      BUILDING_PAD_BOTTOM,  i took this out
-
-  /* clang-format on */
-
-  // startProbe();
-  // int measurements[8] = {0, 0, 0, 0, 0, 0, 0, 0};
 
   int probeRead = readProbeRaw();
   // delay(100);
@@ -2896,8 +2962,12 @@ int readProbe() {
       buttonCheck = millis();
       int buttonState = checkProbeButton();
       if (buttonState == 1) {
+        blockProbeButton = 5000;
+        blockProbeButtonTimer = millis();
         return -18;
         } else if (buttonState == 2) {
+          blockProbeButton = 5000;
+          blockProbeButtonTimer = millis();
           return -16;
           }
       }
@@ -3179,9 +3249,10 @@ void probeLEDhandler(void) {
   // pinMode(2, OUTPUT);
   // pinMode(9, INPUT);
   showingProbeLEDs = 1;
-
+  // if (showProbeLEDs != 0) {
   //         Serial.print("showProbeLEDs = ");
   // Serial.println(showProbeLEDs);
+  // }
   switch (showProbeLEDs) {
     case 1:
       if (connectOrClearProbe == 1 && node1or2 == 1) {

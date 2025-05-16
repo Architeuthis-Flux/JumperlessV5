@@ -408,7 +408,7 @@ int handleSerialPassthrough(int serial, int print, int printPassthroughFlashing)
         }
 
       gpioReadingColors[8] = 0x1f1900;
-      gpioReading[8] = 1;
+     // gpioReading[8] = 1;
       lastSerial1TxRead = millis();
       showLEDsCore2 = 2;
       lastTimeResetArduino = millis();
@@ -421,7 +421,7 @@ int handleSerialPassthrough(int serial, int print, int printPassthroughFlashing)
 
     if (millis() - lastSerial1TxRead > 50) {
       gpioReadingColors[8] = 0x080501;
-      gpioReading[8] = 0;
+     // gpioReading[8] = 0;
       //showLEDsCore2 = 2;
 
       }
@@ -483,7 +483,7 @@ int handleSerialPassthrough(int serial, int print, int printPassthroughFlashing)
 
 
       gpioReadingColors[9] = 0x00191f;
-      gpioReading[9] = 1;
+      // gpioReading[9] = 1;
       lastSerial1RxRead = millis();
       showLEDsCore2 = 2;
       lastTimeResetArduino = millis();
@@ -495,7 +495,7 @@ int handleSerialPassthrough(int serial, int print, int printPassthroughFlashing)
       }
     if (millis() - lastSerial1RxRead > 50) {
       gpioReadingColors[9] = 0x010508;
-      gpioReading[9] = 0;
+      // gpioReading[9] = 0;
       //showLEDsCore2 = 2;
       }
 
@@ -550,7 +550,7 @@ int handleSerialPassthrough(int serial, int print, int printPassthroughFlashing)
         }
 
       gpioReadingColors[8] = 0x1f1900;
-      gpioReading[8] = 1;
+      // gpioReading[8] = 1;
       lastSerial2TxRead = millis();
       showLEDsCore2 = 2;
       lastTimeResetArduino = millis();
@@ -560,7 +560,7 @@ int handleSerialPassthrough(int serial, int print, int printPassthroughFlashing)
 
     if (millis() - lastSerial2TxRead > 50) {
       gpioReadingColors[8] = 0x080501;
-      gpioReading[8] = 0;
+      // gpioReading[8] = 0;
       //showLEDsCore2 = 2;
 
       }
@@ -601,7 +601,7 @@ int handleSerialPassthrough(int serial, int print, int printPassthroughFlashing)
         }
 
       gpioReadingColors[9] = 0x00191f; //todo fix this
-      gpioReading[9] = 1;
+      // gpioReading[9] = 1;
       lastSerial2RxRead = millis();
       showLEDsCore2 = 2;
       lastTimeResetArduino = millis();
@@ -609,7 +609,7 @@ int handleSerialPassthrough(int serial, int print, int printPassthroughFlashing)
       }
     if (millis() - lastSerial2RxRead > 50) {
       gpioReadingColors[9] = 0x010508;
-      gpioReading[9] = 0;
+      // gpioReading[9] = 0;
       //showLEDsCore2 = 2;
       }
 

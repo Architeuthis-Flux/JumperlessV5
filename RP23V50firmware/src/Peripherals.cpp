@@ -488,23 +488,82 @@ void printGPIOState(void) {
 
   readGPIO();
 
-  Serial.println("\tGPIO States ");
-  Serial.println("          \t0\t1\t2\t3\t4\t5\t6\t7\tTx\tRx");
-  Serial.print("gpioState:\t");
-  for (int i = 0; i < 8; i++) {
+  //Serial.println("  GPIO States \n\r");
+  Serial.println();
+  Serial.println("   number:\t\b1\t\b2\t\b3\t\b4\t\b5\t\b6\t\b7\t\b8\t\bTx\t\bRx");
+  // Serial.print("gpioState:\t");
+  // for (int i = 0; i < 8; i++) {
 
-    Serial.print(gpioState[i]);
-    Serial.print("\t");
-    }
-  Serial.println();
+  //   Serial.print(gpioState[i]);
+  //   Serial.print("\t");
+  //   }
+  //Serial.println();
   Serial.print("      net:\t");
-  for (int i = 0; i < 8; i++) {
-    Serial.print(gpioNet[i]);
+  for (int i = 0; i < 10; i++) {
+    if (gpioNet[i] == -1) {
+      Serial.print(".");
+      } else {
+      Serial.print(gpioNet[i]);
+      }
+    Serial.print("\t");
+    }
+  
+  Serial.println();
+
+  Serial.print(" function:\t");
+  for (int i = 0; i < 10; i++) {
+    
+    switch (gpio_function_map[i]) {
+      case GPIO_FUNC_HSTX:
+        Serial.print("HSTX");
+        break;
+      case GPIO_FUNC_SIO:
+        Serial.print("SIO");
+        break;
+      case GPIO_FUNC_PIO0:
+        Serial.print("PIO0");
+        break;
+      case GPIO_FUNC_PIO1:
+        Serial.print("PIO1");
+        break;
+      case GPIO_FUNC_PIO2:
+        Serial.print("PIO2");
+        break;
+      case GPIO_FUNC_XIP_CS1:
+        Serial.print("XIP_CS1");
+        break;
+      case GPIO_FUNC_USB:
+        Serial.print("USB");
+        break;
+      case GPIO_FUNC_UART_AUX:
+        Serial.print("UART_AUX");
+        break;
+      case GPIO_FUNC_UART:
+        Serial.print("UART");
+        break;
+      case GPIO_FUNC_I2C:
+        Serial.print("I2C");
+        break;
+      case GPIO_FUNC_SPI:
+        Serial.print("SPI");
+        break;
+      case GPIO_FUNC_PWM:
+        Serial.print("PWM");
+        break;
+      case GPIO_FUNC_NULL:
+        Serial.print("NULL");
+        break;
+      default:
+        Serial.print("?");
+        break;
+    }
+
     Serial.print("\t");
     }
   Serial.println();
+
   Serial.print("direction:\t");
-  for (int i = 0; i < 8; i++) {
+  for (int i = 0; i < 10; i++) {
     switch (jumperlessConfig.gpio.direction[i]) {
       case 0:
         Serial.print("out");
@@ -517,8 +576,21 @@ void printGPIOState(void) {
     }
   Serial.println();
   Serial.print("    pulls:\t");
-  for (int i = 0; i < 8; i++) {
-    switch (jumperlessConfig.gpio.pulls[i]) {
+  for (int i = 0; i < 10; i++) {
+    uint8_t pin = i+20;
+    if (i == 8) {
+      pin = 0;
+    } else if (i == 9) {
+      pin = 1;
+    }
+    uint8_t pulls;
+
+      pulls = gpio_is_pulled_up(pin);
+      if (pulls == 0 && gpio_is_pulled_down(pin) == 0) {
+        pulls = 2;
+      }
+    
+    switch (pulls) {
       case 0:
         Serial.print("down");
         break;
@@ -533,7 +605,7 @@ void printGPIOState(void) {
     }
   Serial.println();
   Serial.print("  reading:\t");
-  for (int i = 0; i < 8; i++) {
+  for (int i = 0; i < 10; i++) {
     switch (gpioReading[i]) {
       case 0:
         Serial.print("low");
@@ -565,13 +637,51 @@ uint32_t gpioIdleColors[10] = { 0x050206, 0x050307, 0x040407, 0x040407,
 
 uint8_t gpioIdleHues[10] = { 0, 25, 50, 75, 100, 125, 150, 175, 200, 225 };
 
+
+
+// typedef enum gpio_function_rp2350 {
+//     GPIO_FUNC_HSTX = 0, ///< Select HSTX as GPIO pin function
+//     GPIO_FUNC_SPI = 1, ///< Select SPI as GPIO pin function
+//     GPIO_FUNC_UART = 2, ///< Select UART as GPIO pin function
+//     GPIO_FUNC_I2C = 3, ///< Select I2C as GPIO pin function
+//     GPIO_FUNC_PWM = 4, ///< Select PWM as GPIO pin function
+//     GPIO_FUNC_SIO = 5, ///< Select SIO as GPIO pin function
+//     GPIO_FUNC_PIO0 = 6, ///< Select PIO0 as GPIO pin function
+//     GPIO_FUNC_PIO1 = 7, ///< Select PIO1 as GPIO pin function
+//     GPIO_FUNC_PIO2 = 8, ///< Select PIO2 as GPIO pin function
+//     GPIO_FUNC_GPCK = 9, ///< Select GPCK as GPIO pin function
+//     GPIO_FUNC_XIP_CS1 = 9, ///< Select XIP CS1 as GPIO pin function
+//     GPIO_FUNC_CORESIGHT_TRACE = 9, ///< Select CORESIGHT TRACE as GPIO pin function
+//     GPIO_FUNC_USB = 10, ///< Select USB as GPIO pin function
+//     GPIO_FUNC_UART_AUX = 11, ///< Select UART_AUX as GPIO pin function
+//     GPIO_FUNC_NULL = 0x1f, ///< Select NULL as GPIO pin function
+// } gpio_function_t;
+
+gpio_function_t gpio_function_map[10] = {GPIO_FUNC_SIO, GPIO_FUNC_SIO, GPIO_FUNC_SIO, GPIO_FUNC_SIO, GPIO_FUNC_SIO, GPIO_FUNC_SIO, GPIO_FUNC_SIO, GPIO_FUNC_SIO, GPIO_FUNC_SIO, GPIO_FUNC_SIO};
+
 void readGPIO(void) {
   // Serial.println("\n\n\n\rreadGPIO\n\n\n\n\n\r");
   // return;
-  for (int i = 0; i < 8; i++) { //if you want to read the UART pins, set this to 10
+  for (int i = 0; i < 10; i++) { //if you want to read the UART pins, set this to 10
     // if (gpioNet[i] != -1 &&
     //     (gpioState[i] == 2 || gpioState[i] == 3 || gpioState[i] == 4)) {
     //   int reading = digitalRead(GPIO_1_PIN + i); // readFloatingOrState(20 + i); //this is a regular read
+
+  uint8_t pin = i+20;
+  if (i == 8) {
+    pin = 0;
+
+  } else if (i == 9) {
+    pin = 1;
+
+  }
+
+  if (gpio_function_map[i] != GPIO_FUNC_SIO) {
+    gpioState[i] = 0x1f;
+    gpioReading[i] = 3;
+    continue;
+  }
+
     if (gpioNet[i] == -1) {
       gpioState[i] = 4;
       //continue;
@@ -1129,6 +1239,24 @@ void chooseShownReadings(void) {
     // showReadings = 3;
     }
   int changed = 0;
+
+  for (int i = 0; i < 8; i++) {
+    
+    gpio_function_t fun = gpio_get_function(i+20);
+
+    if (fun != gpio_function_map[i]) {
+      gpio_function_map[i] = fun;
+      changed = 1;
+      }
+    }
+  for (int i = 0; i < 2; i++) {
+    gpio_function_t fun = gpio_get_function(i);
+    if (fun != gpio_function_map[i+8]) {
+      gpio_function_map[i+8] = fun;
+      changed = 1;
+      }
+    }
+
   for (int i = 0; i < 8; i++) {
     if (gpioNet[i] == -1) {
       gpioState[i] = 4;

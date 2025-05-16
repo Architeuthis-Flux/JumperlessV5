@@ -3006,6 +3006,8 @@ char printMainMenu(int extraOptions) {
   return ' ';
   }
 
+
+
 char LEDbrightnessMenu(void) {
 
   char input = ' ';
@@ -3022,6 +3024,7 @@ char LEDbrightnessMenu(void) {
   Serial.println();
   Serial.print("\n\r\td = reset to defaults");
   Serial.println();
+  Serial.print("\n\r\tn = color name test");
   Serial.print("\n\r\tb = bounce logo");
   Serial.print("\n\r\tc = random colors");
   Serial.print("\n\r\t? = is this?");
@@ -3045,7 +3048,17 @@ char LEDbrightnessMenu(void) {
     saveLEDbrightness(0);
 
     return ' ';
-    } else if (input == 'd') {
+    } 
+    else if (input == 'n') {  
+      int hue = colorPicker();
+      Serial.print("Hue: ");
+      Serial.println(hue);
+      Serial.print("Color: ");
+      hsvColor hsv = {(uint8_t)hue, 255, LEDbrightness};
+      Serial.printf("0x%06X\n\r", HsvToRaw(hsv));
+      return ' ';
+    }
+    else if (input == 'd') {
       saveLEDbrightness(1);
 
       return ' ';

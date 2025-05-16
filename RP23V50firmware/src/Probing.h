@@ -15,6 +15,9 @@ extern int buttonPin;
 extern volatile unsigned long blockProbing;
 extern volatile unsigned long blockProbingTimer;
 
+extern volatile unsigned long blockProbeButton;
+extern volatile unsigned long blockProbeButtonTimer;
+
 extern volatile int connectOrClearProbe;
 extern int node1or2;
 extern int probeHighlight;
@@ -87,10 +90,10 @@ int getNothingTouched(int samples = 8);
 int scanRows(int pin = 0);
 
 int readRails(int pin = 0);
-int justReadProbe(void);
+int justReadProbe(bool allowDuplicates = false);
 int readProbe(void);
 
-int readProbeRaw(int readNothingTouched = 0); 
+int readProbeRaw(int readNothingTouched = 0, bool allowDuplicates = false); 
 int calibrateProbe(void);
 void calibrateDac0(float target = 3.3);
 

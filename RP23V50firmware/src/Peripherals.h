@@ -43,6 +43,8 @@ extern int revisionNumber;
 
 extern int baudRate;
 
+extern gpio_function_t gpio_function_map[10];
+
 void setGPIO(void);
 void readGPIO(void);
 void printGPIOState(void);

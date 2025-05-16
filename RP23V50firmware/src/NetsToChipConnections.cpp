@@ -203,7 +203,7 @@ void clearAllNTCC(void) {
     gpioNet[i] = -1;
     }
     showADCreadings[i] = -1;
-    gpioReading[i] = -1;
+    gpioReading[i] = 3;
     gpioReadingColors[i] = 0x010101;
     }
   if (gpioNet[8] != -2) {
@@ -212,8 +212,8 @@ void clearAllNTCC(void) {
   if (gpioNet[9] != -2) {
   gpioNet[9] = -1;
   }
-  gpioReading[8] = -1;
-  gpioReading[9] = -1;
+  gpioReading[8] = 3;
+  gpioReading[9] = 3;
   gpioReadingColors[8] = 0x010101;
   gpioReadingColors[9] = 0x010101;
 

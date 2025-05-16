@@ -8,6 +8,7 @@
 #include "NetsToChipConnections.h"
 #include "RotaryEncoder.h"
 #include <Arduino.h>
+#include "config.h"
 //#include <FastLED.h>
 
 #define LED_PIN 17
@@ -71,6 +72,30 @@ extern Adafruit_NeoPixel bbleds;
 extern Adafruit_NeoPixel probeLEDs;
 extern uint8_t probeLEDstateMachine;
 
+extern volatile int hideNets;
+
+extern volatile uint32_t logoColorOverride;
+
+extern volatile uint32_t logoColorOverrideTop;
+extern volatile uint32_t logoColorOverrideBottom;
+
+
+extern volatile uint32_t ADCcolorOverride0;
+extern volatile uint32_t ADCcolorOverride1;
+extern volatile uint32_t DACcolorOverride0;
+extern volatile uint32_t DACcolorOverride1;
+extern volatile uint32_t GPIOcolorOverride0;
+extern volatile uint32_t GPIOcolorOverride1;
+
+extern  uint32_t RST0colorOverride;
+extern  uint32_t RST1colorOverride;
+extern  uint32_t GNDTcolorOverride;
+extern  uint32_t GNDBcolorOverride;
+extern  uint32_t VINcolorOverride;
+extern  uint32_t V3V3colorOverride;
+extern  uint32_t V5VcolorOverride;
+
+void clearColorOverrides(bool logo = true, bool pads = true, bool header = true);
 
 
 class ledClass { //I'm literally copying this from Adafruit_NeoPixel.h so I can split leds.show() into 2 strips without modifying the library 
@@ -258,13 +283,15 @@ const int pixelsToRails[20] = {B_RAIL_NEG, B_RAIL_POS, B_RAIL_POS, B_RAIL_NEG,
                                T_RAIL_NEG, T_RAIL_POS, T_RAIL_POS, T_RAIL_NEG,
                                T_RAIL_NEG, T_RAIL_POS, T_RAIL_POS, T_RAIL_NEG};
 
+
+extern uint32_t changedNetColors[MAX_NETS];
 extern rgbColor netColors[MAX_NETS];
 extern uint32_t savedLEDcolors[NUM_SLOTS][LED_COUNT + 1];
 extern rgbColor specialNetColors[8];
 
 void printColorName(uint32_t color);
 void printColorName(int hue);
-void printColorNameDimmedDemo(int rangeStart=0, int rangeEnd=255, uint8_t brightness=40);
+uint32_t colorPicker(uint8_t startHue = 225, uint8_t brightness=jumperlessConfig.display.led_brightness);
 char* colorToName(uint32_t color, int length = -1);
 char* colorToName(int hue, int length = -1);
 char* colorToName(rgbColor color, int length = -1);

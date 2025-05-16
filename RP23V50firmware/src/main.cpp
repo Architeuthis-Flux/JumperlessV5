@@ -496,7 +496,7 @@ menu:
           // defconDisplay = -1;
           goto loadfile;
           }
-        int probeReading = justReadProbe();
+        int probeReading = justReadProbe(true);
 
         if (probeReading > 0) {
           // Serial.print("probeReading = ");
@@ -620,7 +620,7 @@ menu:
 
           // Call the demo function directly - it will check for range input itself
           Serial.println("Displaying color names (enter range like '10-200' for specific range)");
-          printColorNameDimmedDemo(0, 255);
+          colorPicker(0, 255);
           
           break;
         }
@@ -706,10 +706,10 @@ menu:
         core1busy = 0;
         break;
         }
-        case '2': {
-        runApp(2);
-        break;
-        }
+        // case '2': {
+        // runApp(2);
+        // break;
+        // }
 
         case '^': {
         // doomOn = 1;
@@ -1374,13 +1374,10 @@ void core2stuff() // core 2 handles the LEDs and the CH446Q8
         }
 
       if (rails != 2 && rails != 5 && rails != 3 && inClickMenu == 0 &&
-          inPadMenu == 0) {
+          inPadMenu == 0 && hideNets == 0) {
 
         if (defconDisplay >= 0 && probeActive == 0) {
-          // Serial.print("defconDisplay = ");
-          // Serial.println(defconDisplay);
-          // Serial.print("probeActive = ");
-          // Serial.println(probeActive);
+
           // core2busy = true;
           defcon(swirlCount, spread, defconDisplay);
           // core2busy = false;
@@ -1396,7 +1393,7 @@ void core2stuff() // core 2 handles the LEDs and the CH446Q8
             // Serial.println("clearing");
             clearBeforeSend = 0;
             }
-
+          
           readGPIO(); //if want, I can make this update the LEDs like 10 times faster by putting outside this loop, 
           showLEDmeasurements();
 
