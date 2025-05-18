@@ -22,7 +22,7 @@ extern bool debugNTCC2;
 extern bool debugLEDs;
 extern bool debugMM;
 
-extern int probeSwap;
+
 
 extern bool firstStart;
 
@@ -48,5 +48,6 @@ void runCommandAfterReset(char);
 void readSettingsFromConfig();
 
 void updateGPIOConfigFromState(void);
+void updateStateFromGPIOConfig(void);
 
 #endif

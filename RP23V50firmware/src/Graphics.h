@@ -78,7 +78,14 @@ void printRawRow(uint8_t data, int row, uint32_t color, uint32_t bg, int scale =
     };
     
     extern int defNudge;
+
+
 extern specialRowAnimation rowAnimations[26];
+
+
+
+extern specialRowAnimation warningRowAnimation;
+extern specialRowAnimation warningNetAnimation;
 
 extern bool animationsEnabled;
 extern char defconString[16];

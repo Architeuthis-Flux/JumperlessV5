@@ -476,8 +476,8 @@ int oled::connect(void) {
     //delay(100);
     //address = findI2CAddress(jumperlessConfig.top_oled.sda_pin, jumperlessConfig.top_oled.scl_pin, 1);
     // waitCore2();
-    gpioNet[jumperlessConfig.top_oled.gpio_sda - 20] = -2;
-    gpioNet[jumperlessConfig.top_oled.gpio_scl - 20] = -2;
+    // gpioNet[jumperlessConfig.top_oled.gpio_sda - 20] = -2;
+    // gpioNet[jumperlessConfig.top_oled.gpio_scl - 20] = -2;
     gpioState[jumperlessConfig.top_oled.gpio_sda - 20] = 6;
     gpioState[jumperlessConfig.top_oled.gpio_scl - 20] = 6;
     // delay(10);
@@ -491,7 +491,7 @@ int oled::connect(void) {
     //     found = 0;
     //     //disconnect();
     // }
-
+    //printGPIOState();
     // oledTest();
     if (found == -1) {
         oledConnected = false;

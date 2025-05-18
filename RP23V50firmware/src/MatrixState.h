@@ -72,9 +72,12 @@ struct pathStruct{
 
 int senseRevision(void);
 
+bool isConnectable(int node);
+
+bool connectionAllowed(int node1, int node2);
 extern struct pathStruct path[MAX_BRIDGES]; //this is the array of paths 
 
-
+extern int globalDoNotIntersects[60][2];
 
 extern char *netNameConstants[MAX_NETS];
 

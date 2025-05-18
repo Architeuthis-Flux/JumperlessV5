@@ -16,6 +16,8 @@
 
 volatile int sendAllPathsCore2 =
     0; // this signals the core 2 to send all the paths to the CH446Q
+
+    ///negative values clear, 1 = show the netlist as in node file, 2 = keep added graphics, 3 = don't clear this
 volatile int showLEDsCore2 = 0; // this signals the core 2 to show the LEDs
 volatile int showProbeLEDs =
     0; // this signals the core 2 to show the probe LEDs

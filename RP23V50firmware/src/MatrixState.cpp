@@ -264,17 +264,17 @@ char* yName(int chip, int y) {
       int i = 0;
       for (; i < 3 && src[i] != '\0'; ++i) {
         returnName[i] = src[i];
-      }
+        }
       // Pad with spaces if shorter than 3
       for (; i < 3; ++i) {
         returnName[i] = ' ';
-      }
+        }
       returnName[3] = '\0';
       return returnName;
+      }
     }
-  }
   return returnName;
-}
+  }
 
 char* xName(int chip, int x) {
   returnName[0] = ' ';
@@ -287,20 +287,124 @@ char* xName(int chip, int x) {
       int i = 0;
       for (; i < 3 && src[i] != '\0'; ++i) {
         returnName[i] = src[i];
-      }
+        }
       // Pad with spaces if shorter than 3
       for (; i < 3; ++i) {
         returnName[i] = ' ';
-      }
+        }
       returnName[3] = '\0';
       return returnName;
+      }
+    }
+  return returnName;
+  }
+
+
+int globalDoNotIntersects[60][2] = {
+  {GND, TOP_RAIL},
+  {GND, BOTTOM_RAIL},
+  {GND, DAC1},
+  {GND, DAC0},
+  {TOP_RAIL, DAC1},
+  {TOP_RAIL, DAC0},
+  {BOTTOM_RAIL, DAC1},
+  {BOTTOM_RAIL, DAC0},
+  {TOP_RAIL, BOTTOM_RAIL},
+  {DAC0, DAC1},
+  {RP_GPIO_20, TOP_RAIL},
+  {RP_GPIO_20, BOTTOM_RAIL},
+  {RP_GPIO_20, DAC1}, //maybe
+  {RP_GPIO_20, DAC0},
+  {RP_GPIO_21, TOP_RAIL},
+  {RP_GPIO_21, BOTTOM_RAIL},
+  {RP_GPIO_21, DAC1}, //maybe
+  {RP_GPIO_21, DAC0},
+  {RP_GPIO_22, TOP_RAIL},
+  {RP_GPIO_22, BOTTOM_RAIL},
+  {RP_GPIO_22, DAC1}, //maybe
+  {RP_GPIO_22, DAC0},
+  {RP_GPIO_23, TOP_RAIL},
+  {RP_GPIO_23, BOTTOM_RAIL},
+  {RP_GPIO_23, DAC1}, //maybe
+  {RP_GPIO_23, DAC0},
+  {RP_GPIO_24, TOP_RAIL},
+  {RP_GPIO_24, BOTTOM_RAIL},
+  {RP_GPIO_24, DAC1}, //maybe
+  {RP_GPIO_24, DAC0},
+  {RP_GPIO_25, TOP_RAIL},
+  {RP_GPIO_25, BOTTOM_RAIL},
+  {RP_GPIO_25, DAC1}, //maybe
+  {RP_GPIO_25, DAC0},
+  {RP_GPIO_26, TOP_RAIL},
+  {RP_GPIO_26, BOTTOM_RAIL},
+  {RP_GPIO_26, DAC1}, //maybe
+  {RP_GPIO_26, DAC0},
+  {RP_GPIO_27, TOP_RAIL},
+  {RP_GPIO_27, BOTTOM_RAIL},
+  {RP_GPIO_27, DAC1}, //maybe
+  {RP_GPIO_27, DAC0},
+  {RP_UART_RX, TOP_RAIL},
+  {RP_UART_RX, BOTTOM_RAIL},
+  {RP_UART_RX, DAC1}, //maybe
+  {RP_UART_RX, DAC0},
+  {RP_UART_TX, TOP_RAIL},
+  {RP_UART_TX, BOTTOM_RAIL},
+  {RP_UART_TX, DAC1}, //maybe
+  {RP_UART_TX, DAC0}, 
+  {ROUTABLE_BUFFER_OUT, TOP_RAIL},
+  {ROUTABLE_BUFFER_OUT, BOTTOM_RAIL},
+  {ROUTABLE_BUFFER_OUT, DAC1}, //maybe
+  {ROUTABLE_BUFFER_OUT, DAC0},
+
+  
+  };
+
+
+
+/// @brief checks if a connection is allowed by checking global doNotIntersect rules
+/// @param node1 the first node
+/// @param node2 the second node
+/// @return true if the connection is allowed, false otherwise
+bool connectionAllowed(int node1, int node2) {
+
+  for (int i = 0; i < 60; i++) {
+    if (globalDoNotIntersects[i][0] == node1 && globalDoNotIntersects[i][1] == node2) {
+      return false;
+      }
+    if (globalDoNotIntersects[i][0] == node2 && globalDoNotIntersects[i][1] == node1) {
+      return false;
+      }
+    }
+
+
+    return true;
+  }
+
+/// @brief checks if a node is connectable by checking if it's in the crossbar matrix
+/// @param node the node to check
+/// @return true if the node is connectable, false otherwise
+bool isConnectable(int node) {
+  if (node == -1) {
+    return false;
+    }
+  for (int i = 0; i < 12; i++) {
+    if (i < 8) {
+      for (int j = 0; j < 8; j++) {
+        if (ch[i].yMap[j] == node) {
+          return true;
+        }
+      }
+    }
+    else {
+      for (int j = 0; j < 16; j++) {
+        if (ch[i].xMap[j] == node) {
+          return true;
+        }
+      }
     }
   }
-  return returnName;
-}
-
-
-
+  return false;
+  }
 
 
 

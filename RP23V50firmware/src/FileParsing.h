@@ -53,6 +53,24 @@ int lenHelper(int);
 int printLen(int);
 int isNodeValid(int node);
 
+// External declarations for node file operations
+// extern File nodeFile;
+// extern SafeString nodeFileString;
+// extern int netSlot;
+
+// Buffer to store nodes that were removed in the last removeBridgeFromNodeFile call
+extern int lastRemovedNodes[20];
+extern int lastRemovedNodesIndex;
+extern bool disconnectedNodeNewData;
+
+// Function declarations
+// void closeAllFiles();
+// int openFileThreadSafe(int openTypeEnum, int slot = 0, int flashOrLocal = 0);
+
+// Helper to print disconnected nodes after calling removeBridgeFromNodeFile
+int printDisconnectedNodes(void);
+int disconnectedNode(void);
+
 
 
 #endif

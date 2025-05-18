@@ -6,7 +6,11 @@
 #include <Arduino.h>
 #include "INA219.h"
 #include <Wire.h>
+#include "JumperlessDefines.h"
 //#include "MCP23S17.h"
+
+
+extern unsigned long gpioToggleFrequency;
 
 extern INA219 INA0;
 extern INA219 INA1;
@@ -45,9 +49,39 @@ extern int baudRate;
 
 extern gpio_function_t gpio_function_map[10];
 
+// gpioDef[i][0] is the pin number
+// gpioDef[i][1] is the RP_GPIO_x define
+// gpioDef[i][2] is the index of the gpioState array
+const int gpioDef[10][3] = {
+    {20, RP_GPIO_1, 0},
+    {21, RP_GPIO_2, 1},
+    {22, RP_GPIO_3, 2},
+    {23, RP_GPIO_4, 3},
+    {24, RP_GPIO_5, 4},
+    {25, RP_GPIO_6, 5},
+    {26, RP_GPIO_7, 6},
+    {27, RP_GPIO_8, 7},
+    {0, RP_UART_TX, 8},
+    {1, RP_UART_RX, 9}
+};
+
+extern int gpioOutput[10];
+
+
+int anythingInteractiveConnected(int net = -1);
+int anyGpioOutputConnected(int net = -1);
+int anyGpioInputConnected(int net = -1);
+int anyAdcConnected(int net = -1); // returns adc number
+
 void setGPIO(void);
 void readGPIO(void);
 void printGPIOState(void);
+
+// gpio = -1 means toggle the brightened net
+// lowHigh = 2 means toggle 
+int toggleGPIO(int lowHigh = 2, int gpio = -1, int onlyCheck = 0);
+int probeToggle(void);
+int handleHighlights(int probeReading);
 
 int initI2C(int sdaPin = 26, int sclPin = 27, int speed = 100000);
 int findI2CAddress(int sdaPin = 26, int sclPin = 27, int i2cNumber = 1);

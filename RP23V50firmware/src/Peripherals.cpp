@@ -13,6 +13,7 @@
 #include "pico/stdlib.h"
 #include <Arduino.h>
 #include <stdio.h>
+#include <oled.h>
 
 //#include "MCP_DAC.h"
 //#include "mcp4725.hpp"
@@ -61,7 +62,7 @@ float adcZero[8] = { 8.0, 8.0, 8.0, 8.0, 0.0, 8.0, 8.0, 8.0 };
 /// 0 = output low, 1 = output high, 2 = input, 3 = input pullup, 4 = input pulldown, 5 = unknown
 uint8_t gpioState[10] = {
     0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff,
-  }; 
+  };
 uint8_t gpioReading[10] = {
     3, 3, 3, 3, 3, 3, 3, 3, 3, 3 }; // 0 = low, 1 = high 2 = floating 3 = unknown
 
@@ -71,10 +72,10 @@ int revisionNumber = 0;
 
 int showReadings = 0;
 
-float adcReadings[8] = {0, 0, 0, 0, 0, 0, 0, 0};
+float adcReadings[8] = { 0, 0, 0, 0, 0, 0, 0, 0 };
 
-
-int showADCreadings[8] = {0, 0, 0, 0, 0, 0, 0, 0};
+// int adcNet[8] = { -1, -1, -1, -1, -1, -1, -1, -1 };
+int showADCreadings[8] = { 0, 0, 0, 0, 0, 0, 0, 0 };
 uint32_t adcReadingColors[8] = { 0x050505, 0x050505, 0x050505,
                                 0x050505, 0x050505, 0x050505 };
 float adcReadingRanges[8][2] = {
@@ -142,34 +143,32 @@ void initGPIO(void) {
           gpio_pin = 1;
           }
         gpio_init(gpio_pin);
-        switch (gpioState[i]) {
-          case 0: // output low
+
+
+
+        switch (jumperlessConfig.gpio.direction[i]) {
+          case 0: // output
             gpio_set_dir(gpio_pin, true);  // Set as output
-            gpio_set_pulls(gpio_pin, false, false);  // No pulls
-            gpio_put(gpio_pin, false);  // Set low
             break;
-          case 1: // output high
-            gpio_set_dir(gpio_pin, true);  // Set as output
-            gpio_set_pulls(gpio_pin, false, false);  // No pulls
-            gpio_put(gpio_pin, true);  // Set high
-            break;
-          case 2: // input
+          case 1: // input
             gpio_set_dir(gpio_pin, false);  // Set as input
+            break;
+          default:
+            break;
+        }
+
+        switch (jumperlessConfig.gpio.pulls[i]) {
+          case 2: // no pull
             gpio_set_pulls(gpio_pin, false, false);  // No pulls
             break;
-          case 3: // input pullup
-            gpio_set_dir(gpio_pin, false);  // Set as input
+          case 1: // pullup
             gpio_set_pulls(gpio_pin, true, false);  // Pull up
             break;
-          case 4: // input pulldown
-            gpio_set_dir(gpio_pin, false);  // Set as input
+          case 0: // pulldown
             gpio_set_pulls(gpio_pin, false, true);  // Pull down
+            
             break;
-          case 5: // unknown - default to input
-            gpio_set_dir(gpio_pin, false);  // Set as input
-            gpio_set_pulls(gpio_pin, false, false);  // No pulls
-            break;
-          case 6: // do nothing
+          default:
             break;
           }
 
@@ -264,7 +263,7 @@ int findI2CAddress(int sdaPin, int sclPin, int i2cNumber) {
       } else {
       Wire1.beginTransmission(i);
       }
-    int error = 0;  
+    int error = 0;
     if (i2cNumber == 0) {
       error = Wire.endTransmission();
       } else {
@@ -286,7 +285,7 @@ int findI2CAddress(int sdaPin, int sclPin, int i2cNumber) {
 int initI2C(int sdaPin, int sclPin, int speed) {
 
 
- // Serial.println("initI2C");
+  // Serial.println("initI2C");
   static int i2c1Pins[3] = { 26, 27, 100000 };
   static int i2c0Pins[3] = { 4, 5, 100000 };
   // pin, {0=SDA, 1=SCL}, {I2C0, I2C1}
@@ -354,11 +353,20 @@ int initI2C(int sdaPin, int sclPin, int speed) {
 
       return gpioI2Cmap[sdaFound][2];
       } else if (portFound == 1) {
-
-        gpioNet[sdaPin - 20] = -2;
-        gpioNet[sclPin - 20] = -2;
-        gpioState[sdaPin - 20] = 6;
-        gpioState[sclPin - 20] = 6;
+        // Serial.println("sdaPin: ");
+        // Serial.println(sdaPin);
+        // Serial.println("sclPin: ");
+        // Serial.println(sclPin);
+        // Serial.println("gpioDef[sdaPin - 20][2]: ");
+        // Serial.println(gpioDef[sdaPin - 20][2]);
+        // Serial.println("gpioDef[sclPin - 20][2]: ");
+        // Serial.println(gpioDef[sclPin - 20][2]);
+        // gpioNet[sdaPin - 20] = -2;
+        // gpioNet[sclPin - 20] = -2;
+        gpioState[gpioDef[sdaPin - 20][2]] = 6;
+        gpioState[gpioDef[sclPin - 20][2]] = 6;
+        gpio_function_map[gpioDef[sdaPin - 20][2]] = GPIO_FUNC_I2C;
+        gpio_function_map[gpioDef[sclPin - 20][2]] = GPIO_FUNC_I2C;
 
 
 
@@ -369,6 +377,11 @@ int initI2C(int sdaPin, int sclPin, int speed) {
         Wire1.setSCL(sclPin);
         Wire1.setClock(speed);
         Wire1.begin();
+
+        Serial.println("sdaPin: ");
+        Serial.println(gpio_get_function(sdaPin));
+        Serial.println("sclPin: ");
+        Serial.println(gpio_get_function(sclPin));
         if (i2c1Pins[0] == sdaPin && i2c1Pins[1] == sclPin && i2c1Pins[2] == speed) {
           return gpioI2Cmap[sdaFound][2] + 10; //returns 11 if the pins are already set
           }
@@ -399,7 +412,7 @@ void setGPIO(void) {
   //     // Serial.print(" ");
   //     // Serial.println(gpioState[i]);
 
-  
+
   return;
 
   }
@@ -417,8 +430,8 @@ int gpioReadWithFloating(int pin, unsigned long usDelay) { //2 = floating, 1 = h
 
   int dir = gpio_get_dir(pin);
   if (dir == 1) { //we'll just quickly set the pin to input and read it and then set it back to whatever it was
-    gpio_set_dir(pin, false);
-
+    //gpio_set_dir(pin, false);
+    return gpio_get_out_level(pin);
     }
 
 
@@ -477,7 +490,7 @@ int gpioReadWithFloating(int pin, unsigned long usDelay) { //2 = floating, 1 = h
       gpio_set_pulls(pin, pullupState, pulldownState); //set the pullups and pulldowns back to whatever they were
 
       if (dir == 1) {
-        gpio_set_dir(pin, true); //set the pin back to whatever it was
+        /// gpio_set_dir(pin, true); //set the pin back to whatever it was
         }
 
       return state;
@@ -486,7 +499,7 @@ int gpioReadWithFloating(int pin, unsigned long usDelay) { //2 = floating, 1 = h
 
 void printGPIOState(void) {
 
-  readGPIO();
+  //readGPIO();
 
   //Serial.println("  GPIO States \n\r");
   Serial.println();
@@ -507,12 +520,12 @@ void printGPIOState(void) {
       }
     Serial.print("\t");
     }
-  
+
   Serial.println();
 
   Serial.print(" function:\t");
   for (int i = 0; i < 10; i++) {
-    
+    gpio_function_map[i] = gpio_get_function(gpioDef[i][0]);
     switch (gpio_function_map[i]) {
       case GPIO_FUNC_HSTX:
         Serial.print("HSTX");
@@ -556,14 +569,16 @@ void printGPIOState(void) {
       default:
         Serial.print("?");
         break;
-    }
+      }
 
     Serial.print("\t");
     }
   Serial.println();
-
-  Serial.print("direction:\t");
-  for (int i = 0; i < 10; i++) {
+  Serial.print("set direction:\t");
+  for (int i = 0; i < 8; i++) {
+    // Serial.print("gpio_get_dir(");
+    // Serial.print(i+20);
+    // Serial.print("): ");
     switch (jumperlessConfig.gpio.direction[i]) {
       case 0:
         Serial.print("out");
@@ -575,33 +590,50 @@ void printGPIOState(void) {
     Serial.print("\t");
     }
   Serial.println();
+
+  Serial.print("direction:\t");
+  for (int i = 0; i < 8; i++) {
+    // Serial.print("gpio_get_dir(");
+    // Serial.print(i+20);
+    // Serial.print("): ");
+    switch (gpio_get_dir(i + 20)) {
+      case 1:
+        Serial.print("out");
+        break;
+      case 0:
+        Serial.print("in");
+        break;
+      }
+    Serial.print("\t");
+    }
+  Serial.println();
   Serial.print("    pulls:\t");
   for (int i = 0; i < 10; i++) {
-    uint8_t pin = i+20;
+    uint8_t pin = i + 20;
     if (i == 8) {
       pin = 0;
-    } else if (i == 9) {
-      pin = 1;
-    }
-    uint8_t pulls;
+      } else if (i == 9) {
+        pin = 1;
+        }
+      uint8_t pulls;
 
       pulls = gpio_is_pulled_up(pin);
       if (pulls == 0 && gpio_is_pulled_down(pin) == 0) {
         pulls = 2;
-      }
-    
-    switch (pulls) {
-      case 0:
-        Serial.print("down");
-        break;
-      case 1:
-        Serial.print("up");
-        break;
-      case 2:
-        Serial.print("none");
-        break;
-      }
-    Serial.print("\t");
+        }
+
+      switch (pulls) {
+        case 0:
+          Serial.print("down");
+          break;
+        case 1:
+          Serial.print("up");
+          break;
+        case 2:
+          Serial.print("none");
+          break;
+        }
+      Serial.print("\t");
     }
   Serial.println();
   Serial.print("  reading:\t");
@@ -657,7 +689,11 @@ uint8_t gpioIdleHues[10] = { 0, 25, 50, 75, 100, 125, 150, 175, 200, 225 };
 //     GPIO_FUNC_NULL = 0x1f, ///< Select NULL as GPIO pin function
 // } gpio_function_t;
 
-gpio_function_t gpio_function_map[10] = {GPIO_FUNC_SIO, GPIO_FUNC_SIO, GPIO_FUNC_SIO, GPIO_FUNC_SIO, GPIO_FUNC_SIO, GPIO_FUNC_SIO, GPIO_FUNC_SIO, GPIO_FUNC_SIO, GPIO_FUNC_SIO, GPIO_FUNC_SIO};
+gpio_function_t gpio_function_map[10] = { GPIO_FUNC_SIO, GPIO_FUNC_SIO, GPIO_FUNC_SIO, GPIO_FUNC_SIO, GPIO_FUNC_SIO, GPIO_FUNC_SIO, GPIO_FUNC_SIO, GPIO_FUNC_SIO, GPIO_FUNC_SIO, GPIO_FUNC_SIO };
+
+//this is used to store the output state of the GPIO pins
+//0 = low, 1 = high, 2 = input
+int gpioOutput[10] = { 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 };
 
 void readGPIO(void) {
   // Serial.println("\n\n\n\rreadGPIO\n\n\n\n\n\r");
@@ -667,107 +703,110 @@ void readGPIO(void) {
     //     (gpioState[i] == 2 || gpioState[i] == 3 || gpioState[i] == 4)) {
     //   int reading = digitalRead(GPIO_1_PIN + i); // readFloatingOrState(20 + i); //this is a regular read
 
-  uint8_t pin = i+20;
-  if (i == 8) {
-    pin = 0;
+    uint8_t pin = gpioDef[i][0];
+    if (i == 8) {
+      pin = gpioDef[i][0];
 
-  } else if (i == 9) {
-    pin = 1;
+      } else if (i == 9) {
+        pin = gpioDef[i][0];
 
-  }
+        }
 
-  if (gpio_function_map[i] != GPIO_FUNC_SIO) {
-    gpioState[i] = 0x1f;
-    gpioReading[i] = 3;
-    continue;
-  }
-
-    if (gpioNet[i] == -1) {
-      gpioState[i] = 4;
-      //continue;
-      } else if (gpioNet[i] == -2) {
-       // gpioState[i] = 6;
+      if (gpio_function_map[i] != GPIO_FUNC_SIO) {
+        gpioState[i] = 0x1f;
+        gpioReading[i] = 3;
         continue;
-        } else if (gpioNet[i] == -3) {
-          //gpioState[i] = 5;
+        }
+
+      if (gpioNet[i] == -1) {
+        gpioState[i] = 4;
+        //continue;
+        } else if (gpioNet[i] == -2) {
+          // gpioState[i] = 6;
           continue;
-          } else if (jumperlessConfig.gpio.direction[i] == 0) {
+          } else if (gpioNet[i] == -3) {
+            //gpioState[i] = 5;
             continue;
-            }
+            } else if (jumperlessConfig.gpio.direction[i] == 0) {
+              if (gpioState[i] == 0) {
+                // gpio_set_dir(gpioDef[i][0], true);
+                // gpio_put(gpioDef[i][0], 0);
+                } else if (gpioState[i] == 1) {
+                  // gpio_set_dir(gpioDef[i][0], true);
+                  // gpio_put(gpioDef[i][0], 1);
+                  }
+                gpioOutput[i] = gpioState[i];
 
-        if (gpioNet[i] >= 0 && (gpioState[i] == 2 || gpioState[i] == 3 || gpioState[i] == 4)) {
-          int reading = 0;
-          if (i == 8) {
-            continue;
-            if (gpio_get_dir(0) == 0) {
-              
-              reading = digitalRead(0);
-              } else {
-              reading = gpio_get_out_level(0);
+                // continue;
               }
-            } else if (i == 9) {
-              if (gpioReading[i] == 0) {
-                reading = gpioReadWithFloating(1);
-                } else {
+
+            if (gpioNet[i] >= 0) {
+              int reading = 0;
+
+              if (jumperlessConfig.gpio.direction[i] == 0) {
+                reading = gpio_get_out_level(gpioDef[i][0]);
+
+                switch (reading) {
+                  case 0:
+                    gpioReading[i] = 0;
+                    gpioReadingColors[i] = 0x052302;
+                    break;
+                  case 1:
+                    gpioReading[i] = 1;
+                    gpioReadingColors[i] = 0x230205;
+                    break;
+                  }
                 continue;
-                }
-              // if (gpio_get_dir(1) == 0) {
-              //   //reading = digitalRead(1);
-              //   reading = gpioReadWithFloating(1);
-              // } else {
-              //   reading = gpio_get_out_level(1);
-              // }
+                } else if (gpioState[i] == 6) {
+                  reading = gpio_get(gpioDef[i][0]);
+                  } else {
+                  reading = gpioReadWithFloating(gpioDef[i][0]); //check if the pin is floating or has a state
+                  }
 
-              } else if (gpioState[i] == 6) {
-                reading = gpio_get(20 + i);
-                } else {
-                reading = gpioReadWithFloating(20 + i); //check if the pin is floating or has a state
-                }
+                delayMicroseconds(5);
+                // Serial.print("gpioNet[");
+                // Serial.print(i);
+                // Serial.print("]: ");
+                // Serial.print(gpioNet[i]);
+                // Serial.print(" gpRd[");
+                // Serial.print(i);
+                // Serial.print("]: ");
+                // Serial.print(gpioReading[i]);
+                // Serial.print(" reading: ");
+                // Serial.println(reading);
+                // Serial.println("\n\r");
 
-              delayMicroseconds(10);
-              // Serial.print("gpioNet[");
-              // Serial.print(i);
-              // Serial.print("]: ");
-              // Serial.print(gpioNet[i]);
-              // Serial.print(" gpRd[");
-              // Serial.print(i);
-              // Serial.print("]: ");
-              // Serial.print(gpioReading[i]);
-              // Serial.print(" reading: ");
-              // Serial.println(reading);
-              // Serial.println("\n\r");
+                switch (reading) {
 
-              switch (reading) {
+                  case 0:
+                    gpioReading[i] = 0;
+                    gpioReadingColors[i] = 0x002004;
+                    //         net[gpioNet[i]].color = {0x00, 0x0f, 0x05};
+                    // netColors[gpioNet[i]] = {0x00, 0x0f, 0x05};
+            // lightUpNet(gpioNet[i], -1, 1, 22, 0, 0, 0x000f05);
+                    break;
+                  case 1:
 
-                case 0:
-                  gpioReading[i] = 0;
-                  gpioReadingColors[i] = 0x002004;
-                  //         net[gpioNet[i]].color = {0x00, 0x0f, 0x05};
-                  // netColors[gpioNet[i]] = {0x00, 0x0f, 0x05};
-          // lightUpNet(gpioNet[i], -1, 1, 22, 0, 0, 0x000f05);
-                  break;
-                case 1:
+                    gpioReading[i] = 1;
+                    gpioReadingColors[i] = 0x200400;
+                    //         net[gpioNet[i]].color = {0x22, 0x00, 0x05};
+                    //         netColors[gpioNet[i]] = {0x22, 0x00, 0x05};
+                    // lightUpNet(gpioNet[i], -1, 1, 22, 0, 0, 0x220005);
+                    break;
+                  case 2:
 
-                  gpioReading[i] = 1;
-                  gpioReadingColors[i] = 0x200400;
-                  //         net[gpioNet[i]].color = {0x22, 0x00, 0x05};
-                  //         netColors[gpioNet[i]] = {0x22, 0x00, 0x05};
-                  // lightUpNet(gpioNet[i], -1, 1, 22, 0, 0, 0x220005);
-                  break;
-                case 2:
+                    gpioReading[i] = 2;
+                    // hsvColor hsv = {gpioIdleHues[i], 37, 7};
+                    // gpioReadingColors[i] = HsvToRaw(hsv); //this is handled in showRowAnimations() in Graphics.cpp
 
-                  gpioReading[i] = 2;
-                  // hsvColor hsv = {gpioIdleHues[i], 37, 7};
-                  // gpioReadingColors[i] = HsvToRaw(hsv); //this is handled in showRowAnimations() in Graphics.cpp
-
-                  //  lightUpNet(gpioNet[i]);
-                  gpioReadingColors[i] = 0x040408; //just in case it isn't
-                  break;
-                }
-          } else {
-          gpioReading[i] = 3;
-          }
-        // gpioReading[i] = digitalRead(20 + i);
+                    //  lightUpNet(gpioNet[i]);
+                    gpioReadingColors[i] = 0x040408; //just in case it isn't
+                    break;
+                  }
+              } else {
+              gpioReading[i] = 3;
+              }
+            // gpioReading[i] = digitalRead(20 + i);
     }
 
 
@@ -883,13 +922,13 @@ void setDac0voltage(float voltage, int save, int saveEEPROM, bool checkProbePowe
   int dacValue = (voltage * 4095 / dacSpread[0]) + dacZero[0];
 
   if (checkProbePower && probePowerDAC == 0 && (voltage > 5.0 || voltage < -0.01)) {
-      Serial.println("DAC 0 connected to probe LEDs, swapping LED power to DAC 1");
-      //removeBridgeFromNodeFile(DAC0, ROUTABLE_BUFFER_IN, netSlot, 0, 0);
-      probePowerDAC = 1;
-      probePowerDACChanged = true;
-      routableBufferPower(1, 0);
+    Serial.println("DAC 0 connected to probe LEDs, swapping LED power to DAC 1");
+    //removeBridgeFromNodeFile(DAC0, ROUTABLE_BUFFER_IN, netSlot, 0, 0);
+    probePowerDAC = 1;
+    probePowerDACChanged = true;
+    routableBufferPower(1, 0);
 
-  }
+    }
   // Serial.print(dacSpread[0]);
   // Serial.print(" ");
   // Serial.print(dacZero[0]);
@@ -943,13 +982,13 @@ void setDac1voltage(float voltage, int save, int saveEEPROM, bool checkProbePowe
     }
   if (checkProbePower && probePowerDAC == 1 && (voltage > 5.0 || voltage < -0.01)) {
 
-      Serial.println("DAC 1 connected to probe LEDs, \n\rswapping LED power to DAC 0");
-      //removeBridgeFromNodeFile(DAC0, ROUTABLE_BUFFER_IN, netSlot, 0, 0);
-      probePowerDAC = 0;
-      probePowerDACChanged = true;
-      routableBufferPower(1, 0);
-  
-  }
+    Serial.println("DAC 1 connected to probe LEDs, \n\rswapping LED power to DAC 0");
+    //removeBridgeFromNodeFile(DAC0, ROUTABLE_BUFFER_IN, netSlot, 0, 0);
+    probePowerDAC = 0;
+    probePowerDACChanged = true;
+    routableBufferPower(1, 0);
+
+    }
 
   // Serial.print(voltage);
   // Serial.print(" ");
@@ -1092,6 +1131,7 @@ void dacSine(int resolution) {
   }
 
 void chooseShownReadings(void) {
+
   showADCreadings[0] = 0;
   showADCreadings[1] = 0;
   showADCreadings[2] = 0;
@@ -1238,42 +1278,199 @@ void chooseShownReadings(void) {
     showINA0[2] = 0;
     // showReadings = 3;
     }
-  int changed = 0;
 
-  for (int i = 0; i < 8; i++) {
-    
-    gpio_function_t fun = gpio_get_function(i+20);
+
+  for (int i = 0; i < 10; i++) {
+
+    gpio_function_t fun = gpio_get_function(gpioDef[i][0]);
 
     if (fun != gpio_function_map[i]) {
       gpio_function_map[i] = fun;
-      changed = 1;
-      }
-    }
-  for (int i = 0; i < 2; i++) {
-    gpio_function_t fun = gpio_get_function(i);
-    if (fun != gpio_function_map[i+8]) {
-      gpio_function_map[i+8] = fun;
-      changed = 1;
+
       }
     }
 
-  for (int i = 0; i < 8; i++) {
-    if (gpioNet[i] == -1) {
-      gpioState[i] = 4;
-      changed = 1;
-      } else if (gpioNet[i] == -2) {
-        gpioState[i] = 6;
-        changed = 1;
-        }
-    }
-  if (changed == 1) {
-    updateGPIOConfigFromState();
-    }
 
 
 
 
   }
+
+int handleHighlights(int probeReading) {
+
+  if (probeReading <= 0) {
+    return probeReading;
+    }
+
+  if (brightenedNet > 0) {
+    return probeToggle();
+    }
+
+  return probeReading;
+
+
+
+
+
+  }
+
+unsigned long gpioToggleFrequency = 500; //ms
+
+int highlightInteractable[10] = {
+  RP_GPIO_0, RP_GPIO_1, RP_GPIO_2, RP_GPIO_3, RP_GPIO_4, RP_GPIO_5, RP_GPIO_6, RP_GPIO_7, RP_GPIO_8 };
+
+int probeToggle(void) {
+
+  int buttonState = checkProbeButton();
+
+  if (buttonState == 0) {
+    return -1; //no button pressed
+    }
+
+
+
+  if (buttonState == 2) { //connect button
+    int toggleResult = toggleGPIO(2, -1);
+
+    if (toggleResult >= 0) {
+      // Serial.println("toggleResult: ");
+      // Serial.println(toggleResult);
+     // Serial.flush();
+      return toggleResult;
+      } else {
+        // Serial.println("toggleResult: ");
+        // Serial.println(toggleResult);
+       // Serial.flush();
+       if (brightenedNet > 0) {
+        return -6; //no net highlighted - connect button pressed
+        }
+      return -3; //no gpio connected - connect button pressed
+      }
+    }
+
+  if (buttonState == 1) { //disconnect button
+    // return toggleGPIO(2, -1);
+
+    if (brightenedNet > 0) {
+      int toggleResult = toggleGPIO(2, -1, 1);
+      if (toggleResult != -2) { //-2 means gpio is not connected
+        brightenedNet = 0;
+        return -4; //no gpio connected - disconnect button pressed
+        } else {
+        return -5; //gpio is connected - disconnect button pressed
+        }
+      } else {
+
+      return -2; //no net highlighted - disconnect button pressed
+      }
+    }
+
+  return -1;
+  }
+
+
+int toggleGPIO(int lowHigh, int gpio, int onlyCheck) {
+// Serial.print("brightenedNet: ");
+// Serial.println(brightenedNet);
+int gpioOutputFound = -2;
+  if (gpio < 0 || gpio > 9) {
+    for (int i = 0; i < 10; i++) {
+      if (gpioNet[i] == brightenedNet) {
+        if (jumperlessConfig.gpio.direction[i] == 0) {
+          gpio = gpioDef[i][0];
+          gpioOutputFound = i;
+          }
+        break;
+        }
+      }
+    if (gpioOutputFound == -2) {
+      return -2;
+      }
+    //return -2;
+    }
+
+  if (onlyCheck == 1) {
+    return gpioOutputFound;
+    }
+
+  // Serial.println("lowHigh: ");
+  // Serial.println(lowHigh);
+  // Serial.println("gpio: ");
+  // Serial.println(gpio);
+  // Serial.println("brightenedNet: ");
+  // Serial.println(brightenedNet);
+  // Serial.println("jumperlessConfig.gpio.direction[gpioOutputFound]: ");
+  // Serial.println(jumperlessConfig.gpio.direction[gpioOutputFound]);
+
+  if (jumperlessConfig.gpio.direction[gpioOutputFound] == 0) {
+
+    if (lowHigh == 0) {
+      gpio_put(gpio, 0);
+      gpioState[gpioDef[gpioOutputFound][2]] = 0;
+      Serial.print(" gpio ");
+      Serial.print(gpioDef[gpioOutputFound][2] + 1);
+     // printNodeOrName(gpioDef[gpioOutputFound][1], 1);
+      Serial.print("\t");
+      Serial.print(gpio_get_out_level(gpio)?"high":"low");
+      Serial.print(" > ");
+      Serial.println("low");
+      Serial.flush();
+      return 0;
+      } else if (lowHigh == 1) {
+        gpio_put(gpio, 1);
+        gpioState[gpioDef[gpioOutputFound][2]] = 1;
+          Serial.print(" gpio ");
+        // Serial.print(gpioDef[gpioOutputFound][0]);
+        Serial.print(gpioDef[gpioOutputFound][2] + 1);
+        Serial.print("\t");
+        Serial.print(gpio_get_out_level(gpio)?"high":"low");
+        Serial.print(" > ");
+        Serial.print("high");
+        Serial.println();
+        Serial.flush();
+        return 1;
+        } else {
+        bool currentState = gpio_get_out_level(gpio);
+        gpioState[gpioDef[gpioOutputFound][2]] = !currentState;
+        // Serial.print("gpioState[");
+        // Serial.print(gpioDef[gpioOutputFound][2]);
+        // Serial.print("]: ");
+        // Serial.println(gpioState[gpioDef[gpioOutputFound][2]]);
+        gpio_put(gpio, !currentState);
+        
+         Serial.print(" gpio ");
+        // Serial.print(gpioDef[gpioOutputFound][0]);
+        Serial.print(gpioDef[gpioOutputFound][2] + 1);
+        Serial.print("\t ");
+        Serial.print(currentState?"high":"low");
+        Serial.print(" > ");
+        Serial.print(!currentState?"high":"low");
+        Serial.println();
+        Serial.flush();
+        oled.clear();
+        oled.print("gpio ");
+        oled.print(gpioDef[gpioOutputFound][2] + 1);
+        oled.print("    ");
+        oled.print(currentState?"high":"low");
+        oled.print(" > ");
+        oled.print(!currentState?"high":"low");
+        oled.show();
+        return !currentState;
+        }
+
+
+    }
+  return -1;
+
+
+
+  }
+
+
+
+
+
+
 
 float railSpread = 17.88;
 
@@ -1312,7 +1509,7 @@ void showLEDmeasurements(void) {
         //Serial.println(brightness);
         int scaleVoltage = map((int)abs(adcReading), 0, 8, -30, 70);
         //Serial.println(scaleVoltage);
-          int scaledBrightness = map(brightness, LEDbrightnessSpecial, LEDbrightnessSpecial + 45, -50, 50);
+        int scaledBrightness = map(brightness, LEDbrightnessSpecial, LEDbrightnessSpecial + 45, -50, 50);
 
         color = scaleBrightness(color, scaleVoltage);
 
@@ -1330,6 +1527,94 @@ void showLEDmeasurements(void) {
 
 
   }
+
+
+/// @brief check if any measurements or gpio outputs are connected
+/// @return  0 = gpio output, 1 = gpio input, 2 = adc, -1 if no measurements or outputs are connected
+int anythingInteractiveConnected(int net) {
+  if (anyAdcConnected(net) != -1) {
+    return 2;
+    }
+  if (anyGpioOutputConnected(net) != -1) {
+    return 0;
+    }
+  if (anyGpioInputConnected(net) != -1) {
+    return 1;
+    }
+  return -1;
+  }
+
+/// @brief check if any gpio outputs are connected
+/// @return  gpio number if a gpio output is connected, -1 if no outputs are connected (remember user facing gpio numbers are 1-8, this will return 0-10)
+int anyGpioOutputConnected(int net) {
+  if (net == -1) {
+    for (int i = 0; i < 10; i++) {
+      if (gpioNet[i] > 0 && gpioNet[i] <= numberOfNets) {
+        if (jumperlessConfig.gpio.direction[i] == 0) {
+          return i;
+          }
+        }
+      }
+    } else {
+    for (int i = 0; i < 10; i++) {
+      if (gpioNet[i] == net) {
+        if (jumperlessConfig.gpio.direction[i] == 0) {
+          return i;
+          }
+        }
+      }
+
+    }
+  return -1;
+  }
+
+/// @brief check if any gpio inputs are connected
+/// @return  gpio number if a gpio input is connected, -1 if no inputs are connected (remember user facing gpio numbers are 1-8, this will return 0-10)
+int anyGpioInputConnected(int net) {
+  if (net == -1) {
+    for (int i = 0; i < 10; i++) {
+      if (gpioNet[i] > 0 && gpioNet[i] <= numberOfNets) {
+        if (jumperlessConfig.gpio.direction[i] == 1) {
+          return i;
+          }
+        }
+      }
+    return -1;
+    } else {
+    for (int i = 0; i < 10; i++) {
+      if (gpioNet[i] == net) {
+        if (jumperlessConfig.gpio.direction[i] == 1) {
+          return i;
+          }
+        }
+      }
+    }
+  return -1;
+  }
+
+/// @brief check if any measurements are connected
+/// @return -1 if no measurements are connected, return adc number if a measurement is connected
+int anyAdcConnected(int net) {
+  if (net == -1) {
+    for (int i = 0; i < 8; i++) {
+      // Serial.print("showADCreadings[i]: ");
+      // Serial.println(showADCreadings[i]);
+
+      if (showADCreadings[i] > 0 && showADCreadings[i] <= numberOfNets && i != 7) {
+        return i;
+        }
+      }
+    } else {
+    for (int i = 0; i < 8; i++) {
+      if (showADCreadings[i] == net) {
+        return i;
+        }
+      }
+    }
+  return -1;
+  }
+
+
 
 
 uint32_t measurementToColor(float measurement, float min, float max) {
@@ -1382,10 +1667,10 @@ uint32_t measurementToColor(float measurement, float min, float max) {
 
       hsv.h = hsv.h % 256;
       hsv.v = jumperlessConfig.display.special_net_brightness;
-       //Serial.println(hsv.h);
-       // int measurementInt = measurement * 10;
-       // int distance = abs(0 - measurementInt);
-       // hsv.v = map(distance, min*11, max*11, 0, 100);
+      //Serial.println(hsv.h);
+      // int measurementInt = measurement * 10;
+      // int distance = abs(0 - measurementInt);
+      // hsv.v = map(distance, min*11, max*11, 0, 100);
       rgbColor rgb = HsvToRgb(hsv);
       color = packRgb(rgb);
 
@@ -1616,11 +1901,11 @@ int readAdc(int channel, int samples) {
   for (int i = 0; i < samples; i++) {
     if (micros() - timeoutTimer > 5000) {
       break;
-    }
+      }
     adcReadingAverage += analogRead(ADC0_PIN + channel); //(int)adc_read();
     actualSamples++;
     delayMicroseconds(25);
-  }
+    }
 
   int adcReading = (actualSamples > 0) ? (adcReadingAverage / actualSamples) : 0;
 

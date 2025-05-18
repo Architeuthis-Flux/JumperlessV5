@@ -124,7 +124,8 @@ extern ledClass leds;
 //extern CRGB probeLEDs[1];
 // extern Adafruit_NeoMatrix matrix;
 //extern bool debugLEDs;
-
+extern int warningRow;
+extern int warningNet;
 extern int brightenedNet;
 extern int brightenedRail;
 extern int brightenedAmount;
@@ -242,7 +243,7 @@ const int bbPixelToNodesMap[120] = {
     NANO_D3,   NANO_D4,    NANO_D5,  NANO_D6,  NANO_D7,    NANO_D8,   NANO_D9,
     NANO_D10,  NANO_D11,   NANO_D12, NANO_D13, SUPPLY_3V3, NANO_AREF, NANO_A0,
     NANO_A1,   NANO_A2,    NANO_A3,  NANO_A4,  NANO_A5,    NANO_A6,   NANO_A7,
-    SUPPLY_5V, NANO_RESET_0, GND,      SUPPLY_5V
+    SUPPLY_5V, NANO_RESET_0, GND,      NANO_VIN, 
 
 };
 
@@ -297,8 +298,12 @@ char* colorToName(int hue, int length = -1);
 char* colorToName(rgbColor color, int length = -1);
 void dumpLEDdata(void);
 
+extern unsigned long warningTimeout;
+extern unsigned long warningTimer;
 
 int brightenNet(int node, int addBrightness = 5);
+int warnNet(int node);
+void warnNetTimeout(void);
 
 struct rgbColor shiftHue(struct rgbColor colorToShift, int hueShift = 0,
                          int brightnessShift = 0, int saturationShift = 0,

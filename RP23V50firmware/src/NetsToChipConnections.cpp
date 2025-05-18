@@ -217,6 +217,10 @@ void clearAllNTCC(void) {
   gpioReadingColors[8] = 0x010101;
   gpioReadingColors[9] = 0x010101;
 
+
+  for (int i = 0; i<MAX_NETS; i++) {
+    changedNetColors[i] = 0;
+  }
  // digitalWrite(RESETPIN,LOW);
   }
 

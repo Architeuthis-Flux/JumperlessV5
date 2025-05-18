@@ -200,6 +200,11 @@ void resetConfigToDefaults(int clearCalibration, int clearHardware) {
 }
 
 void updateConfigFromFile(const char* filename) {
+
+    Serial.print("Updating config from file: ");
+    Serial.println(filename);
+    Serial.flush();
+
     if (!FatFS.exists(filename)) {
         Serial.println("Config file not found");
         resetConfigToDefaults();
@@ -471,9 +476,13 @@ void saveConfig(void) {
         jumperlessConfig.calibration.probe_min = 15;
         jumperlessConfig.calibration.probe_max = 4060;
     }
-    saveConfigToFile("/config.txt");
-    
+
+   // printGPIOState();
+  // printConfigSectionToSerial(7, true, false);
+   saveConfigToFile("/config.txt");
+   /// printGPIOState();
     readSettingsFromConfig();
+  ///  printGPIOState();
     ///initChipStatus();
     //if (jumperlessConfig.hardware.hardware_revision != hwRevision ) {
         // leds.clear();

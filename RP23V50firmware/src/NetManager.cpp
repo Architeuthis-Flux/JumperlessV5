@@ -10,6 +10,7 @@
 #include <EEPROM.h>
 #include "LEDs.h"
 #include "Graphics.h"
+#include "Probing.h"
 // Define a struct that holds both the long and short strings as well as the defined value
 // struct DefineInfo {
 //     const char* shortName;
@@ -680,8 +681,11 @@ int findFirstUnusedNodeIndex(int netNumber) // search for a free net[]
   return 0x7f;
   }
 
-int checkDoNotIntersectsByNet(
-    int netToCheck1, int netToCheck2) // If you're searching DNIs by net, there
+/// @brief checks if a connection is allowed by checking doNotIntersect rules
+/// @param netToCheck1 the first net
+/// @param netToCheck2 the second net
+/// @return true if the connection is allowed, false otherwise
+int checkDoNotIntersectsByNet(int netToCheck1, int netToCheck2) // If you're searching DNIs by net, there
   // won't be any valid ways to make a new
   // net with both nodes, so its skipped
   {
@@ -753,6 +757,10 @@ int checkDoNotIntersectsByNet(
   return 1; // return 1 if it's ok to connect these nets
   }
 
+/// @brief checks if a connection is allowed by checking doNotIntersect rules
+/// @param netToCheck the net to check
+/// @param nodeToCheck the node to check
+/// @return true if the connection is allowed, false otherwise
 int checkDoNotIntersectsByNode(
     int netToCheck,
     int nodeToCheck) // make sure none of the nodes on the net violate
@@ -783,9 +791,21 @@ int checkDoNotIntersectsByNode(
   return 1; // return 1 if it's ok to connect these nets
   }
 
-void listNets(int liveUpdate) // list nets doesnt care about debugNM, don't call it if you
-// don't want it to print
+/// @brief list all nets
+/// @param liveUpdate 0 = no live update, 1 = live update
+void listNets(int liveUpdate) 
   {
+    // Serial.print("liveUpdate: ");
+    // Serial.println(liveUpdate);
+
+    if (liveUpdate <= 0) {
+      liveUpdate = 0;
+      }
+
+    if (liveUpdate >= 1) {
+      liveUpdate = 1;
+      }
+
   if (net[6].number == 0) {
     // Serial.print("No nets to list\n\r");
     // return;
@@ -1087,6 +1107,15 @@ int lineCount = 0;
         liveUpdate = 0;
         }
 
+        if (checkProbeButton() != 0) {
+          blockProbeButton = 500;
+          blockProbeButtonTimer = millis();
+          liveUpdate = 0;
+          }
+          if (digitalRead(BUTTON_ENC) == 0) {
+            liveUpdate = 0;
+            }
+
       if (liveUpdate == 1) {
        // Serial.println(lineCount);
 
@@ -1317,7 +1346,7 @@ void printBridgeArray(void) {
   }
 
 
-
+//returns the number of characters printed (for tabs)
 int printNodeOrName(
     int node,
     int longOrShort) // returns number of characters printed (for tabs)

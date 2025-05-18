@@ -33,7 +33,7 @@ void debugFlagInit(int forceDefaults) {
     EEPROM.write(LEDBRIGHTNESSADDRESS, DEFAULTBRIGHTNESS);
     EEPROM.write(RAILBRIGHTNESSADDRESS, DEFAULTRAILBRIGHTNESS);
     EEPROM.write(SPECIALBRIGHTNESSADDRESS, DEFAULTSPECIALNETBRIGHTNESS);
-    EEPROM.write(PROBESWAPADDRESS, 0);
+
     EEPROM.write(ROTARYENCODER_MODE_ADDRESS, 0);
     EEPROM.write(DISPLAYMODE_ADDRESS, 1);
     EEPROM.write(NETCOLORMODE_ADDRESS, 0);
@@ -72,7 +72,7 @@ void debugFlagInit(int forceDefaults) {
 
   displayMode = EEPROM.read(DISPLAYMODE_ADDRESS);
 
-  probeSwap = EEPROM.read(PROBESWAPADDRESS);
+
   netColorMode = EEPROM.read(NETCOLORMODE_ADDRESS);
 
   revisionNumber = EEPROM.read(REVISIONADDRESS);
@@ -405,20 +405,7 @@ void debugFlagSet(int flag) {
     break;
     }
 
-          // case 6: {
-          //   flagStatus = EEPROM.read(PROBESWAPADDRESS);
 
-          //   if (flagStatus == 0) {
-          //     EEPROM.write(PROBESWAPADDRESS, 1);
-
-          //     probeSwap = true;
-          //   } else {
-          //     EEPROM.write(PROBESWAPADDRESS, 0);
-
-          //     probeSwap = false;
-          //   }
-          //   break;
-          // }
     case 6: {
     flagStatus = EEPROM.read(SHOW_PROBE_CURRENT_ADDRESS);
 
@@ -436,28 +423,28 @@ void debugFlagSet(int flag) {
     }
 
     case 7: {
-      if (jumperlessConfig.serial_1.print_passthrough == 0) {
-        jumperlessConfig.serial_1.print_passthrough = 2;
+    if (jumperlessConfig.serial_1.print_passthrough == 0) {
+      jumperlessConfig.serial_1.print_passthrough = 2;
       } else if (jumperlessConfig.serial_1.print_passthrough == 1) {
         jumperlessConfig.serial_1.print_passthrough = 0;
-      } else if (jumperlessConfig.serial_1.print_passthrough == 2) {
-        jumperlessConfig.serial_1.print_passthrough = 1;
-      }
-   // printSerial1Passthrough = jumperlessConfig.serial.serial_1.print_passthrough;
-    break;
+        } else if (jumperlessConfig.serial_1.print_passthrough == 2) {
+          jumperlessConfig.serial_1.print_passthrough = 1;
+          }
+        // printSerial1Passthrough = jumperlessConfig.serial.serial_1.print_passthrough;
+        break;
     }
     case 8: {
-      if (jumperlessConfig.serial_2.print_passthrough == 0) {
-        jumperlessConfig.serial_2.print_passthrough = 2;
+    if (jumperlessConfig.serial_2.print_passthrough == 0) {
+      jumperlessConfig.serial_2.print_passthrough = 2;
       } else if (jumperlessConfig.serial_2.print_passthrough == 1) {
         jumperlessConfig.serial_2.print_passthrough = 0;
-      } else if (jumperlessConfig.serial_2.print_passthrough == 2) {
-        jumperlessConfig.serial_2.print_passthrough = 1;
-      }
-    //printSerial2Passthrough = jumperlessConfig.serial.serial_2.print_passthrough;
-    break;
+        } else if (jumperlessConfig.serial_2.print_passthrough == 2) {
+          jumperlessConfig.serial_2.print_passthrough = 1;
+          }
+        //printSerial2Passthrough = jumperlessConfig.serial.serial_2.print_passthrough;
+        break;
     }
-    
+
 
     case 0: {
     EEPROM.write(DEBUG_FILEPARSINGADDRESS, 0);
@@ -752,18 +739,68 @@ void saveLEDbrightness(int forceDefaults) {
   }
 
 
+void updateStateFromGPIOConfig(void) {
+  for (int i = 0; i < 10; i++) {  // Changed from 8 to 10 to include UART pins
+    // Map gpioState to direction and pull settings
+
+    int gpio_pin = gpioDef[i][0];  // Map GPIO 0-7 to pins 20-27
+    if (gpio_function_map[i] == GPIO_FUNC_SIO) {
+
+      switch (jumperlessConfig.gpio.direction[i]) {
+        case 0: // output low
+          gpioState[i] = 0;
+          gpio_set_dir(gpio_pin, true);  // Set as output
+          gpio_set_pulls(gpio_pin, false, false);  // No pulls
+          // gpio_put(gpio_pin, 0);
+          break;
+        case 1: // output high
+          switch (jumperlessConfig.gpio.pulls[i]) {
+            case 0: // pulldown
+              gpioState[i] = 4;
+              gpio_set_dir(gpio_pin, false);  // Set as input
+              gpio_set_pulls(gpio_pin, false, true);  // Pull down
+              break;
+            case 1: // pullup
+              gpioState[i] = 3;
+              gpio_set_dir(gpio_pin, false);  // Set as input
+              gpio_set_pulls(gpio_pin, true, false);  // Pull up
+              break;
+            case 2: // no pull
+              gpioState[i] = 2;
+              gpio_set_dir(gpio_pin, false);  // Set as input
+              gpio_set_pulls(gpio_pin, false, false);  // No pulls
+              break;
+
+            }
+          break;
+
+        }
+
+      break;
+      }
+
+
+
+    }
+  }
 
 void updateGPIOConfigFromState(void) {
+  Serial.println("updateGPIOConfigFromState");
+  Serial.flush();
+  // return;
   int changed = 0;
   for (int i = 0; i < 10; i++) {  // Changed from 8 to 10 to include UART pins
     // Map gpioState to direction and pull settings
-    if (i < 8) {  // Regular GPIO pins 0-7 are on pins 20-27
-      int gpio_pin = i + 20;  // Map GPIO 0-7 to pins 20-27
+
+    int gpio_pin = gpioDef[i][0];  // Map GPIO 0-7 to pins 20-27
+
+    if (gpio_function_map[i] == GPIO_FUNC_SIO) {
+
       switch (gpioState[i]) {
         case 0: // output low
-        if (jumperlessConfig.gpio.direction[i] != 0 || jumperlessConfig.gpio.pulls[i] != 2) {
-          changed = 1;
-          }
+          if (jumperlessConfig.gpio.direction[i] != 0 || jumperlessConfig.gpio.pulls[i] != 2) {
+            changed = 1;
+            }
           jumperlessConfig.gpio.direction[i] = 0; // output
           jumperlessConfig.gpio.pulls[i] = 2; // no pull
           gpio_set_dir(gpio_pin, true);  // Set as output
@@ -817,66 +854,14 @@ void updateGPIOConfigFromState(void) {
         case 6: // do nothing
           break;
         }
-      } else {  // UART pins (TX=0, RX=1)
-      int uart_pin = (i == 8) ? 0 : 1;  // Map UART TX to pin 0, RX to pin 1
-      if (i == 8) {  // UART TX
-        jumperlessConfig.gpio.direction[i] = 0;  // output
-        switch (gpioState[i]) {
-          case 3: // input pullup
-            if (jumperlessConfig.gpio.pulls[i] != 1) {
-              changed = 1;
-              }
-            jumperlessConfig.gpio.pulls[i] = 1; // pullup
-            gpio_set_pulls(uart_pin, true, false);  // Pull up
-            break;
-          case 4: // input pulldown
-            if (jumperlessConfig.gpio.pulls[i] != 0) {
-              changed = 1;
-              }
-            jumperlessConfig.gpio.pulls[i] = 0; // pulldown
-            gpio_set_pulls(uart_pin, false, true);  // Pull down
-            break;
-          default:
-            if (jumperlessConfig.gpio.pulls[i] != 2) {
-              changed = 1;
-              }
-            jumperlessConfig.gpio.pulls[i] = 2;  // no pull
-            gpio_set_pulls(uart_pin, false, false);  // No pulls
-            break;
-          }
-        gpio_set_dir(uart_pin, true);  // Set as output
-        } else {  // UART RX
-        jumperlessConfig.gpio.direction[i] = 1;  // input
-        switch (gpioState[i]) {
-          case 3: // input pullup
-            if (jumperlessConfig.gpio.pulls[i] != 1) {
-              changed = 1;
-              }
-            jumperlessConfig.gpio.pulls[i] = 1; // pullup
-            gpio_set_pulls(uart_pin, true, false);  // Pull up
-            break;
-          case 4: // input pulldown
-            if (jumperlessConfig.gpio.pulls[i] != 0) {
-              changed = 1;
-              }
-            jumperlessConfig.gpio.pulls[i] = 0; // pulldown
-            gpio_set_pulls(uart_pin, false, true);  // Pull down
-            break;
-          default:
-            if (jumperlessConfig.gpio.pulls[i] != 2) {
-              changed = 1;
-              }
-            jumperlessConfig.gpio.pulls[i] = 2;  // no pull
-            gpio_set_pulls(uart_pin, false, false);  // No pulls
-            break;
-          }
-        gpio_set_dir(uart_pin, false);  // Set as input
-        }
       }
     }
+
+
   if (changed == 1) {
     configChanged = true; // Mark config as changed so it will be saved
     }
+
   }
 
 void runCommandAfterReset(char command) {
@@ -951,42 +936,64 @@ void readSettingsFromConfig() {
   dacOutput[0] = jumperlessConfig.dacs.dac_0;
   dacOutput[1] = jumperlessConfig.dacs.dac_1;
   probePowerDAC = jumperlessConfig.dacs.probe_power_dac;
-  
+
   //GPIO settings
-  for (int i = 0; i < 8; i++) {  // Changed from 8 to 10 to include UART pins
+  for (int i = 0; i < 10; i++) {  // Changed from 8 to 10 to include UART pins
 
     // Combine direction and pull settings into a single value
     // 0 = output low, 1 = output high, 2 = input, 3 = input pullup, 4 = input pulldown
 
-    int gpio_pin = 20 + i;
-    if (i == 8) {
-      gpio_pin = 0; // UART TX
-      } else if (i == 9) {
-        gpio_pin = 1; // UART RX
-        }
-      if (jumperlessConfig.gpio.direction[i] == 0) { // output
-        gpioState[i] = jumperlessConfig.gpio.pulls[i] ? 1 : 0; // 1 for high, 0 for low
-        gpio_set_dir(gpio_pin, true);
-        } else if (jumperlessConfig.gpio.direction[i] == 1) { // input
+    int gpio_pin = gpioDef[i][0];
+    // if (i == 8) {
+    //   gpio_pin = 0; // UART TX
+    //   } else if (i == 9) {
+    //     gpio_pin = 1; // UART RX
+    //     }
+
+   
+   // gpio_init(gpio_pin);
+
+   // if (gpio_get_function(gpio_pin) == GPIO_FUNC_SIO) {
+    if (jumperlessConfig.gpio.direction[i] == 0) { // output
+      //gpioState[i] = jumperlessConfig.gpio.pulls[i] ? 1 : 0; // 1 for high, 0 for low
+      gpio_set_dir(gpio_pin, true);
+      gpioState[i] = 0;
+      // Serial.print("gpio_pin: ");
+      // Serial.print(gpio_pin);
+      // Serial.print(" gpioState[i]: ");
+      // Serial.print(gpioState[i]);
+      // Serial.print(" actual: ");
+      // Serial.println(gpio_get_dir(gpio_pin));
+      //Serial.flush();
+      } else if (jumperlessConfig.gpio.direction[i] == 1) { // input
         gpio_set_dir(gpio_pin, false);
-          if (jumperlessConfig.gpio.pulls[i] == 2) { // no pull
-            gpioState[i] = 2;
-            gpio_set_pulls(gpio_pin, false, false);
-            } else if (jumperlessConfig.gpio.pulls[i] == 1) { // pullup
-              gpioState[i] = 3;
-              gpio_set_pulls(gpio_pin, true, false);
-              } else if (jumperlessConfig.gpio.pulls[i] == 0) { // pulldown
-                gpioState[i] = 4;
-                gpio_set_pulls(gpio_pin, false, true);
-                } else {
-                gpioState[i] = 5; // unknown
-                gpio_set_pulls(gpio_pin, false, false);
-                }
-          } else {
-          gpioState[i] = 5; // unknown
-          gpio_set_dir(gpio_pin, false);
+        gpioState[i] = 2;
+        //         Serial.print("gpio_pin: ");
+        // Serial.print(gpio_pin);
+        // Serial.print(" gpioState[i]: ");
+        // Serial.print(gpioState[i]);
+        // Serial.print(" actual: ");
+        // Serial.println(gpio_get_dir(gpio_pin));
+        // Serial.flush();
+        if (jumperlessConfig.gpio.pulls[i] == 2) { // no pull
+          //  gpioState[i] = 2;
           gpio_set_pulls(gpio_pin, false, false);
-          }
+          } else if (jumperlessConfig.gpio.pulls[i] == 1) { // pullup
+            gpioState[i] = 3;
+            gpio_set_pulls(gpio_pin, true, false);
+            } else if (jumperlessConfig.gpio.pulls[i] == 0) { // pulldown
+              gpioState[i] = 4;
+              gpio_set_pulls(gpio_pin, false, true);
+              } else {
+              gpioState[i] = 5; // unknown
+              gpio_set_pulls(gpio_pin, false, false);
+              }
+        } else {
+        gpioState[i] = 5; // unknown
+        // gpio_set_dir(gpio_pin, false);
+        // gpio_set_pulls(gpio_pin, false, false);
+        }
+     // }
     }
 
   // Serial

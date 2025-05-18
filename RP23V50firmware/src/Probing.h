@@ -8,7 +8,7 @@
 
 extern volatile int sfProbeMenu;
 extern unsigned long probingTimer;
-extern long probeFrequency;
+
 extern int probePin;
 extern int buttonPin;
 
@@ -32,8 +32,6 @@ extern volatile int inPadMenu;
 extern volatile int checkingButton;
 extern volatile int measureModeActive;
 
-extern int minProbeReadingMap;
-extern int maxProbeReadingMap;
 
 extern int probePowerDAC;
 extern int lastProbePowerDAC;
@@ -44,6 +42,18 @@ extern volatile int removeFade;
 extern volatile bool bufferPowerConnected;
 
 extern int debugProbing;
+
+enum probePressType {
+  connectPress = 2,
+  disconnectPress = 1,
+  connectLongPress = 4,
+  disconnectLongPress = 3,
+  doubleClickConnect = 5,
+  doubleClickDisconnect = 6,
+  noPress = 0
+};
+
+
 
 enum measuredState
 {
@@ -67,13 +77,17 @@ int chooseDAC(int justPickOne = 0);
 int attachPadsToSettings(int pad);
 
 float voltageSelect(int fiveOrEight = 8);
-int longShortPress(int pressLength = 500); 
-int doubleSingleClick(void);
+
+
+int longShortPress(int pressLength = 500);
+
+
 int selectFromLastFound(void);
 int checkLastFound(int);
 void clearLastFound(void);
-int probeMode(int pin = 19, int setOrClear = 1);
+int probeMode(int setOrClear = 1, int firstConnection = -1);
 int checkProbeButton(void);
+int checkProbeDoubleClick(unsigned long timeout, int waitForRelease = 0);
 int readFloatingOrState (int pin = 0, int row = 0);
 
 int checkSwitchPosition(void);
@@ -101,7 +115,7 @@ extern int lastProbeLEDs;
 
 
 void probeLEDhandler(void); 
-void highlightNets(int probeReading);
+int highlightNets(int probeReading);
 
 extern int probeRowMap[108];
   

@@ -1129,7 +1129,19 @@ void clearNodeFile(int slot, int flashOrLocal) {
 String slicedLines[130];
 int slicedLinesIndex = 0;
 
+// Global variables for storing last removed nodes
+int lastRemovedNodes[20] = {-1};
+int lastRemovedNodesIndex = 0;
+bool disconnectedNodeNewData = false;
+
 int removeBridgeFromNodeFile(int node1, int node2, int slot, int flashOrLocal, int onlyCheck) {
+  // Reset the lastRemovedNodes buffer
+  lastRemovedNodesIndex = 0;
+  for (int i = 0; i < 20; i++) {
+    lastRemovedNodes[i] = -1;
+  }
+  disconnectedNodeNewData = false;
+
   unsigned long timerStart = millis();
   unsigned long timerEnd[5] = {0, 0, 0, 0, 0};
 
@@ -1308,28 +1320,45 @@ if (onlyCheck == 1) {
     int remove = 0;
 
     if (node2 == -1 && slicedLines[i].indexOf(paddedNode1) != -1) {
-
       if (onlyCheck == 0) {
         remove = 1;
-      //slicedLines[i] = "Removed Node";
+        
+        // Extract the other node in this connection
+        String lineStr = slicedLines[i];
+        lineStr.replace(" ", "");
+        int dashPos = lineStr.indexOf("-");
+        
+        if (dashPos != -1) {
+          String node1Str = lineStr.substring(0, dashPos);
+          String node2Str = lineStr.substring(dashPos + 1);
+          
+          int nodeA = node1Str.toInt();
+          int nodeB = node2Str.toInt();
+          
+          // Add the other node to our list
+          int otherNode = (nodeA == node1) ? nodeB : nodeA;
+          
+          // Store in the buffer if we have space
+          if (lastRemovedNodesIndex < 20 && otherNode > 0) {
+            lastRemovedNodes[lastRemovedNodesIndex++] = otherNode;
+            disconnectedNodeNewData = true;
+          }
+        }
       }
-      // Serial.print("Removed Node ");
-      // Serial.println(paddedNode1);
       
       removedLines++;
-
     } else if (slicedLines[i].indexOf(paddedNode1) != -1 &&
                slicedLines[i].indexOf(paddedNode2) != -1) {
-
       if (onlyCheck == 0) {
         remove = 1;
-     // slicedLines[i] = "Removed Bridge";
+        
+        // When removing a specific connection, add the other node
+        if (lastRemovedNodesIndex < 20) {
+          lastRemovedNodes[lastRemovedNodesIndex++] = node2;
+          disconnectedNodeNewData = true;
+        }
       }
-      // Serial.print("Removed Bridge ");
-      // Serial.print(paddedNode1);
-      // Serial.print(" - ");
-      // Serial.println(paddedNode2);
-
+      
       removedLines++;
     } 
     if (remove == 0) {
@@ -2307,3 +2336,37 @@ int lenHelper(int x) {
 }
 
 int printLen(int x) { return x < 0 ? lenHelper(-x) + 1 : lenHelper(x); }
+
+///@brief prints the disconnected nodes (separated by commas)
+///@return the number of disconnected nodes
+int printDisconnectedNodes() {
+  int charCount = 0;
+
+  if (lastRemovedNodesIndex > 0) {
+   // Serial.print("");
+    for (int i = 0; i < lastRemovedNodesIndex; i++) {
+      if (lastRemovedNodes[i] != -1) {
+        charCount += printNodeOrName(lastRemovedNodes[i], 1);
+        if (i < lastRemovedNodesIndex - 1 && i < 3) {
+          Serial.print(", ");
+          charCount += 2;
+        }
+      }
+    }
+  }
+  return lastRemovedNodesIndex;
+}
+
+///@brief returns the next disconnected node (repeated calls return the next one), returns -1 if no more disconnected nodes
+///@return the next disconnected node, or -1 if no more disconnected nodes
+int disconnectedNode() {
+  static int lastIndex = 0;
+  if (disconnectedNodeNewData) {
+    lastIndex = 0;
+    disconnectedNodeNewData = false;
+  }
+  if (lastIndex >= lastRemovedNodesIndex || lastRemovedNodesIndex == 0) {
+    return -1;
+  }
+  return lastRemovedNodes[lastIndex++];
+}
