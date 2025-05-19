@@ -114,7 +114,7 @@ volatile int removeFade = 0;
 int probeMode(int setOrClear, int firstConnection) {
 
 
-  clearColorOverrides(1, 1, 0);
+  //clearColorOverrides(1, 1, 0);
 
 
   //if (firstConnection > 0) {
@@ -137,15 +137,23 @@ restartProbing:
   //connectOrClearProbe = setOrClear;
   probeActive = 1;
   brightenNet(-1);
-  unsigned long timer[3] = {0, 0, 0};
-  timer[0] = millis();
+  //unsigned long timer[3] = {0, 0, 0};
+  //timer[0] = micros();
 
   routableBufferPower(1, 0);
 
 
   probeHighlight = -1;
- saveLocalNodeFile();
-  timer[1] = millis();                   //!make this faster
+  
+ //saveLocalNodeFile();
+  // timer[1] = micros();                
+
+  // Serial.print("routableBufferPower(1, 0) = ");
+  // Serial.print(timer[1] - timer[0]);
+  // Serial.println("\t");
+
+  // Serial.flush();
+
   int numberOfLocalChanges = 0;
 
   connectOrClearProbe = setOrClear;
@@ -178,7 +186,23 @@ restartProbing:
   // Serial.print("\n\r\t  Probe Active\n\r");
   // Serial.print("   long press  = connect (blue) / clear (red)\n\r");
   // Serial.println("   short press = commit");
-  timer[2] = millis();
+  //timer[2] = micros();
+
+  //   Serial.print("millis() - timer[0] = ");
+  // Serial.print(millis() - timer[0]);
+  // Serial.println("\t");
+  // Serial.print("millis() - timer[1] = ");
+  // Serial.print(millis() - timer[1]);
+  // Serial.print("\t");
+  // Serial.println(timer[1] - timer[0]);
+ 
+  // Serial.print("millis() - timer[2] = ");
+  // Serial.print(millis() - timer[2]);
+  // Serial.print("\t");
+  // Serial.println(timer[2] - timer[1]);
+  // Serial.println();
+
+  //timer[2] = micros();
   if (setOrClear == 1) {
     // sprintf(oledBuffer, "connect  ");
     // drawchar();
@@ -201,6 +225,11 @@ restartProbing:
     rawOtherColors[1] = 0x6644A8;
 
     }
+    //timer[3] = micros();
+
+    // Serial.print("oled.clearPrintShow = ");
+    // Serial.println(timer[3] - timer[2]);
+    // Serial.flush();
 
   if (setOrClear == 0) {
     probeButtonTimer = millis();
@@ -213,7 +242,7 @@ restartProbing:
     } else {
     showProbeLEDs = 2;
     }
-  timer[3] = millis();  
+    //timer[4] = micros();  
   connectOrClearProbe = setOrClear;
 
   // Serial.print("setOrClear = ");
@@ -470,6 +499,7 @@ restartProbing:
 
         probeHighlight = nodesToConnect[node1or2];
         if (setOrClear == 1) {
+          //probeConnectHighlight = nodesToConnect[node1or2];
           brightenNet(probeHighlight, 5);
           oled.clearPrintShow(bothNames, 2, 0, 5, true, true, true);
           }
@@ -485,21 +515,26 @@ restartProbing:
         if (nodesToConnect[node1or2] > 0 &&
             nodesToConnect[node1or2] <= NANO_RESET_1 && setOrClear == 1) {
 
-          // b.clear();
+         //probeConnectHighlight = nodesToConnect[node1or2];
+          // Serial.print("probeConnectHighlight = ");
+          // Serial.println(probeConnectHighlight);
+          //showLEDsCore2 = 2;
+
+          // // b.clear();
           b.printRawRow(0b0010001, nodesToConnect[node1or2] - 1, 0x000121e,
                         0xfffffe);
           showLEDsCore2 = 2;
-          delay(40);
+          delay(30);
           b.printRawRow(0b00001010, nodesToConnect[node1or2] - 1, 0x0f0498,
                         0xfffffe);
           showLEDsCore2 = 2;
-          delay(40);
+          delay(30);
 
           b.printRawRow(0b00000100, nodesToConnect[node1or2] - 1, 0x4000e8,
                         0xfffffe);
           showLEDsCore2 = 2;
-          delay(80);
-          // showLEDsCore2 = 1;
+          delay(50);
+          showLEDsCore2 = 2;
           }
 
         node1or2++;
@@ -604,6 +639,11 @@ restartProbing:
           // printChipStatus();
           // Serial.println("\n\n\r");
 
+          if (firstConnection == -3) {
+            firstConnection = -1;
+            break;
+            }
+
                     // delay(400);
           } else if (setOrClear == 0) {
 
@@ -661,7 +701,7 @@ restartProbing:
               //   Serial.print("    ");
               //  Serial.println(map(i, 0,deleteMissesIndex, 0, 19));
               }
-
+            clearHighlighting();
             //  Serial.println();
             int rowsRemoved =
               removeBridgeFromNodeFile(nodesToConnect[0], -1, netSlot, 1);
@@ -763,6 +803,21 @@ restartProbing:
 
     probeTimeout = millis();
 
+    if (encoderDirectionState == UP) {
+                node1or2 = 0;
+          nodesToConnect[0] = -1;
+          nodesToConnect[1] = -1;
+      row[0] = -1;
+      break;
+      }
+
+    if (encoderDirectionState == DOWN) {
+                node1or2 = 0;
+          nodesToConnect[0] = -1;
+          nodesToConnect[1] = -1;
+      row[0] = -1;
+      break;
+      }
 
 
 
@@ -773,19 +828,24 @@ restartProbing:
     }
   // Serial.println("fuck you");
   //  digitalWrite(RESETPIN, LOW);
-
+          node1or2 = 0;
+          nodesToConnect[0] = -1;
+          nodesToConnect[1] = -1;
+          // row[1] = -2;
+  connectedRowsIndex = 0;
+  connectedRows[0] = -1;
   probeActive = false;
   probeHighlight = -1;
   showProbeLEDs = 4;
   brightenNet(-1);
-  Serial.print("millis() - timer[0] = ");
-  Serial.println(millis() - timer[0]);
-  Serial.print("millis() - timer[1] = ");
-  Serial.println(millis() - timer[1]);
-  Serial.print("millis() - timer[2] = ");
-  Serial.println(millis() - timer[2]);
-  Serial.print("millis() - timer[3] = ");
-  Serial.println(millis() - timer[3]);
+  // Serial.print("millis() - timer[0] = ");
+  // Serial.println(millis() - timer[0]);
+  // Serial.print("millis() - timer[1] = ");
+  // Serial.println(millis() - timer[1]);
+  // Serial.print("millis() - timer[2] = ");
+  // Serial.println(millis() - timer[2]);
+  // Serial.print("millis() - timer[3] = ");
+  // Serial.println(millis() - timer[3]);
 
   Serial.flush();
 
@@ -794,7 +854,8 @@ restartProbing:
   // delay(10);
   saveLocalNodeFile();
   // delay(10);
-  refreshConnections(-1, 1, 0);
+  refreshConnections(1, 1, 0);
+  row[0] = -1;
   row[1] = -2;
   // showLEDsCore2 = -1;
    // sprintf(oledBuffer, "        ");
@@ -2132,6 +2193,8 @@ float checkProbeCurrent(void) {
 
 void routableBufferPower(int offOn, int flash) {
   int flashOrLocal;
+
+
   if (flash == 1) {
     flashOrLocal = 0;
     } else {
@@ -2146,18 +2209,36 @@ void routableBufferPower(int offOn, int flash) {
   bufferPowerConnected = false;
 
   if (probePowerDAC == 0) {
-    if (removeBridgeFromNodeFile(ROUTABLE_BUFFER_IN, DAC0, netSlot, flashOrLocal, 1) == 0) {
+    if (checkIfBridgeExistsLocal(ROUTABLE_BUFFER_IN, DAC0) == 0) {
       // Serial.print("bufferPowerConnected dac 0 = "); Serial.println(bufferPowerConnected);
       bufferPowerConnected = false;
       needToRefresh = true;
-      }
+      } else if (getDacVoltage(0) < 3.29 || getDacVoltage(0) > 3.34 && offOn == 1) {
+        // Serial.println("DAC 0 voltage is out of range, setting to 3.30 V");
+        // Serial.print("getDacVoltage(0) = ");
+        // Serial.println(getDacVoltage(0));
+        setDac0voltage(3.30, 1, 0);
+        return;
+        } else if (offOn == 1) {
+          bufferPowerConnected = true;
+          return;
+          }
 
     } else if (probePowerDAC == 1) {
-      if (removeBridgeFromNodeFile(ROUTABLE_BUFFER_IN, DAC1, netSlot, flashOrLocal, 1) == 0) {
+        if (checkIfBridgeExistsLocal(ROUTABLE_BUFFER_IN, DAC1) == 0) {
         //   Serial.print("bufferPowerConnected dac 1 = "); Serial.println(bufferPowerConnected);
         bufferPowerConnected = false;
         needToRefresh = true;
-        }
+        } else if (getDacVoltage(1) < 3.29 || getDacVoltage(1) > 3.34 && offOn == 1) {
+          // Serial.println("DAC 1 voltage is out of range, setting to 3.30 V");
+          // Serial.print("getDacVoltage(1) = ");
+          // Serial.println(getDacVoltage(1));
+            setDac1voltage(3.30, 1, 0);
+          return;
+          } else if (offOn == 1) {
+            bufferPowerConnected = true;
+            return;
+            }
       }
     //Serial.print("bufferPowerConnected = "); Serial.println(bufferPowerConnected);
 
@@ -2231,6 +2312,8 @@ void routableBufferPower(int offOn, int flash) {
       } else {
 
       if (bufferPowerConnected == true) {
+        if (checkIfBridgeExistsLocal(ROUTABLE_BUFFER_IN, DAC0) == 1) {
+
         if (probePowerDAC == 0) {
           if (bufferPowerConnected == true) {
             removeBridgeFromNodeFile(ROUTABLE_BUFFER_IN, DAC0, netSlot, 1);
@@ -2242,6 +2325,7 @@ void routableBufferPower(int offOn, int flash) {
               removeBridgeFromNodeFile(ROUTABLE_BUFFER_IN, DAC1, netSlot, 0);
               }
             }
+        
 
           // if (probePowerDAC == 0) {
           //   setDac0voltage(0.0, 1);
@@ -2251,6 +2335,7 @@ void routableBufferPower(int offOn, int flash) {
 
 
           refreshConnections(0, 0, 0);
+          }
         }
       bufferPowerConnected = false;
       }
@@ -2988,17 +3073,20 @@ void checkPads(void) {
       clearColorOverrides(1, 1, 0);//!highlighted net
       if (brightenedNet != -1) {
         hsvColor hsv = RgbToHsv(netColors[brightenedNet]);
-        changedNetColors[brightenedNet] = colorPicker(hsv.h, jumperlessConfig.display.led_brightness);
-        netColors[brightenedNet] = unpackRgb(changedNetColors[brightenedNet]);
+        changedNetColors[brightenedNet].color = colorPicker(hsv.h, jumperlessConfig.display.led_brightness);
+        changedNetColors[brightenedNet].node1 = brightenedNode;
+        netColors[brightenedNet] = unpackRgb(changedNetColors[brightenedNet].color);
         Serial.print("changedNetColors[");
         Serial.print(brightenedNet);
         Serial.print("]: ");
-        Serial.printf("%06x\n", changedNetColors[brightenedNet]);
-
-
+        Serial.printf("%06x\n", changedNetColors[brightenedNet].color);
+        clearHighlighting();
+        checkChangedNetColors(-1);
+        assignNetColors();
+        saveChangedNetColorsToFile(netSlot, 0);
 
         } else {
-        colorPicker(45, jumperlessConfig.display.led_brightness);
+       // colorPicker(45, jumperlessConfig.display.led_brightness);
         }
       break;
     case BUILDING_PAD_BOTTOM:
@@ -3006,20 +3094,24 @@ void checkPads(void) {
       clearColorOverrides(1, 1, 0);
       if (brightenedNet != -1) {
         hsvColor hsv = RgbToHsv(netColors[brightenedNet]);
-        changedNetColors[brightenedNet] = colorPicker(hsv.h, jumperlessConfig.display.led_brightness);
-        netColors[brightenedNet] = unpackRgb(changedNetColors[brightenedNet]);
+        changedNetColors[brightenedNet].color = colorPicker(hsv.h, jumperlessConfig.display.led_brightness);
+        changedNetColors[brightenedNet].node1 = brightenedNode;
+        netColors[brightenedNet] = unpackRgb(changedNetColors[brightenedNet].color);
         Serial.print("changedNetColors[");
         Serial.print(brightenedNet);
         Serial.print("]: ");
-        Serial.printf("%06x\n", changedNetColors[brightenedNet]);
-
+        Serial.printf("%06x\n", changedNetColors[brightenedNet].color);
+        clearHighlighting();
+        checkChangedNetColors(-1);
+        assignNetColors();
+        saveChangedNetColorsToFile(netSlot, 0);
 
         } else {
-        colorPicker(225, jumperlessConfig.display.led_brightness);
+       // colorPicker(225, jumperlessConfig.display.led_brightness);
         }
       break;
     default:
-      clearColorOverrides(1, 1, 0);
+      //clearColorOverrides(1, 1, 0);
       break;
     }
 
@@ -3715,34 +3807,49 @@ void probeLEDhandler(void) {
   }
 
 
-int highlightNets(int probeReading) {
+int highlightNets(int probeReading, int encoderNetHighlighted) {
   // Serial.print("justReadProbe = ");
      // Serial.println(probeReading);
      // delay(100);
 
-  int netHighlighted = brightenNet(probeReading);
+     int netHighlighted;
+if (encoderNetHighlighted != -1) {
+  netHighlighted = encoderNetHighlighted;
+} else {
+  netHighlighted = brightenNet(probeReading);
+}
+
+
+  
 
   if (netHighlighted != -1) {
+    highlightedOriginalColor = netColors[netHighlighted];
+    highlightedNet = netHighlighted;
     // Serial.print("netHighlighted = ");
     // Serial.println(netHighlighted);
-      //Serial.println("\r       \r");
+      Serial.print("\r                                           \r");
+      clearColorOverrides(1,1,0);
+      brightenedRail = -1;
     switch (netHighlighted) {
       case 0:
         break;
       case 1:
         Serial.print("Net Highlighted = GND");
+        brightenedRail = 1;
         break;
       case 2:
         Serial.print("Net Highlighted = Top Rail  ");
 
         Serial.print(railVoltage[0]);
         Serial.print(" V");
+        brightenedRail = 0;
         break;
       case 3:
         Serial.print("Net Highlighted = Bottom Rail  ");
 
         Serial.print(railVoltage[1]);
         Serial.print(" V");
+        brightenedRail = 2;
         break;
       case 4:
         Serial.print("Net Highlighted = DAC 0  ");
@@ -3755,21 +3862,28 @@ int highlightNets(int probeReading) {
         Serial.print(" V");
         break;
       default:
+      Serial.print("\r                                          \r");
         Serial.print("Net ");
         Serial.print(netHighlighted);
         Serial.print("\t");
+        int specialPrint = 0;
         int adc = anyAdcConnected(netHighlighted);
         if (adc != -1) {
+          ADCcolorOverride0 = -2;
+          ADCcolorOverride1 = -2;
           Serial.print(" ADC ");
           Serial.print(adc);
           Serial.print("   ");
 
           Serial.print(readAdcVoltage(adc, 32));
           Serial.println(" V");
+          specialPrint = 1;
           }
 
         int gpioInputNumber = anyGpioInputConnected(netHighlighted);
         if (gpioInputNumber != -1) {
+          GPIOcolorOverride0 = -2;
+          GPIOcolorOverride1 = -2;
           Serial.print(" GPIO ");
           Serial.print(gpioInputNumber + 1);
           Serial.print(" input ");
@@ -3789,9 +3903,12 @@ int highlightNets(int probeReading) {
               break;
             }
           Serial.println();
+          specialPrint = 1;
           }
         int gpioOutputNumber = anyGpioOutputConnected(netHighlighted);
         if (gpioOutputNumber != -1) {
+          GPIOcolorOverride0 = -2;
+          GPIOcolorOverride1 = -2;
           Serial.print(" GPIO ");
           Serial.print(gpioOutputNumber + 1);
           Serial.print(" output ");
@@ -3802,13 +3919,16 @@ int highlightNets(int probeReading) {
             Serial.print("high");
             }
           Serial.println();
-
+          specialPrint = 1;
+          }
+        if (specialPrint == 0) {
+          //Serial.println();
           }
       }
     Serial.flush();
     showLEDsCore2 = 1;
     } else {
-
+    //clearColorOverrides(1,1,0);
     // brightenNet(-1);
     }
   // Serial.println("netHighlighted: ");

@@ -19,8 +19,8 @@ struct netStruct net[MAX_NETS] = { //these are the special function nets that wi
       {     3        ,"Bottom Rail"    ,{BOTTOM_RAIL}         ,{{}}                   ,BOTTOM_RAIL            ,{}          ,{GND, TOP_RAIL, DAC0, DAC1}                               , 1},
       {     4        ,"DAC 0"          ,{DAC0}                ,{{}}                   ,DAC0                   ,{}          ,{GND, TOP_RAIL, BOTTOM_RAIL, DAC1}                               , 1},
       {     5        ,"DAC 1"          ,{DAC1}                ,{{}}                   ,DAC1                   ,{}          ,{GND, TOP_RAIL, BOTTOM_RAIL, DAC0}                               , 1},
-      {     6        ,"I Sense +"      ,{ISENSE_PLUS}         ,{{}}                   ,ISENSE_PLUS            ,{}          ,{ISENSE_MINUS}                      , 2},
-      {     7        ,"I Sense -"      ,{ISENSE_MINUS}        ,{{}}                   ,ISENSE_MINUS           ,{}          ,{ISENSE_PLUS}                       , 2},
+      // {     6        ,"I Sense +"      ,{ISENSE_PLUS}         ,{{}}                   ,ISENSE_PLUS            ,{}          ,{ISENSE_MINUS}                      , 2},
+      // {     7        ,"I Sense -"      ,{ISENSE_MINUS}        ,{{}}                   ,ISENSE_MINUS           ,{}          ,{ISENSE_PLUS}                       , 2},
   };
 
 char* netNameConstants[MAX_NETS] = { (char*)"Net 0",(char*)"Net 1",(char*)"Net 2",(char*)"Net 3",(char*)"Net 4",(char*)"Net 5",(char*)"Net 6",(char*)"Net 7",(char*)"Net 8",(char*)"Net 9",(char*)"Net 10",(char*)"Net 11",(char*)"Net 12",(char*)"Net 13",(char*)"Net 14",(char*)"Net 15",(char*)"Net 16",(char*)"Net 17",(char*)"Net 18",(char*)"Net 19",(char*)"Net 20",(char*)"Net 21",(char*)"Net 22",(char*)"Net 23",(char*)"Net 24",(char*)"Net 25",(char*)"Net 26",(char*)"Net 27",(char*)"Net 28",(char*)"Net 29",(char*)"Net 30",(char*)"Net 31",(char*)"Net 32",(char*)"Net 33",(char*)"Net 34",(char*)"Net 35",(char*)"Net 36",(char*)"Net 37",(char*)"Net 38",(char*)"Net 39",(char*)"Net 40",(char*)"Net 41",(char*)"Net 42",(char*)"Net 43",(char*)"Net 44",(char*)"Net 45",(char*)"Net 46",(char*)"Net 47",(char*)"Net 48",(char*)"Net 49" };//,(char*)"Net 50",(char*)"Net 51",(char*)"Net 52",(char*)"Net 53",(char*)"Net 54",(char*)"Net 55",(char*)"Net 56",(char*)"Net 57",(char*)"Net 58",(char*)"Net 59",(char*)"Net 60",(char*)"Net 61",(char*)"Net 62"};//,{"Net 63",(char*)"Net 64",(char*)"Net 65",(char*)"Net 66",(char*)"Net 67",(char*)"Net 68",(char*)"Net 69",(char*)"Net 70",(char*)"Net 71",(char*)"Net 72",(char*)"Net 73",(char*)"Net 74",(char*)"Net 75",(char*)"Net 76",(char*)"Net 77",(char*)"Net 78",(char*)"Net 79",(char*)"Net 80",(char*)"Net 81",(char*)"Net 82",(char*)"Net 83",(char*)"Net 84",(char*)"Net 85",(char*)"Net 86",(char*)"Net 87",(char*)"Net 88",(char*)"Net 89",(char*)"Net 90",(char*)"Net 91",(char*)"Net 92",(char*)"Net 93",(char*)"Net 94",(char*)"Net 95",(char*)"Net 96",(char*)"Net 97",(char*)"Net 98",(char*)"Net 99",(char*)"Net 100",(char*)"Net 101",(char*)"Net 102",(char*)"Net 103",(char*)"Net 104",(char*)"Net 105",(char*)"Net 106",(char*)"Net 107",(char*)"Net 108",(char*)"Net 109",(char*)"Net 110",(char*)"Net 111",(char*)"Net 112",(char*)"Net 113",(char*)"Net 114",(char*)"Net 115",(char*)"Net 116",(char*)"Net 117",(char*)"Net 118",(char*)"Net 119",(char*)"Net 120",(char*)"Net 121",(char*)"Net 122",(char*)"Net 123",(char*)"Net 124",(char*)"Net 125",(char*)"Net 126",(char*)"Net 127"}};
@@ -44,73 +44,22 @@ CHIP_K, CHIP_L };                                           //60
 // const int xHopMap[12][12][16] =  //[chip] [other chip][x]
 // {
 
+#include <pico/rand.h>
 
-int senseRevision(void) { //unused, this doesn't work
-
-  return 0;
-  // pinMode(3, INPUT_PULLUP);
-  // int senseRev1 = digitalRead(3);
-  // pinMode(3, INPUT_PULLDOWN);
-  // int senseRev2 = digitalRead(3);
-
-  sendXYraw(11, 2, 0, 1);
-  sendXYraw(11, 11, 0, 1);
-
-
-  gpio_set_function(27, GPIO_FUNC_SIO);
-  gpio_disable_pulls(27);
-  // gpio_set_inover(2, true);
-  //  gpio_set_outover(2, false);
-  // pads_bank0_hw->io[8] = PADS_BANK0_GPIO2_GPIO2;
-  // hw_set_bits(&pads_bank0_hw->io[2], PADS_BANK0_GPIO2_ISO_BITS);
-  Serial.println("\n\n\n\n\n\r");
-  gpio_set_dir(27, false);
-
-
-  gpio_set_pulls(27, false, true);
-
-  gpio_set_input_enabled(27, true);  // rp2350 errata hack: setting it to input
-  // right before reading and back fixes it
-  int buttonState = gpio_get(27);
-
-  gpio_set_input_enabled(27, false);
-
-  Serial.print(buttonState);
-  delayMicroseconds(10);
-  delayMicroseconds(90);
-
-  gpio_set_pulls(27, true, false);
-  // gpio_set_input_enabled(BUTTON_PIN, false);
-  gpio_set_input_enabled(27, true);
-
-
-
-  int buttonState2 = gpio_get(27);
-
-  delayMicroseconds(90); // pinMode(BUTTON_PIN, INPUT_PULLDOWN);
-  gpio_set_input_enabled(27, false);
-  delayMicroseconds(1);
-
-  delayMicroseconds(20);
-  Serial.println(buttonState2);
-  Serial.println("\n\n\n\n\n\r");
-
-  sendXYraw(11, 2, 0, 0);
-  sendXYraw(11, 11, 0, 0);
-
-  if (buttonState2 == HIGH && buttonState == LOW) {
-    return 3;
-    } else {
-    return 4;
-    }
-
-
-
-
-
-
-  return 0;
+void initNets(void) {
+  for (int i = 0; i < 6; i++) {
+    //net[i].uniqueID = i;
   }
+
+
+
+  for (int i = 6; i < MAX_NETS; i++) {
+    //net[i].uniqueID = get_rand_32() & 0x0000ffff;
+  }
+}
+
+
+
 
 struct chipStatus ch[12] = { //this is the revision 5 chip status (default now)
   {0,'A',

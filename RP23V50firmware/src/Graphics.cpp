@@ -130,7 +130,7 @@ const wchar_t fontMap[120] = {
 
 
 
-  const uint8_t font[][3] = // 'JumperlessFontmap', 500x5px
+const uint8_t font[][3] = // 'JumperlessFontmap', 500x5px
   { {
   0x1f, 0x11, 0x1f, },{ 0x12, 0x1f, 0x10, },{ 0x1d, 0x15, 0x17, },{ 0x11, 0x15, 0x1f, },{
   0x07, 0x04, 0x1f, },{ 0x17, 0x15, 0x1d, },{ 0x1f, 0x15, 0x1d, },{ 0x19, 0x05, 0x03, },{
@@ -503,16 +503,16 @@ void drawWires(int net) {
   }
 
 
-  // warningRowAnimation.index = warningRow;
-  // warningRowAnimation.net = warningNet;
-  // warningRowAnimation.currentFrame = 0;
-  // warningRowAnimation.numberOfFrames = 8;
-  // warningRowAnimation.type = 3; // warning row
-  // warningRowAnimation.direction = 1;
-  // warningRowAnimation.frameInterval = 100;
-  specialRowAnimation warningNetAnimation;
+// warningRowAnimation.index = warningRow;
+// warningRowAnimation.net = warningNet;
+// warningRowAnimation.currentFrame = 0;
+// warningRowAnimation.numberOfFrames = 8;
+// warningRowAnimation.type = 3; // warning row
+// warningRowAnimation.direction = 1;
+// warningRowAnimation.frameInterval = 100;
+specialRowAnimation warningNetAnimation;
 
-  specialRowAnimation warningRowAnimation;
+specialRowAnimation warningRowAnimation;
 
 int animationOrder[26] = {
     TOP_RAIL, GND, BOTTOM_RAIL, GND,
@@ -525,14 +525,17 @@ int animationOrder[26] = {
 
 /* clang-format off */
 
+
+
 uint32_t highlightedRowFrames[15] = {
-  0x001090, 0x002080, 0x003070, 0x004060, 0x005050, 
-  0x004040, 0x004050, 0x003060, 0x002070, 0x001080};
+  0x001090, 0x002080, 0x003070, 0x004060, 0x005050,
+  0x004040, 0x004050, 0x003060, 0x002070, 0x001080,
+  0x010070, 0x020060, 0x030070, 0x020080, 0x010090 };
 
 uint32_t warningRowFrames[15] = {
-  0x090300, 0x080600, 0x070503, 0x060400, 0x050300, 
-  0x070200, 0x090103, 0x090001, 0x090003, 0x090100};
-  //0x050800, 0x080600, 0x070500, 0x060401, 0x050302};
+  0x090300, 0x080600, 0x070503, 0x060400, 0x050300,
+  0x070200, 0x090103, 0x090001, 0x090003, 0x090100 };
+//0x050800, 0x080600, 0x070500, 0x060401, 0x050302};
 
 uint32_t animations[26][15] = {
   //top rail
@@ -552,12 +555,17 @@ uint32_t animations[26][15] = {
 uint8_t gpioAnimationBaseHues[10] = { 6, 28, 58, 84, 110, 146, 185, 204, 22, 131 };
 // uint8_t highlightedRowOffsetHues[15] = { 0, 9, , 32, 46, 59, 71, 88, 78, 65, 38, 25, 15, 8, 3 };
 uint8_t highlightedRowOffsetHues[15] = { 0, 5, 14, 22, 31, 46, 57, 64, 55, 52, 43, 32, 20, 10, 3 };
+
+uint8_t probeConnectHighlightHues[15] = { 0, 5, 14, 22, 31, 46, 57, 64, 55, 52, 43, 32, 20, 10, 3 };
+
 /* clang-format on */
 
 uint8_t satValues[15] = { 15, 25, 45, 65, 85, 105, 125, 145, 165, 185, 200, 190, 170, 80, 40 };
 
 unsigned long lastRowAnimationTime = 0;
 unsigned long rowAnimationInterval = 150;
+
+int numberOfRowAnimations = 0;
 
 void initRowAnimations() {
   // 0=top rail, 1= gnd, 2 = bottom rail, 3 = gnd again, 4 = gpio 1, 5 = gpio 2, 6 = gpio 3, 7 = gpio 4, 8 = gpio 5, 9 = gpio 6, 10 = gpio 7, 11 = gpio 8,
@@ -572,8 +580,15 @@ void initRowAnimations() {
   for (int i = 0; i < 10; i++) { //make the array of raw uint32_t values for the animations
     for (int j = 0; j < 15; j++) {
       hsvColor colorHSV;
+      int hue = gpioAnimationBaseHues[i] - 27;
+      if (hue < 0) {
+        hue = 255 + hue;
+        }
+      if (hue > 255) {
+        hue = hue - 255;
+        }
 
-      colorHSV = { gpioAnimationBaseHues[i], (uint8_t)(satValues[j]+35), gpioIdleBrightness };
+      colorHSV = { (uint8_t)hue, (uint8_t)(satValues[j] + 35), gpioIdleBrightness };
 
 
       uint32_t color = HsvToRaw(colorHSV);
@@ -616,8 +631,8 @@ void initRowAnimations() {
     rowAnimations[i + 3].direction = 1;
     rowAnimations[i + 3].frameInterval = 110;
     }
-  
-//!warning row animation
+
+  //!warning row animation
   rowAnimations[currentIndex].index = currentIndex;
   currentIndex++;
   rowAnimations[currentIndex].net = 0;
@@ -630,19 +645,48 @@ void initRowAnimations() {
     rowAnimations[currentIndex].frames[j] = warningRowFrames[j];
     }
 
-//!highlighted row animation
-rowAnimations[currentIndex].index = currentIndex;
-currentIndex++;
-rowAnimations[currentIndex].net = 0;
-rowAnimations[currentIndex].currentFrame = 0;
-rowAnimations[currentIndex].numberOfFrames = 15;  
-rowAnimations[currentIndex].type = 4; // highlighted row
-rowAnimations[currentIndex].direction = 0;
-rowAnimations[currentIndex].frameInterval = 110;
-for (int j = 0; j < rowAnimations[currentIndex].numberOfFrames; j++) {
-  rowAnimations[currentIndex].frames[j] = highlightedRowFrames[j%10];
-  }
+  //!highlighted net animation
+  rowAnimations[currentIndex].index = currentIndex;
+  currentIndex++;
+  rowAnimations[currentIndex].net = 0;
+  rowAnimations[currentIndex].currentFrame = 0;
+  rowAnimations[currentIndex].numberOfFrames = 15;
+  rowAnimations[currentIndex].type = 4; // highlighted net
+  rowAnimations[currentIndex].direction = 0;
+  rowAnimations[currentIndex].frameInterval = 90;
+  for (int j = 0; j < rowAnimations[currentIndex].numberOfFrames; j++) {
+    rowAnimations[currentIndex].frames[j] = highlightedRowFrames[j % 10];
+    }
 
+  //!highlighted row animation
+  rowAnimations[currentIndex].index = currentIndex;
+  currentIndex++;
+  rowAnimations[currentIndex].net = 0;
+  rowAnimations[currentIndex].currentFrame = 0;
+  rowAnimations[currentIndex].numberOfFrames = 15;
+  rowAnimations[currentIndex].type = 6; // highlighted row
+  rowAnimations[currentIndex].direction = 0;
+  rowAnimations[currentIndex].frameInterval = 40;
+  for (int j = 0; j < rowAnimations[currentIndex].numberOfFrames; j++) {
+    rowAnimations[currentIndex].frames[j] = highlightedRowFrames[j % 10];
+    }
+
+
+  //!probe connect highlight row animation
+  rowAnimations[currentIndex].index = currentIndex;
+  currentIndex++;
+  rowAnimations[currentIndex].net = 0;
+  rowAnimations[currentIndex].currentFrame = 0;
+  rowAnimations[currentIndex].numberOfFrames = 15;
+  rowAnimations[currentIndex].type = 5; // probe connect highlight row
+  rowAnimations[currentIndex].direction = 0;
+  rowAnimations[currentIndex].frameInterval = 30;
+  for (int j = 0; j < rowAnimations[currentIndex].numberOfFrames; j++) {
+    rowAnimations[currentIndex].frames[j] = highlightedRowFrames[j % 10];
+    }
+
+
+  numberOfRowAnimations = currentIndex;
   }
 
 
@@ -667,47 +711,104 @@ void showRowAnimation(int index, int net) {
     return;
     }
 
-    // if (rowAnimations[index].type == 3) {
-    //   rowAnimations[index].net = warningNet;
-     
-    //   // Serial.print("warningNet = ");
-    //   // Serial.println(warningNet);
-    //   }
+  // if (rowAnimations[index].type == 3) {
+  //   rowAnimations[index].net = warningNet;
 
-      actualNet = findNodeInNet(net);
+  //   // Serial.print("warningNet = ");
+  //   // Serial.println(warningNet);
+  //   }
+
+  actualNet = findNodeInNet(net);
 
 
-if (rowAnimations[index].type == 3) {
-  rowAnimations[index].net = warningNet;
-  net = warningNet;
-  actualNet = warningNet;
-  }
+  if (rowAnimations[index].type == 3) {
+    rowAnimations[index].net = warningNet;
+    net = warningNet;
+    actualNet = warningNet;
+    }
+
+
+uint32_t brightenedNodeColors[5];
+
+if (actualNet == brightenedNet && brightenedNode > 0) {
+  rowAnimations[net].row = brightenedNode-1;
+}
+  //handle the row animation for a single row, rather than the whole net
+  if (rowAnimations[net].row > 0) {
+
+    for (int i = 0; i < 5; i++) {
+      hsvColor colorHSV = RgbToHsv(netColors[brightenedNet]);
+      colorHSV.h = (colorHSV.h + (int)(highlightedRowOffsetHues[i] *2)) % 255;
+      //colorHSV.v = jumperlessConfig.display.led_brightness;
+      brightenedNodeColors[4-i] = HsvToRaw(colorHSV);
+
+      // brightenedNodeColors[i] = highlightedRowFrames[(rowAnimations[net].currentFrame + i) % rowAnimations[net].numberOfFrames];
+      }
+    }
+
+
 
   if (rowAnimations[index].type == 4 && brightenedNet > 0) {
     rowAnimations[index].net = brightenedNet;
     net = brightenedNet;
     actualNet = brightenedNet;
-
-
+    rowAnimations[index].row = warningRow;
     uint32_t color;
-   // uint32_t color = packRgb(netColors[brightenedNet].r, netColors[brightenedNet].g, netColors[brightenedNet].b);
-    // Serial.print("color = ");
-    // Serial.println(color, HEX);
 
     for (int i = 0; i < rowAnimations[index].numberOfFrames; i++) {
 
-    hsvColor colorHSV = RgbToHsv(netColors[brightenedNet]);
-    colorHSV.h = (colorHSV.h + (int)(highlightedRowOffsetHues[i]/1.5)) % 255; 
-    colorHSV.v = jumperlessConfig.display.led_brightness;
-    // Serial.print("colorHSV.h = ");
-    // Serial.println(colorHSV.h);
-    //colorHSV.s = satValues[i];
-    color = HsvToRaw(colorHSV);
+      hsvColor colorHSV = RgbToHsv(netColors[brightenedNet]);
+      colorHSV.h = (colorHSV.h + (int)(highlightedRowOffsetHues[i] / 1.5)) % 255;
+      colorHSV.v = jumperlessConfig.display.led_brightness;
+      // Serial.print("colorHSV.h = ");
+      // Serial.println(colorHSV.h);
+      //colorHSV.s = satValues[i];
+      color = HsvToRaw(colorHSV);
 
 
       rowAnimations[index].frames[i] = color;
       }
     }
+
+  // if (rowAnimations[index].type == 5 && probeConnectHighlight > 0) {
+  //   // rowAnimations[index].net = probeConnectHighlight;
+  //   // net = probeConnectHighlight;
+  //    //actualNet = probeConnectHighlight;
+  //   rowAnimations[index].row = probeConnectHighlight;
+  //   uint32_t color;
+
+  //   for (int i = 0; i < rowAnimations[index].numberOfFrames; i++) {
+  //     //Serial.println();
+  //     struct rowLEDs rowLEDs = getRowLEDdata(probeConnectHighlight);
+  //     for (int j = 0; j < 5; j++) {
+  //       if (rowLEDs.color[j] == 0) {
+  //         hsvColor colorHSV = { probeConnectHighlightHues[i], 255, 0 };
+  //         color = HsvToRaw(colorHSV);
+  //         rowLEDs.color[j] = color;
+  //         //continue;
+  //         }
+  //       // Serial.print("rowLEDs.color[");
+  //       // Serial.print(j);
+  //       // Serial.print("] = ");
+  //       // hsvColor colorHSV = RgbToHsv(rowLEDs.color[j]);
+  //       // Serial.print(colorHSV.h);
+  //       // Serial.println(" ");
+  //       }
+  //     // Serial.println();
+  //      // Serial.print("rowLEDs.color[0] = ");
+  //      // Serial.println(rowLEDs.color[0]);
+  //     // Serial.flush();
+  //     hsvColor colorHSV = RgbToHsv(rowLEDs.color[0]);
+  //     // Serial.print("colorHSV.h = ");
+  //     // Serial.println(colorHSV.h);
+  //     colorHSV.h = (colorHSV.h + (int)(probeConnectHighlightHues[i])) % 255;
+  //     colorHSV.v = jumperlessConfig.display.led_brightness;
+  //     color = HsvToRaw(colorHSV);
+
+
+  //     rowAnimations[index].frames[i] = color;
+  //     }
+  //   }
 
   for (int i = 0; i < 27; i++) {
     if (rowAnimations[i].net == net) {
@@ -735,6 +836,15 @@ if (rowAnimations[index].type == 3) {
 
     }
 
+
+
+
+
+
+
+
+
+
   //    Serial.print("net = ");
   //  Serial.println(net);
   // Serial.print("actualNet = ");
@@ -745,32 +855,45 @@ if (rowAnimations[index].type == 3) {
       rowAnimations[net].frameInterval) {
     rowAnimations[net].currentFrame++;
     rowAnimations[net].lastFrameTime = millis();
-    } 
+    }
 
-    //   if (millis() - warningRowAnimation.lastFrameTime >
-    //   warningRowAnimation.frameInterval) {
-    // warningRowAnimation.currentFrame++;
-    // warningRowAnimation.lastFrameTime = millis();
-    // } 
+  //   if (millis() - warningRowAnimation.lastFrameTime >
+  //   warningRowAnimation.frameInterval) {
+  // warningRowAnimation.currentFrame++;
+  // warningRowAnimation.lastFrameTime = millis();
+  // } 
 
 
 
   for (int i = 0; i < 5; i++) {
 
-    // frameColors[i] =
-    // rowAnimations[net].frames[(rowAnimations[net].currentFrame + i) %
-    // (rowAnimations[net].numberOfFrames-1)];
     if (brightenedNet == actualNet) {
 
       frameColors[i] = scaleBrightness(
           rowAnimations[net].frames[(rowAnimations[net].currentFrame + i) % rowAnimations[net].numberOfFrames],
-          brightenedAmount * 8);
+          brightenedAmount * 3);
+if (brightenedNode > 0){
+  hsvColor colorHSV = RgbToHsv(frameColors[i]);
+  colorHSV.v += 30;
+  colorHSV.h = (colorHSV.h + (int)(highlightedRowOffsetHues[i] *5)) % 255;
+  brightenedNodeColors[i] = HsvToRaw(colorHSV);
+}
+
       } else {
       frameColors[i] =
         rowAnimations[net].frames[(rowAnimations[net].currentFrame + i) % rowAnimations[net].numberOfFrames];
       }
 
     }
+
+brightenedNodeColors[4] = brightenedNodeColors[0];
+brightenedNodeColors[3] = brightenedNodeColors[1];
+// brightenedNodeColors[2] = brightenedNodeColors[2];
+// brightenedNodeColors[3] = brightenedNodeColors[1];
+// brightenedNodeColors[4] = brightenedNodeColors[0];
+
+
+
   // Serial.println(" ");
   int row = 2;
 
@@ -827,7 +950,9 @@ if (rowAnimations[index].type == 3) {
         if (wireStatus[i][j] == actualNet) {
           if (i == probeHighlight) {
 
-            } else {
+            } else if (actualNet == brightenedNet && brightenedNode > 0 && i == brightenedNode) {
+                leds.setPixelColor(((i - 1) * 5) + j, brightenedNodeColors[j]);
+              } else {
             leds.setPixelColor(((i - 1) * 5) + j, frameColors[j]);
             }
           }
@@ -875,8 +1000,8 @@ if (rowAnimations[index].type == 3) {
 void showAllRowAnimations() {
   // showRowAnimation(2, rowAnimations[1].net);
   // showRowAnimation(2, rowAnimations[2].net);
-  for (int i = 0; i < 18; i++) {
-    
+  for (int i = 0; i < numberOfRowAnimations; i++) {
+
     showRowAnimation(i, rowAnimations[i].net);
     if (rowAnimations[i].type == 3) {
       // Serial.print("warningNet = ");
@@ -2026,16 +2151,16 @@ void drawAnimatedImage(int imageIndex, int speed) {
   leds.show();
   // delay(100);
   if (imageIndex == 0) {
-  cycleCount = 0;
-  brightnessSet = -100;
-  for (int i = startupFrameLEN - 1; i >= 0; i--) {
-    drawImage(i);
-    //showLEDsCore2 = 3;
-    cycleCount++;
-    leds.show();
-    delayMicroseconds(speed + (cycleCount * 200));
-    }
-  } else { // play the animation backwards
+    cycleCount = 0;
+    brightnessSet = -100;
+    for (int i = startupFrameLEN - 1; i >= 0; i--) {
+      drawImage(i);
+      //showLEDsCore2 = 3;
+      cycleCount++;
+      leds.show();
+      delayMicroseconds(speed + (cycleCount * 200));
+      }
+    } else { // play the animation backwards
     cycleCount = 44;
     for (int i = 0; i < 45; i++) {
       drawImage(i);
@@ -2043,7 +2168,7 @@ void drawAnimatedImage(int imageIndex, int speed) {
       cycleCount--;
       delayMicroseconds(speed + (cycleCount * 200));
       }
-  }
+    }
   //lightUpRail();
   ///leds.clear();
   showLEDsCore2 = -1;
@@ -2100,8 +2225,8 @@ void drawImage(int imageIndex) {
 
           // if (i > 439) {
           if (i < LOGO_LED_END && i > LOGO_LED_START) {
-          pixel = scaleBrightness(pixel, brightnessSetLogo[cycleCount]);
-          }
+            pixel = scaleBrightness(pixel, brightnessSetLogo[cycleCount]);
+            }
           // } else {}
           //   pixel = scaleBrightness(pixel, 0);
           //   }
@@ -2112,37 +2237,34 @@ void drawImage(int imageIndex) {
             pixel = (pixel_r & 0b11111111) << 16 | (pixel_g & 0b11111111) << 8 | (pixel_b & 0b11111111);
 
             pixel = scaleBrightness(pixel, brightnessSetLogo2[cycleCount]);
-            }
-          else  if (i == DAC_LED_0 || i == DAC_LED_1) {
-            pixel_r = rainbowr[(cycleCount + i + 10) % 30];
-            pixel_g = rainbowg[(cycleCount + i + 10) % 30];
-            pixel_b = rainbowb[(cycleCount + i + 10) % 30];
-            pixel = (pixel_r & 0b11111111) << 16 | (pixel_g & 0b11111111) << 8 | (pixel_b & 0b11111111);
+            } else  if (i == DAC_LED_0 || i == DAC_LED_1) {
+              pixel_r = rainbowr[(cycleCount + i + 10) % 30];
+              pixel_g = rainbowg[(cycleCount + i + 10) % 30];
+              pixel_b = rainbowb[(cycleCount + i + 10) % 30];
+              pixel = (pixel_r & 0b11111111) << 16 | (pixel_g & 0b11111111) << 8 | (pixel_b & 0b11111111);
 
-            pixel = scaleBrightness(pixel, brightnessSetLogo2[cycleCount]);
-            }
-          else if (i == GPIO_LED_0 || i == GPIO_LED_1) {
-            pixel_r = rainbowr[(cycleCount + i + 15) % 30];
-            pixel_g = rainbowg[(cycleCount + i + 15) % 30];
-            pixel_b = rainbowb[(cycleCount + i + 15) % 30];
-            pixel = (pixel_r & 0b11111111) << 16 | (pixel_g & 0b11111111) << 8 | (pixel_b & 0b11111111);
+              pixel = scaleBrightness(pixel, brightnessSetLogo2[cycleCount]);
+              } else if (i == GPIO_LED_0 || i == GPIO_LED_1) {
+                pixel_r = rainbowr[(cycleCount + i + 15) % 30];
+                pixel_g = rainbowg[(cycleCount + i + 15) % 30];
+                pixel_b = rainbowb[(cycleCount + i + 15) % 30];
+                pixel = (pixel_r & 0b11111111) << 16 | (pixel_g & 0b11111111) << 8 | (pixel_b & 0b11111111);
 
-            pixel = scaleBrightness(pixel, brightnessSetLogo2[cycleCount]);
-            }
-          else if ( i == GND_T_LED || i == VIN_LED   ) {
+                pixel = scaleBrightness(pixel, brightnessSetLogo2[cycleCount]);
+                } else if (i == GND_T_LED || i == VIN_LED) {
 
-            pixel = scaleBrightness(pixel, brightnessSetLogo2[cycleCount]);
-            }
-            
-          else if (i == RST_0_LED || i == RST_1_LED || i == GND_B_LED || i == V3V3_LED || i == V5V_LED) {
+                  pixel = scaleBrightness(pixel, brightnessSetLogo2[cycleCount]);
+                  }
+
+                else if (i == RST_0_LED || i == RST_1_LED || i == GND_B_LED || i == V3V3_LED || i == V5V_LED) {
 
             pixel = scaleBrightness(pixel, brightnessSetLogo[cycleCount]);
             } else {
-              pixel = scaleBrightness(pixel, brightnessSetHeader[cycleCount]);
-              }
+            pixel = scaleBrightness(pixel, brightnessSetHeader[cycleCount]);
+            }
 
 
-          
+
           leds.setPixelColor(i, pixel);
           }
 

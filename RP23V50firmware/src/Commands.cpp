@@ -72,7 +72,10 @@ void refreshConnections(int ledShowOption, int fillUnused, int clean) {
   getNodesToConnect();
 //core1busy = false;
   bridgesToPaths();
+  checkChangedNetColors(-1);
+  assignNetColors();
   chooseShownReadings();
+  //findChangedNetColors();
   //assignNetColors();
 
   // if (lastSlot != netSlot) {
@@ -109,6 +112,7 @@ void refreshLocalConnections(int ledShowOption, int fillUnused, int clean) {
   getNodesToConnect();
   
   bridgesToPaths();
+  checkChangedNetColors(-1);
   assignNetColors();
   chooseShownReadings();
 
@@ -144,6 +148,7 @@ void refreshBlind(
   //core1busy = true;
   getNodesToConnect();
   bridgesToPaths();
+  checkChangedNetColors(-1);
   assignNetColors();
 
   // printPathsCompact();

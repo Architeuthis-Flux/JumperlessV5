@@ -38,6 +38,8 @@ int priority = 1; //when duplicating paths, it will make this many copies every 
 int duplicatePaths[MAX_DUPLICATE] = {-1, -1, -1, -1,-1, -1, -1, -1,-1,-1}; // if the paths are redundant (for lower resistance) this is the pathNumber of the other one(s)
 
 int numberOfDuplicates = 0; // if the paths are redundant (for lower resistance) this is the number of duplicates
+
+//uint16_t uniqueID; //this is a unique ID for the net, it's used to identify the net in the machine
 };
 
 extern struct netStruct net[MAX_NETS];
@@ -69,6 +71,8 @@ struct pathStruct{
   int duplicate = 0; // the "parent" path if 1, the "child" path if 2, 0 if not a duplicate
 
 };
+
+void initNets(void);
 
 int senseRevision(void);
 

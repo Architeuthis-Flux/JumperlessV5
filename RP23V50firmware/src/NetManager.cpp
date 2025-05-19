@@ -416,6 +416,36 @@ void combineNets(int foundNode1Net, int foundNode2Net) {
     }
   }
 
+  /// @brief checks if a bridge exists between two nodes
+  /// @param node1 
+  /// @param node2 can be -1 if you only want to check if node1 exists in at all
+  /// @return 1 if the bridge exists, 0 if it doesn't
+  int checkIfBridgeExistsLocal(int node1, int node2) {
+
+    for (int i = 1; i < MAX_NETS; i++) {
+      if (net[i].number <= 0) {
+        break;
+        }
+      for (int j = 0; j < MAX_NODES; j++) {
+        if (net[i].nodes[j] <= 0) {
+          break;
+          }
+        if (net[i].nodes[j] == node1) {
+          if (node2 == -1) {
+            return 1;
+            }
+          for (int k = 0; k < MAX_NODES; k++) {
+            if (net[i].nodes[k] == node2) {
+              return 1;
+              }
+            
+            }
+          }
+      }
+    }
+    return 0;
+  }
+
 void deleteNet(int netNumber) // make sure to check special function nets and
 // clear connections to it
   {
@@ -798,11 +828,11 @@ void listNets(int liveUpdate)
     // Serial.print("liveUpdate: ");
     // Serial.println(liveUpdate);
 
-    if (liveUpdate <= 0) {
+    if (liveUpdate < 0) {
       liveUpdate = 0;
       }
 
-    if (liveUpdate >= 1) {
+    if (liveUpdate >= 0) {
       liveUpdate = 1;
       }
 
@@ -1094,6 +1124,7 @@ int lineCount = 0;
         for (int i = 0; i < 3 - (tabs / 8); i++) {
           Serial.print("\t");
           }
+        Serial.print(changedNetColors[i].color, HEX);
         Serial.println();
         lineCount+=1;
         }

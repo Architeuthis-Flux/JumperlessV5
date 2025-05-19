@@ -66,6 +66,7 @@ void printRawRow(uint8_t data, int row, uint32_t color, uint32_t bg, int scale =
     struct specialRowAnimation{
         int index;
         int net;
+        int row;
         unsigned long currentFrame;
         int direction;
         int numberOfFrames = 8;
@@ -87,6 +88,7 @@ extern specialRowAnimation rowAnimations[26];
 extern specialRowAnimation warningRowAnimation;
 extern specialRowAnimation warningNetAnimation;
 
+extern int numberOfRowAnimations;
 extern bool animationsEnabled;
 extern char defconString[16];
 extern const uint8_t font[][3];

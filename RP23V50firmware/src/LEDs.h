@@ -117,27 +117,7 @@ class ledClass { //I'm literally copying this from Adafruit_NeoPixel.h so I can 
 };
   
 
-extern uint32_t headerColors[7];
-extern uint32_t rstColors[2];
-extern ledClass leds;
-
-//extern CRGB probeLEDs[1];
-// extern Adafruit_NeoMatrix matrix;
-//extern bool debugLEDs;
-extern int warningRow;
-extern int warningNet;
-extern int brightenedNet;
-extern int brightenedRail;
-extern int brightenedAmount;
-extern bool lightUpName;
-
-extern int netColorMode; // 0 = rainbow, 1 = shuffle
-extern int displayMode;
-extern int numberOfShownNets;
-//extern int showLEDsCore2;
-extern int logoFlash;
-
-typedef struct rgbColor {
+  typedef struct rgbColor {
   unsigned char r;
   unsigned char g;
   unsigned char b;
@@ -148,6 +128,37 @@ typedef struct hsvColor {
   unsigned char s;
   unsigned char v;
 } hsvColor;
+
+extern uint32_t headerColors[7];
+extern uint32_t rstColors[2];
+extern ledClass leds;
+
+//extern CRGB probeLEDs[1];
+// extern Adafruit_NeoMatrix matrix;
+//extern bool debugLEDs;
+extern int highlightedNet;
+extern int highlightedRow;
+extern rgbColor highlightedOriginalColor;
+extern int probeConnectHighlight;
+
+extern int warningRow;
+extern int warningNet;
+extern rgbColor warningOriginalColor;
+
+extern int brightenedNode;
+extern int brightenedNet;
+extern int brightenedRail;
+extern rgbColor brightenedOriginalColor;
+extern int brightenedAmount;
+extern bool lightUpName;
+
+extern int netColorMode; // 0 = rainbow, 1 = shuffle
+extern int displayMode;
+extern int numberOfShownNets;
+//extern int showLEDsCore2;
+extern int logoFlash;
+
+
 
 const uint8_t jumperlessText[301] = {
     1, 0, 0, 0, 0, 0, 1, 0, 1, 1, 0, 1, 1, 0, 1, 0, 1, 1, 0, 0, 0, 1, 0, 0, 0,
@@ -285,11 +296,25 @@ const int pixelsToRails[20] = {B_RAIL_NEG, B_RAIL_POS, B_RAIL_POS, B_RAIL_NEG,
                                T_RAIL_NEG, T_RAIL_POS, T_RAIL_POS, T_RAIL_NEG};
 
 
-extern uint32_t changedNetColors[MAX_NETS];
+
+struct changedNetColors {
+    int net;
+    uint32_t color;
+    int node1;
+    int node2 = -1;
+};
+
+extern struct changedNetColors changedNetColors[MAX_NETS];
+
+//extern uint32_t changedNetColors[MAX_NETS];
 extern rgbColor netColors[MAX_NETS];
 extern uint32_t savedLEDcolors[NUM_SLOTS][LED_COUNT + 1];
 extern rgbColor specialNetColors[8];
 
+int checkChangedNetColors(int netIndex = -1);
+int removeChangedNetColors(int node, int saveToFile = 0);
+void clearChangedNetColors(int saveToFile = 0);
+void findChangedNetColors(void);
 void printColorName(uint32_t color);
 void printColorName(int hue);
 uint32_t colorPicker(uint8_t startHue = 225, uint8_t brightness=jumperlessConfig.display.led_brightness);
@@ -301,9 +326,11 @@ void dumpLEDdata(void);
 extern unsigned long warningTimeout;
 extern unsigned long warningTimer;
 
+void clearHighlighting(void);
 int brightenNet(int node, int addBrightness = 5);
+int encoderNetHighlight(void);
 int warnNet(int node);
-void warnNetTimeout(void);
+void warnNetTimeout(int clearAll = 1);
 
 struct rgbColor shiftHue(struct rgbColor colorToShift, int hueShift = 0,
                          int brightnessShift = 0, int saturationShift = 0,

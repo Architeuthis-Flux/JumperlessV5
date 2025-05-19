@@ -95,7 +95,7 @@ extern int probeRev;
 
 #define MAX_NETS 60
 #define MAX_BRIDGES 255
-#define MAX_NODES 64
+#define MAX_NODES 48 //this is the max number of nodes that can be connected to a net
 #define MAX_DNI 8 // max number of doNotIntersect rules
 #define MAX_DUPLICATE 25 // max number of duplicates
 

@@ -116,6 +116,7 @@ void setup() {
     Serial.println("Failed to initialize FatFS");
     }
 
+  
   //EEPROM.begin(512);
 
   //debugFlagInit(0); //these will be overridden by the config file
@@ -125,6 +126,8 @@ void setup() {
   // unsigned long start = millis();
 
   loadConfig();
+
+  
   //readSettingsFromConfig();
   configLoaded = 1;
   startupTimers[1] = millis();
@@ -244,13 +247,20 @@ int serSource = 0;
 int readInNodesArduino = 0;
 
 
-const char firmwareVersion[] = "5.1.1.4"; // remember to update this
+const char firmwareVersion[] = "5.1.2.0"; // remember to update this
 
 int firstLoop = 1;
 
 volatile int probeActive = 0;
 
 int showExtraMenu = 1;
+
+int lastHighlightedNet = -1;
+int lastBrightenedNet = -1;
+int lastWarningNet = -1;
+
+
+
 
 int firstConnection = -1;
 unsigned long timer = 0;
@@ -313,7 +323,7 @@ void loop() {
     // Serial.println(startupCore2timers[7]);
 
     // Serial.println("--------------------------------");
-
+ loadChangedNetColorsFromFile(netSlot, 0);
     if (jumperlessConfig.top_oled.connect_on_boot == 1) {
       //Serial.println("Initializing OLED");
       oled.init();
@@ -347,6 +357,8 @@ menu:
     Serial.print("probePowerDACChanged = "); Serial.println(probePowerDACChanged);
     routableBufferPower(1, 1);
     }
+
+  clearHighlighting();
 
   Serial.print("\n\n\r\t\tMenu\n\r");
 
@@ -470,8 +482,14 @@ menu:
     while (Serial.available() == 0 && connectFromArduino == '\0' && slotChanged == 0) {
 
       //warningNet = 7;
+      //firstConnection = -1;
       checkPads();
-
+      int encoderNetHighlighted = encoderNetHighlight();
+      if (encoderNetHighlighted != -1) {
+        firstConnection = encoderNetHighlighted;
+      } else {
+       // firstConnection = -1;
+      }
       // if (attract == 1) {
       //   // rotaryEncoderStuff();
       //   if (attractMode() == 1) {
@@ -526,8 +544,8 @@ menu:
             //firstConnection = 5;//probeReading;
             if (firstConnection > 0) {
               if (warningNet == brightenedNet && warningTimeout > 0) {
-                warningNet = -1;
-                brightenedNet = 0;
+                //warningNet = -1;
+                //brightenedNet = 0;
                 warningTimeout = 0;
                 //warningTimer = 0;
                 connectOrClearProbe = 0;
@@ -542,31 +560,32 @@ menu:
                 //warnNet(-1);
                 } else {
                 warnNet(firstConnection);
-                warningTimeout = 2200;
+                warningTimeout = 800;
                 warningTimer = millis();
 
                 }
               }
 
-            blockProbeButton = 500;
+            blockProbeButton = 800;
             blockProbeButtonTimer = millis();
             } else if (probeToggleResult == -3) {
-              blockProbeButton = 500;
+              blockProbeButton = 800;
               blockProbeButtonTimer = millis();
 
               } else if (probeToggleResult == -2) {
-                blockProbeButton = 500;
+                blockProbeButton = 800;
                 blockProbeButtonTimer = millis();
 
 
                 } else if (probeToggleResult == -4) {
-                  warnNet(firstConnection);
+                  //warnNet(firstConnection);
                   //assignNetColors();
                   //showLEDsCore2 = 1;
 
                   // Serial.print("-4 warningNet = ");
                   // Serial.println(warningNet);
                   // Serial.flush();
+                  //clearHighlighting();
 
                   firstConnection = -1;
                   blockProbeButton = 500;
@@ -628,6 +647,36 @@ menu:
           }
         }
 
+      if (lastHighlightedNet != highlightedNet) {
+        // Serial.print("\n\rhighlightedNet = ");
+        // Serial.println(highlightedNet);
+        // Serial.print("brightenedNet = ");
+        // Serial.println(brightenedNet);
+        // Serial.print("warningNet = ");
+        // Serial.println(warningNet);
+        // Serial.flush();
+        lastHighlightedNet = highlightedNet;
+        } else if (lastBrightenedNet != brightenedNet) {
+          // Serial.print("\n\rhighlightedNet = ");
+          // Serial.println(highlightedNet);
+          // Serial.print("brightenedNet = ");
+          // Serial.println(brightenedNet);
+          // Serial.print("warningNet = ");
+          // Serial.println(warningNet);
+          // Serial.flush();
+          lastBrightenedNet = brightenedNet;
+          } else if (lastWarningNet != warningNet) {
+          // Serial.print("\n\rhighlightedNet = ");
+          // Serial.println(highlightedNet);
+          // Serial.print("brightenedNet = ");
+          // Serial.println(brightenedNet);
+          // Serial.print("warningNet = ");
+          // Serial.println(warningNet);
+          // Serial.flush();
+          lastWarningNet = warningNet;
+          }
+
+
       if (showReadings >= 1) {
         //chooseShownReadings();
         showMeasurements(8, 2, 0);
@@ -653,7 +702,10 @@ menu:
       }
 
     if (slotChanged == 1) {
+      //Serial.println("slotChanged");
       refreshPaths();
+      //clearChangedNetColors(0);
+      loadChangedNetColorsFromFile(netSlot, 0);
       goto loadfile;
       }
 
@@ -722,6 +774,35 @@ menu:
       printGPIOState();
       break;
       }
+      case '&': {
+ loadChangedNetColorsFromFile(netSlot, 0);
+ break;
+        int node1 = -1;
+        int node2 = -1;
+        while (Serial.available() == 0) {
+          }
+        //char c = Serial.read();
+        node1 = Serial.parseInt();
+        node2 = Serial.parseInt();
+        Serial.print("node1 = ");
+        Serial.println(node1);
+        Serial.print("node2 = ");
+        Serial.println(node2);
+        Serial.print("checkIfBridgeExistsLocal(node1, node2) = ");
+        long unsigned int timer  = micros();
+        Serial.println(checkIfBridgeExistsLocal(node1, node2));
+        Serial.print("time taken = ");
+        Serial.print(micros() - timer);
+        Serial.println(" microseconds");
+
+        Serial.flush();
+
+        // if (node2 == -1 && node1 > 0) {
+        //   Serial.println(checkIfBridgeExists(node1,node2));
+        //   }
+
+        break;
+        }
 
       case '\'': {
       pauseCore2 = 1;
@@ -999,11 +1080,15 @@ menu:
     //  Serial.print("firstConnection = ");
     //  Serial.println(firstConnection);
     //  Serial.flush();
+    blockProbeButton = 300;
+    blockProbeButtonTimer = millis();
       probeMode(1, firstConnection);
       //      Serial.print("apdebugLEDs = ");
       // Serial.println(debugLEDs);
       // delayMicroseconds(5);
       probeActive = 0;
+
+      clearHighlighting();
       // clearLEDs();
       // assignNetColors();
       // showNets();
@@ -1015,6 +1100,8 @@ menu:
       // removeBridgeFromNodeFile(19, 1);
       // probeActive = 1;
       // delayMicroseconds(5);
+      blockProbeButton = 300;
+      blockProbeButtonTimer = millis();
       int probeReturn = probeMode(0, firstConnection);
 
       // delayMicroseconds(5);
@@ -1023,10 +1110,11 @@ menu:
       // assignNetColors();
       // showNets();
       // showLEDsCore2 = 1;
+      clearHighlighting();
 
-      Serial.print("millis() - startupTimers[0] = ");
-      Serial.println(millis() - startupTimers[0]);
-      Serial.flush();
+      // Serial.print("millis() - startupTimers[0] = ");
+      // Serial.println(millis() - startupTimers[0]);
+      // Serial.flush();
 
       goto menu;
       // break;
@@ -1035,6 +1123,10 @@ menu:
         couldntFindPath(1);
         Serial.print("\n\n\rnetlist\n\n\r");
         listSpecialNets();
+        // Serial.print("\n\n\r");
+        // Serial.print("anythingInteractiveConnected(-1) = ");
+        // Serial.println(anythingInteractiveConnected(-1));
+        // Serial.flush();
         listNets(anythingInteractiveConnected(-1));
 
         break;
@@ -1106,6 +1198,9 @@ menu:
       Serial.print("Slot ");
       Serial.print(netSlot);
       slotPreview = netSlot;
+      slotChanged = 1;
+     // printAllChangedNetColorFiles();
+
       goto loadfile;
       }
       case '<': {
@@ -1119,12 +1214,17 @@ menu:
       Serial.print("Slot ");
       Serial.print(netSlot);
       slotPreview = netSlot;
+      slotChanged = 1;
+      //printAllChangedNetColorFiles();
       goto loadfile;
       }
       case 'y': {
     loadfile:
       loadingFile = 1;
-
+      if (slotChanged == 1) {
+        //clearChangedNetColors(0);
+        loadChangedNetColorsFromFile(netSlot, 0);
+        }
 
       slotChanged = 0;
       loadingFile = 0;
@@ -1199,6 +1299,7 @@ menu:
 
         Serial.print("\n\n\r");
         Serial.print(numberOfPaths);
+        checkChangedNetColors(-1);
 
         assignNetColors();
 #ifdef PIOSTUFF

@@ -917,6 +917,19 @@ void setBotRail(float value, int save, int saveEEPROM) {
 // uint16_t lastInputCode0 = 0;
 // uint16_t lastInputCode1 = offset[1] + calib[1];
 
+float getDacVoltage(int dac) {
+  if (dac == 0) {
+    return dacOutput[0];
+    } else if (dac == 1) {
+      return dacOutput[1];
+      } else if (dac == 2) {
+        return railVoltage[0];
+        } else if (dac == 3) {
+          return railVoltage[1];
+          }
+  return 0;
+}
+
 void setDac0voltage(float voltage, int save, int saveEEPROM, bool checkProbePower) {
   // int dacValue = (voltage * 4095 / 19.8) + 1641;
   int dacValue = (voltage * 4095 / dacSpread[0]) + dacZero[0];
@@ -1532,6 +1545,7 @@ void showLEDmeasurements(void) {
 /// @brief check if any measurements or gpio outputs are connected
 /// @return  0 = gpio output, 1 = gpio input, 2 = adc, -1 if no measurements or outputs are connected
 int anythingInteractiveConnected(int net) {
+
   if (anyAdcConnected(net) != -1) {
     return 2;
     }

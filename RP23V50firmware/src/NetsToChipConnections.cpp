@@ -176,7 +176,25 @@ void clearAllNTCC(void) {
   net[5].priority = dacPriority;
 
   for (int i = 6; i < MAX_NETS; i++) {
-    net[i] = { 0, " ", {}, {{}}, 0, {}, {}, 0, 0, 0, 0, false };
+   // uint16_t   uniqueID = net[i].uniqueID;
+
+net[i] = { 0, " ", {}, {{}}, 0, {}, {}, 0, 0, 0, 0, false };
+
+   // if (changedNetColors[i].uniqueID != 0) {
+//     for (int j = 0; j < MAX_NETS; j++) {
+//       if (changedNetColors[j].uniqueID == uniqueID) {
+//         //net[i].color = changedNetColors[j].color;
+
+//         net[i].uniqueID = 12345;
+//         changedNetColors[j].uniqueID = net[i].uniqueID;
+//         //net[i].uniqueID = changedNetColors[j].uniqueID;
+//         break;
+//       }
+//     }
+//  //   }
+    // if (net[i].uniqueID == 0) {
+    //   net[i].uniqueID = uniqueID;
+    // }
     }
 
   for (int i = 0; i < 12; i++) {
@@ -217,10 +235,10 @@ void clearAllNTCC(void) {
   gpioReadingColors[8] = 0x010101;
   gpioReadingColors[9] = 0x010101;
 
-
-  for (int i = 0; i<MAX_NETS; i++) {
-    changedNetColors[i] = 0;
-  }
+  //findChangedNetColors();
+  // for (int i = 0; i<MAX_NETS; i++) {
+  //  // changedNetColors[i] = 0;
+  // }
  // digitalWrite(RESETPIN,LOW);
   }
 

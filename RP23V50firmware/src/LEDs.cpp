@@ -58,6 +58,10 @@ uint32_t DACcolorOverride1Default = 0x458040;
 uint32_t GPIOcolorOverride0Default = 0x4050b0;
 uint32_t GPIOcolorOverride1Default = 0x2560a0;
 
+int highlightedNet = -1;
+int probeConnectHighlight = -1;
+int brightenedNode = -1;
+
 
 // #if REV < 4
 // bool splitLEDs = 0;
@@ -162,7 +166,7 @@ ledClass leds;
 
 
 
-uint32_t changedNetColors[MAX_NETS] = { 0 };
+struct changedNetColors changedNetColors[MAX_NETS] = { {0, 0} };
 rgbColor netColors[MAX_NETS] = { 0 };
 
 uint8_t saturation = 254;
@@ -627,8 +631,10 @@ static unsigned long scrollAccelerationLastTime = 0;  // Last time we updated ac
 
 uint32_t colorPicker(uint8_t startHue, uint8_t brightness) {
   // Static precomputed data for all 256 possible hue values (0-255)
-  clearColorOverrides(1,1,0);
+  clearColorOverrides(1, 1, 0);
+
   unsigned long holdConfirmTime = 1500;
+
   static bool initialized = false;
   static char allNames[256][12];
   static uint32_t allColorValues[256];
@@ -640,694 +646,693 @@ uint32_t colorPicker(uint8_t startHue, uint8_t brightness) {
     } else if (startHue > 255) {
       startHue = 225;
       }
-  int rangeStart = 0;
-  int rangeEnd = 255;
-  // One-time initialization of all possible hue data
-  if (!initialized) {
-    bool toggle = false;
-    char* lastName = nullptr;
+    int rangeStart = 0;
+    int rangeEnd = 255;
+    // One-time initialization of all possible hue data
+    if (!initialized) {
+      bool toggle = false;
+      char* lastName = nullptr;
 
-    // Precompute all color names, colors, and toggle states for all 256 hues
-    for (int h = 0; h < 256; h++) {
-      // Get color and name
-      hsvColor hsv = { (uint8_t)h, 254, brightness };
-      allColorValues[h] = HsvToRaw(hsv);
+      // Precompute all color names, colors, and toggle states for all 256 hues
+      for (int h = 0; h < 256; h++) {
+        // Get color and name
+        hsvColor hsv = { (uint8_t)h, 254, brightness };
+        allColorValues[h] = HsvToRaw(hsv);
 
-      char* tempName = colorToName(allColorValues[h], 10);
-      strncpy(allNames[h], tempName, 11);
-      allNames[h][11] = '\0';
+        char* tempName = colorToName(allColorValues[h], 10);
+        strncpy(allNames[h], tempName, 11);
+        allNames[h][11] = '\0';
 
-      // Calculate toggle state based on name changes
-      if (lastName == nullptr || strcmp(allNames[h], lastName) != 0) {
-        toggle = !toggle;
-        }
-      nameToggleState[h] = toggle;
-      lastName = allNames[h];
-      }
-
-    initialized = true;
-    }
-
-  // Check if there's input in Serial to parse a range
-  if (Serial.available() > 0) {
-    String input = Serial.readStringUntil('\n');
-    input.trim();
-
-    // Look for a dash character
-    int dashIndex = input.indexOf('-');
-    if (dashIndex > 0 && dashIndex < input.length() - 1) {
-      // Get the numbers before and after the dash
-      String startStr = input.substring(0, dashIndex);
-      String endStr = input.substring(dashIndex + 1);
-
-      // Convert to integers
-      rangeStart = startStr.toInt();
-      rangeEnd = endStr.toInt();
-
-      // Validate the range
-      if (rangeStart >= 0 && rangeStart <= 255 && rangeEnd >= 0 && rangeEnd <= 255) {
-        Serial.print("Displaying colors for range: ");
-        Serial.print(rangeStart);
-        Serial.print("-");
-        Serial.println(rangeEnd);
-        } else {
-        Serial.println("Invalid range. Using default range (0-255)");
-        rangeStart = 0;
-        rangeEnd = 255;
-        }
-      } else {
-      // No dash found or invalid format
-      Serial.println("Invalid format. Using default range (0-255)");
-      }
-    }
-
-  b.clear();
-  // int lastNetSlot = netSlot;
-
-  // netSlot = 8;
-  // createSlots(netSlot, 1);
-//!dont show nets
-  hideNets = 1;
-  showLEDsCore2 = -2;
-  resetEncoderPosition = 1;
-
-  // Store original range for restoring when zooming out
-  static int originalRangeStart = -1;
-  static int originalRangeEnd = -1;
-  if (originalRangeStart == -1) {
-    // Always use full spectrum 0-255 as the base range for consistency
-    originalRangeStart = 0;
-    originalRangeEnd = 255;
-    }
-
-  // Center position and display state
-  
-  int centerRow = 45; // Start at middle row (0-59)
-  int zoom = 0;       // Initial zoom level (0-255)
-  bool zoomOrScroll = false;
-  int cursorRow = 0;
-
-  // If startHue is specified, find the row closest to it
-  if (startHue >= 0 && startHue <= 255) {
-    // Formula to convert hue to row: row = (hue * 60.0f) / 255.0f
-    // This is the inverse of the formula: hue = row * 255.0f / 60.0f
-    centerRow = round((startHue * 60.0f) / 255.0f);
-    
-    // Ensure centerRow stays within valid bounds (0-59)
-    if (centerRow < 0) centerRow = 0;
-    if (centerRow > 59) centerRow = 59;
-  }
-
-  // Use floating-point for precise positioning to avoid integer rounding errors
-  float preciseHue = centerRow * 255.0f / 60.0f;
-  int centerHue = (int)preciseHue; // Initial hue at center row
-
-  float zoomCursorWidthf = 1.0f;
-  int zoomCursorWidth = 1;
-
-  // Acceleration variables - using function local variables not static to avoid linter errors
-  int lastDirection = 0;  // Previous scrolling direction
-  float accelerationFactor = 1.0f;  // Current acceleration multiplier
-  unsigned long lastAccelerationTime = 0;  // Last time we updated acceleration
-  const float maxAcceleration = 6.0f;  // Maximum acceleration factor
-  const float accelerationRate = 0.0003f;  // How quickly acceleration builds up
-  const unsigned long accelerationTimeout = 10;  // Reset acceleration after this many ms of no movement
-int zoomWithProbe = 0;
-  Serial.println(" row\t hue\t name\t\t row\t hue\t name\n\r");
-
-
-
-  do {
-    // Calculate total range and manage zoom
-    int originalTotalRange = 255; // Use the full hue range (0-255)
-
-    // Map from row number to hue value - this is the key function
-    auto getHueForRow = [&](int row) -> int {
-      // Calculate zoom factor - non-linear for better control at low zoom levels
-      float zoomFactor = zoom * zoom / 100.0f;
-
-      // Convert zoom factor to visible percentage of the color range
-      float visiblePercentage = 1.0f - (zoomFactor / 255.0f);
-      if (visiblePercentage < 0.01f) visiblePercentage = 0.01f; // Prevent division by zero
-
-      // Current visible range based on zoom with floating point for smoother transitions
-      float zoomedRange = (float)originalTotalRange * visiblePercentage;
-
-      // Calculate relative row position from centerRow
-      // Use floating point for the entire calculation to avoid rounding errors
-      float rowFraction = (float)(row - centerRow) / 60.0f; // -0.5 to 0.5 based on distance from center
-
-      // Calculate final hue value using floating point precision
-      // Use preciseHue as the anchor to ensure exact center positioning
-      float hueFloat = preciseHue + (rowFraction * zoomedRange);
-
-      // Wrap around properly in the 0-255 range
-      while (hueFloat < 0) hueFloat += 255.0f;
-      while (hueFloat >= 255.0f) hueFloat -= 255.0f;
-
-      // Convert to integer without additional rounding
-      int hue = (int)hueFloat;
-
-      // Wrapping already handled in floating point, no need for additional wrapping here
-
-      return hue;
-
-      };
-
-    // Get hue ranges from the first and last rows for display
-    int displayRangeStart = getHueForRow(0);
-    int displayRangeEnd = getHueForRow(59);
-
-    // Render all rows using precomputed data
-    for (int row = 0; row < 60; row++) {
-      int hue = getHueForRow(row);
-
-      // Get precomputed data for this hue
-      uint32_t color = allColorValues[hue];
-      bool toggle = nameToggleState[hue];
-
-      // Apply alternating row pattern
-      if (toggle != nameToggleState[(row - 1) % 255]) {
-        b.printRawRow(0b00001110, row, color, 0xffffff);
-        } else {
-        b.printRawRow(0b00001110, row, color, 0xffffff);
-        b.printRawRow(0b00001110, row, color, 0xffffff);
-        }
-
-      // Highlight the center row
-      if (zoomOrScroll || zoomWithProbe != 0) {
-        // zoomCursorWidth = (zoom + 1 / 20)%60;
-        if (row == centerRow) {
-          b.printRawRow(0b00011111, row, scaleBrightness(color, 0), 0xffffff);
-
-          logoColorOverride = scaleBrightness(color, 0);
-
-          } else if (row < (centerRow + zoomCursorWidth) && row >(centerRow - zoomCursorWidth) ) {
-            b.printRawRow(0b00010001, row, scaleBrightness(color, 0), 0xffffff);
-            b.printRawRow(0b00001110, row, color, 0xfffffe);
-            }
-          // else if (row == (centerRow+ zoomCursorWidth)) {
-          // b.printRawRow(0b00011111, row, scaleBrightness(color, 200), 0xffffff);
-          // } else if (row == (centerRow- zoomCursorWidth)) {
-          // b.printRawRow(0b00011111, row, scaleBrightness(color, 200), 0xffffff);
-          // }
-        } else if (zoomOrScroll == false) {
-          if (row == centerRow) {
-            b.printRawRow(0b00011111, row, scaleBrightness(color, 300), 0xffffff);
-            logoColorOverride = scaleBrightness(color, 0);
-            }
+        // Calculate toggle state based on name changes
+        if (lastName == nullptr || strcmp(allNames[h], lastName) != 0) {
+          toggle = !toggle;
           }
+        nameToggleState[h] = toggle;
+        lastName = allNames[h];
+        }
+
+      initialized = true;
       }
 
-    // Clear the previous output
-    Serial.print("\033[J");
+    // Check if there's input in Serial to parse a range
+    if (Serial.available() > 0) {
+      String input = Serial.readStringUntil('\n');
+      input.trim();
 
-    // Display information for all rows
-    for (int i = 0; i < 30; i++) {
-      // Top rows (0-29)
-      int topHue = getHueForRow(i);
-      int bottomHue = getHueForRow(i + 30);
+      // Look for a dash character
+      int dashIndex = input.indexOf('-');
+      if (dashIndex > 0 && dashIndex < input.length() - 1) {
+        // Get the numbers before and after the dash
+        String startStr = input.substring(0, dashIndex);
+        String endStr = input.substring(dashIndex + 1);
 
-      // Print row marker for center
-      if (i == centerRow && centerRow < 30) {
-        Serial.print("> ");
+        // Convert to integers
+        rangeStart = startStr.toInt();
+        rangeEnd = endStr.toInt();
+
+        // Validate the range
+        if (rangeStart >= 0 && rangeStart <= 255 && rangeEnd >= 0 && rangeEnd <= 255) {
+          Serial.print("Displaying colors for range: ");
+          Serial.print(rangeStart);
+          Serial.print("-");
+          Serial.println(rangeEnd);
+          } else {
+          Serial.println("Invalid range. Using default range (0-255)");
+          rangeStart = 0;
+          rangeEnd = 255;
+          }
         } else {
-        Serial.print("  ");
+        // No dash found or invalid format
+        Serial.println("Invalid format. Using default range (0-255)");
+        }
+      }
+
+    b.clear();
+    // int lastNetSlot = netSlot;
+
+    // netSlot = 8;
+    // createSlots(netSlot, 1);
+  //!dont show nets
+    hideNets = 1;
+    showLEDsCore2 = -2;
+    resetEncoderPosition = 1;
+
+    // Store original range for restoring when zooming out
+    static int originalRangeStart = -1;
+    static int originalRangeEnd = -1;
+    if (originalRangeStart == -1) {
+      // Always use full spectrum 0-255 as the base range for consistency
+      originalRangeStart = 0;
+      originalRangeEnd = 255;
+      }
+
+    // Center position and display state
+
+    int centerRow = 45; // Start at middle row (0-59)
+    int zoom = 0;       // Initial zoom level (0-255)
+    bool zoomOrScroll = false;
+    int cursorRow = 0;
+
+    // If startHue is specified, find the row closest to it
+    if (startHue >= 0 && startHue <= 255) {
+      // Formula to convert hue to row: row = (hue * 60.0f) / 255.0f
+      // This is the inverse of the formula: hue = row * 255.0f / 60.0f
+      centerRow = round((startHue * 60.0f) / 255.0f);
+
+      // Ensure centerRow stays within valid bounds (0-59)
+      if (centerRow < 0) centerRow = 0;
+      if (centerRow > 59) centerRow = 59;
+      }
+
+    // Use floating-point for precise positioning to avoid integer rounding errors
+    float preciseHue = centerRow * 255.0f / 60.0f;
+    int centerHue = (int)preciseHue; // Initial hue at center row
+
+    float zoomCursorWidthf = 1.0f;
+    int zoomCursorWidth = 1;
+
+    // Acceleration variables - using function local variables not static to avoid linter errors
+    int lastDirection = 0;  // Previous scrolling direction
+    float accelerationFactor = 1.0f;  // Current acceleration multiplier
+    unsigned long lastAccelerationTime = 0;  // Last time we updated acceleration
+    const float maxAcceleration = 6.0f;  // Maximum acceleration factor
+    const float accelerationRate = 0.0003f;  // How quickly acceleration builds up
+    const unsigned long accelerationTimeout = 10;  // Reset acceleration after this many ms of no movement
+    int zoomWithProbe = 0;
+    Serial.println(" row\t hue\t name\t\t row\t hue\t name\n\r");
+
+
+
+    do {
+      // Calculate total range and manage zoom
+      int originalTotalRange = 255; // Use the full hue range (0-255)
+
+      // Map from row number to hue value - this is the key function
+      auto getHueForRow = [&](int row) -> int {
+        // Calculate zoom factor - non-linear for better control at low zoom levels
+        float zoomFactor = zoom * zoom / 100.0f;
+
+        // Convert zoom factor to visible percentage of the color range
+        float visiblePercentage = 1.0f - (zoomFactor / 255.0f);
+        if (visiblePercentage < 0.01f) visiblePercentage = 0.01f; // Prevent division by zero
+
+        // Current visible range based on zoom with floating point for smoother transitions
+        float zoomedRange = (float)originalTotalRange * visiblePercentage;
+
+        // Calculate relative row position from centerRow
+        // Use floating point for the entire calculation to avoid rounding errors
+        float rowFraction = (float)(row - centerRow) / 60.0f; // -0.5 to 0.5 based on distance from center
+
+        // Calculate final hue value using floating point precision
+        // Use preciseHue as the anchor to ensure exact center positioning
+        float hueFloat = preciseHue + (rowFraction * zoomedRange);
+
+        // Wrap around properly in the 0-255 range
+        while (hueFloat < 0) hueFloat += 255.0f;
+        while (hueFloat >= 255.0f) hueFloat -= 255.0f;
+
+        // Convert to integer without additional rounding
+        int hue = (int)hueFloat;
+
+        // Wrapping already handled in floating point, no need for additional wrapping here
+
+        return hue;
+
+        };
+
+      // Get hue ranges from the first and last rows for display
+      int displayRangeStart = getHueForRow(0);
+      int displayRangeEnd = getHueForRow(59);
+
+      // Render all rows using precomputed data
+      for (int row = 0; row < 60; row++) {
+        int hue = getHueForRow(row);
+
+        // Get precomputed data for this hue
+        uint32_t color = allColorValues[hue];
+        bool toggle = nameToggleState[hue];
+
+        // Apply alternating row pattern
+        if (toggle != nameToggleState[(row - 1) % 255]) {
+          b.printRawRow(0b00001110, row, color, 0xffffff);
+          } else {
+          b.printRawRow(0b00001110, row, color, 0xffffff);
+          b.printRawRow(0b00001110, row, color, 0xffffff);
+          }
+
+        // Highlight the center row
+        if (zoomOrScroll || zoomWithProbe != 0) {
+          // zoomCursorWidth = (zoom + 1 / 20)%60;
+          if (row == centerRow) {
+            b.printRawRow(0b00011111, row, scaleBrightness(color, 0), 0xffffff);
+
+            logoColorOverride = scaleBrightness(color, 0);
+
+            } else if (row < (centerRow + zoomCursorWidth) && row >(centerRow - zoomCursorWidth)) {
+              b.printRawRow(0b00010001, row, scaleBrightness(color, 0), 0xffffff);
+              b.printRawRow(0b00001110, row, color, 0xfffffe);
+              }
+            // else if (row == (centerRow+ zoomCursorWidth)) {
+            // b.printRawRow(0b00011111, row, scaleBrightness(color, 200), 0xffffff);
+            // } else if (row == (centerRow- zoomCursorWidth)) {
+            // b.printRawRow(0b00011111, row, scaleBrightness(color, 200), 0xffffff);
+            // }
+          } else if (zoomOrScroll == false) {
+            if (row == centerRow) {
+              b.printRawRow(0b00011111, row, scaleBrightness(color, 300), 0xffffff);
+              logoColorOverride = scaleBrightness(color, 0);
+              }
+            }
         }
 
-      // Print top row info
-      Serial.print(i + 1);
-      Serial.print(":\t ");
-      Serial.print(topHue);
-      Serial.print("\t");
+      // Clear the previous output
+      Serial.print("\033[J");
 
-      // if (!nameToggleState[topHue]) {
-      //   Serial.print(" ");
-      //   }
-      Serial.print(allNames[topHue]);
+      // Display information for all rows
+      for (int i = 0; i < 30; i++) {
+        // Top rows (0-29)
+        int topHue = getHueForRow(i);
+        int bottomHue = getHueForRow(i + 30);
 
-      // Print bottom row marker for center
-      if (i + 30 == centerRow) {
-        Serial.print("\t> ");
-        } else {
-        Serial.print("\t  ");
+        // Print row marker for center
+        if (i == centerRow && centerRow < 30) {
+          Serial.print("> ");
+          } else {
+          Serial.print("  ");
+          }
+
+        // Print top row info
+        Serial.print(i + 1);
+        Serial.print(":\t ");
+        Serial.print(topHue);
+        Serial.print("\t");
+
+        // if (!nameToggleState[topHue]) {
+        //   Serial.print(" ");
+        //   }
+        Serial.print(allNames[topHue]);
+
+        // Print bottom row marker for center
+        if (i + 30 == centerRow) {
+          Serial.print("\t> ");
+          } else {
+          Serial.print("\t  ");
+          }
+
+        // Print bottom row info
+        //Serial.print("\t ");
+        Serial.print(i + 31);
+        Serial.print(":\t  ");
+        Serial.print(bottomHue);
+        Serial.print("\t");
+
+        // if (!nameToggleState[bottomHue]) {
+        //   Serial.print(" ");
+        //   }
+        Serial.print(allNames[bottomHue]);
+
+        Serial.println();
         }
 
-      // Print bottom row info
-      //Serial.print("\t ");
-      Serial.print(i + 31);
-      Serial.print(":\t  ");
-      Serial.print(bottomHue);
-      Serial.print("\t");
+      // Print status information
+      int displayCenterHue = getHueForRow(centerRow);
+      Serial.print("Center: ");
+      Serial.print(centerRow + 1);
+      Serial.print(" (hue: ");
+      Serial.print(centerHue); // Display the anchor hue value that stays fixed
+      Serial.print(")");
 
-      // if (!nameToggleState[bottomHue]) {
-      //   Serial.print(" ");
-      //   }
-      Serial.print(allNames[bottomHue]);
+      if (zoom >= 0) {
+        // Calculate a smooth zoom percentage for display based on non-linear curve
+        // Higher zoom values produce increasingly finer granularity
+        float zoomPercentage = 100.0f * (1.0f - (zoom / 255.0f));
+
+        // // Special case for very low zoom values to make initial zoom smoother
+        // if (zoom < 10) {
+        //   // Slower initial decrease for finest control at beginning
+        //   zoomPercentage = 100.0f - (zoom * zoom / 25.0f);
+        // }
+
+        Serial.print(" | Zoom: ");
+        Serial.print(zoom);
+        Serial.print(" (");
+        Serial.print((int)zoomPercentage);
+        Serial.print("% range: ");
+
+        // Show more helpful range display, especially for wraparound ranges
+        if (zoom < 5) {
+          Serial.print("FULL SPECTRUM");
+          } else if (displayRangeStart > displayRangeEnd) {
+            Serial.print(displayRangeStart);
+            Serial.print(" - ");
+            Serial.print(displayRangeEnd);
+            } else {
+            Serial.print(displayRangeStart);
+            Serial.print("-");
+            Serial.print(displayRangeEnd);
+            }
+          Serial.print(")");
+        }
+
+      Serial.print(" | Mode: ");
+      Serial.print(zoomOrScroll ? "ZOOM" : "SCROLL");
 
       Serial.println();
-      }
+      Serial.println();
+      Serial.flush();
 
-    // Print status information
-    int displayCenterHue = getHueForRow(centerRow);
-    Serial.print("Center: ");
-    Serial.print(centerRow + 1);
-    Serial.print(" (hue: ");
-    Serial.print(centerHue); // Display the anchor hue value that stays fixed
-    Serial.print(")");
+      // Handle encoder input for scrolling and zooming
+      int oldEncoderPosition = encoderPosition;
+      bool redraw = false;
+      unsigned long lastChangeTime = millis();
+      unsigned long lastMicroAdjust = millis();
+      const int encoderSensitivity = 3; // Base sensitivity for scroll mode
 
-    if (zoom >= 0) {
-      // Calculate a smooth zoom percentage for display based on non-linear curve
-      // Higher zoom values produce increasingly finer granularity
-      float zoomPercentage = 100.0f * (1.0f - (zoom / 255.0f));
+      // Use acceleration variables defined at function scope
 
-      // // Special case for very low zoom values to make initial zoom smoother
-      // if (zoom < 10) {
-      //   // Slower initial decrease for finest control at beginning
-      //   zoomPercentage = 100.0f - (zoom * zoom / 25.0f);
-      // }
+      while (!redraw) {
 
-      Serial.print(" | Zoom: ");
-      Serial.print(zoom);
-      Serial.print(" (");
-      Serial.print((int)zoomPercentage);
-      Serial.print("% range: ");
 
-      // Show more helpful range display, especially for wraparound ranges
-      if (zoom < 5) {
-        Serial.print("FULL SPECTRUM");
-        } else if (displayRangeStart > displayRangeEnd) {
-          Serial.print(displayRangeStart);
-          Serial.print(" - ");
-          Serial.print(displayRangeEnd);
-          } else {
-          Serial.print(displayRangeStart);
-          Serial.print("-");
-          Serial.print(displayRangeEnd);
+
+        // Poll encoder
+        //rotaryEncoderStuff();
+        int newPosition = encoderPosition;
+        zoomWithProbe = 0;
+        // Check for acceleration timeout
+        if (millis() - scrollAccelerationLastTime > accelerationTimeout) {
+          // Reset acceleration if user hasn't scrolled for a while
+          scrollAccelerationFactor = 1.0f;
+          scrollLastDirection = 0;
           }
-        Serial.print(")");
-      }
 
-    Serial.print(" | Mode: ");
-    Serial.print(zoomOrScroll ? "ZOOM" : "SCROLL");
+        // Check for serial input to exit
+        if (Serial.available() > 0) {
+          redraw = true;
+          break;
+          }
 
-    Serial.println();
-    Serial.println();
-    Serial.flush();
+        // Handle button press with debounce
+        static unsigned long lastButtonPress = 0;
+        static bool buttonWasPressed = false;  // Track if button was previously pressed
+        static unsigned long buttonPressStartTime = 0; // Track when button was initially pressed
+        static int probeButtonWasPressed = 2; // Track if probe button was previously pressed
+        // Get current button state (LOW is pressed)
+        bool buttonIsPressed = (digitalRead(BUTTON_ENC) == LOW);
 
-    // Handle encoder input for scrolling and zooming
-    int oldEncoderPosition = encoderPosition;
-    bool redraw = false;
-    unsigned long lastChangeTime = millis();
-    unsigned long lastMicroAdjust = millis();
-    const int encoderSensitivity = 3; // Base sensitivity for scroll mode
-
-    // Use acceleration variables defined at function scope
-
-    while (!redraw) {
-
-
-
-      // Poll encoder
-      //rotaryEncoderStuff();
-      int newPosition = encoderPosition;
- zoomWithProbe = 0;
-      // Check for acceleration timeout
-      if (millis() - scrollAccelerationLastTime > accelerationTimeout) {
-        // Reset acceleration if user hasn't scrolled for a while
-        scrollAccelerationFactor = 1.0f;
-        scrollLastDirection = 0;
-        }
-
-      // Check for serial input to exit
-      if (Serial.available() > 0) {
-        redraw = true;
-        break;
-        }
-
-      // Handle button press with debounce
-      static unsigned long lastButtonPress = 0;
-      static bool buttonWasPressed = false;  // Track if button was previously pressed
-      static unsigned long buttonPressStartTime = 0; // Track when button was initially pressed
-      static int probeButtonWasPressed = 2; // Track if probe button was previously pressed
-      // Get current button state (LOW is pressed)
-      bool buttonIsPressed = (digitalRead(BUTTON_ENC) == LOW);
-
-      int probeButtonIsPressed = (checkProbeButton());
+        int probeButtonIsPressed = (checkProbeButton());
 
 
 
 
-      // Detect initial button press
-      if ((buttonIsPressed && !buttonWasPressed) || (probeButtonIsPressed > 0 && probeButtonWasPressed == 0)) {
-        // Button was just pressed (transition from released to pressed)
+        // Detect initial button press
+        if ((buttonIsPressed && !buttonWasPressed) || (probeButtonIsPressed > 0 && probeButtonWasPressed == 0)) {
+          // Button was just pressed (transition from released to pressed)
 
-        if (buttonIsPressed) {
-        zoomOrScroll = !zoomOrScroll;
-        }
-        lastButtonPress = millis();
+          if (buttonIsPressed) {
+            zoomOrScroll = !zoomOrScroll;
+            }
+          lastButtonPress = millis();
 
-        // if (probeButtonIsPressed == 2) {
-        //   // Serial.print("probe button pressed: ");
-        //   // Serial.println(probeButtonIsPressed);
-        //   }
+          // if (probeButtonIsPressed == 2) {
+          //   // Serial.print("probe button pressed: ");
+          //   // Serial.println(probeButtonIsPressed);
+          //   }
 
-        redraw = true;
-        // showLEDsCore2 = 2;
-        // waitCore2();
-        probeButtonWasPressed = probeButtonIsPressed;
-        buttonWasPressed = buttonIsPressed;
-        buttonPressStartTime = millis(); // Start timing the press
+          redraw = true;
+          // showLEDsCore2 = 2;
+          // waitCore2();
+          probeButtonWasPressed = probeButtonIsPressed;
+          buttonWasPressed = buttonIsPressed;
+          buttonPressStartTime = millis(); // Start timing the press
 
-        if (probeButtonIsPressed > 0)
-          {
+          if (probeButtonIsPressed > 0)
+            {
             if (probeButtonIsPressed == 2) {
               zoomWithProbe = -1;
-            } else {
+              } else {
               zoomWithProbe = 1;
-            }
+              }
             // Serial.print("zoomWithProbe: ");
             // Serial.println(zoomWithProbe);
-          holdConfirmTime = 900;
-          } else {
-          holdConfirmTime = 2000;
-          }
-
-        //lastButtonPress = millis();
-        while (buttonIsPressed || probeButtonIsPressed > 0) {
-          uint32_t color = allColorValues[centerHue];
-          uint32_t timerColor = 0x203050;
-
-          buttonIsPressed = (digitalRead(BUTTON_ENC) == LOW);
-          probeButtonIsPressed = (checkProbeButton());
-          logoColorOverride = scaleBrightness(color, 100);
-
-
-
-
-          if (millis() - buttonPressStartTime > (holdConfirmTime / 6) * 5 + 50) {
-
-            ADCcolorOverride1 = scaleBrightness(timerColor, 100);
-
-            } else if (millis() - buttonPressStartTime > (holdConfirmTime / 6) * 5) {
-
-              ADCcolorOverride0 = scaleBrightness(timerColor, 100);
-
-              } else if (millis() - buttonPressStartTime > (holdConfirmTime / 6) * 3 + 50) {
-
-                DACcolorOverride1 = scaleBrightness(timerColor, 100);
-
-                } else if (millis() - buttonPressStartTime > (holdConfirmTime / 6) * 3) {
-
-                  DACcolorOverride0 = scaleBrightness(timerColor, 100);
-
-                  } else if (millis() - buttonPressStartTime > (holdConfirmTime / 6) * 1 + 50) {
-
-                    GPIOcolorOverride1 = scaleBrightness(timerColor, 100);
-
-                    } else if (millis() - buttonPressStartTime > (holdConfirmTime / 6) * 1) {
-
-                      GPIOcolorOverride0 = scaleBrightness(timerColor, 100);
-                      }
-
-
-                    if (millis() - buttonPressStartTime > holdConfirmTime) {
-                      hideNets = 0;
-                      showLEDsCore2 = -1;
-                      clearColorOverrides(true, true, true);
-                      blockProbeButton = 5000;
-                      blockProbeButtonTimer = millis();
-                      // blockProbing = 1000;
-                      // blockProbingTimer = millis();
-                      //delay(100);
-                      return HsvToRaw(hsvColor{(uint8_t)(centerHue%255), 255, brightness});
-                      break;
-                      }
-
-          }
-        clearColorOverrides(false, true, true);
-        
-    
-        //break;
-
-        } else {
-
-        if (probeButtonIsPressed == 1 && probeButtonWasPressed == 0) {
-          zoomOrScroll = !zoomOrScroll;
-          redraw = true;
-          // break;
-          }
-        buttonWasPressed = buttonIsPressed;
-        probeButtonWasPressed = probeButtonIsPressed;
-
-        }
-
-
-
-
-      
-
-      int probeReading = justReadProbe(true);
-
-      // if (probeReading != -1){
-      //   // Serial.print("probeReading: ");
-      //   // Serial.println(probeReading);
-      // }
-
-      if (probeReading != -1 && probeReading > 0 && probeReading <= 60) {
-        // Calculate the row difference
-        int rowDiff = probeReading - 1 - centerRow;
-        //if (zoomOrScroll == 1){
-        // Move the centerRow to the tapped position
-
-
-        if (zoom > 0 && probeReading == 1)
-          {
-          centerRow = 59;
-          } else if (zoom > 0 && probeReading == 60) {
-            centerRow = 0;
+            holdConfirmTime = 800;
             } else {
-            centerRow = probeReading - 1;
+            holdConfirmTime = 1500;
             }
 
-          // Calculate current visible range based on zoom level
-          float visiblePercentage = 1.0f - ((zoom * zoom / 100.0f) / 255.0f);
-          if (visiblePercentage < 0.01f) visiblePercentage = 0.01f;
-          float visibleRange = originalTotalRange * visiblePercentage;
+          //lastButtonPress = millis();
+          while (buttonIsPressed || probeButtonIsPressed > 0) {
+            uint32_t color = allColorValues[centerHue];
+            uint32_t timerColor = 0x203050;
 
-          // Calculate how much the hue needs to shift to keep colors in place
-          float hueIncrement = (visibleRange / 60.0f) * rowDiff;
-
-          // Adjust preciseHue to maintain color positions 
-          preciseHue += hueIncrement;
-
-          // Ensure proper wrapping of hue values
-          while (preciseHue < 0) preciseHue += 255.0f;
-          while (preciseHue >= 255.0f) preciseHue -= 255.0f;
-
-          // Update centerHue to match the new preciseHue
-          centerHue = (int)preciseHue;
-          // } else {
+            buttonIsPressed = (digitalRead(BUTTON_ENC) == LOW);
+            probeButtonIsPressed = (checkProbeButton());
+            logoColorOverride = scaleBrightness(color, 100);
 
 
 
-          redraw = true;
-          // Serial.print("Probe reading: ");
-          // Serial.print(probeReading);
 
-        //}
-        }
+            if (millis() - buttonPressStartTime > (holdConfirmTime / 6) * 5 + 30) {
+
+              ADCcolorOverride1 = scaleBrightness(timerColor, 100);
+
+              } else if (millis() - buttonPressStartTime > (holdConfirmTime / 6) * 5) {
+
+                ADCcolorOverride0 = scaleBrightness(timerColor, 100);
+
+                } else if (millis() - buttonPressStartTime > (holdConfirmTime / 6) * 3 + 30) {
+
+                  DACcolorOverride1 = scaleBrightness(timerColor, 100);
+
+                  } else if (millis() - buttonPressStartTime > (holdConfirmTime / 6) * 3) {
+
+                    DACcolorOverride0 = scaleBrightness(timerColor, 100);
+
+                    } else if (millis() - buttonPressStartTime > (holdConfirmTime / 6) * 1 + 30) {
+
+                      GPIOcolorOverride1 = scaleBrightness(timerColor, 100);
+
+                      } else if (millis() - buttonPressStartTime > (holdConfirmTime / 6) * 1) {
+
+                        GPIOcolorOverride0 = scaleBrightness(timerColor, 100);
+                        }
 
 
-      // Handle encoder rotation
-      if (newPosition != oldEncoderPosition || zoomWithProbe != 0) {
-        // Adjust encoder sensitivity based on mode
-        int delta;
-        if (zoomOrScroll || zoomWithProbe != 0) {
-          // Higher sensitivity (smaller steps) for zoom mode
-          // Get raw encoder change first
-          if (zoomWithProbe != 0) {
-            delta = zoomWithProbe * 4;
+                      if (millis() - buttonPressStartTime > holdConfirmTime) {
+                        hideNets = 0;
+                        showLEDsCore2 = -1;
+                        clearColorOverrides(true, true, true);
+                        blockProbeButton = 5000;
+                        blockProbeButtonTimer = millis();
+                        // blockProbing = 1000;
+                        // blockProbingTimer = millis();
+                        //delay(100);
+                        return HsvToRaw(hsvColor{ (uint8_t)(centerHue % 255), 255, brightness });
+                        break;
+                        }
+
+            }
+          clearColorOverrides(false, true, true);
+
+
+          //break;
+
           } else {
-            delta = (newPosition - oldEncoderPosition);
-          }
 
-          if (delta > 0 && zoomWithProbe == 0) {
-            zoomCursorWidthf -= 0.28f;
-            } else if (delta < 0 && zoomWithProbe == 0) {
-              zoomCursorWidthf += 0.28f;
-              }
-          else if (zoomWithProbe != 0 && delta > 0) {
-            zoomCursorWidthf -= 1.1f;
-          } else if (zoomWithProbe != 0 && delta < 0) {
-            zoomCursorWidthf += 1.1f;
-          }
-
-            if (zoomCursorWidthf > 60) zoomCursorWidthf = 60;
-            if (zoomCursorWidthf < 2) zoomCursorWidthf = 2;
-
-            zoomCursorWidth = (int)zoomCursorWidthf % 60;
-
-            // Progressive zoom rate - faster at beginning, slower at higher zoom
-           // if (zoomWithProbe == 0) {
-            if (zoom >= 100 ) {
-              // Very slow changes at high zoom for precise control
-
-              if (zoomWithProbe == 0) {
-
-              delta = delta / 6;
-              } else {
-                if (delta < 0) {
-                  delta = delta / 2;
-                } else {
-                  delta = delta * 3;
-              }
-              }
-
-              if (delta == 0 && (newPosition != oldEncoderPosition)) {
-                delta = (newPosition > oldEncoderPosition) ? 1 : -1;
-                }
-
-
-            } else {
-
-              delta = delta * (((100 - zoom) / 10) + 1);
-
-            }
-              // } else if (zoom > 50) {
-              //   // Medium changes in the middle-high range
-              //   delta = delta * 4;
-              //   } else if (zoom > 25){
-              //     delta = delta * 6;
-              //   } else {
-              //   // Fast changes at lower zoom levels for quick adjustments
-              //   // Amplify delta for faster initial zooming
-              //   delta = delta * 10;
-              //   // Cap maximum change to prevent huge jumps
-              //   // if (delta > 15) delta = 15;
-              //   // if (delta < -15) delta = -15;
-              //   }
-           // }
-          } else if (zoomWithProbe == 0) {
-          // Normal sensitivity for scroll mode
-          int rawDelta = (newPosition - oldEncoderPosition);
-
-          // Determine current scrolling direction
-          int currentDirection = (rawDelta > 0) ? 1 : ((rawDelta < 0) ? -1 : 0);
-
-          // Update acceleration based on direction consistency
-          if (currentDirection != 0) {
-            if (currentDirection == scrollLastDirection) {
-              // Same direction - increase acceleration
-              scrollAccelerationFactor += accelerationRate;
-              if (scrollAccelerationFactor > maxAcceleration) {
-                scrollAccelerationFactor = maxAcceleration;
-                }
-              } else {
-              // Direction changed - reset acceleration
-              scrollAccelerationFactor = 1.0f;
-              }
-
-            // Remember current direction and time
-
-            scrollAccelerationLastTime = millis();
-            }
-          scrollLastDirection = currentDirection;
-          // Apply base sensitivity first
-          delta = rawDelta / encoderSensitivity;
-
-          // Then apply acceleration for larger movements
-
-            // Apply non-linear acceleration that affects larger movements more
-          float acceleratedDelta = (float)delta * scrollAccelerationFactor;
-
-          // Round to integer and ensure minimum movement of 1
-          delta = (int)acceleratedDelta;
-          if (delta == 0 && rawDelta != 0) {
-            delta = currentDirection;
-            }
-
-          }
-
-        if (delta != 0) {
-
-          if (zoomOrScroll || zoomWithProbe != 0) {
-            // Zoom mode - much more granular for smoother zooming
-            zoom -= delta;
-
-            // Clamp zoom value
-            if (zoom < 0) zoom = 0;
-            if (zoom > 255) zoom = 255;
-
-            // In zoom mode, we keep the center hue fixed
-            // preciseHue stays unchanged, ensuring the center color remains stable
-
+          if (probeButtonIsPressed == 1 && probeButtonWasPressed == 0) {
+            zoomOrScroll = !zoomOrScroll;
             redraw = true;
-            } else if (zoomWithProbe == 0) {
-            // Scroll mode - move one row at a time
-            centerRow -= delta;
-            cursorRow -= delta;
+            // break;
+            }
+          buttonWasPressed = buttonIsPressed;
+          probeButtonWasPressed = probeButtonIsPressed;
 
-            if (cursorRow < 0) cursorRow = 59;
-            if (cursorRow > 59) cursorRow = 0;
-            // Handle wrapping
-            if (centerRow < 0) centerRow = 59;
-            if (centerRow > 59) centerRow = 0;
+          }
 
-            // Update preciseHue (and subsequently centerHue) when scrolling
-            // The exact increment depends on the current zoom level
+
+
+
+
+
+        int probeReading = justReadProbe(true);
+
+        // if (probeReading != -1){
+        //   // Serial.print("probeReading: ");
+        //   // Serial.println(probeReading);
+        // }
+
+        if (probeReading != -1 && probeReading > 0 && probeReading <= 60) {
+          // Calculate the row difference
+          int rowDiff = probeReading - 1 - centerRow;
+          //if (zoomOrScroll == 1){
+          // Move the centerRow to the tapped position
+
+
+          if (zoom > 0 && probeReading == 1)
+            {
+            centerRow = 59;
+            } else if (zoom > 0 && probeReading == 60) {
+              centerRow = 0;
+              } else {
+              centerRow = probeReading - 1;
+              }
 
             // Calculate current visible range based on zoom level
             float visiblePercentage = 1.0f - ((zoom * zoom / 100.0f) / 255.0f);
             if (visiblePercentage < 0.01f) visiblePercentage = 0.01f;
             float visibleRange = originalTotalRange * visiblePercentage;
 
-            // At full zoom out (zoom near 0), one row = 255/60 hue units
-            // As we zoom in, the amount each row represents becomes smaller
-            float hueIncrement = (visibleRange / 60.0f) * delta;
+            // Calculate how much the hue needs to shift to keep colors in place
+            float hueIncrement = (visibleRange / 60.0f) * rowDiff;
 
-            // Update precise hue value using floating point to avoid rounding errors
-            preciseHue -= hueIncrement;
+            // Adjust preciseHue to maintain color positions 
+            preciseHue += hueIncrement;
 
-            // Wrap around the color wheel properly using floating point
+            // Ensure proper wrapping of hue values
             while (preciseHue < 0) preciseHue += 255.0f;
             while (preciseHue >= 255.0f) preciseHue -= 255.0f;
 
-            // Update integer centerHue for display purposes
+            // Update centerHue to match the new preciseHue
             centerHue = (int)preciseHue;
+            // } else {
+
+
 
             redraw = true;
-            }
+            // Serial.print("Probe reading: ");
+            // Serial.print(probeReading);
 
-          oldEncoderPosition = newPosition;
-          lastChangeTime = millis();
+          //}
           }
+
+
+        // Handle encoder rotation
+        if (newPosition != oldEncoderPosition || zoomWithProbe != 0) {
+          // Adjust encoder sensitivity based on mode
+          int delta;
+          if (zoomOrScroll || zoomWithProbe != 0) {
+            // Higher sensitivity (smaller steps) for zoom mode
+            // Get raw encoder change first
+            if (zoomWithProbe != 0) {
+              delta = zoomWithProbe * 4;
+              } else {
+              delta = (newPosition - oldEncoderPosition);
+              }
+
+            if (delta > 0 && zoomWithProbe == 0) {
+              zoomCursorWidthf -= 0.28f;
+              } else if (delta < 0 && zoomWithProbe == 0) {
+                zoomCursorWidthf += 0.28f;
+                } else if (zoomWithProbe != 0 && delta > 0) {
+                  zoomCursorWidthf -= 1.1f;
+                  } else if (zoomWithProbe != 0 && delta < 0) {
+                    zoomCursorWidthf += 1.1f;
+                    }
+
+                  if (zoomCursorWidthf > 60) zoomCursorWidthf = 60;
+                  if (zoomCursorWidthf < 2) zoomCursorWidthf = 2;
+
+                  zoomCursorWidth = (int)zoomCursorWidthf % 60;
+
+                  // Progressive zoom rate - faster at beginning, slower at higher zoom
+                 // if (zoomWithProbe == 0) {
+                  if (zoom >= 100) {
+                    // Very slow changes at high zoom for precise control
+
+                    if (zoomWithProbe == 0) {
+
+                      delta = delta / 6;
+                      } else {
+                      if (delta < 0) {
+                        delta = delta / 2;
+                        } else {
+                        delta = delta * 3;
+                        }
+                      }
+
+                    if (delta == 0 && (newPosition != oldEncoderPosition)) {
+                      delta = (newPosition > oldEncoderPosition) ? 1 : -1;
+                      }
+
+
+                    } else {
+
+                    delta = delta * (((100 - zoom) / 10) + 1);
+
+                    }
+                  // } else if (zoom > 50) {
+                  //   // Medium changes in the middle-high range
+                  //   delta = delta * 4;
+                  //   } else if (zoom > 25){
+                  //     delta = delta * 6;
+                  //   } else {
+                  //   // Fast changes at lower zoom levels for quick adjustments
+                  //   // Amplify delta for faster initial zooming
+                  //   delta = delta * 10;
+                  //   // Cap maximum change to prevent huge jumps
+                  //   // if (delta > 15) delta = 15;
+                  //   // if (delta < -15) delta = -15;
+                  //   }
+               // }
+            } else if (zoomWithProbe == 0) {
+              // Normal sensitivity for scroll mode
+              int rawDelta = (newPosition - oldEncoderPosition);
+
+              // Determine current scrolling direction
+              int currentDirection = (rawDelta > 0) ? 1 : ((rawDelta < 0) ? -1 : 0);
+
+              // Update acceleration based on direction consistency
+              if (currentDirection != 0) {
+                if (currentDirection == scrollLastDirection) {
+                  // Same direction - increase acceleration
+                  scrollAccelerationFactor += accelerationRate;
+                  if (scrollAccelerationFactor > maxAcceleration) {
+                    scrollAccelerationFactor = maxAcceleration;
+                    }
+                  } else {
+                  // Direction changed - reset acceleration
+                  scrollAccelerationFactor = 1.0f;
+                  }
+
+                // Remember current direction and time
+
+                scrollAccelerationLastTime = millis();
+                }
+              scrollLastDirection = currentDirection;
+              // Apply base sensitivity first
+              delta = rawDelta / encoderSensitivity;
+
+              // Then apply acceleration for larger movements
+
+                // Apply non-linear acceleration that affects larger movements more
+              float acceleratedDelta = (float)delta * scrollAccelerationFactor;
+
+              // Round to integer and ensure minimum movement of 1
+              delta = (int)acceleratedDelta;
+              if (delta == 0 && rawDelta != 0) {
+                delta = currentDirection;
+                }
+
+              }
+
+            if (delta != 0) {
+
+              if (zoomOrScroll || zoomWithProbe != 0) {
+                // Zoom mode - much more granular for smoother zooming
+                zoom -= delta;
+
+                // Clamp zoom value
+                if (zoom < 0) zoom = 0;
+                if (zoom > 255) zoom = 255;
+
+                // In zoom mode, we keep the center hue fixed
+                // preciseHue stays unchanged, ensuring the center color remains stable
+
+                redraw = true;
+                } else if (zoomWithProbe == 0) {
+                  // Scroll mode - move one row at a time
+                  centerRow -= delta;
+                  cursorRow -= delta;
+
+                  if (cursorRow < 0) cursorRow = 59;
+                  if (cursorRow > 59) cursorRow = 0;
+                  // Handle wrapping
+                  if (centerRow < 0) centerRow = 59;
+                  if (centerRow > 59) centerRow = 0;
+
+                  // Update preciseHue (and subsequently centerHue) when scrolling
+                  // The exact increment depends on the current zoom level
+
+                  // Calculate current visible range based on zoom level
+                  float visiblePercentage = 1.0f - ((zoom * zoom / 100.0f) / 255.0f);
+                  if (visiblePercentage < 0.01f) visiblePercentage = 0.01f;
+                  float visibleRange = originalTotalRange * visiblePercentage;
+
+                  // At full zoom out (zoom near 0), one row = 255/60 hue units
+                  // As we zoom in, the amount each row represents becomes smaller
+                  float hueIncrement = (visibleRange / 60.0f) * delta;
+
+                  // Update precise hue value using floating point to avoid rounding errors
+                  preciseHue -= hueIncrement;
+
+                  // Wrap around the color wheel properly using floating point
+                  while (preciseHue < 0) preciseHue += 255.0f;
+                  while (preciseHue >= 255.0f) preciseHue -= 255.0f;
+
+                  // Update integer centerHue for display purposes
+                  centerHue = (int)preciseHue;
+
+                  redraw = true;
+                  }
+
+                oldEncoderPosition = newPosition;
+                lastChangeTime = millis();
+              }
+          }
+
+        // // Adaptive delay to prevent CPU hogging while still being responsive
+        // unsigned long now = millis();
+        // if (now - lastChangeTime > 200) {
+        //   // Long delay when idle
+        //   delay(10);
+        //   } else if (now - lastChangeTime > 50) {
+        //     // Medium delay when recently active
+        //     delay(5);
+        //     } else {
+        //     // Short delay when very active
+        //     delayMicroseconds(500);
+        //     }
+        // }
         }
+      // Move cursor up to overwrite previous output
+      Serial.print("\033[32A");
 
-      // // Adaptive delay to prevent CPU hogging while still being responsive
-      // unsigned long now = millis();
-      // if (now - lastChangeTime > 200) {
-      //   // Long delay when idle
-      //   delay(10);
-      //   } else if (now - lastChangeTime > 50) {
-      //     // Medium delay when recently active
-      //     delay(5);
-      //     } else {
-      //     // Short delay when very active
-      //     delayMicroseconds(500);
-      //     }
-      // }
-      }
-    // Move cursor up to overwrite previous output
-    Serial.print("\033[32A");
+      } while (Serial.available() == 0);
 
-    } while (Serial.available() == 0);
+    showLEDsCore2 = -1;
+    hideNets = 0;
+    clearColorOverrides();
 
-  showLEDsCore2 = -1;
-  hideNets = 0;
-  clearColorOverrides();
-
-  return HsvToRaw(hsvColor{(uint8_t)(centerHue%255), 255, brightness});
+    return HsvToRaw(hsvColor{ (uint8_t)(centerHue % 255), 255, brightness });
   }
 
 void clearColorOverrides(bool logo, bool pads, bool header) {
@@ -1483,7 +1488,7 @@ void showSavedColors(int slot) {
   bridgesToPaths();
   // leds.clear();
   clearLEDsExceptRails();
-
+  checkChangedNetColors(-1);
   assignNetColors();
 
   // saveRawColors(slot);
@@ -1494,9 +1499,178 @@ void showSavedColors(int slot) {
   // leds.show();
   }
 
-void assignNetColors(int preview) {
-  // numberOfNets = 60;\
+  void clearChangedNetColors(int saveToFile) {
+    for (int i = 0; i < MAX_NETS; i++) {
+      changedNetColors[i].net = 0;
+      changedNetColors[i].color = 0x000000;
+      changedNetColors[i].node1 = 0;
+      changedNetColors[i].node2 = 0;
+    }
+    if (saveToFile == 1) {
+      saveChangedNetColorsToFile(netSlot, 0);
+      }
+  }
 
+
+int removeChangedNetColors(int node, int saveToFile) {
+  int ret = 0;
+  for (int i = 0; i < numberOfNets; i++) {
+    if (changedNetColors[i].node1 == node || changedNetColors[i].node2 == node) {
+      changedNetColors[i].net = 0;
+      changedNetColors[i].color = 0x000000;
+      changedNetColors[i].node1 = 0;
+      changedNetColors[i].node2 = 0;
+      ret = 1;
+      }
+  }
+  if (saveToFile == 1 && ret == 1) {
+    saveChangedNetColorsToFile(netSlot, 0);
+    }
+  return ret;
+}
+
+int checkChangedNetColors(int netIndex) {
+  bool nodeFound = false;
+  int changedNetColorIndex = -1;
+  int nodeNetIndex = -1;
+  int loop = 0;
+
+  int ret = 0;
+  if (netIndex < 0) {
+    loop = 1;
+    }
+
+
+  for (int i = 0; i < numberOfNets+5; i++) {
+    nodeFound = false;
+    if (loop == 0) {
+     i = netIndex;
+      }
+
+
+    for (int k = 0; k < MAX_NODES; k++) {
+      if (net[i].nodes[k] <= 0) {
+        break;
+        }
+        if (nodeFound == true) {
+          break;
+          }
+      if (net[i].nodes[k] > 0) {
+
+        for (int j = 5; j < numberOfNets; j++) {
+
+          if (net[i].nodes[k] == changedNetColors[j].node1 && changedNetColors[j].node1 > 0) {
+            // Serial.print("node1: ");
+            // Serial.println(changedNetColors[j].node1);
+            if (changedNetColors[j].node2 > 0) {
+              // Serial.print("node2: ");
+              // Serial.println(changedNetColors[j].node2);
+
+              for (int l = 0; l < MAX_NODES; l++) {
+
+                if (net[i].nodes[l] <= 0) {
+                  break;
+                  }
+
+                if (net[i].nodes[l] > 0) {
+                    if (net[i].nodes[l] == changedNetColors[j].node2 && changedNetColors[j].node2 > 0) {
+                    nodeFound = true;
+                    changedNetColorIndex = j;
+                    nodeNetIndex = k;
+                    if (changedNetColors[j].net != i) {
+                      ret = 1;
+                      }
+                    changedNetColors[j].net = i;
+                    break;
+                    }
+                  }
+                }
+              } else {
+              nodeFound = true;
+              changedNetColorIndex = j;
+              nodeNetIndex = k;
+              if (changedNetColors[j].net != i) {
+                ret = 1;
+                }
+              changedNetColors[j].net = i;
+              break;
+              }
+
+            }
+          }
+        }
+      }
+
+
+
+    if (nodeFound && changedNetColorIndex > 0) {
+
+      //struct changedNetColor tempChangedNetColor = changedNetColors[i];
+
+      if (changedNetColorIndex != i) {
+          //changedNetColors[i] = changedNetColors[changedNetColorIndex];
+          changedNetColors[i].net = i;
+          changedNetColors[i].color = changedNetColors[changedNetColorIndex].color;
+          changedNetColors[i].node1 = changedNetColors[changedNetColorIndex].node1;
+          changedNetColors[i].node2 = changedNetColors[changedNetColorIndex].node2;
+          //changedNetColors[i].net = i;
+          changedNetColors[changedNetColorIndex].net = -1;
+          changedNetColors[changedNetColorIndex].color = 0x000000;
+          changedNetColors[changedNetColorIndex].node1 = 0;
+          changedNetColors[changedNetColorIndex].node2 = 0;
+
+      //     Serial.print("swapped changedNetColors[");
+      //     Serial.print(changedNetColorIndex);
+      //     Serial.print("] with changedNetColors[");
+      //     Serial.print(i);
+      //     Serial.println("]");
+
+
+      // Serial.print("node found: ");
+      // Serial.println(i);
+      // Serial.print("changedNetColors[");
+      // Serial.print(i);
+      // Serial.print("].node1: ");
+      // Serial.println(changedNetColors[i].node1);
+      // Serial.print("net[");
+      // Serial.print(i);
+      // Serial.print("].node: ");
+      // Serial.println(net[i].nodes[nodeNetIndex]);
+      // Serial.print("changedNetColors[");
+      //   Serial.print(i);
+      // Serial.print("].net: ");
+      // Serial.println(changedNetColors[i].net);
+      // Serial.println();
+        }
+
+
+      net[i].color = unpackRgb(changedNetColors[i].color);
+      netColors[i] = net[i].color;
+      changedNetColors[i].net = i;
+
+
+      // //nodeFound = true;
+      //break;
+      } else {
+        changedNetColors[i].net = -1;
+        changedNetColors[i].color = 0x000000;
+        changedNetColors[i].node1 = 0;
+        changedNetColors[i].node2 = 0;
+        }
+    if (loop == 0) {
+      break;
+      }
+
+
+    }
+  return ret;
+  }
+
+
+
+void assignNetColors(int preview) {
+  // numberOfNets = 60;
+  
 
   uint16_t colorDistance = (254 / (numberOfShownNets));
   if (numberOfShownNets < 4) {
@@ -1804,7 +1978,20 @@ void assignNetColors(int preview) {
       }
 
     int showingReading = 0;
+    //bool manuallyChanged = false;
+
     if (preview == 0) {
+
+
+
+      if (changedNetColors[i].net == i) {
+        net[i].color = unpackRgb(changedNetColors[i].color);
+        netColors[i] = net[i].color; 
+        continue;
+        //break;
+        }
+
+
 
 
       for (int a = 0; a < 8; a++) {
@@ -1853,14 +2040,13 @@ void assignNetColors(int preview) {
 
       hsvColor netHsv = { hue, 255, LEDbrightness };
 
-      if (changedNetColors[i] != 0) {
-        hsvColor changedNetHsv = RgbToHsv(unpackRgb(changedNetColors[i]));
-        netHsv = changedNetHsv;
-      } else {
-        netHsv = { hue, 254, LEDbrightness };
-      }
-
-      
+      //This was the old way, directly using index, prone to errors if nets are removed/added
+      // if (changedNetColors[i].uniqueID == net[i].uniqueID) {
+      //   hsvColor changedNetHsv = RgbToHsv(unpackRgb(changedNetColors[i].color));
+      //   netHsv = changedNetHsv;
+      // } else {
+      //   netHsv = { hue, 254, LEDbrightness };
+      // }
 
 
       if (brightenedNet != 0 && i == brightenedNet) {
@@ -1871,35 +2057,35 @@ void assignNetColors(int preview) {
       //   netHsv.h = netHsv.h /10;
       //   }
       // netHsv.v = 200;
-      
- 
-        net[i].color = HsvToRgb(netHsv);
-        netColors[i] = net[i].color;
-        
-    //  netColors[i] = net[i].color;
 
-      // leds.setPixelColor(i, netColors[i]);
 
-      // net[i].color.r = netColors[i].r;
-      // net[i].color.g = netColors[i].g;
-      // net[i].color.b = netColors[i].b;
-      // if (debugLEDs) {
-      //   Serial.print("\n\r");
-      //   Serial.print(net[i].name);
-      //   Serial.print("\t\t");
-      //   Serial.print(net[i].color.r, DEC);
-      //   Serial.print("\t");
-      //   Serial.print(net[i].color.g, DEC);
-      //   Serial.print("\t");
-      //   Serial.print(net[i].color.b, DEC);
-      //   Serial.print("\t\t");
-      //   Serial.print(hue);
-      //   Serial.print("\t");
-      //   Serial.print(saturation);
-      //   Serial.print("\t");
-      //   Serial.print(LEDbrightness);
-      //   delay(3);
-      // }
+      net[i].color = HsvToRgb(netHsv);
+      netColors[i] = net[i].color;
+
+      //  netColors[i] = net[i].color;
+
+        // leds.setPixelColor(i, netColors[i]);
+
+        // net[i].color.r = netColors[i].r;
+        // net[i].color.g = netColors[i].g;
+        // net[i].color.b = netColors[i].b;
+        // if (debugLEDs) {
+        //   Serial.print("\n\r");
+        //   Serial.print(net[i].name);
+        //   Serial.print("\t\t");
+        //   Serial.print(net[i].color.r, DEC);
+        //   Serial.print("\t");
+        //   Serial.print(net[i].color.g, DEC);
+        //   Serial.print("\t");
+        //   Serial.print(net[i].color.b, DEC);
+        //   Serial.print("\t\t");
+        //   Serial.print(hue);
+        //   Serial.print("\t");
+        //   Serial.print(saturation);
+        //   Serial.print("\t");
+        //   Serial.print(LEDbrightness);
+        //   delay(3);
+        // }
       }
     }
   // listSpecialNets();
@@ -2248,28 +2434,28 @@ void showSkippedNodes(uint32_t onColor, uint32_t offColor) {
 
           } else if ((toggleSkippedNodes == 0 && path[i].node1 % 2 == 0) || (toggleSkippedNodes == 1 && path[i].node1 % 2 == 1)) {
 
-          // leds.setPixelColor((path[i].node1 - 1) * 5 + 0, onColor);
+            // leds.setPixelColor((path[i].node1 - 1) * 5 + 0, onColor);
 
-          leds.setPixelColor((path[i].node1 - 1) * 5 + 0, offColor);
+            leds.setPixelColor((path[i].node1 - 1) * 5 + 0, offColor);
 
-          leds.setPixelColor((path[i].node1 - 1) * 5 + 1, onColor);
+            leds.setPixelColor((path[i].node1 - 1) * 5 + 1, onColor);
 
-          // leds.setPixelColor((path[i].node1 - 1) * 5 + 1, offColor);
+            // leds.setPixelColor((path[i].node1 - 1) * 5 + 1, offColor);
 
-          // leds.setPixelColor((path[i].node1 - 1) * 5 + 2, onColor);
+            // leds.setPixelColor((path[i].node1 - 1) * 5 + 2, onColor);
 
-          leds.setPixelColor((path[i].node1 - 1) * 5 + 2, offColor);
+            leds.setPixelColor((path[i].node1 - 1) * 5 + 2, offColor);
 
-          leds.setPixelColor((path[i].node1 - 1) * 5 + 3, onColor);
+            leds.setPixelColor((path[i].node1 - 1) * 5 + 3, onColor);
 
-          // leds.setPixelColor((path[i].node1 - 1) * 5 + 3, offColor);
+            // leds.setPixelColor((path[i].node1 - 1) * 5 + 3, offColor);
 
-          // leds.setPixelColor((path[i].node1 - 1) * 5 + 4, onColor);
+            // leds.setPixelColor((path[i].node1 - 1) * 5 + 4, onColor);
 
-          leds.setPixelColor((path[i].node1 - 1) * 5 + 4, offColor);
-         // toggleSkippedNodes = !toggleSkippedNodes;
-          //}
-          }
+            leds.setPixelColor((path[i].node1 - 1) * 5 + 4, offColor);
+            // toggleSkippedNodes = !toggleSkippedNodes;
+             //}
+            }
 
         } else if (path[i].node1 >= NANO_D0 && path[i].node1 <= NANO_5V) {
           hsvColor onColorHsv = RgbToHsv(onColorRgb);
@@ -2868,7 +3054,7 @@ void logoSwirl(int start, int spread, int probe) {
 
 
 
-    
+
   if (probe == 1) {
     int selectionBrightness = 13;
 
@@ -3012,39 +3198,199 @@ void logoSwirl(int start, int spread, int probe) {
     leds.setPixelColor(LOGO_LED_START + 6, logoColorOverride);
     leds.setPixelColor(LOGO_LED_START + 7, logoColorOverride);
     //return;
-  }
-    
-      
-       if (logoColorOverrideTop == -2) {
-        leds.setPixelColor(LOGO_LED_START + 0, logoColorOverrideTopDefault);
-        leds.setPixelColor(LOGO_LED_START + 1, logoColorOverrideTopDefault);
-        leds.setPixelColor(LOGO_LED_START + 2, logoColorOverrideTopDefault);
-       } else if (logoColorOverrideTop != -1) {
-      leds.setPixelColor(LOGO_LED_START + 0, logoColorOverrideTop);
-      leds.setPixelColor(LOGO_LED_START + 1, logoColorOverrideTop);
-      leds.setPixelColor(LOGO_LED_START + 2, logoColorOverrideTop);
-     // leds.setPixelColor(LOGO_LED_START + 6, 0);
-      
-    } 
-    
-     if (logoColorOverrideBottom == -2) {
-      leds.setPixelColor(LOGO_LED_START + 3, logoColorOverrideBottomDefault);
-      leds.setPixelColor(LOGO_LED_START + 4, logoColorOverrideBottomDefault);
-      leds.setPixelColor(LOGO_LED_START + 5, logoColorOverrideBottomDefault);
-     } else if (logoColorOverrideBottom != -1) {
-      leds.setPixelColor(LOGO_LED_START + 3, logoColorOverrideBottom);
-      leds.setPixelColor(LOGO_LED_START + 4, logoColorOverrideBottom);
-      leds.setPixelColor(LOGO_LED_START + 5, logoColorOverrideBottom);
-      //leds.setPixelColor(LOGO_LED_START + 6, 0);
     }
 
 
+  if (logoColorOverrideTop == -2) {
+    leds.setPixelColor(LOGO_LED_START + 0, logoColorOverrideTopDefault);
+    leds.setPixelColor(LOGO_LED_START + 1, logoColorOverrideTopDefault);
+    leds.setPixelColor(LOGO_LED_START + 2, logoColorOverrideTopDefault);
+    } else if (logoColorOverrideTop != -1) {
+      leds.setPixelColor(LOGO_LED_START + 0, logoColorOverrideTop);
+      leds.setPixelColor(LOGO_LED_START + 1, logoColorOverrideTop);
+      leds.setPixelColor(LOGO_LED_START + 2, logoColorOverrideTop);
+      // leds.setPixelColor(LOGO_LED_START + 6, 0);
+
+      }
+
+    if (logoColorOverrideBottom == -2) {
+      leds.setPixelColor(LOGO_LED_START + 3, logoColorOverrideBottomDefault);
+      leds.setPixelColor(LOGO_LED_START + 4, logoColorOverrideBottomDefault);
+      leds.setPixelColor(LOGO_LED_START + 5, logoColorOverrideBottomDefault);
+      } else if (logoColorOverrideBottom != -1) {
+        leds.setPixelColor(LOGO_LED_START + 3, logoColorOverrideBottom);
+        leds.setPixelColor(LOGO_LED_START + 4, logoColorOverrideBottom);
+        leds.setPixelColor(LOGO_LED_START + 5, logoColorOverrideBottom);
+        //leds.setPixelColor(LOGO_LED_START + 6, 0);
+        }
+
+
   }
+
+
+
+
+
 bool lightUpName = false;
+
+rgbColor highlightedOriginalColor;
+rgbColor brightenedOriginalColor;
+rgbColor warningOriginalColor;
+
+
+
+void clearHighlighting(void) {
+
+  // netColors[highlightedNet] = highlightedOriginalColor;
+  // netColors[brightenedNet] = brightenedOriginalColor;
+  // netColors[warningNet] = warningOriginalColor;
+
+  for (int i = 4; i < numberOfRowAnimations; i++) {
+    rowAnimations[i].row = -1;
+    rowAnimations[i].net = -1;
+    }
+  probeConnectHighlight = -1;
+  highlightedNet = -1;
+  brightenedNet = -1;
+  warningNet = -1;
+  warningRow = -1;
+  brightenedRail = -1;
+  brightenedNode = -1;
+
+  assignNetColors();
+  }
+
+
+
+int lastNodeHighlighted = -1;
+
+int currentHighlightedNode = 0;
+int currentHighlightedNet = 0;
+
+int encoderNetHighlight(void) {
+
+  int returnNode = -1;
+
+  // if (inClickMenu == 1)
+  //   return -1;
+  //rotaryEncoderStuff();
+  if (encoderDirectionState == UP) {
+    encoderDirectionState = NONE;
+    if (highlightedNet < 1) {
+      highlightedNet = 1;
+      brightenedNet = 1;
+      currentHighlightedNode = 0;
+    }
+    currentHighlightedNode++;
+    if (net[highlightedNet].nodes[currentHighlightedNode] <= 0) {
+      currentHighlightedNode = 0;
+      highlightedNet++;
+      if (highlightedNet > numberOfNets - 1) {
+        highlightedNet = 0;
+        brightenedNet = 0;
+        currentHighlightedNode = 0;
+      }
+      brightenedNet = highlightedNet;
+      brightenedNode = net[highlightedNet].nodes[currentHighlightedNode ];
+      if (highlightedNet != 0 && net[highlightedNet].nodes[currentHighlightedNode] != 0) {
+        returnNode = net[highlightedNet].nodes[currentHighlightedNode];
+      }
+      highlightNets(0, highlightedNet);
+      // Serial.print("highlightedNet: ");
+      // Serial.println(highlightedNet);
+      // Serial.flush();
+    }
+    if (highlightedNet > numberOfNets - 1) {
+      highlightedNet = 0;
+      brightenedNet = 0;
+      currentHighlightedNode = 0;
+    }
+    brightenedNet = highlightedNet;
+    brightenedNode = net[highlightedNet].nodes[currentHighlightedNode];
+    if (highlightedNet != 0 && net[highlightedNet].nodes[currentHighlightedNode] != 0) {
+      returnNode = net[highlightedNet].nodes[currentHighlightedNode];
+      }
+      // Serial.print("returnNode: ");
+      // Serial.println(returnNode);
+      // Serial.flush();
+      highlightNets(0, highlightedNet);
+      // Serial.print("highlightedNet: ");
+      // Serial.println(highlightedNet);
+      // Serial.flush();
+      //assignNetColors();
+     // assignNetColors();
+    
+  } else if (encoderDirectionState == DOWN) {
+    encoderDirectionState = NONE;
+    if (highlightedNet == 0) {  
+
+      highlightedNet = numberOfNets;
+      brightenedNet = numberOfNets;
+    }
+
+    currentHighlightedNode--;
+
+    if (currentHighlightedNode < 0) {
+      highlightedNet--;
+      if (highlightedNet < 0) {
+        highlightedNet = numberOfNets;
+        brightenedNet = numberOfNets;
+      }
+      currentHighlightedNode = MAX_NODES-1;
+      while (net[highlightedNet].nodes[currentHighlightedNode] <= 0) {
+        currentHighlightedNode--;
+        if (currentHighlightedNode < 0) {
+          highlightedNet--;
+          if (highlightedNet < 0) {
+            highlightedNet = numberOfNets;
+            brightenedNet = numberOfNets;
+          }
+          
+        }
+      }
+    }
+      brightenedNet = highlightedNet;
+      brightenedNode = net[highlightedNet].nodes[currentHighlightedNode]; 
+      if (highlightedNet != 0 && net[highlightedNet].nodes[currentHighlightedNode] != 0) {
+        returnNode = net[highlightedNet].nodes[currentHighlightedNode];
+      }
+      // Serial.print("returnNode: ");
+      // Serial.println(returnNode);
+      // Serial.flush();
+      highlightNets(0, highlightedNet);
+      // Serial.print("highlightedNet: ");
+      // Serial.println(highlightedNet);
+      // Serial.flush();
+      // assignNetColors();
+  
+    
+    
+  }
+  if (returnNode != lastNodeHighlighted) {
+   // b.clear();
+  // b.printRawRow(0b00000100, lastNodeHighlighted-2, 0x000000, 0x000000);
+  // b.printRawRow(0b00000100, lastNodeHighlighted, 0x0000000, 0x000000);
+
+  // b.printRawRow(0b00000100, returnNode-2, 0x0f0f00, 0x000000);
+  // b.printRawRow(0b00000100, returnNode, 0x0f0f00, 0x000000);
+
+  lastNodeHighlighted = returnNode;
+ // showLEDsCore2 = 2;
+  }
+  return returnNode;
+}
+
+
+
+
+
+
 
 int brightenNet(int node, int addBrightness) {
 
   if (node == -1) {
+    netColors[brightenedNet] = brightenedOriginalColor;
+    brightenedNode = -1;
     brightenedNet = 0;
     brightenedRail = -1;
     return -1;
@@ -3056,6 +3402,7 @@ int brightenNet(int node, int addBrightness) {
     if (node == path[i].node1 || node == path[i].node2) {
       /// if (brightenedNet != i) {
       brightenedNet = path[i].net;
+      brightenedNode = node;
       // Serial.print("\n\n\rbrightenedNet: ");
       // Serial.println(brightenedNet);
       // Serial.print("net ");
@@ -3075,6 +3422,7 @@ int brightenNet(int node, int addBrightness) {
             }
           // Serial.print("\n\rbrightenedNet = ");
           // Serial.println(brightenedNet);
+          brightenedOriginalColor = netColors[brightenedNet];
           assignNetColors();
           return brightenedNet;
       }
@@ -3088,14 +3436,14 @@ int brightenNet(int node, int addBrightness) {
     return 1;
     }
     case (TOP_RAIL): {
-     // Serial.print("\n\rTOP_RAIL");
+    // Serial.print("\n\rTOP_RAIL");
     brightenedNet = 2;
     brightenedRail = 0;
     // lightUpRail(-1, 0, 1, addBrightness);
     return 2;
     }
     case (BOTTOM_RAIL): {
-      //Serial.print("\n\rBOTTOM_RAIL");
+    //Serial.print("\n\rBOTTOM_RAIL");
     brightenedNet = 3;
     brightenedRail = 2;
     // lightUpRail(-1, 2, 1, addBrightness);
@@ -3120,7 +3468,10 @@ int warnNet(int node) {
   // Serial.println(node);
   // Serial.flush();
   if (node == -1) {
-    warningNet = 0;
+    netColors[warningNet] = warningOriginalColor;
+
+    warningNet = -1;
+    warningRow = -1;
     // Serial.print("warningNet = ");
     // Serial.println(warningNet);
     // Serial.flush();
@@ -3154,7 +3505,8 @@ int warnNet(int node) {
             // brightenedRail = -1;
             // lightUpNet(brightenedNet, addBrightness);
             }
- 
+
+          warningOriginalColor = netColors[warningNet];
           assignNetColors();
           warningTimer = millis();
           return warningNet;
@@ -3164,9 +3516,9 @@ int warnNet(int node) {
 
 
   return -1;
-}
+  }
 unsigned long lastWarningTimer = 0;
-void warnNetTimeout(void) {
+void warnNetTimeout(int clearAll) {
   // Serial.print("warningTimer = ");
   // Serial.println(warningTimer);
   // Serial.print("warningTimeout = ");
@@ -3174,23 +3526,31 @@ void warnNetTimeout(void) {
   // Serial.flush();
   if (lastWarningTimer == 0) {
     lastWarningTimer = millis();
-  }
+    }
 
   if (warningTimer > 0 && millis() - warningTimer > warningTimeout) {
-   //warningTimeout = 0;
-   lastWarningTimer = millis();
+    //warningTimeout = 0;
+    if (clearAll == 1) {
+      clearHighlighting();
+      } else {
+      // netColors[warningNet] = warningOriginalColor;
+
+
+      warningNet = -1;
+      warningRow = -1;
+      }
+    lastWarningTimer = millis();
     warningTimer = 0;
-    warningNet = -1;
-    brightenedNet = 0;
+
     assignNetColors();
-  } else {
+    } else {
     lastWarningTimer = millis() - lastWarningTimer;
     // Serial.print("lastWarningTimer = ");  
     // Serial.println(lastWarningTimer);
     // Serial.flush();
    // warningTimer = millis();
+    }
   }
-}
 // uint32_t rawSpecialNetColors[8] = // dim
 //     {0x000000, 0x001C04, 0x1C0702, 0x1C0107,
 //      0x231111, 0x230913, 0x232323, 0x232323};
@@ -3291,49 +3651,49 @@ void lightUpHeader(void) {
                 leds.setPixelColor(ADC_LED_0, scaleBrightness(rawOtherColors[8], -40));
                 } else if (ADCcolorOverride0 == -2) {
                   leds.setPixelColor(ADC_LED_0, ADCcolorOverride0Default);
-                } else {
+                  } else {
                   leds.setPixelColor(ADC_LED_0, ADCcolorOverride0);
-                }
-                
-              if (ADCcolorOverride1 == -1) {
-                leds.setPixelColor(ADC_LED_1, scaleBrightness(rawOtherColors[11], -40));
-                } else if (ADCcolorOverride1 == -2) {
-                  leds.setPixelColor(ADC_LED_1, ADCcolorOverride1Default);
-                } else {
-                  leds.setPixelColor(ADC_LED_1, ADCcolorOverride1);
-                }
-                
-              if (DACcolorOverride0 == -1) {
-                leds.setPixelColor(DAC_LED_0, scaleBrightness(rawOtherColors[9], -40));
-                } else if (DACcolorOverride0 == -2) {
-                  leds.setPixelColor(DAC_LED_0, DACcolorOverride0Default);
-                } else {
-                  leds.setPixelColor(DAC_LED_0, DACcolorOverride0);
-                }
-                
-              if (DACcolorOverride1 == -1) {
-                leds.setPixelColor(DAC_LED_1, scaleBrightness(rawOtherColors[12], -40));
-                } else if (DACcolorOverride1 == -2) {
-                  leds.setPixelColor(DAC_LED_1, DACcolorOverride1Default);
-                } else {
-                  leds.setPixelColor(DAC_LED_1, DACcolorOverride1);
-                }
-                
-                if (GPIOcolorOverride0 == -1) {
-                leds.setPixelColor(GPIO_LED_0, scaleBrightness(rawOtherColors[10], -40));
-                } else if (GPIOcolorOverride0 == -2) {
-                  leds.setPixelColor(GPIO_LED_0, GPIOcolorOverride0Default);
-                } else {
-                  leds.setPixelColor(GPIO_LED_0, GPIOcolorOverride0);
-                }
-                
-                if (GPIOcolorOverride1 == -1) {
-                leds.setPixelColor(GPIO_LED_1, scaleBrightness(rawOtherColors[13], -40));
-                } else if (GPIOcolorOverride1 == -2) {
-                  leds.setPixelColor(GPIO_LED_1, GPIOcolorOverride1Default);
-                } else {
-                  leds.setPixelColor(GPIO_LED_1, GPIOcolorOverride1);
-                } 
+                  }
+
+                if (ADCcolorOverride1 == -1) {
+                  leds.setPixelColor(ADC_LED_1, scaleBrightness(rawOtherColors[11], -40));
+                  } else if (ADCcolorOverride1 == -2) {
+                    leds.setPixelColor(ADC_LED_1, ADCcolorOverride1Default);
+                    } else {
+                    leds.setPixelColor(ADC_LED_1, ADCcolorOverride1);
+                    }
+
+                  if (DACcolorOverride0 == -1) {
+                    leds.setPixelColor(DAC_LED_0, scaleBrightness(rawOtherColors[9], -40));
+                    } else if (DACcolorOverride0 == -2) {
+                      leds.setPixelColor(DAC_LED_0, DACcolorOverride0Default);
+                      } else {
+                      leds.setPixelColor(DAC_LED_0, DACcolorOverride0);
+                      }
+
+                    if (DACcolorOverride1 == -1) {
+                      leds.setPixelColor(DAC_LED_1, scaleBrightness(rawOtherColors[12], -40));
+                      } else if (DACcolorOverride1 == -2) {
+                        leds.setPixelColor(DAC_LED_1, DACcolorOverride1Default);
+                        } else {
+                        leds.setPixelColor(DAC_LED_1, DACcolorOverride1);
+                        }
+
+                      if (GPIOcolorOverride0 == -1) {
+                        leds.setPixelColor(GPIO_LED_0, scaleBrightness(rawOtherColors[10], -40));
+                        } else if (GPIOcolorOverride0 == -2) {
+                          leds.setPixelColor(GPIO_LED_0, GPIOcolorOverride0Default);
+                          } else {
+                          leds.setPixelColor(GPIO_LED_0, GPIOcolorOverride0);
+                          }
+
+                        if (GPIOcolorOverride1 == -1) {
+                          leds.setPixelColor(GPIO_LED_1, scaleBrightness(rawOtherColors[13], -40));
+                          } else if (GPIOcolorOverride1 == -2) {
+                            leds.setPixelColor(GPIO_LED_1, GPIOcolorOverride1Default);
+                            } else {
+                            leds.setPixelColor(GPIO_LED_1, GPIOcolorOverride1);
+                            }
               }
             }
 

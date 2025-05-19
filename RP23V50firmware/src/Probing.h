@@ -115,7 +115,7 @@ extern int lastProbeLEDs;
 
 
 void probeLEDhandler(void); 
-int highlightNets(int probeReading);
+int highlightNets(int probeReading, int encoderNetHighlighted = -1);
 
 extern int probeRowMap[108];
   

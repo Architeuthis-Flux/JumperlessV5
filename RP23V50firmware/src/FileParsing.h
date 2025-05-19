@@ -12,6 +12,10 @@ extern volatile bool core1busy;
 extern volatile bool netsUpdated;
 void createConfigFile(int overwrite = 0);
 
+int saveChangedNetColorsToFile(int slot = 0, int flashOrLocal = 0);
+int loadChangedNetColorsFromFile(int slot = 0, int flashOrLocal = 0);
+int printChangedNetColorFile(int slot = 0, int flashOrLocal = 0);
+void printAllChangedNetColorFiles(void);
 int checkIfBridgeExists(int node1, int node2 = -1, int slot = -1, int flashOrLocal = 1);
 
 void clearNodeFileString(void);

@@ -2634,8 +2634,10 @@ int doMenuAction(int menuPosition, int selection) {
                               // saveCurrentSlotToSlot(netSlot, currentAction.from[0]);
 
                               netSlot = currentAction.from[0];
+                              slotChanged = 1;
                               refreshConnections(-1);
                               chooseShownReadings();
+                              printAllChangedNetColorFiles();
                               }
                             // netSlot = currentAction.from[0];
                             return currentAction.from[0];

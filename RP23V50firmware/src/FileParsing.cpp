@@ -26,7 +26,7 @@ bool debugFPtime = EEPROM.read(TIME_FILEPARSINGADDRESS);
 
 createSafeString(nodeFileString, 1800);
 
-
+createSafeString(currentColorSlotColorsString, 1500); // Cache for current slot's net colors
 
 int numConnsJson = 0;
 createSafeString(specialFunctionsString, 2800);
@@ -44,6 +44,8 @@ File wokwiFile;
 File nodeFileBuffer;
 
 File menuTreeFile;
+
+File colorFile; // Added for net color storage
 
 unsigned long timeToFP = 0;
 
@@ -163,28 +165,7 @@ void writeMenuTree(void) {
 }
 
 void createLocalNodeFile(int slot) {
-  // Serial.println("creating local node file");
-  // Serial.print ("slot = ");
-  // Serial.println(slot);
-  // Serial.print ("nodeFileString = ");
-  // nodeFileString.printTo(Serial);
 
-  // while (core2busy == true) {
-  //   // Serial.println("waiting for core2 to finish");
-  // }
-  // core1busy = true;
-  // delay(1);
-  // nodeFile = FatFS.open("nodeFileSlot" + String(slot) + ".txt", "a+");
-  //     if (!nodeFile) {
-  //     if (debugFP)
-  //       Serial.println("Failed to open nodeFile");
-  //       core1busy = false;
-  //     return;
-  //   } else {
-  //     if (debugFP)
-  //       Serial.println("\n\ropened nodeFileSlot" + String(slot) +
-  //                      +".txt\n\n\rloading bridges from file\n\r");
-  //   }
   openFileThreadSafe(aplus, slot);
 
   nodeFileString.clear();
@@ -210,21 +191,7 @@ void saveLocalNodeFile(int slot) {
   // Serial.println(nodeFileString);
 
   long count = 0;
-  // removeBridgeFromNodeFile(RP_UART_RX, ISENSE_PLUS, netSlot, 1);
-  // removeBridgeFromNodeFile(ROUTABLE_BUFFER_IN, ISENSE_MINUS, netSlot, 1);
-  //   while (core2busy == true) {
-  //     // delay(1);
-  //     //  Serial.print("core2");
-  //     //  Serial.println(count);
-  //     //  count++;
-  //   }
 
-  //  core1busy = true;
-  //  nodeFileString.printTo(Serial);
-  //  //Serial.println("nodeFileSlot" + String(slot) + ".txt");
-  //  nodeFile.close();
-  //  delay(100);
-  //   nodeFile = FatFS.open("nodeFileSlot" + String(slot) + ".txt", "w");
   openFileThreadSafe(w, netSlot);
   nodeFileString.replace(" ", "");
   // nodeFileString.replace(" ", "");
@@ -236,25 +203,7 @@ void saveLocalNodeFile(int slot) {
   // delay(3);
 
   nodeFileString.printTo(nodeFile);
-  //
-  // for (int i = 0; i < nodeFileString.length(); i++) {
-  //   delayMicroseconds(10);
-  //   nodeFile.write(nodeFileString.charAt(i));
-  //   //Serial.print(nodeFileString.charAt(i));
-  // }
-  // nodeFileString.printTo(nodeFile);
-  // delay(10);
-  //  nodeFileString.printTo(nodeFile);
-
-  // nodeFile.close();
-  //   nodeFile = FatFS.open("nodeFileSlot" + String(slot) + ".txt", "r");
-  //   nodeFile.seek(0);
-  // Serial.print ("nodeFile = ");
-  //     while (nodeFile.available())
-  //     {
-  //         Serial.write(nodeFile.read());
-  //     }
-  // delay(10);
+  
   nodeFile.close();
   core1busy = false;
   // Serial.println("\n\n\rsaved local node file");
@@ -287,25 +236,9 @@ void createSlots(int slot,  int overwrite) {
       refreshPaths();
     }
   } else {
-    // while (core2busy == true) {
-    //   // Serial.println("waiting for core2 to finish");
-    // }
-    // core1busy = true;
-    // nodeFile = FatFS.open("nodeFileSlot" + String(slot) + ".txt", "w");
+
     openFileThreadSafe(w, slot);
 
-    // nodeFile.print("{ D12-D7, D7-ADC0, ADC0-UART_RX, D11-GND, D10-ADC2,
-    // ADC2-UART_TX, AREF-ADC1, ADC1-GPIO_0, D13-GND,  "); if
-    // (addRotaryConnections > 0)
-    // {
-    //     //
-    //     nodeFile.print("{AREF-GND,D11-GND,D10-UART_TX,D12-UART_RX,D13-GPIO_0,}
-    //     ");
-    //     // nodeFile.print(slot * 4 + 1);
-    //     // nodeFile.print("-");
-    //     // nodeFile.print(slot * 4 + 2);
-    //     // nodeFile.print(", } ");
-    // }
 
     nodeFile.print("{} ");
 
@@ -396,7 +329,7 @@ void inputNodeFileList(int addRotaryConnections) {
 
   int lastTokenIndex = 0;
   int tokenFound = 0;
-  uint8_t lastReads[8] = {' ', ' ', ' ', ' '};
+  uint8_t lastReads[8] = {' ', ' ', ' ', ' ', ' ', ' ', ' ', ' '};
   uint8_t slotText[8] = {'S', 'l', 'o', 't', ' '};
   uint8_t searchFor[3] = {'f', ' ', '{'};
   while (core2busy == true) {
@@ -540,21 +473,7 @@ void inputNodeFileList(int addRotaryConnections) {
     //refreshSavedColors(i);
     core1busy = false;
   }
-  // uint8_t trash = Serial.read();
-  // Serial.write(trash);
-  // delay(10);
 
-  // while(Serial.available() > 0)
-  // {
-  //     trash = Serial.read();
-  //     //Serial.write(trash);
-  //     delay(1);
-  // }
-
-  // for (int i = 0; i < NUM_SLOTS; i++)
-  // {
-  //     // printNodeFile(i);
-  // }
 }
 
 void saveCurrentSlotToSlot(int slotFrom, int slotTo, int flashOrLocalfrom,
@@ -578,25 +497,12 @@ void saveCurrentSlotToSlot(int slotFrom, int slotTo, int flashOrLocalfrom,
 }
 
 void savePreformattedNodeFile(int source, int slot, int keepEncoder) {
-  // while (core2busy == true) {
-  //   // Serial.println("waiting for core2 to finish");
-  // }
-  // core1busy = true;
-  // nodeFile = FatFS.open("nodeFileSlot" + String(slot) + ".txt", "w");
 
       specialFunctionsString.clear();
   openFileThreadSafe(w, slot);
   // Serial.println("Slot " + String(slot));
 
-  // Serial.println(nodeFile);
 
-
-  if (keepEncoder == 1) {
-    // nodeFile.print("{ D12-D7, D7-ADC0, ADC0-UART_RX, D11-GND, D10-ADC2,
-    // ADC2-UART_TX, AREF-ADC1, ADC1-GPIO_0, D13-GND,  ");
-    // nodeFile.print("{AREF-GND,D11-GND,D10-UART_TX,D12-UART_RX,D13-GPIO_0, ");
-    // Serial.println(" keeping encoder");
-  }
 
   if (debugFP) {
     Serial.print("source = ");
@@ -659,13 +565,6 @@ char c = Serial1.read();
     }
   }
 
-
-
-  // nodeFile.write("\n\r");
-
-  // nodeFile.seek(0);
-  //  nodeFileString.read(nodeFile);
-  // Serial.println(nodeFileString);
   specialFunctionsString.trim();
   if (specialFunctionsString.endsWith(",") == 0) {
     specialFunctionsString.concat(",");
@@ -677,37 +576,16 @@ char c = Serial1.read();
  replaceSFNamesWithDefinedInts();
  replaceNanoNamesWithDefinedInts();
 
-//  Serial.println("\n\n\rafter replaceSFNamesWithDefinedInts");
-
-//   specialFunctionsString.printTo(Serial);
-
-
 
   specialFunctionsString.printTo(nodeFile);
 
 
   nodeFile.print(" } ");
   
-  // Serial.println(" keeping encoder");
-
-
- 
-
-
-  
-
-  // nodeFile.close();
-
 
   nodeFile.close();
-
-
-
-  
   core1busy = false;
-  //refreshPaths();
-  // Serial.println("Slot " + String(slot) + " saved");
-  // printNodeFile(slot);
+
 }
 
 int getSlotLength(int slot, int flashOrLocal) {
@@ -850,19 +728,7 @@ void printNodeFile(int slot, int printOrString, int flashOrLocal, int definesInt
       specialFunctionsString.replace("{", "{\n\r");
     }
     
-  // int specialFunctionsStringLength = specialFunctionsString.indexOf("}");
-  // if (specialFunctionsStringLength != -1)
-  // {
-  // //specialFunctionsString.remove(specialFunctionsStringLength + 1, -1);
-  // }
 
-  // if (specialFunctionsString.indexOf(",\n\r") == -1)
-  // {
-  //     specialFunctionsString.replace(",", ",\n\r");
-  //     specialFunctionsString.replace("{", "{\n\r");
-  // }
-
-  // nodeFile.close();
 
   int specialFunctionsStringLength = specialFunctionsString.indexOf("}");
   if (specialFunctionsStringLength != -1) {
@@ -1121,11 +987,25 @@ void clearNodeFile(int slot, int flashOrLocal) {
       nodeFile.print("116-70, 117-71, ");
     }
     nodeFile.print("} ");
+
     nodeFile.close();
+
+    clearChangedNetColors();
+    saveChangedNetColorsToFile(slot, 0);
   } else {
     nodeFileString.clear();
+    clearChangedNetColors();
+    saveChangedNetColorsToFile(slot, 1);
   }
 }
+
+
+
+
+
+
+
+
 String slicedLines[130];
 int slicedLinesIndex = 0;
 
@@ -1423,6 +1303,13 @@ if (onlyCheck == 1) {
 
   // }
   core1busy = false;
+
+  if (onlyCheck == 0) {
+    removeChangedNetColors(node1, 1);
+    if (node2 != -1) {
+      removeChangedNetColors(node2, 0);
+    }
+  }
 
   timerEnd[3] = millis() - timerStart;
   // Serial.print("timerEnd[0] = ");
@@ -2369,4 +2256,335 @@ int disconnectedNode() {
     return -1;
   }
   return lastRemovedNodes[lastIndex++];
+}
+
+int loadChangedNetColorsFromFile(int slot, int flashOrLocal) {
+ //debugFP = 1;
+    if (flashOrLocal == 1) {
+        // Loading from an in-memory string is not implemented for colors in this version.
+        if (debugFP) {
+            Serial.println("Loading net colors from memory string not implemented for slot " + String(slot));
+        }
+        return 0; // Indicate operation not performed or not applicable
+    }
+
+    String colorFileName = "netColorsSlot" + String(slot) + ".txt";
+
+    // Check if file exists before attempting to get its size or open it
+    if (!FatFS.exists(colorFileName.c_str())) {
+        if (debugFP) {
+            Serial.println(colorFileName + " does not exist. No colors loaded.");
+        }
+        return 0; // File doesn't exist, nothing to load
+    }
+
+    // Open temporarily to check size. 
+    // Note: This involves an open/close. If performance is critical and FatFS offers a stat-like function, that would be better.
+    File tempFile = FatFS.open(colorFileName.c_str(), "r");
+    if (!tempFile) {
+        if (debugFP) {
+            Serial.println("Error opening " + colorFileName + " for size check despite existing. No colors loaded.");
+        }
+        return 0; // Should not happen if exists() passed, but a safeguard
+    }
+    size_t fileSize = tempFile.size();
+    tempFile.close();
+
+    if (fileSize == 0) {
+        if (debugFP) {
+            Serial.println(colorFileName + " is empty. No colors loaded.");
+        }
+        return 0; // File is empty
+    }
+
+    // Thread safety mechanism
+    core1request = 1;
+    while (core2busy == true) {
+        // Yield or delay slightly if needed, current pattern is spin-wait
+    }
+    core1request = 0;
+    core1busy = true;
+
+    // Initialize/clear the global ::changedNetColors array
+    // Assumes changedNetColors is declared extern and MAX_NETS is defined
+    for (int i = 0; i < MAX_NETS; ++i) {
+        ::changedNetColors[i].net = 0;      // Or -1 to indicate invalid/empty
+        ::changedNetColors[i].color = 0;    // Default color
+        ::changedNetColors[i].node1 = 0;    // Or -1
+        ::changedNetColors[i].node2 = -1;   // Default from struct definition
+    }
+
+    if (::colorFile) { // Close if already open from a previous logical operation
+        ::colorFile.close();
+    }
+    
+    ::colorFile = FatFS.open(colorFileName.c_str(), "r");
+
+    if (!::colorFile) {
+        if (debugFP) {
+            Serial.println("Failed to open " + colorFileName + " for reading colors.");
+        }
+        core1busy = false;
+        return 0; // Indicate failure
+    }
+
+    if (debugFP) {
+        Serial.println("Opened " + colorFileName + " for reading net colors.");
+    }
+
+    int colorsLoadedCount = 0;
+    createSafeString(lineBuffer, 120); // Buffer for a single line, e.g., "123:AABBCC:123:123" + padding
+    createSafeString(token, 20);      // Buffer for individual tokens
+
+    while (::colorFile.available() && colorsLoadedCount < MAX_NETS) {
+        String arduinoLine = ::colorFile.readStringUntil('\n');
+        
+        // Check for genuine EOF if readStringUntil returns empty at the end of file
+        if (arduinoLine.length() == 0 && !::colorFile.available()) {
+            break; 
+        }
+
+        lineBuffer = arduinoLine.c_str(); // Copy to SafeString for parsing
+        lineBuffer.trim();                // Remove leading/trailing whitespace (including potential \r)
+
+        if (lineBuffer.isEmpty()) {
+            continue; // Skip empty lines
+        }
+
+        int currentIndex = 0;
+        int netId = 0, n1 = 0, n2 = 0;
+        uint32_t colorVal = 0;
+
+        // Parse netId
+        token.clear();
+        currentIndex = lineBuffer.stoken(token, currentIndex, ":");
+        if (currentIndex == -1 || !token.toInt(netId)) { 
+              if(debugFP) Serial.printf("Malformed line (netId): %s\n", lineBuffer.c_str());
+            continue; 
+        }
+
+        // Parse color (hex string)
+        token.clear();
+        currentIndex = lineBuffer.stoken(token, currentIndex, ":");
+        if (currentIndex == -1) { 
+             if(debugFP) Serial.printf("Malformed line (color): %s\n", lineBuffer.c_str());
+            continue; 
+        }
+        colorVal = strtoul(token.c_str(), NULL, 16); // Convert hex string to uint32_t
+
+        // Parse node1
+        token.clear();
+        currentIndex = lineBuffer.stoken(token, currentIndex, ":");
+        if (currentIndex == -1 || !token.toInt(n1)) { 
+            if(debugFP) Serial.printf("Malformed line (node1): %s\n", lineBuffer.c_str());
+            continue; 
+        }
+
+        // Parse node2 (rest of the string after the last colon)
+        token.clear();
+        if (currentIndex < lineBuffer.length()) {
+            lineBuffer.substring(token, currentIndex+1, lineBuffer.length()); // Get the rest of the string
+
+            // Serial.print("token = ");
+            // Serial.println(token);
+            if (!token.toInt(n2)) {
+                 if(debugFP) Serial.printf("Malformed line (node2 valuennn): %s\n", lineBuffer.c_str());
+                 n2 = -1;
+                //continue;
+            }
+        } else {
+            if(debugFP) Serial.printf("Malformed line (node2 missing): %s\n", lineBuffer.c_str());
+            //continue; // Malformed line, missing node2 part
+        }
+
+        // Populate the struct in the global array
+
+        if (netId > 0 && netId < MAX_NETS) {
+          int index = netId;
+        changedNetColors[index].net = netId;
+        changedNetColors[index].color = colorVal;
+        changedNetColors[index].node1 = n1;
+        changedNetColors[index].node2 = n2;
+        }
+        colorsLoadedCount++;
+        
+    }
+
+    if (debugFP) {
+        Serial.println(String(colorsLoadedCount) + " net color entries loaded from " + colorFileName);
+    }
+
+   /// printChangedNetColorFile(slot, flashOrLocal);
+    // colorFile.seek(0);
+    // currentColorSlotColorsString = colorFile.read();
+    // currentColorSlotColorsString.printTo(Serial);
+    // Serial.println();
+
+    ::colorFile.close();
+    core1busy = false;
+    //debugFP = 0;
+    return 1; // Indicate success
+}
+
+
+void printAllChangedNetColorFiles(void) {
+  for (int i = 0; i < NUM_SLOTS; i++) {
+    //debugFP = 1;
+    Serial.println("Slot " + String(i) + ":");
+    printChangedNetColorFile(i, 0);
+    //debugFP = 0;
+  }
+}
+
+int printChangedNetColorFile(int slot, int flashOrLocal) {
+    if (flashOrLocal == 1) {
+        // Print from cache (currentColorSlotColorsString)
+        // The cache always refers to the current netSlot, so 'slot' param is implicitly current netSlot
+        core1request = 1; // Lock for reading global variable
+        while (core2busy == true) {}
+        core1request = 0;
+        core1busy = true;
+
+        if (debugFP) {
+            Serial.println("Printing cached net colors (currentColorSlotColorsString):");
+        }
+        if (currentColorSlotColorsString.isEmpty()) {
+            Serial.println("[Cache is empty or not yet loaded]");
+        } else {
+            Serial.print(currentColorSlotColorsString);
+             if (!currentColorSlotColorsString.endsWith("\n")) { // Ensure a newline for cleaner output if not present
+                Serial.println();
+            }
+        }
+        core1busy = false;
+        return 1;
+    }
+
+    // flashOrLocal == 0, print from file
+    String colorFileName = "netColorsSlot" + String(slot) + ".txt";
+
+    if (!FatFS.exists(colorFileName.c_str())) {
+        Serial.println("Color file " + colorFileName + " does not exist.");
+        return 0; 
+    }
+
+    core1request = 1;
+    while (core2busy == true) {}
+    core1request = 0;
+    core1busy = true;
+
+    if (::colorFile) { 
+        ::colorFile.close();
+    }
+    
+    ::colorFile = FatFS.open(colorFileName.c_str(), "r");
+
+    if (!::colorFile) {
+        if (debugFP) {
+            Serial.println("Failed to open " + colorFileName + " for printing.");
+        }
+        core1busy = false;
+        return 0; 
+    }
+
+    if (debugFP) {
+        Serial.println("Printing contents of " + colorFileName + ":");
+    }
+    
+    if (::colorFile.size() == 0) {
+        Serial.println("[File is empty]");
+    } else {
+        while (::colorFile.available()) {
+            Serial.write(::colorFile.read());
+        }
+        // Ensure a newline if the file doesn't end with one for cleaner console output
+        // This requires peeking or reading the last char, which is slightly complex here.
+        // Simpler: just print a newline if Serial.print didn't just do one (hard to track)
+        // For now, we assume file content includes newlines or user handles formatting.
+    }
+
+    ::colorFile.close();
+    core1busy = false;
+    return 1;
+}
+
+
+
+int saveChangedNetColorsToFile(int slot, int flashOrLocal) {
+    // Serialize ::changedNetColors into a temporary string first
+    createSafeString(tempColorDataString, 1500); // Matches currentColorSlotColorsString size
+    int colorsSerializedCount = 0;
+    for (int i = 0; i < numberOfNets; ++i) {
+        if (::changedNetColors[i].net > 0) { // Only save if net is valid
+            tempColorDataString.print(::changedNetColors[i].net);
+            tempColorDataString.print(":");
+
+            char hexColor[7]; // For RRGGBB format + null terminator
+            sprintf(hexColor, "%06X", ::changedNetColors[i].color & 0xFFFFFF);
+            tempColorDataString.print(hexColor);
+            tempColorDataString.print(":");
+            tempColorDataString.print(::changedNetColors[i].node1);
+            tempColorDataString.print(":");
+            tempColorDataString.println(::changedNetColors[i].node2);
+            colorsSerializedCount++;
+        }
+    }
+
+    if (debugFP) {
+        Serial.println("Serialized " + String(colorsSerializedCount) + " net color entries internally.");
+    }
+
+    if (flashOrLocal == 0) { // Save to Flash and update cache if current slot
+        core1request = 1;
+        while (core2busy == true) {}
+        core1request = 0;
+        core1busy = true;
+
+        String colorFileName = "netColorsSlot" + String(slot) + ".txt";
+        if (::colorFile) { 
+            ::colorFile.close();
+        }
+        ::colorFile = FatFS.open(colorFileName.c_str(), "w");
+
+        if (!::colorFile) {
+            if (debugFP) {
+                Serial.println("Failed to open " + colorFileName + " for writing colors.");
+            }
+            core1busy = false;
+            return 0; // Indicate failure
+        }
+        
+        tempColorDataString.printTo(::colorFile); // Write the serialized string to file
+        ::colorFile.close();
+
+        if (debugFP) {
+            Serial.println("Saved net colors to " + colorFileName);
+        }
+
+        // If this is the currently active slot, update the cache
+        if (slot == netSlot) { // Assuming netSlot is the global variable for current slot
+            currentColorSlotColorsString = tempColorDataString;
+            if (debugFP) {
+                Serial.println("Updated currentColorSlotColorsString for slot " + String(slot));
+            }
+        }
+        core1busy = false;
+
+       // printChangedNetColorFile(slot, flashOrLocal);
+        return 1; // Indicate success
+
+    } else { // flashOrLocal == 1, Save to Cache ONLY (for current slot)
+        // Assuming this mode implies the operation is for the current netSlot
+        core1request = 1; // Maintain lock for consistency, as it modifies a shared-context global
+        while (core2busy == true) {}
+        core1request = 0;
+        core1busy = true;
+
+        currentColorSlotColorsString = tempColorDataString;
+        if (debugFP) {
+            Serial.println("Updated currentColorSlotColorsString from ::changedNetColors (cache only).");
+        }
+        core1busy = false;
+        return 1; // Indicate success
+    }
 }
