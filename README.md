@@ -1,6 +1,11 @@
 # Jumperless V5
 ###### The next generation [jumperless](https://github.com/Architeuthis-Flux/Jumperless) breadboard
+---
+### If you got here by scanning the QR code on your box and want to know how to use this thing, docs are generally attached to the [Releases](https://github.com/Architeuthis-Flux/JumperlessV5/releases) where I added that feature. 
+#### I promise I'll write a proper Getting Started guide soon. Until then, don't hesitate to ask me *anything* in [Discord](https://discord.gg/Zvv7Dvgxa5) or wherever. Seriously, even if you think it's a dumb question, someone else probably has it too, so it helps me out a lot to know what to put in the guide.
 
+
+   ---
 Jumperless V5 is a breadboard where any point can be connected to any other with software-defined jumpers. RGB LEDs under each hole turn the breadboard itself into a display; paired with its assortment of routable analog/digial IO, Jumperless V5 gives you real-time information about everything that's happening in your circuit and the ability to change it at a whim.
 
 ## You can get one on [Crowd Supply](https://www.crowdsupply.com/architeuthis-flux/jumperless-v5).
