@@ -3,6 +3,10 @@
 #ifndef JUMPERLESSDEFINES_H
 #define JUMPERLESSDEFINES_H
 
+
+
+
+
 extern volatile int sendAllPathsCore2;
 #define PICO_RP2350B 1
 #define INPUTBUFFERLENGTH 8000

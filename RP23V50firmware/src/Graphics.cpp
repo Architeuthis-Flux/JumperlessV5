@@ -11,7 +11,10 @@
 #include "leds.h"
 #include "Menus.h"  
 #include "Peripherals.h"
+
+
 #include "Images.h"
+
 /* clang-format off */
 
 const int screenMap[445] =
@@ -728,19 +731,19 @@ void showRowAnimation(int index, int net) {
     }
 
 
-uint32_t brightenedNodeColors[5];
+  uint32_t brightenedNodeColors[5];
 
-if (actualNet == brightenedNet && brightenedNode > 0) {
-  rowAnimations[net].row = brightenedNode-1;
-}
+  if (actualNet == brightenedNet && brightenedNode > 0) {
+    rowAnimations[net].row = brightenedNode - 1;
+    }
   //handle the row animation for a single row, rather than the whole net
   if (rowAnimations[net].row > 0) {
 
     for (int i = 0; i < 5; i++) {
       hsvColor colorHSV = RgbToHsv(netColors[brightenedNet]);
-      colorHSV.h = (colorHSV.h + (int)(highlightedRowOffsetHues[i] *2)) % 255;
+      colorHSV.h = (colorHSV.h + (int)(highlightedRowOffsetHues[i] * 2)) % 255;
       //colorHSV.v = jumperlessConfig.display.led_brightness;
-      brightenedNodeColors[4-i] = HsvToRaw(colorHSV);
+      brightenedNodeColors[4 - i] = HsvToRaw(colorHSV);
 
       // brightenedNodeColors[i] = highlightedRowFrames[(rowAnimations[net].currentFrame + i) % rowAnimations[net].numberOfFrames];
       }
@@ -872,12 +875,12 @@ if (actualNet == brightenedNet && brightenedNode > 0) {
       frameColors[i] = scaleBrightness(
           rowAnimations[net].frames[(rowAnimations[net].currentFrame + i) % rowAnimations[net].numberOfFrames],
           brightenedAmount * 3);
-if (brightenedNode > 0){
-  hsvColor colorHSV = RgbToHsv(frameColors[i]);
-  colorHSV.v += 30;
-  colorHSV.h = (colorHSV.h + (int)(highlightedRowOffsetHues[i] *5)) % 255;
-  brightenedNodeColors[i] = HsvToRaw(colorHSV);
-}
+      if (brightenedNode > 0) {
+        hsvColor colorHSV = RgbToHsv(frameColors[i]);
+        colorHSV.v += 30;
+        colorHSV.h = (colorHSV.h + (int)(highlightedRowOffsetHues[i] * 5)) % 255;
+        brightenedNodeColors[i] = HsvToRaw(colorHSV);
+        }
 
       } else {
       frameColors[i] =
@@ -886,15 +889,15 @@ if (brightenedNode > 0){
 
     }
 
-brightenedNodeColors[4] = brightenedNodeColors[0];
-brightenedNodeColors[3] = brightenedNodeColors[1];
-// brightenedNodeColors[2] = brightenedNodeColors[2];
-// brightenedNodeColors[3] = brightenedNodeColors[1];
-// brightenedNodeColors[4] = brightenedNodeColors[0];
+  brightenedNodeColors[4] = brightenedNodeColors[0];
+  brightenedNodeColors[3] = brightenedNodeColors[1];
+  // brightenedNodeColors[2] = brightenedNodeColors[2];
+  // brightenedNodeColors[3] = brightenedNodeColors[1];
+  // brightenedNodeColors[4] = brightenedNodeColors[0];
 
 
 
-  // Serial.println(" ");
+    // Serial.println(" ");
   int row = 2;
 
   if (rowAnimations[net].direction == 0) {
@@ -951,10 +954,10 @@ brightenedNodeColors[3] = brightenedNodeColors[1];
           if (i == probeHighlight) {
 
             } else if (actualNet == brightenedNet && brightenedNode > 0 && i == brightenedNode) {
-                leds.setPixelColor(((i - 1) * 5) + j, brightenedNodeColors[j]);
+              leds.setPixelColor(((i - 1) * 5) + j, brightenedNodeColors[j]);
               } else {
-            leds.setPixelColor(((i - 1) * 5) + j, frameColors[j]);
-            }
+              leds.setPixelColor(((i - 1) * 5) + j, frameColors[j]);
+              }
           }
         }
       }
@@ -2180,6 +2183,9 @@ void drawImage(int imageIndex) {
   int skipLines[21] = { 1, 0, 0, 1, 1, 0, 0, 0, 0, 0, 1, 1, 0, 0, 0, 0, 0, 1, 1, 0, 0, };
   int lineIndex = 0;
 
+
+
+
   for (int i = 1; i < 21; i++) {
 
     if (skipLines[i] == 1) {
@@ -2272,11 +2278,106 @@ void drawImage(int imageIndex) {
 
   }
 
+void printAllRLEimageData() {
+  for (int i = 0; i < startupFrameLEN; i++) {
+    printRLEimageData(i);
+    }
+  }
 
+void printRLEimageData(int imageIndex) {
+  Serial.print("//RLE image data for imageIndex: ");
+  Serial.println(imageIndex);
 
+  Serial.print("\n\n\rconst uint32_t startupFrame");
+  Serial.print(imageIndex);
+  Serial.println("[] PROGMEM = {");
 
+  const uint32_t* frameData = startupFrameArray[imageIndex];
+  // Assuming each frame has a fixed size, e.g. 32*22, which is 704. 
+  // You might need to adjust this or pass the size as a parameter.
+  int frameSize = 704; // Example size, replace with actual size or dynamic calculation
 
+  std::vector<uint32_t> nonBlackPixels;
+  std::vector<int> blackStartIndexes;
+  std::vector<int> blackEndIndexes;
 
+  bool inBlackSequence = false;
+  int currentBlackStartIndex = -1;
+
+  for (int i = 0; i < frameSize; i++) {
+    if (frameData[i] == 0x000000) {
+      if (!inBlackSequence) {
+        inBlackSequence = true;
+        currentBlackStartIndex = i;
+        }
+      } else {
+      if (inBlackSequence) {
+        blackStartIndexes.push_back(currentBlackStartIndex);
+        blackEndIndexes.push_back(i - 1);
+        inBlackSequence = false;
+        }
+      nonBlackPixels.push_back(frameData[i]);
+      }
+    }
+
+  // If the frame ends with a black sequence
+  if (inBlackSequence) {
+    blackStartIndexes.push_back(currentBlackStartIndex);
+    blackEndIndexes.push_back(frameSize - 1);
+    }
+
+  // Print non-black pixels
+  for (size_t i = 0; i < nonBlackPixels.size(); ++i) {
+    Serial.print("0x");
+    if (nonBlackPixels[i] < 0x100000) Serial.print("0");
+    if (nonBlackPixels[i] < 0x10000) Serial.print("0");
+    if (nonBlackPixels[i] < 0x1000) Serial.print("0");
+    if (nonBlackPixels[i] < 0x100) Serial.print("0");
+    if (nonBlackPixels[i] < 0x10) Serial.print("0");
+    Serial.print(nonBlackPixels[i], HEX);
+    if (i < nonBlackPixels.size() - 1) {
+      Serial.print(", ");
+      }
+    if ((i + 1) % 16 == 0) { // Print 16 values per line
+      Serial.println();
+      }
+    }
+  Serial.println("};");
+  Serial.println();
+
+  // Print black start indexes
+  Serial.print("const int blackStartIndexes");
+  Serial.print(imageIndex);
+  Serial.println("[] PROGMEM = {");
+  for (size_t i = 0; i < blackStartIndexes.size(); ++i) {
+    Serial.print(blackStartIndexes[i]);
+    if (i < blackStartIndexes.size() - 1) {
+      Serial.print(", ");
+      }
+    if ((i + 1) % 16 == 0) {
+      Serial.println();
+      }
+    }
+  Serial.println("};");
+  Serial.println();
+
+  // Print black end indexes
+  Serial.print("const int blackEndIndexes");
+  Serial.print(imageIndex);
+  Serial.println("[] PROGMEM = {");
+  for (size_t i = 0; i < blackEndIndexes.size(); ++i) {
+    Serial.print(blackEndIndexes[i]);
+    if (i < blackEndIndexes.size() - 1) {
+      Serial.print(", ");
+      }
+    if ((i + 1) % 16 == 0) {
+      Serial.println();
+      }
+    }
+  Serial.println("};");
+  Serial.println();
+  Serial.flush();
+  }
 
 // int downsample_w = 10;
 // int downsample_h = 13;
@@ -2387,4 +2488,5 @@ void drawImage(int imageIndex) {
 
 //         //pio_sm_put_blocking(pio, sm, i );
 //         }
+//     }
 //     }

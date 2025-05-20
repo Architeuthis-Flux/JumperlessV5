@@ -3263,12 +3263,14 @@ void clearHighlighting(void) {
 
 
 int lastNodeHighlighted = -1;
+int lastNetPrinted = -1;
 
 int currentHighlightedNode = 0;
 int currentHighlightedNet = 0;
 
 int encoderNetHighlight(void) {
-
+  int lastDivider = rotaryDivider;
+  rotaryDivider = 1;
   int returnNode = -1;
 
   // if (inClickMenu == 1)
@@ -3377,6 +3379,7 @@ int encoderNetHighlight(void) {
   lastNodeHighlighted = returnNode;
  // showLEDsCore2 = 2;
   }
+  rotaryDivider = lastDivider;
   return returnNode;
 }
 

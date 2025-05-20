@@ -1124,7 +1124,7 @@ int lineCount = 0;
         for (int i = 0; i < 3 - (tabs / 8); i++) {
           Serial.print("\t");
           }
-        Serial.print(changedNetColors[i].color, HEX);
+        //Serial.print(changedNetColors[i].color, HEX);
         Serial.println();
         lineCount+=1;
         }

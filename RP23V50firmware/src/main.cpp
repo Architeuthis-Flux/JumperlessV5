@@ -247,7 +247,7 @@ int serSource = 0;
 int readInNodesArduino = 0;
 
 
-const char firmwareVersion[] = "5.1.2.0"; // remember to update this
+const char firmwareVersion[] = "5.1.2.1"; // remember to update this
 
 int firstLoop = 1;
 
@@ -742,7 +742,10 @@ menu:
 
       break;
       }
-
+      case 'R': {
+      //printAllRLEimageData();
+      break;
+      }
       case '.': {
       //initOLED();
       if (jumperlessConfig.top_oled.enabled == 0) {
