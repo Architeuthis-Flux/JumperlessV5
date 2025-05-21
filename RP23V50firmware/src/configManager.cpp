@@ -207,6 +207,7 @@ void updateConfigFromFile(const char* filename) {
 
     if (!FatFS.exists(filename)) {
         Serial.println("Config file not found");
+        firstStart = 1;
         resetConfigToDefaults();
         
     }
@@ -1047,6 +1048,37 @@ void readConfigFromSerial() {
                 } else if (strcmp(line, "clear_all") == 0) {
                     resetConfigToDefaults(1, 1);
                     Serial.println("Done. All settings have been cleared");
+                    
+                    memset(line, 0, sizeof(line));
+                    lineIndex = 0;
+                    continue;
+                } else if (strcmp(line, "force_first_start") == 0) {
+                    //firstStart = 1;
+                    Serial.println("Config file deleted. \n\n\rPower cycle your Jumperless to reset config and force startup calibration.\n\n\r");
+                    Serial.flush();
+                    FatFS.remove("/config.txt");
+                    unsigned long startTime = millis()+1000;
+                    int dots = 0;
+
+                    while (1) {
+                         if (millis() - startTime > 500) {
+                        Serial.print("\r                                           \r");
+                        Serial.print("Waiting for power cycle");
+                       
+                            dots++;
+                            for (int i = 0; i < dots; i++) {
+                                Serial.print(".");
+                            }
+                            startTime = millis();
+                        }
+                        if (dots >= 3) {
+                            
+                            dots = 0;
+                        }
+            
+                    }
+                    // saveConfigToFile("/config.txt");
+                    // Serial.println("Done. All settings have been reset to defaults");
                     memset(line, 0, sizeof(line));
                     lineIndex = 0;
                     continue;

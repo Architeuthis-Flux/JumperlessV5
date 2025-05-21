@@ -3278,9 +3278,9 @@ int encoderNetHighlight(void) {
   //rotaryEncoderStuff();
   if (encoderDirectionState == UP) {
     encoderDirectionState = NONE;
-    if (highlightedNet < 1) {
-      highlightedNet = 1;
-      brightenedNet = 1;
+    if (highlightedNet < 0) {
+      highlightedNet = 0;
+      brightenedNet = 0;
       currentHighlightedNode = 0;
     }
     currentHighlightedNode++;

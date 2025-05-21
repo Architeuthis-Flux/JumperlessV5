@@ -2216,7 +2216,7 @@ float checkProbeCurrent(void) {
   return current;
   }
 
-void routableBufferPower(int offOn, int flash) {
+void routableBufferPower(int offOn, int flash, int force) {
   int flashOrLocal;
 
 
@@ -2246,7 +2246,9 @@ void routableBufferPower(int offOn, int flash) {
         return;
         } else if (offOn == 1) {
           bufferPowerConnected = true;
-          return;
+          if (force == 0) {
+            return;
+            }
           }
 
     } else if (probePowerDAC == 1) {
@@ -2262,7 +2264,9 @@ void routableBufferPower(int offOn, int flash) {
           return;
           } else if (offOn == 1) {
             bufferPowerConnected = true;
-            return;
+            if (force == 0) {
+              return;
+              }
             }
       }
     //Serial.print("bufferPowerConnected = "); Serial.println(bufferPowerConnected);
@@ -2305,7 +2309,7 @@ void routableBufferPower(int offOn, int flash) {
                 }
               }
             //Serial.print("needToRefresh = "); Serial.println(needToRefresh);
-            if (needToRefresh == true) {
+            if (needToRefresh == true || force == 1) {
               refreshConnections(0, 0, 0);
               }
           } else {
@@ -2323,7 +2327,7 @@ void routableBufferPower(int offOn, int flash) {
                 }
               }
             //Serial.print("needToRefresh = "); Serial.println(needToRefresh);
-            if (needToRefresh == true) {
+            if (needToRefresh == true || force == 1) {
               refreshLocalConnections(0, 0, 0);
               }
 

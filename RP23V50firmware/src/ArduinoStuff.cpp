@@ -116,14 +116,19 @@ int flashArduinoNextLoop = 0;
 
 int arduinoConnected = 0;
 
+unsigned long lastSerial1Check = 0;
+unsigned long lastSerial2Check = 0;
+
 void secondSerialHandler(void) {
 
-  if (jumperlessConfig.serial_1.function != 0 && millis() > 3000) {
+  if (jumperlessConfig.serial_1.function != 0 && millis() - lastSerial1Check > 500) {
     checkForConfigChangesUSBSer1(true);
-
-    }
-  if (jumperlessConfig.serial_2.function != 0 && millis() > 3000) {
+    lastSerial1Check = millis();
+    } 
+    
+    if (jumperlessConfig.serial_2.function != 0 && millis() - lastSerial2Check > 500) {
     checkForConfigChangesUSBSer2(true);
+    lastSerial2Check = millis();
     }
 
 

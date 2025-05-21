@@ -27,6 +27,8 @@ void customApp(void);
 void displayImage(void);
 const char* addressToHexString(uint8_t address);
 
+void printSerial1stuff(void);
+
 // int i2cScan(int sdaRow = -1 , int sclRow = -1, int sdaPin = 22, int sclPin = 23, int leaveConnections = 0);
 
 

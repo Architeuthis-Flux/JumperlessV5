@@ -86,54 +86,54 @@ void runApp(int index, char* name)
         Serial.println(apps[index].name);
 
         } else if (name != nullptr) {
-        Serial.println(name);
-        }
-    Serial.println();
-    // Find matching app if only one parameter is given
-    if (index == -1) {
-        for (int i = 0; i < sizeof(apps) / sizeof(apps[0]); i++) {
-            if (strcmp(apps[i].name, name) == 0) {
-                index = i;
-                break;
+            Serial.println(name);
+            }
+        Serial.println();
+        // Find matching app if only one parameter is given
+        if (index == -1) {
+            for (int i = 0; i < sizeof(apps) / sizeof(apps[0]); i++) {
+                if (strcmp(apps[i].name, name) == 0) {
+                    index = i;
+                    break;
+                    }
                 }
             }
-        }
-    if (name == nullptr) {
-        name = apps[index].name;
-        }
+        if (name == nullptr) {
+            name = apps[index].name;
+            }
 
-    // Run the app based on index
+        // Run the app based on index
 
 
-    switch (index) {
-        case 5: scanBoard(); break;
-        case 1: calibrateDacs(); break;
-        case 3: customApp(); break;
-        case 4: displayImage(); break;
-        case 0: bounceStartup(); break;
-        case 2: i2cScan(); break;
-            // case 2: logicAnalyzer(); break;
-            // case 3: oscilloscope(); break;
-            // case 4: midiSynth(); break;
-            // case 5: i2cScanner(); break;
-            // case 6: selfDestruct(); break;
-            // case 7: eepromDumper(); break;
-            // case 8: segmentMapper(); break;
-            // case 9: rickRoll(); break;
-            // case 10: circuit555(); break;
-            // case 11: opAmp(); break;
-            // case 12: ic74x109(); break;
-            // case 13: ic74x161(); break;
-            // case 14: ic74x42(); break;
-            // case 15: ic74x595(); break;
-        case 16: playDoom(); break;
-            // case 17: playPong(); break;
-            // case 18: playTetris(); break;
-            // case 19: playSnake(); break;
-            // case 20: deleteApp(); break;
-            // case 21: uploadApp(); break;
-        default: break;
-        }
+        switch (index) {
+            case 5: scanBoard(); break;
+            case 1: calibrateDacs(); break;
+            case 3: customApp(); break;
+            case 4: displayImage(); break;
+            case 0: bounceStartup(); break;
+            case 2: i2cScan(); break;
+                // case 2: logicAnalyzer(); break;
+                // case 3: oscilloscope(); break;
+                // case 4: midiSynth(); break;
+                // case 5: i2cScanner(); break;
+                // case 6: selfDestruct(); break;
+                // case 7: eepromDumper(); break;
+                // case 8: segmentMapper(); break;
+                // case 9: rickRoll(); break;
+                // case 10: circuit555(); break;
+                // case 11: opAmp(); break;
+                // case 12: ic74x109(); break;
+                // case 13: ic74x161(); break;
+                // case 14: ic74x42(); break;
+                // case 15: ic74x595(); break;
+            case 16: playDoom(); break;
+                // case 17: playPong(); break;
+                // case 18: playTetris(); break;
+                // case 19: playSnake(); break;
+                // case 20: deleteApp(); break;
+                // case 21: uploadApp(); break;
+            default: break;
+            }
     }
 
 
@@ -654,7 +654,7 @@ int i2cScan(int sdaRow, int sclRow, int sdaPin, int sclPin, int leaveConnections
         // sda = 26;
         // sclRow = 27;
         Serial.println("defaulting to \n\n\rGPIO 7 = SDA\n\rGPIO 8 = SCL");
-        
+
         } else {
 
         // Remove any existing connections from the GPIO pins
@@ -670,10 +670,10 @@ int i2cScan(int sdaRow, int sclRow, int sdaPin, int sclPin, int leaveConnections
         waitCore2();  // Wait for connections to be established
         }
 
-//    if(   oled.clearPrintShow("GPIO 7 = SDA", 1, 0, 0, true, true, false) == 1) {
-//     oled.clearPrintShow("GPIO 8 = SCL", 1, 0, 16, true, true, false);
-//     delay(20);
-//     }
+    //    if(   oled.clearPrintShow("GPIO 7 = SDA", 1, 0, 0, true, true, false) == 1) {
+    //     oled.clearPrintShow("GPIO 8 = SCL", 1, 0, 16, true, true, false);
+    //     delay(20);
+    //     }
 
     oled.clear();
     oled.print("GPIO 7 = SDA\n\r");
@@ -720,25 +720,25 @@ int i2cScan(int sdaRow, int sclRow, int sdaPin, int sclPin, int leaveConnections
                 }
             }
         }
-        // delay(100);
+    // delay(100);
 
-        // Wire1.end();
-        // Wire1.begin();
+    // Wire1.end();
+    // Wire1.begin();
 
-    // for (int i = 0; i < addressesFoundCount; i++) {
-    //     char hexStr[5];
-    //     sprintf(hexStr, "%02X", addressesFound[i]);
-    //     Serial.printf("\n\n\r0x%s at %d\n", hexStr, addressesFoundIndicies[i]);
-    //     }
+// for (int i = 0; i < addressesFoundCount; i++) {
+//     char hexStr[5];
+//     sprintf(hexStr, "%02X", addressesFound[i]);
+//     Serial.printf("\n\n\r0x%s at %d\n", hexStr, addressesFoundIndicies[i]);
+//     }
 
-    // Print summary
+// Print summary
     Serial.println("\n\nI2C Scan Results:");
     if (nDevices == 0) {
         Serial.println("No I2C devices found");
         showLEDsCore2 = -3;
         b.clear();
 
-        b.print("No I2C  Found", (uint32_t)0x070003 );
+        b.print("No I2C  Found", (uint32_t)0x070003);
         delayWithButton(2000);
         b.clear();
         showLEDsCore2 = -1;
@@ -750,19 +750,19 @@ int i2cScan(int sdaRow, int sclRow, int sdaPin, int sclPin, int leaveConnections
         b.clear();
         showLEDsCore2 = -3;
         if (addressesFoundCount == 1) {
-            b.print("Found", (uint32_t)0x000b01, (uint32_t)0x000000, 0 , 0, 3);
-            b.print(addressToHexString(addressesFound[0]), (uint32_t)0x000a05 , (uint32_t)0x000000, 1 , 1);
+            b.print("Found", (uint32_t)0x000b01, (uint32_t)0x000000, 0, 0, 3);
+            b.print(addressToHexString(addressesFound[0]), (uint32_t)0x000a05, (uint32_t)0x000000, 1, 1);
             //if (oledConnected == true) {
 
-            
+
             } else if (addressesFoundCount > 1) {
-            b.print(addressToHexString(addressesFound[0]), (uint32_t)0x000a05 , (uint32_t)0x000000, 1 , 1);
-            b.print(addressToHexString(addressesFound[1]), (uint32_t)0x000808, (uint32_t)0x000000, 1 , 1);
-            }
-       //showLEDsCore2 = 3;
-        //delay(2000);
-        delayWithButton(2000);
-        showLEDsCore2 = -1;
+                b.print(addressToHexString(addressesFound[0]), (uint32_t)0x000a05, (uint32_t)0x000000, 1, 1);
+                b.print(addressToHexString(addressesFound[1]), (uint32_t)0x000808, (uint32_t)0x000000, 1, 1);
+                }
+            //showLEDsCore2 = 3;
+             //delay(2000);
+            delayWithButton(2000);
+            showLEDsCore2 = -1;
         }
 
     // Clean up connections
@@ -792,8 +792,16 @@ int i2cScan(int sdaRow, int sclRow, int sdaPin, int sclPin, int leaveConnections
 
 
 void calibrateDacs(void) {
+
+
+    if (firstStart == 1) {
+        Serial.println("\n\rFirst startup calibration\n\n\r");
+        } else {
+        // Serial.println("Calibration");
+        }
     // delay(3000);
     float setVoltage = 0.0;
+
 
     uint32_t dacColors[4] = { 0x150003, 0x101000, 0x001204, 0x000512 };
     clearAllNTCC();
@@ -854,7 +862,13 @@ void calibrateDacs(void) {
             refreshPaths();
             clearAllNTCC();
             createSlots(netSlot, 1);
-            delay(10);
+
+            if (firstStart == 1) {
+                delay(1);
+                } else {
+                delay(8);
+                }
+            //delay(10);
 
             switch (d) {
                 case 0:
@@ -885,7 +899,11 @@ void calibrateDacs(void) {
                 }
 
             refreshConnections(0, 0, 1);
-            delay(80);
+            if (firstStart == 1) {
+                delay(1);
+                } else {
+                delay(8);
+                }
             printPathsCompact();
             // Serial.print("\n\n\r\tDAC ");
             // Serial.println(d);
@@ -901,7 +919,11 @@ void calibrateDacs(void) {
             while (zeroFound < 2 && counter < 80) {
                 setVoltage = 0.0;
                 setDacByNumber(d, setVoltage, 0);
-                delay(80); // * (zeroFound + 1));
+                if (firstStart == 1) {
+                    delay(1);
+                    } else {
+                    delay(8);
+                    }
                 float reading = INA0.getBusVoltage_mV();
                 while (INA0.getConversionFlag() == 0) {
                     // Serial.print(".");
@@ -974,7 +996,11 @@ void calibrateDacs(void) {
                     dacSpread[d] = 20.1;
                     }
                 setDacByNumber(d, setVoltage, 0);
-                delay(180);
+                if (firstStart == 1) {
+                    delay(1);
+                    } else {
+                    delay(8);
+                    }
                 // delay(20 * (spreadFound + 1));
 
                 float reading = INA0.getBusVoltage_mV();
@@ -1013,7 +1039,7 @@ void calibrateDacs(void) {
             }
 
         Serial.println("\n\n\tCalibration Values\n\n\r");
-        Serial.print("            DAC Zero\tDAC Spread\t\tADC Zero\tADC Spread\n\r");
+        Serial.print("            DAC Zero\tDAC Spread\tADC Zero\tADC Spread\n\r");
         for (int i = 0; i < 4; i++) {
 
             switch (i) {
@@ -1052,7 +1078,12 @@ void calibrateDacs(void) {
 
     b.clear();
     b.print("Test?", 0x0a0a00, 0x000000, 1, -1, -1);
-    int yesNo = yesNoMenu(4000);
+    int yesNo;
+    if (firstStart == 1) {
+        yesNo = 1;//yesNoMenu(800);
+        } else {
+        yesNo = yesNoMenu(4000);
+        }
 
 
 
@@ -1090,7 +1121,11 @@ void calibrateDacs(void) {
             clearAllNTCC();
             createSlots(netSlot, 1);
             refreshConnections(0, 0, 1);
-            delay(60);
+            if (firstStart == 1) {
+                delay(1);
+                } else {
+                delay(8);
+                }
             switch (d) {
                 case 0:
 
@@ -1133,7 +1168,11 @@ void calibrateDacs(void) {
 
             refreshConnections();
             // refreshBlind(1, 0);
-            delay(70);
+            if (firstStart == 1) {
+                delay(1);
+                } else {
+                delay(8);
+                }
             printPathsCompact();
             Serial.println(" ");
 
@@ -1179,7 +1218,11 @@ void calibrateDacs(void) {
                 Serial.print("INA measured: ");
                 Serial.print(reading);
                 Serial.print(" V");
-                delay(100);
+                if (firstStart == 1) {
+                    delay(1);
+                    } else {
+                    delay(8);
+                    }
                 if (d == 0) {
                     reading = readAdcVoltage(7, 32);
                     } else {
@@ -1195,7 +1238,11 @@ void calibrateDacs(void) {
                         Serial.print(reading);
                         }
                     Serial.println(" V");
-                    delay(20);
+                    if (firstStart == 1) {
+                        delay(1);
+                        } else {
+                        delay(8);
+                        }
                     // dacCalibration[0][i] = reading;
                 }
             setDacByNumber(d, 0.0, 0);
@@ -1223,6 +1270,10 @@ void calibrateDacs(void) {
     createSlots(netSlot, 1);
     clearAllNTCC();
     netSlot = lastNetSlot;
+
+    refreshConnections(-1);
+    routableBufferPower(1, 0, 1);
+    //showProbeLEDs = 1;
     refreshConnections(-1);
     configChanged = true;
     // printPathsCompact();
@@ -1232,8 +1283,42 @@ void calibrateDacs(void) {
 
 
 
+void printSerial1stuff(void) {
 
+    Serial.println("Printing Serial1 stuff");
+    Serial.flush();
 
+    //USBSer1.begin(115200);
+
+    oled.clear();
+
+    while (1) {
+        if (Serial.available() > 0) {
+            char c = Serial.read();
+            USBSer1.write(c);
+            //USBSer1.print(c);
+            USBSer1.flush();
+
+            
+            oled.print(c);
+            oled.show();
+
+            Serial.print("sent: ");
+            Serial.println(c);
+            Serial.flush();
+            if (c == 'x') {
+                break;
+                }
+            }
+        if (USBSer1.available() > 0) {
+            char c = USBSer1.read();
+            Serial.print("received: ");
+            Serial.println(c);
+            Serial.flush();
+            }
+        }
+
+    }
 
 
 
@@ -1430,4 +1515,4 @@ const char* addressToHexString(uint8_t address) {
     static char hexStr[6]; // static so it persists after function returns
     sprintf(hexStr, "0x%02X", address);
     return hexStr;
-}
+    }

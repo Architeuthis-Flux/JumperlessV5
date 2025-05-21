@@ -93,7 +93,7 @@ int readFloatingOrState (int pin = 0, int row = 0);
 int checkSwitchPosition(void);
 float checkProbeCurrent(void);
 
-void routableBufferPower (int offOn, int flash = 0);
+void routableBufferPower (int offOn, int flash = 0, int force = 0);
 
 void startProbe (long probeSpeed = 25000);
 void stopProbe();

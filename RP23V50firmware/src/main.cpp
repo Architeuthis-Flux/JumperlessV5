@@ -232,6 +232,12 @@ void setup1() {
 
 
   while (startupAnimationFinished == 0) {
+    // delayMicroseconds(1);
+    // if (Serial.available() > 0) {
+    //   char c = Serial.read();
+    //  // Serial.print(c);
+    //   //Serial.flush();
+    //   }
     }
 
   startupCore2timers[7] = millis();
@@ -351,6 +357,12 @@ void loop() {
 
 menu:
 
+while (Serial.available() > 0) {
+  char c = Serial.read();
+  Serial.print(c);
+  Serial.flush();
+  }
+
   if (lastProbePowerDAC != probePowerDAC) {
     probePowerDACChanged = true;
     //delay(1000);
@@ -396,6 +408,7 @@ menu:
     // Serial.println();
 
     Serial.print("\t# = print text from menu\n\r");
+    Serial.print("\tg = print gpio state\n\r");
     //Serial.print("\t\b\b\b\b[0-9] = run app by index\n\r");
     Serial.print("\t. = connect oled\n\r");
     Serial.print("\tr = reset Arduino (rt/rb)\n\r");
@@ -743,6 +756,7 @@ menu:
       break;
       }
       case 'R': {
+      printSerial1stuff();
       //printAllRLEimageData();
       break;
       }

@@ -23,7 +23,7 @@ extern bool debugLEDs;
 extern bool debugMM;
 
 
-
+extern bool calibrateOnStart;
 extern bool firstStart;
 
 
