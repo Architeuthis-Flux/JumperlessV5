@@ -54,8 +54,8 @@ struct config {
     } debug;
 
     struct routing {
-        int stack_paths = 0;
-        int stack_rails = 2;
+        int stack_paths = 3;
+        int stack_rails = 3;
         int stack_dacs = 0;
         int rail_priority = 1;
     } routing;

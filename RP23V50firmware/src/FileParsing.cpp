@@ -272,6 +272,7 @@ void createConfigFile(int overwrite) {
 
 int checkIfBridgeExists(int node1, int node2, int slot, int flashOrLocal) {
 
+  return removeBridgeFromNodeFile(node1, node2, slot, flashOrLocal, 1);
   if (flashOrLocal == 0) {
 
     openFileThreadSafe(rplus, slot);
@@ -2299,11 +2300,12 @@ int loadChangedNetColorsFromFile(int slot, int flashOrLocal) {
 
     // Thread safety mechanism
     core1request = 1;
-    while (core2busy == true) {
-        // Yield or delay slightly if needed, current pattern is spin-wait
-    }
-    core1request = 0;
-    core1busy = true;
+    // while (core2busy == true) {
+    //     // Yield or delay slightly if needed, current pattern is spin-wait
+    // }
+    waitCore2();
+     core1request = 0;
+    // core1busy = true;
 
     // Initialize/clear the global ::changedNetColors array
     // Assumes changedNetColors is declared extern and MAX_NETS is defined

@@ -253,7 +253,7 @@ int serSource = 0;
 int readInNodesArduino = 0;
 
 
-const char firmwareVersion[] = "5.1.2.1"; // remember to update this
+const char firmwareVersion[] = "5.1.2.4"; // remember to update this
 
 int firstLoop = 1;
 
@@ -268,6 +268,7 @@ int lastWarningNet = -1;
 
 
 
+
 int firstConnection = -1;
 unsigned long timer = 0;
 int lastProbeButton = 0;
@@ -275,6 +276,9 @@ unsigned long waitTimer = 0;
 unsigned long switchTimer = 0;
 int flashingArduino = 0;
 int attract = 0;
+
+volatile int core1passthrough = 1;
+
 #include <pico/stdlib.h>
 
 #include <hardware/adc.h>
@@ -330,6 +334,7 @@ void loop() {
 
     // Serial.println("--------------------------------");
  loadChangedNetColorsFromFile(netSlot, 0);
+
     if (jumperlessConfig.top_oled.connect_on_boot == 1) {
       //Serial.println("Initializing OLED");
       oled.init();
@@ -490,7 +495,7 @@ while (Serial.available() > 0) {
 
     connectFromArduino = '\0';
     firstConnection = -1;
-
+core1passthrough = 1;
     //! This is the main busy wait loop waiting for input
     while (Serial.available() == 0 && connectFromArduino == '\0' && slotChanged == 0) {
 
@@ -509,9 +514,13 @@ while (Serial.available() > 0) {
       //     goto loadfile;
       //     }
       //   }
+// core1passthrough = 1;
+ secondSerialHandler();
+// //core1passthrough = 0;
 
       if (clickMenu() >= 0) {
         // defconDisplay = -1;
+        core1passthrough = 0;
         goto loadfile;
         }
 
@@ -635,6 +644,7 @@ while (Serial.available() > 0) {
               input = '}';
               probingTimer = millis();
               brightenedNet = 0;
+              core1passthrough = 0;
               goto skipinput;
               } else if (probeButton == 1) {
                 // getNothingTouched();
@@ -646,6 +656,7 @@ while (Serial.available() > 0) {
                 probingTimer = millis();
                 // Serial.println("probing\n\r");
                 brightenedNet = 0;
+                core1passthrough = 0;
                 goto skipinput;
                 }
             }
@@ -1469,6 +1480,8 @@ int clearBeforeSend = 0;
 unsigned long tempTimer = 0;
 int lastTemp = 0;
 
+int passthroughStatus = 0;
+
 void loop1() {
   // int timer = micros();
 
@@ -1483,7 +1496,31 @@ void loop1() {
       core2stuff();
       }
 
-    secondSerialHandler();
+
+ if (core1passthrough ==  0 || inClickMenu == 1 || inPadMenu == 1 || probeActive == 1) {
+    passthroughStatus = secondSerialHandler();
+ }
+
+//     } else {
+//      //core1passthrough = 0;
+//      }
+
+// //core1passthrough = 0;
+// int passthroughCount = 0;
+//    while (passthroughStatus == 1) {
+//     passthroughStatus = secondSerialHandler();
+//     // Serial.println("Serial2 passthrough");
+//     // Serial.println(passthroughStatus);
+//     // Serial.flush();
+//     if (passthroughStatus == 0) {
+//        passthroughCount++;
+//       //break;
+//       }
+   
+//     if (passthroughCount > 100) {
+//       break;
+//       }
+ // }
 
     if (blockProbingTimer > 0) {
       if (millis() - blockProbingTimer > blockProbing) {
@@ -1545,10 +1582,11 @@ void core2stuff() // core 2 handles the LEDs and the CH446Q8
          showProbeLEDs != lastProbeLEDs) && sendAllPathsCore2 == 0) {
 
       // Serial.println(showLEDsCore2);
-
+      //secondSerialHandler();
       if (showLEDsCore2 == 6) {
         showLEDsCore2 = 1;
         }
+
       int rails =
         showLEDsCore2; // 3 doesn't show nets and keeps control of the LEDs
 
@@ -1698,6 +1736,7 @@ void core2stuff() // core 2 handles the LEDs and the CH446Q8
               // showAllRowAnimations();
               }
             } else {
+              //secondSerialHandler();
             rotaryEncoderStuff();
             }
           schedulerTimer = micros();

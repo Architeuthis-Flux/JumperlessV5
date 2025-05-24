@@ -2870,6 +2870,7 @@ void printPathsCompact(int showCullDupes) {
   // Serial.println(checkForOverlappingPaths());
 
   int lastDuplicate = 0;
+  int duplicateSection = 0;
   Serial.println(
       "\n\rpath\tnet\tnode1\tchip0\tx0\ty0\tnode2\tchip1\tx1\ty1\ta"
       "ltPath\tsameChp\tdup\tpathType\tchip2\tx2\ty2"); //\tx3\ty3\n\r");
@@ -2888,8 +2889,13 @@ void printPathsCompact(int showCullDupes) {
         break;
       }
 
-    if (lastDuplicate == 0 && path[i].duplicate == 1) {
-      Serial.println("\n\rduplicates");
+    if (path[i].duplicate > 0 && duplicateSection == 0) {
+     // Serial.println("\n\rduplicates");
+      //duplicateSection = 1;
+      continue;
+      }
+    if (path[i].duplicate == 0 && duplicateSection == 1) {
+      continue;
       }
 
     lastDuplicate = path[i].duplicate;
@@ -2950,10 +2956,17 @@ void printPathsCompact(int showCullDupes) {
       }
 
     Serial.println(" ");
+
+      if (showCullDupes > 0 && duplicateSection == 0 && i == numberOfPaths - 1) {
+    duplicateSection = 1;
+    Serial.println("\n\rduplicates");
+    i = 0;
+    }
     }
   // Serial.println(
   //     "\n\rpath\tnet\tnode1\tchip0\tx0\ty0\tnode2\tchip1\tx1\ty1\ta"
   //     "ltPath\tsameChp\tpathType\tchipL\tchip2\tx2\ty2\n\r");
+
   }
 
 void printChipStatus(void) {

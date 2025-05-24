@@ -42,7 +42,7 @@ uint16_t getSerial2Config(void);
 
 void checkForConfigChangesUSBSer1(int print = 0);
 void checkForConfigChangesUSBSer2(int print = 0);
-void secondSerialHandler(void);
+int secondSerialHandler(void);
 uint16_t makeSerialConfig(uint8_t numbits = 8, uint8_t paritytype = 0,
                           uint8_t stopbits = 1);
 void arduinoPrint(void);

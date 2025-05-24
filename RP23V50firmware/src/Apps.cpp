@@ -862,6 +862,7 @@ void calibrateDacs(void) {
             refreshPaths();
             clearAllNTCC();
             createSlots(netSlot, 1);
+            refreshConnections(0, 0, 1);
 
             if (firstStart == 1) {
                 delay(1);
@@ -900,9 +901,9 @@ void calibrateDacs(void) {
 
             refreshConnections(0, 0, 1);
             if (firstStart == 1) {
-                delay(1);
+                delay(10);
                 } else {
-                delay(8);
+                delay(18);
                 }
             printPathsCompact();
             // Serial.print("\n\n\r\tDAC ");
@@ -920,12 +921,13 @@ void calibrateDacs(void) {
                 setVoltage = 0.0;
                 setDacByNumber(d, setVoltage, 0);
                 if (firstStart == 1) {
-                    delay(1);
+                    delay(18);
                     } else {
-                    delay(8);
+                    delay(38);
                     }
                 float reading = INA0.getBusVoltage_mV();
                 while (INA0.getConversionFlag() == 0) {
+                    
                     // Serial.print(".");
                     delayMicroseconds(100);
                     }
@@ -1184,14 +1186,45 @@ void calibrateDacs(void) {
                 Serial.print("set : ");
                 Serial.print(setVoltage);
                 Serial.print(" V\t");
-                delay(150);
+                if (firstStart == 1) {
+                    delay(30);
+                    } else {
+                    delay(150);
+                    }
                 float reading = 0.0;
 
                 int voltage = map(i, -3, 8, 0, 4);
 
                 b.printRawRow(0b00000001 << voltage, nextRow + 30 + (d * 6), dacColors[d], 0xfffffe);
                 nextRow++;
+
+                if (firstStart == 1) {
+                    delay(1);
+                    } else {
+                    delay(8);
+                    }
                 if (d == 0) {
+                    reading = readAdcVoltage(7, 32);
+                    } else {
+                    reading = readAdcVoltage(d, 32);
+                    }
+                Serial.print("\tADC measured: ");
+                if (i < 0) {
+                    Serial.print(setVoltage);// + random(-4, 4) / 100.0);
+
+                    } else if (i > 8) {
+                        Serial.print(setVoltage);// + random(-4, 4) / 100.0);
+                        } else {
+                        Serial.print(reading);
+                        }
+                    Serial.print(" V");
+                    if (firstStart == 1) {
+                        delay(1);
+                        } else {
+                        delay(8);
+                        }
+
+                                        if (d == 0) {
                     reading = INA1.getBusVoltage();
 
                     while (INA1.getConversionFlag() == 0) {
@@ -1215,34 +1248,10 @@ void calibrateDacs(void) {
                     reading = INA0.getBusVoltage();
                     }
 
-                Serial.print("INA measured: ");
+                Serial.print("\t     INA measured: ");
                 Serial.print(reading);
-                Serial.print(" V");
-                if (firstStart == 1) {
-                    delay(1);
-                    } else {
-                    delay(8);
-                    }
-                if (d == 0) {
-                    reading = readAdcVoltage(7, 32);
-                    } else {
-                    reading = readAdcVoltage(d, 32);
-                    }
-                Serial.print("\tADC measured: ");
-                if (i < 0) {
-                    Serial.print(setVoltage);// + random(-4, 4) / 100.0);
-
-                    } else if (i > 8) {
-                        Serial.print(setVoltage);// + random(-4, 4) / 100.0);
-                        } else {
-                        Serial.print(reading);
-                        }
-                    Serial.println(" V");
-                    if (firstStart == 1) {
-                        delay(1);
-                        } else {
-                        delay(8);
-                        }
+                Serial.println(" V");
+                
                     // dacCalibration[0][i] = reading;
                 }
             setDacByNumber(d, 0.0, 0);
@@ -1400,116 +1409,122 @@ void printSerial1stuff(void) {
 
 
 
-#include <FatFS.h>
-File pngFile;
+// #include <FatFS.h>
+// File pngFile;
 
-PNG png;
+// PNG png;
 
-void writeImage(PNGDRAW* pDraw) {
-    Serial.printf("Writing image at y=%d, width=%d\n", pDraw->y, pDraw->iWidth);
-    for (int i = 0; i < pDraw->iWidth; i++) {
-        Serial.printf("%02X ", pDraw->pPixels[i]);
-        }
-    Serial.println();
+ void writeImage(PNGDRAW* pDraw) {
+    return;
     }
 
-void displayImage(void) {
-    Serial.println("Displaying image");
-    // Buffer for PNG data
-    delay(100);
+//     Serial.printf("Writing image at y=%d, width=%d\n", pDraw->y, pDraw->iWidth);
+//     for (int i = 0; i < pDraw->iWidth; i++) {
+//         Serial.printf("%02X ", pDraw->pPixels[i]);
+//         }
+//     Serial.println();
+//     }
 
-    int strip = 0;
-
-    //return;
-    const int MAX_IMAGE_SIZE = 2000;  // Adjust size as needed
-
-    uint8_t imageData[MAX_IMAGE_SIZE];
-    int bytesRead = 0;
-
-    Serial.println("Ready to receive PNG data. Send raw bytes...");
-
-    // Read data until buffer is full or no more data available
-    char idat[] = "IDAT";
-    char iend[] = "IEND";
-    int idatIndex = 0;
-    int iendIndex = 0;
-    unsigned long timeout = millis();
-
-    if (strip == 1) {
-        while (idatIndex < 4) {
-            if (Serial.available()) {
-                imageData[bytesRead] = Serial.read();
-                if (imageData[bytesRead] == idat[idatIndex]) {
-                    idatIndex++;
-                    }
-                }
-            if (millis() - timeout > 1000) {
-                Serial.println(idatIndex);
-                break;
-                }
-            }
-        }
-    while (bytesRead < MAX_IMAGE_SIZE) {
-        if (Serial.available()) {
-            imageData[bytesRead] = Serial.read();
-            Serial.println(imageData[bytesRead], BIN);
-            if (strip == 1) {
-                if (imageData[bytesRead] == iend[iendIndex]) {
-                    iendIndex++;
-                    }
-                if (iendIndex == 4) {
-                    Serial.println("IEND found");
-                    break;
-                    }
-                }
-            bytesRead++;
-            timeout = millis();
-            }
-
-        // Break if no data received for 1 second
-        if (millis() - timeout > 2000) {
-            Serial.println(bytesRead);
-            break;
-            }
-        }
-
-    Serial.printf("Received %d bytes of image data\n", bytesRead);
-    //return; 
-    uint8_t imageData2[bytesRead];
-    //png.setBuffer(imageData2);
-
-    FatFS.begin();
-    pngFile = FatFS.open("aled.png", "w");
-    if (pngFile) {
-        Serial.println("File opened successfully");
-        } else {
-        Serial.println("Failed to open file");
-        }
-
-    pngFile.write(imageData, bytesRead);
-
-
-    if (png.openFLASH((uint8_t*)imageData, bytesRead, writeImage) == 0) {
-        int width = png.getWidth();
-        int height = png.getHeight();
-        Serial.printf("Width: %d, Height: %d\n", width, height);
-        } else {
-        Serial.println("Failed to open PNG");
-        }
-
-
-
-    // for (int i = 0; i < bytesRead; i++) {
-    //     Serial.print(imageData[i], HEX);
-    //     if (i % 30 == 29) {
-    //         Serial.println();
-    //     } else {
-    //         Serial.print(" ");
-    //     }
-    // }
-    //showArray(imageData, bytesRead);
-
+ void displayImage(void) {
+    return;
     }
+
+//     Serial.println("Displaying image");
+//     // Buffer for PNG data
+//     delay(100);
+
+//     int strip = 0;
+
+//     //return;
+//     const int MAX_IMAGE_SIZE = 2000;  // Adjust size as needed
+
+//     uint8_t imageData[MAX_IMAGE_SIZE];
+//     int bytesRead = 0;
+
+//     Serial.println("Ready to receive PNG data. Send raw bytes...");
+
+//     // Read data until buffer is full or no more data available
+//     char idat[] = "IDAT";
+//     char iend[] = "IEND";
+//     int idatIndex = 0;
+//     int iendIndex = 0;
+//     unsigned long timeout = millis();
+
+//     if (strip == 1) {
+//         while (idatIndex < 4) {
+//             if (Serial.available()) {
+//                 imageData[bytesRead] = Serial.read();
+//                 if (imageData[bytesRead] == idat[idatIndex]) {
+//                     idatIndex++;
+//                     }
+//                 }
+//             if (millis() - timeout > 1000) {
+//                 Serial.println(idatIndex);
+//                 break;
+//                 }
+//             }
+//         }
+//     while (bytesRead < MAX_IMAGE_SIZE) {
+//         if (Serial.available()) {
+//             imageData[bytesRead] = Serial.read();
+//             Serial.println(imageData[bytesRead], BIN);
+//             if (strip == 1) {
+//                 if (imageData[bytesRead] == iend[iendIndex]) {
+//                     iendIndex++;
+//                     }
+//                 if (iendIndex == 4) {
+//                     Serial.println("IEND found");
+//                     break;
+//                     }
+//                 }
+//             bytesRead++;
+//             timeout = millis();
+//             }
+
+//         // Break if no data received for 1 second
+//         if (millis() - timeout > 2000) {
+//             Serial.println(bytesRead);
+//             break;
+//             }
+//         }
+
+//     Serial.printf("Received %d bytes of image data\n", bytesRead);
+//     //return; 
+//     uint8_t imageData2[bytesRead];
+//     //png.setBuffer(imageData2);
+
+//     FatFS.begin();
+//     pngFile = FatFS.open("aled.png", "w");
+//     if (pngFile) {
+//         Serial.println("File opened successfully");
+//         } else {
+//         Serial.println("Failed to open file");
+//         }
+
+//     pngFile.write(imageData, bytesRead);
+
+
+//     if (png.openFLASH((uint8_t*)imageData, bytesRead, writeImage) == 0) {
+//         int width = png.getWidth();
+//         int height = png.getHeight();
+//         Serial.printf("Width: %d, Height: %d\n", width, height);
+//         } else {
+//         Serial.println("Failed to open PNG");
+//         }
+
+
+
+//     // for (int i = 0; i < bytesRead; i++) {
+//     //     Serial.print(imageData[i], HEX);
+//     //     if (i % 30 == 29) {
+//     //         Serial.println();
+//     //     } else {
+//     //         Serial.print(" ");
+//     //     }
+//     // }
+//     //showArray(imageData, bytesRead);
+
+   // }
 
 const char* addressToHexString(uint8_t address) {
     static char hexStr[6]; // static so it persists after function returns
