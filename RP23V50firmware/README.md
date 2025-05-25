@@ -1,5 +1,4 @@
-### The *absolute* latest release will always be in the pinned messages in the [V5-beta-testers channel on Discord](https://discord.gg/Zvv7Dvgxa5)
-
+# Getting Started
 
 ## Glossary of terms:
 
