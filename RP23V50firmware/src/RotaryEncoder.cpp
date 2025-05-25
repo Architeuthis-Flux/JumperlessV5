@@ -130,6 +130,8 @@ int debugEncoder = 0;
 int encoderStepsToChangePosition = 2;
 
 int lastRotaryDivider = 8;
+
+///number of steps to trigger a encoderDirectionState change
 int rotaryDivider = 8;
 
 bool resetEncoderPosition = false;

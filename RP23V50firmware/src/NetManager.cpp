@@ -416,34 +416,34 @@ void combineNets(int foundNode1Net, int foundNode2Net) {
     }
   }
 
-  /// @brief checks if a bridge exists between two nodes
-  /// @param node1 
-  /// @param node2 can be -1 if you only want to check if node1 exists in at all
-  /// @return 1 if the bridge exists, 0 if it doesn't
-  int checkIfBridgeExistsLocal(int node1, int node2) {
+/// @brief checks if a bridge exists between two nodes
+/// @param node1 
+/// @param node2 can be -1 if you only want to check if node1 exists in at all
+/// @return 1 if the bridge exists, 0 if it doesn't
+int checkIfBridgeExistsLocal(int node1, int node2) {
 
-    for (int i = 1; i < MAX_NETS; i++) {
-      if (net[i].number <= 0) {
+  for (int i = 1; i < MAX_NETS; i++) {
+    if (net[i].number <= 0) {
+      break;
+      }
+    for (int j = 0; j < MAX_NODES; j++) {
+      if (net[i].nodes[j] <= 0) {
         break;
         }
-      for (int j = 0; j < MAX_NODES; j++) {
-        if (net[i].nodes[j] <= 0) {
-          break;
+      if (net[i].nodes[j] == node1) {
+        if (node2 == -1) {
+          return 1;
           }
-        if (net[i].nodes[j] == node1) {
-          if (node2 == -1) {
+        for (int k = 0; k < MAX_NODES; k++) {
+          if (net[i].nodes[k] == node2) {
             return 1;
             }
-          for (int k = 0; k < MAX_NODES; k++) {
-            if (net[i].nodes[k] == node2) {
-              return 1;
-              }
-            
-            }
+
           }
+        }
       }
     }
-    return 0;
+  return 0;
   }
 
 void deleteNet(int netNumber) // make sure to check special function nets and
@@ -505,10 +505,10 @@ int shiftNets(
   return lastNet;
   }
 
-int findNodeInNet(uint16_t node) {
+int findNodeInNet(int node) {
   // Serial.println("findNodeInNet");
   // Serial.print("node = ");
-  //     Serial.println(node);
+  //   Serial.println(node);
   for (int i = 1; i < MAX_NETS; i++) {
 
     for (int j = 0; j < MAX_NODES; j++) {
@@ -524,6 +524,21 @@ int findNodeInNet(uint16_t node) {
         // Serial.println(net[i].number);
         return net[i].number;
         }
+      }
+    }
+  for (int i = 0; i < 10; i++) {
+    if (gpioNet[i] == node) {
+      //         Serial.print("found node ");
+      // Serial.print(node);
+      // Serial.print(" in net ");
+      // Serial.println(net[i].number);
+      return gpioNet[i];
+      }
+    }
+
+  for (int i = 0; i < 8; i++) {
+    if (showADCreadings[i] == node) {
+      return showADCreadings[i];
       }
     }
 
@@ -716,8 +731,8 @@ int findFirstUnusedNodeIndex(int netNumber) // search for a free net[]
 /// @param netToCheck2 the second net
 /// @return true if the connection is allowed, false otherwise
 int checkDoNotIntersectsByNet(int netToCheck1, int netToCheck2) // If you're searching DNIs by net, there
-  // won't be any valid ways to make a new
-  // net with both nodes, so its skipped
+// won't be any valid ways to make a new
+// net with both nodes, so its skipped
   {
 
   for (int i = 0; i <= MAX_DNI; i++) {
@@ -821,20 +836,26 @@ int checkDoNotIntersectsByNode(
   return 1; // return 1 if it's ok to connect these nets
   }
 
+
+
+
+
+
 /// @brief list all nets
 /// @param liveUpdate 0 = no live update, 1 = live update
-void listNets(int liveUpdate) 
+void listNets(int liveUpdate)
   {
-    // Serial.print("liveUpdate: ");
-    // Serial.println(liveUpdate);
+  // Serial.print("liveUpdate: ");
+  // Serial.println(liveUpdate);
+  int boldNode = highlightedRow;
+  int boldNet = highlightedNet;
+  if (liveUpdate < 0) {
+    liveUpdate = 0;
+    }
 
-    if (liveUpdate < 0) {
-      liveUpdate = 0;
-      }
-
-    if (liveUpdate >= 0) {
-      liveUpdate = 1;
-      }
+  if (liveUpdate >= 0) {
+    liveUpdate = 1;
+    }
 
   if (net[6].number == 0) {
     // Serial.print("No nets to list\n\r");
@@ -958,20 +979,22 @@ void listNets(int liveUpdate)
 
 
 
-int lineCount = 0;
+    int lineCount = 0;
 
-// if (liveUpdate == 1) {
-//   Serial.println("\tlive update mode");
-//   Serial.println("\t  (send any character to exit)");
-//   lineCount+=2;
-//   }
-  
+    // if (liveUpdate == 1) {
+    //   Serial.println("\tlive update mode");
+    //   Serial.println("\t  (send any character to exit)");
+    //   lineCount+=2;
+    //   }
+
+
+    int floatingTermColors[10] = { 203, 215, 221, 192, 117, 75, 176,213, 180, 147 };
     do {
 
 
       Serial.print("\n\rIndex\tName\t\tColor\t    Nodes");
 
-      lineCount+=2;
+      lineCount += 2;
 
       if (showGPIO == 1 && showVoltage == 1) {
         for (int i = 0; i < maxChars; i++) {
@@ -996,13 +1019,25 @@ int lineCount = 0;
         }
 
       Serial.println("\n\r");
-      lineCount+=2;
+      lineCount += 2;
       int tabs = 0;
 
       int showingSpecial = 0;
 
       for (int i = 6; i < numberOfNets; i++) {
 
+        int floatingTermColor = -1;
+        for (int j = 0; j < 10; j++) {
+          if (gpioNet[j] == i) {
+            floatingTermColor = floatingTermColors[j];
+            Serial.printf("\033[38;5;%dm", floatingTermColors[j]);
+            break;
+            }
+          }
+
+        if (floatingTermColor == -1) {
+          Serial.printf("\033[38;5;%dm", colorToVT100(packRgb(netColors[i])));
+          }
 
         if (net[i].number == 0 ||
             net[i].nodes[0] ==
@@ -1046,19 +1081,92 @@ int lineCount = 0;
         if (netsShowingSpecial[i] == 2 || netsShowingSpecial[i] == 3) {
           Serial.print("\b\b* ");
           if (gpioReading[gpioOrAdcNumber] == 0) {
-            Serial.print("green - l ");
-            } else if (gpioReading[gpioOrAdcNumber] == 1) {
-              Serial.print("red - h   ");
-              } else {
-              int length = Serial.print(colorToName(gpioAnimationBaseHues[gpioOrAdcNumber], -1));
-              length += Serial.print(" - f");
-              for (int i = 0; i < 10 - length; i++) {
-                Serial.print(" ");
+
+            if (TERM_SUPPORTS_RGB == 0 && TERM_SUPPORTS_ANSI_COLORS == 1)
+              {
+              Serial.printf("\033[38;5;%dm%s", colorToVT100(packRgb(netColors[i])), "green  - l");
+              } else if (TERM_SUPPORTS_RGB == 1 && TERM_SUPPORTS_ANSI_COLORS == 1)
+                {
+                Serial.printf("\033[38;2;0;255;0m%s\033[0m", "green  - l");
+                } else {
+                Serial.print("green  - l");
                 }
+
+            } else if (gpioReading[gpioOrAdcNumber] == 1) {
+              if (TERM_SUPPORTS_RGB == 0 && TERM_SUPPORTS_ANSI_COLORS == 1)
+                {
+                Serial.printf("\033[38;5;%dm%s", colorToVT100(packRgb(netColors[i])), "red    - h");
+                } else if (TERM_SUPPORTS_RGB == 1 && TERM_SUPPORTS_ANSI_COLORS == 1)
+                  {
+                  Serial.printf("\033[38;2;255;0;0m%s", "red    - h");
+                  } else {
+                  Serial.print("red    - h");
+                  }
+              } else {
+              int length = 0;
+              if (TERM_SUPPORTS_RGB == 0 && TERM_SUPPORTS_ANSI_COLORS == 1)
+                {
+                hsvColor hsv;
+                hsv.h = gpioAnimationBaseHues[gpioOrAdcNumber];
+                hsv.s = 20;
+                hsv.v = 255;
+
+                uint32_t color = HsvToRaw(hsv);
+                length = Serial.printf("\033[38;5;%dm%-7s- f", floatingTermColors[gpioOrAdcNumber], colorToName(gpioAnimationBaseHues[gpioOrAdcNumber], -1));
+
+                } else if (TERM_SUPPORTS_RGB == 1 && TERM_SUPPORTS_ANSI_COLORS == 1)
+                  {
+                  length = Serial.printf("\033[38;2;255;255;30m%s - f", colorToName(gpioAnimationBaseHues[gpioOrAdcNumber], -1));
+                  } else {
+
+                  length = Serial.print(colorToName(gpioAnimationBaseHues[gpioOrAdcNumber], -1));
+                  length += Serial.print(" - f");
+                  }
+                for (int i = 0; i < 10 - length; i++) {
+                  Serial.print(" ");
+                  }
 
               }
           } else {
-          Serial.print(colorToName(netColors[i], 10));
+
+
+          //itoa(colorToVT100(packRgb(netColors[i])), colorString, 10);
+          if (TERM_SUPPORTS_RGB == 0 && TERM_SUPPORTS_ANSI_COLORS == 1)
+            {
+            Serial.printf("\033[38;5;%dm%s", colorToVT100(packRgb(netColors[i])), colorToName(netColors[i], 10));
+            } else if (TERM_SUPPORTS_RGB == 1 && TERM_SUPPORTS_ANSI_COLORS == 1)
+              {
+              hsvColor color = RgbToHsv(netColors[i]);
+              color.v = 255;
+
+              rgbColor rgb = HsvToRgb(color);
+              char colorString[10];
+
+              char colorR[4];
+              char colorG[4];
+              char colorB[4];
+
+              itoa(rgb.r, colorR, 10);
+              itoa(rgb.g, colorG, 10);
+              itoa(rgb.b, colorB, 10);
+              // Serial.print(colorR);
+              // Serial.print(",");
+              // Serial.print(colorG);
+              // Serial.print(",");
+              // Serial.print(colorB);
+              // Serial.print(" ");
+
+              Serial.printf("\033[38;2;%s;%s;%sm%s", colorR, colorG, colorB, colorToName(netColors[i], 10));
+              } else {
+              Serial.print(colorToName(netColors[i], 10));
+              }
+
+            // Serial.print(colorToVT100(packRgb(netColors[i])));
+  //lineCount+=1;
+            // for (int c = 0; c < 128 ; c++) {
+            //   Serial.printf("\033[%dm%d\033[0m", c, c);
+            //   Serial.print(" ");
+            // }
           }
 
 
@@ -1068,524 +1176,542 @@ int lineCount = 0;
 
         tabs = 0;
         for (int j = 0; j < MAX_NODES; j++) {
-
+          if (brightenedNode == net[i].nodes[j]) {
+            Serial.printf("\033[7m");
+            }
           tabs += printNodeOrName(net[i].nodes[j]);
-
-          if (net[i].nodes[j + 1] == 0) {
-            break;
-            } else {
-
-            tabs += Serial.print(",");
+          if (brightenedNode == net[i].nodes[j]) {
+            Serial.printf("\033[27m");
             }
+          // if (brightenedNode == net[i].nodes[j]) {
+          //   if (floatingTermColor != -1) {
+          //     Serial.printf("\033[38;5;%dm", floatingTermColors[gpioOrAdcNumber]);
+          //     } else {
+          //     Serial.printf("\033[38;5;%dm", colorToVT100(packRgb(netColors[i])));
+          //     }
+            //Serial.printf("\033[0m");
+            
+          
+
+        if (net[i].nodes[j + 1] == 0) {
+          break;
+          } else {
+
+          tabs += Serial.print(",");
           }
+        }
 
-        for (int i = tabs; i < maxChars; i++) {
-          Serial.print(" ");
-          }
-        Serial.print("\t");
+      for (int i = tabs; i < maxChars; i++) {
+        Serial.print(" ");
+        }
+      Serial.print("\t");
 
-        if (netsShowingSpecial[i] != 0) {
-          if (netsShowingSpecial[i] == 1) {
-            float voltage = adcReadings[gpioOrAdcNumber];
-            if (voltage < 0.03 && voltage > -0.03) {
-              voltage = 0.00;
-              }
-            if (voltage < 0.0) {
-              Serial.print("\b");
-              
-              }
-            Serial.print(voltage, 2);
-            Serial.print(" V");
+      if (netsShowingSpecial[i] != 0) {
+        if (netsShowingSpecial[i] == 1) {
+          float voltage = adcReadings[gpioOrAdcNumber];
+          if (voltage < 0.03 && voltage > -0.03) {
+            voltage = 0.00;
+            }
+          if (voltage < 0.0) {
+            Serial.print("\b");
 
-            } else if (netsShowingSpecial[i] == 2) {
-              if (gpioReading[gpioOrAdcNumber] == 0) {
-                Serial.print("low");
-                } else if (gpioReading[gpioOrAdcNumber] == 1) {
-                  Serial.print("high");
-                  } else {
-                  Serial.print("floating");
-                  }
-              } else if (netsShowingSpecial[i] == 3) {
-                if (gpioState[gpioOrAdcNumber] == 0) {
-                  Serial.print("high");
-                  } else if (gpioState[gpioOrAdcNumber] == 1) {
-                    Serial.print("low");
-                    }
+            }
+          Serial.print(voltage, 2);
+          Serial.print(" V");
+
+          } else if (netsShowingSpecial[i] == 2) {
+            if (gpioReading[gpioOrAdcNumber] == 0) {
+              Serial.print("low");
+              } else if (gpioReading[gpioOrAdcNumber] == 1) {
+                Serial.print("high");
+                } else {
+                Serial.print("floating");
                 }
-          }
-        // Serial.print("netsShowingSpecial[");
-        // Serial.print(i);
-        // Serial.print("]: ");
-        // Serial.println(netsShowingSpecial[i]);
-
-
-        tabs = 0;
-
-        for (int i = 0; i < 3 - (tabs / 8); i++) {
-          Serial.print("\t");
-          }
-        //Serial.print(changedNetColors[i].color, HEX);
-        Serial.println();
-        lineCount+=1;
+            } else if (netsShowingSpecial[i] == 3) {
+              if (gpioState[gpioOrAdcNumber] == 0) {
+                Serial.print("high");
+                } else if (gpioState[gpioOrAdcNumber] == 1) {
+                  Serial.print("low");
+                  }
+              }
         }
+      // Serial.print("netsShowingSpecial[");
+      // Serial.print(i);
+      // Serial.print("]: ");
+      // Serial.println(netsShowingSpecial[i]);
 
 
+      tabs = 0;
 
-      Serial.flush();
-
-
-      if (Serial.available() > 0) {
-        liveUpdate = 0;
+      for (int i = 0; i < 3 - (tabs / 8); i++) {
+        Serial.print("\t");
         }
+      //Serial.print(changedNetColors[i].color, HEX);
+      Serial.println();
+      lineCount += 1;
+      }
+    Serial.printf("\033[0m");
 
-        if (checkProbeButton() != 0) {
-          blockProbeButton = 500;
-          blockProbeButtonTimer = millis();
-          liveUpdate = 0;
-          }
-          if (digitalRead(BUTTON_ENC) == 0) {
-            liveUpdate = 0;
-            }
 
-      if (liveUpdate == 1) {
-       // Serial.println(lineCount);
-
-        
-
-        //Serial.print("\033[2J\033[H");
-
-                
-       // Serial.flush();
-        delay(10);
-       // for (int i = 0; i < lineCount; i++) {
-          Serial.printf("\033[%dA", lineCount-1);
-          //Serial.print("   ffdflkj;ldfkj ");
-         Serial.printf("\033[J");
-         //Serial.flush();
-         // }
-         lineCount = 0;
-
-        }
-
-      } while (liveUpdate == 1);
-
-    // while (Serial.available() == 0) {
-
-    Serial.print("\n\r");
     Serial.flush();
 
-    //  
-    }
-  }
 
-void listSpecialNets() {
-  Serial.print(
-      "\n\rIndex\tName\t\tVoltage\t    Nodes\t"); //\t\t\t\tColor\t\tDo
-  //Not Intersects");
-  int tabs = 0;
-
-  for (int i = 1; i < 6; i++) {
-    int spaces = 0;
-    if (net[i].number == 0) // stops searching if it gets to an unallocated net
-      {
-      // Serial.print("Done listing nets");
-      break;
+    if (Serial.available() > 0) {
+      liveUpdate = 0;
       }
 
-    Serial.print("\n\r ");
-    Serial.print(net[i].number);
-    Serial.print("\t ");
-
-    int netNameLength = Serial.print(net[i].name);
-    // if (netNameLength < 8)
-    // {
-    //     Serial.print("\t");
-    // }
-    for (int i = 0; i < 8 - netNameLength; i++) {
-      Serial.print(" ");
+    if (checkProbeButton() != 0) {
+      blockProbeButton = 500;
+      blockProbeButtonTimer = millis();
+      liveUpdate = 0;
+      }
+    if (digitalRead(BUTTON_ENC) == 0) {
+      liveUpdate = 0;
       }
 
-    Serial.print("\t ");
+    if (liveUpdate == 1) {
+      // Serial.println(lineCount);
 
-    switch (i) {
-      case 1:
-        spaces += Serial.print("0V");
-        break;
-      case 2:
-        spaces += Serial.print(railVoltage[0]);
-        spaces += Serial.print("V");
-        break;
-      case 3:
-        spaces += Serial.print(railVoltage[1]);
-        spaces += Serial.print("V");
-        break;
-      case 4:
-        spaces += Serial.print(dacOutput[0]);
-        spaces += Serial.print("V");
-        break;
-      case 5:
-        spaces += Serial.print(dacOutput[1]);
-        // for (int i = 0; i < 32; i++)
-        // {
-        //     uint32_t dacMask = dacOutput[1];
-        //     Serial.println(dacMask, BIN);
-        // }
-        spaces += Serial.print("V");
-        break;
-      default:
-        spaces += Serial.print("N/A");
-        // Serial.print("V");
-        break;
-      }
-    // for (int i = 0; i < 8 - spaces; i++) {
-    //   Serial.print(" ");
-    // }
-    // Serial.print("   ");
 
-    // Serial.print("r");
-    // if (net[i].color.r < 16) {
-    //   Serial.print("0");
-    // }
-    // netNameLength = Serial.print(net[i].color.r, HEX);
 
-    // Serial.print(" g");
-    // if (net[i].color.g < 16) {
-    //   Serial.print("0");
-    // }
-    // netNameLength = Serial.print(net[i].color.g, HEX);
+       //Serial.print("\033[2J\033[H");
 
-    // Serial.print(" b");
-    // if (net[i].color.b < 16) {
-    //   Serial.print("0");
-    // }
-    // netNameLength = Serial.print(net[i].color.b, HEX);
 
-    // if (netNameLength < 6)
-    // {
-    //     Serial.print("\t");
-    // }
-    Serial.print("\t     ");
-
-    tabs = 0;
-    for (int j = 0; j < MAX_NODES; j++) {
-      tabs += printNodeOrName(net[i].nodes[j]);
-      // tabs += Serial.print(definesToChar(net[i].nodes[j]));
-
-      if (net[i].nodes[j + 1] == 0) {
-        break;
-        } else {
-
-        tabs += Serial.print(",");
-        }
-      }
-
-    for (int i = 0; i < 3 - (tabs / 8); i++) {
-      Serial.print("\t");
-      }
-
-    // Serial.print("{");
-
-    // tabs = 0;
-    // for (int j = 0; j < MAX_BRIDGES; j++)
-    // {
-
-    //     tabs += printNodeOrName(net[i].bridges[j][0]);
-    //     tabs += Serial.print("-");
-    //     tabs += printNodeOrName(net[i].bridges[j][1]);
-    //     // Serial.print(",");
-
-    //     if (net[i].bridges[j + 1][0] == 0)
-    //     {
-    //         break;
-    //     }
-    //     else
-    //     {
-
-    //         tabs += Serial.print(",");
-    //     }
-    // }
-    // tabs += Serial.print("}\t");
-
-    for (int i = 0; i < 3 - (tabs / 8); i++) {
-      Serial.print("\t");
-      }
-    /*
-            Serial.print(net[i].colorName);
-    Serial.print("\t\t");
-
-            for (int j = 0; j < MAX_DNI; j++)
-            {
-
-                tabs += printNodeOrName(net[i].doNotIntersectNodes[j]);
-
-                if (net[i].doNotIntersectNodes[j + 1] == 0 || i == 0)
-                {
-                    break;
-                }
-                else
-                {
-
-                    tabs += Serial.print(",");
-                }
-            }*/
-    }
-  Serial.print("\n\r");
-  }
-
-void printBridgeArray(void) {
-
-  Serial.print("\n\r");
-  int tabs = 0;
-  int lineCount = 0;
-  for (int i = 0; i < numberOfPaths; i++) {
-    tabs += Serial.print(i);
-    if (i < 10) {
-      tabs += Serial.print(" ");
-      }
-    if (i < 100) {
-      tabs += Serial.print(" ");
-      }
-    tabs += Serial.print("[");
-    tabs += printNodeOrName(path[i].node1);
-    tabs += Serial.print(",");
-    tabs += printNodeOrName(path[i].node2);
-    tabs += Serial.print(",Net ");
-    tabs += printNodeOrName(path[i].net);
-    tabs += Serial.print("],");
-    lineCount++;
-    // Serial.print(tabs);
-    for (int i = 0; i < 24 - (tabs); i++) {
-      Serial.print(" ");
-      }
-    tabs = 0;
-
-    if (lineCount == 4) {
-      Serial.print("\n\r");
+      // Serial.flush();
+      delay(10);
+      // for (int i = 0; i < lineCount; i++) {
+      Serial.printf("\033[%dA", lineCount - 1);
+      //Serial.print("   ffdflkj;ldfkj ");
+      Serial.printf("\033[J");
+      //Serial.flush();
+      // }
       lineCount = 0;
+
       }
-    }
-  if (debugNMtime)
-    Serial.println("\n\r");
-  if (debugNMtime)
-    timeToNM = millis() - timeToNM;
-  if (debugNMtime)
-    Serial.print("\n\rtook ");
-  if (debugNMtime)
-    Serial.print(timeToNM);
-  if (debugNMtime)
-    Serial.print("ms to run net manager\n\r");
+
+
+    boldNode = encoderNetHighlight(0);
+
+
+    } while (liveUpdate == 1);
+
+  // while (Serial.available() == 0) {
+
+  Serial.print("\n\r");
+  Serial.flush();
+
+  //  
+  }
   }
 
+  void listSpecialNets() {
+    Serial.print(
+        "\n\rIndex\tName\t\tVoltage\t    Nodes\t"); //\t\t\t\tColor\t\tDo
+    //Not Intersects");
+    int tabs = 0;
 
-//returns the number of characters printed (for tabs)
-int printNodeOrName(
-    int node,
-    int longOrShort) // returns number of characters printed (for tabs)
-  {
-  if (node >= 100) {
-    return Serial.print(definesToChar(node, longOrShort));
-    } else if (node >= NANO_D0) {
+    for (int i = 1; i < 6; i++) {
+      int spaces = 0;
+      if (net[i].number == 0) // stops searching if it gets to an unallocated net
+        {
+        // Serial.print("Done listing nets");
+        break;
+        }
+
+      Serial.print("\n\r ");
+      Serial.print(net[i].number);
+      Serial.print("\t ");
+
+      int netNameLength = Serial.print(net[i].name);
+      // if (netNameLength < 8)
+      // {
+      //     Serial.print("\t");
+      // }
+      for (int i = 0; i < 8 - netNameLength; i++) {
+        Serial.print(" ");
+        }
+
+      Serial.print("\t ");
+
+      switch (i) {
+        case 1:
+          spaces += Serial.print("0V");
+          break;
+        case 2:
+          spaces += Serial.print(railVoltage[0]);
+          spaces += Serial.print("V");
+          break;
+        case 3:
+          spaces += Serial.print(railVoltage[1]);
+          spaces += Serial.print("V");
+          break;
+        case 4:
+          spaces += Serial.print(dacOutput[0]);
+          spaces += Serial.print("V");
+          break;
+        case 5:
+          spaces += Serial.print(dacOutput[1]);
+          // for (int i = 0; i < 32; i++)
+          // {
+          //     uint32_t dacMask = dacOutput[1];
+          //     Serial.println(dacMask, BIN);
+          // }
+          spaces += Serial.print("V");
+          break;
+        default:
+          spaces += Serial.print("N/A");
+          // Serial.print("V");
+          break;
+        }
+      // for (int i = 0; i < 8 - spaces; i++) {
+      //   Serial.print(" ");
+      // }
+      // Serial.print("   ");
+
+      // Serial.print("r");
+      // if (net[i].color.r < 16) {
+      //   Serial.print("0");
+      // }
+      // netNameLength = Serial.print(net[i].color.r, HEX);
+
+      // Serial.print(" g");
+      // if (net[i].color.g < 16) {
+      //   Serial.print("0");
+      // }
+      // netNameLength = Serial.print(net[i].color.g, HEX);
+
+      // Serial.print(" b");
+      // if (net[i].color.b < 16) {
+      //   Serial.print("0");
+      // }
+      // netNameLength = Serial.print(net[i].color.b, HEX);
+
+      // if (netNameLength < 6)
+      // {
+      //     Serial.print("\t");
+      // }
+      Serial.print("\t     ");
+
+      tabs = 0;
+      for (int j = 0; j < MAX_NODES; j++) {
+        tabs += printNodeOrName(net[i].nodes[j]);
+        // tabs += Serial.print(definesToChar(net[i].nodes[j]));
+
+        if (net[i].nodes[j + 1] == 0) {
+          break;
+          } else {
+
+          tabs += Serial.print(",");
+          }
+        }
+
+      for (int i = 0; i < 3 - (tabs / 8); i++) {
+        Serial.print("\t");
+        }
+
+      // Serial.print("{");
+
+      // tabs = 0;
+      // for (int j = 0; j < MAX_BRIDGES; j++)
+      // {
+
+      //     tabs += printNodeOrName(net[i].bridges[j][0]);
+      //     tabs += Serial.print("-");
+      //     tabs += printNodeOrName(net[i].bridges[j][1]);
+      //     // Serial.print(",");
+
+      //     if (net[i].bridges[j + 1][0] == 0)
+      //     {
+      //         break;
+      //     }
+      //     else
+      //     {
+
+      //         tabs += Serial.print(",");
+      //     }
+      // }
+      // tabs += Serial.print("}\t");
+
+      for (int i = 0; i < 3 - (tabs / 8); i++) {
+        Serial.print("\t");
+        }
+      /*
+              Serial.print(net[i].colorName);
+      Serial.print("\t\t");
+
+              for (int j = 0; j < MAX_DNI; j++)
+              {
+
+                  tabs += printNodeOrName(net[i].doNotIntersectNodes[j]);
+
+                  if (net[i].doNotIntersectNodes[j + 1] == 0 || i == 0)
+                  {
+                      break;
+                  }
+                  else
+                  {
+
+                      tabs += Serial.print(",");
+                  }
+              }*/
+      }
+    Serial.print("\n\r");
+    }
+
+  void printBridgeArray(void) {
+
+    Serial.print("\n\r");
+    int tabs = 0;
+    int lineCount = 0;
+    for (int i = 0; i < numberOfPaths; i++) {
+      tabs += Serial.print(i);
+      if (i < 10) {
+        tabs += Serial.print(" ");
+        }
+      if (i < 100) {
+        tabs += Serial.print(" ");
+        }
+      tabs += Serial.print("[");
+      tabs += printNodeOrName(path[i].node1);
+      tabs += Serial.print(",");
+      tabs += printNodeOrName(path[i].node2);
+      tabs += Serial.print(",Net ");
+      tabs += printNodeOrName(path[i].net);
+      tabs += Serial.print("],");
+      lineCount++;
+      // Serial.print(tabs);
+      for (int i = 0; i < 24 - (tabs); i++) {
+        Serial.print(" ");
+        }
+      tabs = 0;
+
+      if (lineCount == 4) {
+        Serial.print("\n\r");
+        lineCount = 0;
+        }
+      }
+    if (debugNMtime)
+      Serial.println("\n\r");
+    if (debugNMtime)
+      timeToNM = millis() - timeToNM;
+    if (debugNMtime)
+      Serial.print("\n\rtook ");
+    if (debugNMtime)
+      Serial.print(timeToNM);
+    if (debugNMtime)
+      Serial.print("ms to run net manager\n\r");
+    }
+
+
+  //returns the number of characters printed (for tabs)
+  int printNodeOrName(
+      int node,
+      int longOrShort) // returns number of characters printed (for tabs)
+    {
+    if (node >= 100) {
       return Serial.print(definesToChar(node, longOrShort));
-      } else {
-      return Serial.print(node);
-      }
-  }
-
-const char* defNanoToCharShort[35] = {
-    "VIN",  "D0",   "D1",   "D2",     "D3",     "D4",       "D5",     "D6",
-    "D7",   "D8",   "D9",   "D10",    "D11",    "D12",      "D13",    "RESET",
-    "AREF", "A0",   "A1",   "A2",     "A3",     "A4",       "A5",     "A6",
-    "A7",   "RST0", "RST1", "N_GND1", "N_GND0", "NANO_3V3", "NANO_5V" };
-
-const char* defSpecialToCharShort[49] = {
-    "GND",      "TOP_R",   "BOT_R",   "3V3",       "TOP_GND",  "5V",
-    "DAC_0",    "DAC_1",   "I_POS",   "I_NEG",     "ADC_0",    "ADC_1",
-    "ADC_2",    "ADC_3",   "ADC_4",   "ADC_7",     "UART_Tx",  "UART_Rx",
-    "GP_18",    "GP_19",   "8V_P",    "8V_N",      "MCP_0",    "MCP_1",
-    "MCP_2",    "MCP_3",   "BOT_GND", "EMPTY",     "LOGO_T",   "LOGO_B",
-    "GP_1",     "GP_2",    "GP_3",    "GP_4",      "GP_5",     "GP_6",
-    "GP_7",     "GP_8",    "GPIO_PAD","DAC_PAD",   "ADC_PAD",  "BLDG_TOP",
-    "BLDG_BOT", "BUF_IN",  "BUF_OUT"
-  };
-
-const char* defNanoToCharLong[35] = {
-    "NANO_VIN",   "NANO_D0",   "NANO_D1",     "NANO_D2",     "NANO_D3",
-    "NANO_D4",    "NANO_D5",   "NANO_D6",     "NANO_D7",     "NANO_D8",
-    "NANO_D9",    "NANO_D10",  "NANO_D11",    "NANO_D12",    "NANO_D13",
-    "NANO_RESET", "NANO_AREF", "NANO_A0",     "NANO_A1",     "NANO_A2",
-    "NANO_A3",    "NANO_A4",   "NANO_A5",     "NANO_A6",     "NANO_A7",
-    "NANO_RST0",  "NANO_RST1", "NANO_N_GND1", "NANO_N_GND0", "NANO_3V3",
-    "NANO_5V" };
-
-const char* defSpecialToCharLong[49] = {
-    "GND",         "TOP_RAIL",     "BOTTOM_RAIL",  "SUPPLY_3V3",
-    "TOP_GND",     "SUPPLY_5V",    "DAC0",         "DAC1",
-    "ISENSE_PLUS", "ISENSE_MINUS", "ADC0",         "ADC1",
-    "ADC2",        "ADC3",         "ADC4",         "ADC7",
-    "RP_UART_Tx",  "RP_UART_Rx",   "RP_GPIO_18",   "RP_GPIO_19",
-    "8V_POS",      "8V_NEG",       "MCP_GPIO_0",   "MCP_GPIO_1",
-    "MCP_GPIO_2",  "MCP_GPIO_3",   "BOTTOM_GND",   "EMPTY_NET",
-    "LOGO_TOP",    "LOGO_BOTTOM",  "RP_GPIO_1",    "RP_GPIO_2",
-    "RP_GPIO_3",   "RP_GPIO_4",    "RP_GPIO_5",    "RP_GPIO_6",
-    "RP_GPIO_7",   "RP_GPIO_8",    "GPIO_PAD",     "DAC_PAD",
-    "ADC_PAD",     "BUILDING_TOP", "BUILDING_BOT", "BUFFER_IN",
-    "BUFFER_OUT"
-  };
-
-const char* emptyNet[3] = { "EMPTY_NET", "?" };
-
-char same[12] = "           ";
-const char* definesToChar(int defined,
-              int longOrShort) // converts the internally used #defined numbers
-  // into human readable strings
-  {
-  // Try finding the define using our lookup function
-  const DefineInfo* info = findDefineInfoByValue(defined);
-  if (info) {
-    return (longOrShort == 1) ? info->longName : info->shortName;
-    }
-
-  // If not found, fall back to the old approach
-  if (defined >= 70 && defined <= 99) {
-    // Fallback to index-based lookup if define not found in array
-    int index = defined - 69;
-    if (index >= 0 && index < 31) {
-      return (longOrShort == 1) ? defNanoToCharLong[index] : defNanoToCharShort[index];
-      }
-    } else if (defined >= 100 && defined <= 148) {
-      // Fallback to index-based lookup if define not found in array
-      int index = defined - 100;
-      if (index >= 0 && index < 49) {
-        return (longOrShort == 1) ? defSpecialToCharLong[index] : defSpecialToCharShort[index];
-        }
-      } else if (defined == EMPTY_NET) {
-        return emptyNet[0];
+      } else if (node >= NANO_D0) {
+        return Serial.print(definesToChar(node, longOrShort));
         } else {
-        // Serial.println("!!!!!!!!!!!!!!!!!!!!");
-        itoa(defined, same, 10);
-        return same;
+        return Serial.print(node);
         }
-
-      // If nothing matched, return empty string
-      return "";
-  }
-
-void clearAllPaths(void) {
-  digitalWrite(RESETPIN, HIGH);
-  delayMicroseconds(600);
-  digitalWrite(RESETPIN, LOW);
-
-  for (int i = 0; i < MAX_BRIDGES; i++) {
-    path[i].node1 = 0;
-    path[i].node2 = 0;
-    path[i].net = 0;
     }
-  }
 
-// Helper function to find a DefineInfo by its define value
-const DefineInfo* findDefineInfoByValue(int defineValue) {
-  // Check special defines first
-  for (size_t i = 0; i < sizeof(specialDefines) / sizeof(specialDefines[0]); i++) {
-    if (specialDefines[i].defineValue == defineValue) {
-      return &specialDefines[i];
+  const char* defNanoToCharShort[35] = {
+      "VIN",  "D0",   "D1",   "D2",     "D3",     "D4",       "D5",     "D6",
+      "D7",   "D8",   "D9",   "D10",    "D11",    "D12",      "D13",    "RESET",
+      "AREF", "A0",   "A1",   "A2",     "A3",     "A4",       "A5",     "A6",
+      "A7",   "RST0", "RST1", "N_GND1", "N_GND0", "NANO_3V3", "NANO_5V" };
+
+  const char* defSpecialToCharShort[49] = {
+      "GND",      "TOP_R",   "BOT_R",   "3V3",       "TOP_GND",  "5V",
+      "DAC_0",    "DAC_1",   "I_POS",   "I_NEG",     "ADC_0",    "ADC_1",
+      "ADC_2",    "ADC_3",   "ADC_4",   "ADC_7",     "UART_Tx",  "UART_Rx",
+      "GP_18",    "GP_19",   "8V_P",    "8V_N",      "MCP_0",    "MCP_1",
+      "MCP_2",    "MCP_3",   "BOT_GND", "EMPTY",     "LOGO_T",   "LOGO_B",
+      "GP_1",     "GP_2",    "GP_3",    "GP_4",      "GP_5",     "GP_6",
+      "GP_7",     "GP_8",    "GPIO_PAD","DAC_PAD",   "ADC_PAD",  "BLDG_TOP",
+      "BLDG_BOT", "BUF_IN",  "BUF_OUT"
+    };
+
+  const char* defNanoToCharLong[35] = {
+      "NANO_VIN",   "NANO_D0",   "NANO_D1",     "NANO_D2",     "NANO_D3",
+      "NANO_D4",    "NANO_D5",   "NANO_D6",     "NANO_D7",     "NANO_D8",
+      "NANO_D9",    "NANO_D10",  "NANO_D11",    "NANO_D12",    "NANO_D13",
+      "NANO_RESET", "NANO_AREF", "NANO_A0",     "NANO_A1",     "NANO_A2",
+      "NANO_A3",    "NANO_A4",   "NANO_A5",     "NANO_A6",     "NANO_A7",
+      "NANO_RST0",  "NANO_RST1", "NANO_N_GND1", "NANO_N_GND0", "NANO_3V3",
+      "NANO_5V" };
+
+  const char* defSpecialToCharLong[49] = {
+      "GND",         "TOP_RAIL",     "BOTTOM_RAIL",  "SUPPLY_3V3",
+      "TOP_GND",     "SUPPLY_5V",    "DAC0",         "DAC1",
+      "ISENSE_PLUS", "ISENSE_MINUS", "ADC0",         "ADC1",
+      "ADC2",        "ADC3",         "ADC4",         "ADC7",
+      "RP_UART_Tx",  "RP_UART_Rx",   "RP_GPIO_18",   "RP_GPIO_19",
+      "8V_POS",      "8V_NEG",       "MCP_GPIO_0",   "MCP_GPIO_1",
+      "MCP_GPIO_2",  "MCP_GPIO_3",   "BOTTOM_GND",   "EMPTY_NET",
+      "LOGO_TOP",    "LOGO_BOTTOM",  "RP_GPIO_1",    "RP_GPIO_2",
+      "RP_GPIO_3",   "RP_GPIO_4",    "RP_GPIO_5",    "RP_GPIO_6",
+      "RP_GPIO_7",   "RP_GPIO_8",    "GPIO_PAD",     "DAC_PAD",
+      "ADC_PAD",     "BUILDING_TOP", "BUILDING_BOT", "BUFFER_IN",
+      "BUFFER_OUT"
+    };
+
+  const char* emptyNet[3] = { "EMPTY_NET", "?" };
+
+  char same[12] = "           ";
+  const char* definesToChar(int defined,
+                int longOrShort) // converts the internally used #defined numbers
+    // into human readable strings
+    {
+    // Try finding the define using our lookup function
+    const DefineInfo* info = findDefineInfoByValue(defined);
+    if (info) {
+      return (longOrShort == 1) ? info->longName : info->shortName;
+      }
+
+    // If not found, fall back to the old approach
+    if (defined >= 70 && defined <= 99) {
+      // Fallback to index-based lookup if define not found in array
+      int index = defined - 69;
+      if (index >= 0 && index < 31) {
+        return (longOrShort == 1) ? defNanoToCharLong[index] : defNanoToCharShort[index];
+        }
+      } else if (defined >= 100 && defined <= 148) {
+        // Fallback to index-based lookup if define not found in array
+        int index = defined - 100;
+        if (index >= 0 && index < 49) {
+          return (longOrShort == 1) ? defSpecialToCharLong[index] : defSpecialToCharShort[index];
+          }
+        } else if (defined == EMPTY_NET) {
+          return emptyNet[0];
+          } else {
+          // Serial.println("!!!!!!!!!!!!!!!!!!!!");
+          itoa(defined, same, 10);
+          return same;
+          }
+
+        // If nothing matched, return empty string
+        return "";
+    }
+
+  void clearAllPaths(void) {
+    digitalWrite(RESETPIN, HIGH);
+    delayMicroseconds(600);
+    digitalWrite(RESETPIN, LOW);
+
+    for (int i = 0; i < MAX_BRIDGES; i++) {
+      path[i].node1 = 0;
+      path[i].node2 = 0;
+      path[i].net = 0;
       }
     }
 
-  // Check nano defines if not found in special defines
-  for (size_t i = 0; i < sizeof(nanoDefines) / sizeof(nanoDefines[0]); i++) {
-    if (nanoDefines[i].defineValue == defineValue) {
-      return &nanoDefines[i];
+  // Helper function to find a DefineInfo by its define value
+  const DefineInfo* findDefineInfoByValue(int defineValue) {
+    // Check special defines first
+    for (size_t i = 0; i < sizeof(specialDefines) / sizeof(specialDefines[0]); i++) {
+      if (specialDefines[i].defineValue == defineValue) {
+        return &specialDefines[i];
+        }
       }
+
+    // Check nano defines if not found in special defines
+    for (size_t i = 0; i < sizeof(nanoDefines) / sizeof(nanoDefines[0]); i++) {
+      if (nanoDefines[i].defineValue == defineValue) {
+        return &nanoDefines[i];
+        }
+      }
+
+    // Return null if not found
+    return nullptr;
     }
 
-  // Return null if not found
-  return nullptr;
-  }
+  // Test function for verifying the struct-based define lookup
+  void testDefineInfoStructs() {
+    Serial.println("\n\r--- Testing DefineInfo structs ---");
 
-// Test function for verifying the struct-based define lookup
-void testDefineInfoStructs() {
-  Serial.println("\n\r--- Testing DefineInfo structs ---");
+    // Test a few examples from specialDefines
+    Serial.print("GND(100) Short: ");
+    Serial.println(specialDefines[0].shortName);
+    Serial.print("GND(100) Long: ");
+    Serial.println(specialDefines[0].longName);
+    Serial.print("GND(100) Value: ");
+    Serial.println(specialDefines[0].defineValue);
 
-  // Test a few examples from specialDefines
-  Serial.print("GND(100) Short: ");
-  Serial.println(specialDefines[0].shortName);
-  Serial.print("GND(100) Long: ");
-  Serial.println(specialDefines[0].longName);
-  Serial.print("GND(100) Value: ");
-  Serial.println(specialDefines[0].defineValue);
+    // Test lookup by define value
+    const DefineInfo* info = findDefineInfoByValue(ADC7);
+    if (info) {
+      Serial.print("Found by value ADC7(115): ");
+      Serial.print(info->shortName);
+      Serial.print(" / ");
+      Serial.println(info->longName);
+      }
 
-  // Test lookup by define value
-  const DefineInfo* info = findDefineInfoByValue(ADC7);
-  if (info) {
-    Serial.print("Found by value ADC7(115): ");
-    Serial.print(info->shortName);
-    Serial.print(" / ");
-    Serial.println(info->longName);
+    // Test ADC7
+    Serial.print("ADC7(115) Short: ");
+    Serial.println(definesToChar(ADC7, 0));
+    Serial.print("ADC7(115) Long: ");
+    Serial.println(definesToChar(ADC7, 1));
+
+    // Test a few examples from nanoDefines
+    Serial.print("NANO_D5(75) Short: ");
+    Serial.println(definesToChar(NANO_D5, 0));
+    Serial.print("NANO_D5(75) Long: ");
+    Serial.println(definesToChar(NANO_D5, 1));
+
+    // Test finding a nonexistent value
+    if (!findDefineInfoByValue(999)) {
+      Serial.println("Successfully returned null for nonexistent value 999");
+      }
+
+    Serial.println("--- End of test ---\n\r");
     }
 
-  // Test ADC7
-  Serial.print("ADC7(115) Short: ");
-  Serial.println(definesToChar(ADC7, 0));
-  Serial.print("ADC7(115) Long: ");
-  Serial.println(definesToChar(ADC7, 1));
-
-  // Test a few examples from nanoDefines
-  Serial.print("NANO_D5(75) Short: ");
-  Serial.println(definesToChar(NANO_D5, 0));
-  Serial.print("NANO_D5(75) Long: ");
-  Serial.println(definesToChar(NANO_D5, 1));
-
-  // Test finding a nonexistent value
-  if (!findDefineInfoByValue(999)) {
-    Serial.println("Successfully returned null for nonexistent value 999");
-    }
-
-  Serial.println("--- End of test ---\n\r");
-  }
-
-/*
+  /*
 
 
-void checkDoNotIntersects(); //make sure none of the nodes on the net violate
-doNotIntersect rules, exit and warn
+  void checkDoNotIntersects(); //make sure none of the nodes on the net violate
+  doNotIntersect rules, exit and warn
 
-void combineNets(); //combine those 2 nets into a single net, probably call
-addNodesToNet and deleteNet and just expand the lower numbered one. Should we
-shift nets down? or just reuse the newly emply space for the next net
+  void combineNets(); //combine those 2 nets into a single net, probably call
+  addNodesToNet and deleteNet and just expand the lower numbered one. Should we
+  shift nets down? or just reuse the newly emply space for the next net
 
-void deleteNet(); //make sure to check special function nets and clear
-connections to it
+  void deleteNet(); //make sure to check special function nets and clear
+  connections to it
 
-void deleteBridge();
+  void deleteBridge();
 
-void deleteNode(); //disconnects everything connected to that one node
+  void deleteNode(); //disconnects everything connected to that one node
 
-void checkIfNodesAreABridge(); //if both of those nodes make up a
-memberBridge[][] pair. if not, warn and exit
+  void checkIfNodesAreABridge(); //if both of those nodes make up a
+  memberBridge[][] pair. if not, warn and exit
 
-void deleteBridgeAndShift(); //shift the remaining bridges over so they're left
-justified and we don't need to search the entire memberBridges[] every time
+  void deleteBridgeAndShift(); //shift the remaining bridges over so they're left
+  justified and we don't need to search the entire memberBridges[] every time
 
-void deleteNodesAndShift(); //shift the remaining nodes over so they're left
-justified and we don't need to search the entire memberNodes[MAX_NODES] every
-time
+  void deleteNodesAndShift(); //shift the remaining nodes over so they're left
+  justified and we don't need to search the entire memberNodes[MAX_NODES] every
+  time
 
-void deleteAllBridgesConnectedToNode(); //search bridges for node and delete any
-that contain it
+  void deleteAllBridgesConnectedToNode(); //search bridges for node and delete any
+  that contain it
 
-void deleteNodesAndShift(); //shift the remaining nodes over so they're left
-justified and we don't need to search the entire memberNodes[MAX_NODES] every
-time
+  void deleteNodesAndShift(); //shift the remaining nodes over so they're left
+  justified and we don't need to search the entire memberNodes[MAX_NODES] every
+  time
 
-void checkForSplitNets(); //if the newly deleted nodes wold split a net into 2
-or more non-intersecting nets, we'll need to split them up. return
-numberOfNewNets check memberBridges[][]
-https://www.geeksforgeeks.org/check-removing-given-edge-disconnects-given-graph/#
+  void checkForSplitNets(); //if the newly deleted nodes wold split a net into 2
+  or more non-intersecting nets, we'll need to split them up. return
+  numberOfNewNets check memberBridges[][]
+  https://www.geeksforgeeks.org/check-removing-given-edge-disconnects-given-graph/#
 
-void copySplitNetIntoNewNet(); //find which nodes and bridges belong in a new
-net
+  void copySplitNetIntoNewNet(); //find which nodes and bridges belong in a new
+  net
 
-void deleteNodesAndShift(); //delete the nodes and bridges that were copied from
-the original net
+  void deleteNodesAndShift(); //delete the nodes and bridges that were copied from
+  the original net
 
-void leftShiftNodesBridgesNets();*/
+  void leftShiftNodesBridgesNets();*/

@@ -58,7 +58,3 @@ in the big main menu `switch` statement in `main.cpp`.
 
 [The code](https://github.com/Architeuthis-Flux/JumperlessV5/blob/6fd4fcba572c4b524435ec36c8901adcedbf52c6/RP23V50firmware/src/Apps.cpp#L141) for `Custom App` is an example of the calls available with comments telling you what's going on. There are tons more, but what's show there are the higher-level helper functions that should roughly do what they say they're doing.
 
-
-
-
-

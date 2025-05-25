@@ -3836,7 +3836,7 @@ void probeLEDhandler(void) {
   }
 
 int lastPrintedNet = -1;
-int highlightNets(int probeReading, int encoderNetHighlighted) {
+int highlightNets(int probeReading, int encoderNetHighlighted, int print) {
   // Serial.print("justReadProbe = ");
      // Serial.println(probeReading);
      // delay(100);
@@ -3856,68 +3856,99 @@ if (encoderNetHighlighted != -1) {
     highlightedNet = netHighlighted;
     // Serial.print("netHighlighted = ");
     // Serial.println(netHighlighted);
-      Serial.print("\r                                           \r");
+      if (print == 1) {
+        Serial.print("\r                                           \r");
+      }
       clearColorOverrides(1,1,0);
       brightenedRail = -1;
+      lastPrintedNet = -1;
     switch (netHighlighted) {
       case 0:
         break;
       case 1:
         if (lastPrintedNet != netHighlighted) {
-          Serial.print("Net Highlighted = GND");
+          if (print == 1) {
+            Serial.print("Net Highlighted = GND");
+          }
           lastPrintedNet = netHighlighted;
           }
         brightenedRail = 1;
         break;
       case 2:
         if (lastPrintedNet != netHighlighted) {
-          Serial.print("Net Highlighted = Top Rail  ");
           lastPrintedNet = netHighlighted;
+          if (print == 1) {
+            Serial.print("Net Highlighted = Top Rail  ");
+          
+          
           
 
         Serial.print(railVoltage[0]);
         Serial.print(" V");
+          }
         }
         brightenedRail = 0;
         break;
       case 3:
         if (lastPrintedNet != netHighlighted) {
-          Serial.print("Net Highlighted = Bottom Rail  ");
           lastPrintedNet = netHighlighted;
+          if (print == 1) {
+            Serial.print("Net Highlighted = Bottom Rail  ");
+         
+          
           
 
         Serial.print(railVoltage[1]);
         Serial.print(" V");
+          }
         }
         brightenedRail = 2;
         break;
       case 4:
         if (lastPrintedNet != netHighlighted) {
-          Serial.print("Net Highlighted = DAC 0  ");
-   
+         
+        DACcolorOverride0 = -2;
+        DACcolorOverride1 = 0x000000;
+        if (print == 1) {
+    Serial.print("Net Highlighted = DAC 0  ");
         Serial.print(dacOutput[0]);
         Serial.print(" V");
+        }
           lastPrintedNet = netHighlighted;
           }   
         break;
       case 5:
         if (lastPrintedNet != netHighlighted) {
-          Serial.print("Net Highlighted = DAC 1  ");
-          Serial.print(dacOutput[1]);
-          Serial.print(" V");
+          
+          DACcolorOverride0 = 0x000000;
+          DACcolorOverride1 = -2;
+          if (print == 1) {
+            Serial.print("Net Highlighted = DAC 1  ");
+            Serial.print(dacOutput[1]);
+            Serial.print(" V");
+          }
           lastPrintedNet = netHighlighted;
           }
         break;
       default:
-       
+      {
+
+        if (print == 1) {
           Serial.print("\r                                          \r");
+        }
+           if (netHighlighted > 0) {
+            int length = 0;
+            if (print == 1) {
           Serial.print("Net ");
           Serial.print(netHighlighted);
           Serial.print("\t ");
           Serial.print("row ");
-          int length = printNodeOrName(brightenedNode);
+          length = printNodeOrName(brightenedNode);
+            
+       
           for (int i = 0; i < 8-length; i++) {
             Serial.print(" ");
+            }
             }
           //Serial.print("  \t ");
           int specialPrint = 0;
@@ -3927,12 +3958,15 @@ if (encoderNetHighlighted != -1) {
         if (adc != -1) {
           ADCcolorOverride0 = -2;
           ADCcolorOverride1 = -2;
-          Serial.print(" ADC ");
-          Serial.print(adc);
-          Serial.print("   ");
+          if (print == 1) {
+            Serial.print(" ADC ");
+            Serial.print(adc);
+            Serial.print("   ");
+          
 
           Serial.print(readAdcVoltage(adc, 32));
           Serial.println(" V");
+          }
           specialPrint = 1;
           }
 
@@ -3941,6 +3975,7 @@ if (encoderNetHighlighted != -1) {
           GPIOcolorOverride0 = -2;
           GPIOcolorOverride1 = -2;
           
+          if (print == 1) {
             Serial.print(" GPIO ");
             Serial.print(gpioInputNumber + 1);
             Serial.print(" input ");
@@ -3961,6 +3996,7 @@ if (encoderNetHighlighted != -1) {
             }
           
           Serial.println();
+          }
           specialPrint = 1;
           }
         int gpioOutputNumber = anyGpioOutputConnected(netHighlighted);
@@ -3968,6 +4004,7 @@ if (encoderNetHighlighted != -1) {
           GPIOcolorOverride0 = -2;
           GPIOcolorOverride1 = -2;
           
+          if (print == 1) {
             Serial.print(" GPIO ");
             Serial.print(gpioOutputNumber + 1);
             Serial.print(" output ");
@@ -3978,7 +4015,7 @@ if (encoderNetHighlighted != -1) {
             Serial.print("high");
             }
           Serial.println();
-
+          }
           specialPrint = 1;
           
           }
@@ -3989,6 +4026,8 @@ if (encoderNetHighlighted != -1) {
         lastPrintedNet = netHighlighted;
       }
     Serial.flush();
+      }
+      }
    // showLEDsCore2 = 1;
     } else {
     //clearColorOverrides(1,1,0);

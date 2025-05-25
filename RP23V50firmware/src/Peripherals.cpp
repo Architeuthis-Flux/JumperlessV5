@@ -800,7 +800,9 @@ void readGPIO(void) {
                     // gpioReadingColors[i] = HsvToRaw(hsv); //this is handled in showRowAnimations() in Graphics.cpp
 
                     //  lightUpNet(gpioNet[i]);
+
                     gpioReadingColors[i] = 0x040408; //just in case it isn't
+
                     break;
                   }
               } else {

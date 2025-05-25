@@ -331,29 +331,34 @@ struct NamedColor {
   const char* name;
   uint8_t hueStart;  // Start of hue range (0-255)
   uint8_t hueEnd;    // End of hue range (0-255)
+  int termColor256;
+  int termColor16;
   };
 
 // Reference palette
 static const NamedColor colorNames[] = {
-    {0xFF0000, 0x400000, "red       ", 253, 12},  // Red wraps around 0
-    {0xFFA500, 0x401000, "orange    ", 13, 28},
-    {0xFFBF00, 0x403000, "amber     ", 29, 35},
-    {0xFFFF00, 0x404000, "yellow    ", 36, 60},
-    {0x7FFF00, 0x104000, "chartreuse", 61, 72},
-    {0x00FF00, 0x003000, "green     ", 73, 94},
-    {0x2E8B57, 0x042040, "seafoam   ", 95, 109},
-    {0x00FFFF, 0x004040, "cyan      ", 110, 135},
-    {0x0000FF, 0x000040, "blue      ", 136, 164},
-    {0x4169E1, 0x050040, "royal blue", 165, 175},
-    {0x8A2BE2, 0x100040, "indigo    ", 176, 190},
-    {0x800080, 0x200040, "violet    ", 191, 205},
-    {0x800080, 0x200040, "purple    ", 206, 215},
-    {0xFFC0CB, 0x400010, "pink      ", 216, 235},
-    {0xFF00FF, 0x400020, "magenta   ", 236, 252},
-    {0xFFFFFF, 0x404040, "white     ", 0, 0},    // Special case, no hue range
-    {0x000000, 0x000000, "black     ", 0, 0},    // Special case, no hue range
-    {0x808080, 0x202020, "grey      ", 0, 0}     // Special case, no hue range
+    {0xFF0000, 0x400000, "red       ", 253, 12, 196, 31},  // Red wraps around 0
+    {0xFFA500, 0x401000, "orange    ", 13, 28, 208, 91},
+    {0xFFBF00, 0x403000, "amber     ", 29, 35, 214, 33},
+    {0xFFFF00, 0x404000, "yellow    ", 36, 60, 226, 93},
+    {0x7FFF00, 0x104000, "chartreuse", 61, 72, 154, 92},
+    {0x00FF00, 0x003000, "green     ", 73, 94, 82, 32},
+    {0x2E8B57, 0x042040, "seafoam   ", 95, 109, 84, 96},
+    {0x00FFFF, 0x004040, "cyan      ", 110, 135, 86, 96},
+    {0x0000FF, 0x000040, "blue      ", 136, 164, 33, 36},
+    {0x4169E1, 0x050040, "royal blue", 165, 175, 27, 34},
+    {0x8A2BE2, 0x100040, "indigo    ", 176, 190, 21, 34},
+    {0x800080, 0x200040, "violet    ", 191, 205, 57, 35},
+    {0x800080, 0x200040, "purple    ", 206, 215, 12, 35},
+    {0xFFC0CB, 0x400010, "pink      ", 216, 235, 164, 95},
+    {0xFF00FF, 0x400020, "magenta   ", 236, 252, 198, 95},
+    {0xFFFFFF, 0x404040, "white     ", 0, 0, 15, 97},    // Special case, no hue range
+    {0x000000, 0x000000, "black     ", 0, 0, 0, 30},    // Special case, no hue range
+    {0x808080, 0x202020, "grey      ", 0, 0, 8, 37}     // Special case, no hue range
   };
+
+
+
 
 // Helper: get the index of the closest palette color for a given hue
 int closestPaletteHueIdx(int hue) {
@@ -402,6 +407,17 @@ int closestPaletteHueIdx(int hue) {
       }
     }
   return minIdx;
+  }
+int colorToVT100(uint32_t color, int colorDepth) {
+  rgbColor input = unpackRgb(color);
+  hsvColor inputHsv = RgbToHsv(input);
+  int hue = inputHsv.h;
+  int hueIdx = closestPaletteHueIdx(hue);
+  if (colorDepth == 256) {
+    return colorNames[hueIdx].termColor256;
+    } else {
+    return colorNames[hueIdx].termColor16;
+    }
   }
 
 char* colorToName(uint32_t color, int length)
@@ -548,6 +564,7 @@ char* colorToName(int hue, int length) {
   // Serial.print("\n\n\rhueVersion: ");
   // Serial.print(hue);
   // Special case: black, white, grey
+  hue = (hue) % 255;
   if (hue < 0) return colorToName(0x000000, length); // fallback
 
   // Find the color for this hue using direct range matching
@@ -1499,16 +1516,16 @@ void showSavedColors(int slot) {
   // leds.show();
   }
 
-  void clearChangedNetColors(int saveToFile) {
-    for (int i = 0; i < MAX_NETS; i++) {
-      changedNetColors[i].net = 0;
-      changedNetColors[i].color = 0x000000;
-      changedNetColors[i].node1 = 0;
-      changedNetColors[i].node2 = 0;
+void clearChangedNetColors(int saveToFile) {
+  for (int i = 0; i < MAX_NETS; i++) {
+    changedNetColors[i].net = 0;
+    changedNetColors[i].color = 0x000000;
+    changedNetColors[i].node1 = 0;
+    changedNetColors[i].node2 = 0;
     }
-    if (saveToFile == 1) {
-      saveChangedNetColorsToFile(netSlot, 0);
-      }
+  if (saveToFile == 1) {
+    saveChangedNetColorsToFile(netSlot, 0);
+    }
   }
 
 
@@ -1522,12 +1539,12 @@ int removeChangedNetColors(int node, int saveToFile) {
       changedNetColors[i].node2 = 0;
       ret = 1;
       }
-  }
+    }
   if (saveToFile == 1 && ret == 1) {
     saveChangedNetColorsToFile(netSlot, 0);
     }
   return ret;
-}
+  }
 
 int checkChangedNetColors(int netIndex) {
   bool nodeFound = false;
@@ -1541,10 +1558,10 @@ int checkChangedNetColors(int netIndex) {
     }
 
 
-  for (int i = 0; i < numberOfNets+5; i++) {
+  for (int i = 0; i < numberOfNets + 5; i++) {
     nodeFound = false;
     if (loop == 0) {
-     i = netIndex;
+      i = netIndex;
       }
 
 
@@ -1552,9 +1569,9 @@ int checkChangedNetColors(int netIndex) {
       if (net[i].nodes[k] <= 0) {
         break;
         }
-        if (nodeFound == true) {
-          break;
-          }
+      if (nodeFound == true) {
+        break;
+        }
       if (net[i].nodes[k] > 0) {
 
         for (int j = 5; j < numberOfNets; j++) {
@@ -1573,7 +1590,7 @@ int checkChangedNetColors(int netIndex) {
                   }
 
                 if (net[i].nodes[l] > 0) {
-                    if (net[i].nodes[l] == changedNetColors[j].node2 && changedNetColors[j].node2 > 0) {
+                  if (net[i].nodes[l] == changedNetColors[j].node2 && changedNetColors[j].node2 > 0) {
                     nodeFound = true;
                     changedNetColorIndex = j;
                     nodeNetIndex = k;
@@ -1608,39 +1625,39 @@ int checkChangedNetColors(int netIndex) {
       //struct changedNetColor tempChangedNetColor = changedNetColors[i];
 
       if (changedNetColorIndex != i) {
-          //changedNetColors[i] = changedNetColors[changedNetColorIndex];
-          changedNetColors[i].net = i;
-          changedNetColors[i].color = changedNetColors[changedNetColorIndex].color;
-          changedNetColors[i].node1 = changedNetColors[changedNetColorIndex].node1;
-          changedNetColors[i].node2 = changedNetColors[changedNetColorIndex].node2;
-          //changedNetColors[i].net = i;
-          changedNetColors[changedNetColorIndex].net = -1;
-          changedNetColors[changedNetColorIndex].color = 0x000000;
-          changedNetColors[changedNetColorIndex].node1 = 0;
-          changedNetColors[changedNetColorIndex].node2 = 0;
+        //changedNetColors[i] = changedNetColors[changedNetColorIndex];
+        changedNetColors[i].net = i;
+        changedNetColors[i].color = changedNetColors[changedNetColorIndex].color;
+        changedNetColors[i].node1 = changedNetColors[changedNetColorIndex].node1;
+        changedNetColors[i].node2 = changedNetColors[changedNetColorIndex].node2;
+        //changedNetColors[i].net = i;
+        changedNetColors[changedNetColorIndex].net = -1;
+        changedNetColors[changedNetColorIndex].color = 0x000000;
+        changedNetColors[changedNetColorIndex].node1 = 0;
+        changedNetColors[changedNetColorIndex].node2 = 0;
 
-      //     Serial.print("swapped changedNetColors[");
-      //     Serial.print(changedNetColorIndex);
-      //     Serial.print("] with changedNetColors[");
-      //     Serial.print(i);
-      //     Serial.println("]");
+        //     Serial.print("swapped changedNetColors[");
+        //     Serial.print(changedNetColorIndex);
+        //     Serial.print("] with changedNetColors[");
+        //     Serial.print(i);
+        //     Serial.println("]");
 
 
-      // Serial.print("node found: ");
-      // Serial.println(i);
-      // Serial.print("changedNetColors[");
-      // Serial.print(i);
-      // Serial.print("].node1: ");
-      // Serial.println(changedNetColors[i].node1);
-      // Serial.print("net[");
-      // Serial.print(i);
-      // Serial.print("].node: ");
-      // Serial.println(net[i].nodes[nodeNetIndex]);
-      // Serial.print("changedNetColors[");
-      //   Serial.print(i);
-      // Serial.print("].net: ");
-      // Serial.println(changedNetColors[i].net);
-      // Serial.println();
+        // Serial.print("node found: ");
+        // Serial.println(i);
+        // Serial.print("changedNetColors[");
+        // Serial.print(i);
+        // Serial.print("].node1: ");
+        // Serial.println(changedNetColors[i].node1);
+        // Serial.print("net[");
+        // Serial.print(i);
+        // Serial.print("].node: ");
+        // Serial.println(net[i].nodes[nodeNetIndex]);
+        // Serial.print("changedNetColors[");
+        //   Serial.print(i);
+        // Serial.print("].net: ");
+        // Serial.println(changedNetColors[i].net);
+        // Serial.println();
         }
 
 
@@ -1652,11 +1669,11 @@ int checkChangedNetColors(int netIndex) {
       // //nodeFound = true;
       //break;
       } else {
-        changedNetColors[i].net = -1;
-        changedNetColors[i].color = 0x000000;
-        changedNetColors[i].node1 = 0;
-        changedNetColors[i].node2 = 0;
-        }
+      changedNetColors[i].net = -1;
+      changedNetColors[i].color = 0x000000;
+      changedNetColors[i].node1 = 0;
+      changedNetColors[i].node2 = 0;
+      }
     if (loop == 0) {
       break;
       }
@@ -1670,7 +1687,7 @@ int checkChangedNetColors(int netIndex) {
 
 void assignNetColors(int preview) {
   // numberOfNets = 60;
-  
+
 
   uint16_t colorDistance = (254 / (numberOfShownNets));
   if (numberOfShownNets < 4) {
@@ -1986,7 +2003,7 @@ void assignNetColors(int preview) {
 
       if (changedNetColors[i].net == i) {
         net[i].color = unpackRgb(changedNetColors[i].color);
-        netColors[i] = net[i].color; 
+        netColors[i] = net[i].color;
         continue;
         //break;
         }
@@ -3237,6 +3254,7 @@ rgbColor highlightedOriginalColor;
 rgbColor brightenedOriginalColor;
 rgbColor warningOriginalColor;
 
+int highlightedRow = -1;
 
 
 void clearHighlighting(void) {
@@ -3256,6 +3274,7 @@ void clearHighlighting(void) {
   warningRow = -1;
   brightenedRail = -1;
   brightenedNode = -1;
+  highlightedRow = -1;
 
   assignNetColors();
   }
@@ -3266,122 +3285,126 @@ int lastNodeHighlighted = -1;
 int lastNetPrinted = -1;
 
 int currentHighlightedNode = 0;
-int currentHighlightedNet = 0;
+int currentHighlightedNet = -2;
 
-int encoderNetHighlight(void) {
+int encoderNetHighlight(int print) {
   int lastDivider = rotaryDivider;
-  rotaryDivider = 1;
+  rotaryDivider = 4;
   int returnNode = -1;
 
   // if (inClickMenu == 1)
   //   return -1;
   //rotaryEncoderStuff();
   if (encoderDirectionState == UP) {
+    //Serial.println(encoderPosition);
     encoderDirectionState = NONE;
     if (highlightedNet < 0) {
-      highlightedNet = 0;
-      brightenedNet = 0;
+      highlightedNet = -1;
+      brightenedNet = -1;
       currentHighlightedNode = 0;
-    }
+      }
     currentHighlightedNode++;
     if (net[highlightedNet].nodes[currentHighlightedNode] <= 0) {
       currentHighlightedNode = 0;
       highlightedNet++;
       if (highlightedNet > numberOfNets - 1) {
-        highlightedNet = 0;
-        brightenedNet = 0;
+        highlightedNet = -2;
+        brightenedNet = -2;
         currentHighlightedNode = 0;
-      }
+        }
       brightenedNet = highlightedNet;
-      brightenedNode = net[highlightedNet].nodes[currentHighlightedNode ];
+      brightenedNode = net[highlightedNet].nodes[currentHighlightedNode];
       if (highlightedNet != 0 && net[highlightedNet].nodes[currentHighlightedNode] != 0) {
         returnNode = net[highlightedNet].nodes[currentHighlightedNode];
-      }
-      highlightNets(0, highlightedNet);
+        }
+      highlightNets(0, highlightedNet, print);
       // Serial.print("highlightedNet: ");
       // Serial.println(highlightedNet);
       // Serial.flush();
-    }
+      }
     if (highlightedNet > numberOfNets - 1) {
-      highlightedNet = 0;
-      brightenedNet = 0;
+      highlightedNet = -2;
+      brightenedNet = -2;
       currentHighlightedNode = 0;
-    }
+      }
     brightenedNet = highlightedNet;
     brightenedNode = net[highlightedNet].nodes[currentHighlightedNode];
     if (highlightedNet != 0 && net[highlightedNet].nodes[currentHighlightedNode] != 0) {
       returnNode = net[highlightedNet].nodes[currentHighlightedNode];
       }
-      // Serial.print("returnNode: ");
-      // Serial.println(returnNode);
-      // Serial.flush();
-      highlightNets(0, highlightedNet);
-      // Serial.print("highlightedNet: ");
-      // Serial.println(highlightedNet);
-      // Serial.flush();
-      //assignNetColors();
-     // assignNetColors();
-    
-  } else if (encoderDirectionState == DOWN) {
-    encoderDirectionState = NONE;
-    if (highlightedNet == 0) {  
+    // Serial.print("returnNode: ");
+    // Serial.println(returnNode);
+    // Serial.flush();
+    highlightNets(0, highlightedNet, print);
+    // Serial.print("highlightedNet: ");
+    // Serial.println(highlightedNet);
+    // Serial.flush();
+    //assignNetColors();
+   // assignNetColors();
 
-      highlightedNet = numberOfNets;
-      brightenedNet = numberOfNets;
-    }
+    } else if (encoderDirectionState == DOWN) {
+      //Serial.println(encoderPosition);
+      encoderDirectionState = NONE;
+      if (highlightedNet == 0) {
 
-    currentHighlightedNode--;
-
-    if (currentHighlightedNode < 0) {
-      highlightedNet--;
-      if (highlightedNet < 0) {
         highlightedNet = numberOfNets;
         brightenedNet = numberOfNets;
-      }
-      currentHighlightedNode = MAX_NODES-1;
-      while (net[highlightedNet].nodes[currentHighlightedNode] <= 0) {
-        currentHighlightedNode--;
-        if (currentHighlightedNode < 0) {
-          highlightedNet--;
-          if (highlightedNet < 0) {
-            highlightedNet = numberOfNets;
-            brightenedNet = numberOfNets;
-          }
-          
         }
-      }
-    }
+
+      currentHighlightedNode--;
+
+      if (currentHighlightedNode < 0) {
+        highlightedNet--;
+        if (highlightedNet < 0) {
+          highlightedNet = numberOfNets;
+          brightenedNet = numberOfNets;
+          currentHighlightedNode = 0;
+          }
+        currentHighlightedNode = MAX_NODES - 1;
+        while (net[highlightedNet].nodes[currentHighlightedNode] <= 0) {
+          currentHighlightedNode--;
+          if (currentHighlightedNode < 0) {
+            highlightedNet--;
+            if (highlightedNet < 0) {
+              highlightedNet = numberOfNets;
+              brightenedNet = numberOfNets;
+              currentHighlightedNode = 0;
+              }
+
+            }
+          }
+        }
       brightenedNet = highlightedNet;
-      brightenedNode = net[highlightedNet].nodes[currentHighlightedNode]; 
+      brightenedNode = net[highlightedNet].nodes[currentHighlightedNode];
       if (highlightedNet != 0 && net[highlightedNet].nodes[currentHighlightedNode] != 0) {
         returnNode = net[highlightedNet].nodes[currentHighlightedNode];
-      }
+        }
       // Serial.print("returnNode: ");
       // Serial.println(returnNode);
       // Serial.flush();
-      highlightNets(0, highlightedNet);
+      highlightNets(0, highlightedNet, print);
       // Serial.print("highlightedNet: ");
       // Serial.println(highlightedNet);
       // Serial.flush();
       // assignNetColors();
-  
-    
-    
-  }
-  if (returnNode != lastNodeHighlighted) {
-   // b.clear();
-  // b.printRawRow(0b00000100, lastNodeHighlighted-2, 0x000000, 0x000000);
-  // b.printRawRow(0b00000100, lastNodeHighlighted, 0x0000000, 0x000000);
 
-  // b.printRawRow(0b00000100, returnNode-2, 0x0f0f00, 0x000000);
-  // b.printRawRow(0b00000100, returnNode, 0x0f0f00, 0x000000);
 
-  lastNodeHighlighted = returnNode;
- // showLEDsCore2 = 2;
+
+      }
+    if (returnNode != lastNodeHighlighted) {
+      // b.clear();
+     // b.printRawRow(0b00000100, lastNodeHighlighted-2, 0x000000, 0x000000);
+     // b.printRawRow(0b00000100, lastNodeHighlighted, 0x0000000, 0x000000);
+
+     // b.printRawRow(0b00000100, returnNode-2, 0x0f0f00, 0x000000);
+     // b.printRawRow(0b00000100, returnNode, 0x0f0f00, 0x000000);
+
+      lastNodeHighlighted = returnNode;
+      // showLEDsCore2 = 2;
+      }
+    //rotaryDivider = lastDivider;
+    return returnNode;
   }
-  rotaryDivider = lastDivider;
-  return returnNode;
-}
 
 
 

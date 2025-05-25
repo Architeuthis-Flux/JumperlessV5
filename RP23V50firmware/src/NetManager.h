@@ -31,7 +31,7 @@ extern const char *emptyNet[];
 extern const DefineInfo specialDefines[];
 extern const DefineInfo nanoDefines[];
 
-int findNodeInNet(uint16_t node);
+int findNodeInNet(int node);
 
 void writeJSONtoFile();
 

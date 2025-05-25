@@ -105,7 +105,10 @@ void playDoom(void);
 void showArray(uint8_t* array, int size);
 void initRowAnimations (void);
 void showAllRowAnimations(void);
-void showRowAnimation(int row, int net);
+void assignRowAnimations(void);
+void showRowAnimation(int net);
+void showRowAnimation(int index, int net);
+void animateBrightenedRow(int net);
 void printGraphicsRow(uint8_t data, int row, uint32_t color = 0xFFFFFF, uint32_t bg = 0xFFFFFF);
 
 void scrollFont(void);

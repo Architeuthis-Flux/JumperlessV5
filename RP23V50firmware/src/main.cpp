@@ -767,7 +767,8 @@ core1passthrough = 1;
       break;
       }
       case 'R': {
-      printSerial1stuff();
+        printWireStatus();
+     // printSerial1stuff();
       //printAllRLEimageData();
       break;
       }

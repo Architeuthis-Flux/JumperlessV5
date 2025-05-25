@@ -322,13 +322,14 @@ char* colorToName(uint32_t color, int length = -1);
 char* colorToName(int hue, int length = -1);
 char* colorToName(rgbColor color, int length = -1);
 void dumpLEDdata(void);
+int colorToVT100(uint32_t color, int colorDepth = 256);
 
 extern unsigned long warningTimeout;
 extern unsigned long warningTimer;
 
 void clearHighlighting(void);
 int brightenNet(int node, int addBrightness = 5);
-int encoderNetHighlight(void);
+int encoderNetHighlight(int print = 1);
 int warnNet(int node);
 void warnNetTimeout(int clearAll = 1);
 

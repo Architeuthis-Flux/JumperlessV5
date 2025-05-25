@@ -1,0 +1,397 @@
+### The *absolute* latest release will always be in the pinned messages in the [V5-beta-testers channel on Discord](https://discord.gg/Zvv7Dvgxa5)
+
+# Here's a super-quick rundown of the how to use the thing:
+
+## The Probe
+First, keep the switch on the probe set to `Select`
+![ProbeSelect](https://github.com/user-attachments/assets/1155f75a-f800-4bc0-ba6d-49e603ad39e2)
+(Measure mode allows the probe tip to be ±9V tolerant and routable like any other node, but as of yet, the code to actually do anything with it is unwritten so it just connects to DAC 0 and outputs 3.3V just like it was in Select mode.)
+
+### To `Connect` rows, click the `Connect` button on the probe
+![connectButton](https://github.com/user-attachments/assets/faedd0af-8ea6-4454-8f33-01ff478bb9e7)
+
+The logo should turn blue and the LEDs on the probe should also change
+![connect](https://github.com/user-attachments/assets/2040417f-64c3-41dd-a3d6-8c900e15445b)
+
+Now any pair of nodes you tap should get connected as you make them. To connect to special functions, tap the corresponding pad near the logo, it will show you a menu on the breadboard to choose them.
+
+To get out of `Connect` mode, press the button again.
+
+### To `Remove` rows, click the `Remove` button
+![removeButton](https://github.com/user-attachments/assets/7fc020b7-f5ce-48f6-99eb-4e9a753a0329)
+and the logo should turn reddish
+![remove](https://github.com/user-attachments/assets/297e169f-f9f5-4151-8fa2-de41ab14492f)
+
+Now you can swipe along the pads or tap them one at a time. Remember it only disconnects that `node` and anything connected to it directly, not *everything* on the `net`. So tapping say, `row 25` that's connected to `GND` won't clear everything connected to `GND`, but tapping the `-` on the rails (for `GND`) would.
+
+The special functions work the same way, tap the pad, pick one, and it will remove it. Click the button again to get out.
+
+# The App
+
+While not strictly necessary, the Jumperless app is a python script that just uses your OS's built in terminal emulator (`screen` on mac/linux, `command prompt` on Windows) to set up a connection with the Jumperless. It does some other stuff too, like bridging Wokwi projects to have them update the Jumperless in real time, updating the fimware when a newer version is available, and uh.. that's pretty much it. 
+(My favorite thing it does is to force non-exlusivity of the port, so you can just leave it connected and flash firmware and it'll reconnect when it's done)
+
+So grab the one for your OS from [releases](https://github.com/Architeuthis-Flux/JumperlessV5/releases/latest), if it doesn't work, there's also the python script you can run.
+
+Or you can use any terminal emulator you like, [iTerm2](https://iterm2.com/), [xTerm](https://invisible-island.net/xterm/), [Tabby](https://github.com/Eugeny/tabby), [Arduino IDE](https://www.arduino.cc/en/software/)'s Serial Monitor, whatever. The TUI is all handled from the Jumperless itself so it just needs something to print text.
+
+
+
+
+## The Click Wheel
+![wheel copy](https://github.com/user-attachments/assets/d69a5425-7131-46e3-8c17-a38819edfc16)
+
+There are two kinds of presses, `click` (short press) and `hold` (long press). In general, a `click` (short) is a `yes`, and a `hold` (long) is a `no`/`back`/`exit`/`whatever`. 
+
+To get to the menu, `click` the button and scroll through the menus, `click` will bring you into that menu, `hold` will take you back one level. If you have trouble reading stuff on the breadboard LEDs, everything is copied to the Serial terminal and the OLED (talked about below), and adjusting the brightness may help; in the menus, it's `Display Options` > `Bright` > `Menu` and then scroll around until you find a level you like, then `click` to confirm. 
+
+# Animated rows
+
+If it's a rail, those are animated and should be a continuous slow pulsing toward the top or bottom depending in the rail.
+
+`ADCs` are green at 0V, and go through the spectrum to red at +5V, and get whiter hot pink toward +8V. Negative voltages are kinda blue/icy and do that same thing with the "cold" colors towards -8V.
+
+`GPIO` as inputs are animated with a white pulsing (this might be broken in that FW release, I'm fixing that right now actually, and will just be purple/white) when floating, red for high, green for low
+
+`GPIO` outputs will be either green or red depending on their state
+
+
+# Idle mode interactions
+
+#### The main thing it there'a a lot more interaction that can be done outside of any particular mode (like not probing and the logo is rainbowy, I'm gonna call this idle mode here until I think of a good name)
+![idle](https://github.com/user-attachments/assets/304d787a-c5f5-4da0-bd95-1a82bcdf83c1)
+
+Here's what's new (all of this is in idle mode):
+
+- Tapping nets highlights them as before, but there's a slightly different animation on the `row` you have selected from the whole `net`
+
+- The click wheel scrolls through highlighting `rows` as if you tapped each one
+
+- With a `row` selected, here's what you can do
+
+  - `connect` button will bring you into probing mode with the highlighted row already selected and then spit you back out to `idle` mode once you've made a connection to another row, or click `connect` again to exit
+
+  - `remove` will briefly turn the `row` reddish `warn` (I need to settle on a good time for this, if it feels too short or long lmk), another `remove` press will remove that `row` (just like in `probe` mode, it removes the `bridge` it's in, so just things that have a direct connection to that `row`, not the whole `net`), if you let it time out without pressing anything, the row will be unhighlighted. TL;DR, double click `remove` to remove, single click to unhighlight.
+
+  - tapping the `building top` pad with something highlighted will open the `color picker`, (note: the color now follows the `row` instead of the net, so it can keep the colors even if you remove nets below it and they shift, this was soooo difficult until I realized I should do it by `node`). 
+       - Also the color assignments are saved to a file for each slot, so they should work after a reboot and when changing `slots`
+       - In the `color picker`, short clicking the probe buttons will zoom in and out, long press will confirm. The click wheel is similar, except you toggle `zoom` and `scroll` modes with short presses and long press to confirm
+       Here's a demo on YouTube
+       [![Here's a demo on YouTube](https://img.youtube.com/vi/shE6NSFrH5w/3.jpg)](https://www.youtube.com/watch?v=shE6NSFrH5w)
+
+  - if the highlighted row is a `measurement` (`gpio input` or `adc`) it will print the state to serial and the oled
+
+  - if the highlighted row is an `output` (`gpio output`, I'll eventually do `dacs` too) clicking the `connect` button will toggle it `high` / `low`. The `remove` button will *just* unhighlight the net (there were some choices here, like make each button assigned to high / low or allow removing them, but this felt like the best way after trying them all). I will eventually add a setting for the toggle repeat rate (set to 500ms now) and a way to set it freewheeling as a clock.
+       - this *one* feature is the reason I did this whole update. And it's worth it because it's sick af.
+
+- when selecting `gpio` in `probing` mode (tap the bottom of the 3 pads by the `logo`), there are shortcuts for `input` and `output`, the blue line on the left is `input`, red square on the right is `output`. Tapping right in the middle of a number will take you to the old written out on the top and bottom selector.
+
+
+# OLED Support
+
+First, get yourself one of these bad boys (literally any of these are fine.)
+
+[![oled Medium](https://github.com/user-attachments/assets/9b7c6957-3b5f-4296-a0ca-1a5517a1b83b)](https://www.amazon.com/dp/B0CDWQ2RWY/)
+https://www.amazon.com/MakerFocus-Display-SSD1306-3-3V-5V-Arduino/dp/B079BN2J8V
+
+![batchone-11](https://github.com/user-attachments/assets/26cc687d-6ebb-40b7-9b72-7eada7a5258c)
+Ignore the really cool LEDs.
+
+They should friction fit into the SBC/SMD/OLED board included with your Jumperless V5.
+![SBCBP-4 copy](https://github.com/user-attachments/assets/43232b06-380d-4e18-9aab-924e45790740)
+
+This should copy basically any text printed on the breadboard, some people have trouble reading text on the breadboard LEDs, which is why I added all this. (if I missed something, let me know, it's a fairly new thing so I've probably forgot to add code for it to print in a bunch of places.)
+
+To connect the data lines to the Jumperless' GPIO 7 and 8, just use the menu option `.` (that's a period). It will try to find the OLED on the I2C bus, after a few failed attempts, it'll automatically disconnect to free up GPIO 7 and 8. 
+
+If you want to use this all the time, there's a config option to connect the OLED on startup. You can just paste these into the main menu:
+```
+`[top_oled] enabled = true;
+```
+and
+```
+`[top_oled] connect_on_boot = true;
+```
+
+# Config file stuff
+
+To change any persistent settings, there's a `config` file. You can read it with `~` and edit settings by copying any of those lines, pasting it back, and changing the value to whatever you want it to be.
+
+```
+copy / edit / paste any of these lines 
+into the main menu to change a setting
+
+Jumperless Config:
+
+
+`[hardware] generation = 5;
+`[hardware] revision = 5;
+`[hardware] probe_revision = 5;
+
+`[dacs] top_rail = 3.50;
+`[dacs] bottom_rail = 3.50;
+`[dacs] dac_0 = 3.30;
+`[dacs] dac_1 = 0.00;
+`[dacs] set_dacs_on_boot = false;
+`[dacs] set_rails_on_boot = true;
+`[dacs] probe_power_dac = 0;
+`[dacs] limit_max = 8.00;
+`[dacs] limit_min = -8.00;
+
+`[debug] file_parsing = false;
+`[debug] net_manager = false;
+`[debug] nets_to_chips = false;
+`[debug] nets_to_chips_alt = false;
+`[debug] leds = false;
+
+`[routing] stack_paths = 0;
+`[routing] stack_rails = 2;
+`[routing] stack_dacs = 0;
+`[routing] rail_priority = 1;
+
+`[calibration] top_rail_zero = 1625;
+`[calibration] top_rail_spread = 20.90;
+`[calibration] bottom_rail_zero = 1637;
+`[calibration] bottom_rail_spread = 20.67;
+`[calibration] dac_0_zero = 1636;
+`[calibration] dac_0_spread = 21.00;
+`[calibration] dac_1_zero = 1641;
+`[calibration] dac_1_spread = 20.80;
+`[calibration] probe_max = 4060;
+`[calibration] probe_min = 16;
+
+`[logo_pads] top_guy = uart_tx;
+`[logo_pads] bottom_guy = uart_rx;
+`[logo_pads] building_pad_top = off;
+`[logo_pads] building_pad_bottom = off;
+
+`[display] lines_wires = wires;
+`[display] menu_brightness = -10;
+`[display] led_brightness = 10;
+`[display] rail_brightness = 55;
+`[display] special_net_brightness = 20;
+`[display] net_color_mode = rainbow;
+
+`[gpio] direction = 0,0,1,1,1,1,1,1,0,1;
+`[gpio] pulls = 0,0,0,0,0,0,0,0,2,2;
+`[gpio] uart_tx_function = off;
+`[gpio] uart_rx_function = passthrough;
+
+`[serial_1] function = passthrough;
+`[serial_1] baud_rate = 115200;
+`[serial_1] print_passthrough = false;
+`[serial_1] connect_on_boot = false;
+`[serial_1] lock_connection = false;
+
+`[serial_2] function = off;
+`[serial_2] baud_rate = 115200;
+`[serial_2] print_passthrough = false;
+`[serial_2] connect_on_boot = false;
+`[serial_2] lock_connection = false;
+
+`[top_oled] enabled = false;
+`[top_oled] i2c_address = 0x3C;
+`[top_oled] width = 128;
+`[top_oled] height = 32;
+`[top_oled] sda_pin = 26;
+`[top_oled] scl_pin = 27;
+`[top_oled] gpio_sda = MCP_2;
+`[top_oled] gpio_scl = MCP_3;
+`[top_oled] sda_row = D2;
+`[top_oled] scl_row = D3;
+`[top_oled] connect_on_boot = false;
+`[top_oled] lock_connection = false;
+
+```
+
+There's also a `help` you can get to by entering `~?`
+```
+         ~ = show current config
+~[section] = show specific section (e.g. ~[routing])
+         ` = enter config settings
+        ~? = show this help
+
+    `reset = reset to defaults   //editor's note: this doesn't clear the calibration or hardware version, to clear that, you can use `reset_all `reset_calib `reset_hardware
+    ~names = show names for settings
+  ~numbers = show numbers for settings
+
+    config setting format (prefix with ` to paste from main menu)
+
+`[serial_1]connect_on_boot = true;
+
+``` 
+
+
+# Crossbar display
+There's a new way to see what the 12 analog crossbar switches are up to, just enter `c` in the menu
+ 
+```
+ Analog Crossbar Array
+
+             chip A                            chip B                            chip C                            chip D 
+     0  1  2  3  4  5  6  7            0  1  2  3  4  5  6  7            0  1  2  3  4  5  6  7            0  1  2  3  4  5  6  7            
+  0 ─█───────────┼────────┼─ AI     0 ────█──┼──────────────┼─ AB0    0 ─┼──┼────────█─────█──── AC0    0 ────█────────█─────┼──── AD0  
+  1 ─█───────────┼────────┼─ AJ     1 ────┼──█──────────────┼─ AB1    1 ─┼──█────────┼─────█──── AC1    1  .  │  .  .  │  .  │  .  AD1  
+  2 ─┼───────────█────────┼─ AB0    2 ────┼──┼──────────────█─ BI     2  │  │  .  .  │  .  │  .  BC0    2  .  │  .  .  │  .  │  .  BD0  
+  3 ─┼───────────┼────────█─ AB1    3  .  │  │  .  .  .  .  │  BJ     3  │  │  .  .  │  .  │  .  BC1    3  .  │  .  .  │  .  │  .  BD1  
+  4  │  .  .  .  │  .  .  │  AC0    4  .  │  │  .  .  .  .  │  BC0    4 ─█──┼────────┼─────┼──── CI     4 ────█────────┼─────┼──── CD0  
+  5  │  .  .  .  │  .  .  │  AC1    5  .  │  │  .  .  .  .  │  BC1    5 ─█──┼────────┼─────┼──── CJ     5  .  │  .  .  │  .  │  .  CD1  
+  6  │  .  .  .  │  .  .  │  AD0    6  .  │  │  .  .  .  .  │  BD0    6 ─┼──┼────────█─────┼──── CD0    6  .  │  .  .  │  .  │  .  DI   
+  7  │  .  .  .  │  .  .  │  AD1    7  .  │  │  .  .  .  .  │  BD1    7  │  │  .  .  │  .  │  .  CD1    7  .  │  .  .  │  .  │  .  DJ   
+  8  │  .  .  .  │  .  .  │  AE0    8  .  │  │  .  .  .  .  │  BE0    8  │  │  .  .  │  .  │  .  CE0    8  .  │  .  .  │  .  │  .  DE0  
+  9  │  .  .  .  │  .  .  │  AK     9  .  │  │  .  .  .  .  │  BE1    9  │  │  .  .  │  .  │  .  CL     9  .  │  .  .  │  .  │  .  DE1  
+ 10  │  .  .  .  │  .  .  │  AF0   10  .  │  │  .  .  .  .  │  BF0   10  │  │  .  .  │  .  │  .  CF0   10 ────┼────────┼─────█──── DF0  
+ 11  │  .  .  .  │  .  .  │  AF1   11  .  │  │  .  .  .  .  │  BK    11  │  │  .  .  │  .  │  .  CF1   11  .  │  .  .  │  .  │  .  DL   
+ 12  │  .  .  .  │  .  .  │  AG0   12  .  │  │  .  .  .  .  │  BG0   12  │  │  .  .  │  .  │  .  CG0   12  .  │  .  .  │  .  │  .  DG0  
+ 13  │  .  .  .  │  .  .  │  AL    13  .  │  │  .  .  .  .  │  BG1   13  │  │  .  .  │  .  │  .  CK    13  .  │  .  .  │  .  │  .  DK   
+ 14  │  .  .  .  │  .  .  │  AH0   14  .  │  │  .  .  .  .  │  BH0   14  │  │  .  .  │  .  │  .  CH0   14 ────┼────────█─────┼──── DH0  
+ 15  │  .  .  .  │  .  .  │  AH1   15  .  │  │  .  .  .  .  │  BL    15  │  │  .  .  │  .  │  .  CH1   15  .  │  .  .  │  .  │  .  DH1  
+     u  1  2  3  4  5  6  7            u  8  9  10 11 12 13 14           u  15 16 17 18 19 20 21           u  22 23 24 25 26 27 28      
+
+
+             chip E                            chip F                            chip G                            chip H 
+     0  1  2  3  4  5  6  7            0  1  2  3  4  5  6  7            0  1  2  3  4  5  6  7            0  1  2  3  4  5  6  7            
+  0 ─────────────█─────█──── AE0    0  .  .  .  │  .  │  .  .  AF0    0 ────█───────────█─────── AG0    0 ────█─────█───────────┼─ AH0  
+  1  .  .  .  .  │  .  │  .  EK     1  .  .  .  │  .  │  .  .  AF1    1  .  │  .  .  .  │  .  .  GL     1  .  │  .  │  .  .  .  │  AH1  
+  2  .  .  .  .  │  .  │  .  BE0    2  .  .  .  │  .  │  .  .  BF0    2  .  │  .  .  .  │  .  .  BG0    2  .  │  .  │  .  .  .  │  BH0  
+  3  .  .  .  .  │  .  │  .  BE1    3  .  .  .  │  .  │  .  .  FK     3  .  │  .  .  .  │  .  .  BG1    3  .  │  .  │  .  .  .  │  HL   
+  4  .  .  .  .  │  .  │  .  CE0    4  .  .  .  │  .  │  .  .  CF0    4  .  │  .  .  .  │  .  .  CG0    4  .  │  .  │  .  .  .  │  CH0  
+  5  .  .  .  .  │  .  │  .  EL     5  .  .  .  │  .  │  .  .  CF1    5  .  │  .  .  .  │  .  .  GK     5  .  │  .  │  .  .  .  │  CH1  
+  6  .  .  .  .  │  .  │  .  DE0    6 ──────────┼─────█─────── DF0    6  .  │  .  .  .  │  .  .  DG0    6 ────┼─────┼───────────█─ DH0  
+  7  .  .  .  .  │  .  │  .  DE1    7  .  .  .  │  .  │  .  .  FL     7  .  │  .  .  .  │  .  .  DG1    7  .  │  .  │  .  .  .  │  HK   
+  8  .  .  .  .  │  .  │  .  EI     8  .  .  .  │  .  │  .  .  EF0    8  .  │  .  .  .  │  .  .  EG0    8  .  │  .  │  .  .  .  │  EH0  
+  9  .  .  .  .  │  .  │  .  EJ     9  .  .  .  │  .  │  .  .  EF1    9  .  │  .  .  .  │  .  .  EG1    9  .  │  .  │  .  .  .  │  EH1  
+ 10  .  .  .  .  │  .  │  .  EF0   10  .  .  .  │  .  │  .  .  FI    10 ────┼───────────█─────── FG0   10  .  │  .  │  .  .  .  │  FH0  
+ 11  .  .  .  .  │  .  │  .  EF1   11  .  .  .  │  .  │  .  .  FJ    11  .  │  .  .  .  │  .  .  FG1   11  .  │  .  │  .  .  .  │  FH1  
+ 12  .  .  .  .  │  .  │  .  EG0   12 ──────────█─────┼─────── FG0   12  .  │  .  .  .  │  .  .  GI    12  .  │  .  │  .  .  .  │  GH0  
+ 13  .  .  .  .  │  .  │  .  EG1   13  .  .  .  │  .  │  .  .  FG1   13  .  │  .  .  .  │  .  .  GJ    13  .  │  .  │  .  .  .  │  GH1  
+ 14  .  .  .  .  │  .  │  .  EH0   14  .  .  .  │  .  │  .  .  FH0   14  .  │  .  .  .  │  .  .  GH0   14  .  │  .  │  .  .  .  │  HI   
+ 15  .  .  .  .  │  .  │  .  EH1   15  .  .  .  │  .  │  .  .  FH1   15  .  │  .  .  .  │  .  .  GH1   15  .  │  .  │  .  .  .  │  HJ   
+     u  31 32 33 34 35 36 37           u  38 39 40 41 42 43 44           u  45 46 47 48 49 50 51           u  52 53 54 55 56 57 58      
+
+
+             chip I                            chip J                            chip K                            chip L 
+     0  1  2  3  4  5  6  7            0  1  2  3  4  5  6  7            0  1  2  3  4  5  6  7            0  1  2  3  4  5  6  7            
+  0 ─┼──┼──┼──█──┼────────── nA0    0  │  │  │  .  .  .  .  .  nD0    0  │  .  .  .  .  .  .  .  29     0  .  .  .  .  .  .  .  .  30   
+  1  │  │  │  │  │  .  .  .  nD1    1 ─┼──█──┼──────────────── nA1    1  │  .  .  .  .  .  .  .  59     1  .  .  .  .  .  .  .  .  60   
+  2  │  │  │  │  │  .  .  .  nA2    2 ─┼──┼──█──────────────── nD2    2 ─█────────────────────── BFi    2  .  .  .  .  .  .  .  .  BFo  
+  3  │  │  │  │  │  .  .  .  nD3    3  │  │  │  .  .  .  .  .  nA3    3  │  .  .  .  .  .  .  .  ARF    3  .  .  .  .  .  .  .  .  5V   
+  4 ─█──┼──┼──┼──┼────────── nA4    4  │  │  │  .  .  .  .  .  nD4    4  │  .  .  .  .  .  .  .  TRl    4  .  .  .  .  .  .  .  .  GP1  
+  5 ─┼──┼──█──┼──┼────────── nD5    5 ─█──┼──┼──────────────── nA5    5  │  .  .  .  .  .  .  .  BRl    5  .  .  .  .  .  .  .  .  GP2  
+  6 ─┼──█──┼──┼──┼────────── nA6    6  │  │  │  .  .  .  .  .  nD6    6  │  .  .  .  .  .  .  .  Da1    6  .  .  .  .  .  .  .  .  GP3  
+  7 ─┼──┼──┼──┼──█────────── nD7    7  │  │  │  .  .  .  .  .  nA7    7 ─█────────────────────── Da0    7  .  .  .  .  .  .  .  .  GP4  
+  8  │  │  │  │  │  .  .  .  nD1    8  │  │  │  .  .  .  .  .  nD8    8  │  .  .  .  .  .  .  .  Ad0    8  .  .  .  .  .  .  .  .  GP5  
+  9 ─┼──┼──┼──┼──█────────── nD9    9  │  │  │  .  .  .  .  .  nD1    9  │  .  .  .  .  .  .  .  Ad1    9  .  .  .  .  .  .  .  .  GP6  
+ 10  │  │  │  │  │  .  .  .  nD1   10  │  │  │  .  .  .  .  .  nD1   10  │  .  .  .  .  .  .  .  Ad2   10  .  .  .  .  .  .  .  .  GP7  
+ 11  │  │  │  │  │  .  .  .  I+    11  │  │  │  .  .  .  .  .  I-    11  │  .  .  .  .  .  .  .  Ad3   11  .  .  .  .  .  .  .  .  GP8  
+ 12  │  │  │  │  │  .  .  .  IL    12  │  │  │  .  .  .  .  .  JL    12  │  .  .  .  .  .  .  .  KL    12  .  .  .  .  .  .  .  .  LI   
+ 13 ─┼──┼──┼──█──┼────────── IJ    13 ─┼──█──┼──────────────── IJ    13  │  .  .  .  .  .  .  .  KI    13  .  .  .  .  .  .  .  .  LJ   
+ 14  │  │  │  │  │  .  .  .  IK    14  │  │  │  .  .  .  .  .  JK    14  │  .  .  .  .  .  .  .  KJ    14  .  .  .  .  .  .  .  .  LK   
+ 15  │  │  │  │  │  .  .  .  uRX   15  │  │  │  .  .  .  .  .  uTX   15  │  .  .  .  .  .  .  .  GND   15  .  .  .  .  .  .  .  .  GND  
+     AI BI CI DI EI FI GI HI           AJ BJ CJ DJ EJ FJ GJ HJ           AK BK CK DK EK FK GK HK           AL BL CL DL EL FL GL HL      
+
+
+
+```
+
+
+# Arduino UART passthrough
+
+With an Arduino Nano in the header and the UART lines connected, anything on those lines should be passed through to the second serial port that shows up when you plug in your Jumperless. 
+
+(You can also set the config option ``[serial_1] print_passthrough = true;` and have it print on both. Don't worry about the baud rate, the Jumperless senses what the host computer is set to and changes the speed accordingly.
+<img width="360" alt="Screenshot 2025-05-19 at 11 07 55 AM" src="https://github.com/user-attachments/assets/2b255e34-0d0a-4e86-b577-d59c9561fa42" />
+
+
+The shortcuts to connect `D0` and `D1` to the Jumperless's UART `Tx` and `Rx` is `A` to connect, and `a` to disconnect.
+
+It will even sense when Arduino IDE is trying to upload code and twiddle the reset lines to allow you to flash code with just a single USB cable going to your Jumperless.
+<img width="1277" alt="Screenshot 2025-05-19 at 11 09 38 AM" src="https://github.com/user-attachments/assets/625ebf79-7308-4abb-a321-f1bf1f713d4f" />
+
+
+
+# 3D printable stand
+
+[![3DStandCollage](https://github.com/user-attachments/assets/37556876-82ce-4ba4-88f6-f9eaf46da09f)](https://www.printables.com/model/1249365-jumperless-stand)
+
+[Here are the 3D models](https://www.printables.com/model/1249365-jumperless-stand) for you to print your own stand for your Jumperless. It's extremely handy to have it propped up like this to read text on the breadboard. 
+
+Yes, the model is at a weird angle, just drop it down in the slicer, if you want it to hold at a shallower angle, just drop the model through the bed a bit when you slice.
+
+These [stick-on rubber feet](https://www.amazon.com/AmazonBasics-300-Piece-Adhesive-Rubber-Bumpers/dp/B087MG3G76) also make it a lot more solid on your desk (and having the different sizes lets you shim the angle by putting different ones on the front and back.)
+
+
+---
+
+That's all the brand spankin' new stuff, there's some more general info in the updates on the [Crowd Supply page](https://www.crowdsupply.com/architeuthis-flux/jumperless-v5). 
+
+Come hang out in the [Discord](https://discord.gg/bvacV7r3FP) if you have any questions or just want to chat. 
+
+
+## Glossary of terms:
+
+`net` = a group of all the `node`s that are connected together (enter `n` to see the list {there's a colorful update to that I'm working on right now})
+
+`node` = anything the crossbar array can connect to, which includes everything on the breadboard and Nano header, as well as the internal `special function` `node`s like `routable GPIO`, `ADC`s, `DAC`s
+
+`row` = *kinda* the same thing as `node` but I generally use it to mean stuff on the breadboard (so special function things like `routable GPIO`, `ADC`s, `DAC`s that don't have a set location are excluded)
+
+`bridge` = a pair of exactly two `node`s (this is what you're making when you connect stuff with the probe, enter `s` to print the (kinda misnamed) `node file`s to see a list of bridges)
+
+`path` = the set of crossbar connections needed to make a single `bridge`, so it can have multiple `hop`s if it doesn't have a direct connection and needs to make a `bounce` through an intermediate `chip` enter `b` to see them
+
+`node file` / `slot file` = this is an actual text file on the filesystem that stores the list of bridges, there's one of these for each `slot` (enter `s` to see all of them, they start with an `f {` to make it east to just copy paste them from the terminal)
+
+`slot` = one of the 8 node files stored that you can switch between with `<`/`>` or the `menu`s. Named `nodeFileSlot[0-7].txt` (there's no actual limit, there's *so* much flash storage on this thing, but by default it's 8)
+
+`menu` = I generally mean the onboard clickwheel `menu` when I say this (`click` the wheel to enter those and `scroll` around)
+
+`chip` = shorthand for the CH446Qs specifically, lettered A-L. The first 8 (A-H) are considered "breadboard `chips`, and the last 4 are considered "special function" chips (enter `c` to see their connections)
+
+
+## Odds and ends
+
+
+- `GPIO 1-8` will show a subtle animation while they're floating and go red / green when they're pulled `high` / `low`
+ 
+- Added commands to just add or remove nodes `+uart_tx-43, 1-2, 2-3`, `-2-3` (will just remove the *bridge* 2-3 and leave 1-2, `-2` will remove the *node*, so both 1-2 and 2-3 will be removed)
+
+- `x` will clear all connections in the current slot
+
+- Configuration options are saved to a file and any option can be changed with \`, or print it out with `~` (there's also a help menu `~?`)
+
+- Arduino flashing works through the second serial port, a DTR signal will pull down the Reset lines and then let avrdude pass through whatever. So if you tell Arduino IDE there's an Arduino Nano connected to Jumperless port 2, it should flash as expected.
+
+- There's also a shortcut to connect the Jumperless's UART lines to D1 and D0, `a` to disconnect and `A` to connect
+
+- You can manually toggle the 2 Reset lines with `r` (both), `rt` (top), `rb` (bottom)
+
+- LED brightness menu updated (pro tip, try `l?`, `lc`, and `lb`)
+
+- `v` will just return all the ADC readings once, you can do `v2` to get just ADC 2's reading
+
+- `g` will show the state of all the `gpio`
+
+- `#`[any text] will print text on the breadboard (type `m` or whatever to go back)
+
+
+
+
+
+## What's that `BUFFER_IN - DAC_0` bridge that's always there?
+
+That gets added to power the `probe LEDs`, it's kinda weird, but to multiplex 3.3V, GND, LED data, 2 buttons, and a +-9V tolerant analog line over the 4 wires on a TRRS cable, the line powering those LEDs is shared.
+The `connect`/`measure` switch is a Dual Pole Dual Throw (DPDT) switch. The probe tip needs to be at a steady 3.3V to be read by the `probe sense pads` which is a big resistive divider sensed by a single `ADC`.
+
+When you have it in `select` mode, the probe tip is getting 3.3V from a `GPIO` on the RP2350B driven `high`, and the LEDs get their power from the analog line, which is `ROUTABLE_BUFFER_IN` connected to `DAC 0` set to 3.3V.
+
+When you switch to `measure` mode, those roles get swapped, the LEDs are powered by that `GPIO`, and the probe tip is now `ROUTABLE_BUFFER_IN`. In the current firmware, that just stays at 3.3V so you can *kinda* sense pads in either mode (you may notice the sensing is a lot wonkier, that's because the `DAC` isn't perfectly calibrated to output *exactly* 3.3V.) But in the future, there will be some other stuff you can do in that mode treating it as an analog line (and of course, I'll forget to update this, if it's after like June 2025, double check this is still true.)
+
+#### Why am I using one of the precious two DACs and not another GPIO?
+The answer is switch position sensing. You may notice there's no obvious way for the Jumperless to know where the switch is set, so I had to get creative on this one. `DAC 0`'s output is hardwired to go through a `current sense` shunt resistor, so when `DAC 0` is powering the `probe LEDs`, they'll be drawing some current I can measure with one of the `INA219`s, and therefore I can be reasonably confident that the switch is in the `select` position.
+
+If you need both `DAC`s, you can just get rid of this connection and the `probe LEDs` won't light up, but other than aesthetics, it really has no effect on functionality. Or you connect `ROUTABLE_BUFFER_IN` to a `GPIO` and set it `high` and just lose the ability to sense where the switch is.
+
+
+
+That's probably more than you need to worry about but that gives me a nice start on real docs

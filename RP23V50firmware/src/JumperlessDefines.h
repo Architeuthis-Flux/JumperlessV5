@@ -5,7 +5,8 @@
 
 
 
-
+#define TERM_SUPPORTS_RGB 0
+#define TERM_SUPPORTS_ANSI_COLORS 1
 
 extern volatile int sendAllPathsCore2;
 #define PICO_RP2350B 1
