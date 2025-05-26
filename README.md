@@ -1,8 +1,8 @@
 # Jumperless V5
 ###### The next generation [jumperless](https://github.com/Architeuthis-Flux/Jumperless) breadboard
 ---
-### If you got here by scanning the QR code on your box and want to know how to use this thing, docs are generally attached to the [Releases](https://github.com/Architeuthis-Flux/JumperlessV5/releases) where I added that feature. 
-#### I promise I'll write a proper Getting Started guide soon. Until then, don't hesitate to ask me *anything* in [Discord](https://discord.gg/Zvv7Dvgxa5) or wherever. Seriously, even if you think it's a dumb question, someone else probably has it too, so it helps me out a lot to know what to put in the guide.
+## If you got here by scanning the QR code on your box and want to know how to use this thing, the [Getting Started guide is here](https://github.com/Architeuthis-Flux/JumperlessV5/tree/main/RP23V50firmware).
+#### Don't hesitate to ask me *anything* in [Discord](https://discord.gg/Zvv7Dvgxa5) or wherever. Seriously, even if you think it's a dumb question, someone else probably has it too, so it helps me out a lot to know what to put in the guide.
 
 
    ---
