@@ -1684,6 +1684,10 @@ int checkChangedNetColors(int netIndex) {
   }
 
 
+uint32_t railNetColors[3] = // dim
+  {  0x000f04, 0x0f0202, 0x0f0202 };
+
+
 
 void assignNetColors(int preview) {
   // numberOfNets = 60;
@@ -1744,22 +1748,26 @@ void assignNetColors(int preview) {
         switch (i) {
           case 1:
             railColor = 0x000f05;
-            if (brightenedRail == 1 || brightenedRail == 3) {
-              rgbColor railRgb = unpackRgb(railColor);
-              hsvColor railHsv = RgbToHsv(railRgb);
-              railHsv.v += brightenedAmount;
-              railRgb = HsvToRgb(railHsv);
-              railColor = packRgb(railRgb.r, railRgb.g, railRgb.b);
-              }
+            // if (brightenedRail == 1 || brightenedRail == 3) {
+            //   rgbColor railRgb = unpackRgb(railColor);
+            //   hsvColor railHsv = RgbToHsv(railRgb);
+            //   railHsv.v += brightenedAmount;
+            //   railRgb = HsvToRgb(railHsv);
+            //   railColor = packRgb(railRgb.r, railRgb.g, railRgb.b);
+            //   }
 
-            netColors[i] = unpackRgb(railColor);
+            // netColors[i] = unpackRgb(railColor);
+            // net[i].color = netColors[i];
+            netColors[i] = unpackRgb(railNetColors[0]);
             net[i].color = netColors[i];
             specialNetColors[i] = netColors[i];
             break;
           case 2:
-            railColor = logoColors8vSelect[map((long)(railVoltage[0] * 10), -80, 80,
-                                               0, 59)];
-            netColors[i] = unpackRgb(railColor);
+            // railColor = logoColors8vSelect[map((long)(railVoltage[0] * 10), -80, 80,
+            //                                    0, 59)];
+            // netColors[i] = unpackRgb(railColor);
+            // net[i].color = netColors[i];
+            netColors[i] = unpackRgb(railNetColors[1]);
             net[i].color = netColors[i];
             specialNetColors[i] = netColors[i];
             // Serial.print("railVoltage[0]: ");
@@ -1770,9 +1778,11 @@ void assignNetColors(int preview) {
             // Serial.println(netHsv.h);
             break;
           case 3:
-            railColor = logoColors8vSelect[map((long)(railVoltage[1] * 10), -80, 80,
-                                               0, 59)];
-            netColors[i] = unpackRgb(railColor);
+            // railColor = logoColors8vSelect[map((long)(railVoltage[1] * 10), -80, 80,
+            //                                    0, 59)];
+            // netColors[i] = unpackRgb(railColor);
+            // net[i].color = netColors[i];
+            netColors[i] = unpackRgb(railNetColors[2]);
             net[i].color = netColors[i];
             specialNetColors[i] = netColors[i];
             break;
@@ -1791,7 +1801,7 @@ void assignNetColors(int preview) {
             specialNetColors[i] = netColors[i];
             break;
           case 6:
-            netHsv.h = 240;
+           // netHsv.h = 240;
             break;
           case 7:
             // netHsv.h = 300;

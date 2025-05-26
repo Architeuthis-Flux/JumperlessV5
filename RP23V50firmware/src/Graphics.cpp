@@ -218,12 +218,12 @@ int filledPaths[64][4] = { -1 }; // node1 node2 rowfilled
 
 void changeTerminalColor(uint32_t color) {
 
-  
 
 
 
 
-}
+
+  }
 
 
 
@@ -595,7 +595,7 @@ void initRowAnimations() {
   for (int i = 0; i < 10; i++) { //make the array of raw uint32_t values for the animations
     for (int j = 0; j < 15; j++) {
       hsvColor colorHSV;
-      int hue = gpioAnimationBaseHues[i] ;
+      int hue = gpioAnimationBaseHues[i];
       if (hue < 0) {
         hue = 255 + hue;
         }
@@ -668,7 +668,7 @@ void initRowAnimations() {
   rowAnimations[currentIndex].numberOfFrames = 15;
   rowAnimations[currentIndex].type = 4; // highlighted net
   rowAnimations[currentIndex].direction = 0;
-  rowAnimations[currentIndex].frameInterval = 90;
+  rowAnimations[currentIndex].frameInterval = 120;
   for (int j = 0; j < rowAnimations[currentIndex].numberOfFrames; j++) {
     rowAnimations[currentIndex].frames[j] = highlightedRowFrames[j % 10];
     }
@@ -712,13 +712,13 @@ void initRowAnimations() {
 //16 = probe connect highlight row // type 5
 
 ///index is the net, value is the animation index
-int assignedAnimations[MAX_NETS] = {-1};
+int assignedAnimations[MAX_NETS] = { -1 };
 
 // int rowAnimations[100] = {0};
 
 void assignRowAnimations(void) {
 
-  for (int i = 0; i < MAX_NETS; i++) {
+  for (int i = 0; i < numberOfNets+3; i++) {
     assignedAnimations[i] = -1;
     // if (i < 26) {
     //   rowAnimations[i].net = -1;
@@ -727,41 +727,79 @@ void assignRowAnimations(void) {
 
   for (int net = 0; net < numberOfNets; net++) {
 
-if (net < 6) {
-switch (net) {
-  case 1:
-    assignedAnimations[net] = 1;
-    break;
-  case 2:
-    assignedAnimations[net] = 0;
-    break;
-  case 3:
-    assignedAnimations[net] = 2;
-    break;
-}
-}
+    if (net < 6) {
+      switch (net) {
+        case 1:
+          assignedAnimations[net] = 1;
+          rowAnimations[1].net = net;
+          break;
+        case 2:
+          assignedAnimations[net] = 0;
+          rowAnimations[0].net = net;
+          break;
+        case 3:
+          assignedAnimations[net] = 2;
+          rowAnimations[2].net = net;
+          break;
+        }
+      }
 
-for (int i = 0; i < 10; i++) {
-  assignedAnimations[gpioNet[i]] = i+3;
-} 
+    for (int i = 0; i < 10; i++) {
+      if (gpioNet[i] > numberOfNets) {
+        Serial.print("gpioNet[");
+        Serial.print(i);
+        Serial.print("] = ");
+        Serial.println(gpioNet[i]);
+        Serial.print("numberOfNets = ");
+        Serial.println(numberOfNets);
+
+        gpioNet[i] = -1;
+        assignedAnimations[gpioNet[i]] = -1;
+        continue;
+        }
+      if (gpioNet[i] > 0) {
+        assignedAnimations[gpioNet[i]] = i + 3;
+        rowAnimations[i + 3].net = gpioNet[i];
+        }
+      }
 
 
-if (brightenedNet > 0) {
-  assignedAnimations[brightenedNet] = 14;
-}
+    if (brightenedNet > 0) {
+      assignedAnimations[brightenedNet] = 14;
+      rowAnimations[14].net = brightenedNet;
+      }
 
-if (warningNet > 0) {
-  assignedAnimations[warningNet] = 13;
-}
-
-
-
-
+    if (warningNet > 0) {
+      assignedAnimations[warningNet] = 13;
+      rowAnimations[13].net = warningNet;
+      }
 
 
+
+
+
+
+
+    }
+  // Serial.println(" ");
+  //   for (int i = 0; i < numberOfNets; i++) {
+
+  //     Serial.print(i);
+  //     Serial.print(" ");
+  //     Serial.print(assignedAnimations[i]);
+  //     Serial.print("\t");
+
+  //     for (int j = 0; j < 15; j++) {
+  //       Serial.printf("%06x ", rowAnimations[assignedAnimations[i]].frames[j]);
+  //       Serial.print(" ");
+  //     }
+  //     Serial.println();
+
+  //   }
+  //  Serial.println();
 
   }
-  }
+
 
 
 
@@ -772,7 +810,7 @@ void showRowAnimation(int net) {
     return;
     }
 
-showRowAnimation(assignedAnimations[net], net);
+  showRowAnimation(assignedAnimations[net], net);
 
   }
 
@@ -785,7 +823,7 @@ void animateBrightenedRow(int row) {
 
 
 
-}
+  }
 
 
 
@@ -793,6 +831,8 @@ void animateBrightenedRow(int row) {
 //!do a hightlighted row animation
 
 //todo make led colors a layer thing with blending options
+
+
 
 
 void showRowAnimation(int index, int net) {
@@ -804,7 +844,9 @@ void showRowAnimation(int index, int net) {
   // if (inPadMenu == 1) {
   //   return;
   //   }
-
+  if (rowAnimations[index].net < 0) {
+    return;
+    }
   // if (rowAnimations[index].type == 3) {
   //   rowAnimations[index].net = warningNet;
 
@@ -819,74 +861,26 @@ void showRowAnimation(int index, int net) {
     }
 
 
-  // for (int i = 0; i < 10; i++) {
-  //   rowAnimations[i+3].net = gpioNet[i];
-  //   }
-
-  if (rowAnimations[index].type == 4) {
-    rowAnimations[index].net = brightenedNet;
-    // net = brightenedNet;
-     actualNet = brightenedNet;
-     rowAnimations[index].row = brightenedNode - 1;
-    }
-
-  // if (rowAnimations[index].type == 6) {
-  //   rowAnimations[index].net = highlightedNet;
-  //   net = highlightedNet;
-  //   actualNet = highlightedNet;
-  //   }
-
-
-  if (rowAnimations[index].type == 3) {
-    rowAnimations[index].net = warningNet;
-    net = warningNet;
-    actualNet = warningNet;
-    }
-
-
+  uint32_t frameColors[5];
   uint32_t brightenedNodeColors[5];
-  // Serial.print("actualNet: ");
-  // Serial.println(actualNet);
-  // Serial.print("brightenedNet: ");
-  // Serial.println(brightenedNet);
-  // Serial.print("brightenedNode: ");
-  // Serial.println(brightenedNode);
-  // Serial.print("rowAnimations[index].net: ");
-  // Serial.println(rowAnimations[index].net);
-
-  if (rowAnimations[index].net == brightenedNet && brightenedNode > 0) {
-    rowAnimations[index].row = brightenedNode - 1;
-    }
-  //handle the row animation for a single row, rather than the whole net
-  if (rowAnimations[index].row > 0) {
-    // Serial.print("rowAnimations[index].row: ");
-    // Serial.println(rowAnimations[index].row);
-    for (int i = 0; i < 5; i++) {
-      hsvColor colorHSV = RgbToHsv(netColors[brightenedNet]);
-      colorHSV.h = (colorHSV.h + (int)(highlightedRowOffsetHues[i] * 4)) % 255;
-      //colorHSV.v = jumperlessConfig.display.led_brightness;
-      brightenedNodeColors[4 - i] = HsvToRaw(colorHSV);
-
-      // brightenedNodeColors[i] = highlightedRowFrames[(rowAnimations[net].currentFrame + i) % rowAnimations[net].numberOfFrames];
-      }
-    }
 
 
 
-  if (rowAnimations[index].type == 4 && brightenedNet > 0) {\
-  //Serial.println("rowAnimations[index].type == 4");
 
-    rowAnimations[index].net = brightenedNet;
-    net = brightenedNet;
-    actualNet = brightenedNet;
-   // rowAnimations[index].row = warningRow;
+
+  if (rowAnimations[index].net == warningNet) {
+    // Serial.print("warningNet: ");
+    // Serial.println(warningNet);
+    rowAnimations[index].row = warningRow;
     uint32_t color;
 
     for (int i = 0; i < rowAnimations[index].numberOfFrames; i++) {
 
-      hsvColor colorHSV = RgbToHsv(netColors[brightenedNet]);
-      colorHSV.h = (colorHSV.h + (int)(highlightedRowOffsetHues[i] / 1.5)) % 255;
-      colorHSV.v = jumperlessConfig.display.led_brightness;
+      hsvColor colorHSV = RgbToHsv(netColors[warningNet]);
+      colorHSV.h = ((colorHSV.h - (int)((highlightedRowOffsetHues[i] * 1.5))) / 8) % 255;
+      // Serial.print("colorHSV.h: ") ;
+      // Serial.println(colorHSV.h);
+      colorHSV.v = jumperlessConfig.display.led_brightness + 30;
       // Serial.print("colorHSV.h = ");
       // Serial.println(colorHSV.h);
       //colorHSV.s = satValues[i];
@@ -895,206 +889,282 @@ void showRowAnimation(int index, int net) {
 
       rowAnimations[index].frames[i] = color;
       }
-    }
+
+    for (int i = 0; i < 5; i++) {
+      frameColors[i] = rowAnimations[index].frames[(rowAnimations[index].currentFrame + i) % rowAnimations[index].numberOfFrames];
+      }
+
+    //handle the row animation for a single row, rather than the whole net
+    if (rowAnimations[index].row > 0) {
+      // Serial.print("rowAnimations[index].row: ");
+      // Serial.println(rowAnimations[index].row);
+      for (int i = 0; i < 5; i++) {
+
+        uint32_t color = rowAnimations[index].frames[(rowAnimations[index].currentFrame + i) % rowAnimations[index].numberOfFrames];
+        hsvColor colorHSV = RgbToHsv(unpackRgb(color));
+        // colorHSV.h = (colorHSV.h + i*10) % 255;
+        if (i == 2) {
+          //colorHSV.s = 120;
+          colorHSV.h = (rowAnimations[index].currentFrame % 3) * 10;
+          // Serial.print("rowAnimations[index].currentFrame: ");
+          // Serial.println(rowAnimations[index].currentFrame);
+          colorHSV.v = 200;//jumperlessConfig.display.led_brightness+70;
+          } else {
+          // colorHSV.s = 230;
+          colorHSV.v = jumperlessConfig.display.led_brightness + 50;
+          }
 
 
 
-  // for (int i = 0; i < numberOfRowAnimations; i++) {
-  //   if (rowAnimations[i].net == net) {
-  //     structIndex = i;
-  //     // Serial.print("structIndex = ");
-  //     // Serial.print(structIndex);
-  //     // Serial.print("\tnet: ");
-  //     // Serial.print(net);
-  //     // Serial.print("\tactualNet: ");
-  //     // Serial.println(actualNet);
 
-  //     break;
-  //     }
-      
-  //   }
+        // colorHSV.h = (colorHSV.h + (int)(highlightedRowOffsetHues[(i + rowAnimations[index].currentFrame) % rowAnimations[index].numberOfFrames] )) % 255;
+        // colorHSV.v = jumperlessConfig.display.led_brightness;
+        brightenedNodeColors[4 - i] = HsvToRaw(colorHSV);
 
-  // if (structIndex == -1) {
-  //   return;
-  //   }
+        // brightenedNodeColors[i] = highlightedRowFrames[(rowAnimations[net].currentFrame + i) % rowAnimations[net].numberOfFrames];
+        }
+      }
+
+    } else if (brightenedNet > 0 && net == brightenedNet) {
+
+      rowAnimations[index].row = brightenedNode - 1;
+      uint32_t color;
+
+      for (int i = 0; i < rowAnimations[index].numberOfFrames; i++) {
+        hsvColor colorHSV;
+
+        // Serial.print("netColors[brightenedNet]: ");
+        // Serial.println(packRgb( netColors[brightenedNet]), HEX);
+       // if (rowAnimations[index].net > 3) {
+          colorHSV = RgbToHsv(netColors[brightenedNet]);
+          colorHSV.h = (colorHSV.h + (int)(highlightedRowOffsetHues[i] / 1.8)) % 255;
+         // } else {
+        //  colorHSV = RgbToHsv(netColors[rowAnimations[index].net]);
+        //  }
+        colorHSV.v = jumperlessConfig.display.led_brightness + 30;
+        // Serial.print("colorHSV.h = ");
+        // Serial.println(colorHSV.h);
+        //colorHSV.s = satValues[i];
+        color = HsvToRaw(colorHSV);
 
 
-  //net = structIndex;
+        rowAnimations[index].frames[i] = color;
+        }
 
-  if (rowAnimations[net].type == 2) {
-    for (int i = 0; i < 10; i++) {
-      if (gpioNet[i] == actualNet && gpioNet[i] != -1) {
-        
+      for (int i = 0; i < 5; i++) {
+        frameColors[i] = rowAnimations[index].frames[(rowAnimations[index].currentFrame + i) % rowAnimations[index].numberOfFrames];
+        }
 
-        if (gpioReading[i] == 0 || gpioReading[i] == 1) { // if any gpio is low or high, don't show the animation, let gpioRead()
-        // Serial.print("\tgpioReading[");
-        // Serial.print(i);
-        // Serial.print("] = ");
-        // Serial.println(gpioReading[i]);
-          
+      //handle the row animation for a single row, rather than the whole net
+      if (rowAnimations[index].row > 0) {
+        // Serial.print("rowAnimations[index].row: ");
+        // Serial.println(rowAnimations[index].row);
+        for (int i = 0; i < 5; i++) {
+
+          uint32_t color = rowAnimations[index].frames[(rowAnimations[index].currentFrame + i) % rowAnimations[index].numberOfFrames];
+          hsvColor colorHSV = RgbToHsv(unpackRgb(color));
+          // colorHSV.h = (colorHSV.h + i*10) % 255;
+          //if (rowAnimations[index].net > 3) {
+            if (i == 2) {
+              colorHSV.s = 120;
+              colorHSV.v = jumperlessConfig.display.led_brightness + 70;
+              } else {
+              colorHSV.s = 230;
+              colorHSV.v = jumperlessConfig.display.led_brightness + 50;
+              }
+           // }
+
+
+
+          // colorHSV.h = (colorHSV.h + (int)(highlightedRowOffsetHues[(i + rowAnimations[index].currentFrame) % rowAnimations[index].numberOfFrames] )) % 255;
+          // colorHSV.v = jumperlessConfig.display.led_brightness;
+          brightenedNodeColors[4 - i] = HsvToRaw(colorHSV);
+
+          // brightenedNodeColors[i] = highlightedRowFrames[(rowAnimations[net].currentFrame + i) % rowAnimations[net].numberOfFrames];
+          }
+        }
+
+
+      } else {
+      for (int i = 0; i < 5; i++) {
+        frameColors[i] = rowAnimations[index].frames[(rowAnimations[index].currentFrame + i) % rowAnimations[index].numberOfFrames];
+        }
+      }
+
+
+
+
+
+    if (rowAnimations[index].type == 2) {
+      int gpioIndex = index - 3;
+      if (gpioNet[gpioIndex] == actualNet && gpioNet[gpioIndex] != -1) {
+        if (gpioReading[gpioIndex] == 0 || gpioReading[gpioIndex] == 1) { // if any gpio is low or high, don't show the animation, let gpioRead()
+
           return;
           //continue;
           }
 
         }
+
       }
 
-    }
-
-  uint32_t frameColors[5];
-
-  if (millis() - rowAnimations[net].lastFrameTime >
-      rowAnimations[net].frameInterval) {
-    rowAnimations[net].currentFrame++;
-    rowAnimations[net].lastFrameTime = millis();
-    }
-
-  //   if (millis() - warningRowAnimation.lastFrameTime >
-  //   warningRowAnimation.frameInterval) {
-  // warningRowAnimation.currentFrame++;
-  // warningRowAnimation.lastFrameTime = millis();
-  // } 
 
 
 
-  for (int i = 0; i < 5; i++) {
-
-    if (brightenedNet == actualNet) {
-      // Serial.print("brightenedNode: ");
-      // Serial.println(brightenedNode);
-      // Serial.print("brightenedNet: ");
-
-      frameColors[i] = scaleBrightness(
-          rowAnimations[net].frames[(rowAnimations[net].currentFrame + i) % rowAnimations[net].numberOfFrames],
-          brightenedAmount * 3);
-      if (brightenedNode > 0) {
-        hsvColor colorHSV = RgbToHsv(frameColors[i]);
-        colorHSV.v += 30;
-        colorHSV.h = (colorHSV.h + (int)(highlightedRowOffsetHues[i] * 5)) % 255;
-        brightenedNodeColors[i] = HsvToRaw(colorHSV);
+    if (millis() - rowAnimations[index].lastFrameTime >
+        rowAnimations[index].frameInterval) {
+      rowAnimations[index].currentFrame++;
+      if (rowAnimations[index].currentFrame > rowAnimations[index].numberOfFrames) {
+        rowAnimations[index].currentFrame = 0;
         }
-
-      } else {
-      frameColors[i] = rowAnimations[net].frames[(rowAnimations[net].currentFrame + i) % rowAnimations[net].numberOfFrames];
-      // Serial.print("frameColors[");
-      // Serial.print(i);
-      // Serial.print("] = ");
-      // Serial.println(frameColors[i], HEX);
+      rowAnimations[index].lastFrameTime = millis();
       }
 
-    }
-
-  brightenedNodeColors[4] = brightenedNodeColors[0];
-  brightenedNodeColors[3] = brightenedNodeColors[1];
-  // brightenedNodeColors[2] = brightenedNodeColors[2];
-  // brightenedNodeColors[3] = brightenedNodeColors[1];
-  // brightenedNodeColors[4] = brightenedNodeColors[0];
 
 
+    //   for (int i = 0; i < 5; i++) {
 
-    // Serial.println(" ");
-  int row = 2;
 
-  if (rowAnimations[net].direction == 0) {
+    // if (rowAnimations[index].net == warningNet || brightenedNet == actualNet) {
+    //       // Serial.print("brightenedNode: ");
+    //       // Serial.println(brightenedNode);
+    //       // Serial.print("brightenedNet: ");
 
-    uint32_t tempFrame[5] = { frameColors[0], frameColors[1], frameColors[2],
-                             frameColors[3], frameColors[4] };
-    frameColors[0] = tempFrame[4];
-    frameColors[1] = tempFrame[3];
-    frameColors[2] = tempFrame[2];
-    frameColors[3] = tempFrame[1];
-    frameColors[4] = tempFrame[0];
-    }
-  // Serial.print("\n\n\rnet = ");
-  // Serial.print(net);
-  // Serial.print("   actualNet = ");
-  // Serial.print(actualNet);
-  // Serial.print("   direction = ");
-  // Serial.println(rowAnimations[net].direction);
+    //       frameColors[i] = scaleBrightness(
+    //           rowAnimations[index].frames[(rowAnimations[index].currentFrame + i) % rowAnimations[index].numberOfFrames],
+    //           brightenedAmount * 3);
 
-  if (displayMode == 0 || numberOfShownNets > MAX_NETS_FOR_WIRES) {
-    for (int i = 0; i <= numberOfPaths; i++) {
-      if (path[i].net == actualNet) {
-        if (path[i].skip == true) {
-          continue;
-          }
+    //       if (brightenedNode > 0) {
+    //         hsvColor colorHSV = RgbToHsv(frameColors[i]);
+    //         colorHSV.v += 30;
+    //         colorHSV.h = (colorHSV.h + (int)(highlightedRowOffsetHues[i] * 5)) % 255;
+    //         brightenedNodeColors[i] = HsvToRaw(colorHSV);
+    //         }
 
-        if (path[i].node1 > 0 && path[i].node1 <= 60 &&
-            path[i].node1 != probeHighlight) {
-          for (int j = 0; j < 5; j++) {
 
-            b.printRawRow(0b00010000 >> j, path[i].node1 - 1, frameColors[j],
-                          0xfffffe, 4);
-            }
-          }
-        if (path[i].node2 > 0 && path[i].node2 <= 60 &&
-            path[i].node2 != probeHighlight) {
-          for (int j = 0; j < 5; j++) {
 
-            b.printRawRow(0b00010000 >> j, path[i].node2 - 1, frameColors[j],
-                          0xfffffe, 4);
-            }
-          }
-        }
+
+    //       } else {
+    //       frameColors[i] = rowAnimations[index].frames[(rowAnimations[index].currentFrame + i) % rowAnimations[index].numberOfFrames];
+    //       // Serial.print("frameColors[");
+    //       // Serial.print(i);
+    //       // Serial.print("] = ");
+    //       // Serial.println(frameColors[i], HEX);
+    //       }
+
+    //     }
+
+    brightenedNodeColors[4] = brightenedNodeColors[0];
+    brightenedNodeColors[3] = brightenedNodeColors[1];
+    // brightenedNodeColors[2] = brightenedNodeColors[2];
+    // brightenedNodeColors[3] = brightenedNodeColors[1];
+    // brightenedNodeColors[4] = brightenedNodeColors[0];
+
+
+
+      // Serial.println(" ");
+    int row = 2;
+
+    if (rowAnimations[index].direction == 0) {
+
+      uint32_t tempFrame[5] = { frameColors[0], frameColors[1], frameColors[2],
+                               frameColors[3], frameColors[4] };
+      frameColors[0] = tempFrame[4];
+      frameColors[1] = tempFrame[3];
+      frameColors[2] = tempFrame[2];
+      frameColors[3] = tempFrame[1];
+      frameColors[4] = tempFrame[0];
       }
+    // Serial.print("\n\n\rnet = ");
+    // Serial.print(net);
+    // Serial.print("   actualNet = ");
+    // Serial.print(actualNet);
+    // Serial.print("   direction = ");
+    // Serial.println(rowAnimations[net].direction);
 
-    // for (int i = 0; i < 5; i++) {
-    //   b.printRawRow(0b00000001 << i, row, frameColors[i], 0xfffffe);
-    // }
-    } else {
+    if (displayMode == 0 || numberOfShownNets > MAX_NETS_FOR_WIRES) {
+      for (int i = 0; i <= numberOfPaths; i++) {
+        if (path[i].net == actualNet) {
+          if (path[i].skip == true) {
+            continue;
+            }
 
-    for (int i = 0; i <= 60; i++) {
-      for (int j = 0; j < 5; j++) {
-        if (wireStatus[i][j] == actualNet) {
-          if (i == probeHighlight) {
+          if (path[i].node1 > 0 && path[i].node1 <= 60 &&
+              path[i].node1 != probeHighlight) {
+            for (int j = 0; j < 5; j++) {
 
-            } else if (brightenedNode > 0 && i == brightenedNode) {
-              leds.setPixelColor(((i - 1) * 5) + j, brightenedNodeColors[j]);
-              // Serial.print("brightenedNode: ");
-              // Serial.println(brightenedNode);
-              } else {
-              leds.setPixelColor(((i - 1) * 5) + j, frameColors[j]);
+              b.printRawRow(0b00010000 >> j, path[i].node1 - 1, frameColors[j],
+                            0xfffffe, 4);
               }
-          }
-        }
-      }
-    }
+            }
+          if (path[i].node2 > 0 && path[i].node2 <= 60 &&
+              path[i].node2 != probeHighlight) {
+            for (int j = 0; j < 5; j++) {
 
-  for (int i = 0; i <= numberOfPaths; i++) {
-    //     if (path[i].skip == true) {
-    //   continue;
-    // }
-    if (path[i].net == actualNet) {
-
-      if (path[i].node1 > NANO_D0 && path[i].node1 <= NANO_GND_1) {
-        for (int j = 0; j < 35; j++) {
-          if (bbPixelToNodesMapV5[j][0] == path[i].node1) {
-
-            leds.setPixelColor(bbPixelToNodesMapV5[j][1],
-                               scaleBrightness(frameColors[0], 200));
+              b.printRawRow(0b00010000 >> j, path[i].node2 - 1, frameColors[j],
+                            0xfffffe, 4);
+              }
             }
           }
         }
-      if (path[i].node2 > NANO_D0 && path[i].node2 <= NANO_GND_1) {
-        for (int j = 0; j < 35; j++) {
-          if (bbPixelToNodesMapV5[j][0] == path[i].node2) {
 
-            leds.setPixelColor(bbPixelToNodesMapV5[j][1],
-                               scaleBrightness(frameColors[0], 200));
+      // for (int i = 0; i < 5; i++) {
+      //   b.printRawRow(0b00000001 << i, row, frameColors[i], 0xfffffe);
+      // }
+      } else {
+
+      for (int i = 0; i <= 60; i++) {
+        for (int j = 0; j < 5; j++) {
+          if (wireStatus[i][j] == actualNet) {
+            if (i == probeHighlight) {
+
+              } else if (brightenedNode > 0 && i == brightenedNode) {
+                leds.setPixelColor(((i - 1) * 5) + j, brightenedNodeColors[j]);
+                // Serial.print("brightenedNode: ");
+                // Serial.println(brightenedNode);
+                } else {
+                leds.setPixelColor(((i - 1) * 5) + j, frameColors[j]);
+                }
             }
           }
         }
       }
-    }
 
-  // b.printRawRow(0b00000001, row, frameColors[0], 0xfffffe);
-  // b.printRawRow(0b00000010, row, frameColors[1], 0xfffffe);
-  // b.printRawRow(0b00000100, row, frameColors[2], 0xfffffe);
-  // b.printRawRow(0b00001000, row, frameColors[3], 0xfffffe);
-  // b.printRawRow(0b00010000, row, frameColors[4], 0xfffffe);
+    for (int i = 0; i <= numberOfPaths; i++) {
+      //     if (path[i].skip == true) {
+      //   continue;
+      // }
+      if (path[i].net == actualNet) {
 
-  // showLEDsCore2 = 2;
-  showSkippedNodes();
+        if (path[i].node1 > NANO_D0 && path[i].node1 <= NANO_GND_1) {
+          for (int j = 0; j < 35; j++) {
+            if (bbPixelToNodesMapV5[j][0] == path[i].node1) {
+
+              leds.setPixelColor(bbPixelToNodesMapV5[j][1],
+                                 scaleBrightness(frameColors[0], 200));
+              }
+            }
+          }
+        if (path[i].node2 > NANO_D0 && path[i].node2 <= NANO_GND_1) {
+          for (int j = 0; j < 35; j++) {
+            if (bbPixelToNodesMapV5[j][0] == path[i].node2) {
+
+              leds.setPixelColor(bbPixelToNodesMapV5[j][1],
+                                 scaleBrightness(frameColors[0], 200));
+              }
+            }
+          }
+        }
+      }
+
+    // b.printRawRow(0b00000001, row, frameColors[0], 0xfffffe);
+    // b.printRawRow(0b00000010, row, frameColors[1], 0xfffffe);
+    // b.printRawRow(0b00000100, row, frameColors[2], 0xfffffe);
+    // b.printRawRow(0b00001000, row, frameColors[3], 0xfffffe);
+    // b.printRawRow(0b00010000, row, frameColors[4], 0xfffffe);
+
+    // showLEDsCore2 = 2;
+    showSkippedNodes();
   }
 
 void showAllRowAnimations() {
@@ -1106,7 +1176,7 @@ void showAllRowAnimations() {
 
   assignRowAnimations();
 
-  for (int i = 0; i < numberOfNets; i++) {
+  for (int i = 0; i <= numberOfNets; i++) {
 
     showRowAnimation(i);
     if (rowAnimations[i].type == 3) {

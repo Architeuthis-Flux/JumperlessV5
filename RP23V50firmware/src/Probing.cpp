@@ -267,6 +267,8 @@ restartProbing:
   // Serial.flush();
   // Serial.print("\n\r");
   // Serial.println(setOrClear);
+
+  //!this is the main loop for probing
   while (Serial.available() == 0 && (millis() - probeTimeout) < 6200 &&
          encoderButtonState == IDLE) {
     delayMicroseconds(500);
@@ -875,7 +877,7 @@ restartProbing:
   // showLEDsCore2 = -1;
   //refreshLocalConnections(-1);
   // delay(10);
-  if (firstConnection != -3) {
+  if (firstConnection != -3 && numberOfLocalChanges > 0) {
     saveLocalNodeFile();
     }
   // delay(10);
@@ -3965,7 +3967,7 @@ if (encoderNetHighlighted != -1) {
           
 
           Serial.print(readAdcVoltage(adc, 32));
-          Serial.println(" V");
+          Serial.print(" V");
           }
           specialPrint = 1;
           }
@@ -3995,7 +3997,7 @@ if (encoderNetHighlighted != -1) {
               break;
             }
           
-          Serial.println();
+         // Serial.println();
           }
           specialPrint = 1;
           }
@@ -4014,7 +4016,7 @@ if (encoderNetHighlighted != -1) {
             } else {
             Serial.print("high");
             }
-          Serial.println();
+         // Serial.println();
           }
           specialPrint = 1;
           

@@ -253,7 +253,7 @@ int serSource = 0;
 int readInNodesArduino = 0;
 
 
-const char firmwareVersion[] = "5.1.2.4"; // remember to update this
+const char firmwareVersion[] = "5.1.2.5"; // remember to update this
 
 int firstLoop = 1;
 
@@ -362,7 +362,7 @@ void loop() {
 
 menu:
 
-while (Serial.available() > 0) {
+while (Serial.available() > 1) {
   char c = Serial.read();
   Serial.print(c);
   Serial.flush();
@@ -582,7 +582,7 @@ core1passthrough = 1;
                 //warnNet(-1);
                 } else {
                 warnNet(firstConnection);
-                warningTimeout = 800;
+                warningTimeout = 3800;
                 warningTimer = millis();
 
                 }
@@ -1150,8 +1150,8 @@ core1passthrough = 1;
       }
       case 'n':
         couldntFindPath(1);
-        Serial.print("\n\n\rnetlist\n\n\r");
-        listSpecialNets();
+        Serial.print("\n\n\rnetlist\n\r");
+       // listSpecialNets();
         // Serial.print("\n\n\r");
         // Serial.print("anythingInteractiveConnected(-1) = ");
         // Serial.println(anythingInteractiveConnected(-1));
@@ -1185,8 +1185,8 @@ core1passthrough = 1;
         Serial.print("\n\n\rChip Status\n\r");
         printChipStatus();
         Serial.print("\n\n\r");
-        Serial.print("Revision ");
-        Serial.print(revisionNumber);
+        // Serial.print("Revision ");
+        // Serial.print(revisionNumber);
         Serial.print("\n\n\r");
         break;
       }

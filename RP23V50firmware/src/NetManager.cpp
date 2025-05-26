@@ -578,6 +578,11 @@ void populateSpecialFunctions(int net, int node) {
   // Serial.println("populating special functions\n\r");
   // Serial.print("node = ");
   //   Serial.println(node);
+  // for (int i = 0; i < 10; i++) {
+  //   if (gpioNet[i] != -2) {
+  //     gpioNet[i] = -1;
+  //     }
+  //   }
 
   switch (node) {
     case RP_GPIO_1:
@@ -849,6 +854,17 @@ void listNets(int liveUpdate)
   // Serial.println(liveUpdate);
   int boldNode = highlightedRow;
   int boldNet = highlightedNet;
+
+  int lastGPIO[10];
+  float lastADC[8];
+  for (int i = 0; i < 10; i++) {
+    lastGPIO[i] = gpioReading[i];
+    }
+  for (int i = 0; i < 8; i++) {
+    lastADC[i] = adcReadings[i];
+    }
+
+
   if (liveUpdate < 0) {
     liveUpdate = 0;
     }
@@ -987,12 +1003,28 @@ void listNets(int liveUpdate)
     //   lineCount+=2;
     //   }
 
+    Serial.print( "\n\rIndex\tName\t\tVoltage\t    Nodes\t\n\r"); 
+
+
 
     int floatingTermColors[10] = { 203, 215, 221, 192, 117, 75, 176,213, 180, 147 };
+
+    int railTermColors[5] = { 48, 197, 199, 222, 116 };
     do {
 
 
-      Serial.print("\n\rIndex\tName\t\tColor\t    Nodes");
+
+      int tabs = 0;
+
+      int showingSpecial = 0;
+
+      for (int i = 1; i < numberOfNets; i++) {
+
+        int floatingTermColor = -1;
+
+        if (i == 6) {
+          Serial.printf("\033[0m");
+           Serial.print("\n\rIndex\tName\t\tColor\t    Nodes");
 
       lineCount += 2;
 
@@ -1000,7 +1032,7 @@ void listNets(int liveUpdate)
         for (int i = 0; i < maxChars; i++) {
           Serial.print(" ");
           }
-        Serial.print(" ADC / GPIO");
+        Serial.print("ADC / GPIO");
         }
 
       else if (showVoltage == 1) {
@@ -1018,15 +1050,9 @@ void listNets(int liveUpdate)
         Serial.print(" GPIO");
         }
 
-      Serial.println("\n\r");
-      lineCount += 2;
-      int tabs = 0;
-
-      int showingSpecial = 0;
-
-      for (int i = 6; i < numberOfNets; i++) {
-
-        int floatingTermColor = -1;
+      Serial.println(" ");
+      lineCount += 1;
+          }
         for (int j = 0; j < 10; j++) {
           if (gpioNet[j] == i) {
             floatingTermColor = floatingTermColors[j];
@@ -1035,9 +1061,11 @@ void listNets(int liveUpdate)
             }
           }
 
-        if (floatingTermColor == -1) {
+        if (floatingTermColor == -1 && i >= 6) {
           Serial.printf("\033[38;5;%dm", colorToVT100(packRgb(netColors[i])));
-          }
+          } else if (floatingTermColor == -1 && i < 6) {
+            Serial.printf("\033[38;5;%dm", railTermColors[i-1]);
+            }
 
         if (net[i].number == 0 ||
             net[i].nodes[0] ==
@@ -1133,7 +1161,42 @@ void listNets(int liveUpdate)
           //itoa(colorToVT100(packRgb(netColors[i])), colorString, 10);
           if (TERM_SUPPORTS_RGB == 0 && TERM_SUPPORTS_ANSI_COLORS == 1)
             {
-            Serial.printf("\033[38;5;%dm%s", colorToVT100(packRgb(netColors[i])), colorToName(netColors[i], 10));
+              if (i < 6) {
+
+
+
+
+                Serial.printf("\033[38;5;%dm", railTermColors[i-1] );
+                int spaces = 0;
+                switch (i) {
+                  case 1:
+                    spaces = Serial.print("0 V       ");
+                    break;
+                  case 2:
+                    spaces = Serial.printf("%-.2f V", railVoltage[0]);
+                    
+                    break;
+                  case 3:
+                    spaces = Serial.printf("%-.2f V", railVoltage[1]);
+                    
+                    break;
+                  case 4:
+                    spaces = Serial.printf("%-.2f V", dacOutput[0]);
+                    break;
+                  case 5:
+                    spaces = Serial.printf("%-.2f V", dacOutput[1]);
+                    break;
+                }
+
+                for (int i = 0; i < 10 - spaces; i++) {
+                  Serial.print(" ");
+                  }
+
+
+
+                } else {
+                Serial.printf("\033[38;5;%dm%s", colorToVT100(packRgb(netColors[i])), colorToName(netColors[i], 10));
+                }
             } else if (TERM_SUPPORTS_RGB == 1 && TERM_SUPPORTS_ANSI_COLORS == 1)
               {
               hsvColor color = RgbToHsv(netColors[i]);
@@ -1204,7 +1267,7 @@ void listNets(int liveUpdate)
       for (int i = tabs; i < maxChars; i++) {
         Serial.print(" ");
         }
-      Serial.print("\t");
+      Serial.print("\t    ");
 
       if (netsShowingSpecial[i] != 0) {
         if (netsShowingSpecial[i] == 1) {
@@ -1221,17 +1284,17 @@ void listNets(int liveUpdate)
 
           } else if (netsShowingSpecial[i] == 2) {
             if (gpioReading[gpioOrAdcNumber] == 0) {
-              Serial.print("low");
+              Serial.print("input - low");
               } else if (gpioReading[gpioOrAdcNumber] == 1) {
-                Serial.print("high");
+                Serial.print("input - high");
                 } else {
-                Serial.print("floating");
+                Serial.print("input - floating");
                 }
             } else if (netsShowingSpecial[i] == 3) {
               if (gpioState[gpioOrAdcNumber] == 0) {
-                Serial.print("high");
+                Serial.print("output - high");
                 } else if (gpioState[gpioOrAdcNumber] == 1) {
-                  Serial.print("low");
+                  Serial.print("output - low");
                   }
               }
         }
@@ -1255,42 +1318,78 @@ void listNets(int liveUpdate)
 
     Serial.flush();
 
+    
 
-    if (Serial.available() > 0) {
-      liveUpdate = 0;
-      }
-
-    if (checkProbeButton() != 0) {
-      blockProbeButton = 500;
-      blockProbeButtonTimer = millis();
-      liveUpdate = 0;
-      }
-    if (digitalRead(BUTTON_ENC) == 0) {
-      liveUpdate = 0;
-      }
+    // if (checkProbeButton() != 0) {
+    //   blockProbeButton = 500;
+    //   blockProbeButtonTimer = millis();
+    //   liveUpdate = 0;
+    //   }
 
     if (liveUpdate == 1) {
       // Serial.println(lineCount);
 
 
+int changed = 0;
 
+unsigned long startTime = millis();
        //Serial.print("\033[2J\033[H");
+           while (Serial.available() == 0 && liveUpdate == 1 && changed == 0) {
+      for (int i = 0; i < 10; i++) {
+        if (lastGPIO[i] != gpioReading[i]) {
+          changed = 1;
+          lastGPIO[i] = gpioReading[i];
+          }
+        }
+      for (int i = 0; i < 8; i++) {
+        if (abs(lastADC[i] - adcReadings[i]) > 0.02) {
+          changed = 1;
+          lastADC[i] = adcReadings[i];
+          }
+        }
+      if (millis() - startTime > 100) {
+        if (checkProbeButton() != 0) {
+          blockProbeButton = 500;
+          blockProbeButtonTimer = millis();
+          liveUpdate = 0;
+          }
+        if (digitalRead(BUTTON_ENC) == 0) {
+          liveUpdate = 0;
+          }
+        startTime = millis();
+        }
+
+    if (Serial.available() > 0) {
+      liveUpdate = 0;
+      }
+
+
+    if (digitalRead(BUTTON_ENC) == 0) {
+      liveUpdate = 0;
+      }
+
+int newBoldNode = encoderNetHighlight(0);
+if (newBoldNode != boldNode) {
+  boldNode = newBoldNode;
+  changed = 1;
+  }
+    }
 
 
       // Serial.flush();
-      delay(10);
+      //delay(10);
       // for (int i = 0; i < lineCount; i++) {
       Serial.printf("\033[%dA", lineCount - 1);
       //Serial.print("   ffdflkj;ldfkj ");
       Serial.printf("\033[J");
-      //Serial.flush();
+      Serial.flush();
       // }
       lineCount = 0;
 
       }
 
 
-    boldNode = encoderNetHighlight(0);
+ 
 
 
     } while (liveUpdate == 1);
