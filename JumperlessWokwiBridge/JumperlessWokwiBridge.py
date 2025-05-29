@@ -911,6 +911,10 @@ def update_jumperless_firmware(force=False):
                 foundVolume = "none"
                 timeStart = time.time()
                 
+                # Debug information
+                if sys.platform == "win32":
+                    safe_print(f"Windows platform detected. WIN32_AVAILABLE: {WIN32_AVAILABLE}", Fore.CYAN)
+                
                 while foundVolume == "none":
                     if time.time() - timeStart > 20:
                         safe_print("Timeout waiting for bootloader drive to appear", Fore.RED)
@@ -937,6 +941,56 @@ def update_jumperless_firmware(force=False):
                                                 safe_print(f"Found Jumperless at {foundVolume}", Fore.CYAN)
                                                 break
                                     except Exception:
+                                        continue
+                                elif sys.platform == "win32" and not WIN32_AVAILABLE:
+                                    # Fallback Windows method without win32api
+                                    try:
+                                        # Try to read a volume info file or check for characteristic files
+                                        mountpoint = p.mountpoint
+                                        safe_print(f"Checking Windows drive: {mountpoint}", Fore.YELLOW)
+                                        
+                                        # Check if this looks like a RP2040/RP2350 drive by looking for INFO_UF2.TXT
+                                        info_file = os.path.join(mountpoint, "INFO_UF2.TXT")
+                                        if os.path.exists(info_file):
+                                            try:
+                                                with open(info_file, 'r') as f:
+                                                    content = f.read()
+                                                    safe_print(f"Found INFO_UF2.TXT content: {content[:100]}...", Fore.YELLOW)
+                                                    if jumperlessV5:
+                                                        if "RP2350" in content:
+                                                            foundVolume = mountpoint
+                                                            safe_print(f"Found Jumperless V5 at {foundVolume} via INFO_UF2.TXT", Fore.CYAN)
+                                                            break
+                                                    else:
+                                                        if "RP2040" in content:
+                                                            foundVolume = mountpoint
+                                                            safe_print(f"Found Jumperless at {foundVolume} via INFO_UF2.TXT", Fore.CYAN)
+                                                            break
+                                            except Exception as e:
+                                                safe_print(f"Error reading INFO_UF2.TXT: {e}", Fore.RED)
+                                        
+                                        # Alternative: try using subprocess to get volume label
+                                        try:
+                                            drive_letter = mountpoint.rstrip('\\').rstrip('/')
+                                            result = subprocess.run(['vol', drive_letter], 
+                                                                  capture_output=True, text=True, timeout=2)
+                                            if result.returncode == 0:
+                                                output = result.stdout.strip()
+                                                safe_print(f"Volume info for {drive_letter}: {output}", Fore.YELLOW)
+                                                if jumperlessV5:
+                                                    if "RP2350" in output:
+                                                        foundVolume = mountpoint
+                                                        safe_print(f"Found Jumperless V5 at {foundVolume} via vol command", Fore.CYAN)
+                                                        break
+                                                else:
+                                                    if "RPI-RP2" in output:
+                                                        foundVolume = mountpoint
+                                                        safe_print(f"Found Jumperless at {foundVolume} via vol command", Fore.CYAN)
+                                                        break
+                                        except Exception as e:
+                                            safe_print(f"Error checking volume with subprocess: {e}", Fore.RED)
+                                    except Exception as e:
+                                        safe_print(f"Error in fallback Windows detection: {e}", Fore.RED)
                                         continue
                                 else:
                                     # Unix-like systems
@@ -2296,6 +2350,11 @@ def main():
     
     # Setup Arduino CLI
     setup_arduino_cli()
+    
+    # Check Windows volume detection capability
+    if sys.platform == "win32" and not WIN32_AVAILABLE:
+        safe_print("Windows volume detection: Using fallback method", Fore.YELLOW)
+        safe_print("For better Windows drive detection, install pywin32: pip install pywin32", Fore.CYAN)
     
     # Count assigned slots
     count_assigned_slots()
