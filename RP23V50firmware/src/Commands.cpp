@@ -12,7 +12,7 @@
 #include "PersistentStuff.h"
 #include "Probing.h"
 #include "RotaryEncoder.h"
-
+#include "SerialWrapper.h"
 
 volatile int sendAllPathsCore2 =
     0; // this signals the core 2 to send all the paths to the CH446Q
@@ -75,6 +75,7 @@ void refreshConnections(int ledShowOption, int fillUnused, int clean) {
   checkChangedNetColors(-1);
   assignNetColors();
   chooseShownReadings();
+  assignTermColor();
   //findChangedNetColors();
   //assignNetColors();
 
@@ -115,7 +116,7 @@ void refreshLocalConnections(int ledShowOption, int fillUnused, int clean) {
   checkChangedNetColors(-1);
   assignNetColors();
   chooseShownReadings();
-
+  assignTermColor();
   //core1busy = false;
   if (ledShowOption != 0) {
 
@@ -150,7 +151,7 @@ void refreshBlind(
   bridgesToPaths();
   checkChangedNetColors(-1);
   assignNetColors();
-
+  assignTermColor();
   // printPathsCompact();
   //core1busy = false;
   //   if (lastSlot != netSlot) {

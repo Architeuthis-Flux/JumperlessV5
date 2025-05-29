@@ -63,7 +63,9 @@ KevinC@ppucc.io
 #include "USBfs.h"
 #endif
 #include "UserCode.h"
+#include "SerialWrapper.h"
 
+//#define Serial SerialWrap
 
 bread b;
 
@@ -95,6 +97,8 @@ volatile int startupAnimationFinished = 0;
 
 unsigned long startupTimers[10];
 
+
+
 void setup() {
   pinMode(RESETPIN, OUTPUT_12MA);
 
@@ -106,9 +110,17 @@ void setup() {
   //  USB_VID = 0x1D50;
   //  USB_MANUFACTURER = "Architeuthis Flux";
   //  USB_PRODUCT = "Jumperless";
+    //SerialWrap.enableSerial1(true);  // Enable Serial1 + USBSer1 mirroring
+    // SerialWrap.enableSerial2(true);  // Enable Serial2 + USBSer2 mirroring
 
+    // Your existing code remains unchanged!
+    // This now automatically initializes ALL enabled serial ports with the same baud rate
 
-  Serial.begin(115200);
+    // SerialWrap.enableSerial1(true);
+
+    // SerialWrap.enableUSBSer1(true);
+
+    //Serial.begin(115200);
 
   startupTimers[0] = millis();
   // Initialize FatFS
@@ -116,7 +128,7 @@ void setup() {
     Serial.println("Failed to initialize FatFS");
     }
 
-  
+
   //EEPROM.begin(512);
 
   //debugFlagInit(0); //these will be overridden by the config file
@@ -127,7 +139,7 @@ void setup() {
 
   loadConfig();
 
-  
+
   //readSettingsFromConfig();
   configLoaded = 1;
   startupTimers[1] = millis();
@@ -139,6 +151,29 @@ void setup() {
   backpowered = 0;
 
 
+
+  // uint8_t serialTarget = SERIAL_PORT_MAIN;
+  // //SerialWrap.enableSerial1(true);
+  // Serial.enableSerial1(true);
+  // Serial.enableUSBSer1(true);
+
+  // if (jumperlessConfig.serial_1.function == 2) {
+
+  //   serialTarget = SERIAL_PORT_SERIAL1 | SERIAL_PORT_MAIN;
+  //   } 
+
+  //    if (jumperlessConfig.serial_2.function == 2) {
+  //     //SerialWrap.enableSerial2(true);
+  //       serialTarget = SERIAL_PORT_SERIAL2 | SERIAL_PORT_MAIN;
+  //     }
+
+  // Serial.setSerialTarget(serialTarget);
+
+
+
+  //Serial.println("Hello! This automatically goes to all enabled ports!");
+  initArduino();
+  initSecondSerial();
   initDAC();
   pinMode(PROBE_PIN, OUTPUT_8MA);
   pinMode(BUTTON_PIN, INPUT_PULLDOWN);
@@ -214,9 +249,9 @@ void setupCore2stuff() {
   setupSwirlColors();
   startupCore2timers[4] = millis();
 
-  initArduino();
+
   startupCore2timers[5] = millis();
-  initSecondSerial();
+
   startupCore2timers[6] = millis();
 
 
@@ -253,7 +288,7 @@ int serSource = 0;
 int readInNodesArduino = 0;
 
 
-const char firmwareVersion[] = "5.1.2.5"; // remember to update this
+const char firmwareVersion[] = "5.1.2.6"; // remember to update this
 
 int firstLoop = 1;
 
@@ -292,48 +327,10 @@ void loop() {
       firstStart = false;
       }
     firstLoop = 0;
-    // Serial.println("firstLoop");
-    // Serial.println(millis());
-    // Serial.print("startupTimers[0] = ");
-    // Serial.println(startupTimers[0]);
-    // Serial.print("startupTimers[1] = ");
-    // Serial.println(startupTimers[1]);
-    // Serial.print("startupTimers[2] = ");
-    // Serial.println(startupTimers[2]);
-    // Serial.print("startupTimers[3] = ");
-    // Serial.println(startupTimers[3]);
-    // Serial.print("startupTimers[4] = ");
-    // Serial.println(startupTimers[4]);
-    // Serial.print("startupTimers[5] = ");
-    // Serial.println(startupTimers[5]);
-    // Serial.print("startupTimers[6] = ");
-    // Serial.println(startupTimers[6]);
-    // Serial.print("startupTimers[7] = ");
-    // Serial.println(startupTimers[7]);
-    // Serial.print("startupTimers[8] = ");
-    // Serial.println(startupTimers[8]);
-    // Serial.print("startupTimers[9] = ");
-    // Serial.println(startupTimers[9]);
 
-    // Serial.print("\n\rstartupCore2timers[0] = ");
-    // Serial.println(startupCore2timers[0]);
-    // Serial.print("startupCore2timers[1] = ");
-    // Serial.println(startupCore2timers[1]);
-    // Serial.print("startupCore2timers[2] = ");
-    // Serial.println(startupCore2timers[2]);
-    // Serial.print("startupCore2timers[3] = ");
-    // Serial.println(startupCore2timers[3]);
-    // Serial.print("startupCore2timers[4] = ");
-    // Serial.println(startupCore2timers[4]);
-    // Serial.print("startupCore2timers[5] = ");
-    // Serial.println(startupCore2timers[5]);
-    // Serial.print("startupCore2timers[6] = ");
-    // Serial.println(startupCore2timers[6]);
-    // Serial.print("startupCore2timers[7] = ");
-    // Serial.println(startupCore2timers[7]);
 
     // Serial.println("--------------------------------");
- loadChangedNetColorsFromFile(netSlot, 0);
+    loadChangedNetColorsFromFile(netSlot, 0);
 
     if (jumperlessConfig.top_oled.connect_on_boot == 1) {
       //Serial.println("Initializing OLED");
@@ -362,11 +359,13 @@ void loop() {
 
 menu:
 
-while (Serial.available() > 1) {
-  char c = Serial.read();
-  Serial.print(c);
-  Serial.flush();
-  }
+  if (Serial.available() > 0) { //this is so if you dump a lot of data into the serial buffer, it will consume it and not keep looping
+    while (Serial.available() > 0) {
+      char c = Serial.read();
+      //Serial.print(c);
+     // Serial.flush();
+      }
+    }
 
   if (lastProbePowerDAC != probePowerDAC) {
     probePowerDACChanged = true;
@@ -495,9 +494,28 @@ while (Serial.available() > 1) {
 
     connectFromArduino = '\0';
     firstConnection = -1;
-core1passthrough = 1;
-    //! This is the main busy wait loop waiting for input
-    while (Serial.available() == 0 && connectFromArduino == '\0' && slotChanged == 0) {
+    core1passthrough = 1;
+
+    ///Serial.setSerialTarget( SERIAL_PORT_USBSER1);
+    //SerialWrap.setSerialTarget(SERIAL_PORT_MAIN | SERIAL_PORT_USBSER1 | SERIAL_PORT_SERIAL1);
+
+    //uint8_t serialTarget = SERIAL_PORT_MAIN;
+
+    // if (jumperlessConfig.serial_1.function == 2) {
+    //   Serial.println("Serial 1 is set to serial1");
+    //   Serial.setSerialTarget(SERIAL_PORT_SERIAL1 | SERIAL_PORT_MAIN);
+    //   } else if (jumperlessConfig.serial_2.function == 2) {
+    //     Serial.println("Serial 2 is set to serial2");
+    //     Serial.setSerialTarget(SERIAL_PORT_SERIAL2 | SERIAL_PORT_MAIN);
+    //   } else {
+    //     Serial.println("Serial is set to main");
+    //     Serial.setSerialTarget(SERIAL_PORT_MAIN);
+    //     }
+
+    //Serial.setSerialTarget(serialTarget);
+
+        //! This is the main busy wait loop waiting for input
+    while (SerialWrap.available() == 0 && connectFromArduino == '\0' && slotChanged == 0) {
 
       //warningNet = 7;
       //firstConnection = -1;
@@ -505,9 +523,9 @@ core1passthrough = 1;
       int encoderNetHighlighted = encoderNetHighlight();
       if (encoderNetHighlighted != -1) {
         firstConnection = encoderNetHighlighted;
-      } else {
-       // firstConnection = -1;
-      }
+        } else {
+        // firstConnection = -1;
+        }
       // if (attract == 1) {
       //   // rotaryEncoderStuff();
       //   if (attractMode() == 1) {
@@ -515,8 +533,8 @@ core1passthrough = 1;
       //     }
       //   }
 // core1passthrough = 1;
- secondSerialHandler();
-// //core1passthrough = 0;
+      secondSerialHandler();
+      // //core1passthrough = 0;
 
       if (clickMenu() >= 0) {
         // defconDisplay = -1;
@@ -690,39 +708,39 @@ core1passthrough = 1;
           // Serial.flush();
           lastBrightenedNet = brightenedNet;
           } else if (lastWarningNet != warningNet) {
-          // Serial.print("\n\rhighlightedNet = ");
-          // Serial.println(highlightedNet);
-          // Serial.print("brightenedNet = ");
-          // Serial.println(brightenedNet);
-          // Serial.print("warningNet = ");
-          // Serial.println(warningNet);
-          // Serial.flush();
-          lastWarningNet = warningNet;
-          }
-
-
-      if (showReadings >= 1) {
-        //chooseShownReadings();
-        showMeasurements(8, 2, 0);
-        }
-
-      if (millis() - oled.lastConnectionCheck > oled.connectionCheckInterval && jumperlessConfig.top_oled.enabled == 1) {
-        ///Serial.println("oled connection lost");
-        oled.checkConnection();
-        if (oled.isConnected() == false) {
-          // Serial.println("oled connection lost");
-          oled.oledConnected = false;
-          oled.disconnect();
-          jumperlessConfig.top_oled.enabled = 0;
-          if (jumperlessConfig.top_oled.lock_connection == 1 && oled.connectionRetries < oled.maxConnectionRetries) {
-            oled.connectionRetries++;
-            // if (oled.connectionRetries > oled.maxConnectionRetries) {
-            //   oled.connectionRetries = 0;
-            oled.init();
-            //}
+            // Serial.print("\n\rhighlightedNet = ");
+            // Serial.println(highlightedNet);
+            // Serial.print("brightenedNet = ");
+            // Serial.println(brightenedNet);
+            // Serial.print("warningNet = ");
+            // Serial.println(warningNet);
+            // Serial.flush();
+            lastWarningNet = warningNet;
             }
-          }
-        }
+
+
+          if (showReadings >= 1) {
+            //chooseShownReadings();
+            showMeasurements(8, 2, 0);
+            }
+
+          if (millis() - oled.lastConnectionCheck > oled.connectionCheckInterval && jumperlessConfig.top_oled.enabled == 1) {
+            ///Serial.println("oled connection lost");
+            oled.checkConnection();
+            if (oled.isConnected() == false) {
+              // Serial.println("oled connection lost");
+              oled.oledConnected = false;
+              oled.disconnect();
+              jumperlessConfig.top_oled.enabled = 0;
+              if (jumperlessConfig.top_oled.lock_connection == 1 && oled.connectionRetries < oled.maxConnectionRetries) {
+                oled.connectionRetries++;
+                // if (oled.connectionRetries > oled.maxConnectionRetries) {
+                //   oled.connectionRetries = 0;
+                oled.init();
+                //}
+                }
+              }
+            }
       }
 
     if (slotChanged == 1) {
@@ -733,21 +751,49 @@ core1passthrough = 1;
       goto loadfile;
       }
 
-    if (connectFromArduino != '\0') {
-      } else {
-      input = Serial.read();
-      // Serial.print("\n\r");
-      if (input == '}' || input == ' ' || input == '\n' || input == '\r') {
-        goto dontshowmenu;
-        }
+    // if (connectFromArduino != '\0') {
+    //   } else {
+
+    // if (serialCommandBufferIndex > 0) {
+    //   input = serialCommandBuffer[0];
+    //   Serial.print("command input = ");
+    //   Serial.println(input);
+    //   Serial.flush();
+    //   serialCommandBufferIndex--;
+    //   for (int i = 0; i < serialCommandBufferIndex; i++) {
+    //     serialCommandBuffer[i] = serialCommandBuffer[i + 1];
+    //     }
+    //   serialCommandBuffer[serialCommandBufferIndex] = '\0';
+    // } else {
+    //  if (SerialWrap.available() > 0) {
+    input = SerialWrap.read();
+    // Serial.print("input = ");
+    // Serial.println(input);
+    // for (int i = 0; i < 10; i++) {
+    //   Serial.print(SerialWrap.read());
+    //   }
+    // Serial.println();
+    // Serial.flush();
+  // } else {
+  //   input = Serial.read();
+  // }
+//  }
+  //  Serial.setSerialTarget(SERIAL_PORT_MAIN);
+    // Serial.print("input = ");
+    // Serial.println(input);
+    //Serial.setSerialTarget(SERIAL_PORT_MAIN);
+    // Serial.print("\n\r");
+    if (input == '}' || input == ' ' || input == '\n' || input == '\r') {
+      goto dontshowmenu;
       }
+    //}
 
   skipinput:
 
-    if (isDigit(input)) {
-      runApp(input - '0');
-      return;
-      }
+    // if (isDigit(input)) {
+    //   runApp(input - '0');
+    //   return;
+    //   }
 
 
 
@@ -767,9 +813,9 @@ core1passthrough = 1;
       break;
       }
       case 'R': {
-        printWireStatus();
-     // printSerial1stuff();
-      //printAllRLEimageData();
+      printWireStatus();
+      // printSerial1stuff();
+       //printAllRLEimageData();
       break;
       }
       case '.': {
@@ -804,34 +850,34 @@ core1passthrough = 1;
       break;
       }
       case '&': {
- loadChangedNetColorsFromFile(netSlot, 0);
- break;
-        int node1 = -1;
-        int node2 = -1;
-        while (Serial.available() == 0) {
-          }
-        //char c = Serial.read();
-        node1 = Serial.parseInt();
-        node2 = Serial.parseInt();
-        Serial.print("node1 = ");
-        Serial.println(node1);
-        Serial.print("node2 = ");
-        Serial.println(node2);
-        Serial.print("checkIfBridgeExistsLocal(node1, node2) = ");
-        long unsigned int timer  = micros();
-        Serial.println(checkIfBridgeExistsLocal(node1, node2));
-        Serial.print("time taken = ");
-        Serial.print(micros() - timer);
-        Serial.println(" microseconds");
-
-        Serial.flush();
-
-        // if (node2 == -1 && node1 > 0) {
-        //   Serial.println(checkIfBridgeExists(node1,node2));
-        //   }
-
-        break;
+      loadChangedNetColorsFromFile(netSlot, 0);
+      break;
+      int node1 = -1;
+      int node2 = -1;
+      while (Serial.available() == 0) {
         }
+      //char c = Serial.read();
+      node1 = Serial.parseInt();
+      node2 = Serial.parseInt();
+      Serial.print("node1 = ");
+      Serial.println(node1);
+      Serial.print("node2 = ");
+      Serial.println(node2);
+      Serial.print("checkIfBridgeExistsLocal(node1, node2) = ");
+      long unsigned int timer = micros();
+      Serial.println(checkIfBridgeExistsLocal(node1, node2));
+      Serial.print("time taken = ");
+      Serial.print(micros() - timer);
+      Serial.println(" microseconds");
+
+      Serial.flush();
+
+      // if (node2 == -1 && node1 > 0) {
+      //   Serial.println(checkIfBridgeExists(node1,node2));
+      //   }
+
+      break;
+      }
 
       case '\'': {
       pauseCore2 = 1;
@@ -961,30 +1007,77 @@ core1passthrough = 1;
         } else {
         resetArduino();
         }
-
+goto dontshowmenu;
       break;
       }
 
       case 'A': {
+       // delay(100);
+       int justAsk = 0;
+      while (SerialWrap.available() > 0) {
+        // Serial.print("checking for arduino connection");
+        char c = SerialWrap.read();
+        if (c == ' ') {
+          continue;
+          }
+        if (c == '?') {
+          if (checkIfArduinoIsConnected() == 1) {
+            justAsk = 1;
+            Serial.println("Y");
+            break;
+            } else {
+            justAsk = 1;
+            Serial.println("n");
+            break;
+            }
+          } else {
+            break;
+            }
+        }
+      if (justAsk == 0) {
       connectArduino(0);
       //   removeBridgeFromNodeFile(NANO_D1, RP_UART_RX, netSlot, 0);
       //   removeBridgeFromNodeFile(NANO_D0, RP_UART_TX, netSlot, 0);
       //   addBridgeToNodeFile(RP_UART_RX, NANO_D1, netSlot, 0, 1);
       //   addBridgeToNodeFile(RP_UART_TX, NANO_D0, netSlot, 0, 1);
       //   //ManualArduinoReset = true;
-      //  // goto loadfile;
-      //   refreshConnections(-1);
+        //  // goto loadfile;
+        //   refreshConnections(-1);
+        }
       break;
       }
       case 'a': {
-      disconnectArduino(0);
+       // delay(100);
+       int justAsk = 0;
+      while (SerialWrap.available() > 0) {
+        // Serial.print("checking for arduino connection");
+        char c = SerialWrap.read();
+        if (c == ' ') {
+          continue;
+          }
+        if (c == '?') {
+          if (checkIfArduinoIsConnected() == 1) {
+            justAsk = 1;
+            Serial.println("Y");
+            break;
+            } else {
+            justAsk = 1;
+            Serial.println("n");
+            break;
+            }
+          } else {
+            break;
+            }
+        }
+      if (justAsk == 0) {
+        disconnectArduino(0);
       // removeBridgeFromNodeFile(NANO_D1, RP_UART_RX, netSlot, 0);
       // removeBridgeFromNodeFile(NANO_D0, RP_UART_TX, netSlot, 0);
       // // removeBridgeFromNodeFile(RP_UART_RX, -1, netSlot, 0);
       // // removeBridgeFromNodeFile(RP_UART_TX, -1, netSlot, 0);
       // //refreshLocalConnections(-1);
       // refreshConnections(-1);
-
+      }
       //goto loadfile;
       break;
       }
@@ -1109,8 +1202,8 @@ core1passthrough = 1;
     //  Serial.print("firstConnection = ");
     //  Serial.println(firstConnection);
     //  Serial.flush();
-    blockProbeButton = 300;
-    blockProbeButtonTimer = millis();
+      blockProbeButton = 300;
+      blockProbeButtonTimer = millis();
       probeMode(1, firstConnection);
       //      Serial.print("apdebugLEDs = ");
       // Serial.println(debugLEDs);
@@ -1150,12 +1243,13 @@ core1passthrough = 1;
       }
       case 'n':
         couldntFindPath(1);
+        core1passthrough = 0;
         Serial.print("\n\n\rnetlist\n\r");
-       // listSpecialNets();
-        // Serial.print("\n\n\r");
-        // Serial.print("anythingInteractiveConnected(-1) = ");
-        // Serial.println(anythingInteractiveConnected(-1));
-        // Serial.flush();
+        // listSpecialNets();
+         // Serial.print("\n\n\r");
+         // Serial.print("anythingInteractiveConnected(-1) = ");
+         // Serial.println(anythingInteractiveConnected(-1));
+         // Serial.flush();
         listNets(anythingInteractiveConnected(-1));
 
         break;
@@ -1228,7 +1322,7 @@ core1passthrough = 1;
       Serial.print(netSlot);
       slotPreview = netSlot;
       slotChanged = 1;
-     // printAllChangedNetColorFiles();
+      // printAllChangedNetColorFiles();
 
       goto loadfile;
       }
@@ -1273,21 +1367,21 @@ core1passthrough = 1;
 
         // clearNodeFile(netSlot);
 
-        if (connectFromArduino != '\0') {
-          serSource = 1;
-          } else {
-          serSource = 0;
-          }
+        // if (connectFromArduino != '\0') {
+        //   serSource = 1;
+        //   } else {
+        //   serSource = 0;
+        //   }
         savePreformattedNodeFile(serSource, netSlot, rotaryEncoderMode);
 
         refreshConnections(-1);
 
-        if (debugNMtime) {
-          Serial.print("\n\n\r");
-          Serial.print("took ");
-          Serial.print(millis() - timer);
-          Serial.print("ms");
-          }
+        // //if (debugNMtime) {
+        //   Serial.print("\n\n\r");
+        //   Serial.print("took ");
+        //   Serial.print(millis() - timer);
+        //   Serial.print("ms");
+        //  // }
         input = ' ';
 
         probeActive = 0;
@@ -1498,30 +1592,30 @@ void loop1() {
       }
 
 
- if (core1passthrough ==  0 || inClickMenu == 1 || inPadMenu == 1 || probeActive == 1) {
-    passthroughStatus = secondSerialHandler();
- }
+    if (core1passthrough == 0 || inClickMenu == 1 || inPadMenu == 1 || probeActive == 1) {
+      passthroughStatus = secondSerialHandler();
+      }
 
-//     } else {
-//      //core1passthrough = 0;
-//      }
+    //     } else {
+    //      //core1passthrough = 0;
+    //      }
 
-// //core1passthrough = 0;
-// int passthroughCount = 0;
-//    while (passthroughStatus == 1) {
-//     passthroughStatus = secondSerialHandler();
-//     // Serial.println("Serial2 passthrough");
-//     // Serial.println(passthroughStatus);
-//     // Serial.flush();
-//     if (passthroughStatus == 0) {
-//        passthroughCount++;
-//       //break;
-//       }
-   
-//     if (passthroughCount > 100) {
-//       break;
-//       }
- // }
+    // //core1passthrough = 0;
+    // int passthroughCount = 0;
+    //    while (passthroughStatus == 1) {
+    //     passthroughStatus = secondSerialHandler();
+    //     // Serial.println("Serial2 passthrough");
+    //     // Serial.println(passthroughStatus);
+    //     // Serial.flush();
+    //     if (passthroughStatus == 0) {
+    //        passthroughCount++;
+    //       //break;
+    //       }
+
+    //     if (passthroughCount > 100) {
+    //       break;
+    //       }
+     // }
 
     if (blockProbingTimer > 0) {
       if (millis() - blockProbingTimer > blockProbing) {
@@ -1715,7 +1809,7 @@ void core2stuff() // core 2 handles the LEDs and the CH446Q8
                 // defconDisplay = 0;
                 }
 
-              if (defconDisplay > 6) {
+              if (defconDisplay > 5) {
                 defconDisplay = 0;
                 }
               }
@@ -1737,7 +1831,7 @@ void core2stuff() // core 2 handles the LEDs and the CH446Q8
               // showAllRowAnimations();
               }
             } else {
-              //secondSerialHandler();
+            //secondSerialHandler();
             rotaryEncoderStuff();
             }
           schedulerTimer = micros();

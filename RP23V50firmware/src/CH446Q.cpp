@@ -12,6 +12,8 @@
 #include "ch446.pio.h"
 #include "FileParsing.h"
 
+//#include "SerialWrapper.h"
+
 // #include "pio_spi.h"
 
 #define MYNAMEISERIC                                                           \
@@ -328,17 +330,22 @@ void printChipStateArray(void) {
             }
           if (lastChipXY[chip].connected[x][y] == true) {
             Serial.print("─█─");
+            Serial.flush();
             } else {
             if (verticalLine && horizontalLine) {
               Serial.print("─┼─");
+              Serial.flush();
               } else if (verticalLine) {
                 Serial.print(" │ ");
+                Serial.flush();
                 } else if (horizontalLine) {
                   Serial.print("───");
+                  Serial.flush();
 
                   // Serial.print(lastChipXY[chip].connected[x][y] ? "█─" : "┼─");
                   } else {
                   Serial.print(" . ");
+                  Serial.flush();
                   }
             }
           }

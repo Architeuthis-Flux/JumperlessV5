@@ -1,8 +1,0 @@
-slot 0	https://wokwi.com/projects/369024970682423297	 ex
-slot 1
-slot 2
-slot 3
-slot 4
-slot 5
-slot 6
-slot 7

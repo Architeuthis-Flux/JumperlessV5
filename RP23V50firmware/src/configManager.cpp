@@ -8,6 +8,9 @@
 #include "configManager.h"
 #include "NetManager.h"
 #include "Peripherals.h"
+#include "SerialWrapper.h"
+
+// #define Serial SerialWrap
 // Define the global configuration instance
 
 bool configChanged = false;
@@ -311,12 +314,14 @@ void updateConfigFromFile(const char* filename) {
             else if (strcmp(key, "print_passthrough") == 0) jumperlessConfig.serial_1.print_passthrough = parseBool(value);
             else if (strcmp(key, "connect_on_boot") == 0) jumperlessConfig.serial_1.connect_on_boot = parseBool(value);
             else if (strcmp(key, "lock_connection") == 0) jumperlessConfig.serial_1.lock_connection = parseBool(value);
+            else if (strcmp(key, "autoconnect_flashing") == 0) jumperlessConfig.serial_1.autoconnect_flashing = parseBool(value);
         } else if (strcmp(section, "serial_2") == 0) {
             if (strcmp(key, "function") == 0) jumperlessConfig.serial_2.function = parseUartFunction(value);
             else if (strcmp(key, "baud_rate") == 0) jumperlessConfig.serial_2.baud_rate = parseInt(value);
             else if (strcmp(key, "print_passthrough") == 0) jumperlessConfig.serial_2.print_passthrough = parseBool(value);
             else if (strcmp(key, "connect_on_boot") == 0) jumperlessConfig.serial_2.connect_on_boot = parseBool(value);
             else if (strcmp(key, "lock_connection") == 0) jumperlessConfig.serial_2.lock_connection = parseBool(value);
+            else if (strcmp(key, "autoconnect_flashing") == 0) jumperlessConfig.serial_2.autoconnect_flashing = parseBool(value);
         } else if (strcmp(section, "top_oled") == 0) {
             if (strcmp(key, "enabled") == 0) jumperlessConfig.top_oled.enabled = parseBool(value);
             else if (strcmp(key, "i2c_address") == 0) jumperlessConfig.top_oled.i2c_address = parseInt(value);
@@ -444,6 +449,7 @@ void saveConfigToFile(const char* filename) {
     file.print("print_passthrough = "); file.print(jumperlessConfig.serial_1.print_passthrough); file.println(";");
     file.print("connect_on_boot = "); file.print(jumperlessConfig.serial_1.connect_on_boot); file.println(";");
     file.print("lock_connection = "); file.print(jumperlessConfig.serial_1.lock_connection); file.println(";");
+    file.print("autoconnect_flashing = "); file.print(jumperlessConfig.serial_1.autoconnect_flashing); file.println(";");
 
     file.println("[serial_2]");
     file.print("function = "); file.print(jumperlessConfig.serial_2.function); file.println(";");
@@ -451,6 +457,7 @@ void saveConfigToFile(const char* filename) {
     file.print("print_passthrough = "); file.print(jumperlessConfig.serial_2.print_passthrough); file.println(";");
     file.print("connect_on_boot = "); file.print(jumperlessConfig.serial_2.connect_on_boot); file.println(";");
     file.print("lock_connection = "); file.print(jumperlessConfig.serial_2.lock_connection); file.println(";");
+    file.print("autoconnect_flashing = "); file.print(jumperlessConfig.serial_2.autoconnect_flashing); file.println(";");
 
     // Write top_oled section
     file.println("[top_oled]");
@@ -691,6 +698,8 @@ void printConfigSectionToSerial(int section, bool showNames, bool pasteable) {
         Serial.print("connect_on_boot = "); Serial.print(getStringFromTable(jumperlessConfig.serial_1.connect_on_boot, boolTable)); Serial.println(";");
         if (pasteable == true) Serial.print("`[serial_1] ");
         Serial.print("lock_connection = "); Serial.print(getStringFromTable(jumperlessConfig.serial_1.lock_connection, boolTable)); Serial.println(";");
+        if (pasteable == true) Serial.print("`[serial_1] ");
+        Serial.print("autoconnect_flashing = "); Serial.print(getStringFromTable(jumperlessConfig.serial_1.autoconnect_flashing, boolTable)); Serial.println(";");
     }
 
     // Print serial_2 section
@@ -706,6 +715,8 @@ void printConfigSectionToSerial(int section, bool showNames, bool pasteable) {
         Serial.print("connect_on_boot = "); Serial.print(getStringFromTable(jumperlessConfig.serial_2.connect_on_boot, boolTable)); Serial.println(";");
         if (pasteable == true) Serial.print("`[serial_2] ");
         Serial.print("lock_connection = "); Serial.print(getStringFromTable(jumperlessConfig.serial_2.lock_connection, boolTable)); Serial.println(";");
+        if (pasteable == true) Serial.print("`[serial_2] ");
+        Serial.print("autoconnect_flashing = "); Serial.print(getStringFromTable(jumperlessConfig.serial_2.autoconnect_flashing, boolTable)); Serial.println(";");
     }
 
     // Print top_oled section
@@ -1273,6 +1284,7 @@ void updateConfigValue(const char* section, const char* key, const char* value) 
         else if (strcmp(key, "print_passthrough") == 0) sprintf(oldValue, "%d", jumperlessConfig.serial_1.print_passthrough);
         else if (strcmp(key, "connect_on_boot") == 0) sprintf(oldValue, "%d", jumperlessConfig.serial_1.connect_on_boot);
         else if (strcmp(key, "lock_connection") == 0) sprintf(oldValue, "%d", jumperlessConfig.serial_1.lock_connection);
+        else if (strcmp(key, "autoconnect_flashing") == 0) sprintf(oldValue, "%d", jumperlessConfig.serial_1.autoconnect_flashing);
     }
     else if (strcmp(section, "serial_2") == 0) {
         if (strcmp(key, "function") == 0) sprintf(oldValue, "%d", jumperlessConfig.serial_2.function);
@@ -1280,6 +1292,7 @@ void updateConfigValue(const char* section, const char* key, const char* value) 
         else if (strcmp(key, "print_passthrough") == 0) sprintf(oldValue, "%d", jumperlessConfig.serial_2.print_passthrough);
         else if (strcmp(key, "connect_on_boot") == 0) sprintf(oldValue, "%d", jumperlessConfig.serial_2.connect_on_boot);
         else if (strcmp(key, "lock_connection") == 0) sprintf(oldValue, "%d", jumperlessConfig.serial_2.lock_connection);
+        else if (strcmp(key, "autoconnect_flashing") == 0) sprintf(oldValue, "%d", jumperlessConfig.serial_2.autoconnect_flashing);
     }
     else if (strcmp(section, "top_oled") == 0) {
         if (strcmp(key, "i2c_address") == 0) sprintf(oldValue, "%d", jumperlessConfig.top_oled.i2c_address);
@@ -1365,6 +1378,7 @@ void updateConfigValue(const char* section, const char* key, const char* value) 
         else if (strcmp(key, "print_passthrough") == 0) jumperlessConfig.serial_1.print_passthrough = parseBool(value);
         else if (strcmp(key, "connect_on_boot") == 0) jumperlessConfig.serial_1.connect_on_boot = parseBool(value);
         else if (strcmp(key, "lock_connection") == 0) jumperlessConfig.serial_1.lock_connection = parseBool(value);
+        else if (strcmp(key, "autoconnect_flashing") == 0) jumperlessConfig.serial_1.autoconnect_flashing = parseBool(value);
     }
     else if (strcmp(section, "serial_2") == 0) {
         if (strcmp(key, "function") == 0) jumperlessConfig.serial_2.function = parseUartFunction(value);
@@ -1372,6 +1386,7 @@ void updateConfigValue(const char* section, const char* key, const char* value) 
         else if (strcmp(key, "print_passthrough") == 0) jumperlessConfig.serial_2.print_passthrough = parseBool(value);
         else if (strcmp(key, "connect_on_boot") == 0) jumperlessConfig.serial_2.connect_on_boot = parseBool(value);
         else if (strcmp(key, "lock_connection") == 0) jumperlessConfig.serial_2.lock_connection = parseBool(value);
+        else if (strcmp(key, "autoconnect_flashing") == 0) jumperlessConfig.serial_2.autoconnect_flashing = parseBool(value);
     }
     else if (strcmp(section, "top_oled") == 0) {
         if (strcmp(key, "enabled") == 0) jumperlessConfig.top_oled.enabled = parseBool(value);
@@ -1389,6 +1404,190 @@ void updateConfigValue(const char* section, const char* key, const char* value) 
     }
     saveConfigToFile("/config.txt");
     printSettingChange(section, key, oldValue, value);
+}
+
+// Fast config parsing function optimized for tight loops
+// Returns true if valid config setting was parsed and updated, false otherwise
+// Designed to return quickly for invalid strings to minimize loop overhead
+//
+// Usage example in a tight loop:
+// while (someCondition) {
+//     char* inputString = getNextString(); // Your string source
+//     if (fastParseAndUpdateConfig(inputString)) {
+//         // Config was successfully updated
+//         Serial.println("Config updated");
+//     }
+//     // Function returns quickly for invalid strings, minimizing loop overhead
+// }
+//
+// Supported formats:
+// - Dot notation: "config.section.key = value"
+// - Bracket notation: "`[section]key = value"
+bool fastParseAndUpdateConfig(const char* configString) {
+    // Quick validation - must have minimum length and contain '='
+    if (!configString || strlen(configString) < 5) {
+        Serial.println("too short");
+        return false;
+    }
+    
+    const char* equals = strchr(configString, '=');
+    if (!equals) {
+        Serial.println("no equals");
+        return false;
+    }
+    
+    // Quick check for valid config formats
+    bool isDotNotation = (strncmp(configString, "config.", 7) == 0);
+    bool isBracketNotation = (configString[0] == '`' && configString[1] == '[');
+    
+    if (!isDotNotation && !isBracketNotation) {
+       // Serial.println(configString);
+        Serial.println("not a dot or bracket notation");
+        Serial.println(configString);
+        return false;
+    }
+    
+    // Use existing parsing logic but with early returns for efficiency
+    char section[32], key[32], value[64];
+    
+    if (isDotNotation) {
+        // Parse dot notation: config.section.key = value
+        const char* start = configString + 7;  // Skip "config."
+        const char* firstDot = strchr(start, '.');
+        
+        if (!firstDot || firstDot >= equals) {
+            Serial.println("not a valid dot notation");
+            return false;
+        }
+        
+        // Extract section
+        int sectionLen = firstDot - start;
+        if (sectionLen >= sizeof(section)) {
+            Serial.println("section too long");
+            return false;
+        }
+        strncpy(section, start, sectionLen);
+        section[sectionLen] = '\0';
+        
+        // Extract key
+        const char* keyStart = firstDot + 1;
+        int keyLen = equals - keyStart;
+        if (keyLen >= sizeof(key) || keyLen <= 0) {
+            Serial.println("key too long");
+            return false;
+        }
+        strncpy(key, keyStart, keyLen);
+        key[keyLen] = '\0';
+        trim(key);
+        
+        // Extract value
+        const char* valueStart = equals + 1;
+        while (isspace(*valueStart)) valueStart++; // Skip leading whitespace
+        if (strlen(valueStart) >= sizeof(value)) {
+            Serial.println("value too long");
+            return false;
+        }
+        strcpy(value, valueStart);
+        
+        // Trim trailing whitespace and semicolon from value
+        char* end = value + strlen(value) - 1;
+        while (end > value && (isspace(*end) || *end == ';')) {
+            *end = '\0';
+            end--;
+        }
+        
+    } else if (isBracketNotation) {
+        // Parse bracket notation: [section]key = value
+        const char* sectionEnd = strchr(configString, ']');
+        if (!sectionEnd || sectionEnd >= equals) {
+            Serial.println("not a valid bracket notation");
+            return false;
+        }
+        
+        // Extract section (skip the `[)
+        int sectionLen = sectionEnd - configString - 2;  // -2 to account for `[
+        if (sectionLen >= sizeof(section) || sectionLen <= 0) {
+            Serial.println("section too long");
+            return false;
+        }
+        strncpy(section, configString + 2, sectionLen);
+        section[sectionLen] = '\0';
+        
+        // Extract key (skip the ])
+        const char* keyStart = sectionEnd + 1;
+        while (isspace(*keyStart)) keyStart++; // Skip leading whitespace
+        
+        int keyLen = equals - keyStart;
+        if (keyLen >= sizeof(key) || keyLen <= 0) {
+            Serial.println("key too long");
+            return false;
+        }
+        strncpy(key, keyStart, keyLen);
+        key[keyLen] = '\0';
+        
+        // Remove trailing whitespace from key
+        char* keyEnd = key + strlen(key) - 1;
+        while (keyEnd > key && isspace(*keyEnd)) {
+            *keyEnd = '\0';
+            keyEnd--;
+        }
+        
+        // Extract value (skip the =)
+        const char* valueStart = equals + 1;
+        while (isspace(*valueStart)) valueStart++; // Skip leading whitespace
+        if (strlen(valueStart) >= sizeof(value)) {
+            Serial.println("value too long");
+                    return false;
+        }
+        strcpy(value, valueStart);
+        
+        // Trim trailing whitespace and semicolon from value
+        char* end = value + strlen(value) - 1;
+        while (end > value && (isspace(*end) || *end == ';')) {
+            *end = '\0';
+            end--;
+        }
+    }
+    
+    // Quick validation that we have non-empty section, key, and value
+    if (strlen(section) == 0 || strlen(key) == 0 || strlen(value) == 0) {
+        Serial.println("section, key, or value is empty");
+        return false;
+    }
+    
+    // Convert section to lowercase for comparison
+    for(int i = 0; section[i]; i++) {
+        section[i] = tolower(section[i]);
+    }
+    
+    // Quick section validation - only proceed if it's a known section
+    if (strcmp(section, "hardware") != 0 && 
+        strcmp(section, "dacs") != 0 && 
+        strcmp(section, "debug") != 0 && 
+        strcmp(section, "routing") != 0 && 
+        strcmp(section, "calibration") != 0 && 
+        strcmp(section, "logo_pads") != 0 && 
+        strcmp(section, "display") != 0 && 
+        strcmp(section, "gpio") != 0 && 
+        strcmp(section, "serial_1") != 0 && 
+        strcmp(section, "serial_2") != 0 && 
+        strcmp(section, "top_oled") != 0) {
+        Serial.println("section not found");
+        Serial.println(section);
+        return false;
+    }
+    
+    // Update the config value using existing function
+    //updateConfigValue(section, key, value);
+    // Serial.print("section: ");
+    // Serial.println(section);
+    // Serial.print("key: ");
+    // Serial.println(key);
+    // Serial.print("value: ");
+    // Serial.println(value);
+    updateConfigValue(section, key, value);
+    //configChanged = true;
+    return true;
 }
 
 const char* getArbitraryFunctionString(int function) {

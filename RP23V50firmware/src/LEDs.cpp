@@ -324,18 +324,17 @@ int colorDistance(rgbColor a, rgbColor b) {
 
 char* colorNameBuffer = (char*)malloc(10);
 
-// Struct to keep color and name together
-struct NamedColor {
-  uint32_t color;    // Full brightness reference color
-  uint32_t dimColor; // Specially calibrated color for dim matching
-  const char* name;
-  uint8_t hueStart;  // Start of hue range (0-255)
-  uint8_t hueEnd;    // End of hue range (0-255)
-  int termColor256;
-  int termColor16;
-  };
+
 
 // Reference palette
+///@brief Reference palette for color names and terminal colors
+///@param color Full brightness reference color
+///@param dimColor Specially calibrated color for dim matching
+///@param name Color name
+///@param hueStart Start of hue range (0-255)
+///@param hueEnd End of hue range (0-255)
+///@param termColor256 Terminal color for 256-color mode
+///@param termColor16 Terminal color for 16-color mode
 static const NamedColor colorNames[] = {
     {0xFF0000, 0x400000, "red       ", 253, 12, 196, 31},  // Red wraps around 0
     {0xFFA500, 0x401000, "orange    ", 13, 28, 208, 91},
@@ -409,8 +408,12 @@ int closestPaletteHueIdx(int hue) {
   return minIdx;
   }
 int colorToVT100(uint32_t color, int colorDepth) {
+
+
   rgbColor input = unpackRgb(color);
+
   hsvColor inputHsv = RgbToHsv(input);
+  //inputHsv.v = 254;
   int hue = inputHsv.h;
   int hueIdx = closestPaletteHueIdx(hue);
   if (colorDepth == 256) {
@@ -420,6 +423,10 @@ int colorToVT100(uint32_t color, int colorDepth) {
     }
   }
 
+///@brief Convert a color to a name
+///@param color Color to convert
+///@param length Length of the name
+///@return char* Name of the color
 char* colorToName(uint32_t color, int length)
   {
   int numColors = sizeof(colorNames) / sizeof(colorNames[0]);
@@ -556,10 +563,18 @@ char* colorToName(uint32_t color, int length)
     }
   }
 
+///@brief Convert a rgbColor to a name
+///@param color Color to convert
+///@param length Length of the name
+///@return char* Name of the color
 char* colorToName(rgbColor color, int length) {
   return colorToName(packRgb(color.r, color.g, color.b), length);
   }
 
+///@brief Convert a hue to a name
+///@param hue Hue to convert
+///@param length Length of the name
+///@return char* Name of the color
 char* colorToName(int hue, int length) {
   // Serial.print("\n\n\rhueVersion: ");
   // Serial.print(hue);

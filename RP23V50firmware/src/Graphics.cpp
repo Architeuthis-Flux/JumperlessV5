@@ -11,10 +11,12 @@
 #include "leds.h"
 #include "Menus.h"  
 #include "Peripherals.h"
+#include "SerialWrapper.h"
 
 
 #include "Images.h"
 
+#define Serial SerialWrap
 /* clang-format off */
 
 const int screenMap[445] =
@@ -216,10 +218,17 @@ int defNudge = 0;
 int filledPaths[64][4] = { -1 }; // node1 node2 rowfilled
 
 
-void changeTerminalColor(uint32_t color) {
+void changeTerminalColor(int termColor) {
 
-
-
+if (termColor != -1) {
+  Serial.flush();
+  Serial.printf("\033[38;5;%dm", termColor);
+  Serial.flush();
+  } else {
+    Serial.flush();
+    Serial.printf("\033[38;5;%dm", 15);
+    Serial.flush();
+    }
 
 
 
@@ -1712,7 +1721,7 @@ void scrollFont() {
   }
 
 
-void printTextFromMenu(void)
+void printTextFromMenu(int print)
   {
 
 
@@ -1720,13 +1729,17 @@ void printTextFromMenu(void)
   int scroll = 0;
   char f[80] = { ' ' };
   int index = 0;
-  b.clear();
+  //b.clear();
+  unsigned long timeout = millis();
   while (Serial.available() > 0) {
-    if (index > 79) {
+    if (index > 78) {
       break;
       }
     f[index] = Serial.read();
     index++;
+    if (millis() - timeout > 1000) {
+      break;
+      }
     // b.print(f);
     // delayMicroseconds(30);
     // leds.show();
@@ -1761,18 +1774,19 @@ void printTextFromMenu(void)
 
   defconDisplay = 0;
   unsigned long timerScrollTimer = millis();
-  while (Serial.available() != 0) {
-    char trash = Serial.read();
-    }
+  // while (Serial.available() != 0) {
+  //   char trash = Serial.read();
+  //   }
 
   int speed = 200000;
   int cycleCount = 15;
-  Serial.println("\n\rPress any key to exit\n\r");
+  if (print == 1) {
+    Serial.println("\n\rPress any key to exit\n\r");
 
-  if (scroll == 1) {
-    Serial.println("scroll wheel to change speed)\n\r");
+    if (scroll == 1) {
+      Serial.println("scroll wheel to change speed)\n\r");
     }
-
+  }
   while (Serial.available() == 0) {
     if (scroll == 1) {
       rotaryEncoderStuff();
@@ -1820,6 +1834,11 @@ void printTextFromMenu(void)
           //showLEDsCore2 =2;
           }
       }
+    }
+
+    if (Serial.peek() == '#') {
+      uint8_t trash = Serial.read();
+      printTextFromMenu(0);
     }
 
   // while (Serial.available() == 0) {
@@ -1876,8 +1895,8 @@ int attractMode(void) {
       netSlot = -1;
       defconDisplay = 0;
       }
-    Serial.print("netSlot = ");
-    Serial.println(netSlot);
+    // Serial.print("netSlot = ");
+    // Serial.println(netSlot);
     slotChanged = 1;
     showLEDsCore2 = -1;
     encoderDirectionState = NONE;
@@ -1891,8 +1910,8 @@ int attractMode(void) {
         netSlot = NUM_SLOTS;
         defconDisplay = 0;
         }
-      Serial.print("netSlot = ");
-      Serial.println(netSlot);
+      // Serial.print("netSlot = ");
+      // Serial.println(netSlot);
       slotChanged = 1;
       showLEDsCore2 = -1;
       encoderDirectionState = NONE;

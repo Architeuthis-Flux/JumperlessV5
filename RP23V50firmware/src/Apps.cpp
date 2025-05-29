@@ -24,6 +24,8 @@
 // #include <PNGDisplay.h>
 #include <Adafruit_GFX.h>
 #include <Adafruit_SSD1306.h>
+
+#include "SerialWrapper.h"
 #define OLED_CONNECTED 0
 
 

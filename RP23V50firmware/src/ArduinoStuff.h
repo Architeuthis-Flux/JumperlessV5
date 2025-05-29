@@ -31,9 +31,11 @@ extern Adafruit_USBD_CDC USBSer2;
 extern volatile int arduinoInReset;
 
 extern char arduinoCommandStrings[10][50];
+extern char serialCommandBuffer[512];
+extern volatile int serialCommandBufferIndex;
+extern volatile int serialCommandReady;
 
-
-int checkForArduinoCommands(uint8_t serialBuffer[], int serialBufferIndex);
+int checkForArduinoCommands(char serialBuffer[], int serialBufferIndex);
 void initArduino(void);
 
 void initSecondSerial(void);
@@ -52,12 +54,12 @@ void ESPReset(void);
 void SetArduinoResetLine(bool state, int topBottomBoth = 2);
 void flashArduino(unsigned long timeout);
 
-void resetArduino(int topBottomBoth = 2);
+void resetArduino(int topBottomBoth = 2, unsigned long holdMicroseconds = 2500);
 void connectArduino(int flashOrLocal = 1, int refreshConnections = 1);
 void disconnectArduino(int flashOrLocal =  1);
 int checkIfArduinoIsConnected(void);
 
-int handleSerialPassthrough(int serial = 2, int print = 0, int printPassthroughFlashing = 0);
+int handleSerialPassthrough(int serial = 2, int print = 0, int printPassthroughFlashing = 0, int checkForCommands = 1);
 
 void printMicrosPerByte(void);
 

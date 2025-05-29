@@ -39,6 +39,7 @@ int duplicatePaths[MAX_DUPLICATE] = {-1, -1, -1, -1,-1, -1, -1, -1,-1,-1}; // if
 
 int numberOfDuplicates = 0; // if the paths are redundant (for lower resistance) this is the number of duplicates
 
+uint8_t termColor = 15; //terminal color index for 255 color mode (default is white)
 //uint16_t uniqueID; //this is a unique ID for the net, it's used to identify the net in the machine
 };
 

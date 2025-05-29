@@ -29,7 +29,7 @@ void readConfigFromSerial(void);
 void printConfigToSerial(bool showNames = true);
 void printConfigStructToSerial(bool showNames = true);
 void printConfigHelp(void);
-void parseSetting(const char* line, const char* section, const char* key, const char* value);
+bool parseSetting(const char* line, char* section, char* key, char* value);
 void parseCommaSeparatedInts(const char* str, int* array, int maxValues);
 bool parseBool(const char* str);
 float parseFloat(const char* str);
@@ -39,6 +39,8 @@ void toLower(char* str);
 void updateConfigValue(const char* section, const char* key, const char* value);
 int parseTrueFalse(const char* value);
 void printArbitraryFunctionTable(void);
+// Fast config parsing function for tight loops - returns quickly if invalid
+bool fastParseAndUpdateConfig(const char* configString);
 // Template function to get string from a value and a table (auto-deduces table size)
 template <size_t N>
 const char* getStringFromTable(int value, const StringIntEntry (&table)[N]);

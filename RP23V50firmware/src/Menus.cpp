@@ -23,7 +23,7 @@
 #include "UserCode.h"
 #include "oled.h"
 #include "menuTree.h"
-
+#include "SerialWrapper.h"
 
 int inClickMenu = 0;
 

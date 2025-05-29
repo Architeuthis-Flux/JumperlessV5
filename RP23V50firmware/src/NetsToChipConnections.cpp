@@ -11,6 +11,7 @@
 #include "NetManager.h"
 #include "Peripherals.h"
 #include "Probing.h"
+#include "Graphics.h"
 // don't try to understand this, it's still a mess
 bool debugNTCC5 = false;
 int startEndChip[2] = { -1, -1 };
@@ -64,18 +65,7 @@ int dacPriority = 1;
 // of with more power connections.
 
 void clearAllNTCC(void) {
-  startEndChip[0] = -1;
-  startEndChip[1] = -1;
-  bothNodes[0] = -1;
 
-  bothNodes[1] = -1;
-
-  numberOfUniqueNets = 0;
-  numberOfNets = 0;
-  numberOfPaths = 0;
-
-  pathsWithCandidatesIndex = 0;
-  pathIndex = 0;
 
  // digitalWrite(RESETPIN,HIGH);
 
@@ -91,7 +81,7 @@ void clearAllNTCC(void) {
   // for (int g = 0; g < 10; g++) {
   // gpioNet[g] = -1;
   //   }
-  for (int i = 0; i < MAX_BRIDGES; i++) {
+  for (int i = 0; i < numberOfPaths+8; i++) {
     pathsWithCandidates[i] = 0;
     path[i].net = 0;
     path[i].node1 = 0;
@@ -169,16 +159,17 @@ void clearAllNTCC(void) {
   net[4].machine = false;
   net[5].machine = false;
 
-  net[1].priority = powerPriority;
-  net[2].priority = powerPriority;
-  net[3].priority = powerPriority;
+  net[1].priority = jumperlessConfig.routing.rail_priority;
+  net[2].priority = jumperlessConfig.routing.rail_priority;
+  net[3].priority = jumperlessConfig.routing.rail_priority;
   net[4].priority = dacPriority;
   net[5].priority = dacPriority;
 
-  for (int i = 6; i < MAX_NETS; i++) {
+  for (int i = 6; i < numberOfNets+6; i++) {
    // uint16_t   uniqueID = net[i].uniqueID;
 
 net[i] = { 0, " ", {}, {{}}, 0, {}, {}, 0, 0, 0, 0, false };
+net[i].termColor = 15; // white
 
    // if (changedNetColors[i].uniqueID != 0) {
 //     for (int j = 0; j < MAX_NETS; j++) {
@@ -235,6 +226,20 @@ net[i] = { 0, " ", {}, {{}}, 0, {}, {}, 0, 0, 0, 0, false };
   gpioReadingColors[8] = 0x010101;
   gpioReadingColors[9] = 0x010101;
 
+
+
+  startEndChip[0] = -1;
+  startEndChip[1] = -1;
+  bothNodes[0] = -1;
+
+  bothNodes[1] = -1;
+
+  numberOfUniqueNets = 0;
+  numberOfNets = 0;
+  numberOfPaths = 0;
+
+  pathsWithCandidatesIndex = 0;
+  pathIndex = 0;
   //findChangedNetColors();
   // for (int i = 0; i<MAX_NETS; i++) {
   //  // changedNetColors[i] = 0;
@@ -2898,8 +2903,9 @@ void printPathsCompact(int showCullDupes) {
       continue;
       }
 
-    lastDuplicate = path[i].duplicate;
 
+    lastDuplicate = path[i].duplicate;
+    changeTerminalColor(net[path[i].net].termColor);
     Serial.print(i);
     Serial.print("\t");
 
@@ -2956,13 +2962,23 @@ void printPathsCompact(int showCullDupes) {
       }
 
     Serial.println(" ");
+    Serial.flush();
 
       if (showCullDupes > 0 && duplicateSection == 0 && i == numberOfPaths - 1) {
+// if ( jumperlessConfig.routing.stack_paths > 0 || jumperlessConfig.routing.stack_rails > 0 || jumperlessConfig.routing.stack_dacs > 0) {
+// Serial.print("numberOfPaths = ");
+// Serial.print(numberOfPaths);
+// Serial.print("\ti = ");
+// Serial.print(i);
+
     duplicateSection = 1;
+    changeTerminalColor();
     Serial.println("\n\rduplicates");
     i = 0;
     }
+    changeTerminalColor();
     }
+
   // Serial.println(
   //     "\n\rpath\tnet\tnode1\tchip0\tx0\ty0\tnode2\tchip1\tx1\ty1\ta"
   //     "ltPath\tsameChp\tpathType\tchipL\tchip2\tx2\ty2\n\r");
@@ -2982,7 +2998,9 @@ void printChipStatus(void) {
       if (ch[i].xStatus[j] == -1) {
         spaces += Serial.print(".");
         } else {
+        changeTerminalColor(net[ch[i].xStatus[j]].termColor);
         spaces += printNetOrNumber(ch[i].xStatus[j]);
+        changeTerminalColor();
         }
       for (int k = 0; k < 4 - spaces; k++) {
         Serial.print(" ");
@@ -2995,7 +3013,9 @@ void printChipStatus(void) {
       if (ch[i].yStatus[j] == -1) {
         spaces += Serial.print(".");
         } else {
+        changeTerminalColor(net[ch[i].yStatus[j]].termColor);
         spaces += printNetOrNumber(ch[i].yStatus[j]);
+        changeTerminalColor();
         }
 
       for (int k = 0; k < 4 - spaces; k++) {

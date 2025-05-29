@@ -14,6 +14,8 @@
 #include "CH446Q.h"
 #include "config.h"
 #include "NetManager.h"
+#include "configManager.h"
+#include "SerialWrapper.h"
 
 #include <SoftwareSerial.h>
 
@@ -65,13 +67,16 @@ unsigned long microsPerByteSerial1 = (1000000 / 115200 + 1) * (8 + 0 + 0);
 unsigned long microsPerByteSerial2 = (1000000 / 115200 + 1) * (8 + 0 + 0);
 
 
+// volatile char serialCommandBuffer[512];
+// volatile int serialCommandBufferIndex = 0;
+
 int serConfigChangedUSBSer1 = 0;
 int serConfigChangedUSBSer2 = 0;
 
 // SerialPIO SerialPIO1(0, 1, 1024);
 
 void initSecondSerial(void) {
-#ifdef USE_TINYUSB
+//#ifdef USE_TINYUSB
 
   USBSer1.setStringDescriptor("JL Arduino");  //Not working
   USBSer2.setStringDescriptor("JL Routable"); //Not working
@@ -102,8 +107,12 @@ void initSecondSerial(void) {
     Serial2.begin(baudRateUSBSer2, makeSerialConfig(8, 0, 0));
     }
 
-#endif
+//#endif
   }
+
+
+
+
 
 
 unsigned long serial1LEDTimer = 0;
@@ -136,6 +145,10 @@ int serialPassthroughStatusTimeout = 50;
 int secondSerialHandler(void) {
 
   int ret = 0;
+
+  // if (jumperlessConfig.serial_1.function == 2 || jumperlessConfig.serial_2.function == 2) {
+  //   return 0;
+  //   }
 
 
   if (jumperlessConfig.serial_1.function != 0 && (long)millis() - (long)lastSerial1Check > 50) {
@@ -206,7 +219,7 @@ int secondSerialHandler(void) {
         }
 
 
-      flashArduino(120);
+      flashArduino(1200);
 
 
       }
@@ -233,13 +246,13 @@ int secondSerialHandler(void) {
       // }
     }
 
-  
-    ret = handleSerialPassthrough(2, 0);
+
+  ret = handleSerialPassthrough(2, 0);
 
 
-    if (ret != 0) {
-      serialPassthroughStatus = 1;
-      lastSerialPassthrough = millis();
+  if (ret != 0) {
+    serialPassthroughStatus = 1;
+    lastSerialPassthrough = millis();
     } else if (millis() - lastSerialPassthrough > serialPassthroughStatusTimeout) {
       serialPassthroughStatus = 0;
       }
@@ -247,7 +260,7 @@ int secondSerialHandler(void) {
 
 
 
-  return ret;
+    return ret;
   }
 
 char arduinoCommandStrings[10][50] = { //commands to sniff from the Arduino
@@ -292,7 +305,7 @@ void flashArduino(unsigned long timeoutTime) {
 
 
   while (USBSer1.available() == 0) {
-    if (millis() - serTimeout > 1000) {
+    if (millis() - serTimeout > 2000) {
       // Serial.println("Arduino not connected (enter A to connect UART)");
       // Serial.println("trying to flash anyway\n\r");
       //return;
@@ -303,18 +316,24 @@ void flashArduino(unsigned long timeoutTime) {
   uint8_t peeked = 0x00;
 
   if (USBSer1.peek() == 0x30) {
+    while (USBSer1.available() == 0);
     peeked = USBSer1.read();
     if (USBSer1.peek() == 0x20) {
-      resetArduino();
+      
       Serial1.write(0x30);
       Serial1.flush();
+      resetArduino();
       }
     } else {
+      //Serial.println("unpeeked");
+      //Serial.flush();
     return;
     }
 
   Serial.println("Flash Arduino started");
-  //resetArduino();
+
+  Serial.flush();
+  resetArduino();
   //delay(80);
   lastTimeResetArduino = millis();
 
@@ -322,14 +341,17 @@ void flashArduino(unsigned long timeoutTime) {
   unsigned long flashTimeout = millis();
 
 
-  timeoutTime = 800;
+  //timeoutTime = 800;
 
   int totalBytesTransferred = 0;
   int totalBytesSent = 0;
   int totalBytesReceived = 0;
 
+  int dtrStatus = USBSer1.dtr();
+  int lastDTRStatus = dtrStatus;
+
   while (1) {
-    int ret = handleSerialPassthrough(0, 0, printSerial1Passthrough == 2 ? 1 : 0);
+    int ret = handleSerialPassthrough(0, 0, printSerial1Passthrough == 2 ? 1 : 0, 0);
     if (ret != 0) {
       totalBytesTransferred += abs(ret);
       if (ret > 0) {
@@ -342,16 +364,38 @@ void flashArduino(unsigned long timeoutTime) {
       }
 
 
-    if (millis() - flashTimeout > timeoutTime && totalBytesTransferred > 0) {
+// if (USBSer1.peek() == 0x12) {
+//   USBSer1.read();
+//   Serial.println("DC2 reset");
+//   Serial.flush();
+//   resetArduino(2, 1000);
+//   }
+//USBSer1.peek
+    // dtrStatus = USBSer1.dtr();
+    // if (dtrStatus != lastDTRStatus) {
+    //   lastDTRStatus = dtrStatus;
+      
+    //     Serial.println("DTR reset");
+    //     Serial.flush();
+    //     resetArduino(2, 1000);
+        
+    //   }
 
+
+    if ((millis() - flashTimeout > timeoutTime ) && totalBytesTransferred > 20) {
+      // Serial.println("Flash Arduino timeout");
+      // Serial.println();
+      // Serial.flush();
       break;
       }
 
-    if (totalBytesTransferred == 0) {
+    if (totalBytesTransferred < 20) {
+      // Serial.println("totalBytesTransferred is 0");
+      // Serial.flush();
       serTimeout = millis();
       }
 
-    if (millis() - serTimeout > 1200) { //this is a timeout before the arduino wakes up from reset
+    if (millis() - serTimeout > 3200) { //this is a timeout before the arduino wakes up from reset
       break;
       }
     }
@@ -372,17 +416,113 @@ void flashArduino(unsigned long timeoutTime) {
   Serial.flush();
   }
 
+
+char commandStartString[] = "`[";
+
+char commandString[256];
+
+char serialCommandBuffer[512];
+volatile int serialCommandBufferIndex = 0;
+
+int checkForCommandStrings(char serialBuffer[], int commandStringStart, int commandStringEnd) {
+
+  serialCommandBufferIndex = 0;
+
+  if (commandStringStart == -1 || (commandStringEnd - commandStringStart) <= 0) {
+    return 0;
+    }
+
+  for (int i = 0; i < 512; i++) {
+    serialCommandBuffer[i] = '\0';
+    }
+
+  if (commandStringEnd == -1) {
+    commandStringEnd = commandStringStart + 2;
+    }
+
+
+  for (int i = commandStringStart; i <= commandStringEnd; i++) {
+    if (serialBuffer[i] == ' ' && serialCommandBufferIndex == 0) {
+      continue;
+      }
+
+    if (serialBuffer[i] != 0x02 && serialBuffer[i] != 0x03) {
+
+      serialCommandBuffer[serialCommandBufferIndex++] = serialBuffer[i];
+      }
+    }
+
+
+  //serialCommandBufferIndex++;
+  serialCommandBuffer[serialCommandBufferIndex] = '\n';
+  serialCommandBuffer[serialCommandBufferIndex + 1] = '\0';
+
+
+
+  SerialWrap.fillReadBuffer(serialCommandBuffer, serialCommandBufferIndex);
+
+
+  Serial.print((const char*)serialCommandBuffer);
+  // Serial.print("\tcommandStringStart: ");
+  // Serial.print(commandStringStart);
+  // Serial.print("\tcommandStringEnd: "); 
+  // Serial.print(commandStringEnd);
+  // Serial.print("\tscbIdx: ");
+  // Serial.print(serialCommandBufferIndex);
+  // Serial.print("\tscb[0]: ");
+  // Serial.println(serialCommandBuffer[0]);
+  // Serial.print("\tscb[1]: ");
+  // Serial.print(serialCommandBuffer[1]);
+  // Serial.print("\tscb[2]: ");
+  // Serial.print(serialCommandBuffer[2]);
+  // Serial.print("\tscb[3]: ");
+  // Serial.print(serialCommandBuffer[3]);
+  // Serial.print("\n\r");
+
+  Serial.flush();
+  return 1;
+
+  // // if (serialBuffer[0] != commandStartString[0] || serialBuffer[1] != commandStartString[1]) {
+  // //   return -1;
+  // // }
+  // return 0;
+  // // Convert buffer to null-terminated string for parsing
+  // char configString[256];
+  // int copyLen = (serialBufferIndex < sizeof(configString) - 1) ? serialBufferIndex : sizeof(configString) - 1;
+  // memcpy(configString, serialBuffer, copyLen);
+  // configString[copyLen] = '\0';
+  // Serial.println(configString);
+
+  // // Use fast parsing function - returns quickly if invalid
+  // if (fastParseAndUpdateConfig(configString)) {
+  //   Serial.println("Command string parsed and updated config");
+  //   configChanged = true;
+  //   return 1; // Successfully parsed and updated config
+  // }
+  // Serial.println("Command string not parsed and updated config");
+  // return 0; // Not a valid config string
+  }
+
+
+
+
+
+
+
+
 int USBSer1Available = 0;
 int Serial1Available = 0;
 
+int commandStringStart = -1;
+int commandStringEnd = -1;
 
 
-int handleSerialPassthrough(int serial, int print, int printPassthroughFlashing) {
+int handleSerialPassthrough(int serial, int print, int printPassthroughFlashing, int checkForCommands) {
   int ret = 0;
   int sent = 0;
   int received = 0;
 
-  if (jumperlessConfig.serial_1.function != 0 && (serial == 0 || serial == 2)) {
+  if (jumperlessConfig.serial_1.function == 1 && (serial == 0 || serial == 2)) {
 
     unsigned long serial1Timeout = millis();
     USBSer1Available = USBSer1.available();
@@ -476,46 +616,32 @@ int handleSerialPassthrough(int serial, int print, int printPassthroughFlashing)
 
     if (Serial1.available() > 0) {
       Serial1Available = Serial1.available();
-      // serial1BufferIndex = Serial1Available;
-      // Serial.print("\n\rserial1Available: ");
-      // Serial.println(Serial1Available);
-      // Serial1.readBytes(serial1Buffer, Serial1Available);
 
-      // for (int i = 0; i < Serial1Available; i++) {
-
-      //   Serial.print(serial1Buffer[i]);
-      //   Serial.print(" ");
-      //   if (i % 32 == 0) {
-      //     Serial.println();
-      //     }
-      //   }
-      //  Serial.println();
-      // // Serial.println(serial1Buffer);
-      // Serial.flush();
 
       serial1Timeout = millis();
 
       unsigned long lastSerial1Read = micros();
+
+      commandStringStart = -1;
+      commandStringEnd = -1;
 
       while (1) {
 
         if (Serial1.available() > 0) {
           uint8_t c = Serial1.read();
 
+          if (c == 0x02) {
+            commandStringStart = serial1BufferIndex;
+            }
+
+          if (c == 0x03) {
+            commandStringEnd = serial1BufferIndex;
+            }
+
           serial1Buffer[serial1BufferIndex++] = c;
           lastSerial1Read = micros();
           }
 
-
-
-        // if (serial1BufferIndex >= sizeof(serial1Buffer)) {
-        //   // Serial.println("serial1BufferIndex >= sizeof(serial1Buffer)");
-        //   // Serial.flush();
-        //   break;
-        //   }
-        // if (millis() - serial1Timeout > 10) {
-        //   break;
-        //   }
 
         if (micros() - lastSerial1Read > microsPerByteSerial1 * 4 + 12) {
           //Serial.println("serial1Timeout");
@@ -524,11 +650,6 @@ int handleSerialPassthrough(int serial, int print, int printPassthroughFlashing)
           }
 
         unsigned long delayTime = micros();
-
-        // while ((micros() - delayTime < microsPerByteSerial1 * 4 + 12) && Serial1.available() <= 0) {
-        //   //wait for the next byte or continue if there is one
-        //   }
-
 
 
 
@@ -540,6 +661,15 @@ int handleSerialPassthrough(int serial, int print, int printPassthroughFlashing)
           }
         }
 
+      if (checkForCommands == 1) {
+        checkForCommandStrings(serial1Buffer, commandStringStart, commandStringEnd);
+        }
+      // if (checkForCommandStrings(serial1Buffer, serial1BufferIndex) == 1) {
+      //   Serial.println("Command string received");
+      //   Serial.println((const char*)serial1Buffer);
+      //   Serial.println();
+      //   Serial.flush();
+      //   }
 
       // Serial.print("\n\rmicrosPerByteSerial1: ");
       // Serial.println(microsPerByteSerial1);
@@ -601,7 +731,7 @@ int handleSerialPassthrough(int serial, int print, int printPassthroughFlashing)
     //}
     }
 
-  if (jumperlessConfig.serial_2.function != 0 && (serial == 1 || serial == 2)) {
+  if (jumperlessConfig.serial_2.function == 1 && (serial == 1 || serial == 2)) {
 
     unsigned long serial2Timeout = millis();
     int usbSer2Available = USBSer2.available();
@@ -732,9 +862,9 @@ int handleSerialPassthrough(int serial, int print, int printPassthroughFlashing)
 
   return ret;
   }
-void resetArduino(int topBottomBoth) {
+void resetArduino(int topBottomBoth, unsigned long holdMicroseconds) {
   SetArduinoResetLine(LOW, topBottomBoth);
-  delayMicroseconds(500);
+  delayMicroseconds(holdMicroseconds);
   SetArduinoResetLine(HIGH, topBottomBoth);
 
   }
@@ -837,7 +967,7 @@ void SetArduinoResetLine(bool state, int topBottomBoth) {
       digitalWrite(ARDUINO_RESET_1_PIN, LOW);
       rstColors[0] = 0x002a10;
       }
-    delayMicroseconds(100);
+    delayMicroseconds(200);
 
 
 

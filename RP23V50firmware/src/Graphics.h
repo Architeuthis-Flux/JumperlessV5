@@ -122,8 +122,11 @@ void printString(const char* s, uint32_t color = 0xFFFFFF, uint32_t bg = 0xFFFFF
 
 void defcon(int start, int spread, int color = 0, int nudge = 1);
 
-void printTextFromMenu(void);
+void printTextFromMenu(int print = 1);
 int attractMode(void);
+
+void changeTerminalColor(int termColor = -1);
+
 
 void drawImage(int imageIndex = 0);
 void drawAnimatedImage(int imageIndex = 0, int speed = 2000);

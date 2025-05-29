@@ -306,6 +306,20 @@ struct changedNetColors {
 
 extern struct changedNetColors changedNetColors[MAX_NETS];
 
+
+// Struct to keep color and name together
+struct NamedColor {
+  uint32_t color;    // Full brightness reference color
+  uint32_t dimColor; // Specially calibrated color for dim matching
+  const char* name;
+  uint8_t hueStart;  // Start of hue range (0-255)
+  uint8_t hueEnd;    // End of hue range (0-255)
+  int termColor256;
+  int termColor16;
+  };
+
+extern const NamedColor namedColors[20];
+
 //extern uint32_t changedNetColors[MAX_NETS];
 extern rgbColor netColors[MAX_NETS];
 extern uint32_t savedLEDcolors[NUM_SLOTS][LED_COUNT + 1];

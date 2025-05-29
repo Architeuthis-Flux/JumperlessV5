@@ -1549,14 +1549,18 @@ void showLEDmeasurements(void) {
 int anythingInteractiveConnected(int net) {
 
   if (anyAdcConnected(net) != -1) {
+   // Serial.print("adc connected");
     return 2;
     }
   if (anyGpioOutputConnected(net) != -1) {
+   // Serial.print("gpio output connected");
     return 0;
     }
   if (anyGpioInputConnected(net) != -1) {
+   // Serial.print("gpio input connected");
     return 1;
     }
+  //Serial.print("no interactive connected");
   return -1;
   }
 

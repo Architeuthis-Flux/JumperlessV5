@@ -6,7 +6,7 @@
 	<dict>
 		<key>Resources/base_library.zip</key>
 		<data>
-		5VeGnnLqW3P77dPttbFFH0pSvsw=
+		NoQzn/57YxTQfZoEag1oppYo+PA=
 		</data>
 		<key>Resources/certifi/cacert.pem</key>
 		<data>
@@ -18,7 +18,7 @@
 		</data>
 		<key>Resources/icon.icns</key>
 		<data>
-		Xu4NmrrU6OurOrFICyIOVsLyKYI=
+		gJl6sNIMuOJLot+a2kGhIlpzKeg=
 		</data>
 	</dict>
 	<key>files2</key>
@@ -407,6 +407,15 @@
 			<key>requirement</key>
 			<string>cdhash H"850965b9549c48012039e3c120f058806e54b5ad" or cdhash H"83d45959c88b398f067c8261ffd82a56613c38c9" or cdhash H"7d8e1732faeb03e4c884ee62d5630fcf4251541f" or cdhash H"6f42e12d04a1cf5f743f149c86a9fadb2f35466f"</string>
 		</dict>
+		<key>Frameworks/lib-dynload/readline.cpython-312-darwin.so</key>
+		<dict>
+			<key>cdhash</key>
+			<data>
+			racQUjiZqwCF9gjI+Tr5AbdADmY=
+			</data>
+			<key>requirement</key>
+			<string>cdhash H"01cb9b99b1b51511f38aac3a32de7ed290435bc5" or cdhash H"ada710523899ab0085f608c8f93af901b7400e66" or cdhash H"4f1300a44a818cd1edf2fc98e516333f20003d1d" or cdhash H"a012c05c166acea6e3f125d9bd945c196ac4e82e"</string>
+		</dict>
 		<key>Frameworks/lib-dynload/resource.cpython-312-darwin.so</key>
 		<dict>
 			<key>cdhash</key>
@@ -502,7 +511,7 @@
 		<dict>
 			<key>hash2</key>
 			<data>
-			cOMIKKuBBtEtJA3NhiWkeXrmN2qC2uGVPesndfRMSUk=
+			8Wu79mgDJniGJ0MU9mQ4p+SOoMItGHVlY7WxvOw0jjs=
 			</data>
 		</dict>
 		<key>Resources/certifi/cacert.pem</key>
@@ -523,7 +532,7 @@
 		<dict>
 			<key>hash2</key>
 			<data>
-			S1gViwZdpIU/2oQNGamS1Xyba7CNbCq3KLsni+cWmvw=
+			vWwz+lpTyFnPvenq875lJhiMoSYr2jSHxcflPGxTLJk=
 			</data>
 		</dict>
 		<key>Resources/lib-dynload</key>

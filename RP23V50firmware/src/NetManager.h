@@ -103,6 +103,9 @@ const DefineInfo* findDefineInfoByValue(int defineValue);
 
 int checkIfBridgeExistsLocal(int node1, int node2 = -1);
 
+void assignTermColor(void);
+
+
 #endif
 
 

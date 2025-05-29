@@ -1,3 +1,0 @@
-fuck		https://wokwi.com/projects/399335389161866241
-esp32		https://wokwi.com/projects/400405843811118081
-ess32		https://wokwi.com/projects/401043137838589953

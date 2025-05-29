@@ -1,113 +1,479 @@
 # SPDX-License-Identifier: MIT
-#Kevin Santo Cappuccio
-#Jumperless Bridge App
-#KevinC@ppucc.io
-
-from bs4 import BeautifulSoup
+# Kevin Santo Cappuccio
+# Jumperless Bridge App
+# KevinC@ppucc.io
+#
+# Enhanced Wokwi Integration:
+# - Improved sketch.ino extraction from Wokwi projects using multiple extraction methods
+# - Better error handling and fallback mechanisms for various Wokwi page formats
+# - Support for direct code extraction from visible page elements
 
 import pathlib
-
 import requests
 import json
 import serial
 import time
-
 import sys
 import codecs
 import os
-#import pyduinocli# We're not doing this flashing from Wokwi thing anymore unless someone reallllly wants it
-
-
 import shutil
 from urllib.request import urlretrieve
-
 import ssl
-ssl._create_default_https_context = ssl._create_unverified_context
 import psutil
-os.system("")
-#import platform
-os.system('color')
+import threading
+import platform
+from bs4 import BeautifulSoup
+import re
+import subprocess
 
-if (sys.platform == "win32"):
-    import win32api
+# Command history support
+try:
+    import readline
+    READLINE_AVAILABLE = True
+    # Configure readline for better command history
+    readline.set_history_length(100)  # Keep last 100 commands
+    # Enable tab completion if available
+    try:
+        readline.parse_and_bind("tab: complete")
+    except:
+        pass
+except ImportError:
+    READLINE_AVAILABLE = False
 
-#from watchedserial import WatchedReaderThread
+# import colored
+
+# from termcolor import colored, cprint
+
+
+# Arduino CLI support with automatic installation
+try:
+    import pyduinocli
+    PYDUINOCLI_AVAILABLE = True
+except ImportError:
+    PYDUINOCLI_AVAILABLE = False
+    # safe_print will be called later after it's defined
+
+# Cross-platform color handling
+try:
+    import colorama
+    from colorama import Fore, Style
+    colorama.init(autoreset=True)
+    COLORS_AVAILABLE = True
+except ImportError:
+    # Fallback if colorama is not available
+    class Fore:
+        RED = '\033[31m' if platform.system() != 'Windows' else ''
+        GREEN = '\033[32m' if platform.system() != 'Windows' else ''
+        YELLOW = '\033[33m' if platform.system() != 'Windows' else ''
+        BLUE = '\033[34m' if platform.system() != 'Windows' else ''
+        MAGENTA = '\033[35m' if platform.system() != 'Windows' else ''
+        CYAN = '\033[36m' if platform.system() != 'Windows' else ''
+        WHITE = '\033[37m' if platform.system() != 'Windows' else ''
+        RESET = '\033[0m' if platform.system() != 'Windows' else ''
+    
+    class Style:
+        RESET_ALL = '\033[0m' if platform.system() != 'Windows' else ''
+    
+    COLORS_AVAILABLE = False
+
+# Platform-specific imports
+if sys.platform == "win32":
+    try:
+        import win32api
+        WIN32_AVAILABLE = True
+    except ImportError:
+        WIN32_AVAILABLE = False
+else:
+    WIN32_AVAILABLE = False
+
+# SSL context setup
+try:
+    ssl._create_default_https_context = ssl._create_unverified_context
+except AttributeError:
+    pass  # Older Python versions might not have this
+
+# Enable ANSI colors on Windows
+if sys.platform == "win32":
+    os.system("")
 
 import serial.tools.list_ports
 
+# ============================================================================
+# ARDUINO CLI SETUP AND AUTO-INSTALLATION
+# ============================================================================
+arduino_cli_version = "1.2.2"
+def get_latest_arduino_cli_version():
+    """Get the latest Arduino CLI version from GitHub releases API"""
+    global arduino_cli_version
+    try:
+        response = requests.get(
+            "https://api.github.com/repos/arduino/arduino-cli/releases/latest",
+            timeout=10
+        )
+        if response.status_code == 200:
+            release_data = response.json()
+            version = release_data.get('tag_name', '').lstrip('v')  # Remove 'v' prefix if present
+            if version:
+                arduino_cli_version = version
+                return version
+    except Exception:
+        # Don't print here since safe_print might not be defined yet
+        pass
+    
+    # Fallback to known working version
+    return "1.2.2"
 
+def get_arduino_cli_url():
+    """Get the appropriate Arduino CLI download URL for the current platform"""
+    system = platform.system().lower()
+    machine = platform.machine().lower()
+    
+    # Get latest version from GitHub
+    version = get_latest_arduino_cli_version()
+    
+    if system == "windows":
+        if machine in ["x86_64", "amd64"]:
+            return f"https://github.com/arduino/arduino-cli/releases/download/v{version}/arduino-cli_{version}_Windows_64bit.zip"
+        else:
+            return f"https://github.com/arduino/arduino-cli/releases/download/v{version}/arduino-cli_{version}_Windows_32bit.zip"
+    elif system == "darwin":  # macOS
+        if machine in ["arm64", "aarch64"]:
+            return f"https://github.com/arduino/arduino-cli/releases/download/v{version}/arduino-cli_{version}_macOS_ARM64.tar.gz"
+        else:
+            return f"https://github.com/arduino/arduino-cli/releases/download/v{version}/arduino-cli_{version}_macOS_64bit.tar.gz"
+    elif system == "linux":
+        if machine in ["x86_64", "amd64"]:
+            return f"https://github.com/arduino/arduino-cli/releases/download/v{version}/arduino-cli_{version}_Linux_64bit.tar.gz"
+        elif machine in ["armv7l", "armv6l"]:
+            return f"https://github.com/arduino/arduino-cli/releases/download/v{version}/arduino-cli_{version}_Linux_ARMv7.tar.gz"
+        elif machine in ["aarch64", "arm64"]:
+            return f"https://github.com/arduino/arduino-cli/releases/download/v{version}/arduino-cli_{version}_Linux_ARM64.tar.gz"
+        else:
+            return f"https://github.com/arduino/arduino-cli/releases/download/v{version}/arduino-cli_{version}_Linux_32bit.tar.gz"
+    
+    return None
+
+def download_and_extract_arduino_cli():
+    """Download and extract Arduino CLI to the current directory"""
+    try:
+        import zipfile
+        import tarfile
+        
+        cli_url = get_arduino_cli_url()
+        if not cli_url:
+            safe_print("Unsupported platform for Arduino CLI auto-download", Fore.RED)
+            return False
+        
+        # Get and display the version being downloaded
+        version = get_latest_arduino_cli_version()
+        safe_print(f"Using Arduino CLI version: {version}", Fore.CYAN)
+        
+        # Check if we're using fallback version
+        try:
+            response = requests.get(
+                "https://api.github.com/repos/arduino/arduino-cli/releases/latest",
+                timeout=5
+            )
+            if response.status_code != 200:
+                safe_print("Using fallback version (GitHub API unavailable)", Fore.YELLOW)
+        except Exception:
+            safe_print("Using fallback version (GitHub API unavailable)", Fore.YELLOW)
+        
+        safe_print("Downloading Arduino CLI...", Fore.CYAN)
+        
+        # Determine file extension
+        if cli_url.endswith('.zip'):
+            filename = "arduino-cli.zip"
+        else:
+            filename = "arduino-cli.tar.gz"
+        
+        # Download the file
+        try:
+            urlretrieve(cli_url, filename)
+            safe_print("Arduino CLI downloaded successfully", Fore.GREEN)
+        except Exception as e:
+            safe_print(f"Failed to download Arduino CLI: {e}", Fore.RED)
+            return False
+        
+        # Extract the file
+        try:
+            if filename.endswith('.zip'):
+                with zipfile.ZipFile(filename, 'r') as zip_ref:
+                    # Extract arduino-cli executable
+                    for file_info in zip_ref.filelist:
+                        if file_info.filename.endswith('arduino-cli.exe') or file_info.filename.endswith('arduino-cli'):
+                            # Extract to current directory with proper name
+                            with zip_ref.open(file_info) as source:
+                                exe_name = "arduino-cli.exe" if sys.platform == "win32" else "arduino-cli"
+                                with open(exe_name, 'wb') as target:
+                                    target.write(source.read())
+                                # Make executable on Unix-like systems
+                                if sys.platform != "win32":
+                                    os.chmod(exe_name, 0o755)
+                                break
+            else:  # tar.gz
+                with tarfile.open(filename, 'r:gz') as tar_ref:
+                    # Extract arduino-cli executable
+                    for member in tar_ref.getmembers():
+                        if member.name.endswith('arduino-cli'):
+                            # Extract to current directory
+                            member.name = "arduino-cli"
+                            tar_ref.extract(member)
+                            # Make executable
+                            os.chmod("arduino-cli", 0o755)
+                            break
+            
+            # Clean up downloaded archive
+            os.remove(filename)
+            safe_print("Arduino CLI extracted successfully", Fore.GREEN)
+            return True
+            
+        except Exception as e:
+            safe_print(f"Failed to extract Arduino CLI: {e}", Fore.RED)
+            try:
+                os.remove(filename)
+            except:
+                pass
+            return False
+            
+    except Exception as e:
+        safe_print(f"Error during Arduino CLI installation: {e}", Fore.RED)
+        return False
+
+def setup_arduino_cli():
+    """Setup Arduino CLI with automatic installation if needed"""
+    global arduino, noArduinocli, disableArduinoFlashing
+    
+    if not PYDUINOCLI_AVAILABLE:
+        safe_print("pyduinocli module not available. Install with: pip install pyduinocli", Fore.YELLOW)
+        noArduinocli = True
+        disableArduinoFlashing = 1
+        return False
+    
+    # Try different Arduino CLI locations in order of preference
+    cli_paths = [
+        resource_path("arduino-cli.exe" if sys.platform == "win32" else "arduino-cli"),
+        "./arduino-cli.exe" if sys.platform == "win32" else "./arduino-cli",
+        "arduino-cli"  # System PATH
+    ]
+    
+    arduino = None
+    for cli_path in cli_paths:
+        try:
+            arduino = pyduinocli.Arduino(cli_path)
+            # Test if Arduino CLI is working
+            arduino.version()
+            safe_print(f"Arduino CLI found at: {cli_path}", Fore.GREEN)
+            noArduinocli = False
+            disableArduinoFlashing = 0
+            return True
+        except Exception:
+            continue
+    
+    # If no Arduino CLI found, try to download and install it
+    safe_print("Arduino CLI not found. Attempting automatic installation...", Fore.YELLOW)
+    
+    if download_and_extract_arduino_cli():
+        # Try to initialize with the downloaded CLI
+        cli_name = "arduino-cli.exe" if sys.platform == "win32" else "./arduino-cli"
+        try:
+            arduino = pyduinocli.Arduino(cli_name)
+            arduino.version()
+            safe_print("Arduino CLI automatically installed and ready!", Fore.GREEN)
+            noArduinocli = False
+            disableArduinoFlashing = 0
+            return True
+        except Exception as e:
+            safe_print(f"Failed to initialize downloaded Arduino CLI: {e}", Fore.RED)
+    
+    # If all attempts fail
+    safe_print("Could not setup Arduino CLI. Arduino flashing will be disabled.", Fore.YELLOW)
+    safe_print("You can manually install Arduino CLI or install pyduinocli: pip install pyduinocli", Fore.CYAN)
+    noArduinocli = True
+    disableArduinoFlashing = 1
+    arduino = None
+    return False
+
+def get_installed_arduino_cli_version():
+    """Get the version of the currently installed Arduino CLI"""
+    global arduino, arduino_cli_version
+    
+    if noArduinocli or not arduino:
+        return "Not installed"
+    
+    if arduino_cli_version != "Unknown":
+        return arduino_cli_version
+    
+    
+    try:
+        # Try to get version from arduino-cli
+        version_output = arduino.version()
+        if version_output and 'result' in version_output:
+            arduino_cli_version = version_output['result'].get('Version', 'Unknown')
+            return arduino_cli_version
+    except Exception:
+        pass
+    
+    return "Unknown"
+
+# Initialize Arduino CLI
+arduino = None
+noArduinocli = True
+
+# ============================================================================
+# GLOBAL VARIABLES AND LOCKS
+# ============================================================================
+
+# Threading locks for thread-safe operations
+serial_lock = threading.Lock()
+wokwi_update_lock = threading.Lock()
+
+# Debug and configuration flags
 debug = False
-
-
 jumperlessV5 = False
-justreconnected = 0
+noWokwiStuff = False
+disableArduinoFlashing = 1
+noArduinocli = True
+debugWokwi = False  # New debug flag for Wokwi updates
 
-global serialconnected
+# Arduino CLI configuration
+if noArduinocli == True:
+    disableArduinoFlashing = 1
+
+# Serial connection state
 serialconnected = 0
-
 portSelected = 0
+portNotFound = 0
+justreconnected = 0
+menuEntered = 0
+justChecked = 0
+reading = 0
+forceWokwiUpdate = 0
 
+# Port and device information
+portName = ''
+arduinoPort = ''
+ser = None
+updateInProgress = 0
+
+# Wokwi and project management
 stringified = ' '
 lastDiagram = [' ', ' ', ' ', ' ', ' ', ' ', ' ', ' ']
 diagram = [' ', ' ', ' ', ' ', ' ', ' ', ' ', ' ']
+sketch = [' ', ' ', ' ', ' ', ' ', ' ', ' ', ' ']
+lastsketch = ['  ', '  ', '  ', '  ', '  ', '  ', '  ', '  ']
+lastlibraries = ['  '] * 8 # Changed from '  '
+blankDiagrams = [' ', ' ', ' ', ' ', ' ', ' ', ' ', ' ']
 
+# Slot management
+slotURLs = ['!', '!', '!', '!', '!', '!', '!', '!', '!']
+slotAPIurls = ['!', '!', '!', '!', '!', '!', '!', '!', '!']
+numAssignedSlots = 0
+currentSlotUpdate = 0
+wokwiUpdateRate = 3.0
 
-menuEntered = 0
+# Local file management (new)
+slotFilePaths = ['!', '!', '!', '!', '!', '!', '!', '!']  # Local .ino file paths
+slotFileModTimes = [0, 0, 0, 0, 0, 0, 0, 0]  # File modification times for change detection
+slotFileHashes = ['', '', '', '', '', '', '', '']  # Content hashes for change detection
 
-portName = ' '
+# Firmware information
+jumperlessFirmwareNumber = [0, 0, 0, 0, 0, 0]
+jumperlessFirmwareString = ' '
+currentString = 'unknown'
 
+# File paths
+slotAssignmentsFile = "JumperlessFiles/slotAssignments.txt"
+savedProjectsFile = "JumperlessFiles/savedProjects.txt"
 
+# Firmware URLs
+latestFirmwareAddress = "https://github.com/Architeuthis-Flux/Jumperless/releases/latest/download/firmware.uf2"
+latestFirmwareAddressV5 = "https://github.com/Architeuthis-Flux/JumperlessV5/releases/latest/download/firmware.uf2"
 
-arduinoPort = 0
+# Arduino sketch defaults
+defaultWokwiSketchText = 'void setup() {'
 
-noWokwiStuff = False
-
-disableArduinoFlashing = 1
+# ============================================================================
+# UTILITY FUNCTIONS
+# ============================================================================
 
 def resource_path(relative_path):
-    """ Get absolute path to resource, works for dev and for PyInstaller """
+    """Get absolute path to resource, works for dev and for PyInstaller"""
     base_path = getattr(sys, '_MEIPASS', os.path.dirname(os.path.abspath(__file__)))
     return os.path.join(base_path, relative_path)
-#Path.mkdir(Path.cwd() / "JumperlessFiles/", exist_ok=True)
 
+def safe_print(message, color=None, end='\n'):
+    """Cross-platform safe printing with optional color"""
+    if color and COLORS_AVAILABLE:
+        print(f"{color}{message}{Style.RESET_ALL}", end=end)
+    elif color and not COLORS_AVAILABLE and color != Fore.RESET:
+        print(f"{color}{message}{Fore.RESET}", end=end)
+    else:
+        print(message, end=end)
 
-slotAssignmentsFile = ("JumperlessFiles/slotAssignments.txt")  
-savedProjectsFile = ("JumperlessFiles/savedProjects.txt")
+def create_directories():
+    """Create necessary directories"""
+    try:
+        pathlib.Path(slotAssignmentsFile).parent.mkdir(parents=True, exist_ok=True)
+        pathlib.Path(savedProjectsFile).parent.mkdir(parents=True, exist_ok=True)
+    except Exception as e:
+        safe_print(f"Warning: Could not create directories: {e}", Fore.YELLOW)
 
-pathlib.Path(slotAssignmentsFile).parent.mkdir(parents=True, exist_ok=True)
-pathlib.Path(savedProjectsFile).parent.mkdir(parents=True, exist_ok=True)
-# Path.home() / "JumperlessFiles" / "savedProjects.txt"
-
-#arduino = pyduinocli.Arduino("arduino-cli")
-
-#### If you're running this in thonny, make sure you download arduino-cli and put it in the same folder as this script
-#### then uncomment this below and comment the one above
-# arduino = pyduinocli.Arduino("./arduino-cli")
-noArduinocli = True
-# try:
-#     arduino = pyduinocli.Arduino(resource_path("arduino-cli"))
-# except:
-#     try:
-#         arduino = pyduinocli.Arduino("arduino-cli")
-#     except:
-#         try:
-#             arduino = pyduinocli.Arduino("./arduino-cli")
-#         except:
-#             print ("Couldn't find arduino-cli")
-#             noArduinocli = True
-#             pass
+def input_with_timeout(prompt, timeout=4, default="y"):
+    """Get user input with timeout, returns default if timeout expires"""
+    import select
+    import sys
     
-
-# print ('\n\n\n\rarduino')    
-# print(arduino)
-
-serialconnected = 0
-
-
-if (noArduinocli == True):
+    def timeout_input():
+        """Cross-platform input with timeout"""
+        if sys.platform == "win32":
+            # Windows implementation using threading
+            import msvcrt
+            import time
+            
+            print(prompt, end='', flush=True)
+            start_time = time.time()
+            input_chars = []
+            
+            while True:
+                if msvcrt.kbhit():
+                    char = msvcrt.getch().decode('utf-8')
+                    if char == '\r':  # Enter key
+                        print()  # New line
+                        return ''.join(input_chars).strip()
+                    elif char == '\b':  # Backspace
+                        if input_chars:
+                            input_chars.pop()
+                            print('\b \b', end='', flush=True)
+                    else:
+                        input_chars.append(char)
+                        print(char, end='', flush=True)
+                
+                if time.time() - start_time > timeout:
+                    # print(f"\n(Timeout - defaulting to '{default}')")
+                    return default
+                
+                time.sleep(0.1)
+        else:
+            # Unix-like systems (macOS, Linux)
+            print(prompt, end='', flush=True)
+            
+            ready, _, _ = select.select([sys.stdin], [], [], timeout)
+            if ready:
+                return sys.stdin.readline().strip()
+            else:
+                # print(f"\n(Timeout - defaulting to '{default}')")
+                return default
     
-    disableArduinoFlashing = 1
-
+    try:
+        return timeout_input()
+    except Exception:
+        # Fallback to regular input if timeout method fails
+        print(prompt, end='', flush=True)
+        try:
+            return input().strip()
+        except:
+            return default
 
 def print_format_table():
     """
@@ -122,2191 +488,2197 @@ def print_format_table():
             print(s1)
         print('\n')
 
-# if (sys.platform == "win32"):
-class style():
-    BLACK = '\033[30m'
-    RED = '\033[31m'
-    GREEN = '\033[32m'
-    YELLOW = '\033[33m'
-    BLUE = '\033[34m'
-    MAGENTA = '\033[35m'
-    CYAN = '\033[36m'
-    WHITE = '\033[37m'
-    UNDERLINE = '\033[4m'
-    RESET = '\033[0m'
+# ============================================================================
+# LOCAL FILE MONITORING FUNCTIONS
+# ============================================================================
 
-print(style.MAGENTA + "Jumperless Bridge App")
+def is_valid_ino_file(file_path):
+    """Check if the file path is a valid .ino file"""
+    if not file_path or file_path == '!':
+        return False
+    return file_path.lower().endswith('.ino') and os.path.isfile(file_path)
 
-# print('\x1b[0,35,40m'+ "Jumperless Bridge App" + '\x1b[0m')
-
-def openSerial():
-    global portName
-    global ser
-    global serTickle
-    global arduinoPort
-    global disableArduinoFlashing
-    global serialconnected
-
-    portSelected = 0
-    foundports = []
-    serialTries = 0
-    
-    print("\n")
-
-    while portSelected == False:
-        autodetected = -1
-        ports = serial.tools.list_ports.comports()
-        
-        i = 0
-        for port, desc, hwid in ports:
-            i = i + 1
-            
-            hwidString = hwid
-            splitAt = "VID:PID="
-            splitInd = hwidString.find(splitAt)
-            
-            hwidString = hwidString[splitInd+8:splitInd+17]
-            #print (hwidString)
-            
-            
-            vid = hwidString[0:4]
-            pid = hwidString[5:9]
-            #print ("vid = " + vid)
-            #print ("pid = " + pid)
-            print("{}: {} [{}]".format(i, port, desc))
-            if desc == "Jumperless" or pid == "ACAB" or pid == "1312":
-                autodetected = i
-                foundports.append(ports[autodetected-1][0])
-                
-        selection = -1
-        sortedports = sorted(foundports,key = lambda x:x[-1])
-        #print (foundports)
-        #print(sortedports)
-        print ("\n")
-        
-        jumperlessIndex = chooseJumperlessPort(sortedports)
-        arduinoIndex = (jumperlessIndex + 1) % (len(sortedports)+1)
-        
-        #print (jumperlessIndex)
-        #print (arduinoIndex)
-        
-        if autodetected != -1:
-        #if False:    
-            try:
-                selection = autodetected
-                
-                #portName = ports[int(selection) - 1].device
-                
-                portName = sortedports[jumperlessIndex]
-                
-                arduinoPort = sortedports[arduinoIndex]
-                
-                portSelected = True
-                serialconnected = 1
-                
-                print("\nAutodetected Jumperless at", end=" ")
-                print(portName)
-                
-                print ("Autodetected USB-Serial at ", end="")
-                print (arduinoPort)
-            except:
-                pass
-
-            
-
-        else:
-            selection = ' '
-            if (sys.platform == "win32"):
-                selection = input("\n\nSelect the port connected to your Jumperless   ('r' to rescan)\n\n")
-
-            else:
-                selection = input(
-                "\n\nSelect the port connected to your Jumperless   ('r' to rescan)\n\n(Choose the lower numbered port, the other is routable USB-Serial)\n\n")
-            
-            
-            if selection.isdigit() == True and int(selection) <= i:
-                portName = ports[int(selection) - 1].device
-                print("\n\n")
-                i = 0
-                
-                for port, desc, hwid in ports:
-                    i = i + 1
-                    print("{}: {} [{}]".format(i, port, desc))
-
-                        
-                ArduinoSelection = -1
-                sortedports = sorted(foundports,key = lambda x:x[-1])
-                #print (foundports)
-                #print(sortedports)
-                print ("\n\n")
-                if (sys.platform == "win32"):
-                    ArduinoSelection = input("\n\nChoose the Arduino port   ('x' to skip)\n\n")
-                else:
-                    ArduinoSelection = input(
-                        "\n\nChoose the Arduino port   ('x' to skip)\n\n(Choose the higher numbered port)\n\n")
-                
-                if (ArduinoSelection == 'x' or ArduinoSelection == 'X'):
-                    disableArduinoFlashing = 1
-                    
-                if ArduinoSelection.isdigit() == True and int(ArduinoSelection) <= i:
-                    
-                    arduinoPort = ports[int(ArduinoSelection) - 1].device
-                    aPortSelected = True
-                    print(ports[int(ArduinoSelection) - 1].device)
-                
-                
-                portSelected = True
-                print(ports[int(selection) - 1].device)
-                
-                
-                
-                serialconnected = 1
-                
-                
-
-        
-
-
-#portName =  '/dev/cu.usbmodem11301'
+def get_file_content_hash(file_path):
+    """Get hash of file content for change detection"""
     try:
-        print(portName)
-        ser = serial.Serial(portName, 115200, timeout=None)
-        serialTries = 0
-    #ser.open()
-    except:
-        serialTries += 1
-        #
-        if (serialTries > 5):
-            print("Couldn't open serial port")
-            serialTries = 0
-        serialconnected = 0
-        pass
+        with open(file_path, 'r', encoding='utf-8') as f:
+            content = f.read()
+        return str(hash(content))
+    except Exception:
+        return ''
 
-jumperlessFirmwareNumber = [0,0,0,0,0,0]
-
-def chooseJumperlessPort(sortedports):
-    global jumperlessFirmwareString
-    global jumperlessFirmwareNumber
-    global jumperlessV5
+def check_local_file_change(slot_number):
+    """Check if local file has changed for given slot"""
+    global slotFilePaths, slotFileModTimes, slotFileHashes
     
-    jumperlessFirmwareString = ' '
-    tryPort = 0
-    
-    while (tryPort < len(sortedports)):
-        
-        try:
-            tempSer1 = serial.Serial(sortedports[tryPort], 115200, timeout=None)
-            #print (tryPort)
-            tempSer1.write(b'?')
-            
-            time.sleep(0.1)
-            inputBuffer2 = b' '
-        except:
-            tryPort = tryPort+1
-            continue
-
-        
-        if (tempSer1.in_waiting > 0):
-                        #justChecked = 0
-                        #reading = 1
-                        inputBuffer2 = b' '
-
-                        waiting = tempSer1.in_waiting
-
-                        while (serialconnected >= 0):
-                            inByte = tempSer1.read()
-
-                            inputBuffer2 += inByte
-
-                            if (tempSer1.in_waiting == 0):
-                                time.sleep(0.05)
-
-                                if (tempSer1.in_waiting == 0):
-                                    break
-                                else:
-                                    continue
-                        tempSer1.close()
-                        
-                        inputBuffer2 = str(inputBuffer2)
-                        inputBuffer2 = inputBuffer2.strip('b\'\\n \\r ')
-                        
-                        jumperlessFirmwareString = inputBuffer2.split('\\r\\n')[0]
-                        
-                        #print (inputBuffer2)
-                        #print (jumperlessFirmwareString)
-                        
-                        if (jumperlessFirmwareString.startswith("Jumperless firmware version:") == True):
-                            
-                            #print(jumperlessFirmwareString[29:39])
-                            
-                            
-                            jumperlessFirmwareNumber = jumperlessFirmwareString[29:39].split('.')
-
-                            
-                            # print (jumperlessFirmwareNumber[0])
-                            # print (jumperlessFirmwareNumber[1])
-                            # print (jumperlessFirmwareNumber[2])
-                            # if (int(jumperlessFirmwareNumber[2]) < 10):
-                            #     jumperlessFirmwareNumber[2] = '0' + jumperlessFirmwareNumber[2]
-                            # print (jumperlessFirmwareNumber[2])
-                            
-                            if (int(jumperlessFirmwareNumber[0]) >= 5):
-                                jumperlessV5 = True
-                                # print ("Jumperless V5 detected")
-                           
-                            # print (jumperlessFirmwareNumber)
-                            #print ("found a match!")
-                            #
-                            return tryPort
-                            
-                        else:
-                            
-                            tryPort = tryPort+1
-        else:
-           tryPort = tryPort+1
-    #print ("fuck")
-    return 0
-            
-        
-    
-        
-
-
-justChecked = 0
-reading = 0
-
-
-latestFirmwareAddress = "https://github.com/Architeuthis-Flux/Jumperless/releases/latest/download/firmware.uf2"
-latestFirmwareAddressV5 = "https://github.com/Architeuthis-Flux/JumperlessV5/releases/latest/download/firmware.uf2"
-
-url_link = 0
-
-currentString = 'fuck'
-
-def checkIfFWisOld ():
-    global currentString
-    global jumperlessFirmwareString
-    global jumperlessV5
-    global noWokwiStuff
-
-    if (len(jumperlessFirmwareString) < 2):
-        print('\nCouldn\'t read FW version from the Jumperless\n\nMake sure you don\'t have this app running in \nanother window. Or if the firmware is really \nold, just enter \'Y\' to auto update from here\n')
-        return
-    
-    splitIndex = jumperlessFirmwareString.rfind(':')
-
-    #print(jumperlessFirmwareString)
-    currentString = jumperlessFirmwareString[splitIndex+2:]
-    
-
-
-    currentList = currentString.split('.')
-    try:
-        if (len(currentList[2]) < 2):
-            currentList[2] = '0' + currentList[2]
-
-
-        if (len(currentList[1]) < 2):
-            currentList[1] = '0' + currentList[1]
-    except:
-        print('\nCouldn\'t read FW version from the Jumperless\n\nMake sure you don\'t have this app running in \nanother window. Or if the firmware is really \nold, just enter \'Y\' to auto update from here\n')
-        return
-
-    if (int(currentList[0])>=5):
-        jumperlessV5 = True
-
-    try:
-        if (jumperlessV5 is True):#Change this to the new repo when you have releases
-            print('Jumperless V5')
-            response = requests.get("https://github.com/Architeuthis-Flux/JumperlessV5/releases/latest")
-        else:
-            response = requests.get("https://github.com/Architeuthis-Flux/Jumperless/releases/latest")
-
-
-        version = response.url.split("/").pop()
-        #print(version)
-        
-        latestVersion = version.split('.')
-        latestString = latestVersion[0] + '.' + latestVersion[1] + '.' + latestVersion[2]
-
-        
-        latestList = latestString.split('.')
-
-        if (len(latestList[2]) < 2):
-            latestList[2] = '0' + latestList[2]
-
-        if (len(latestList[1]) < 2):
-            latestList[1] = '0' + latestList[1]
-        
-        # print(currentList)
-        # print(latestList)
-
-
-        #latestInt = (int(latestList[0])* 100) + (int(latestList[2])* 10) + (int(latestList[2]))
-        #currentInt = (int(currentList[0])* 100) + (int(currentList[2])* 10) + (int(currentList[2]))
-        # try:
-        latestInt = int("".join(latestList))
-        try:
-            currentInt = int("".join(currentList))
-        except:
-            currentInt = 0
-            #return True
-        # print (latestInt)
-        # print (currentInt)
-        
-        
-        if (latestInt > currentInt):
-            
-        
-            print("\n\n\rThe latest firmware is: " + latestString)
-            print(      "You're running version: " + currentString)
-            return True
-        else:
-            return False
-    except:
-        noWokwiStuff = True
+    if slot_number < 0 or slot_number >= len(slotFilePaths):
         return False
     
-
-def updateJumperlessFirmware(force):
-    global ser
-    global menuEntered
-    global currentString
-    global serialconnected
-    
-    #newFirmware = r
-    
-    if (force == False):
-        if (checkIfFWisOld() == False):
-            #print ("\n\n\r'update' to force firmware update - yours is up to date (" + currentString + ")")
-            return
-    
-    print("\n\rWould you like to update your Jumperless with the latest firmware? Y/n\n\r")
-    if (force == True or input ("\n\r").lower() == "y"):
-        
-        print ("\n\rDownloading latest firmware...")
-        
-        serialconnected = 0
-        menuEntered = 1
-        
-        if (jumperlessV5 == True):
-            urlretrieve(latestFirmwareAddressV5, "firmware.uf2")
-        else:
-
-            urlretrieve(latestFirmwareAddress, "firmware.uf2")
-        
-        ser.close()
-        time.sleep(0.50)
-        
-        print("Putting Jumperless in BOOTSEL...")
-        
-        serTickle = serial.Serial(portName, 1200, timeout=None)
-        time.sleep(0.55)
-        
-        serTickle.close()
-        time.sleep(0.55)
-        
-#         serTickle.open()
-#         time.sleep(0.95)
-#         serTickle.close()
-              
-        print ("Waiting for mounted drive...")
-        
-        foundVolume = "none"
-        timeStart = time.time()
-        
-        while (foundVolume == "none"):
-            if (time.time() - timeStart > 10):
-                print("Couldn't find Jumperless. Make sure it's in BOOTSEL mode and try again")
-                return
-            time.sleep(0.5)
-            partitions = psutil.disk_partitions()
-            
-            
-            for p in partitions:
-                #print(p.mountpoint)
-                if (sys.platform == "win32"):
-                    if (jumperlessV5 == True):
-                        if (win32api.GetVolumeInformation(p.mountpoint)[0] == "RP2350"):
-                            foundVolume = p.mountpoint
-                            print("Found Jumperless V5 at " + foundVolume + "...")
-                            break
-                    else:
-                        if (win32api.GetVolumeInformation(p.mountpoint)[0] == "RPI-RP2"):
-                            foundVolume = p.mountpoint
-                            print("Found Jumperless at " + foundVolume + "...")
-                            break
-
-                else:
-                    if (jumperlessV5 == True):
-                        if (p.mountpoint.endswith("RP2350") == True):
-                            foundVolume = p.mountpoint
-                            print("Found Jumperless V5 at " + foundVolume + "...")
-                            break
-                    else:
-                        if (p.mountpoint.endswith("RPI-RP2") == True):
-                            foundVolume = p.mountpoint
-                            print("Found Jumperless at " + foundVolume + "...")
-                            break
-
-                    
-                
-
-            
-        fullPathRP = os.path.join(foundVolume, "firmware.uf2")
-        #print(fullPathRP)
-        time.sleep(0.2)
-        print ("Copying firmware.uf2 to Jumperless...\n\r")
-        try:
-            shutil.copy("firmware.uf2", fullPathRP)
-            
-            
-        except:
-            pass
-        
-        time.sleep(0.75) 
-        print("Jumperless updated to latest firmware!")
-        
-        
-        #ser.open()
-        time.sleep(1.5)
-        
-        #openSerial()
-        ser = serial.Serial(portName, 115200, timeout=None)
-        ser.flush()
-        menuEntered = 0
-        serialConnected = 1
-
-
-
-defaultWokwiSketchText = 'void setup() {'
-
-
-# 555 project
-
-# https://wokwi.com/projects/369024970682423297
-
-
-# the website URL
-#url_link = "https://wokwi.com/projects/369024970682423297"
-menuEntered = 0
-wokwiUpdateRate = 0.35
-
-def bridgeMenu():
-    global menuEntered
-    global ser
-    global disableArduinoFlashing
-    global noWokwiStuff
-    global url_link
-    global currentString
-    global numAssignedSlots
-    global wokwiUpdateRate
-    #global serTickle
-
-
-    while(menuEntered == 1):
-        wokwiUpdateString = str(wokwiUpdateRate + 0.4)
-
-        print(style.MAGENTA + "\t\t\tBridge App Menu\n\n")
-
-        print("\t\ta = Assign Wokwi Links to Slots", end='')
-        if (numAssignedSlots > 0):
-            print(" - " + str(numAssignedSlots) + " assigned")
-        else:
-            print()
-        print("\t\td = Delete Saved Projects")
-        print("\t\tr = Restart Bridge App")
-        print("\t\ts = Restart Serial")
-        #print("\t\tl = Load Project")
-        # print("\t\tf = Disable Auto-flashing Arduino - ", end='')
-        # if (disableArduinoFlashing == 0):
-        #     print("Enabled")
-        # else:
-        #     print("Disabled")
-        
-        print("\t\tf = Change Wokwi update frequency - currently " + wokwiUpdateString + "s" )
-        print("\t\tu = Update Jumperless Firmware - " + currentString)
-        print("\t\tq = Quit App\n")
-        print("\t\tj = Go Back To Jumperless\n")
-        
-
-        menuSelection = input("\n\nmenu > ")
-        
-        
-        
-        # if(menuSelection == 'f'):
-        #     if (disableArduinoFlashing == 0):
-        #         disableArduinoFlashing = 1
-        #     else:
-        #         disableArduinoFlashing = 0
-
-        #     #disableArduinoFlashing = 1
-        #     break
-        if (menuSelection == 'p'):
-            print_format_table()
-            break
-        if (menuSelection == 'q'):
-            ser.close()
-            # if (sys.platform == "win32"):
-            print(style.RESET)
-            exit()
-
-        if (menuSelection == 's'):
-            ser.close()
-            
-                       
-            openSerial()
-            #time.sleep(1)
-            menuEntered = 0
-            time.sleep(.25)
-            ser.write(b'm')
-            break
-        
-        if (menuSelection == 'l'):
-            openProject()
-            #time.sleep(1)
-            menuEntered = 0
-            time.sleep(.25)
-            ser.write(b'm')
-            
-            break
-        
-        if (menuSelection == 'r'):
-            menuEntered = 0
-            ser.close()
-            openSerial()
-            #openProject()
-            assignWokwiSlots()
-            #time.sleep(1)
-            # if (sys.platform == "win32"):
-            print(style.RESET)
-            return
-            #time.sleep(.5)
-            #ser.write(b'm')
-            
-            break
-            
-        if(menuSelection == 'j'):
-            menuEntered = 0
-            time.sleep(.25)
-            ser.write(b'm')
-            break
-
-        if(menuSelection == 'u'):
-            updateJumperlessFirmware(True)
-            menuEntered = 0
-            time.sleep(.25)
-            ser.write(b'm')
-            break
-
-        if(menuSelection == 'a'):
-            if (noWokwiStuff == True):
-                noWokwiStuff = False
-            assignWokwiSlots()
-            menuEntered = 0
-            time.sleep(.25)
-            ser.write(b'm')
-            break
-
-        if (menuSelection == 'f'):
-            wokwiUpdateString = input("enter new Wokwi update interval > ")
-            try:
-                wokwiUpdateRate = float(wokwiUpdateString)
-                if (wokwiUpdateRate < 0.5):
-                    wokwiUpdateRate = 0.5
-                wokwiUpdateRate -= 0.4
-
-            except:
-                break
-            break
-        
-        
-        while (menuSelection == 'd'):
-            
-            print('\n\nEnter the index of the project you\'d like to delete:\n\nr = Return To Menu\ta = Delete All\n\n')
-
-            try:
-                f = open(savedProjectsFile, "r")
-            except:
-                f = open(savedProjectsFile, "x")
-                f = open(savedProjectsFile, "r")
-
-            index = 0
-
-            lines = f.readlines()
-
-            for line in lines:
-                if (line != '\n'):
-                    index += 1
-                    print(index, end="\t")
-
-                    print(line)
-
-            linkInput = input('\n\n')
-            
-            if (linkInput == 'a'):
-                f.close()
-                f = open(savedProjectsFile, "w")
-                f.close()
-            
-            
-            
-            if (linkInput.isdigit() == True) and (int(linkInput) <= index):
-                otherIndex = 0
-                realIndex = 0
-                for idx in lines:
-                    
-                    if (idx != '\n'):
-                        
-                        otherIndex += 1
-                        
-                        if (otherIndex == int(linkInput)):
-                            print(idx)
-                            del lines[realIndex]
-                            #del lines[idx+1]
-                            idx = idx.rsplit('\t\t')
-                            idxLink = idx[1].rstrip('\n')
-                            print("\n\nDeleting project ", end='')
-                            print(idx[0])
-                            break
-                        
-                    realIndex += 1
-                        
-                f.close()
-                f = open(savedProjectsFile, "w")
-                
-                for line in lines:
-                
-                    f.write(line)
-                f.close()
-                f = open(savedProjectsFile, "r")
-                print (f.read())
-                f.close()
-                #menuEntered = 0
-            else:
-                break
-    # if (sys.platform == "win32"):
-    print(style.RESET)
-
-
-    
-
-
-slotLines = [ "slot 0\n", "slot 1\n", "slot 2\n", "slot 3\n", "slot 4\n", "slot 5\n", "slot 6\n", "slot 7\n"]
-defaultSlotLines = [ "slot 0\n", "slot 1\n", "slot 2\n", "slot 3\n", "slot 4\n", "slot 5\n", "slot 6\n", "slot 7\n"]
-slotURLs = [ '!', '!', '!', '!', '!', '!', '!', '!', '!']
-slotAPIurls = [ '!', '!', '!', '!', '!', '!', '!', '!', '!']
-
-numAssignedSlots = 0
-
-def countAssignedSlots():
-    global slotLines
-    global slotURLs
-    global numAssignedSlots
-    numAssignedSlots = 0
-    try:
-        slot = open(slotAssignmentsFile, "r")
-    except:
-        return 
-    slot.seek(0)
-    slotLines = slot.readlines()
-    splitLine = ' '
-
-    idx = 0
-    for line in slotLines:
-        if (line != '\n'):
-            splitLine = line.split('\t')
-            if (len(splitLine) > 1):
-                slotURLs[idx] = splitLine[1]
-
-                slotAPIurls[idx] = slotURLs[idx].replace("https://wokwi.com/projects/", "https://wokwi.com/api/projects/")
-                slotAPIurls[idx] = slotAPIurls[idx] + "/diagram.json"
-                numAssignedSlots += 1
-            idx += 1
-
-    #print(slotURLs)
-    slot.close()
-    return numAssignedSlots
-
-def printSavedProjects():
-    try:
-        f = open(savedProjectsFile, "r")
-    except:
-        f = open(savedProjectsFile, "x")
-        f = open(savedProjectsFile, "r")
-
-    index = 0
-
-    lines = f.readlines()
-
-    for line in lines:
-        if (line != '\n'):
-            index += 1
-            print(index, end="\t")
-
-            print(line, end='')
-
-    f.close()
-
-
-def printOpenProjectOptions():
-
-    print("\n\n")
-
-    print(" 'menu'   to open the Bridge App menu")  
-    print(" 'skip'   to disable Wokwi updates and just use as a terminal")
-    print(" 'update' to force firmware update - yours is up to date (" + currentString + ")")
-    print(" 'slots'  to assign Wokwi projects to slots (this menu) ", end='')
-    
-    countAssignedSlots()  
-    if (numAssignedSlots > 0):
-        print("- " + str(numAssignedSlots) + " assigned")
-    # else:
-    #     print("\n")
-
-    print("\n    ^--   (you can enter these commands at any time)\n")
-
-    print("  ENTER   to accept and go to Jumperless\n")
-
-def printSlotOptions():
-    
-    print( "      'x' to clear all slots")
-    print( "      'c' to clear a single slot")
-    print( "\nEnter the slot number you'd like to assign a project to:\n")
-savedProjectIndex = 0
-
-somethingChoosen = False
-    
-
-def assignWokwiSlots():
-    global url_link
-    global slotLines
-    global slotURLs
-    global numAssignedSlots
-
-    global noWokwiStuff 
-    global menuEntered
-    #global ser
-    #countAssignedSlots()
-
-
-    printOpenProjectOptions()
-    if (noWokwiStuff == True):
-        print("\n  No internet, Wokwi updates disabled!\n")
-        #ser.write('m'.encode())
-        return
-
-    printSlotOptions()
-
-
-    try:
-        slot = open(slotAssignmentsFile, "r")
-
-    except:
-        
-        slot = open(slotAssignmentsFile, "x")
-        slot.close()
-        slot = open(slotAssignmentsFile, "w")
-      
-        
-        slot.writelines(defaultSlotLines)
-            
-            #print(slot.read())
-        slot.close()
-        slot = open(slotAssignmentsFile, "r")
-
-    slot.seek(0)
-    firstLine = slot.readline()
-    
-    firstLine = firstLine.strip()
-    firstLineIndex = 0
-
-    if (noWokwiStuff == True):
-        print("\nWokwi updates disabled!\n")
-        try:
-            ser.write('m'.encode())
-        except:
-            pass
-        return
-
-    while ((firstLine.startswith('slot 0') == False or firstLine.startswith('#') == True or firstLine.startswith('//') == True) ):
-
-        # print("firstLine = ", end='')
-        # print(firstLine)
-        firstLine = slot.readline()
-        firstLine = firstLine.strip()
-        firstLineIndex = firstLineIndex + 1
-
-        if (firstLineIndex > 20):
-            slot = open(slotAssignmentsFile, "w")
-
-            
-            slot.writelines(defaultSlotLines)
-            firstLineIndex = 0
-            #slot.close()
-            slot = open(slotAssignmentsFile, "r")
-            break
-
-    index = 0
-    # print("\n\n")
-    # print(firstLineIndex)
-    # print("\n\n")
-    # slot.seek(firstLineIndex)
-    
-    # slot = open(slotAssignmentsFile, "r")
-    slot.seek(0)
-    # while (index < firstLineIndex):
-    #     slot.readline()
-    #     index += 1
-
-    lines = slot.readlines()
-    #0print("\n\n")
-    # print(firstLineIndex)
-    # print(lines[0])
-    index = 0
-
-    numAssignedSlots = countAssignedSlots()
-    #print(numAssignedSlots)
-
-    for line in lines:
-        
-        if (line != '\n'):
-
-            index += 1
-            print(line, end='')
-    slot.close()
-
-    slotInput = ''
-    linkInput = ''
-    slotInput = input('\n\nslot > ')
-    #print(slotInput)
-
-
-    
-    # if (slotInput == 'r'):
-    #     openProject()
-
-    if (slotInput == 'skip'):
-        noWokwiStuff = True
-        url_link = ' '
-        print("\nWokwi updates disabled\n")
-        # ser.write('m'.encode())
-        return
-    if (slotInput == 'menu'):
-        menuEntered = 1
-        bridgeMenu()
-        return
-    if (slotInput == 'slots'):
-        assignWokwiSlots()
-    if (slotInput == 'update'):
-        updateJumperlessFirmware(True)
-        return
-    if (slotInput == ''):
-        #print("skipping")
-        #print(slotInput)
-        countAssignedSlots()
-
-        if (numAssignedSlots > 0):
-            return
-        else:
-            #assignWokwiSlots()
-            print("\n\nNo Wokwi project selected, enter 'menu' to add one later\n\n")
-            noWokwiStuff = True
-            # try:
-
-            #     ser.write('m'.encode())
-            # except:
-            #     pass
-            # slotInput = '0'
-            # print("\n\n")
-            return
-
-
-    if (slotInput == 'x'):
-        print("\n\nClearing all slots\n\n")
-        slot = open(slotAssignmentsFile, "w")
-        index = 0
-        slot.writelines(defaultSlotLines)
-        slot = open(slotAssignmentsFile, "r")
-        #print(slot.readlines())
-        numAssignedSlots = 0
-        slot.close()
-        somethingChoosen = False
-        assignWokwiSlots()
-
-    elif (slotInput.startswith('c')):
-        #slot = open(slotAssignmentsFile, "w")
-        #slotInput = slotInput.lstrip('c')
-        slotInput = input("\n\nEnter the slot number you'd like to clear:\n")
-        
-        if (slotInput.isdigit() == True ):
-            if (int(slotInput) < len(lines)):
-                slotInputInt = int(slotInput)
-                if (slotInputInt < len(lines)):
-                    slot = open(slotAssignmentsFile, "w")
-                    lines[slotInputInt] = "slot " + str(slotInputInt) + "\n"
-
-                    slot.writelines(lines)
-                    numAssignedSlots -= 1
-                    slot.close()
-                    assignWokwiSlots()
-                else:
-                    print("\nInvalid slot number. Try again")
-                    
-                    assignWokwiSlots()
-            else:
-                print("\nInvalid slot number. Try again")
-                    
-                assignWokwiSlots()
-        else:
-
-            print("\nInvalid slot number. Try again")
-            
-            assignWokwiSlots()
-
-
-
-    elif (slotInput.isdigit() == False ):
-        slotInput = ''
-        print("\nInvalid slot")
-        assignWokwiSlots()
-
-    elif (int(slotInput) >= len(lines)):
-        slotInput = ''
-        print("\nInvalid slot")
-        assignWokwiSlots()
-    else:
-        print("\nChoose from saved or paste a link to a Wokwi project for Slot ", end='')
-        print( slotInput )
-        print("\n\n")
-        printSavedProjects()
-
-        if (slotInput.isdigit() == True):
-            if (int(slotInput) <= len(lines)):
-                linkInput = searchSavedProjects(input("\n\nlink > "), False)
-                checkurl = ' '
-                url_link = linkInput
-                try:
-                    checkurl = requests.get(url_link)
-                    if (checkurl.status_code == requests.codes.ok):
-
-                        
-                        notes = searchSavedProjects(linkInput, True)
-                    
-                        print("\n" + notes + " selected for slot " + slotInput)
-
-                        slot = open(slotAssignmentsFile, "w")
-                        lines[int(slotInput)] = "slot " + slotInput + "\t" + url_link + "\t " + notes + "\n"
-                        #for line in lines:
-                        slot.writelines(lines)
-                            #print(line)
-                        slot.close()
-                        print("\n\nAssign another slot or ENTER to go to Jumperless")
-                        assignWokwiSlots()
-                    else:
-                        print("\n\nBad Link")
-                except Exception as e:
-                    print("\n\n")
-                    print(e)
-                    #print("\n\nBad Link!")
-                    assignWokwiSlots()
-                    
-
-    countAssignedSlots()
-
-
-
-def searchSavedProjects(inputToSearchFor, returnName = False):
+    file_path = slotFilePaths[slot_number]
+    if not is_valid_ino_file(file_path):
+        return False
     
     try:
-        f = open(savedProjectsFile, "r")
-    except:
-        f = open(savedProjectsFile, "x")
-        f = open(savedProjectsFile, "r")
-
-    index = 0
-    matchFound = 0
-    returnLink = ' '
-
-    lines = f.readlines()
-
-    linkInput = inputToSearchFor
-
-    if (linkInput.startswith("http") == True): #pasted a link
-        noWokwiStuff = False
-        entryType = "link"
-        if (returnName == False):
-            return linkInput
-        #return linkInput
-
-    elif (linkInput.isdigit() == True ): #entered a number
-        #print(linkInput)
-       # print(int(linkInput))
-        linkInt = int(linkInput)
-        otherIndex = 0
-        entryType = "index"
-
-        for idx in lines:
-            if (idx != '\n'):
-                otherIndex += 1
-                if (otherIndex == linkInt):
-                    idx = idx.rsplit('\t\t')
-                    idxLink = idx[1].rstrip('\n')
-                    linkInput = idxLink.rstrip('\n')
-                    if (returnName == False):
-                        return idxLink.rstrip('\n')
-                    break
-        print("\n\nNo match found for index " + linkInput + ". Try again")
-    else:   #entered a name
-        #print("entered a name")
-        linkInput = linkInput.strip()
-        for name in lines:
-            if name != '\n':
-                name = name.rsplit('\t\t')
-                nameText = name[0]
-                #print (nameText)
-                if (nameText == linkInput):
-                    entryType = "name"
-                    linkInput = name[1].rstrip('\n')
-                    if (returnName == False):
-
-                        return linkInput
-                    break
-                index += 1
-            print("\n\nNo match found for name " + linkInput + ". Try again")
-    matchFound = 0
-    line = 0
-    index = 0
-
-    for line in lines:
-        if (line != '\n'):
-            line = line.rsplit('\t\t')
-            name = line[0]
-            line = line[1]
+        # Get current modification time and content hash
+        current_mod_time = os.path.getmtime(file_path)
+        current_hash = get_file_content_hash(file_path)
+        
+        # Check if file has changed
+        if (current_mod_time != slotFileModTimes[slot_number] or 
+            current_hash != slotFileHashes[slot_number]):
             
-            line = line.rstrip('\n')
-            index += 1
+            # Update stored values
+            slotFileModTimes[slot_number] = current_mod_time
+            slotFileHashes[slot_number] = current_hash
+            return True
+            
+    except Exception as e:
+        if debugWokwi:
+            safe_print(f"Error checking file change for slot {slot_number}: {e}", Fore.YELLOW)
+    
+    return False
 
-            if line == linkInput:
-                #print ( "Match Found at index " + linkInput )
-
-                matchFound = index
-                if (returnName == False):
-                    return line
-                else:
-                    return name
-                #return line
-                # break
-                # url_selected = 1
-                
-
-
-    if matchFound == 0:
-        try:
-            checkurl = requests.get(linkInput)
-            #print(checkurl.status_code)
-            if (checkurl.status_code == requests.codes.ok):
-                url_selected = 1
-                noWokwiStuff = False
-
-                name = input("\n\nEnter a name for this new project\n\n")
-                f.close()
-                f = open(savedProjectsFile, "a")
-                f.write(name)
-                f.write('\t\t')
-                f.write(linkInput)
-                f.write("\n")
-                f.close()
-                if (returnName == False):
-                    return linkInput
-                else:
-                    return name
-                
-            else:
-                assignWokwiSlots()
-        except:
-            assignWokwiSlots()
-
-
-
-
-
-
-
-def openProject():
-    global url_link
-    global disableArduinoFlashing
-    global noWokwiStuff
-    global menuEntered
-    global currentString
-    global numAssignedSlots
-    url_entered = 0
-    url_selected = 0
-    entryType = -1  # 0 for index, 1 for name, 2 for link
+def read_local_ino_file(file_path):
+    """Read and return content of local .ino file"""
     try:
-        numAssignedSlots = countAssignedSlots()
-    except:
-        numAssignedSlots = 0
+        with open(file_path, 'r', encoding='utf-8') as f:
+            content = f.read().strip()
+        return content
+    except Exception as e:
+        safe_print(f"Error reading file {file_path}: {e}", Fore.RED)
+        return None
 
-    disableArduinoFlashing = 1
-
-
-
-
-    linkInput = input('\n\nopen > ')
-
-    if (linkInput == 'slots' or linkInput == 'slot' or linkInput == 's'):
-        assignWokwiSlots()
-        openProject()
-    elif (linkInput == 'force' or linkInput == 'update' or linkInput == 'force update'):
-        jumperlessFirmwareString = ' '
-        updateJumperlessFirmware(True)
-
-    elif(linkInput == 'skip' ):
-        noWokwiStuff = True
-        url_link = ' '
-        print("\nWokwi updates disabled\n\n")
-        try:
-
-            ser.write('m'.encode())
-        except:
-            pass
-        url_selected = 1
-        #break
-        return
-
-
-    elif(linkInput == 'menu' or linkInput == 'm'):
-        menuEntered = 1
-        
-        #while(menuEntered == 1):
-        bridgeMenu()
-        
-        openProject()
-        menuEntered = 0
-
-    else:
-        linkInput = searchSavedProjects(linkInput)
-
-
-    checkurl = ' '
-    url_link = linkInput
-
-#         print("\n\n linkInput = ", end='')
-#         print(linkInput)
-#         print("\n\n url_link = ", end='')
-#         print(url_link)
-
-    #checkurl = requests.get(url_link)
-    #print(checkurl.status_code)
-    if (noWokwiStuff == False):
-        try:
-            checkurl = requests.get(url_link)
-            #print(checkurl.status_code)
-            if (checkurl.status_code == requests.codes.ok):
-                url_selected = 1
-                noWokwiStuff = False
-                # break
-            else:
-                print("\n\nBad Link - Status Code: ", end='')  
-                print(checkurl.status_code)
-                url_link = 0
-                linkInput = 0
-                openProject()
-
-        except:
-            print("\n\nBad Link!!!")
-            url_link = 0
-            openProject()
-
-    matchFound = 0
-    line = 0
-    index = 0
-
+def process_local_file_and_flash(slot_number):
+    """Process local .ino file and flash if changed"""
+    global slotFilePaths, lastsketch, sketch
     
-    #saveConfig()   
-        
-
+    if slot_number < 0 or slot_number >= len(slotFilePaths):
+        return False
     
+    file_path = slotFilePaths[slot_number]
+    if not is_valid_ino_file(file_path):
+        return False
     
-    
-    
-    
-    
-openSerial()    
-updateJumperlessFirmware(False)
-assignWokwiSlots()
-#openProject()
-
-if (noWokwiStuff == False):
-    print("\n\nSave your Wokwi project to update the Jumperless\n")
-
-print("      'm' to show the onboard menu\n\n")
-
-# if (sys.platform == "win32"):
-print(style.RESET)
-
-
-
-
-                            
-portNotFound = 1
-                            
-def check_presence(correct_port, interval=.35):
-    global ser
-    global justreconnected
-    global serialconnected
-    global justChecked
-    global reading
-    global menuEntered
-    portFound = 0
-    while True:
-        
-        if (menuEntered == 1):
-            time.sleep(0.95)
-        else:
-            if (reading == 0):
+    try:
+        if check_local_file_change(slot_number):
+            content = read_local_ino_file(file_path)
+            if content and len(content) > 10:
+                # Store in sketch array
+                sketch[slot_number] = content
                 
-                portFound = 0
-
-                for port in serial.tools.list_ports.comports():
-
-                    if portName in port.device:
-                        
-                        portFound = 1
-
-                #print (portFound)
-
-                if portFound == 1:
+                # Check if content has actually changed
+                if lastsketch[slot_number] != content:
+                    lastsketch[slot_number] = content
+                    
+                    safe_print(f"\nLocal file changed for slot {slot_number}: {os.path.basename(file_path)}", Fore.MAGENTA)
+                    if debugWokwi:
+                        safe_print(f"File path: {file_path}", Fore.CYAN)
+                        safe_print(content[:200] + ('...' if len(content) > 200 else ''), Fore.CYAN)
+                    
+                    # Flash the Arduino
                     try:
-                        #print (portName)
-                        #ser = serial.Serial(portName, 115200)
-                        #print (portName)
-                        #ser.open(portName)
-                        justChecked = 1
-                        serialconnected = 1
-                        time.sleep(0.2)
-                        justChecked = 0
-                        
-                        
-                    except:
-                        
-                        continue
-
+                        flash_thread = flash_arduino_sketch_threaded(content, "", slot_number)
+                        return flash_thread is not None
+                    except Exception as e:
+                        safe_print(f"Error flashing local file for slot {slot_number}: {e}", Fore.RED)
+                        return False
                 else:
-                    justreconnected = 1
-                    justChecked = 0
-                    serialconnected = 0
+                    if debugWokwi:
+                        safe_print(f"Local file for slot {slot_number} changed but content same", Fore.BLUE)
+            else:
+                safe_print(f"Local file for slot {slot_number} is empty or too short", Fore.YELLOW)
+                
+    except Exception as e:
+        safe_print(f"Error processing local file for slot {slot_number}: {e}", Fore.RED)
+        return False
+    
+    return False
 
-                    ser.close()
+# ============================================================================
+# SERIAL COMMUNICATION FUNCTIONS
+# ============================================================================
 
-                time.sleep(interval)
+def get_available_ports():
+    """Get list of available serial ports with cross-platform handling"""
+    try:
+        ports = serial.tools.list_ports.comports()
+        return [(port.device, port.description, port.hwid) for port in ports]
+    except Exception as e:
+        safe_print(f"Error getting serial ports: {e}", Fore.RED)
+        return []
 
+def parse_hardware_id(hwid):
+    """Parse hardware ID to extract VID and PID"""
+    try:
+        if "VID:PID=" in hwid:
+            split_at = "VID:PID="
+            split_ind = hwid.find(split_at)
+            hwid_string = hwid[split_ind + 8:split_ind + 17]
+            vid = hwid_string[0:4]
+            pid = hwid_string[5:9]
+            return vid, pid
+        elif "VID_" in hwid and "PID_" in hwid:
+            # Windows format: USB VID_2E8A&PID_000A
+            vid_start = hwid.find("VID_") + 4
+            pid_start = hwid.find("PID_") + 4
+            vid = hwid[vid_start:vid_start + 4]
+            pid = hwid[pid_start:pid_start + 4]
+            return vid, pid
+    except Exception:
+        pass
+    return None, None
 
-import threading
-port_controller = threading.Thread(
-    target=check_presence, args=(portName, .25,), daemon=True)
-# port_controller.daemon(True)
-port_controller.start()
+def is_jumperless_device(desc, pid):
+    """Check if device is a Jumperless device"""
+    return (desc == "Jumperless" or 
+            pid in ["ACAB", "1312"] or 
+            "jumperless" in desc.lower())
 
-#ser.in_waiting            
-
-
-
-def serialTermIn():
-    global serialconnected
-    global ser
-    global justChecked
-    global reading
-    global menuEntered
-    global portNotFound
-    global forceWokwiUpdate
-
-    readTries = 0
-    while True:
-        readLength = 0
-        
-        
-        while menuEntered == 0:
-            time.sleep(0.15)
-            #while True:
-            try:
-                if (ser.in_waiting > 0):
-                    #justChecked = 0
-                    #reading = 1
-                    inputBuffer = b' '
-
-                    #waiting = ser.in_waiting
-
-                    while (serialconnected >= 0):
-                        inByte = ser.read()
-
-                        inputBuffer += inByte
-
-                        if (ser.in_waiting == 0):
+def choose_jumperless_port(sorted_ports):
+    """Choose the correct Jumperless port by testing firmware response"""
+    global jumperlessFirmwareString, jumperlessFirmwareNumber, jumperlessV5
+    
+    jumperlessFirmwareString = ' '
+    
+    for try_port_idx, port_name in enumerate(sorted_ports):
+        try:
+            with serial.Serial(port_name, 115200, timeout=1) as temp_ser:
+                temp_ser.write(b'?')
+                time.sleep(0.1)
+                
+                if temp_ser.in_waiting > 0:
+                    input_buffer = b''
+                    start_time = time.time()
+                    
+                    # Read with timeout
+                    while time.time() - start_time < 0.5:
+                        if temp_ser.in_waiting > 0:
+                            input_buffer += temp_ser.read(temp_ser.in_waiting)
+                        else:
                             time.sleep(0.01)
+                        
+                        if b'\n' in input_buffer or time.time() - start_time > 0.5:
+                            break
+                    
+                    try:
+                        input_str = input_buffer.decode('utf-8', errors='ignore').strip()
+                        lines = input_str.split('\n')
+                        
+                        for line in lines:
+                            if line.startswith("Jumperless firmware version:"):
+                                jumperlessFirmwareString = line
+                                
+                                # Parse version number
+                                version_part = line[29:].strip()
+                                version_numbers = version_part.split('.')
+                                
+                                if len(version_numbers) >= 3:
+                                    jumperlessFirmwareNumber = version_numbers[:3]
+                                    
+                                    if int(version_numbers[0]) >= 5:
+                                        jumperlessV5 = True
+                                
+                                return try_port_idx
+                    except Exception:
+                        continue
+        except Exception:
+            continue
+    
+    return 0
 
-                            if (ser.in_waiting == 0):
-                                break
-                            else:
-                                continue
+def open_serial():
+    """Open serial connection with cross-platform port detection"""
+    global portName, ser, arduinoPort, serialconnected, portSelected, updateInProgress
+    
+    portSelected = False
+    found_ports = []
+    
+    safe_print("\nScanning for serial ports...\n", Fore.CYAN)
+    
+    while not portSelected and updateInProgress == 0:
+        ports = get_available_ports()
+        found_ports = []
+        
+        if not ports:
+            safe_print("No serial ports found. Please connect your Jumperless.", Fore.RED)
+            time.sleep(2)
+            continue
+        
+        # safe_print("\nAvailable ports:")
+        for i, (port, desc, hwid) in enumerate(ports, 1):
+            vid, pid = parse_hardware_id(hwid)
+            
+            
+            if is_jumperless_device(desc, pid):
+                found_ports.append(port)
+                safe_print(f"{i}: {port} [{desc}]", Fore.MAGENTA)
+            else:
+                safe_print(f"{i}: {port} [{desc}]", Fore.BLUE)
 
-                    inputBuffer = str(inputBuffer)
 
-                    inputBuffer.encode()
-                    decoded_string = codecs.escape_decode(
-                        bytes(inputBuffer, "utf-8"))[0].decode("utf-8")
 
-                    decoded_string = decoded_string.lstrip("b' ")
-                    decoded_string = decoded_string.rstrip("'")
-                    decoded_string = decoded_string.rstrip("\"")
+        # safe_print(f"\nFound {len(found_ports)} Jumperless devices", Fore.CYAN)
 
-                    print(decoded_string, end='')
-                    #print ("!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!")
-                    readlength = 0
-                    #justChecked = 0
-                    reading = 0
-                    portNotFound = 0
-                    readTries = 0
-
-            except:
+        if found_ports:
+            sorted_ports = sorted(found_ports, key=lambda x: x[-1] if x[-1].isdigit() else x)
+            jumperless_index = choose_jumperless_port(sorted_ports)
+            
+            if len(sorted_ports) > jumperless_index:
+                portName = sorted_ports[jumperless_index]
+                
+                # Try to find Arduino port (usually the next port)
+                if len(sorted_ports) > jumperless_index + 1:
+                    arduinoPort = sorted_ports[jumperless_index + 1]
+                else:
+                    arduinoPort = None
+                
+                portSelected = True
+                safe_print(f"\nAutodetected Jumperless at {portName}", Fore.CYAN)
+                if arduinoPort:
+                    safe_print(f"Autodetected USB-Serial at {arduinoPort}", Fore.CYAN)
+            else:
+                safe_print("Could not identify Jumperless port automatically.", Fore.YELLOW)
+                # Manual selection fallback
                 try:
-                    ser.cancel_read()
-                    # ser.close()
+                    selection = input("\nSelect port number ('r' to rescan): ").strip()
+                    if selection.lower() == 'r':
+                        continue
+                    
+                    port_idx = int(selection) - 1
+                    if 0 <= port_idx < len(ports):
+                        portName = ports[port_idx][0]
+                        portSelected = True
+                        safe_print(f"Selected port: {portName}", Fore.GREEN)
+                except (ValueError, IndexError):
+                    safe_print("Invalid selection. Please try again.", Fore.RED)
+                    continue
+        else:
+            safe_print("No Jumperless devices found.", Fore.YELLOW)
+            selection = input("Enter port number manually or 'r' to rescan: ").strip()
+            if selection.lower() == 'r':
+                continue
+            
+            try:
+                port_idx = int(selection) - 1
+                if 0 <= port_idx < len(ports):
+                    portName = ports[port_idx][0]
+                    portSelected = True
+            except (ValueError, IndexError):
+                safe_print("Invalid selection.", Fore.RED)
+                continue
+    
+    # Attempt to open the selected port
+    try:
+        if updateInProgress == 0:
+            with serial_lock:
+                ser = serial.Serial(portName, 115200, timeout=1)
+                serialconnected = 1
+            safe_print(f"\nConnected to Jumperless at {portName}", Fore.GREEN)
+    except Exception as e:
+        safe_print(f"Failed to open serial port {portName}: {e}", Fore.RED)
+        with serial_lock:
+            ser = None
+            serialconnected = 0
+
+# ============================================================================
+# FIRMWARE MANAGEMENT
+# ============================================================================
+latestFirmware = "5.1.2.6"
+def check_if_fw_is_old():
+    """Check if firmware needs updating"""
+    global currentString, jumperlessFirmwareString, jumperlessV5, noWokwiStuff, latestFirmware
+    
+    if len(jumperlessFirmwareString) < 2:
+        safe_print('\nCould not read FW version from the Jumperless', Fore.YELLOW)
+        safe_print('Make sure you don\'t have this app running in another window.', Fore.YELLOW)
+        return False
+    
+    try:
+        split_index = jumperlessFirmwareString.rfind(':')
+        currentString = jumperlessFirmwareString[split_index + 2:].strip()
+        
+        current_list = currentString.split('.')
+        if len(current_list) < 3:
+            return False
+        
+        # Pad version numbers
+        for i in range(len(current_list)):
+            if len(current_list[i]) < 2:
+                current_list[i] = '0' + current_list[i]
+        
+        if int(current_list[0]) >= 5:
+            jumperlessV5 = True
+        
+        # Check latest version online
+        repo_url = ("https://github.com/Architeuthis-Flux/JumperlessV5/releases/latest" 
+                   if jumperlessV5 else 
+                   "https://github.com/Architeuthis-Flux/Jumperless/releases/latest")
+        
+        response = requests.get(repo_url, timeout=10)
+        version = response.url.split("/").pop()
+        
+        latest_list = version.split('.')
+        if len(latest_list) < 3:
+            return False
+        
+        # Pad latest version numbers
+        for i in range(len(latest_list)):
+            if len(latest_list[i]) < 2:
+                latest_list[i] =  '0' + latest_list[i]
+        
+        latest_int = int("".join(latest_list))
+        current_int = int("".join(current_list))
+        # safe_print(f"\nLatest firmware: {version}", Fore.CYAN)
+        # safe_print(f"Current version: {currentString}", Fore.CYAN)
+        latestFirmware = version
+        if latest_int > current_int:
+            safe_print(f"\nLatest firmware: {version}", Fore.MAGENTA)
+            safe_print(f"Current version: {currentString}", Fore.RED)
+
+            update_jumperless_firmware(force=False)
+            return True
+        
+        return False
+        
+    except Exception as e:
+        safe_print(f"Could not check firmware version: {e}", Fore.YELLOW)
+        noWokwiStuff = True
+        return False
+
+def update_jumperless_firmware(force=False):
+    """Update Jumperless firmware"""
+    global ser, menuEntered, serialconnected, updateInProgress, portName, latestFirmware
+    
+    # if not force and not check_if_fw_is_old():
+    #     return
+    # if (force == False):
+    safe_print("\nUpdating your Jumperless to the latest firmware: " + latestFirmware + "\n", Fore.YELLOW)
+    
+    # Use timeout input - defaults to "y" after 4 seconds
+    user_response = 'y' #input_with_timeout("", timeout=4, default="y")
+    
+    if force or user_response.lower() in ['', 'y', 'yes']:
+        safe_print("Downloading latest firmware...", Fore.GREEN)
+        
+        with serial_lock:
+            serialconnected = 0
+            if ser:
+                try:
+                    ser.close()
+                except:
+                    
+                    print("*", ser, "*")
+                    time.sleep(0.1)
+                    pass
+                ser = None
+        
+        menuEntered = 1
+        updateInProgress = 1
+        
+        try:
+            firmware_url = latestFirmwareAddressV5 if jumperlessV5 else latestFirmwareAddress
+            urlretrieve(firmware_url, "firmware.uf2")
+            safe_print("Firmware downloaded successfully!", Fore.CYAN)
+            
+            # Attempt automatic firmware update
+            automatic_update_success = False
+            
+            try:
+                # safe_print("Attempting automatic firmware update...", Fore.CYAN)
+                time.sleep(0.50)
+                safe_print("Putting Jumperless in BOOTSEL mode...", Fore.BLUE)
+                # ser.close()
+                time.sleep(0.50)
+                
+                try:
+                    ser.close()
                 except:
                     pass
                 
+                # Create tickle serial connection to trigger bootloader
+                try:
+                    serTickle = serial.Serial(portName, 1200, timeout=None)
+                    time.sleep(0.55)
+                    serTickle.close()
+                    time.sleep(0.55)
+                except:
+                    safe_print("Could not connect to Jumperless", Fore.RED)
+                    return
 
-                forceWokwiUpdate = 1
-                portNotFound = 1
-                while (portNotFound == 1):
-                    portFound = 0
-                    #print("Disconnected")
+
+                
+                safe_print("Waiting for mounted drive...", Fore.MAGENTA)
+                foundVolume = "none"
+                timeStart = time.time()
+                
+                while foundVolume == "none":
+                    if time.time() - timeStart > 20:
+                        safe_print("Timeout waiting for bootloader drive to appear", Fore.RED)
+                        break
+                    time.sleep(0.25)
                     
-                    readTries += 1
-                    if (readTries == 2):
-                        print("Disconnected")
-                    # readTries = 0
-                    time.sleep(0.15)
-                    for port in serial.tools.list_ports.comports():
-
-                        if portName in port.device:
-
-                            portFound = 1
-                            portNotFound = 0
-                            #print ("found ")
-                            #print (port.device)
-
-                    if portFound == 1:
-                        try:
-                            ser = serial.Serial(portName, 115200, timeout=0.5)
-                            justChecked = 1
-                            serialconnected = 1
-                            time.sleep(0.1)
-                            justChecked = 0
-                            portNotFound = 0
-                            #justreconnected = 1
-                        except:
-                            portFound = 0
-                            portNotFound = 1
-                            time.sleep(0.15)
-
-                    else:
-                        #justreconnected = 1
-                        justChecked = 0
-                        serialconnected = 0
-
-                        #ser.close()
-                        portNotFound = 1
-                        time.sleep(.1)
-        else:
-            time.sleep(0.15)
-
-
-port_controller = threading.Thread(target=serialTermIn, daemon=True)
-# port_controller.daemon(True)
-port_controller.start()
-
-
-forceWokwiUpdate = 0
-
-def serialTermOut():
-    global serialconnected
-    global ser
-    global justChecked
-    global justreconnected
-    global menuEntered
-    global forceWokwiUpdate
-    global noWokwiStuff
-    
-    
-
-    while True:
-        justreconnected = 0
-        resetEntered = 0
-
-        while (menuEntered == 0):
-            time.sleep(0.15)
-
-            outputBuffer = input()
-
-            if (outputBuffer == 'menu') or (outputBuffer == 'Menu'):
-                print("Menu Entered")
-                menuEntered = 1
-                #bridgeMenu()
-                continue
-            if (outputBuffer == 'slots') or (outputBuffer == 'Slots'):
-                assignWokwiSlots()
-                #outputBuffer = ' '
-                continue
-            if (outputBuffer == 'wokwi'):
-                forceWokwiUpdate = 1
-                print("Wokwi update forced")
-                continue
-
-            if(outputBuffer == 'skip'):
-                if (noWokwiStuff == False):
-                    noWokwiStuff = True
-                    print("\nWokwi updates disabled\n\n")
-                else:
-                    print("\nWokwi updates enabled\n\n")
-                    noWokwiStuff = True
-                outputBuffer = ' '
-                continue
-    
-
-            #if outputBuffer == b'r':
-                #resetEntered = 1
-
-            if (serialconnected == 1):
-                #justChecked = 0
-                while (justChecked == 0):
-                    time.sleep(0.05)
-                else:
-
-                    #print (outputBuffer)
-                    if (outputBuffer != ' '):
-                        try:
-                            #print (outputBuffer.encode('ascii'))
-                            ser.write(outputBuffer.encode('ascii'))
-                        except:
-                            portNotFound = 1
-                            ser.cancel_write()
-                            outputBuffer = ' '
-
-                            while (portNotFound == 1):
-                                portFound = 0
-
-                                for port in serial.tools.list_ports.comports():
-
-                                    if portName in port.device:
-
-                                        portFound = 1
-                                        print (port.device)
-
-                                    if portFound >= 1:
-                                        #
-                                        justChecked = 1
-                                        serialconnected = 1
-                                        time.sleep(0.05)
-                                        justChecked = 0
-                                        portNotFound = 0
-
-                                    else:
-                                        justreconnected = 0
-                                        justChecked = 0
-                                        serialconnected = 0
-
-                                        ser.close()
-                                        portNotFound = 1
-                                        time.sleep(.1)
+                    try:
+                        partitions = psutil.disk_partitions()
+                        
+                        for p in partitions:
                             try:
-                                print(outputBuffer.encode('ascii'))
-                                #ser.write(outputBuffer.encode('ascii'))
-                            except:
-                                serialconnected=0
-                                forceWokwiUpdate = 1
+                                if sys.platform == "win32" and WIN32_AVAILABLE:
+                                    try:
+                                        volume_info = win32api.GetVolumeInformation(p.mountpoint)
+                                        volume_name = volume_info[0]
+                                        if jumperlessV5:
+                                            if volume_name == "RP2350":
+                                                foundVolume = p.mountpoint
+                                                safe_print(f"Found Jumperless V5 at {foundVolume}", Fore.CYAN)
+                                                break
+                                        else:
+                                            if volume_name == "RPI-RP2":
+                                                foundVolume = p.mountpoint
+                                                safe_print(f"Found Jumperless at {foundVolume}", Fore.CYAN)
+                                                break
+                                    except Exception:
+                                        continue
+                                else:
+                                    # Unix-like systems
+                                    if jumperlessV5:
+                                        if p.mountpoint.endswith("RP2350") or "RP2350" in p.mountpoint:
+                                            foundVolume = p.mountpoint
+                                            safe_print(f"Found Jumperless V5 at {foundVolume}", Fore.RED)
+                                            break
+                                    else:
+                                        if p.mountpoint.endswith("RPI-RP2") or "RPI-RP2" in p.mountpoint:
+                                            foundVolume = p.mountpoint
+                                            safe_print(f"Found Jumperless at {foundVolume}", Fore.RED)
+                                            break
+                            except Exception:
+                                continue
+                    except Exception as partition_error:
+                        safe_print(f"Error scanning partitions: {partition_error}", Fore.YELLOW)
+                        break
+                
+                if foundVolume != "none":
+                    try:
+                        fullPathRP = os.path.join(foundVolume, "firmware.uf2")
+                        time.sleep(0.2)
+                        safe_print("Copying firmware.uf2 to Jumperless...", Fore.YELLOW)
+                        shutil.copy("firmware.uf2", fullPathRP)
+                        
+                        time.sleep(0.75)
+                        safe_print("Jumperless updated to latest firmware!", Fore.GREEN)
+                        automatic_update_success = True
+                        
+                        # Wait for device to reboot and reconnect
+                        time.sleep(1.5)
+                        
+                        # Attempt to reconnect
+                        try:
+                            with serial_lock:
+                                ser = serial.Serial(portName, 115200, timeout=1)
+                                ser.flush()
+                                serialconnected = 1
+                            safe_print("Reconnected to Jumperless", Fore.CYAN)
+                        except Exception as reconnect_error:
+                            safe_print(f"Could not automatically reconnect: {reconnect_error}", Fore.YELLOW)
+                            # safe_print("Please restart the application to reconnect", Fore.YELLOW)
+                        
+                    except Exception as copy_error:
+                        safe_print(f"Error copying firmware: {copy_error}", Fore.RED)
+                        
+            except Exception as auto_update_error:
+                safe_print(f"Automatic update failed: {auto_update_error}", Fore.YELLOW)
+            
+            # Fallback to manual instructions if automatic update failed
+            if not automatic_update_success:
+                # safe_print("\n" + "="*60, Fore.YELLOW)
+                # safe_print("MANUAL FIRMWARE UPDATE REQUIRED", Fore.YELLOW)
+                # safe_print("="*60, Fore.YELLOW)
+                safe_print("\nAutomatic update failed. Please follow these steps to update manually:\n\n", Fore.RED)
+                safe_print("1. Disconnect your Jumperless from USB", Fore.CYAN)
+                safe_print("2. Hold the BOOTSEL button while reconnecting USB", Fore.CYAN)
+                safe_print("3. Your Jumperless should appear as a USB drive", Fore.CYAN)
+                if jumperlessV5:
+                    safe_print("4. Look for a drive named 'RP2350'", Fore.CYAN)
+                else:
+                    safe_print("4. Look for a drive named 'RPI-RP2'", Fore.CYAN)
+                safe_print("5. Drag the 'firmware.uf2' file to that drive", Fore.CYAN)
+                safe_print("6. The Jumperless will automatically reboot with new firmware", Fore.CYAN)
+                safe_print("7. Restart this application to reconnect", Fore.CYAN)
+                safe_print("\nThe firmware.uf2 file is in the current directory.", Fore.GREEN)
+                
+                # input("\nPress Enter when you have completed the manual update...")
+                # safe_print("Please restart the application to reconnect to your Jumperless.", Fore.CYAN)
+            
+        except Exception as e:
+            safe_print(f"Failed to download firmware: {e}", Fore.RED)
+        updateInProgress = 0
+        menuEntered = 0
 
-                        if (resetEntered == 1):
-                            time.sleep(.5)
-                            print("reset")
-                            justreconnected = 1
-        else:
-            time.sleep(0.15)
+# ============================================================================
+# PROJECT AND SLOT MANAGEMENT
+# ============================================================================
 
-        #time.sleep(.5)
+def count_assigned_slots():
+    """Count how many slots have assigned URLs or local files"""
+    global slotURLs, slotFilePaths, slotFileModTimes, slotFileHashes, numAssignedSlots, noWokwiStuff
     
-def removeLibraryLines(line):
+    numAssignedSlots = 0
     
-    if "#" in line:
-        return False
-    if (len(line) == 0):
-        return False
-    else:
-        return True
+    try:
+        with open(slotAssignmentsFile, 'r') as f:
+            for line in f:
+                line = line.strip()
+                if line and not line.startswith('#'):
+                    split_line = line.split('\t')
+                    if len(split_line) >= 2:
+                        try:
+                            idx = int(split_line[0])
+                            if 0 <= idx < len(slotURLs):
+                                path_or_url = split_line[1]
+                                
+                                # Check if it's a local file or Wokwi URL
+                                if path_or_url.lower().endswith('.ino'):
+                                    # Local .ino file
+                                    slotFilePaths[idx] = path_or_url
+                                    slotURLs[idx] = '!'  # Clear URL slot
+                                    slotAPIurls[idx] = '!'  # Clear API URL slot
+                                    if is_valid_ino_file(path_or_url):
+                                        numAssignedSlots += 1
+                                        # Initialize file monitoring for this slot
+                                        if idx < len(slotFileModTimes):
+                                            try:
+                                                slotFileModTimes[idx] = os.path.getmtime(path_or_url)
+                                                slotFileHashes[idx] = get_file_content_hash(path_or_url)
+                                            except Exception:
+                                                slotFileModTimes[idx] = 0
+                                                slotFileHashes[idx] = ''
+                                elif path_or_url.startswith('https://wokwi.com/projects/'):
+                                    # Wokwi URL
+                                    slotURLs[idx] = path_or_url
+                                    slotAPIurls[idx] = path_or_url.replace(
+                                        "https://wokwi.com/projects/", 
+                                        "https://wokwi.com/api/projects/"
+                                    ) + "/diagram.json"
+                                    slotFilePaths[idx] = '!'  # Clear file path slot
+                                    numAssignedSlots += 1
+                        except (ValueError, IndexError):
+                            continue
+    except FileNotFoundError:
+        pass
+    except Exception as e:
+        safe_print(f"Error reading slot assignments: {e}", Fore.RED)
+    
+    return numAssignedSlots
+
+def print_saved_projects():
+    """Print list of saved projects with proper alignment"""
+    try:
+        with open(savedProjectsFile, 'r') as f:
+            lines = f.readlines()
+            
+        safe_print("\nSaved Projects:", Fore.CYAN)
         
+        # Filter out empty lines and parse projects
+        projects = []
+        for line in lines:
+            line = line.strip()
+            if line and '\t\t' in line:
+                parts = line.split('\t\t', 1)  # Split only on first occurrence of double tab
+                if len(parts) == 2:
+                    projects.append((parts[0].strip(), parts[1].strip()))
+        
+        if not projects:
+            safe_print("No saved projects found.", Fore.YELLOW)
+            return
+        
+        # Find the maximum name length for alignment
+        max_name_length = max(len(project[0]) for project in projects)
+        # Ensure minimum spacing
+        max_name_length = max(max_name_length, 10)
+        
+        # Print projects with proper alignment
+        for i, (name, url) in enumerate(projects, 1):
+            # Pad the name to align URLs
+            padded_name = name.ljust(max_name_length)
+            safe_print(f"{i}: {padded_name} {url}")
+            
+    except FileNotFoundError:
+        safe_print("No saved projects found.", Fore.YELLOW)
+    except Exception as e:
+        safe_print(f"Error reading saved projects: {e}", Fore.RED)
 
+def search_saved_projects(input_to_search, return_name=False):
+    """Search saved projects by index, name, or URL"""
+    try:
+        with open(savedProjectsFile, 'r') as f:
+            lines = f.readlines()
+    except FileNotFoundError:
+        # Create file if it doesn't exist
+        try:
+            with open(savedProjectsFile, 'w') as f:
+                pass
+        except Exception:
+            pass
+        return None
+    except Exception:
+        return None
+    
+    # Parse projects
+    projects = []
+    for line in lines:
+        line = line.strip()
+        if line and '\t\t' in line:
+            parts = line.split('\t\t', 1)
+            if len(parts) == 2:
+                projects.append((parts[0].strip(), parts[1].strip()))
+    
+    if not projects:
+        return None
+    
+    input_str = str(input_to_search).strip()
+    
+    # Check if input is a URL
+    if input_str.startswith("https://wokwi.com/projects/"):
+        if return_name:
+            # Check if this URL exists in saved projects to return its name
+            for name, url in projects:
+                if url == input_str:
+                    return name
+            # If not found, prompt for a name and save it
+            project_name = input("\n\nEnter a name for this new project: ").strip()
+            if project_name:
+                try:
+                    with open(savedProjectsFile, 'a') as f:
+                        f.write(f"{project_name}\t\t{input_str}\n")
+                    return project_name
+                except Exception:
+                    pass
+            return "Unnamed Project"
+        else:
+            return input_str
+    
+    # Check if input is a number (index)
+    elif input_str.isdigit():
+        index = int(input_str)
+        if 1 <= index <= len(projects):
+            name, url = projects[index - 1]
+            return name if return_name else url
+        else:
+            safe_print(f"\nNo project found at index {index}. Valid range: 1-{len(projects)}", Fore.RED)
+            return None
+    
+    # Check if input is a project name
+    else:
+        for name, url in projects:
+            if name.lower() == input_str.lower():
+                return name if return_name else url
+        
+        safe_print(f"\nNo project found with name '{input_str}'", Fore.RED)
+        return None
+
+def assign_wokwi_slots():
+    """Interactive slot assignment - returns (changes_made, return_to_menu)"""
+    global slotURLs, slotAPIurls, slotFilePaths, slotFileModTimes, slotFileHashes, numAssignedSlots, noWokwiStuff, menuEntered, currentString
+    
+    changes_made = False
+    original_num_slots = numAssignedSlots
+    
+    count_assigned_slots()  
+    if numAssignedSlots > 0:
+        safe_print(f"- {numAssignedSlots} assigned", Fore.YELLOW)
+    else:
+        safe_print("")
+
+    # Print slot options
+    safe_print("\n      'x' to clear all slots", Fore.RED)
+    safe_print("      'c' to clear a single slot", Fore.RED)
+    safe_print("\nEnter the slot number you'd like to assign a project to:\n", Fore.MAGENTA)
+    
+    # Show current slot assignments
+    safe_print("Current slot assignments:\n", Fore.BLUE)
+    for i, url in enumerate(slotURLs[:8]):
+        # Check if this slot has a local file or Wokwi URL
+        if slotFilePaths[i] != '!':
+            file_path = slotFilePaths[i]
+            file_name = os.path.basename(file_path) if file_path != '!' else file_path
+            file_status = "(valid)" if is_valid_ino_file(file_path) else "(missing)"
+            safe_print(f"slot {i}\t[LOCAL] {file_name} {file_status}", Fore.GREEN if is_valid_ino_file(file_path) else Fore.RED)
+        elif url != '!':
+            safe_print(f"slot {i}\t[WOKWI] {url}", Fore.CYAN)
+        else:
+            safe_print(f"slot {i}\tEmpty", Fore.GREEN)
+    
+    try:
+        slot_input = input('\n\nslot > ').strip()
+        
+        # Handle special commands
+        if slot_input == 'menu':
+            return (changes_made, True)  # Return to bridge menu
+        elif slot_input == 'slots':
+            return assign_wokwi_slots()  # Recursive call
+        elif slot_input == 'update':
+            update_jumperless_firmware(force=True)
+            return (changes_made, True)  # Return to bridge menu after update
+        elif slot_input == '':
+            # Empty input - return to bridge menu if no changes, main loop if changes made
+            if numAssignedSlots == 0 and not changes_made:
+                safe_print("\n\nNo Wokwi projects assigned. Returning to menu.", Fore.YELLOW)
+                return (changes_made, True)  # Return to bridge menu
+            else:
+                return (changes_made, not changes_made)
+        elif slot_input == 'x':
+            safe_print("\n\nClearing all slots\n\n")
+            slotURLs = ['!'] * 8
+            slotAPIurls = ['!'] * 8
+            slotFilePaths = ['!'] * 8  # Also clear local file paths
+            # Save cleared slots to file
+            try:
+                with open(slotAssignmentsFile, 'w') as f:
+                    pass  # Clear the file
+                numAssignedSlots = 0
+                changes_made = True
+                return assign_wokwi_slots()  # Show menu again after clearing
+            except Exception as e:
+                safe_print(f"Error clearing slots: {e}", Fore.RED)
+                return (changes_made, True)
+        elif slot_input.startswith('c'):
+            clear_slot = input("\n\nEnter the slot number you'd like to clear:\n")
+            if clear_slot.isdigit() and 0 <= int(clear_slot) <= 7:
+                slot_num = int(clear_slot)
+                slotURLs[slot_num] = '!'
+                slotAPIurls[slot_num] = '!'
+                slotFilePaths[slot_num] = '!'  # Also clear local file path
+                # Save to file
+                try:
+                    with open(slotAssignmentsFile, 'w') as f:
+                        for i in range(8):
+                            if slotURLs[i] != '!' or slotFilePaths[i] != '!':
+                                path_or_url = slotURLs[i] if slotURLs[i] != '!' else slotFilePaths[i]
+                                f.write(f"{i}\t{path_or_url}\n")
+                    numAssignedSlots = count_assigned_slots()
+                    changes_made = True
+                    return assign_wokwi_slots()  # Show menu again after clearing
+                except Exception as e:
+                    safe_print(f"Error clearing slot: {e}", Fore.RED)
+                    return (changes_made, True)
+            else:
+                safe_print("\nInvalid slot number. Try again")
+                return assign_wokwi_slots()
+        elif not slot_input.isdigit():
+            safe_print("\nInvalid slot")
+            return assign_wokwi_slots()
+        elif int(slot_input) > 7:
+            safe_print("\nInvalid slot")
+            return assign_wokwi_slots()
+        else:
+            # Valid slot number
+            slot_num = int(slot_input)
+            safe_print(f"\nChoose from saved projects, paste a Wokwi URL, or enter path to local .ino file for Slot {slot_input}", Fore.YELLOW)
+            safe_print("Examples:", Fore.CYAN)
+            safe_print("  Wokwi URL: https://wokwi.com/projects/123456789", Fore.BLUE)
+            safe_print("  Local file: /path/to/sketch.ino or ./sketch.ino", Fore.BLUE)
+            print_saved_projects()
+            
+            url_input = input("\n\nlink/path > ").strip()
+            
+            # Handle empty input at link prompt
+            if not url_input:
+                safe_print("No project selected, returning to slot menu")
+                return assign_wokwi_slots()
+            
+            # Check if input is a local .ino file path
+            if url_input.lower().endswith('.ino'):
+                # Handle local .ino file
+                if os.path.isfile(url_input):
+                    # Valid local file
+                    slotFilePaths[slot_num] = url_input
+                    slotURLs[slot_num] = '!'  # Clear URL slot
+                    slotAPIurls[slot_num] = '!'  # Clear API URL slot
+                    
+                    # Initialize file monitoring
+                    try:
+                        slotFileModTimes[slot_num] = os.path.getmtime(url_input)
+                        slotFileHashes[slot_num] = get_file_content_hash(url_input)
+                    except Exception:
+                        slotFileModTimes[slot_num] = 0
+                        slotFileHashes[slot_num] = ''
+                    
+                    # Save to file
+                    try:
+                        with open(slotAssignmentsFile, 'w') as f:
+                            for i in range(8):
+                                if slotURLs[i] != '!' or slotFilePaths[i] != '!':
+                                    path_or_url = slotURLs[i] if slotURLs[i] != '!' else slotFilePaths[i]
+                                    f.write(f"{i}\t{path_or_url}\n")
+                        
+                        numAssignedSlots = count_assigned_slots()
+                        changes_made = True
+                        safe_print(f"\nLocal .ino file assigned to slot {slot_num}: {os.path.basename(url_input)}", Fore.GREEN)
+                        safe_print("\n\nAssign another slot or ENTER to go to Jumperless")
+                        return assign_wokwi_slots()
+                        
+                    except Exception as e:
+                        safe_print(f"Error saving slot assignment: {e}", Fore.RED)
+                        return (changes_made, True)
+                else:
+                    safe_print(f"\nFile not found: {url_input}", Fore.RED)
+                    safe_print("Please check the file path and try again.")
+                    return assign_wokwi_slots()
+            
+            # First try to search saved projects (handles index, name, or URL)
+            found_url = search_saved_projects(url_input, return_name=False)
+            
+            if found_url:
+                # Get the project name for display
+                project_name = search_saved_projects(found_url, return_name=True)
+                
+                slotURLs[slot_num] = found_url
+                slotFilePaths[slot_num] = '!'  # Clear file path slot
+                slotAPIurls[slot_num] = found_url.replace(
+                    "https://wokwi.com/projects/", 
+                    "https://wokwi.com/api/projects/"
+                ) + "/diagram.json"
+                
+                # Save to file
+                try:
+                    with open(slotAssignmentsFile, 'w') as f:
+                        for i in range(8):
+                            if slotURLs[i] != '!' or slotFilePaths[i] != '!':
+                                path_or_url = slotURLs[i] if slotURLs[i] != '!' else slotFilePaths[i]
+                                f.write(f"{i}\t{path_or_url}\n")
+                    
+                    numAssignedSlots = count_assigned_slots()
+                    if numAssignedSlots > 0:
+                        noWokwiStuff = False
+                    
+                    changes_made = True
+                    safe_print(f"\n{project_name} assigned to slot {slot_num}", Fore.GREEN)
+                    safe_print("\n\nAssign another slot or ENTER to go to Jumperless")
+                    return assign_wokwi_slots()
+                    
+                except Exception as e:
+                    safe_print(f"Error saving slot assignment: {e}", Fore.RED)
+                    return (changes_made, True)
+            elif url_input.startswith('https://wokwi.com/projects/'):
+                # Handle direct URL input that's not in saved projects
+                slotURLs[slot_num] = url_input
+                slotFilePaths[slot_num] = '!'  # Clear file path slot
+                slotAPIurls[slot_num] = url_input.replace(
+                    "https://wokwi.com/projects/", 
+                    "https://wokwi.com/api/projects/"
+                ) + "/diagram.json"
+                
+                # Save to file
+                try:
+                    with open(slotAssignmentsFile, 'w') as f:
+                        for i in range(8):
+                            if slotURLs[i] != '!' or slotFilePaths[i] != '!':
+                                path_or_url = slotURLs[i] if slotURLs[i] != '!' else slotFilePaths[i]
+                                f.write(f"{i}\t{path_or_url}\n")
+                    
+                    numAssignedSlots = count_assigned_slots()
+                    if numAssignedSlots > 0:
+                        noWokwiStuff = False
+                    
+                    changes_made = True
+                    safe_print(f"\nWokwi project assigned to slot {slot_num}")
+                    safe_print("\n\nAssign another slot or ENTER to go to Jumperless")
+                    return assign_wokwi_slots()
+                    
+                except Exception as e:
+                    safe_print(f"Error saving slot assignment: {e}", Fore.RED)
+                    return (changes_made, True)
+            else:
+                safe_print("\nInvalid input. Enter a project index, name, Wokwi URL, or local .ino file path", Fore.RED)
+                return assign_wokwi_slots()
+        
+    except ValueError:
+        safe_print("Invalid input. Please enter a number.", Fore.RED)
+        return assign_wokwi_slots()
+    except Exception as e:
+        safe_print(f"Error updating slot: {e}", Fore.RED)
+        return (changes_made, True)
+
+# ============================================================================
+# MENU SYSTEM
+# ============================================================================
+
+def bridge_menu():
+    """Main bridge menu"""
+    global menuEntered, wokwiUpdateRate, numAssignedSlots, currentString, noWokwiStuff, disableArduinoFlashing, noArduinocli, arduinoPort, debugWokwi
+
+    safe_print("\n\n         Jumperless App Menu\n", Fore.MAGENTA)
+    
+    safe_print(" 'menu'    to open the app menu (this menu)", Fore.BLUE)  
+    safe_print(" 'wokwi'   to " + ("enable" if noWokwiStuff else "disable") + " Wokwi updates " + ("and just use as a terminal" if not noWokwiStuff else ""), Fore.CYAN)
+    safe_print(" 'rate'    to change the Wokwi update rate", Fore.GREEN)
+    safe_print(" 'slots'   to assign Wokwi projects to slots - " + str(numAssignedSlots) + " assigned", Fore.YELLOW)
+    safe_print(" 'arduino' to " + ("enable" if disableArduinoFlashing else "disable") + " Arduino flashing from wokwi", Fore.RED)
+    safe_print(" 'debug'   to " + ("disable" if debugWokwi else "enable") + " Wokwi debug output - " + ("on" if debugWokwi else "off"), Fore.MAGENTA)
+    safe_print(" 'update'  to force firmware update - yours is up to date (" + currentString + ")", Fore.BLUE)
+    safe_print(" 'status'  to check the serial connection status", Fore.CYAN) 
+    safe_print(" 'exit'    to exit the menu", Fore.GREEN)
+    
+    while menuEntered:
+        try:
+            choice = input("\n>> ").strip()
+            
+            if choice == 'menu':
+                menuEntered = 0
+                ser.write(b'm')
+                return
+            elif choice == 'wokwi':
+                noWokwiStuff = not noWokwiStuff
+                safe_print(f"Wokwi updates {'disabled' if noWokwiStuff else 'enabled'}", Fore.CYAN)
+                continue
+            elif choice == 'arduino':
+                if noArduinocli:
+                    safe_print("Arduino CLI not available. Cannot enable Arduino flashing.", Fore.RED)
+                    safe_print("Install pyduinocli with: pip install pyduinocli", Fore.YELLOW)
+                else:
+                    disableArduinoFlashing = not disableArduinoFlashing
+                    status = "enabled" if not disableArduinoFlashing else "disabled"
+                    safe_print(f"Arduino flashing {status}", Fore.GREEN if not disableArduinoFlashing else Fore.YELLOW)
+                    if not disableArduinoFlashing and not arduinoPort:
+                        safe_print("Warning: No Arduino port configured. Use 'status' to check ports.", Fore.YELLOW)
+                continue
+            elif choice == 'debug':
+                debugWokwi = not debugWokwi
+                safe_print(f"Wokwi debug output {'enabled' if debugWokwi else 'disabled'}", Fore.CYAN)
+                continue
+            elif choice == 'update':
+                update_jumperless_firmware(force=True)
+                menuEntered = 0
+                ser.write(b'm')
+                return
+            elif choice == 'slots':
+                changes_made, return_to_menu = assign_wokwi_slots()
+                if return_to_menu:
+                    continue
+                else:
+                    menuEntered = 0
+                    ser.write(b'm')
+                    return
+            elif choice == 'rate':
+                try:
+                    rate_input = input(f"Current update rate: {wokwiUpdateRate + 0.4}s\nEnter new rate (0.5-50.0): ")
+                    new_rate = float(rate_input)
+                    if 0.5 <= new_rate <= 50.0:
+                        wokwiUpdateRate = new_rate - 0.4
+                        safe_print(f"Update rate set to {new_rate}s", Fore.GREEN)
+                    else:
+                        safe_print("Rate must be between 0.5 and 50.0 seconds", Fore.RED)
+                except ValueError:
+                    safe_print("Invalid number format", Fore.RED)
+                continue
+            elif choice == 'status':
+                # safe_print(f"\nConnection: {'Connected' if serialconnected else 'Disconnected'}", 
+                        #   Fore.GREEN if serialconnected else Fore.RED)
+                try:
+                    arduinoPortStatus = serial.Serial(arduinoPort, 115200, timeout=0.1).is_open
+                    arduinoPortStatus.close()
+                    arduinoPortStatus = True
+                    # arduinoPortStatus = serial.Serial(arduinoPort, 115200, timeout=0.1).is_open
+                    # print(arduinoPortStatus)
+                except:
+                    arduinoPortStatus = False
+
+                safe_print(f"Jumperless Port: {portName if portName else 'None'} " + ("(Connected)" if serialconnected else "(Disconnected)"), Fore.GREEN if serialconnected else Fore.RED)
+                safe_print(f"Arduino Port: {arduinoPort if arduinoPort else 'None'} " + ("(Connectable)" if arduinoPortStatus else "(Busy)"), Fore.GREEN if arduinoPortStatus else Fore.RED)
+                safe_print(f"Firmware: {currentString}", Fore.CYAN) 
+                safe_print(f"Jumperless V5: {'Yes' if jumperlessV5 else 'No'}", Fore.MAGENTA if jumperlessV5 else Fore.BLUE)
+                safe_print(f"Arduino CLI: {'Available' if not noArduinocli else 'Not Available'}" + (" - version: " + get_installed_arduino_cli_version() if not noArduinocli else ""), Fore.CYAN if not noArduinocli else Fore.YELLOW)
+                safe_print(f"Arduino Flashing: {'Enabled' if not disableArduinoFlashing and not noArduinocli else 'Disabled'}", Fore.MAGENTA if not disableArduinoFlashing and not noArduinocli else Fore.BLUE)
+                # safe_print(f"Arduino CLI Version: {get_installed_arduino_cli_version()}", Fore.CYAN)
+                continue
+            elif choice == 'exit':
+                menuEntered = 0
+                ser.write(b'm')
+                return
+            else:
+                menuEntered = 0
+                ser.write(b'm')
+                safe_print("Exiting menu...", Fore.CYAN)
+                return
+
+        except KeyboardInterrupt:
+            menuEntered = 0
+        except Exception as e:
+            safe_print(f"Menu error: {e}", Fore.RED)
+
+# ============================================================================
+# ARDUINO FLASHING FUNCTIONS
+# ============================================================================
+
+def removeLibraryLines(line):
+    """Filter function for Arduino libraries"""
+    if line.startswith('#'):
+        return False
+    if line.startswith('//'):
+        return False
+    if len(line.strip()) == 0:
+        return False
+    return True
 
 def findsketchindex(decoded):
-    
-    doneSearching = 0
-    index = 0
-    
-    while (doneSearching == 0):
-        if (decoded['props']['pageProps']['p']['files'][index]['name'] == "sketch.ino"):
-            doneSearching = 1
-            #print ("sketch found at index " , end='')
-            #print(index)
-            return index
-        else:
-            if (index > 20):
-                doneSearching = 1
-                return 0
-            
-            else:
-                index = index + 1
-        
-    
-    
-    
-def finddiagramindex(decoded):
-    
-    doneSearching = 0
-    index = 0
-    
-    while (doneSearching == 0):
-        if (decoded['props']['pageProps']['p']['files'][index]['name'] == "diagram.json"):
-            doneSearching = 1
-            #print ("diagram found at index " , end='')
-            #print(index)
-            return index
-        else:
-            if (index > 20):
-                doneSearching = 1
-                return 2
-            
-            else:
-                index = index + 1
-                
-                
-                
+    """Find sketch file index in Wokwi project - SIMPLIFIED VERSION"""
+    try:
+        files = decoded['props']['pageProps']['p']['files']
+        for i, file_info in enumerate(files):
+            if file_info.get('name', '') == 'sketch.ino':
+                return i
+    except (KeyError, TypeError, IndexError):
+        pass
+    return 0
+
 def findlibrariesindex(decoded):
-    doneSearching = 0
-    index = 0
-    
-    while (doneSearching == 0):
-        if (decoded['props']['pageProps']['p']['files'][index]['name'] == "libraries.txt"):
-            doneSearching = 1
-            #print ("libraries found at index " , end='')
-            #print(index)
-            return index
-        else:
-            if (index > 20):
-                doneSearching = 1
-                return 3
-            
+    """Find libraries file index in Wokwi project - SIMPLIFIED VERSION"""
+    try:
+        files = decoded['props']['pageProps']['p']['files']
+        for i, file_info in enumerate(files):
+            if file_info.get('name', '') == 'libraries.txt':
+                return i
+    except (KeyError, TypeError, IndexError):
+        pass
+    return -1
+
+def finddiagramindex(decoded):
+    """Find diagram file index in Wokwi project - SIMPLIFIED VERSION"""
+    try:
+        files = decoded['props']['pageProps']['p']['files']
+        for i, file_info in enumerate(files):
+            if file_info.get('name', '') == 'diagram.json':
+                return i
+    except (KeyError, TypeError, IndexError):
+        pass
+    return -1
+
+def flash_arduino_sketch_threaded(sketch_content, libraries_content="", slot_number=None):
+    """Thread wrapper for Arduino sketch flashing"""
+    def flash_worker():
+        try:
+            result = flash_arduino_sketch(sketch_content, libraries_content, slot_number)
+            if result:
+                safe_print(f"Arduino flash completed successfully for slot {slot_number}", Fore.GREEN)
             else:
-                index = index + 1
-    #print (decoded)
+                safe_print(f"Arduino flash failed for slot {slot_number}", Fore.RED)
+        except Exception as e:
+            safe_print(f"Arduino flash thread error for slot {slot_number}: {e}", Fore.RED)
     
+    # Start the flash operation in its own thread
+    flash_thread = threading.Thread(target=flash_worker, daemon=True)
+    flash_thread.start()
+    safe_print(f"Arduino flash started in background for slot {slot_number}...", Fore.CYAN)
+    return flash_thread
+
+def flash_arduino_sketch(sketch_content, libraries_content="", slot_number=None):
+    """Flash Arduino sketch to connected Arduino"""
+    global arduino, arduinoPort, ser, menuEntered, serialconnected
     
+    if noArduinocli or disableArduinoFlashing or not arduino:
+        safe_print("Arduino flashing is disabled or Arduino CLI not available", Fore.YELLOW)
+        return False
     
+    if not arduinoPort:
+        safe_print("No Arduino port configured", Fore.RED)
+        return False
+    
+    if not sketch_content or len(sketch_content.strip()) < 10:
+        safe_print("Invalid or empty sketch content", Fore.RED)
+        return False
+    
+    # Flag to track UART state
+    uart_was_connected = False
+    arduino_serial = None
+    port_available = False
 
-port_controller = threading.Thread(target=serialTermOut, daemon=True)
-
-port_controller.start()
-
-time.sleep(.35)
+    ser.write(b"A")
+    time.sleep(3.5)
 
 
-sketch = [' ', ' ', ' ', ' ', ' ', ' ', ' ', ' ']
-lastsketch = ['  ', '  ', '  ', '  ', '  ', '  ', '  ', '  ']
-lastlibraries = '  '
-blankDiagrams = [' ', ' ', ' ', ' ', ' ', ' ', ' ', ' ']
-
-#print (arduino.board.attach(arduinoPort,None,"WokwiSketch"))
-#print (arduinoPort)
-
-try:        
-    ser.write('m'.encode())
-except:
-    pass
-
-currentSlotUpdate = 1
-cycled = 0
-
-if (menuEntered == 1):
-    bridgeMenu()
-while (noWokwiStuff == False):
-   
-    if (menuEntered == 1):
-        bridgeMenu()
-
-    # while portIsUsable(portName) == True:
-     #   print('fuck')
-      #  ser.close()
-       # time.sleep(.5)
-        #ser = serial.Serial(portName, 460800, timeout=0.050)
-
-    while (justreconnected == 1):
-
-        # print("just reconnected")
-        lastDiagram = blankDiagrams
+    try:
+        # Create sketch directory
+        sketch_dir = './WokwiSketch'
+        compile_dir = './WokwiSketch/compile'
         
-        forceWokwiUpdate = 1
-        #time.sleep(.2)
-        ser.close()
-        #time.sleep(.2)#######
-        #if (portNotFound != 1):
-            #ser = serial.Serial(portName, 115200, timeout=None)
-        if (serialconnected == 1):
-            print('Reconnected')
-            portNotFound = 0
-            portFound = 1
-            justreconnected = 0
-            forceWokwiUpdate = 1
-            currentSlotUpdate = 0
-            break
-    else:
-        justreconnected = 0
+        if not os.path.exists(sketch_dir):
+            os.makedirs(sketch_dir)
+        if not os.path.exists(compile_dir):
+            os.makedirs(compile_dir)
         
-    #print("noWokwiStuff")
-    #print(noWokwiStuff)
-
-    if (serialconnected == 1 and noWokwiStuff == False):
-        # print ("connected!!!")
-
-        # if (forceWokwiUpdate == 1 and cycled == 0):
-        #     #currentSlotUpdate = 0
-        #     cycled = 0
+        # Write sketch file
+        sketch_file = os.path.join(sketch_dir, 'WokwiSketch.ino')
+        with open(sketch_file, 'w', encoding='utf-8') as f:
+            f.write(sketch_content)
         
-        if (numAssignedSlots > 0):
-            # print(currentSlotUpdate)
-            # print(slotURLs)
-            currentSlotUpdate += 1
-            if (forceWokwiUpdate == 1):
-                currentSlotUpdate = 0
-                #forceWokwiUpdate = 0
+        safe_print(f"Created sketch file: {sketch_file}", Fore.CYAN)
+        if debugWokwi:
+            print(sketch_content)
+        
 
-
-            if (currentSlotUpdate > 7):
-
-                currentSlotUpdate = 0
-                if (forceWokwiUpdate == 1):
-                    forceWokwiUpdate = 0
-                #cycled += 1
-
-
-            # if (forceWokwiUpdate == 1 and cycled == 2):
-                
-            #     forceWokwiUpdate = 0
-            #     cycled = 0
-            loop = 0
-            while(slotURLs[currentSlotUpdate] == '!' and loop < 2 and menuEntered == 0):
-                
-                # print(currentSlotUpdate)                
-                currentSlotUpdate += 1
-                if (currentSlotUpdate > 7):
-                    loop+=1
-                    currentSlotUpdate = 0
-                    forceWokwiUpdate = 0
-
-            try:
-
-                result = requests.get(slotAPIurls[currentSlotUpdate]).text
-            except Exception as e:
-                print(e)
-                continue
-
-
-        else:
-            currentSlotUpdate = 0
-            assignWokwiSlots()
-            #result = requests.get(url_link).text
+        # Handle libraries if provided
+        if libraries_content and libraries_content.strip():
+            lib_list = libraries_content.strip().split('\n')
+            filtered_libs = list(filter(removeLibraryLines, lib_list))
             
-        #print(currentSlotUpdate)
-
-
+            if filtered_libs:
+                safe_print("Installing Arduino Libraries...", Fore.CYAN)
+                try:
+                    arduino.lib.install(filtered_libs)
+                    safe_print(f"Installed libraries: {filtered_libs}", Fore.GREEN)
+                except Exception as e:
+                    safe_print(f"Warning: Could not install some libraries: {e}", Fore.YELLOW)
         
-        
-     
+        # Install Arduino AVR core if not already installed
         try:
-            # print (slotURLs[currentSlotUpdate])
-            doc = BeautifulSoup(result, "html.parser")
-            # print(doc.prettify)
-            # doc.
-            #https://wokwi.com/api/projects/367384677537829889/diagram.json
-
-            
-            # script_tags = doc.find('script')
-            # print(script_tags)
-            # s = next((tag for tag in script_tags if "gic-analyzer" in tag.string and tag.parent.name == 'body' and '__variable_22ceb1' in tag.parent.get('class', []) and 'enable-motion' in tag.parent.get('class', [])), None)
-            # script_content_part = "connections"
-            # s = doc.find('script', script_content_part).get_text()
-            # s = doc.find('script', type='application/json').get_text()
-            # s = doc.find('script').get_text()
-
-            
-
-            # script_content_part = "connections"
-            # # script_content_part = "gic-analyzer"
-            # # s = doc.find('script', string=lambda text: text and script_content_part in text).get_text()
-            # s = doc.find('connections')
-
-            # s = str(s)
-
-            # print(s)
-            # s = doc.decode(s)
-
-            # extract the json string from the script tag
-            # s = s.string
-            s = json.loads(doc.string)
-
-            s = s['connections']
-       
-            g = json.dumps(s, indent=4,)
-            # print(g)
-
-            
-
-            # # print(s)
-            
-            # stringex = str(s)
+            cores = ['arduino:avr']
+            arduino.core.install(cores, no_overwrite=True)
+            safe_print("Arduino AVR core ready", Fore.GREEN)
+        except Exception as e:
+            safe_print(f"Warning: Arduino core installation issue: {e}", Fore.YELLOW)
         
-            # print (stringex)
-
-            # d = json.loads(stringex)
-        
-            decoded = json.loads(g)
-
-        except:
-            continue
-        
-            # print (decoded['props']['pageProps']['p']['files'][0]['name'])
-
-
-        librariesExist = 0
-        
-        
-
-        # c = decoded['props']['pageProps']['p']['files'][findsketchindex(decoded)]['content']
-
-        try:
-            l = d['props']['pageProps']['p']['files'][findlibrariesindex(decoded)]['content']
-            libraries = str(l)
-            librariesExist = 1
-        except:
-            pass
-
-        try:
-
-
-            # d = decoded['props']['pageProps']['p']['files'][finddiagramindex(decoded)]['content']
-            d = decoded
-        except:
-            continue
-        #print (d)
-
-        
-        f = json.loads(doc.string)
-
-        #cf = json.loads(c)
-
-        diagram[currentSlotUpdate] = str(d)
-        #sketch[currentSlotUpdate] = str(c)
-        #print(c)
-
-        if debug == True:
-            print("\n\ndiagram.json\n")
-            print(diagram[currentSlotUpdate])
-
-            # print("\n\nsketch.ino\n")
-            # print(sketch[currentSlotUpdate])
-
-            print("\n\nlibraries.txt\n")
-            print(libraries)
-
-        # print("\n\ndiagram.json\n")
-        # print(diagram[currentSlotUpdate])
-        justFlashed = 0
-            
-        # if (sketch[0] != lastsketch[0] and disableArduinoFlashing == 0 and noWokwiStuff == False):
-            
-        #     #all of this sucks and should probably never be used (on Rev 3 at least)
-        #     lastsketch = sketch
-        #     justFlashed = 1
-            
-            
+        # Compile the sketch
+        safe_print("Compiling Arduino sketch...", Fore.CYAN)
+        # if ser and serialconnected:
         #     try:
-        #         newpath = './WokwiSketch'
-        #         compilePath = './WokwiSketch/compile'
-                
-        #         if not os.path.exists(newpath):
-        #             os.makedirs(newpath)
-        #             os.makedirs(compilePath)
-                
-
-        #         #print("\n\rFlashing Arduino")
-        #         sk = open("./WokwiSketch/WokwiSketch.ino", "w")
-        #         sk.write(sketch[0])
-        #         sk.close()
-        #         time.sleep(0.1)
-                
-        #         ser.write("f 116-70,117-71,".encode())
-        #         time.sleep(0.3)
-                
-        #         try:
-        #             menuEntered = 1
-        #             cor = ['arduino:avr']
-        #             #arduino.core.download(cor)
-        #             #arduino.commands.core.install.(cor)
-        #             #arduino.core.update_index()
-        #             arduino.core.install(cor, no_overwrite= None)
-        #             time.sleep(0.5)
-                    
-        #             menuEntered = 0
-                
-
-        #             #installedCores = arduino.core.list()
-        #             #print(installedCores)
-        #         except Exception as c:
-        #             print(c)
-
-        #         if librariesExist == 1 and lastlibraries != libraries:
-        #             lastlibraries = libraries
-        #             libList = list(libraries.split("\n"))
-        #             filteredLibs = list(filter(lambda x: removeLibraryLines(x), libList))
-        #             if len(filteredLibs) > 0:
-        #                 print("Installing Arduino Libraries ", end="")
-        #                 liberror = arduino.lib.install(filteredLibs)
-        #                 print(filteredLibs)
-
-                
-                
-        #         #ser.write('r\n'.encode())
-        #         time.sleep(0.1)
-                
-        #         #arduino.compile( "./WokwiSketch" ,port=arduinoPort,fqbn="arduino:avr:nano", upload=True)
-        #        # try:
-        #             #arduino.config("-v")
-        #         ser.write("_".encode())
-        #         print ("Compiling...")
-        #         compiledCode = arduino.compile( "./WokwiSketch" ,port=arduinoPort,fqbn="arduino:avr:nano", build_path="./WokwiSketch/compile" )
-        #         ser.write("-".encode())
-        #         time.sleep(0.1)
-        #         print ("Flashing Arduino...")
-        #         ser.write("f {116-70,117-71, }".encode())
-        #         time.sleep(0.1)
-                
-        #         arduino.upload( "./WokwiSketch" ,port=arduinoPort,fqbn="arduino:avr:nano", input_dir="./WokwiSketch/compile", discovery_timeout="3s", verify=False  )
-        #         print ("Arduino flashed successfully!")
-        #         time.sleep(0.1)
-        #        # except:# Exception as ardEx:
-        #             #print (arduino.errors)
-        #           #  print (ardEx)
-                   
-                    
-                
-        #     except Exception as e:
-               
-        #         #errors = ({'__stdout': '{\n  "compiler_out": "",\n  "compiler_err": "",\n  "builder_result": null,\n  "upload_result": null,\n  "success": false,\n  "error": "Error during build: Platform \'arduino:avr\' not found: platform not installed\\nTry running `arduino-cli core install arduino:avr`"\n}', '__stderr': '', 'result': {'compiler_out': '', 'compiler_err': '', 'builder_result': None, 'upload_result': None, 'success': False, 'error': "Error during build: Platform 'arduino:avr' not found: platform not installed\nTry running `arduino-cli core install arduino:avr`"}},)
-        #         try:
-        #             jd = json.loads(e.args[0]['__stdout'] )
-        #             print(jd['error'])
-        #         except:
-        #             print(e)
-        #         #errorMessages = e.args[0]['__stdout'] 
-        #         #print (errorMessages)
-        #         #print ("Couldn't Flash Arduino")
-
-        #         #continue
-        #     try:        
-        #         ser.write('m'.encode())
+        #         ser.write(b"_")  # Progress indicator
         #     except:
         #         pass
-        # #if(noWokwiStuff == True and justreconnected == 1):
-        #     #time.sleep(0.1)
-        #     #print('Just Reconnected\n\n')
-        #     #justreconnected = 0
+        
+        try:
+            compile_result = arduino.compile(
+                sketch_dir,
+                port=arduinoPort,
+                fqbn="arduino:avr:nano",
+                build_path=compile_dir,
+                verify=False
+            )
+            safe_print("Sketch compiled successfully!", Fore.GREEN)
+        except Exception as e:
+            safe_print(f"Compilation failed: {e}", Fore.RED)
+            # Restore original UART state if needed
+            if ser and serialconnected and not uart_was_connected:
+                try:
+                    ser.write(b"a")  # Disconnect UART
+                    time.sleep(0.1)
+                except:
+                    pass
+            return False
+        
+
+        # Upload to Arduino
+        safe_print("Uploading to Arduino...", Fore.CYAN)
+        ser.write(b"A")
+        time.sleep(1.1)
+        
+        try:
+            # Perform the upload with minimal status updates and single attempt
+            # Using custom upload function to ensure -x attempts=1 flag is used
+            upload_result = upload_with_attempts_limit(
+                sketch_dir,
+                arduinoPort,
+                "arduino:avr:nano",
+                compile_dir,
+                "2s"
+            )
             
-
-        # print("fuck ")
-        if ((lastDiagram != diagram or justFlashed == 1 and noWokwiStuff == False) or (forceWokwiUpdate == 1)):
-            justFlashed = 0
-            #print(forceWokwiUpdate)
-
-            if (forceWokwiUpdate == 1):
-                time.sleep(0.5)
-            forceWokwiUpdate = 0
-            justreconnected = 0
-            length = len(f["connections"])
-
-            p = "{ "
-
-            for i in range(length):
-
-                conn1 = str(f["connections"][i][0])
-
-                if conn1.startswith('pot1:SIG'):
-                    conn1 = "106"
-                elif conn1.startswith('pot2:SIG'):
-                    conn1 = "107"
-                    
-                if conn1.startswith('logic1:'):
-                    if conn1.endswith('0'):
-                        conn1 = "110"
-                    elif conn1.endswith('1'):
-                        conn1 = "111"
-                    elif conn1.endswith('2'):
-                        conn1 = "112"
-                    elif conn1.endswith('3'):
-                        conn1 = "113"
-                    elif conn1.endswith('4'):
-                        conn1 = "108"
-                    elif conn1.endswith('5'):
-                        conn1 = "109"
-                    elif conn1.endswith('6'):
-                        conn1 = "116"                        
-                    elif conn1.endswith('7'):
-                        conn1 = "117"
-                    elif conn1.endswith('D'):
-                        conn1 = "114"                        
-                        
-                if conn1.startswith("bb1:") == True:
-                    periodIndex = conn1.find('.')
-                    conn1 = conn1[4:periodIndex]
-
-                    if conn1.endswith('t') == True:
-                        conn1 = conn1[0:(len(conn1) - 1)]
-                    elif conn1.endswith('b') == True:
-                        conn1 = conn1[0:(len(conn1) - 1)]
-                        conn1 = int(conn1)
-                        conn1 = conn1 + 30
-                        conn1 = str(conn1)
-                    elif conn1.endswith('n') == True:
-                        conn1 = "100"
-                    elif conn1.startswith("GND") == True:
-                        conn1 = "100"
-                    elif conn1.endswith('p') == True:
-                        if (jumperlessV5 == True):
-                            if conn1.startswith('t') == True:
-                                conn1 = "101"
-                            elif conn1.startswith('b') == True:
-                                conn1 = "102"
-                        else:
-                            if conn1.startswith('t') == True:
-                                conn1 = "105"
-                            elif conn1.startswith('b') == True:
-                                conn1 = "103"
-
-                if conn1.startswith("nano:") == True:
-                    periodIndex = conn1.find('.')
-                    conn1 = conn1[5:len(conn1)]
-
-                    if conn1.startswith("GND") == True:
-                        conn1 = "100"
-                    elif conn1 == "AREF" or conn1 == "B0":
-                        conn1 = "85"
-                    elif conn1 == "RESET" or conn1 == "RST" or conn1 == "B1":
-                        conn1 = "84"
-                    elif conn1 == "5V":
-                        conn1 = "105"
-                    elif conn1 == "3.3V":
-                        conn1 = "103"
-                    elif conn1 == "5V":
-                        conn1 = "105"
-
-                    elif conn1.startswith("A") == True and conn1 != "AREF":
-                        conn1 = conn1[1:(len(conn1))]
-                        conn1 = int(conn1)
-                        conn1 = conn1 + 86
-                        conn1 = str(conn1)
-                    elif conn1.isdigit() == True :
-                        conn1 = int(conn1)
-                        conn1 = conn1 + 70
-                        conn1 = str(conn1)
-
-                    elif conn1.startswith("D") == True:
-                        conn1 = conn1[1:(len(conn1))]
-                        conn1 = int(conn1)
-                        conn1 = conn1 + 70
-                        conn1 = str(conn1)
-
-                    elif conn1.startswith("TX") == True:
-                        conn1 = "71"
-                    elif conn2.startswith("RX") == True:
-                        conn1 = "70"
-
-                conn2 = str(f["connections"][i][1])
-
-                if conn2.startswith('pot1:SIG'):
-                    conn2 = "106"
-                elif conn2.startswith('pot2:SIG'):
-                    conn2 = "107"
-                    
-                if conn2.startswith('logic1:'):
-                    if conn2.endswith('0'):
-                        conn2 = "110"
-                    elif conn2.endswith('1'):
-                        conn2 = "111"
-                    elif conn2.endswith('2'):
-                        conn2 = "112"
-                    elif conn2.endswith('3'):
-                        conn2 = "113"
-                    elif conn2.endswith('4'):
-                        conn2 = "108"
-                    elif conn2.endswith('5'):
-                        conn2 = "109"
-                    elif conn2.endswith('6'):
-                        conn2 = "116"                        
-                    elif conn2.endswith('7'):
-                        conn2 = "117"
-                    elif conn2.endswith('D'):
-                        conn2 = "114"                             
-
-                if conn2.startswith("bb1:") == True:
-                    periodIndex = conn2.find('.')
-                    conn2 = conn2[4:periodIndex]
-
-                    if conn2.endswith('t') == True:
-                        conn2 = conn2[0:(len(conn2) - 1)]
-                    elif conn2.endswith('b') == True:
-                        conn2 = conn2[0:(len(conn2) - 1)]
-                        conn2 = int(conn2)
-                        conn2 = conn2 + 30
-                        conn2 = str(conn2)
-                    elif conn2.endswith('n') == True:
-                        conn2 = "100"
-                    elif conn2.startswith("GND") == True:
-                        conn2 = "100"
-                    elif conn2.endswith('p') == True:
-                        if (jumperlessV5 == True):
-                            if conn2.startswith('t') == True:
-                                conn2 = "101"
-                            elif conn2.startswith('b') == True:
-                                conn2 = "102"
-                        else:
-                            if conn2.startswith('t') == True:
-                                conn2 = "105"
-                            elif conn2.startswith('b') == True:
-                                conn2 = "103"
-
-                if conn2.startswith("nano:") == True:
-                    periodIndex = conn2.find('.')
-                    conn2 = conn2[5:len(conn2)]
-
-                    if conn2.startswith("GND") == True:
-                        conn2 = "100"
-                    elif conn2 == "AREF" or conn2 == "B0":
-                        conn2 = "85"
-                    elif conn2 == "RESET" or conn2 == "RST" or conn2 == "B1":
-                        conn2 = "84"
-                    elif conn2 == "5V":
-                        conn2 = "105"
-                    elif conn2 == "3.3V":
-                        conn2 = "103"
-                    elif conn2 == "5V":
-                        conn2 = "105"
-
-                    elif conn2.startswith("A") == True and conn2 != "AREF":
-
-                        conn2 = conn2[1:(len(conn2))]
-                        conn2 = int(conn2)
-                        conn2 = conn2 + 86
-                        conn2 = str(conn2)
-                    elif (conn2.isdigit() == True):
-                        conn2 = int(conn2)
-                        conn2 = conn2 + 70
-                        conn2 = str(conn2)
-
-                    elif conn2.startswith("D") == True:
-                        conn2 = conn2[1:(len(conn2))]
-                        conn2 = int(conn2)
-                        conn2 = conn2 + 70
-                        conn2 = str(conn2)
-
-                    elif conn2.startswith("TX") == True:
-                        conn2 = "71"
-                    elif conn2.startswith("RX") == True:
-                        conn2 = "70"
-
-                        
-
-                if conn1.isdigit() == True and conn2.isdigit() == True:
-
-                    p = (p + conn1 + '-')
-                    p = (p + conn2 + ',')
-
-            p = ( p + "} ")
-
-            lastDiagram[currentSlotUpdate] = diagram[currentSlotUpdate]
-            #lastDiagram = diagram
-            # print("fuck ")
+            safe_print("Arduino flashed successfully!", Fore.GREEN)
+            
+            # Restore original UART state if needed
+            if ser and serialconnected and not uart_was_connected:
+                try:
+                    time.sleep(0.1)
+                    ser.write(b"a")  # Disconnect UART
+                    time.sleep(0.1)
+                except:
+                    pass
+            
+            # Send menu command to return to normal mode
+            if ser and serialconnected:
+                try:
+                    time.sleep(0.1)
+                    ser.write(b'm')
+                except:
+                    pass
+            
+            return True
+            
+        except Exception as e:
+            safe_print(f"Upload failed: {e}", Fore.RED)
+            
+            # Restore original UART state if needed
+            if ser and serialconnected and not uart_was_connected:
+                try:
+                    ser.write(b"a")  # Disconnect UART
+                    time.sleep(0.1)
+                except:
+                    pass
+            
+            # Try to parse JSON error message if available
             try:
-                #print(f)
-                #print(p)
+                if hasattr(e, 'args') and len(e.args) > 0:
+                    error_data = e.args[0]
+                    if isinstance(error_data, dict) and '__stdout' in error_data:
+                        import json
+                        error_json = json.loads(error_data['__stdout'])
+                        if 'error' in error_json:
+                            safe_print(f"Detailed error: {error_json['error']}", Fore.RED)
+            except:
+                pass
+            return False
+    
+    except Exception as e:
+        safe_print(f"Arduino flashing error: {e}", Fore.RED)
+        
+        # Restore original UART state if needed
+        if ser and serialconnected and not uart_was_connected:
+            try:
+                ser.write(b"a")  # Disconnect UART
                 time.sleep(0.1)
-                if (numAssignedSlots > 0 and slotURLs[currentSlotUpdate] != '!'):
-                    # ser.write('o'.encode())
-                    # print("o")
-                    # time.sleep(0.010)
-                    # ser.write("Slot ".encode())
-                    # print("Slot ", end='')
+            except:
+                pass
+        
+        return False
 
-                    # print(str(currentSlotUpdate))
-                    #print("Slot " + str(currentSlot) + " " + )
-                    # ser.write(str(currentSlotUpdate).encode())
-                    # if (jumperlessV5 == True):
-                    ser.write("o Slot ".encode() + str(currentSlotUpdate).encode() + " f ".encode() + p.encode())
-                    # else:
-                        # ser.write(" f ".encode() + p.encode())
-                    # print("o Slot ".encode() + str(currentSlotUpdate).encode() + " f ".encode() + p.encode())
-                    # print("f " + p)
-                    # print("f ")
-                    # ser.write(p.encode())
-                    # print(p)
-                    time.sleep(wokwiUpdateRate)
-                # else:
-                #     ser.write('f'.encode())
-                #     time.sleep(0.001)
-                #     ser.write(p.encode())
-                #time.sleep(0.001)
-                #print(p)
+def process_wokwi_sketch_and_flash(wokwi_url, slot_number=None):
+    """Download Wokwi project and flash Arduino sketch if present - SIMPLIFIED VERSION"""
+    global lastsketch, sketch, lastlibraries
+    
+    if noArduinocli or disableArduinoFlashing:
+        return False
+    
+    try:
+        # Convert Wokwi project URL to full page URL
+        if "/projects/" in wokwi_url:
+            project_id = wokwi_url.split("/projects/")[1].split("/")[0]
+            page_url = f"https://wokwi.com/projects/{project_id}"
+            if debugWokwi:
+                safe_print(f"Fetching project page: {page_url}", Fore.BLUE)
+        else:
+            safe_print("Invalid Wokwi URL format", Fore.RED)
+            return False
+        
+        # Fetch the project page
+        response = requests.get(page_url, timeout=10)
+        if response.status_code != 200:
+            safe_print(f"Failed to fetch Wokwi project page: {response.status_code}", Fore.RED)
+            return False
+        
+        # Parse HTML
+        soup = BeautifulSoup(response.text, 'html.parser')
+        
+        # Find the JSON data containing the project information
+        decoded_data = None
+        sketch_content = None
+        libraries_content = None
+        
+        # Approach 0: Direct extraction of visible code if present
+        try:
+            # Look for the sketch code in the DOM - it might be in pre or code tags
+            code_elements = soup.find_all(['pre', 'code'])
+            for code_elem in code_elements:
+                code_text = code_elem.get_text(strip=True)
+                if code_text and 'void setup()' in code_text and 'void loop()' in code_text:
+                    sketch_content = code_text
+                    if debugWokwi:
+                        safe_print("Found sketch.ino directly in page content", Fore.GREEN)
+                    break
+        except Exception as e:
+            if debugWokwi:
+                safe_print(f"Failed to extract code from page content: {e}", Fore.YELLOW)
+        
+        # Approach 1: Try to find embedded project data using regex
+        if not sketch_content:
+            try:
+                # Look for a pattern like e:["$","$L16",null,{"project":...
+                matches = re.findall(r'e:\[.*?"project":\{.*?"files":\[(.*?)\]', response.text, re.DOTALL)
+                if matches:
+                    for match in matches:
+                        try:
+                            # Extract files array and parse
+                            files_json = '[' + match + ']'
+                            files_data = json.loads(files_json)
+                            
+                            # Look for sketch.ino and libraries.txt
+                            for file_data in files_data:
+                                if isinstance(file_data, dict):
+                                    if file_data.get('name') == 'sketch.ino':
+                                        sketch_content = file_data.get('content', '')
+                                    elif file_data.get('name') == 'libraries.txt':
+                                        libraries_content = file_data.get('content', '')
+                            
+                            if sketch_content:
+                                if debugWokwi:
+                                    safe_print("Found sketch.ino using embedded JSON approach", Fore.GREEN)
+                                break
+                        except Exception as e:
+                            if debugWokwi:
+                                safe_print(f"Failed to parse embedded JSON: {e}", Fore.YELLOW)
+                            continue
+            except Exception as e:
+                if debugWokwi:
+                    safe_print(f"Failed in regex approach: {e}", Fore.YELLOW)
+        
+        # Additional extraction methods (if needed)
+        if not sketch_content:
+            # Try remaining approaches to find the sketch
+            for approach_num in range(2, 6):
+                if sketch_content:
+                    break
+                    
+                if approach_num == 2:
+                    # Look for raw code section in markdown-style code blocks
+                    try:
+                        code_blocks = re.findall(r'```\s*(?:arduino|cpp)?\s*(void\s+setup\(\)[\s\S]*?void\s+loop\(\)[\s\S]*?)```', response.text)
+                        if code_blocks:
+                            sketch_content = code_blocks[0].strip()
+                            if debugWokwi:
+                                safe_print("Found sketch.ino in code block", Fore.GREEN)
+                    except Exception as e:
+                        if debugWokwi:
+                            safe_print(f"Failed to extract code block: {e}", Fore.YELLOW)
+                
+                elif approach_num == 3:
+                    # Try script tags
+                    script_tags = soup.find_all('script')
+                    for script in script_tags:
+                        if script.string and 'project' in script.string and 'files' in script.string:
+                            try:
+                                match = re.search(r'project":\s*{.*?"files":\s*\[(.*?)\]', script.string, re.DOTALL)
+                                if match:
+                                    files_json = '[' + match.group(1) + ']'
+                                    files_data = json.loads(files_json)
+                                    
+                                    for file_data in files_data:
+                                        if isinstance(file_data, dict):
+                                            if file_data.get('name') == 'sketch.ino':
+                                                sketch_content = file_data.get('content', '')
+                                            elif file_data.get('name') == 'libraries.txt':
+                                                libraries_content = file_data.get('content', '')
+                                    
+                                    if sketch_content:
+                                        if debugWokwi:
+                                            safe_print("Found sketch.ino using script tag approach", Fore.GREEN)
+                                        break
+                            except Exception as e:
+                                if debugWokwi:
+                                    safe_print(f"Failed to parse script tag: {e}", Fore.YELLOW)
+                                continue
+                
+                elif approach_num == 4:
+                    # Direct regex on HTML content
+                    try:
+                        sketch_pattern = r'"name"\s*:\s*"sketch.ino"\s*,\s*"content"\s*:\s*"(.*?)(?:"\s*[,}])'
+                        sketch_matches = re.findall(sketch_pattern, response.text, re.DOTALL)
+                        
+                        if sketch_matches:
+                            raw_content = sketch_matches[0]
+                            sketch_content = raw_content.replace('\\n', '\n').replace('\\\"', '\"').replace('\\\\', '\\')
+                            if debugWokwi:
+                                safe_print(f"Found sketch.ino using direct regex", Fore.GREEN)
+                        
+                        if not libraries_content:
+                            lib_pattern = r'"name"\s*:\s*"libraries.txt"\s*,\s*"content"\s*:\s*"(.*?)(?:"\s*[,}])'
+                            lib_matches = re.findall(lib_pattern, response.text, re.DOTALL)
+                            if lib_matches:
+                                libraries_content = lib_matches[0].replace('\\n', '\n').replace('\\\"', '\"').replace('\\\\', '\\')
+                    except Exception as e:
+                        if debugWokwi:
+                            safe_print(f"Failed to extract content using direct regex: {e}", Fore.YELLOW)
+                
+                elif approach_num == 5:
+                    # Manual extraction
+                    if "void setup()" in response.text and "void loop()" in response.text:
+                        try:
+                            start_idx = response.text.find("void setup()")
+                            if start_idx > 0:
+                                end_idx = response.text.find("}", response.text.find("void loop()", start_idx))
+                                if end_idx > start_idx:
+                                    raw_code = response.text[start_idx:end_idx+1]
+                                    clean_code = re.sub(r'<[^>]+>', '', raw_code)
+                                    sketch_content = clean_code.strip()
+                                    if debugWokwi:
+                                        safe_print("Extracted sketch directly from page content", Fore.GREEN)
+                        except Exception as e:
+                            if debugWokwi:
+                                safe_print(f"Failed to extract sketch manually: {e}", Fore.YELLOW)
+        
+        # Check if we have found a valid sketch
+        if sketch_content:
+            # Clean up the content - remove excess whitespace and normalize line endings
+            sketch_content = sketch_content.strip()
+            sketch_content = re.sub(r'\r\n', '\n', sketch_content)
+            sketch_content = re.sub(r'\n{3,}', '\n\n', sketch_content)
+            
+            # Store in the sketch array
+            sketch[slot_number] = sketch_content
+            
+            # Check if sketch has changed since last time
+            if lastsketch[slot_number] != sketch_content:
+                lastsketch[slot_number] = sketch_content
+                
+                if debugWokwi:
+                    safe_print(f"Found new sketch for slot {slot_number}:", Fore.GREEN)
+                    safe_print(sketch_content[:200] + ('...' if len(sketch_content) > 200 else ''), Fore.CYAN)
+                
+                # Flash the Arduino if the sketch is valid
+                if len(sketch_content) > 10:
+                    safe_print(f"\nNew Arduino sketch for slot {slot_number} - flashing...", Fore.MAGENTA)
+                    
+                    # Only flash once
+                    try:
+                        # Start threaded flash and return the thread object
+                        flash_thread = flash_arduino_sketch_threaded(sketch_content, libraries_content, slot_number)
+                        return flash_thread is not None
+                    except Exception as e:
+                        safe_print(f"Error during Arduino flashing: {e}", Fore.RED)
+                        return False
+                else:
+                    safe_print(f"Sketch too short. Not flashing.", Fore.YELLOW)
+            else:
+                if debugWokwi:
+                    safe_print(f"Sketch for slot {slot_number} unchanged", Fore.BLUE)
+                
+        else:
+            safe_print(f"No sketch found for slot {slot_number}", Fore.YELLOW)
+        
+        return False
+        
+    except Exception as e:
+        safe_print(f"Error processing Wokwi sketch: {e}", Fore.RED)
+        return False
+
+# ============================================================================
+# THREADING FUNCTIONS
+# ============================================================================
+
+def check_presence(correct_port, interval):
+    """Monitor serial port presence and reconnect if needed"""
+    global ser, portName, justreconnected, serialconnected, portNotFound, updateInProgress
+    while True:
+        if updateInProgress == 0:
+            try:
+                # Check if the port is actually available in the system
+                port_found = False
+                try:
+                    ports = serial.tools.list_ports.comports()
+                    for port in ports:
+                        if correct_port in port.device:
+                            port_found = True
+                            break
+                except Exception:
+                    port_found = False
+                
+                with serial_lock:
+                    # Determine if we need to reconnect based on actual port availability
+                    currently_connected = (serialconnected and 
+                                         ser is not None and 
+                                         ser.is_open)
+                    
+                    needs_reconnection = (not currently_connected and port_found) or (currently_connected and not port_found)
+                
+                if port_found and not currently_connected:
+                    # Port is available but we're not connected, attempt to reconnect immediately
+                    try:
+                        with serial_lock:
+                            if ser:
+                                try:
+                                    ser.close()
+                                except:
+                                    pass
+                            
+                            ser = serial.Serial(correct_port, 115200, timeout=0.5)
+                            serialconnected = 1
+                            portNotFound = 0
+                            justreconnected = 1
+                        
+                        safe_print(f"Reconnected to {correct_port}", Fore.GREEN)
+                        
+                    except Exception as e:
+                        with serial_lock:
+                            if ser:
+                                try:
+                                    ser.close()
+                                except:
+                                    pass
+                            ser = None
+                            serialconnected = 0
+                            portNotFound = 1
+                            
+                elif not port_found and currently_connected:
+                    # Port not found in system but we think we're connected, mark as disconnected
+                    with serial_lock:
+                        if ser:
+                            try:
+                                ser.close()
+                            except:
+                                pass
+                        ser = None
+                        serialconnected = 0
+                        portNotFound = 1
+                    safe_print(f"Port {correct_port} disconnected", Fore.YELLOW)
+                
+            except Exception as e:
+                safe_print(f"Error in port monitoring: {e}", Fore.RED)
+            
+            time.sleep(interval)
+        else:
+            time.sleep(0.1)
+
+def serial_term_in():
+    """Handle incoming serial data with reliable byte-by-byte reading"""
+    global serialconnected, ser, menuEntered, portNotFound, justreconnected, updateInProgress
+    
+    while True:
+        if menuEntered == 0 and updateInProgress == 0:
+            try:
+                if ser and ser.is_open and ser.in_waiting > 0:
+                    input_buffer = b''
+                    
+                    # Read byte-by-byte until buffer stabilizes
+                    while serialconnected and ser and ser.is_open:
+                        try:
+                            if ser.in_waiting > 0:
+                                in_byte = ser.read(1)
+                                if in_byte:
+                                    input_buffer += in_byte
+                            
+                            # Check if buffer has stabilized (no new data for a short time)
+                            if ser.in_waiting == 0:
+                                time.sleep(0.005)  # Wait a bit to see if more data arrives
+                                if ser.in_waiting == 0:
+                                    break  # Buffer is stable, process what we have
+                        except (serial.SerialException, serial.SerialTimeoutException):
+                            break
+                    
+                    if input_buffer:
+                        try:
+                            # Decode the complete buffer
+                            decoded_string = input_buffer.decode('utf-8', errors='ignore')
+                            print(decoded_string, end='')
+                            
+                            with serial_lock:
+                                portNotFound = 0
+                        except Exception:
+                            pass
+                else:
+                    time.sleep(0.005)
+                        
+            except (serial.SerialException, serial.SerialTimeoutException):
+                # Only handle serial exceptions if not updating firmware
+                if updateInProgress == 0:
+                    with serial_lock:
+                        if ser: 
+                            try: 
+                                ser.close()
+                            except:
+                                pass
+                        ser = None
+                        portNotFound = 1
+                        serialconnected = 0
+                time.sleep(0.02)
+            except Exception:
+                pass
+        else:
+            time.sleep(0.01)
+        
+        time.sleep(0.001)  # Very short sleep to prevent excessive CPU usage
+
+def serial_term_out():
+    """Handle outgoing serial commands with command history support"""
+    global serialconnected, ser, menuEntered, forceWokwiUpdate, noWokwiStuff, justreconnected, portNotFound, updateInProgress
+    
+    while True:
+        if menuEntered == 0 and updateInProgress == 0:
+            try:
+                # Clear any pending input buffer before reading
+                if hasattr(sys.stdin, 'flush'):
+                    sys.stdin.flush()
+                
+                # Use readline for command history if available, otherwise fallback to input()
+                if READLINE_AVAILABLE:
+                    try:
+                        output_buffer = input().strip()  # readline automatically handles history
+                    except (EOFError, KeyboardInterrupt):
+                        # Handle Ctrl+D or Ctrl+C gracefully
+                        if menuEntered == 0:
+                            continue
+                        else:
+                            break
+                else:
+                    output_buffer = input().strip()  # Strip whitespace
+                
+                # Skip empty commands
+                if not output_buffer:
+                    time.sleep(0.01)
+                    continue
+                
+                # Add command to history if readline is available and it's not a duplicate
+                if READLINE_AVAILABLE and output_buffer:
+                    # Check if this command is different from the last one to avoid duplicates
+                    history_length = readline.get_current_history_length()
+                    if history_length == 0 or (history_length > 0 and 
+                        readline.get_history_item(history_length) != output_buffer):
+                        readline.add_history(output_buffer)
+                
+                # Handle special commands - check if it's a menu command
+                menu_commands = ['menu', 'slots', 'wokwi', 'update', 'status', 'rate', 'exit', 'arduino', 'debug']
+                
+                if output_buffer.lower() in menu_commands:
+                    # print("*", output_buffer, "*")
+                    menuEntered = 1
+                    bridge_menu()
+                    continue
+                
+                # Send to serial port (only non-empty commands)
+                with serial_lock:
+                    if serialconnected and ser and ser.is_open:
+                        try:
+                            ser.write(output_buffer.encode('ascii'))
+                            # Check for reset command
+                            if output_buffer.lower() == 'r':
+                                justreconnected = 1
+                        except Exception:
+                            # Only mark as disconnected if not updating firmware
+                            if updateInProgress == 0:
+                                portNotFound = 1
+                                serialconnected = 0
+                    else:
+                        if updateInProgress == 0:
+                            safe_print("Serial not connected", Fore.YELLOW)
+                        
+            except KeyboardInterrupt:
+                break
+            except EOFError:
+                # Handle end of file (Ctrl+D on Unix, Ctrl+Z on Windows)
+                time.sleep(0.1)
+                continue
+            except Exception as e:
+                # Handle any other input exceptions
+                safe_print(f"Input error: {e}", Fore.RED)
+                time.sleep(0.1)
+                continue
+        else:
+            time.sleep(0.1)
+
+# ============================================================================
+# WOKWI PROCESSING FUNCTIONS
+# ============================================================================
+
+def map_pin_name(pin_name_orig, is_jumperless_v5):
+    """Maps a Wokwi pin name string to a Jumperless pin number string"""
+    pin_name = pin_name_orig
+    
+    if pin_name_orig.startswith('pot1:SIG'): 
+        pin_name = "106"
+    elif pin_name_orig.startswith('pot2:SIG'): 
+        pin_name = "107"
+    elif pin_name_orig.startswith('logic1:'):
+        details = pin_name_orig.split(':')[1]
+        map_logic1 = {'0':"110", '1':"111", '2':"112", '3':"113", 
+                     '4':"108", '5':"109", '6':"116", '7':"117", 'D':"114"}
+        pin_name = map_logic1.get(details, pin_name_orig)
+    elif pin_name_orig.startswith("bb1:"):
+        part = pin_name_orig.split(':')[1].split('.')[0]
+        if part.endswith('t'): 
+            pin_name = part[:-1]
+        elif part.endswith('b'): 
+            pin_name = str(int(part[:-1]) + 30)
+        elif part.endswith('n') or part == "GND": 
+            pin_name = "100"
+        elif part.endswith('p'): 
+            pin_name = ("101" if part.startswith('t') else "102") if is_jumperless_v5 else ("105" if part.startswith('t') else "103")
+    elif pin_name_orig.startswith("nano:"):
+        part = pin_name_orig.split(':')[1]
+        map_nano = {"GND":"100", "AREF":"85", "B0":"85", "RESET":"84", "RST":"84", 
+                   "B1":"84", "5V":"105", "3.3V":"103", "TX":"71", "TX1":"71", "RX":"70", "RX0":"70"}
+        if part in map_nano: 
+            pin_name = map_nano[part]
+        elif part.startswith("A") and part != "AREF" and len(part) > 1 and part[1:].isdigit(): 
+            pin_name = str(int(part[1:]) + 86)
+        elif part.isdigit(): 
+            pin_name = str(int(part) + 70)
+        elif part.startswith("D") and len(part) > 1 and part[1:].isdigit(): 
+            pin_name = str(int(part[1:]) + 70)
+    
+    return pin_name
+
+def construct_jumperless_command(connections, is_jumperless_v5):
+    """Constructs the Jumperless command string from Wokwi connections"""
+    if not connections:
+        return "{ }"
+    
+    temp_p_list = []
+    for conn_pair in connections:
+        conn1_orig, conn2_orig = str(conn_pair[0]), str(conn_pair[1])
+        
+        conn1 = map_pin_name(conn1_orig, is_jumperless_v5)
+        conn2 = map_pin_name(conn2_orig, is_jumperless_v5)
+        
+        if conn1.isdigit() and conn2.isdigit():
+            temp_p_list.append(f"{conn1}-{conn2}")
+    
+    return "{ " + ",".join(temp_p_list) + ", }" if temp_p_list else "{ }"
+
+# ============================================================================
+# MAIN EXECUTION
+# ============================================================================
+
+def main():
+    """Main application entry point"""
+    global menuEntered, noWokwiStuff, currentSlotUpdate, forceWokwiUpdate
+    global lastDiagram, diagram, serialconnected, ser, justreconnected
+    
+    # Initialize command history
+    setup_command_history()
+    
+    # Initialize
+    # safe_print("Jumperless Bridge App", Fore.MAGENTA)
+
+    safe_print("""
+
+                                            ▄▄███████████████████▄▄▄
+                                      ▄ ████▀███████████████████████████▄▄
+                                  ▄█████ ▀▀▀ ████████████████████████████████▄
+                               ▄█████████    ███████████████████████████████████▄
+                            ▄█████████████▄  █████████████████████████████████████▌▄
+                          ██████████▀██████   █████████████████████████████████████▀
+                       ╓██▀█▀██████╙ ╫╬█ ██   ╫██████████████████████████████████╙""", Fore.MAGENTA)
+    safe_print("""                      ╣███ ║█─ ╙║▌   █ ▀ ╙ ▌   ███████████████████████████████▀└       ▄█▄
+                    ▄████  ╙█             ▀▀    ▀████████████████████████████─      ╓██████
+                   █████                   ╒    ╬█████████████████████████▀       ▄█████████▄
+                  █████▌                        └─▀█████████████████████▀       ▄████████████▌
+                 █████                          └▀████████████████████╙       ▄███████████████▌
+                ██████─                          ▀▄█████████████████└       ███████▀▀▀▀████████▌""", Fore.BLUE)
                 
 
-            except Exception as e:
-                #print('try again')
-                #forceWokwiUpdate = 1
-                # if (forceWokwiUpdate >= 2):
-                #     print(e)
-                #     forceWokwiUpdate = 0
-                #     #print('try again')
-                #     continue
-                print(e)
-                time.sleep(.5)
-                continue
-                # waitForReconnect()
+    safe_print("""               █████████                         █████████████████─      ╓██████▀   ▄███████████▄
+              ▐█████████─                          ████████████▌       ▄█████▀     ██████████████
+              ██████████▌████                      ╙█████████▀       ▄██████▌     ███████████████▌
+             ▐███████████▀▀╙└                        ██████╙       ▄██████████    ████████████████""", Fore.CYAN)
+                               
 
-                # ser.write('f'.encode())
-
-                # time.sleep(0.05)
-
-                # ser.write(p.encode())
-
-            #print (p)
-
-        
-        
-        
-        
-        
-        else:
-            if (noWokwiStuff == False):
-                time.sleep(0.5)
-
+    safe_print("""▀▀██▄▄▄   ▄▄▄▀▀▀▀▀▀▀▀▀                                ╜██└       ▄█████████████    ███████████████▄
+   ▀█████████             ▄▄▄▄▄▌ ▄██▄                         ╓▌███████████████▒      ║████████████
+             █████████████████████████▄                       ╙╙╙╙╙╙▀███████████       ████████████
+             ╫█████████████████████████▌                               └╙███████       ████████████""", Fore.GREEN)
+    safe_print("""             ▐██████████████████████████▄                                    └╙██      ╙██████████▀
+              ███████████████████████████████▀                                          ║█████████
+              ║████████████████████████████▀       ╓▄                                    ████████░
+               ██████████████████████████▀       ╓██████▄▄                             ╓█████████""", Fore.YELLOW)
+    safe_print("""               ║███████████████████████▀       ▄███████████▌                ╙███████████████████
+                ╫████████████████████╙       ▄████████████████▄               └████████████████▀
+                 ╫████████████████▀└       ▄████████████████████▄                 └▀██████████▀
+                  ║█████████████▀       ╓▄█████████████████████████╗▄                      ╙╙╓▄▄
+                   ╙██████████▀       ╓████████████████████████████████▌╗▄                  ╓█████████████▌
+                     ▀██████▀       ▄████████████████████████████████████████▄▄▄▄▄         ▄███████▀▀██████""", Fore.RED)
+    safe_print("""                      ╙███▀       ▄█████████████████████████████████████████████████████▀              ╙███▌
+                        ▀       ▄█████████████████████████████████████████████████████▀                  ╙██▌
+                              ▄█████████████████████████████████████████████████████▀                      ██
+                             ▀███████████████████████████████████████████████████▀╙
+                                ╙█████████████████████████████████████████████▀╙
+                                   ╙▀█████████████████████████████████████▀▀─
+                                        ╙▀▀██████████████████████████▀▀└
+                                             └╙╜▀▀▀▀███████▀▀▀▀╙╙└
 
 
-while (noWokwiStuff == True):
-    if (menuEntered == 1):
-        bridgeMenu()
+""", Fore.MAGENTA)
+    create_directories()
+    
+    # Open serial connection
+    open_serial()
+    
+    if not serialconnected:
+        safe_print("Could not establish serial connection. Exiting.", Fore.RED)
+        return
+    
+    # Check firmware
+    check_if_fw_is_old()
+    
+    # Setup Arduino CLI
+    setup_arduino_cli()
+    
+    # Count assigned slots
+    count_assigned_slots()
+    
+    # Start monitoring threads
+    port_monitor = threading.Thread(target=check_presence, args=(portName, 0.1), daemon=True)
+    port_monitor.start()
+    
+    serial_in = threading.Thread(target=serial_term_in, daemon=True)
+    serial_in.start()
+    
+    serial_out = threading.Thread(target=serial_term_out, daemon=True)
+    serial_out.start()
+    
     time.sleep(0.1)
+    safe_print("Type 'menu' for App Menu", Fore.CYAN)
+    if READLINE_AVAILABLE:
+        safe_print("Use ↑/↓ arrow keys for command history, Tab for completion", Fore.BLUE)
+    # Send initial menu command
+    try:
+        with serial_lock:
+            if ser and ser.is_open:
+                ser.write(b'm')
+    except:
+        pass
+    
+    # Main loop
+    if noWokwiStuff:
+        # safe_print("Wokwi functionality disabled. Use 'menu' command for options.", Fore.YELLOW)
+        while noWokwiStuff:
+            if menuEntered:
+                time.sleep(0.1)
+                # bridge_menu()
+            time.sleep(0.1)
+    else:
+        # safe_print("Starting Wokwi monitoring...", Fore.GREEN)
+        
+        
+        # Wokwi main loop
+        while True:
+            if noWokwiStuff: # if Wokwi is disabled, just chill
+                time.sleep(0.1)
+                continue
+            if menuEntered:
+                # bridge_menu()
+                continue
+            
+            # Skip Wokwi processing during firmware updates
+            if updateInProgress:
+                time.sleep(0.1)
+                continue
+            
+            # Handle reconnection
+            with serial_lock:
+                if justreconnected:
+                    with wokwi_update_lock:
+                        lastDiagram = blankDiagrams[:]
+                        forceWokwiUpdate = 1
+                        currentSlotUpdate = 0
+                    justreconnected = 0
+                    # safe_print("Reconnected - forcing Wokwi update", Fore.GREEN)
+            
+            # Process Wokwi slots and local files
+            if numAssignedSlots > 0:
+                with wokwi_update_lock:
+                    # Find next valid slot (check both Wokwi URLs and local files)
+                    found_slot = False
+                    found_local_file = False
+                    for i in range(8):
+                        check_index = (currentSlotUpdate + i) % 8
+                        if slotURLs[check_index] != '!' or slotFilePaths[check_index] != '!':
+                            currentSlotUpdate = check_index
+                            found_slot = slotURLs[check_index] != '!'
+                            found_local_file = slotFilePaths[check_index] != '!'
+                            break
+                    
+                    if found_slot:
+                        # Process Wokwi URL
+                        api_url = slotAPIurls[currentSlotUpdate]
+                        current_wokwi_url = slotURLs[currentSlotUpdate]
+                        
+                        try:
+                            # Fetch Wokwi data
+                            response = requests.get(api_url, timeout=5)
+                            if response.status_code == 200:
+                                wokwi_data = response.json()
+                                
+                                # Process connections
+                                connections = wokwi_data.get('connections', [])
+                                command = construct_jumperless_command(connections, jumperlessV5)
+                                
+                                # Create a stable representation for comparison
+                                # Normalize connections by converting to tuples and sorting consistently
+                                normalized_connections = []
+                                for conn in connections:
+                                    if len(conn) >= 2:
+                                        # Ensure consistent ordering within each connection pair
+                                        conn_pair = tuple(sorted([str(conn[0]), str(conn[1])]))
+                                        normalized_connections.append(conn_pair)
+                                
+                                # Sort all connections for consistent comparison
+                                normalized_connections.sort()
+                                current_diagram_hash = str(normalized_connections)
+                                
+                                # Check if update needed (only for this specific slot)
+                                needs_update = (lastDiagram[currentSlotUpdate] != current_diagram_hash or 
+                                              (forceWokwiUpdate and currentSlotUpdate == 0))
+                                
+                                if debugWokwi:
+                                    safe_print(f"Slot {currentSlotUpdate}: Hash={current_diagram_hash[:50]}{'...' if len(current_diagram_hash) > 50 else ''}", Fore.BLUE)
+                                    safe_print(f"Slot {currentSlotUpdate}: Needs update={needs_update}, Connections={len(connections)}", Fore.BLUE)
+                                
+                                if needs_update:
+                                    lastDiagram[currentSlotUpdate] = current_diagram_hash
+                                    
+                                    # Send to Jumperless (only if not updating firmware)
+                                    if updateInProgress == 0:
+                                        with serial_lock:
+                                            if serialconnected and ser and ser.is_open:
+                                                try:
+                                                    cmd = f"o Slot {currentSlotUpdate} f {command}".encode()
+                                                    ser.write(cmd)
+                                                    safe_print(f"Updated slot {currentSlotUpdate}", Fore.GREEN)
+                                                    if debugWokwi:
+                                                        safe_print(f"Command sent: {command}", Fore.CYAN)
+                                                except Exception as e:
+                                                    safe_print(f"Serial write error: {e}", Fore.RED)
+                                                    portNotFound = 1
+                                                    serialconnected = 0
+                                
+                                # Check for Arduino sketch changes and flash if needed
+                                if not noArduinocli and not disableArduinoFlashing and updateInProgress == 0:
+                                    try:
+                                        # Process Arduino sketch for this slot
+                                        process_wokwi_sketch_and_flash(current_wokwi_url, currentSlotUpdate)
+                                    except Exception as e:
+                                        if debugWokwi:
+                                            safe_print(f"Arduino sketch processing error for slot {currentSlotUpdate}: {e}", Fore.YELLOW)
+                                
+                                # Reset forceWokwiUpdate after processing all slots once
+                                if forceWokwiUpdate and currentSlotUpdate == 0:
+                                    forceWokwiUpdate = 0
+                                    
+                                # Move to next slot (only process one slot per loop iteration)
+                                currentSlotUpdate = (currentSlotUpdate + 1) % 8
+                                
+                        except Exception as e:
+                            safe_print(f"Error processing Wokwi data: {e}", Fore.RED)
+                            # Move to next slot even on error to prevent getting stuck
+                            currentSlotUpdate = (currentSlotUpdate + 1) % 8
+                    
+                    elif found_local_file:
+                        # Process local .ino file
+                        try:
+                            # Check for Arduino sketch changes and flash if needed
+                            if not noArduinocli and not disableArduinoFlashing and updateInProgress == 0:
+                                process_local_file_and_flash(currentSlotUpdate)
+                            
+                            # Move to next slot (only process one slot per loop iteration)
+                            currentSlotUpdate = (currentSlotUpdate + 1) % 8
+                            
+                        except Exception as e:
+                            safe_print(f"Error processing local file for slot {currentSlotUpdate}: {e}", Fore.RED)
+                            # Move to next slot even on error to prevent getting stuck
+                            currentSlotUpdate = (currentSlotUpdate + 1) % 8
+            else:
+                time.sleep(1)
+            time.sleep(wokwiUpdateRate)
+
+def setup_command_history():
+    """Setup command history with persistent storage"""
+    if not READLINE_AVAILABLE:
+        return
+    
+    history_file = os.path.join(os.path.expanduser("~"), ".jumperless_history")
+    
+    # Load existing history
+    try:
+        if os.path.exists(history_file):
+            readline.read_history_file(history_file)
+    except Exception:
+        pass  # Ignore errors loading history
+    
+    # Set up tab completion
+    setup_tab_completion()
+    
+    # Set up automatic history saving
+    import atexit
+    def save_history():
+        try:
+            readline.write_history_file(history_file)
+        except Exception:
+            pass  # Ignore errors saving history
+    
+    atexit.register(save_history)
+
+def setup_tab_completion():
+    """Setup tab completion for commands from history"""
+    if not READLINE_AVAILABLE:
+        return
+    
+    def completer(text, state):
+        """Tab completion function that uses command history"""
+        # Only return the most recent match for state 0, nothing for other states
+        if state > 0:
+            return None
+            
+        # Get all commands from history that start with the typed text
+        history_length = readline.get_current_history_length()
+        
+        # Search backwards through history to find the most recent match
+        for i in range(history_length, 0, -1):
+            try:
+                history_item = readline.get_history_item(i)
+                if history_item and history_item.lower().startswith(text.lower()):
+                    return history_item
+            except:
+                continue
+        
+        # No match found
+        return None
+    
+    # Set the completer function
+    readline.set_completer(completer)
+    
+    # Configure tab completion behavior
+    readline.parse_and_bind("tab: complete")
+    
+    # Set completion display options
+    try:
+        # Show all matches if there are multiple
+        readline.parse_and_bind("set show-all-if-ambiguous off")
+        # Don't show hidden files in completion
+        readline.parse_and_bind("set match-hidden-files off")
+        # Complete on first tab press
+        readline.parse_and_bind("set show-all-if-unmodified off")
+    except:
+        pass  # Some systems might not support these options
+
+def get_command_suggestions():
+    """Get list of common commands for tab completion"""
+    # This function is now only used for reference/documentation
+    # Tab completion uses actual command history instead
+    return [
+        # App commands
+        'menu', 'slots', 'wokwi', 'skip', 'rate', 'update', 'status', 'exit', 'help',
+        # Jumperless device commands
+        'r', 'm', 'f', 'n', 'l', 'b', 'c', 'x', 'clear', 'o', '?',
+    ]
+
+def upload_with_attempts_limit(sketch_dir, arduino_port, fqbn, input_dir, discovery_timeout="2s"):
+    """Custom upload function that calls arduino-cli directly with attempts limit"""
+    global ser, arduinoPort
+    notInSyncString = "avrdude: stk500_recv(): programmer is not responding"
+    arduino_serial = None
+    
+    try:
+        import subprocess
+        # ser.write(b"r")
+        # time.sleep(0.5)
+        # ser.write(b"r")
+        
+        # Get the arduino-cli path
+        cli_path = None
+        cli_paths = [
+            resource_path("arduino-cli.exe" if sys.platform == "win32" else "arduino-cli"),
+            "./arduino-cli.exe" if sys.platform == "win32" else "./arduino-cli",
+            "arduino-cli"  # System PATH
+        ]
+        
+        for path in cli_paths:
+            if os.path.isfile(path) or shutil.which(path if path == "arduino-cli" else None):
+                cli_path = path
+                break
+        
+        if not cli_path:
+            raise Exception("arduino-cli not found")
+        
+        # Ensure the Arduino port is closed before starting upload
+        try:
+            # Check if the port is open and close it
+            arduino_serial = serial.Serial(arduino_port, 115200, timeout=0.5)
+            # arduino_serial.close()
+            safe_print(f"Arduino port {arduino_port} open before upload", Fore.CYAN)
+        except Exception as port_error:
+            # Port might already be closed or not exist
+            safe_print(f"Note: Arduino port {arduino_port} not accessible, make sure it's not in use by something else", Fore.RED)
+            safe_print(f"{port_error}", Fore.RED)
+            try:
+                arduino_serial.close()
+            except:
+                pass
+
+            raise Exception("Could not open Arduino port")
+        # Construct the command with attempts limit
+        cmd = [
+            cli_path,
+            "upload",
+            "-p", arduino_port,
+            "-b", fqbn,
+            "--input-dir", input_dir,
+            "--discovery-timeout", discovery_timeout,
+            "-v",
+            # "--upload-property", "attempts=1",  # This is the key flag we want to add
+            # "--upload-property", "avrdude.config.file=" + os.path.join(os.path.dirname(os.path.abspath(__file__)), "avrdudeCustom.conf"),
+            sketch_dir
+        ]
+        
+        if debugWokwi:
+            safe_print(f"Running: {' '.join(cmd)}", Fore.BLUE)
+        
+        # Run the command with real-time output streaming
+        process = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, 
+                                 text=True, bufsize=1)
+        
+        output_lines = []
+        start_time = time.time()
+        timeout = 45  # 45 second timeout
+        
+        # Stream output in real-time
+        while True:
+            # Check for timeout
+            if time.time() - start_time > timeout:
+                process.terminate()
+                try:
+                    process.wait(timeout=1)  # Give it 1 second to terminate gracefully
+                except subprocess.TimeoutExpired:
+                    process.kill()  # Force kill if it doesn't terminate
+                raise Exception(f"Upload timed out after {timeout} seconds")
+            
+            output = process.stdout.readline()
+
+            if output == '' and process.poll() is not None:
+                break
+            if notInSyncString in output:
+                # ser.write(b"?")
+                safe_print("Arduino not in sync, try pressing the reset button", Fore.RED)
+                safe_print(f"{output.strip()}", Fore.RED)
+
+            elif output:
+                output_lines.append(output.strip())
+                # Print output in real-time with a prefix to distinguish it
+                safe_print(f"{output.strip()}", Fore.CYAN)
+            else:
+                # No output, sleep briefly to prevent busy waiting
+                time.sleep(0.1)
+        
+        # Wait for process to complete and get return code
+        return_code = process.poll()
+        
+        if return_code != 0:
+            full_output = '\n'.join(output_lines)
+            raise Exception(f"Upload failed with return code {return_code}: {full_output}")
+        
+        returnValue = {"success": True, "stdout": '\n'.join(output_lines), "stderr": ""}
+        # safe_print(returnValue, Fore.GREEN)
+        
+        return returnValue
+        
+    except Exception as e:
+        raise Exception(f"Custom upload failed: {e}")
+    finally:
+        # Ensure the Arduino port is closed in all cases (success, error, or timeout)
+        if arduino_serial is not None:
+            try:
+                if arduino_serial.is_open:
+                    arduino_serial.close()
+                    safe_print(f"Closed Arduino port {arduino_port} after upload", Fore.YELLOW)
+            except Exception as close_error:
+                safe_print(f"Note: Error closing Arduino port: {close_error}", Fore.YELLOW)
+
+if __name__ == "__main__":
+    try:
+        main()
+    except KeyboardInterrupt:
+        safe_print("\nExiting...", Fore.YELLOW)
+    except Exception as e:
+        safe_print(f"Fatal error: {e}", Fore.RED)
+    # finally:
+        # Cleanup
+        # try:
+        #     with serial_lock:
+        #         if ser and ser.is_open:
+        #             ser.close()
+        # except:
+        #     pass

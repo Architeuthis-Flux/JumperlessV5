@@ -2,11 +2,18 @@
 
 #ifndef JUMPERLESSDEFINES_H
 #define JUMPERLESSDEFINES_H
-
+// #include "SerialWrapper.h"
+// #define Serial SerialWrap
 
 
 #define TERM_SUPPORTS_RGB 0
 #define TERM_SUPPORTS_ANSI_COLORS 1
+
+#define TERM_COLOR_PATHS 1
+#define TERM_COLOR_CROSSBARS 1
+#define TERM_COLOR_CHIP_STATUS 1
+#define TERM_COLOR_MAIN_MENU 1
+#define TERM_COLOR_NETS 1
 
 extern volatile int sendAllPathsCore2;
 #define PICO_RP2350B 1

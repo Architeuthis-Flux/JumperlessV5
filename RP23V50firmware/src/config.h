@@ -54,7 +54,7 @@ struct config {
     } debug;
 
     struct routing {
-        int stack_paths = 3;
+        int stack_paths = 2;
         int stack_rails = 3;
         int stack_dacs = 0;
         int rail_priority = 1;
@@ -130,6 +130,7 @@ struct config {
             int print_passthrough = 0;
             int connect_on_boot = 0;
             int lock_connection = 0;
+            int autoconnect_flashing = 1;
         } serial_1;
 
         
@@ -139,6 +140,7 @@ struct config {
             int print_passthrough = 0;
             int connect_on_boot = 0;
             int lock_connection = 0;
+            int autoconnect_flashing = 0;
         } serial_2;
 
         struct top_oled {
@@ -154,6 +156,7 @@ struct config {
             int scl_row = NANO_D3;
             int connect_on_boot = 0;
             int lock_connection = 0;
+            int autoconnect_check_interval = -1;
         } top_oled;
     
 };
