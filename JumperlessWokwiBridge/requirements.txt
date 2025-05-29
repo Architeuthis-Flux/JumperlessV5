@@ -7,3 +7,6 @@ pyinstaller==6.8.0
 pyserial==3.5
 requests==2.32.3
 colorama>=0.4.6
+
+# Windows-specific dependencies for better volume detection
+pywin32>=306; sys_platform == "win32"
