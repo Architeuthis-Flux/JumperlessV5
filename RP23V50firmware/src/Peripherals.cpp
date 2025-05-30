@@ -1518,7 +1518,7 @@ void showLEDmeasurements(void) {
           brightness = 100;
           }
 
-        if (displayMode == 0 || numberOfShownNets > MAX_NETS_FOR_WIRES) {
+        if (jumperlessConfig.display.lines_wires == 0 || numberOfShownNets > MAX_NETS_FOR_WIRES) {
           lightUpNet(showADCreadings[i], -1, 1, brightness, 0, 0, color);
           }
         //Serial.println(brightness);

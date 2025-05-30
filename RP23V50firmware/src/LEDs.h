@@ -153,7 +153,7 @@ extern int brightenedAmount;
 extern bool lightUpName;
 
 extern int netColorMode; // 0 = rainbow, 1 = shuffle
-extern int displayMode;
+//extern int displayMode;
 extern int numberOfShownNets;
 //extern int showLEDsCore2;
 extern int logoFlash;

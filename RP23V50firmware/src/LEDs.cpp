@@ -3098,10 +3098,11 @@ void logoSwirl(int start, int spread, int probe) {
 
 
   if (probe == 1) {
-    int selectionBrightness = 13;
+    int selectionBrightness = 33;
 
 
     if (connectOrClearProbe == 1 && node1or2 == 0) {
+      // Serial.println("connectOrClearProbe == 1 && node1or2 == 0");
 
       leds.setPixelColor(
           LOGO_LED_START, dimLogoColor(logoColorsCold[start % (LOGO_COLOR_LENGTH - 1)]));
@@ -3205,6 +3206,7 @@ void logoSwirl(int start, int spread, int probe) {
 
     //  // b.printRawRow(0b11111111, i, 0, 0xffffff);
     // }
+   
     leds.setPixelColor(
         LOGO_LED_START, dimLogoColor(logoColors[start % (LOGO_COLOR_LENGTH - 1)]));
     leds.setPixelColor(
@@ -3979,7 +3981,7 @@ void lightUpRail(int logo, int rail, int onOff, int brightness2,
   // showLEDsCore2 = 1;
   // delay(3);
   }
-int displayMode = 1; // 0 = lines 1= wires
+//int displayMode = jumperlessConfig.display.lines_wires; // 0 = lines 1= wires
 
 void showNets(void) {
   // Serial.println(rp2040.cpuid());
@@ -3996,8 +3998,9 @@ void showNets(void) {
   // if (debugNTCC > 0) {
   //   Serial.println(debugNTCC);
   // }
+  //displayMode = jumperlessConfig.display.lines_wires;
 
-  if (displayMode == 0 || numberOfShownNets > MAX_NETS_FOR_WIRES) {
+    if (jumperlessConfig.display.lines_wires == 0 || numberOfShownNets > MAX_NETS_FOR_WIRES) {
     assignNetColors();
     for (int i = 0; i <= numberOfNets; i++) {
       // Serial.print(i);
@@ -4020,7 +4023,7 @@ void showNets(void) {
 
       lightUpNet(i);
       }
-    } else if (displayMode == 1) {
+      } else if (jumperlessConfig.display.lines_wires == 1) {
       // if (i==1){
       //   continue;
       // }

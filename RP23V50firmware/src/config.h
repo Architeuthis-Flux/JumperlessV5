@@ -82,7 +82,7 @@ struct config {
     } logo_pads;
 
     struct display {
-        int lines_wires = 1;
+        volatile int lines_wires = 1;
         int menu_brightness = -10;
         int led_brightness = 10;
         int rail_brightness = 55;

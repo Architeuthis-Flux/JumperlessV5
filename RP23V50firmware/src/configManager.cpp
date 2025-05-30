@@ -929,8 +929,8 @@ void printConfigToSerial(bool showNamesArg) {
 
     // Wait for input with timeout
     while (true) {
-        if (Serial.available() > 0) {
-            char c = Serial.read();
+        if (SerialWrap.available() > 0) {
+            char c = SerialWrap.read();
             if (lineIndex < sizeof(line) - 1) {
                 line[lineIndex++] = c;
                 line[lineIndex] = '\0';
@@ -993,10 +993,13 @@ void readConfigFromSerial() {
     bool inSection = false;
     Serial.println("\n\renter config settings (? for help)\n\r");
 
+
+bool ledChange = false;
+bool dacChange = false;
     unsigned long lastCharTime = millis();
     const unsigned long timeout = 10;
 
-    while (Serial.available() == 0) {
+    while (SerialWrap.available() == 0) {
         // delayMicroseconds(10);
         if (millis() - lastCharTime > 400) {
             printConfigHelp();
@@ -1005,8 +1008,8 @@ void readConfigFromSerial() {
     }
     int timedOut = 0;
     while (true) {
-        if (Serial.available() > 0) {
-            char c = Serial.read();
+        if (SerialWrap.available() > 0) {
+            char c = SerialWrap.read();
             if (c == '\n' || c == '\r') {
                // parseSetting(line);
                 // Serial.println("New line");
@@ -1041,25 +1044,32 @@ void readConfigFromSerial() {
                     resetConfigToDefaults();
                     saveConfigToFile("/config.txt");
                     Serial.println("Done. Settings have been reset to defaults");
+                    ledChange = true;
+                    dacChange = true;
                     memset(line, 0, sizeof(line));
                     lineIndex = 0;
                     continue;
                 } else if (strcmp(line, "clear_calibration") == 0 || strcmp(line, "clear_cal") == 0) {
                     resetConfigToDefaults(1, 0);
                     Serial.println("Done. Calibration has been cleared");
+                    ledChange = true;
+                    dacChange = true;
                     memset(line, 0, sizeof(line));
                     lineIndex = 0;
                     continue;
                 } else if (strcmp(line, "clear_hardware") == 0 || strcmp(line, "clear_hw") == 0) {
                     resetConfigToDefaults(0, 1);
                     Serial.println("Done. Hardware has been cleared");
+                    ledChange = true;
+                    dacChange = true;
                     memset(line, 0, sizeof(line));
                     lineIndex = 0;
                     continue;
                 } else if (strcmp(line, "clear_all") == 0) {
                     resetConfigToDefaults(1, 1);
                     Serial.println("Done. All settings have been cleared");
-                    
+                    ledChange = true;
+                    dacChange = true;
                     memset(line, 0, sizeof(line));
                     lineIndex = 0;
                     continue;
@@ -1175,8 +1185,8 @@ void readConfigFromSerial() {
         }
     }
 
-    while (Serial.available() > 0) {
-        Serial.read();
+    while (SerialWrap.available() > 0) {
+        SerialWrap.read();
         delayMicroseconds(100);
     }
    // configChanged = true;
@@ -1186,6 +1196,7 @@ void readConfigFromSerial() {
 //    Serial.println(dacOutput[0]);
 //    Serial.println(dacOutput[1]);
     setRailsAndDACs(0);
+    showLEDsCore2 = -1;
 }
 
 int parseTrueFalse(const char* value) {
@@ -1604,6 +1615,8 @@ const char* getStringFromTable(int value, const StringIntEntry (&table)[N]) {
     if (showNames) {
         for (size_t i = 0; i < N; i++) {
             if (table[i].value == value) {
+                // Serial.print("getStringFromTable: ");
+                // Serial.println(table[i].name);
                 return table[i].name;
             }
         }

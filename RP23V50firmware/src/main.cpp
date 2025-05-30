@@ -288,7 +288,7 @@ int serSource = 0;
 int readInNodesArduino = 0;
 
 
-const char firmwareVersion[] = "5.1.2.7"; // remember to update this
+const char firmwareVersion[] = "5.1.2.8"; // remember to update this
 
 int firstLoop = 1;
 

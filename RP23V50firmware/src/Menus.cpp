@@ -2900,9 +2900,9 @@ int doMenuAction(int menuPosition, int selection) {
                                     if (menuLines[currentAction.previousMenuPositions[1]].indexOf("Jumpers") !=
                                         -1) {
                                       if (currentAction.from[0] == 0) {
-                                        displayMode = 1;
+                                        jumperlessConfig.display.lines_wires = 1;
                                         } else {
-                                        displayMode = 0;
+                                        jumperlessConfig.display.lines_wires = 0;
                                         }
                                       debugFlagSet(12);
 

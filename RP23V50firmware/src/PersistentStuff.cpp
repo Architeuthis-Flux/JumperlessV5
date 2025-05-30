@@ -70,7 +70,7 @@ void debugFlagInit(int forceDefaults) {
 
   rotaryEncoderMode = EEPROM.read(ROTARYENCODER_MODE_ADDRESS);
 
-  displayMode = EEPROM.read(DISPLAYMODE_ADDRESS);
+  //displayMode = EEPROM.read(DISPLAYMODE_ADDRESS);
 
 
   netColorMode = EEPROM.read(NETCOLORMODE_ADDRESS);
@@ -269,10 +269,10 @@ void debugFlagInit(int forceDefaults) {
     EEPROM.write(ROTARYENCODER_MODE_ADDRESS, 0);
     rotaryEncoderMode = 0;
     }
-  if (displayMode != 0 && displayMode != 1) {
-    EEPROM.write(DISPLAYMODE_ADDRESS, 1);
-    displayMode = 0;
-    }
+  // if (displayMode != 0 && displayMode != 1) {
+  //   EEPROM.write(DISPLAYMODE_ADDRESS, 1);
+  //   displayMode = 0;
+  //   }
   if (netColorMode != 0 && netColorMode != 1) {
     EEPROM.write(NETCOLORMODE_ADDRESS, 0);
     netColorMode = 0;
@@ -517,7 +517,7 @@ void debugFlagSet(int flag) {
     }
     case 12: {
 
-    EEPROM.write(DISPLAYMODE_ADDRESS, displayMode);
+    //  EEPROM.write(DISPLAYMODE_ADDRESS, displayMode);
     //jumperlessConfig.display_settings.display_mode = displayMode;
 
 

@@ -1091,7 +1091,7 @@ void showRowAnimation(int index, int net) {
     // Serial.print("   direction = ");
     // Serial.println(rowAnimations[net].direction);
 
-    if (displayMode == 0 || numberOfShownNets > MAX_NETS_FOR_WIRES) {
+    if (jumperlessConfig.display.lines_wires == 0 || numberOfShownNets > MAX_NETS_FOR_WIRES) {
       for (int i = 0; i <= numberOfPaths; i++) {
         if (path[i].net == actualNet) {
           if (path[i].skip == true) {

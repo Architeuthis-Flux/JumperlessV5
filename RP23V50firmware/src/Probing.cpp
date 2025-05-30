@@ -143,41 +143,7 @@ restartProbing:
   routableBufferPower(1, 0);
 
 
-  probeHighlight = -1;
-  
- //saveLocalNodeFile();
-  // timer[1] = micros();                
 
-  // Serial.print("routableBufferPower(1, 0) = ");
-  // Serial.print(timer[1] - timer[0]);
-  // Serial.println("\t");
-
-  // Serial.flush();
-
-  int numberOfLocalChanges = 0;
-
-  connectOrClearProbe = setOrClear;
-  int lastRow[10];
-
-  // Serial.print(numberOfNets);
-
-  if (numberOfNets == 0) {
-    // clearNodeFile(netSlot);
-    }
-
-  int probedNodes[40][2];
-  int probedNodesIndex = 0;
-
-  int row[16] = { 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 };
-
-  row[1] = -2;
-  row[0] = -2;
-
-  // if (firstConnection > 0) {
-  //   row[0] = firstConnection;
-  //  /// firstConnection = -1;
-  //   }
-  probeTimeout = millis();
 
   // probingTimer = millis();
 
@@ -195,7 +161,7 @@ restartProbing:
   // Serial.print(millis() - timer[1]);
   // Serial.print("\t");
   // Serial.println(timer[1] - timer[0]);
- 
+
   // Serial.print("millis() - timer[2] = ");
   // Serial.print(millis() - timer[2]);
   // Serial.print("\t");
@@ -225,11 +191,51 @@ restartProbing:
     rawOtherColors[1] = 0x6644A8;
 
     }
-    //timer[3] = micros();
 
-    // Serial.print("oled.clearPrintShow = ");
-    // Serial.println(timer[3] - timer[2]);
-    // Serial.flush();
+restartProbingNoPrint:
+
+      probeHighlight = -1;
+
+  //saveLocalNodeFile();
+   // timer[1] = micros();                
+
+   // Serial.print("routableBufferPower(1, 0) = ");
+   // Serial.print(timer[1] - timer[0]);
+   // Serial.println("\t");
+
+   // Serial.flush();
+
+  int numberOfLocalChanges = 0;
+
+  connectOrClearProbe = setOrClear;
+  int lastRow[10];
+
+  // Serial.print(numberOfNets);
+
+  if (numberOfNets == 0) {
+    // clearNodeFile(netSlot);
+    }
+
+  int probedNodes[40][2];
+  int probedNodesIndex = 0;
+
+  int row[16] = { 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 };
+
+  row[1] = -2;
+  row[0] = -2;
+
+  // if (firstConnection > 0) {
+  //   row[0] = firstConnection;
+  //  /// firstConnection = -1;
+  //   }
+  probeTimeout = millis();
+
+
+  //timer[3] = micros();
+
+  // Serial.print("oled.clearPrintShow = ");
+  // Serial.println(timer[3] - timer[2]);
+  // Serial.flush();
 
   if (setOrClear == 0) {
     probeButtonTimer = millis();
@@ -242,7 +248,7 @@ restartProbing:
     } else {
     showProbeLEDs = 2;
     }
-    //timer[4] = micros();  
+  //timer[4] = micros();  
   connectOrClearProbe = setOrClear;
 
   // Serial.print("setOrClear = ");
@@ -383,6 +389,11 @@ restartProbing:
           nodesToConnect[0] = -1;
           nodesToConnect[1] = -1;
           node1or2 = 0;
+          clearLEDsExceptRails();
+          probeHighlight = -1;
+          showLEDsCore2 = -1;
+          
+          //Serial.println("setOrClear == 0");
           } else {
 
           setOrClear = 0;
@@ -397,6 +408,7 @@ restartProbing:
           nodesToConnect[1] = -1;
           //           lastProbedRows[0] = -1;
           // lastProbedRows[1] = -1;
+          clearLEDsExceptRails();
           showLEDsCore2 = 1;
           node1or2 = 0;
           // showProbeLEDs = 1;
@@ -408,6 +420,24 @@ restartProbing:
           if (setOrClear == 1) {
             // showProbeLEDs = 2;
             //  delay(100);
+            if (node1or2 == 1) {
+              connectedRowsIndex = 0;
+              nodesToConnect[0] = -1;
+              nodesToConnect[1] = -1;
+              node1or2 = 0;
+              //Serial.println(probeHighlight);
+
+              probeHighlight = -1;
+              clearLEDsExceptRails();
+              showLEDsCore2 = -2;
+             // waitCore2();
+              Serial.print("\r                                \r");
+              Serial.flush();
+              //Serial.println("setOrClear == 1");
+              goto restartProbingNoPrint;
+              } else {
+              //Serial.println("setOrClear == 1 && node1or2 == 0");
+              }
             } else {
             setOrClear = 1;
             // showProbeLEDs = 2;
@@ -423,6 +453,7 @@ restartProbing:
             nodesToConnect[0] = -1;
             nodesToConnect[1] = -1;
             node1or2 = 0;
+            clearLEDsExceptRails();
             // lastProbedRows[0] = -1;
             // lastProbedRows[1] = -1;
 
@@ -452,6 +483,7 @@ restartProbing:
         nodesToConnect[0] = -1;
         nodesToConnect[1] = -1;
         probeHighlight = -1;
+        showLEDsCore2 = -1;
         break;
       } else {
       // probingTimer = millis();
@@ -485,7 +517,7 @@ restartProbing:
         strcat(bothNames, node2Name);
 
 
-        Serial.print("\r                \r");
+        Serial.print("\r                   \r");
 
         int numChars = strlen(node1Name);
         for (int i = 0; i < SPACE_FROM_LEFT - numChars; i++) {
@@ -517,12 +549,12 @@ restartProbing:
         if (nodesToConnect[node1or2] > 0 &&
             nodesToConnect[node1or2] <= NANO_RESET_1 && setOrClear == 1) {
 
-         //probeConnectHighlight = nodesToConnect[node1or2];
-          // Serial.print("probeConnectHighlight = ");
-          // Serial.println(probeConnectHighlight);
-          //showLEDsCore2 = 2;
+          //probeConnectHighlight = nodesToConnect[node1or2];
+           // Serial.print("probeConnectHighlight = ");
+           // Serial.println(probeConnectHighlight);
+           //showLEDsCore2 = 2;
 
-          // // b.clear();
+           // // b.clear();
           b.printRawRow(0b0010001, nodesToConnect[node1or2] - 1, 0x000121e,
                         0xfffffe);
           showLEDsCore2 = 2;
@@ -598,22 +630,45 @@ restartProbing:
           // for (int i = 0; i < 12 - numChars; i++) {
           //   Serial.print(" ");
           //   }
+
+          // Check if the second node is a GPIO and print its direction
+          if (nodesToConnect[1] >= RP_GPIO_1 && nodesToConnect[1] <= RP_GPIO_8) {
+            // Find the GPIO index in gpioDef array
+            int gpioIndex = -1;
+            for (int i = 0; i < 10; i++) {
+              if (gpioDef[i][1] == nodesToConnect[1]) {
+                gpioIndex = i;
+                break;
+                }
+              }
+            
+            if (gpioIndex != -1) {
+              if (jumperlessConfig.gpio.direction[gpioIndex] == 0) {
+                Serial.print(" (output)  connected");
+                } else {
+                Serial.print(" (input)  connected");
+                }
+              }
+              Serial.flush();
+            } else {
+          
           Serial.print("\t connected\n\r");
           Serial.flush();
+            }
 
 
           if (firstConnection == -3) {
             addBridgeToNodeFile(nodesToConnect[0], nodesToConnect[1], netSlot, 0);
-           // refreshConnections(1, 1, 0);
-            //showLEDsCore2 = -1;
+            // refreshConnections(1, 1, 0);
+             //showLEDsCore2 = -1;
             break;
 
-          } else {
+            } else {
 
 
-          addBridgeToNodeFile(nodesToConnect[0], nodesToConnect[1], netSlot, 1);
-          numberOfLocalChanges++;
-          }
+            addBridgeToNodeFile(nodesToConnect[0], nodesToConnect[1], netSlot, 1);
+            numberOfLocalChanges++;
+            }
           brightenNet(-1);
 
           oled.clearPrintShow(bothNames, 2, 0, 5, true, true, true);
@@ -630,7 +685,7 @@ restartProbing:
 
          //if (firstConnection != -3) {
           refreshLocalConnections(-1);
-         // }
+          // }
           fadeTimer = millis();
           // if (numberOfLocalChanges > 5) {
           //   saveLocalNodeFile(netSlot);
@@ -780,7 +835,7 @@ restartProbing:
               }
             }
 
-            if (firstConnection == -3) {
+          if (firstConnection == -3) {
             //
             //showLEDsCore2 = 1;
             //firstConnection = -1;
@@ -828,17 +883,17 @@ restartProbing:
     probeTimeout = millis();
 
     if (encoderDirectionState == UP) {
-                node1or2 = 0;
-          nodesToConnect[0] = -1;
-          nodesToConnect[1] = -1;
+      node1or2 = 0;
+      nodesToConnect[0] = -1;
+      nodesToConnect[1] = -1;
       row[0] = -1;
       break;
       }
 
     if (encoderDirectionState == DOWN) {
-                node1or2 = 0;
-          nodesToConnect[0] = -1;
-          nodesToConnect[1] = -1;
+      node1or2 = 0;
+      nodesToConnect[0] = -1;
+      nodesToConnect[1] = -1;
       row[0] = -1;
       break;
       }
@@ -852,10 +907,10 @@ restartProbing:
     }
   // Serial.println("fuck you");
   //  digitalWrite(RESETPIN, LOW);
-          node1or2 = 0;
-          nodesToConnect[0] = -1;
-          nodesToConnect[1] = -1;
-          // row[1] = -2;
+  node1or2 = 0;
+  nodesToConnect[0] = -1;
+  nodesToConnect[1] = -1;
+  // row[1] = -2;
   connectedRowsIndex = 0;
   connectedRows[0] = -1;
   probeActive = false;
@@ -1109,7 +1164,7 @@ int selectSFprobeMenu(int function) {
     }
 
     case 0: {
-    Serial.print("0function: ");
+    Serial.print("function: ");
     printNodeOrName(function, 1);
     Serial.print(function);
     Serial.println();
@@ -1632,8 +1687,20 @@ int chooseGPIO(int skipInputOutput) {
     inColor = 0x000000;
     outColor = 0x000000;
     }
-
-
+if (node1or2 == 0) {
+Serial.println("           Choose GPIO");
+} else {
+Serial.println("Choose GPIO");
+}
+Serial.println("  tap pads near numbers to choose");
+Serial.println("       ⁱ = input, ⁰ = output\n\r");
+Serial.println("      ┌─┬─┐ ┌─┬─┐ ┌─┬─┐ ┌─┬─┐");
+Serial.println("     ┌═══════════════════════┐");
+Serial.println("     │ ⁱ1⁰   ⁱ2⁰   ⁱ3⁰   ⁱ4⁰ │");
+Serial.println("     ├───────────────────────┤");
+Serial.println("     │ ᵢ5₀   ᵢ6₀   ᵢ7₀   ᵢ8₀ │");
+Serial.println("     └═══════════════════════┘");
+Serial.println("      └─┴─┘ └─┴─┘ └─┴─┘ └─┴─┘");
 
 
   b.printRawRow(0b00011000, 2, inColor, 0xFFFFFF);
@@ -2254,7 +2321,7 @@ void routableBufferPower(int offOn, int flash, int force) {
           }
 
     } else if (probePowerDAC == 1) {
-        if (checkIfBridgeExistsLocal(ROUTABLE_BUFFER_IN, DAC1) == 0) {
+      if (checkIfBridgeExistsLocal(ROUTABLE_BUFFER_IN, DAC1) == 0) {
         //   Serial.print("bufferPowerConnected dac 1 = "); Serial.println(bufferPowerConnected);
         bufferPowerConnected = false;
         needToRefresh = true;
@@ -2262,7 +2329,7 @@ void routableBufferPower(int offOn, int flash, int force) {
           // Serial.println("DAC 1 voltage is out of range, setting to 3.30 V");
           // Serial.print("getDacVoltage(1) = ");
           // Serial.println(getDacVoltage(1));
-            setDac1voltage(3.30, 1, 0);
+          setDac1voltage(3.30, 1, 0);
           return;
           } else if (offOn == 1) {
             bufferPowerConnected = true;
@@ -2345,27 +2412,27 @@ void routableBufferPower(int offOn, int flash, int force) {
       if (bufferPowerConnected == true) {
         if (checkIfBridgeExistsLocal(ROUTABLE_BUFFER_IN, DAC0) == 1) {
 
-        if (probePowerDAC == 0) {
-          if (bufferPowerConnected == true) {
-            removeBridgeFromNodeFile(ROUTABLE_BUFFER_IN, DAC0, netSlot, 1);
-            removeBridgeFromNodeFile(ROUTABLE_BUFFER_IN, DAC0, netSlot, 0);
-            }
-          } else if (probePowerDAC == 1) {
+          if (probePowerDAC == 0) {
             if (bufferPowerConnected == true) {
-              removeBridgeFromNodeFile(ROUTABLE_BUFFER_IN, DAC1, netSlot, 1);
-              removeBridgeFromNodeFile(ROUTABLE_BUFFER_IN, DAC1, netSlot, 0);
+              removeBridgeFromNodeFile(ROUTABLE_BUFFER_IN, DAC0, netSlot, 1);
+              removeBridgeFromNodeFile(ROUTABLE_BUFFER_IN, DAC0, netSlot, 0);
               }
-            }
-        
-
-          // if (probePowerDAC == 0) {
-          //   setDac0voltage(0.0, 1);
-          // } else if (probePowerDAC == 1) {
-          //   setDac1voltage(0.0, 1);
-          // }
+            } else if (probePowerDAC == 1) {
+              if (bufferPowerConnected == true) {
+                removeBridgeFromNodeFile(ROUTABLE_BUFFER_IN, DAC1, netSlot, 1);
+                removeBridgeFromNodeFile(ROUTABLE_BUFFER_IN, DAC1, netSlot, 0);
+                }
+              }
 
 
-          refreshConnections(0, 0, 0);
+            // if (probePowerDAC == 0) {
+            //   setDac0voltage(0.0, 1);
+            // } else if (probePowerDAC == 1) {
+            //   setDac1voltage(0.0, 1);
+            // }
+
+
+            refreshConnections(0, 0, 0);
           }
         }
       bufferPowerConnected = false;
@@ -2557,6 +2624,7 @@ int checkProbeButton(void) {
   int buttonState2 = 0;
   int buttonState3 = 0;
   checkingButton = 1;
+  gpio_function_t lastProbeButtonFunction = gpio_get_function(2);
 
   // what we're doing here is tricking the Neopixel library into letting us use
   // its pin to read the 2 buttons on the probe without it stopping
@@ -2572,6 +2640,9 @@ int checkProbeButton(void) {
 
   pinMode(BUTTON_PIN, INPUT);
   // probeLEDs.setPin(3);
+
+
+  //Serial.println(gpio_get_function(2));
   gpio_set_function(2, GPIO_FUNC_SIO);
   gpio_disable_pulls(2);
 
@@ -2638,12 +2709,12 @@ int checkProbeButton(void) {
   //   Serial.read();
   // }
 
-  gpio_set_function(2, GPIO_FUNC_PIO0);
+  gpio_set_function(2, lastProbeButtonFunction);
 
   checkingButton = 0;
   core1busy = false;
   // delayMicroseconds(500);
-  // probeLEDs.show();
+   //probeLEDs.show();
 
   // Check if button is physically not being pressed (both states are not triggered)
   bool buttonNotPressed = (buttonState != 1 || buttonState2 != 1 || buttonState3 != 1) &&
@@ -3117,7 +3188,7 @@ void checkPads(void) {
         saveChangedNetColorsToFile(netSlot, 0);
 
         } else {
-       // colorPicker(45, jumperlessConfig.display.led_brightness);
+        // colorPicker(45, jumperlessConfig.display.led_brightness);
         }
       break;
     case BUILDING_PAD_BOTTOM:
@@ -3138,7 +3209,7 @@ void checkPads(void) {
         saveChangedNetColorsToFile(netSlot, 0);
 
         } else {
-       // colorPicker(225, jumperlessConfig.display.led_brightness);
+        // colorPicker(225, jumperlessConfig.display.led_brightness);
         }
       break;
     default:
@@ -3762,7 +3833,7 @@ void probeLEDhandler(void) {
     // }
     // probeLEDs.setPixelColor(0, 0x360000); // remove
     // probeLEDs[0].setColorCode(0x110000);
-    //  probeLEDs.show();
+     // probeLEDs.show();
     //  Serial.println(showProbeLEDs);
     showProbeLEDs = 0;
     break;
@@ -3815,23 +3886,14 @@ void probeLEDhandler(void) {
         // Serial.println("max");
         }
       showProbeLEDs = 0;
-      Serial.println("max");
+      //Serial.println("max");
       break;
     default:
       break;
     }
   lastProbeLEDs = showProbeLEDs;
 
-  // while(checkingButton == 1) {
-  //   //Serial.println("checkingButton");
-  // }
 
-  // FastLED.show();
-  // delay(1);
-  /// pinMode(2, INPUT);
-  // pinMode(9, OUTPUT);
-  //       Serial.print("showProbeLEDs = ");
-  // Serial.println(showProbeLEDs);
 
   probeLEDs.show();
   showingProbeLEDs = 0;
@@ -3843,27 +3905,27 @@ int highlightNets(int probeReading, int encoderNetHighlighted, int print) {
      // Serial.println(probeReading);
      // delay(100);
 
-     int netHighlighted;
-if (encoderNetHighlighted != -1) {
-  netHighlighted = encoderNetHighlighted;
-} else {
-  netHighlighted = brightenNet(probeReading);
-}
+  int netHighlighted;
+  if (encoderNetHighlighted != -1) {
+    netHighlighted = encoderNetHighlighted;
+    } else {
+    netHighlighted = brightenNet(probeReading);
+    }
 
 
-  
+
 
   if (netHighlighted != -1) {
     highlightedOriginalColor = netColors[netHighlighted];
     highlightedNet = netHighlighted;
     // Serial.print("netHighlighted = ");
     // Serial.println(netHighlighted);
-      if (print == 1) {
-        Serial.print("\r                                           \r");
+    if (print == 1) {
+      Serial.print("\r                                           \r");
       }
-      clearColorOverrides(1,1,0);
-      brightenedRail = -1;
-      lastPrintedNet = -1;
+    clearColorOverrides(1, 1, 0);
+    brightenedRail = -1;
+    lastPrintedNet = -1;
     switch (netHighlighted) {
       case 0:
         break;
@@ -3871,7 +3933,7 @@ if (encoderNetHighlighted != -1) {
         if (lastPrintedNet != netHighlighted) {
           if (print == 1) {
             Serial.print("Net Highlighted = GND");
-          }
+            }
           lastPrintedNet = netHighlighted;
           }
         brightenedRail = 1;
@@ -3881,14 +3943,14 @@ if (encoderNetHighlighted != -1) {
           lastPrintedNet = netHighlighted;
           if (print == 1) {
             Serial.print("Net Highlighted = Top Rail  ");
-          
-          
-          
 
-        Serial.print(railVoltage[0]);
-        Serial.print(" V");
+
+
+
+            Serial.print(railVoltage[0]);
+            Serial.print(" V");
+            }
           }
-        }
         brightenedRail = 0;
         break;
       case 3:
@@ -3896,141 +3958,141 @@ if (encoderNetHighlighted != -1) {
           lastPrintedNet = netHighlighted;
           if (print == 1) {
             Serial.print("Net Highlighted = Bottom Rail  ");
-         
-          
-          
 
-        Serial.print(railVoltage[1]);
-        Serial.print(" V");
+
+
+
+            Serial.print(railVoltage[1]);
+            Serial.print(" V");
+            }
           }
-        }
         brightenedRail = 2;
         break;
       case 4:
         if (lastPrintedNet != netHighlighted) {
-         
-        DACcolorOverride0 = -2;
-        DACcolorOverride1 = 0x000000;
-        if (print == 1) {
-    Serial.print("Net Highlighted = DAC 0  ");
-        Serial.print(dacOutput[0]);
-        Serial.print(" V");
-        }
+
+          DACcolorOverride0 = -2;
+          DACcolorOverride1 = 0x000000;
+          if (print == 1) {
+            Serial.print("Net Highlighted = DAC 0  ");
+            Serial.print(dacOutput[0]);
+            Serial.print(" V");
+            }
           lastPrintedNet = netHighlighted;
-          }   
+          }
         break;
       case 5:
         if (lastPrintedNet != netHighlighted) {
-          
+
           DACcolorOverride0 = 0x000000;
           DACcolorOverride1 = -2;
           if (print == 1) {
             Serial.print("Net Highlighted = DAC 1  ");
             Serial.print(dacOutput[1]);
             Serial.print(" V");
-          }
+            }
           lastPrintedNet = netHighlighted;
           }
         break;
       default:
       {
 
-        if (print == 1) {
-          Serial.print("\r                                          \r");
+      if (print == 1) {
+        Serial.print("\r                                          \r");
         }
-           if (netHighlighted > 0) {
-            int length = 0;
-            if (print == 1) {
+      if (netHighlighted > 0) {
+        int length = 0;
+        if (print == 1) {
           Serial.print("Net ");
           Serial.print(netHighlighted);
           Serial.print("\t ");
           Serial.print("row ");
           length = printNodeOrName(brightenedNode);
-            
-       
-          for (int i = 0; i < 8-length; i++) {
+
+
+          for (int i = 0; i < 8 - length; i++) {
             Serial.print(" ");
             }
-            }
-          //Serial.print("  \t ");
-          int specialPrint = 0;
+          }
+        //Serial.print("  \t ");
+        int specialPrint = 0;
 
-           if (lastPrintedNet != netHighlighted) {
+        if (lastPrintedNet != netHighlighted) {
           int adc = anyAdcConnected(netHighlighted);
-        if (adc != -1) {
-          ADCcolorOverride0 = -2;
-          ADCcolorOverride1 = -2;
-          if (print == 1) {
-            Serial.print(" ADC ");
-            Serial.print(adc);
-            Serial.print("   ");
-          
+          if (adc != -1) {
+            ADCcolorOverride0 = -2;
+            ADCcolorOverride1 = -2;
+            if (print == 1) {
+              Serial.print(" ADC ");
+              Serial.print(adc);
+              Serial.print("   ");
 
-          Serial.print(readAdcVoltage(adc, 32));
-          Serial.print(" V");
-          }
-          specialPrint = 1;
-          }
 
-        int gpioInputNumber = anyGpioInputConnected(netHighlighted);
-        if (gpioInputNumber != -1) {
-          GPIOcolorOverride0 = -2;
-          GPIOcolorOverride1 = -2;
-          
-          if (print == 1) {
-            Serial.print(" GPIO ");
-            Serial.print(gpioInputNumber + 1);
-            Serial.print(" input ");
-            int gpioInputState = gpioReadWithFloating(gpioDef[gpioInputNumber][0]);
-            switch (gpioInputState) {
-            case 0:
-              Serial.print("low");
-              break;
-            case 1:
-              Serial.print("high");
-              break;
-            case 2:
-              Serial.print("floating");
-              break;
-            default:
-              Serial.print("?");
-              break;
+              Serial.print(readAdcVoltage(adc, 32));
+              Serial.print(" V");
+              }
+            specialPrint = 1;
             }
-          
-         // Serial.println();
-          }
-          specialPrint = 1;
-          }
-        int gpioOutputNumber = anyGpioOutputConnected(netHighlighted);
-        if (gpioOutputNumber != -1) {
-          GPIOcolorOverride0 = -2;
-          GPIOcolorOverride1 = -2;
-          
-          if (print == 1) {
-            Serial.print(" GPIO ");
-            Serial.print(gpioOutputNumber + 1);
-            Serial.print(" output ");
-            int gpioOutputState = gpio_get_out_level(gpioDef[gpioOutputNumber][0]);
-            if (gpioOutputState == 0) {
-            Serial.print("low");
-            } else {
-            Serial.print("high");
+
+          int gpioInputNumber = anyGpioInputConnected(netHighlighted);
+          if (gpioInputNumber != -1) {
+            GPIOcolorOverride0 = -2;
+            GPIOcolorOverride1 = -2;
+
+            if (print == 1) {
+              Serial.print(" GPIO ");
+              Serial.print(gpioInputNumber + 1);
+              Serial.print(" input ");
+              int gpioInputState = gpioReadWithFloating(gpioDef[gpioInputNumber][0]);
+              switch (gpioInputState) {
+                case 0:
+                  Serial.print("low");
+                  break;
+                case 1:
+                  Serial.print("high");
+                  break;
+                case 2:
+                  Serial.print("floating");
+                  break;
+                default:
+                  Serial.print("?");
+                  break;
+                }
+
+              // Serial.println();
+              }
+            specialPrint = 1;
             }
-         // Serial.println();
+          int gpioOutputNumber = anyGpioOutputConnected(netHighlighted);
+          if (gpioOutputNumber != -1) {
+            GPIOcolorOverride0 = -2;
+            GPIOcolorOverride1 = -2;
+
+            if (print == 1) {
+              Serial.print(" GPIO ");
+              Serial.print(gpioOutputNumber + 1);
+              Serial.print(" output ");
+              int gpioOutputState = gpio_get_out_level(gpioDef[gpioOutputNumber][0]);
+              if (gpioOutputState == 0) {
+                Serial.print("low");
+                } else {
+                Serial.print("high");
+                }
+              // Serial.println();
+              }
+            specialPrint = 1;
+
+            }
+          if (specialPrint == 0) {
+            //Serial.println();
+            }
           }
-          specialPrint = 1;
-          
-          }
-        if (specialPrint == 0) {
-          //Serial.println();
-          }
-        }
         lastPrintedNet = netHighlighted;
+        }
+      Serial.flush();
       }
-    Serial.flush();
       }
-      }
-   // showLEDsCore2 = 1;
+    // showLEDsCore2 = 1;
     } else {
     //clearColorOverrides(1,1,0);
     // brightenNet(-1);
