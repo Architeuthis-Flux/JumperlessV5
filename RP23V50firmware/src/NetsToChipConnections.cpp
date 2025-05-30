@@ -529,7 +529,7 @@ void bridgesToPaths(int fillUnused, int allowStacking) {
   resolveAltPaths(1);
 
   resolveUncommittedHops(1, -1);
-  couldntFindPath(0);
+  couldntFindPath(1);
   // couldntFindPath();
   checkForOverlappingPaths();
   // printPathsCompact();

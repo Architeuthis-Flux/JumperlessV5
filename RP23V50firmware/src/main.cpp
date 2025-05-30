@@ -288,7 +288,7 @@ int serSource = 0;
 int readInNodesArduino = 0;
 
 
-const char firmwareVersion[] = "5.1.2.6"; // remember to update this
+const char firmwareVersion[] = "5.1.2.7"; // remember to update this
 
 int firstLoop = 1;
 
@@ -359,9 +359,9 @@ void loop() {
 
 menu:
 
-  if (Serial.available() > 0) { //this is so if you dump a lot of data into the serial buffer, it will consume it and not keep looping
-    while (Serial.available() > 0) {
-      char c = Serial.read();
+  if (SerialWrap.available() > 0) { //this is so if you dump a lot of data into the serial buffer, it will consume it and not keep looping
+    while (SerialWrap.available() > 0) {
+      char c = SerialWrap.read();
       //Serial.print(c);
      // Serial.flush();
       }
@@ -854,11 +854,11 @@ menu:
       break;
       int node1 = -1;
       int node2 = -1;
-      while (Serial.available() == 0) {
+      while (SerialWrap.available() == 0) {
         }
       //char c = Serial.read();
-      node1 = Serial.parseInt();
-      node2 = Serial.parseInt();
+      node1 = SerialWrap.parseInt();
+      node2 = SerialWrap.parseInt();
       Serial.print("node1 = ");
       Serial.println(node1);
       Serial.print("node2 = ");
@@ -941,21 +941,23 @@ menu:
       int index = 0;
       float f1 = 0.0;
 
-      while (Serial.available() == 0) {
+      while (SerialWrap.available() == 0) {
         }
       while (index < 8) {
-        f[index] = Serial.read();
+        f[index] = SerialWrap.read();
         index++;
         }
 
       f1 = atof(f);
-      Serial.print("f = ");
-      Serial.println(f1);
-      if (probePowerDAC == 0) {
+      // Serial.print("f = ");
+      // Serial.println(f1);
+      if (probePowerDAC == 1) {
         setDac0voltage(f1);
-        } else if (probePowerDAC == 1) {
+        } else if (probePowerDAC == 0) {
           setDac1voltage(f1);
           }
+          Serial.printf("DAC %d = %0.2f\n", !probePowerDAC, f1);
+          Serial.flush();
         // playDoom();
         // doomOn = 0;
         break;
@@ -996,8 +998,8 @@ menu:
       break;
       }
       case 'r': {
-      if (Serial.available() > 0) {
-        char c = Serial.read();
+      if (SerialWrap.available() > 0) {
+        char c = SerialWrap.read();
         if (c == '0' || c == '2' || c == 't') {
           resetArduino(0);
           }
@@ -1104,7 +1106,7 @@ goto dontshowmenu;
       //  while (slotChanged == 0)
       //  {
       //
-      while (Serial.available() == 0 && slotChanged == 0) {
+      while (SerialWrap.available() == 0 && slotChanged == 0) {
         if (slotChanged == 1) {
           // b.print("Jumperless", 0x101000, 0x020002, 0);
           // delay(100);
@@ -1135,8 +1137,8 @@ goto dontshowmenu;
       break;
       }
       case 'v':
-        if (Serial.available() > 0) {
-          char c = Serial.read();
+        if (SerialWrap.available() > 0) {
+          char c = SerialWrap.read();
 
           if (isdigit(c) == 1) {
             int adc = c - '0';
@@ -1255,7 +1257,7 @@ goto dontshowmenu;
         break;
       case 'b': {
       int showDupes = 1;
-      char in = Serial.read();
+      char in = SerialWrap.read();
       if (in == '0') {
         showDupes = 0;
         } else if (in == '2') {
@@ -1495,10 +1497,10 @@ goto dontshowmenu;
               Serial.println("\n\n\n\r");
               Serial.flush();
 
-              while (Serial.available() == 0)
+              while (SerialWrap.available() == 0)
                 ;
 
-              int toggleDebug = Serial.read();
+              int toggleDebug = SerialWrap.read();
               Serial.write(toggleDebug);
               toggleDebug -= '0';
 
@@ -1518,7 +1520,7 @@ goto dontshowmenu;
 
       case ':':
 
-        if (Serial.read() == ':') {
+        if (SerialWrap.read() == ':') {
           // Serial.print("\n\r");
           // Serial.print("entering machine mode\n\r");
           // machineMode();
@@ -1530,16 +1532,16 @@ goto dontshowmenu;
           }
 
       default:
-        while (Serial.available() > 0) {
-          int f = Serial.read();
+        while (SerialWrap.available() > 0) {
+          int f = SerialWrap.read();
           // delayMicroseconds(30);
           }
 
         break;
       }
     delayMicroseconds(1000);
-    while (Serial.available() > 0) {
-      Serial.read();
+    while (SerialWrap.available() > 0) {
+      SerialWrap.read();
       delayMicroseconds(1000);
       }
     goto menu;
