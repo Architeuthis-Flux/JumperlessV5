@@ -1,36 +1,12 @@
 # Getting Started
-
-## Glossary of terms:
-
-`net` = a group of all the `node`s that are connected together (enter `n` to see the list {there's a colorful update to that I'm working on right now})
-
-`node` = anything the crossbar array can connect to, which includes everything on the breadboard and Nano header, as well as the internal `special function` `node`s like `routable GPIO`, `ADC`s, `DAC`s
-
-`row` = *kinda* the same thing as `node` but I generally use it to mean stuff on the breadboard (so special function things like `routable GPIO`, `ADC`s, `DAC`s that don't have a set location are excluded)
-
-`rail` = I use this to refer to the 4 horizontal power rails on the top and bottom (`top_rail`, `bottom_rail`, `gnd`), I will never call a vertical `row` a `rail`. (I know they're columns but it's easier to say a lot)
-
-`bridge` = a pair of exactly two `node`s (this is what you're making when you connect stuff with the probe, enter `s` to print the (kinda misnamed) `node file`s to see a list of bridges)
-
-`path` = the set of crossbar connections needed to make a single `bridge`, so it can have multiple `hop`s if it doesn't have a direct connection and needs to make a `bounce` through an intermediate `chip` enter `b` to see them
-
-`node file` / `slot file` = this is an actual text file on the filesystem that stores the list of bridges, there's one of these for each `slot` (enter `s` to see all of them, they start with an `f {` to make it east to just copy paste them from the terminal)
-
-`slot` = one of the 8 node files stored that you can switch between with `<`/`>` or the `menu`s. Named `nodeFileSlot[0-7].txt` (there's no actual limit, there's *so* much flash storage on this thing, but by default it's 8)
-
-`menu` = I generally mean the onboard clickwheel `menu` when I say this (`click` the wheel to enter those and `scroll` around)
-
-`chip` = shorthand for the CH446Qs specifically, lettered A-L. The first 8 (A-H) are considered "breadboard `chips`, and the last 4 are considered "special function" chips (enter `c` to see their connections)
-
-
-
+![guideNoHighlight](https://github.com/user-attachments/assets/dda9717f-4d94-4421-b145-e08cfc68a900)
 
 # Here's a super-quick rundown of the how to use the thing:
 
 ## The Probe
 First, keep the switch on the probe set to `Select`
 ![ProbeSelect](https://github.com/user-attachments/assets/1155f75a-f800-4bc0-ba6d-49e603ad39e2)
-(Measure mode allows the probe tip to be ±9V tolerant and routable like any other node, but as of yet, the code to actually do anything with it is unwritten so it just connects to DAC 0 and outputs 3.3V just like it was in Select mode.)
+(If you're curious *why*: `Measure` mode allows the probe tip to be ±9V tolerant and routable like any other node, but as of yet, the code to actually do anything with it is unwritten so it just connects to DAC 0 and outputs 3.3V just like it was in `Select` mode. But the DAC is much worse at matching the RP2350B's idea of what 3.3V is *exactly*, so probing will be flaky and may be off from the rows you're tapping in `Measure`.
 
 ### To `Connect` rows, click the `Connect` button on the probe
 ![connectButton](https://github.com/user-attachments/assets/faedd0af-8ea6-4454-8f33-01ff478bb9e7)
@@ -38,7 +14,26 @@ First, keep the switch on the probe set to `Select`
 The logo should turn blue and the LEDs on the probe should also change
 ![connect](https://github.com/user-attachments/assets/2040417f-64c3-41dd-a3d6-8c900e15445b)
 
-Now any pair of nodes you tap should get connected as you make them. To connect to special functions, tap the corresponding pad near the logo, it will show you a menu on the breadboard to choose them.
+Now any pair of nodes you tap should get connected as you make them. In connect mode, you're creating `bridges` (see the [glossary](#glossary-of-terms) at the bottom of this page), so connections are made in pairs. When you've tapped the first `node` in a pair, the `logo` and `Connect` text on the probe will brighten to show that you're "`holding`" a connection, and the next thing you tap will connect to that first `node`. 
+
+If you make a mistake while `holding` a connection, click the `Connect` button and it will clear it and take you back to the first `node`. 
+If you click the `Connect` button while you're not `holding` a `node`, it will leave `probe mode` and bring you back into `idle mode` (rainbowy `logo`, all 3 `probe LED`s on.)`
+
+
+
+To connect to `special functions`, tap the corresponding `pad` near the logo, it will show you a menu on the breadboard and terminal to choose them.
+![gpioTapped](https://github.com/user-attachments/assets/0b0c45ff-b98e-4a45-87b3-d3cc5c7a4544)
+
+(This is an ASCII version of what will show on the breadboard LEDs)
+
+![Screenshot 2025-05-30 at 10 55 13 AM](https://github.com/user-attachments/assets/fc9be8f8-f99c-48cd-8e00-07fdcb426f99)
+
+You can think of `special functions`  just like any other `node`, there's just a second step to picking them so I didn't need to put a dedicated pad for each of them. 
+
+The other 4 `user pads` will be more remappable in the future, but for now, `top_guy` is `routable UART Tx` and `bottom_guy` is `routable UART Rx`. The building pads are for overriding colors in `idle mode` (you'll see more about that that below.)
+
+![userPads](https://github.com/user-attachments/assets/6925e9ed-fb6b-46a2-b377-205107df6a78)
+
 
 To get out of `Connect` mode, press the button again.
 
@@ -47,20 +42,13 @@ To get out of `Connect` mode, press the button again.
 and the logo should turn reddish
 ![remove](https://github.com/user-attachments/assets/297e169f-f9f5-4151-8fa2-de41ab14492f)
 
-Now you can swipe along the pads or tap them one at a time. Remember it only disconnects that `node` and anything connected to it directly, not *everything* on the `net`. So tapping say, `row 25` that's connected to `GND` won't clear everything connected to `GND`, but tapping the `-` on the rails (for `GND`) would.
+Now you can swipe along the `pad`s or tap them one at a time. Remember it only disconnects that `node` and anything connected to it directly, not *everything* on the `net`. So tapping say, `row 25` that's connected to `GND` won't clear everything connected to `GND`, but tapping the `-` on the rails (for `GND`) would.
 
 The special functions work the same way, tap the pad, pick one, and it will remove it. Click the button again to get out.
 
-# The App
 
-While not strictly necessary, the Jumperless app is a python script that just uses your OS's built in terminal emulator (`screen` on mac/linux, `command prompt` on Windows) to set up a connection with the Jumperless. It does some other stuff too, like bridging Wokwi projects to have them update the Jumperless in real time, updating the fimware when a newer version is available, and uh.. that's pretty much it. 
-(My favorite thing it does is to force non-exlusivity of the port, so you can just leave it connected and flash firmware and it'll reconnect when it's done)
-
-So grab the one for your OS from [releases](https://github.com/Architeuthis-Flux/JumperlessV5/releases/latest), if it doesn't work, there's also the python script you can run.
-
-Or you can use any terminal emulator you like, [iTerm2](https://iterm2.com/), [xTerm](https://invisible-island.net/xterm/), [Tabby](https://github.com/Eugeny/tabby), [Arduino IDE](https://www.arduino.cc/en/software/)'s Serial Monitor, whatever. The TUI is all handled from the Jumperless itself so it just needs something to print text.
-
-
+##### Remember the probe is read by a resistive voltage divider, so putting your fingers on the pads (or the back sides of the 4 risers that connect those `probe sense` boards to the main board), or anything causing the probe tip not to be at a steady 3.3V will give you weird readings. 
+If you can't seem to stop playing with the switch on the probe, run DAC calibration with `$` and the 3.3V `measure` mode puts out should be fairly accurate enough for probing.
 
 
 ## The Click Wheel
@@ -69,6 +57,42 @@ Or you can use any terminal emulator you like, [iTerm2](https://iterm2.com/), [x
 There are two kinds of presses, `click` (short press) and `hold` (long press). In general, a `click` (short) is a `yes`, and a `hold` (long) is a `no`/`back`/`exit`/`whatever`. 
 
 To get to the menu, `click` the button and scroll through the menus, `click` will bring you into that menu, `hold` will take you back one level. If you have trouble reading stuff on the breadboard LEDs, everything is copied to the Serial terminal and the OLED (talked about below), and adjusting the brightness may help; in the menus, it's `Display Options` > `Bright` > `Menu` and then scroll around until you find a level you like, then `click` to confirm. 
+
+
+
+
+# Behold! The App!
+<img width="749" alt="Screenshot 2025-05-29 at 10 01 15 PM" src="https://github.com/user-attachments/assets/a0fbbca6-ec16-4a0e-ac36-b4ed1f46663a" />
+
+Now that I've lifted my self-imposed ban on VT100 commands (for compatibility and me-spending-too-much-time-on-them reasons, but, YOLO), we've got colors now! 
+
+But that's like the *least* cool thing the new app can do, here's a list of what's new:
+
+- No longer a janky pile of garbage
+- Firmware updating should be pretty reliable when there's a new version (falls back to instructions for how to do it manually)
+- Command history and tab completion, up arrows will go through past commands and are persistent after closing
+- Properly detects which port is the main Jumperless Serial and which is routable UART
+- Arduino flashing from [Wokwi](https://wokwi.com/) works once again and is a lot more solid
+  -  It installs [arduino-cli](https://github.com/arduino/arduino-cli) on first startup and uses it pull in libraries, compile, and flash an arduino Nano in the header
+  - If the routable UART lines aren't connected when the app detects a change in the sketch file, it will connect them to flash the new code and then return them to how they were
+  - [avrdude](https://github.com/avrdudes/avrdude) output is shown in real time (you'd be amazed how difficult this was)
+- **You can set a `slot` to point to a local Arduino sketch.ino file and it will flash if it detects a change** 
+  - If you don't like using Arduino IDE or Wokwi and prefer using `vim` or `emacs` or whatever, now you can let the app handle the flashing stuff and just edit an .ino file.
+  - In the app, type `menu` then `slots` and instead of entering a link to a Wokiw project, just give it a path to a file (this will be saved so you can unassign it and pick it later by name)
+  - (This one is so fucking sick) 
+<img width="1330" alt="Screenshot 2025-05-29 at 9 16 14 AM" src="https://github.com/user-attachments/assets/766dbb09-254e-45c5-8f75-358684729907" />
+
+
+- Launch scripts included to easily run it from your favorite terminal emulator and not just the system default (terminal.app on macOS, Powershell on Windows, idk on Linux), just go to the directory in a terminal and run the script in [tabby](https://tabby.sh/) or whatever
+- The launcher *should* kill other instances (and close their windows) that happen to be open because it's such a common issue for me at least
+- Linux people are no longer red-headed stepchildren, there are proper tar.gz packages now for you nerds
+
+
+
+
+Or you can use any terminal emulator you like, [iTerm2](https://iterm2.com/), [xTerm](https://invisible-island.net/xterm/), [Tabby](https://github.com/Eugeny/tabby), [Arduino IDE](https://www.arduino.cc/en/software/)'s Serial Monitor, whatever. The TUI is all handled from the Jumperless itself so it just needs something to print text.
+
+
 
 # Animated rows
 
@@ -143,6 +167,8 @@ and
 To change any persistent settings, there's a `config` file. You can read it with `~` and edit settings by copying any of those lines, pasting it back, and changing the value to whatever you want it to be.
 
 ```
+~
+
 copy / edit / paste any of these lines 
 into the main menu to change a setting
 
@@ -153,9 +179,9 @@ Jumperless Config:
 `[hardware] revision = 5;
 `[hardware] probe_revision = 5;
 
-`[dacs] top_rail = 3.50;
-`[dacs] bottom_rail = 3.50;
-`[dacs] dac_0 = 3.30;
+`[dacs] top_rail = 0.00;
+`[dacs] bottom_rail = 0.00;
+`[dacs] dac_0 = 3.33;
 `[dacs] dac_1 = 0.00;
 `[dacs] set_dacs_on_boot = false;
 `[dacs] set_rails_on_boot = true;
@@ -169,21 +195,21 @@ Jumperless Config:
 `[debug] nets_to_chips_alt = false;
 `[debug] leds = false;
 
-`[routing] stack_paths = 0;
+`[routing] stack_paths = 1;
 `[routing] stack_rails = 2;
 `[routing] stack_dacs = 0;
 `[routing] rail_priority = 1;
 
-`[calibration] top_rail_zero = 1625;
-`[calibration] top_rail_spread = 20.90;
-`[calibration] bottom_rail_zero = 1637;
-`[calibration] bottom_rail_spread = 20.67;
-`[calibration] dac_0_zero = 1636;
-`[calibration] dac_0_spread = 21.00;
-`[calibration] dac_1_zero = 1641;
+`[calibration] top_rail_zero = 1634;
+`[calibration] top_rail_spread = 20.60;
+`[calibration] bottom_rail_zero = 1614;
+`[calibration] bottom_rail_spread = 20.73;
+`[calibration] dac_0_zero = 1635;
+`[calibration] dac_0_spread = 20.53;
+`[calibration] dac_1_zero = 1625;
 `[calibration] dac_1_spread = 20.80;
 `[calibration] probe_max = 4060;
-`[calibration] probe_min = 16;
+`[calibration] probe_min = 19;
 
 `[logo_pads] top_guy = uart_tx;
 `[logo_pads] bottom_guy = uart_rx;
@@ -197,7 +223,7 @@ Jumperless Config:
 `[display] special_net_brightness = 20;
 `[display] net_color_mode = rainbow;
 
-`[gpio] direction = 0,0,1,1,1,1,1,1,0,1;
+`[gpio] direction = 0,1,1,1,1,1,1,1,0,1;
 `[gpio] pulls = 0,0,0,0,0,0,0,0,2,2;
 `[gpio] uart_tx_function = off;
 `[gpio] uart_rx_function = passthrough;
@@ -207,12 +233,14 @@ Jumperless Config:
 `[serial_1] print_passthrough = false;
 `[serial_1] connect_on_boot = false;
 `[serial_1] lock_connection = false;
+`[serial_1] autoconnect_flashing = true;
 
 `[serial_2] function = off;
 `[serial_2] baud_rate = 115200;
 `[serial_2] print_passthrough = false;
 `[serial_2] connect_on_boot = false;
 `[serial_2] lock_connection = false;
+`[serial_2] autoconnect_flashing = false;
 
 `[top_oled] enabled = false;
 `[top_oled] i2c_address = 0x3C;
@@ -247,7 +275,8 @@ There's also a `help` you can get to by entering `~?`
 ``` 
 
 
-# Crossbar display
+# Look *Inside* your Jumperless
+## Crossbar Array
 There's a new way to see what the 12 analog crossbar switches are up to, just enter `c` in the menu
  
 ```
@@ -318,6 +347,15 @@ There's a new way to see what the 12 analog crossbar switches are up to, just en
 
 
 ```
+## Bridge array
+Enter `b` in the menu. This is generally the most helpul one for me to troubleshoot what's going on if your issue has anything to do with routing or connections. It probably looks like nonsense to you but I've been in it so long it makes perfect sense to me.
+
+![Screenshot 2025-05-30 at 7 04 54 AM](https://github.com/user-attachments/assets/05e55021-b1f1-49af-8e7b-230d47522aed)
+
+## Net list
+Enter 'n' in the menu to show this one. If you have anything that's doing any measurement (`gpio` input or `ADC`s), it'll stay up and live update if any of them change. (And just like basically any menu not asking for input, entering anything will bring you back to the main menu.)
+
+![Screenshot 2025-05-30 at 7 10 04 AM](https://github.com/user-attachments/assets/559587de-cd04-47f5-9118-7d9f91f33804)
 
 
 # Arduino UART passthrough
@@ -325,6 +363,7 @@ There's a new way to see what the 12 analog crossbar switches are up to, just en
 With an Arduino Nano in the header and the UART lines connected, anything on those lines should be passed through to the second serial port that shows up when you plug in your Jumperless. 
 
 (You can also set the config option ``[serial_1] print_passthrough = true;` and have it print on both. Don't worry about the baud rate, the Jumperless senses what the host computer is set to and changes the speed accordingly.
+
 <img width="360" alt="Screenshot 2025-05-19 at 11 07 55 AM" src="https://github.com/user-attachments/assets/2b255e34-0d0a-4e86-b577-d59c9561fa42" />
 
 
@@ -354,7 +393,7 @@ Come hang out in the [Discord](https://discord.gg/bvacV7r3FP) if you have any qu
 
 
 
-## Odds and ends
+# Odds and ends
 
 
 - `GPIO 1-8` will show a subtle animation while they're floating and go red / green when they're pulled `high` / `low`
@@ -379,6 +418,11 @@ Come hang out in the [Discord](https://discord.gg/bvacV7r3FP) if you have any qu
 
 - `#`[any text] will print text on the breadboard (type `m` or whatever to go back)
 
+## Firmware changes in 5.1.2.7
+
+- Commands from Routable UART
+  - Starting a UART message (that would normally just be passed through to the second serial port) with `0x02` ([non-printable ASCII code for Start of Text / STX](https://www.ascii-code.com/)) and ending with `0x03` ([End of Text / ETX](https://www.ascii-code.com/)) will cause the Jumperless to interpret that as something that was sent though the menu on the main serial port. So you can send commands to make connections and such while also using serial passthrough.
+  - ---
 
 
 
@@ -396,6 +440,30 @@ When you switch to `measure` mode, those roles get swapped, the LEDs are powered
 The answer is switch position sensing. You may notice there's no obvious way for the Jumperless to know where the switch is set, so I had to get creative on this one. `DAC 0`'s output is hardwired to go through a `current sense` shunt resistor, so when `DAC 0` is powering the `probe LEDs`, they'll be drawing some current I can measure with one of the `INA219`s, and therefore I can be reasonably confident that the switch is in the `select` position.
 
 If you need both `DAC`s, you can just get rid of this connection and the `probe LEDs` won't light up, but other than aesthetics, it really has no effect on functionality. Or you connect `ROUTABLE_BUFFER_IN` to a `GPIO` and set it `high` and just lose the ability to sense where the switch is.
+
+
+
+# Glossary of terms:
+
+`net` = a group of all the `node`s that are connected together (enter `n` to see the list {there's a colorful update to that I'm working on right now})
+
+`node` = anything the crossbar array can connect to, which includes everything on the breadboard and Nano header, as well as the internal `special function` `node`s like `routable GPIO`, `ADC`s, `DAC`s
+
+`row` = *kinda* the same thing as `node` but I generally use it to mean stuff on the breadboard (so special function things like `routable GPIO`, `ADC`s, `DAC`s that don't have a set location are excluded)
+
+`rail` = I use this to refer to the 4 horizontal power rails on the top and bottom (`top_rail`, `bottom_rail`, `gnd`), I will never call a vertical `row` a `rail`. (I know they're columns but it's easier to say a lot)
+
+`bridge` = a pair of exactly two `node`s (this is what you're making when you connect stuff with the probe, enter `s` to print the (kinda misnamed) `node file`s to see a list of bridges)
+
+`path` = the set of crossbar connections needed to make a single `bridge`, so it can have multiple `hop`s if it doesn't have a direct connection and needs to make a `bounce` through an intermediate `chip` enter `b` to see them
+
+`node file` / `slot file` = this is an actual text file on the filesystem that stores the list of bridges, there's one of these for each `slot` (enter `s` to see all of them, they start with an `f {` to make it east to just copy paste them from the terminal)
+
+`slot` = one of the 8 node files stored that you can switch between with `<`/`>` or the `menu`s. Named `nodeFileSlot[0-7].txt` (there's no actual limit, there's *so* much flash storage on this thing, but by default it's 8)
+
+`menu` = I generally mean the onboard clickwheel `menu` when I say this (`click` the wheel to enter those and `scroll` around)
+
+`chip` = shorthand for the CH446Qs specifically, lettered A-L. The first 8 (A-H) are considered "breadboard `chips`, and the last 4 are considered "special function" chips (enter `c` to see their connections)
 
 
 
