@@ -609,6 +609,8 @@ def get_available_ports():
 
 def parse_hardware_id(hwid):
     """Parse hardware ID to extract VID and PID"""
+    # safe_print(f"hwid: {hwid}", Fore.CYAN)
+
     try:
         if "VID:PID=" in hwid:
             split_at = "VID:PID="
@@ -643,8 +645,9 @@ def choose_jumperless_port(sorted_ports):
     for try_port_idx, port_name in enumerate(sorted_ports):
         try:
             with serial.Serial(port_name, 115200, timeout=1) as temp_ser:
+                safe_print(f"Testing port {port_name}", Fore.CYAN)
                 temp_ser.write(b'?')
-                time.sleep(0.1)
+                time.sleep(0.3)
                 
                 if temp_ser.in_waiting > 0:
                     input_buffer = b''
@@ -655,11 +658,11 @@ def choose_jumperless_port(sorted_ports):
                         if temp_ser.in_waiting > 0:
                             input_buffer += temp_ser.read(temp_ser.in_waiting)
                         else:
-                            time.sleep(0.01)
+                            time.sleep(0.1)
                         
-                        if b'\n' in input_buffer or time.time() - start_time > 0.5:
+                        if b'\n' in input_buffer or time.time() - start_time > 1:
                             break
-                    
+                    # safe_print(f"response: {input_buffer.decode('utf-8', errors='ignore').strip()}", Fore.CYAN)
                     try:
                         input_str = input_buffer.decode('utf-8', errors='ignore').strip()
                         lines = input_str.split('\n')
@@ -702,6 +705,12 @@ def open_serial():
         if not ports:
             safe_print("No serial ports found. Please connect your Jumperless.", Fore.RED)
             time.sleep(2)
+            ports = get_available_ports()
+            while not ports:
+                # safe_print("No serial ports found. Please connect your Jumperless.", Fore.RED)
+                time.sleep(2)
+                ports = get_available_ports()
+
             continue
         
         # safe_print("\nAvailable ports:")
@@ -753,6 +762,7 @@ def open_serial():
                     safe_print("Invalid selection. Please try again.", Fore.RED)
                     continue
         else:
+            
             safe_print("No Jumperless devices found.", Fore.YELLOW)
             selection = input("Enter port number manually or 'r' to rescan: ").strip()
             if selection.lower() == 'r':
@@ -911,6 +921,10 @@ def update_jumperless_firmware(force=False):
                 foundVolume = "none"
                 timeStart = time.time()
                 
+                # Debug information
+                if sys.platform == "win32":
+                    safe_print(f"Windows platform detected. WIN32_AVAILABLE: {WIN32_AVAILABLE}", Fore.CYAN)
+                
                 while foundVolume == "none":
                     if time.time() - timeStart > 20:
                         safe_print("Timeout waiting for bootloader drive to appear", Fore.RED)
@@ -937,6 +951,56 @@ def update_jumperless_firmware(force=False):
                                                 safe_print(f"Found Jumperless at {foundVolume}", Fore.CYAN)
                                                 break
                                     except Exception:
+                                        continue
+                                elif sys.platform == "win32" and not WIN32_AVAILABLE:
+                                    # Fallback Windows method without win32api
+                                    try:
+                                        # Try to read a volume info file or check for characteristic files
+                                        mountpoint = p.mountpoint
+                                        safe_print(f"Checking Windows drive: {mountpoint}", Fore.YELLOW)
+                                        
+                                        # Check if this looks like a RP2040/RP2350 drive by looking for INFO_UF2.TXT
+                                        info_file = os.path.join(mountpoint, "INFO_UF2.TXT")
+                                        if os.path.exists(info_file):
+                                            try:
+                                                with open(info_file, 'r') as f:
+                                                    content = f.read()
+                                                    safe_print(f"Found INFO_UF2.TXT content: {content[:100]}...", Fore.YELLOW)
+                                                    if jumperlessV5:
+                                                        if "RP2350" in content:
+                                                            foundVolume = mountpoint
+                                                            safe_print(f"Found Jumperless V5 at {foundVolume} via INFO_UF2.TXT", Fore.CYAN)
+                                                            break
+                                                    else:
+                                                        if "RP2040" in content:
+                                                            foundVolume = mountpoint
+                                                            safe_print(f"Found Jumperless at {foundVolume} via INFO_UF2.TXT", Fore.CYAN)
+                                                            break
+                                            except Exception as e:
+                                                safe_print(f"Error reading INFO_UF2.TXT: {e}", Fore.RED)
+                                        
+                                        # Alternative: try using subprocess to get volume label
+                                        try:
+                                            drive_letter = mountpoint.rstrip('\\').rstrip('/')
+                                            result = subprocess.run(['vol', drive_letter], 
+                                                                  capture_output=True, text=True, timeout=2)
+                                            if result.returncode == 0:
+                                                output = result.stdout.strip()
+                                                safe_print(f"Volume info for {drive_letter}: {output}", Fore.YELLOW)
+                                                if jumperlessV5:
+                                                    if "RP2350" in output:
+                                                        foundVolume = mountpoint
+                                                        safe_print(f"Found Jumperless V5 at {foundVolume} via vol command", Fore.CYAN)
+                                                        break
+                                                else:
+                                                    if "RPI-RP2" in output:
+                                                        foundVolume = mountpoint
+                                                        safe_print(f"Found Jumperless at {foundVolume} via vol command", Fore.CYAN)
+                                                        break
+                                        except Exception as e:
+                                            safe_print(f"Error checking volume with subprocess: {e}", Fore.RED)
+                                    except Exception as e:
+                                        safe_print(f"Error in fallback Windows detection: {e}", Fore.RED)
                                         continue
                                 else:
                                     # Unix-like systems
@@ -2296,6 +2360,11 @@ def main():
     
     # Setup Arduino CLI
     setup_arduino_cli()
+    
+    # Check Windows volume detection capability
+    if sys.platform == "win32" and not WIN32_AVAILABLE:
+        safe_print("Windows volume detection: Using fallback method", Fore.YELLOW)
+        safe_print("For better Windows drive detection, install pywin32: pip install pywin32", Fore.CYAN)
     
     # Count assigned slots
     count_assigned_slots()

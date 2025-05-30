@@ -32,7 +32,7 @@ void bridgesToPaths(int fillUnused = 1, int allowStacking = 0);
 
 void findStartAndEndChips(int node1, int node2, int net);
 
-void couldntFindPath(int forcePrint = 0);
+void couldntFindPath(int forcePrint = 1);
 
 void resolveChipCandidates();
 
