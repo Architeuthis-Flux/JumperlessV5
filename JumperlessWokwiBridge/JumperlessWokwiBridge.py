@@ -610,11 +610,7 @@ def get_available_ports():
 def parse_hardware_id(hwid, des='unknown'):
     """Parse hardware ID to extract VID and PID"""
     # safe_print(f"hwid: {hwid}", Fore.CYAN)
-<<<<<<< HEAD
     # safe_print(f"description: {des}", Fore.CYAN)
-=======
-
->>>>>>> 2d3dd1f99237193c16fc25bcc7b47b718e614646
     try:
         if "VID:PID=" in hwid:
             split_at = "VID:PID="

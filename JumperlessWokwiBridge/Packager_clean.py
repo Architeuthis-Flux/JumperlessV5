@@ -5,23 +5,6 @@ import platform
 import shutil
 import time
 
-"""
-Jumperless Multi-Platform Packager
-
-This script packages the Jumperless application for macOS, Linux, and Windows.
-For each platform, it creates:
-1. Native executable/app bundle
-2. "Jumperless Python" folder with latest source files:
-   - JumperlessWokwiBridge.py (latest version)
-   - requirements.txt (latest version)  
-   - Platform-specific launcher script:
-     * macOS/Linux: jumperless_launcher.sh
-     * Windows: jumperless_cli_launcher.bat
-
-The script automatically deletes old files before copying new ones to ensure
-users always get the latest versions in their distribution packages.
-"""
-
 # macOS packaging paths
 generated_app_path = pathlib.Path("/Users/kevinsanto/Documents/GitHub/JumperlessV5/JumperlessWokwiBridge/dist/Jumperless.app/Contents/MacOS/Jumperless")
 generated_app_path_renamed = pathlib.Path("/Users/kevinsanto/Documents/GitHub/JumperlessV5/JumperlessWokwiBridge/dist/Jumperless.app/Contents/MacOS/Jumperless_cli")
@@ -387,59 +370,17 @@ def package_windows():
         print("   See: https://github.com/yourusername/yourrepo/actions")
         return
     
-    # Create Python folder for Windows distribution
-    print("Creating Python development folder for Windows...")
-    windows_python_folder = pathlib.Path("JumperlessWindows/Jumperless Python/")
-    
-    # Create folder and clean existing files
-    windows_python_folder.mkdir(parents=True, exist_ok=True)
-    
-    python_bridge_file = windows_python_folder / "JumperlessWokwiBridge.py"
-    python_requirements_file = windows_python_folder / "requirements.txt"
-    python_launcher_file = windows_python_folder / "jumperless_cli_launcher.bat"
-    
-    # Delete old files
-    for old_file in [python_bridge_file, python_requirements_file, python_launcher_file]:
-        if old_file.exists():
-            os.remove(old_file)
-    
-    # Copy latest files
-    shutil.copy2("JumperlessWokwiBridge.py", windows_python_folder)
-    shutil.copy2("requirements.txt", windows_python_folder)
-    shutil.copy2("jumperless_cli_launcher.bat", windows_python_folder)
-    
-    print(f"Updated Python files and Windows launcher in {windows_python_folder}")
-    
-    # Also copy the executable to the Windows folder
-    if windows_exe.exists():
-        shutil.copy2(windows_exe, pathlib.Path("JumperlessWindows/"))
-        print("Copied Jumperless.exe to Windows distribution folder")
-    
-    # Create a ZIP package for easier distribution
-    print("Creating Windows ZIP package...")
-    zip_name = "Jumperless-Windows-x64.zip"
-    if os.path.exists(zip_name):
-        os.remove(zip_name)
-    
-    os.system(f"cd JumperlessWindows && zip -r ../{zip_name} . && cd ..")
-    
     # Show file info
     if windows_exe.exists():
         exe_size = windows_exe.stat().st_size / (1024*1024)
         print(f"✅ Created Windows executable: {windows_exe}")
         print(f"📊 Jumperless.exe size: {exe_size:.1f} MB")
     
-    if os.path.exists(zip_name):
-        zip_size = pathlib.Path(zip_name).stat().st_size / (1024*1024)
-        print(f"✅ Created Windows ZIP package: {zip_name}")
-        print(f"📊 ZIP package size: {zip_size:.1f} MB")
-    
     print("\n🎉 Windows packaging complete!")
     print(f"\nWindows users can:")
-    print(f"  1. Download and extract {zip_name}")
-    print(f"  2. Run Jumperless.exe directly - no installation needed!")
-    print(f"  3. Or use the Python version in 'Jumperless Python' folder")
-    print(f"  4. Portable - works from any folder")
+    print(f"  1. Download Jumperless.exe")
+    print(f"  2. Run it directly - no installation needed!")
+    print(f"  3. Portable - works from any folder")
 
 def main():
     """Main packaging function"""
