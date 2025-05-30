@@ -1,0 +1,61 @@
+
+This file lists modules PyInstaller was not able to find. This does not
+necessarily mean this module is required for running your program. Python and
+Python 3rd-party packages include a lot of conditional or optional modules. For
+example the module 'ntpath' only exists on Windows, whereas the module
+'posixpath' only exists on Posix systems.
+
+Types if import:
+* top-level: imported at the top-level - look at these first
+* conditional: imported within an if-statement
+* delayed: imported within a function
+* optional: imported within a try-except-statement
+
+IMPORTANT: Do NOT post this list to the issue-tracker. Use it as a basis for
+            tracking down the missing module yourself. Thanks!
+
+<<<<<<< HEAD
+missing module named posix - imported by os (conditional, optional), shutil (conditional), importlib._bootstrap_external (conditional), posixpath (optional)
+missing module named resource - imported by posix (top-level)
+missing module named _frozen_importlib_external - imported by importlib._bootstrap (delayed), importlib (optional), importlib.abc (optional)
+excluded module named _frozen_importlib - imported by importlib (optional), importlib.abc (optional)
+missing module named pwd - imported by posixpath (delayed, conditional, optional), shutil (delayed, optional), tarfile (optional), pathlib (delayed, optional), subprocess (delayed, conditional, optional), netrc (delayed, conditional), getpass (delayed), psutil (optional)
+missing module named grp - imported by shutil (delayed, optional), tarfile (optional), pathlib (delayed, optional), subprocess (delayed, conditional, optional)
+missing module named readline - imported by C:\Users\arabi\OneDrive\Desktop\Github\JumperlessV5\JumperlessWokwiBridge\JumperlessWokwiBridge.py (optional)
+missing module named _posixsubprocess - imported by subprocess (conditional)
+missing module named fcntl - imported by subprocess (optional), serial.serialposix (top-level), psutil._compat (delayed, optional)
+=======
+missing module named winreg - imported by importlib._bootstrap_external (conditional), mimetypes (optional), urllib.request (delayed, conditional, optional), requests.utils (delayed, conditional, optional), platform (delayed, optional)
+missing module named nt - imported by os (delayed, conditional, optional), ntpath (optional), shutil (conditional), importlib._bootstrap_external (conditional), ctypes (delayed, conditional)
+missing module named _frozen_importlib_external - imported by importlib._bootstrap (delayed), importlib (optional), importlib.abc (optional)
+excluded module named _frozen_importlib - imported by importlib (optional), importlib.abc (optional)
+missing module named _winapi - imported by encodings (delayed, conditional, optional), ntpath (optional), shutil (conditional), subprocess (conditional), mimetypes (optional)
+missing module named msvcrt - imported by subprocess (optional), getpass (optional), colorama.winterm (optional), /Users/kevinsanto/Documents/GitHub/JumperlessV5/JumperlessWokwiBridge/JumperlessWokwiBridge.py (delayed, conditional)
+missing module named win32api - imported by /Users/kevinsanto/Documents/GitHub/JumperlessV5/JumperlessWokwiBridge/JumperlessWokwiBridge.py (conditional, optional)
+>>>>>>> 2d3dd1f99237193c16fc25bcc7b47b718e614646
+missing module named chardet - imported by requests (optional), bs4.dammit (optional)
+missing module named cchardet - imported by bs4.dammit (optional)
+missing module named lxml - imported by bs4.builder._lxml (top-level)
+missing module named 'html5lib.treebuilders' - imported by bs4.builder._html5lib (top-level)
+missing module named 'html5lib.constants' - imported by bs4.builder._html5lib (top-level)
+missing module named html5lib - imported by bs4.builder._html5lib (top-level)
+missing module named vms_lib - imported by platform (delayed, optional)
+missing module named 'java.lang' - imported by platform (delayed, optional)
+missing module named java - imported by platform (delayed)
+missing module named _winreg - imported by platform (delayed, optional)
+missing module named _wmi - imported by platform (optional)
+missing module named psutil._psutil_windows - imported by psutil (conditional)
+missing module named dummy_threading - imported by requests.cookies (optional), psutil._compat (optional)
+missing module named 'System.IO' - imported by serial.serialcli (top-level)
+missing module named System - imported by serial.serialcli (top-level)
+missing module named simplejson - imported by requests.compat (conditional, optional)
+missing module named zstandard - imported by urllib3.util.request (optional), urllib3.response (optional)
+missing module named brotli - imported by urllib3.util.request (optional), urllib3.response (optional)
+missing module named brotlicffi - imported by urllib3.util.request (optional), urllib3.response (optional)
+missing module named socks - imported by urllib3.contrib.socks (optional)
+missing module named cryptography - imported by urllib3.contrib.pyopenssl (top-level), requests (conditional, optional)
+missing module named 'OpenSSL.crypto' - imported by urllib3.contrib.pyopenssl (delayed, conditional)
+missing module named 'cryptography.x509' - imported by urllib3.contrib.pyopenssl (delayed, optional)
+missing module named OpenSSL - imported by urllib3.contrib.pyopenssl (top-level)
+missing module named pyodide - imported by urllib3.contrib.emscripten.fetch (top-level)
+missing module named js - imported by urllib3.contrib.emscripten.fetch (top-level)

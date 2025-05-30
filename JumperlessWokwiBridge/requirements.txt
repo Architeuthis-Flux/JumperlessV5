@@ -8,10 +8,6 @@ pyserial==3.5
 requests==2.32.3
 colorama>=0.4.6
 
-<<<<<<< HEAD
-# Windows-specific dependencies for better volume detection and packaging
-pywin32>=306; sys_platform == "win32"
-=======
 
 pywin32>=306; sys_platform == "win32"
->>>>>>> 9b36484b475276dfc3aa7f1f60a1a7d342a6b2ac
+
