@@ -607,8 +607,10 @@ def get_available_ports():
         safe_print(f"Error getting serial ports: {e}", Fore.RED)
         return []
 
-def parse_hardware_id(hwid):
+def parse_hardware_id(hwid, des='unknown'):
     """Parse hardware ID to extract VID and PID"""
+    # safe_print(f"hwid: {hwid}", Fore.CYAN)
+    # safe_print(f"description: {des}", Fore.CYAN)
     try:
         if "VID:PID=" in hwid:
             split_at = "VID:PID="
@@ -643,8 +645,9 @@ def choose_jumperless_port(sorted_ports):
     for try_port_idx, port_name in enumerate(sorted_ports):
         try:
             with serial.Serial(port_name, 115200, timeout=1) as temp_ser:
+                safe_print(f"Testing port {port_name}", Fore.CYAN)
                 temp_ser.write(b'?')
-                time.sleep(0.1)
+                time.sleep(0.3)
                 
                 if temp_ser.in_waiting > 0:
                     input_buffer = b''
@@ -655,11 +658,11 @@ def choose_jumperless_port(sorted_ports):
                         if temp_ser.in_waiting > 0:
                             input_buffer += temp_ser.read(temp_ser.in_waiting)
                         else:
-                            time.sleep(0.01)
+                            time.sleep(0.1)
                         
-                        if b'\n' in input_buffer or time.time() - start_time > 0.5:
+                        if b'\n' in input_buffer or time.time() - start_time > 1:
                             break
-                    
+                    # safe_print(f"response: {input_buffer.decode('utf-8', errors='ignore').strip()}", Fore.CYAN)
                     try:
                         input_str = input_buffer.decode('utf-8', errors='ignore').strip()
                         lines = input_str.split('\n')
@@ -702,11 +705,17 @@ def open_serial():
         if not ports:
             safe_print("No serial ports found. Please connect your Jumperless.", Fore.RED)
             time.sleep(2)
+            ports = get_available_ports()
+            while not ports:
+                # safe_print("No serial ports found. Please connect your Jumperless.", Fore.RED)
+                time.sleep(2)
+                ports = get_available_ports()
+
             continue
         
         # safe_print("\nAvailable ports:")
         for i, (port, desc, hwid) in enumerate(ports, 1):
-            vid, pid = parse_hardware_id(hwid)
+            vid, pid = parse_hardware_id(hwid, desc)
             
             
             if is_jumperless_device(desc, pid):
@@ -753,6 +762,7 @@ def open_serial():
                     safe_print("Invalid selection. Please try again.", Fore.RED)
                     continue
         else:
+            
             safe_print("No Jumperless devices found.", Fore.YELLOW)
             selection = input("Enter port number manually or 'r' to rescan: ").strip()
             if selection.lower() == 'r':
