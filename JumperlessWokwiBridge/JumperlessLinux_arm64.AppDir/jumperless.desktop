@@ -1,0 +1,8 @@
+[Desktop Entry]
+Type=Application
+Name=Jumperless ARM64
+Exec=AppRun
+Icon=jumperless
+Comment=Jumperless Wokwi Bridge (ARM64)
+Categories=Development;Electronics;
+Terminal=true

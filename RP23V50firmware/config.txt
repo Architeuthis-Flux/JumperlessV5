@@ -1,0 +1,72 @@
+# Jumperless Configuration File
+# This file can be edited manually. Values will be loaded on startup.
+
+[hardware_version]
+generation = 5
+hardware_revision = 4
+probe_version = 4
+
+[dac_settings]
+top_rail = 0.00
+bottom_rail = 0.00
+dac_0 = 0.00
+dac_1 = 0.00
+set_dacs_on_startup = false
+set_rails_on_startup = true
+limit_max = -8.00
+limit_min = 8.00
+
+[debug_flags]
+file_parsing = false
+net_manager = false
+net_to_chip_connections = false
+net_to_chip_connections_alt = false
+leds = false
+
+[routing_settings]
+stack_paths = 2
+stack_rails = 2
+stack_dacs = 1
+rail_priority = 2
+
+[calibration]
+top_rail_zero = 2059
+top_rail_spread = 17.29
+bottom_rail_zero = 2008
+bottom_rail_spread = 17.49
+dac_0_zero = 2059
+dac_0_spread = 17.29
+dac_1_zero = 2008
+dac_1_spread = 17.49
+probe_max = 4028
+probe_min = 26
+
+[logo_pad_settings]
+top_guy = 0
+bottom_guy = 1
+building_pad_top = 2
+building_pad_bottom = 3
+
+[display_settings]
+lines_wires = 1
+menu_brightness = 100
+led_brightness = 10
+rail_brightness = 15
+special_net_brightness = 20
+net_color_mode = 0
+
+[gpio]
+direction = 1,1,1,1,1,1,1,1
+pulls = 2,2,2,2,2,2,2,2
+uart_tx_pin = 0
+uart_rx_pin = 1
+uart_tx_pull = 2
+uart_rx_pull = 2
+uart_tx_function = 0
+uart_rx_function = 1
+
+[serial]
+serial_1_function = 0
+serial_1_baud_rate = 115200
+serial_2_function = 0
+serial_2_baud_rate = 115200 

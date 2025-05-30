@@ -1,0 +1,11 @@
+#!/bin/bash
+# AppRun script for Jumperless ARM64
+
+# Get the directory where this AppImage is located
+HERE="$(dirname "$(readlink -f "${BASH_SOURCE[0]}")")"
+
+# Make launcher script executable
+chmod +x "$HERE/jumperless_cli_launcher.sh"
+
+# Run the launcher script
+exec "$HERE/jumperless_cli_launcher.sh" "$@"

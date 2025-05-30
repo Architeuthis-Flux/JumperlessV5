@@ -1,0 +1,104 @@
+(footprint "PINHEADER_Larger_Pad"
+	(version 20240108)
+	(generator "pcbnew")
+	(generator_version "8.0")
+	(layer "F.Cu")
+	(property "Reference" "REF**"
+		(at 0 -3.532 0)
+		(unlocked yes)
+		(layer "F.SilkS")
+		(hide yes)
+		(uuid "76ce2c1d-2007-431c-8e95-beb2550d1451")
+		(effects
+			(font
+				(size 1 1)
+				(thickness 0.1)
+			)
+		)
+	)
+	(property "Value" "PINHEADER_Larger_Pad"
+		(at 0 -2.032 0)
+		(unlocked yes)
+		(layer "F.Fab")
+		(hide yes)
+		(uuid "91803b17-ee3c-474e-98c8-aa9c9f5723b7")
+		(effects
+			(font
+				(size 1 1)
+				(thickness 0.15)
+			)
+		)
+	)
+	(property "Footprint" ""
+		(at 0 0 0)
+		(unlocked yes)
+		(layer "F.Fab")
+		(hide yes)
+		(uuid "451831e6-5191-477e-99c9-2dc91b916f15")
+		(effects
+			(font
+				(size 1 1)
+				(thickness 0.15)
+			)
+		)
+	)
+	(property "Datasheet" ""
+		(at 0 0 0)
+		(unlocked yes)
+		(layer "F.Fab")
+		(hide yes)
+		(uuid "a0a64fbd-dac3-4d20-8c61-d772405c968d")
+		(effects
+			(font
+				(size 1 1)
+				(thickness 0.15)
+			)
+		)
+	)
+	(property "Description" ""
+		(at 0 0 0)
+		(unlocked yes)
+		(layer "F.Fab")
+		(hide yes)
+		(uuid "afdb418d-aa6e-4982-b609-f413f54638ed")
+		(effects
+			(font
+				(size 1 1)
+				(thickness 0.15)
+			)
+		)
+	)
+	(attr smd)
+	(pad "1" thru_hole custom
+		(at 0 0)
+		(size 1.5 1.5)
+		(drill 1.15)
+		(layers "*.Cu" "*.Mask")
+		(remove_unused_layers no)
+		(thermal_bridge_angle 90)
+		(options
+			(clearance outline)
+			(anchor circle)
+		)
+		(primitives
+			(gr_poly
+				(pts
+					(xy -0.75 -0.375) (xy -0.375 -0.75) (xy 0.375 -0.75) (xy 0.75 -0.375) (xy 0.75 0.375) (xy 0.375 0.75)
+					(xy -0.375 0.75) (xy -0.75 0.375)
+				)
+				(width 0)
+				(fill yes)
+			)
+			(gr_poly
+				(pts
+					(xy -0.375 -1.004) (xy -0.704 -0.979) (xy -0.979 -0.704) (xy -1.004 -0.375) (xy -1.004 0.375) (xy -0.979 0.704)
+					(xy -0.704 0.979) (xy -0.375 1.004) (xy 0.375 1.004) (xy 0.704 0.979) (xy 0.979 0.704) (xy 1.004 0.375)
+					(xy 1.004 -0.375) (xy 0.979 -0.704) (xy 0.704 -0.979) (xy 0.375 -1.004)
+				)
+				(width 0.02)
+				(fill yes)
+			)
+		)
+		(uuid "ae05efb7-5c8b-47e3-86f1-7a6cd6a14bd9")
+	)
+)
