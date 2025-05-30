@@ -34,3 +34,9 @@ jumperlessWokwiBridge/build/*
 *Store
 Hardware/Jumperless23V50/~Jumperless23V50.kicad_pcb.lck
 *.lck
+JumperlessWokwiBridge/build/Jumperless/Analysis-00.toc
+JumperlessWokwiBridge/build/Jumperless/EXE-00.toc
+JumperlessWokwiBridge/build/Jumperless/PKG-00.toc
+JumperlessWokwiBridge/build/Jumperless/warn-Jumperless.txt
+JumperlessWokwiBridge/JumperlessDMG/Jumperless.app/Contents/Frameworks/psutil/_psutil_posix.abi3.so
+*.so
