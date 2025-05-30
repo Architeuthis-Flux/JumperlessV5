@@ -140,7 +140,7 @@ restartProbing:
   //unsigned long timer[3] = {0, 0, 0};
   //timer[0] = micros();
 
-  routableBufferPower(1, 0);
+
 
 
 
@@ -193,7 +193,7 @@ restartProbing:
     }
 
 restartProbingNoPrint:
-
+  routableBufferPower(1, 0);
       probeHighlight = -1;
 
   //saveLocalNodeFile();
@@ -3922,6 +3922,8 @@ int highlightNets(int probeReading, int encoderNetHighlighted, int print) {
     // Serial.println(netHighlighted);
     if (print == 1) {
       Serial.print("\r                                           \r");
+      Serial.flush();
+      oled.setTextSize(1);
       }
     clearColorOverrides(1, 1, 0);
     brightenedRail = -1;
@@ -3933,6 +3935,13 @@ int highlightNets(int probeReading, int encoderNetHighlighted, int print) {
         if (lastPrintedNet != netHighlighted) {
           if (print == 1) {
             Serial.print("Net Highlighted = GND");
+            Serial.flush();
+            oled.clear();
+            oled.setTextSize(2);
+            oled.setCursor(0, 20);
+            oled.print("   GND");
+            oled.setTextSize(1);
+            oled.show();
             }
           lastPrintedNet = netHighlighted;
           }
@@ -3949,6 +3958,13 @@ int highlightNets(int probeReading, int encoderNetHighlighted, int print) {
 
             Serial.print(railVoltage[0]);
             Serial.print(" V");
+            Serial.flush();
+
+            oled.clear();
+            oled.print("    Top Rail\n        ");
+            oled.print((float)railVoltage[0]);
+            oled.print(" V");
+            oled.show();
             }
           }
         brightenedRail = 0;
@@ -3964,6 +3980,14 @@ int highlightNets(int probeReading, int encoderNetHighlighted, int print) {
 
             Serial.print(railVoltage[1]);
             Serial.print(" V");
+            Serial.flush();
+
+            oled.clear();
+            oled.print("    Bottom Rail\n        ");
+            oled.print((float)railVoltage[1]);
+            oled.print(" V");
+            oled.show();
+
             }
           }
         brightenedRail = 2;
@@ -3977,6 +4001,13 @@ int highlightNets(int probeReading, int encoderNetHighlighted, int print) {
             Serial.print("Net Highlighted = DAC 0  ");
             Serial.print(dacOutput[0]);
             Serial.print(" V");
+            Serial.flush();
+
+            oled.clear();
+            oled.print("    DAC 0\n        ");
+            oled.print((float)dacOutput[0]);
+            oled.print(" V");
+            oled.show();
             }
           lastPrintedNet = netHighlighted;
           }
@@ -3990,6 +4021,13 @@ int highlightNets(int probeReading, int encoderNetHighlighted, int print) {
             Serial.print("Net Highlighted = DAC 1  ");
             Serial.print(dacOutput[1]);
             Serial.print(" V");
+            Serial.flush();
+
+            oled.clear();
+            oled.print("    DAC 1\n        ");
+            oled.print((float)dacOutput[1]);
+            oled.print(" V");
+            oled.show();
             }
           lastPrintedNet = netHighlighted;
           }
@@ -3999,6 +4037,7 @@ int highlightNets(int probeReading, int encoderNetHighlighted, int print) {
 
       if (print == 1) {
         Serial.print("\r                                          \r");
+        Serial.flush(); 
         }
       if (netHighlighted > 0) {
         int length = 0;
@@ -4008,11 +4047,21 @@ int highlightNets(int probeReading, int encoderNetHighlighted, int print) {
           Serial.print("\t ");
           Serial.print("row ");
           length = printNodeOrName(brightenedNode);
+          Serial.flush();
+
+          oled.clear();
+          oled.print("    Net ");
+          oled.println((int)netHighlighted);
+          oled.print("\t        ");
+          oled.print("row ");
+          oled.print(brightenedNode );
+          oled.show();
 
 
           for (int i = 0; i < 8 - length; i++) {
             Serial.print(" ");
             }
+          Serial.flush();
           }
         //Serial.print("  \t ");
         int specialPrint = 0;
@@ -4028,8 +4077,17 @@ int highlightNets(int probeReading, int encoderNetHighlighted, int print) {
               Serial.print("   ");
 
 
-              Serial.print(readAdcVoltage(adc, 32));
+              Serial.print((float)readAdcVoltage(adc, 32));
               Serial.print(" V");
+              Serial.flush();
+
+              oled.clear();
+              oled.print("    ADC ");
+              oled.println((int)adc);
+              oled.print("        ");
+              oled.print((float)readAdcVoltage(adc, 32) );
+              oled.print(" V");
+              oled.show();
               }
             specialPrint = 1;
             }
@@ -4043,22 +4101,34 @@ int highlightNets(int probeReading, int encoderNetHighlighted, int print) {
               Serial.print(" GPIO ");
               Serial.print(gpioInputNumber + 1);
               Serial.print(" input ");
+              Serial.flush();
+
+              oled.clear();
+              oled.print("    GPIO ");
+              oled.print((int)gpioInputNumber + 1);
+              oled.print(" input \n        ");
+
+
               int gpioInputState = gpioReadWithFloating(gpioDef[gpioInputNumber][0]);
               switch (gpioInputState) {
                 case 0:
                   Serial.print("low");
+                  oled.print("low");
                   break;
                 case 1:
                   Serial.print("high");
+                  oled.print("high");
                   break;
                 case 2:
                   Serial.print("floating");
+                  oled.print("floating");
                   break;
                 default:
                   Serial.print("?");
+                  oled.print("?");
                   break;
                 }
-
+              oled.show();
               // Serial.println();
               }
             specialPrint = 1;
@@ -4072,12 +4142,23 @@ int highlightNets(int probeReading, int encoderNetHighlighted, int print) {
               Serial.print(" GPIO ");
               Serial.print(gpioOutputNumber + 1);
               Serial.print(" output ");
+              Serial.flush();
+
+              oled.clear();
+              oled.print("    GPIO ");
+              oled.print((int)gpioOutputNumber + 1);
+              oled.print(" output \n        ");
+              
+
               int gpioOutputState = gpio_get_out_level(gpioDef[gpioOutputNumber][0]);
               if (gpioOutputState == 0) {
                 Serial.print("low");
+                oled.print("low");
                 } else {
                 Serial.print("high");
+                oled.print("high");
                 }
+              oled.show();
               // Serial.println();
               }
             specialPrint = 1;

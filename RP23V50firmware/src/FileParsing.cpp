@@ -1947,6 +1947,8 @@ void replaceSFNamesWithDefinedInts(void) {
   specialFunctionsString.replace("DAC1_8V", "107");
   specialFunctionsString.replace("DAC0", "106");
   specialFunctionsString.replace("DAC1", "107");
+  specialFunctionsString.replace("DAC_0", "106");
+  specialFunctionsString.replace("DAC_1", "107");
 
   specialFunctionsString.replace("INA_N", "109");
   specialFunctionsString.replace("INA_P", "108");
@@ -1956,6 +1958,16 @@ void replaceSFNamesWithDefinedInts(void) {
   specialFunctionsString.replace("CURRENT_SENSE_PLUS", "108");
   specialFunctionsString.replace("ISENSE_MINUS", "109");
   specialFunctionsString.replace("ISENSE_PLUS", "108");
+
+  specialFunctionsString.replace("BUFFER_IN", "139");
+  specialFunctionsString.replace("BUFFER_OUT", "140");
+  specialFunctionsString.replace("BUF_IN", "139");
+  specialFunctionsString.replace("BUF_OUT", "140");
+  specialFunctionsString.replace("BUFF_IN", "139");
+  specialFunctionsString.replace("BUFF_OUT", "140");
+  specialFunctionsString.replace("BUFFIN", "139");
+  specialFunctionsString.replace("BUFFOUT", "140");
+
 
   specialFunctionsString.replace("EMPTY_NET", "127");
 
@@ -1971,6 +1983,14 @@ void replaceSFNamesWithDefinedInts(void) {
   specialFunctionsString.replace("ADC3", "113");
   specialFunctionsString.replace("ADC4", "114");
   specialFunctionsString.replace("ADC7", "115");
+
+  specialFunctionsString.replace("ADC_0", "110");
+  specialFunctionsString.replace("ADC_1", "111");
+  specialFunctionsString.replace("ADC_2", "112");
+  specialFunctionsString.replace("ADC_3", "113");
+  specialFunctionsString.replace("ADC_4", "114");
+  specialFunctionsString.replace("ADC_7", "115");
+
 
   specialFunctionsString.replace("GPIO_1", "131");
   specialFunctionsString.replace("GPIO_2", "132");
@@ -1992,6 +2012,24 @@ void replaceSFNamesWithDefinedInts(void) {
   specialFunctionsString.replace("GPIO7", "137");
   specialFunctionsString.replace("GPIO8", "138");
 
+  specialFunctionsString.replace("GP_1", "131");
+  specialFunctionsString.replace("GP_2", "132");
+  specialFunctionsString.replace("GP_3", "133");
+  specialFunctionsString.replace("GP_4", "134");
+  specialFunctionsString.replace("GP_5", "135");
+  specialFunctionsString.replace("GP_6", "136");
+  specialFunctionsString.replace("GP_7", "137");
+  specialFunctionsString.replace("GP_8", "138");
+
+  specialFunctionsString.replace("GP1", "131");
+  specialFunctionsString.replace("GP2", "132");
+  specialFunctionsString.replace("GP3", "133");
+  specialFunctionsString.replace("GP4", "134");
+  specialFunctionsString.replace("GP5", "135");
+  specialFunctionsString.replace("GP6", "136");
+  specialFunctionsString.replace("GP7", "137");
+  specialFunctionsString.replace("GP8", "138");
+
   specialFunctionsString.replace("+5V", "105");
   specialFunctionsString.replace("5V", "105");
   specialFunctionsString.replace("3.3V", "103");
@@ -2002,6 +2040,12 @@ void replaceSFNamesWithDefinedInts(void) {
 
   specialFunctionsString.replace("UART_TX", "116");
   specialFunctionsString.replace("UART_RX", "117");
+
+  specialFunctionsString.replace("TX", "116");
+  specialFunctionsString.replace("RX", "117");
+
+
+
   }
 
 void replaceNanoNamesWithDefinedInts(

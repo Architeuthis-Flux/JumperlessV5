@@ -65,6 +65,8 @@ KevinC@ppucc.io
 #include "UserCode.h"
 #include "SerialWrapper.h"
 
+#define Serial SerialWrap
+
 //#define Serial SerialWrap
 
 bread b;
@@ -155,17 +157,22 @@ void setup() {
   // uint8_t serialTarget = SERIAL_PORT_MAIN;
   // //SerialWrap.enableSerial1(true);
   // Serial.enableSerial1(true);
+  // Serial.enableSerial2(true);
+  // Serial.enableUSBSer1(true);
+  // Serial.enableUSBSer2(true);
   // Serial.enableUSBSer1(true);
 
-  // if (jumperlessConfig.serial_1.function == 2) {
+  //if (jumperlessConfig.serial_1.function == 2) {
 
-  //   serialTarget = SERIAL_PORT_SERIAL1 | SERIAL_PORT_MAIN;
-  //   } 
+    //SerialWrap.setSerialTarget(SERIAL_PORT_SERIAL1 | SERIAL_PORT_MAIN);
+   // SerialWrap.setSerialReadTarget(SERIAL_PORT_SERIAL1 | SERIAL_PORT_MAIN);
+    // SerialWrap.setSerialWriteTarget(SERIAL_PORT_USBSER1 | SERIAL_PORT_MAIN);
+   // } 
 
-  //    if (jumperlessConfig.serial_2.function == 2) {
-  //     //SerialWrap.enableSerial2(true);
-  //       serialTarget = SERIAL_PORT_SERIAL2 | SERIAL_PORT_MAIN;
-  //     }
+    //  if (jumperlessConfig.serial_2.function == 2) {
+    //   //SerialWrap.enableSerial2(true);
+    //     serialTarget = SERIAL_PORT_SERIAL2 | SERIAL_PORT_MAIN;
+    //   }
 
   // Serial.setSerialTarget(serialTarget);
 
@@ -288,7 +295,7 @@ int serSource = 0;
 int readInNodesArduino = 0;
 
 
-const char firmwareVersion[] = "5.1.2.8"; // remember to update this
+const char firmwareVersion[] = "5.1.2.10"; // remember to update this
 
 int firstLoop = 1;
 
@@ -359,7 +366,7 @@ void loop() {
 
 menu:
 
-  if (SerialWrap.available() > 0) { //this is so if you dump a lot of data into the serial buffer, it will consume it and not keep looping
+  if (SerialWrap.available() > 20) { //this is so if you dump a lot of data into the serial buffer, it will consume it and not keep looping
     while (SerialWrap.available() > 0) {
       char c = SerialWrap.read();
       //Serial.print(c);
@@ -766,7 +773,10 @@ menu:
     //   serialCommandBuffer[serialCommandBufferIndex] = '\0';
     // } else {
     //  if (SerialWrap.available() > 0) {
-    input = SerialWrap.read();
+
+    // Serial.print("Serial target = ");
+    // Serial.println(Serial.getSerialTarget());
+      input = SerialWrap.read();
     // Serial.print("input = ");
     // Serial.println(input);
     // for (int i = 0; i < 10; i++) {
@@ -952,11 +962,12 @@ menu:
       // Serial.print("f = ");
       // Serial.println(f1);
       if (probePowerDAC == 1) {
-        setDac0voltage(f1);
+        setDac0voltage(f1, 1);
         } else if (probePowerDAC == 0) {
-          setDac1voltage(f1);
+          setDac1voltage(f1, 1);
           }
-          Serial.printf("DAC %d = %0.2f\n", !probePowerDAC, f1);
+          configChanged = true;
+          Serial.printf("DAC %d = %0.2f V\n", !probePowerDAC, f1);
           Serial.flush();
         // playDoom();
         // doomOn = 0;
@@ -971,6 +982,7 @@ menu:
       }
       case '@': {
       // printWireStatus();
+      
       i2cScan(8, 7, 22, 23, 1);
       oledTest(8, 7, 22, 23, 1);
 

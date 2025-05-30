@@ -10,7 +10,7 @@
 #include "Peripherals.h"
 #include "SerialWrapper.h"
 
-// #define Serial SerialWrap
+ #define Serial SerialWrap
 // Define the global configuration instance
 
 bool configChanged = false;
@@ -731,17 +731,35 @@ void printConfigSectionToSerial(int section, bool showNames, bool pasteable) {
         if (pasteable == true) Serial.print("`[top_oled] ");
         Serial.print("height = "); Serial.print(jumperlessConfig.top_oled.height); Serial.println(";");
         if (pasteable == true) Serial.print("`[top_oled] ");
-        Serial.print("sda_pin = "); Serial.print(definesToChar(jumperlessConfig.top_oled.sda_pin, 0)); Serial.println(";");
+        Serial.print("sda_pin = ");
+        if (showNames) Serial.print(definesToChar(jumperlessConfig.top_oled.sda_pin, 0));
+        else Serial.print(jumperlessConfig.top_oled.sda_pin);
+        Serial.println(";");
         if (pasteable == true) Serial.print("`[top_oled] ");
-        Serial.print("scl_pin = "); Serial.print(definesToChar(jumperlessConfig.top_oled.scl_pin, 0)); Serial.println(";");
+        Serial.print("scl_pin = ");
+        if (showNames) Serial.print(definesToChar(jumperlessConfig.top_oled.scl_pin, 0));
+        else Serial.print(jumperlessConfig.top_oled.scl_pin);
+        Serial.println(";");
         if (pasteable == true) Serial.print("`[top_oled] ");
-        Serial.print("gpio_sda = "); Serial.print(definesToChar(jumperlessConfig.top_oled.gpio_sda, 0)); Serial.println(";");
+        Serial.print("gpio_sda = ");
+        if (showNames) Serial.print(definesToChar(jumperlessConfig.top_oled.gpio_sda, 0));
+        else Serial.print(jumperlessConfig.top_oled.gpio_sda);
+        Serial.println(";");
         if (pasteable == true) Serial.print("`[top_oled] ");
-        Serial.print("gpio_scl = "); Serial.print(definesToChar(jumperlessConfig.top_oled.gpio_scl, 0)); Serial.println(";");
+        Serial.print("gpio_scl = ");
+        if (showNames) Serial.print(definesToChar(jumperlessConfig.top_oled.gpio_scl, 0));
+        else Serial.print(jumperlessConfig.top_oled.gpio_scl);
+        Serial.println(";");
         if (pasteable == true) Serial.print("`[top_oled] ");
-        Serial.print("sda_row = "); Serial.print(definesToChar(jumperlessConfig.top_oled.sda_row, 0)); Serial.println(";");
+        Serial.print("sda_row = ");
+        if (showNames) Serial.print(definesToChar(jumperlessConfig.top_oled.sda_row, 0));
+        else Serial.print(jumperlessConfig.top_oled.sda_row);
+        Serial.println(";");
         if (pasteable == true) Serial.print("`[top_oled] ");
-        Serial.print("scl_row = "); Serial.print(definesToChar(jumperlessConfig.top_oled.scl_row, 0)); Serial.println(";");
+        Serial.print("scl_row = ");
+        if (showNames) Serial.print(definesToChar(jumperlessConfig.top_oled.scl_row, 0));
+        else Serial.print(jumperlessConfig.top_oled.scl_row);
+        Serial.println(";");
         if (pasteable == true) Serial.print("`[top_oled] ");
         Serial.print("connect_on_boot = "); Serial.print(getStringFromTable(jumperlessConfig.top_oled.connect_on_boot, boolTable)); Serial.println(";");
         if (pasteable == true) Serial.print("`[top_oled] ");
@@ -929,8 +947,8 @@ void printConfigToSerial(bool showNamesArg) {
 
     // Wait for input with timeout
     while (true) {
-        if (SerialWrap.available() > 0) {
-            char c = SerialWrap.read();
+        if (Serial.available() > 0) {
+            char c = Serial.read();
             if (lineIndex < sizeof(line) - 1) {
                 line[lineIndex++] = c;
                 line[lineIndex] = '\0';
@@ -999,7 +1017,7 @@ bool dacChange = false;
     unsigned long lastCharTime = millis();
     const unsigned long timeout = 10;
 
-    while (SerialWrap.available() == 0) {
+    while (Serial.available() == 0) {
         // delayMicroseconds(10);
         if (millis() - lastCharTime > 400) {
             printConfigHelp();
@@ -1008,8 +1026,8 @@ bool dacChange = false;
     }
     int timedOut = 0;
     while (true) {
-        if (SerialWrap.available() > 0) {
-            char c = SerialWrap.read();
+        if (Serial.available() > 0) {
+            char c = Serial.read();
             if (c == '\n' || c == '\r') {
                // parseSetting(line);
                 // Serial.println("New line");
@@ -1185,8 +1203,8 @@ bool dacChange = false;
         }
     }
 
-    while (SerialWrap.available() > 0) {
-        SerialWrap.read();
+    while (Serial.available() > 0) {
+        Serial.read();
         delayMicroseconds(100);
     }
    // configChanged = true;

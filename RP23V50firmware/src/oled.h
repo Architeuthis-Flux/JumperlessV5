@@ -29,6 +29,12 @@ class oled {
   void print(const char c, int position);
   void println(const char* s);
   void println(const char c);
+  void print(float f);
+  void print(float f, int precision);
+  void println(float f, int precision);
+  void println(float f);
+  void println(int i);
+  
 
   void displayBitmap(int x, int y, const unsigned char* bitmap, int width, int height);
   void showJogo32h();

@@ -3571,6 +3571,7 @@ int warnNet(int node) {
   return -1;
   }
 unsigned long lastWarningTimer = 0;
+unsigned long lastHighlightTimer = 0;
 void warnNetTimeout(int clearAll) {
   // Serial.print("warningTimer = ");
   // Serial.println(warningTimer);
@@ -3579,6 +3580,10 @@ void warnNetTimeout(int clearAll) {
   // Serial.flush();
   if (lastWarningTimer == 0) {
     lastWarningTimer = millis();
+    }
+
+  if (lastHighlightTimer == 0) {
+    lastHighlightTimer = millis();
     }
 
   if (warningTimer > 0 && millis() - warningTimer > warningTimeout) {

@@ -206,22 +206,35 @@ int secondSerialHandler(void) {
     LastArduinoDTR = actArduinoDTR;
 
     if (millis() > 1500) {
-
+      
       arduinoConnected = checkIfArduinoIsConnected();
+      int arduinoWasConnected = arduinoConnected;
+
       // Serial.print("Arduino connected: ");
       // Serial.println(arduinoConnected);
       if (arduinoConnected == 0) {
         // flashArduinoNextLoop = 1;
         //connectArduino();
+        if (jumperlessConfig.serial_1.autoconnect_flashing == 1) {
+          connectArduino(1, 1);
+          while (arduinoConnected == 0) {
+            delay(1);
+            arduinoConnected = checkIfArduinoIsConnected();
+          }
+        
+        } else {
         Serial.println("Arduino not connected (enter A to connect UART)");
         Serial.println("trying to flash anyway\n\r");
         Serial.flush();
+        }
         }
 
 
       flashArduino(1200);
 
-
+      if (jumperlessConfig.serial_1.autoconnect_flashing == 1 && arduinoWasConnected == 0) {
+        disconnectArduino(1);
+        }
       }
     }
 

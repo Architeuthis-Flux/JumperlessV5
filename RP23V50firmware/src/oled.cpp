@@ -331,6 +331,24 @@ void oled::print(const char c, int position) {
    // display.display();
 }
 
+void oled::print(float f) {
+    if (oledConnected == false) {
+        return;
+    }
+    display.print(f);
+    charPos += String(f).length();
+   // display.display();
+}   
+
+void oled::print(float f, int precision) {
+    if (oledConnected == false) {
+        return;
+    }
+    display.print(f, precision);
+    charPos += String(f).length();
+   // display.display();
+}
+
 void oled::println(const char* s) {
     if (oledConnected == false) {
         return;
@@ -347,7 +365,29 @@ void oled::println(const char c) {
     print("\n");
 }
 
+void oled::println(float f, int precision) {
+    if (oledConnected == false) {
+        return;
+    }
+    print(f, precision);
+    print("\n");
+}
 
+void oled::println(float f) {
+    if (oledConnected == false) {
+        return;
+    }
+    print(f);
+    print("\n");
+}
+
+void oled::println(int i) {
+    if (oledConnected == false) {
+        return;
+    }
+    print(i);
+    print("\n");
+}
 
 void oled::displayBitmap(int x, int y, const unsigned char* bitmap, int width, int height) {
     if (oledConnected == false) {
@@ -463,8 +503,8 @@ int oled::connect(void) {
         return 0;
     }
     int found = -1;
-    gpioNet[jumperlessConfig.top_oled.gpio_sda - 20] = -2;
-    gpioNet[jumperlessConfig.top_oled.gpio_scl - 20] = -2;
+    gpioNet[jumperlessConfig.top_oled.sda_pin - 20] = -2;
+    gpioNet[jumperlessConfig.top_oled.scl_pin - 20] = -2;
     removeBridgeFromNodeFile(jumperlessConfig.top_oled.gpio_sda, -1, netSlot, 0);
     removeBridgeFromNodeFile(jumperlessConfig.top_oled.gpio_scl, -1, netSlot, 0);
     addBridgeToNodeFile(jumperlessConfig.top_oled.gpio_sda, jumperlessConfig.top_oled.sda_row, netSlot, 0, 0);
@@ -478,8 +518,8 @@ int oled::connect(void) {
     // waitCore2();
     // gpioNet[jumperlessConfig.top_oled.gpio_sda - 20] = -2;
     // gpioNet[jumperlessConfig.top_oled.gpio_scl - 20] = -2;
-    gpioState[jumperlessConfig.top_oled.gpio_sda - 20] = 6;
-    gpioState[jumperlessConfig.top_oled.gpio_scl - 20] = 6;
+    gpioState[jumperlessConfig.top_oled.sda_pin - 20] = 6;
+    gpioState[jumperlessConfig.top_oled.scl_pin - 20] = 6;
     // delay(10);
     // Serial.print("oled Address: ");
     // Serial.println(address, HEX);
@@ -508,10 +548,10 @@ void oled::disconnect(void) {
     }
     removeBridgeFromNodeFile(jumperlessConfig.top_oled.gpio_sda, jumperlessConfig.top_oled.sda_row, netSlot, 0);
     removeBridgeFromNodeFile(jumperlessConfig.top_oled.gpio_scl, jumperlessConfig.top_oled.scl_row, netSlot, 0);
-    gpioNet[jumperlessConfig.top_oled.gpio_sda - 20] = -1;
-    gpioNet[jumperlessConfig.top_oled.gpio_scl - 20] = -1;
-    gpioState[jumperlessConfig.top_oled.gpio_sda - 20] = 4;
-    gpioState[jumperlessConfig.top_oled.gpio_scl - 20] = 4;
+    gpioNet[jumperlessConfig.top_oled.sda_pin - 20] = -1;
+    gpioNet[jumperlessConfig.top_oled.scl_pin - 20] = -1;
+    gpioState[jumperlessConfig.top_oled.sda_pin - 20] = 4;
+    gpioState[jumperlessConfig.top_oled.scl_pin - 20] = 4;
     oledConnected = false;
     refreshConnections(-1, 0, 0);
 }

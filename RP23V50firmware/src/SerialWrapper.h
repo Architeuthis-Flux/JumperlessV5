@@ -19,15 +19,27 @@ extern Adafruit_USBD_CDC USBSer2;
 #define SERIAL_PORT_USBSER2 0x08  // Bit 3: USBSer2
 #define SERIAL_PORT_SERIAL2 0x10  // Bit 4: Serial2
 
-// Global volatile bitmask to control Serial redirection
+// Global volatile bitmasks to control Serial redirection
 // When 0, uses default Serial behavior
 // When non-zero, redirects Serial calls to specified ports
-extern volatile uint8_t serialTarget;
+extern volatile uint8_t serialReadTarget;
+extern volatile uint8_t serialWriteTarget;
 
 // Convenience macros for Serial redirection
-#define SERIAL_REDIRECT_TO(mask) serialTarget = (mask)
-#define SERIAL_REDIRECT_OFF() serialTarget = 0
-#define SERIAL_REDIRECT_ALL() serialTarget = (SERIAL_PORT_MAIN | SERIAL_PORT_USBSER1 | SERIAL_PORT_SERIAL1 | SERIAL_PORT_USBSER2 | SERIAL_PORT_SERIAL2)
+#define SERIAL_READ_TARGET(mask) serialReadTarget = (mask)
+#define SERIAL_WRITE_TARGET(mask) serialWriteTarget = (mask)
+#define SERIAL_REDIRECT_TO(mask) do { serialReadTarget = (mask); serialWriteTarget = (mask); } while(0)
+#define SERIAL_REDIRECT_OFF() do { serialReadTarget = 0; serialWriteTarget = 0; } while(0)
+#define SERIAL_REDIRECT_ALL() do { \
+    serialReadTarget = (SERIAL_PORT_MAIN | SERIAL_PORT_USBSER1 | SERIAL_PORT_SERIAL1 | SERIAL_PORT_USBSER2 | SERIAL_PORT_SERIAL2); \
+    serialWriteTarget = (SERIAL_PORT_MAIN | SERIAL_PORT_USBSER1 | SERIAL_PORT_SERIAL1 | SERIAL_PORT_USBSER2 | SERIAL_PORT_SERIAL2); \
+} while(0)
+
+// Additional convenience macros
+#define SERIAL_READ_FROM_ALL() serialReadTarget = (SERIAL_PORT_MAIN | SERIAL_PORT_USBSER1 | SERIAL_PORT_SERIAL1 | SERIAL_PORT_USBSER2 | SERIAL_PORT_SERIAL2)
+#define SERIAL_WRITE_TO_ALL() serialWriteTarget = (SERIAL_PORT_MAIN | SERIAL_PORT_USBSER1 | SERIAL_PORT_SERIAL1 | SERIAL_PORT_USBSER2 | SERIAL_PORT_SERIAL2)
+#define SERIAL_READ_OFF() serialReadTarget = 0
+#define SERIAL_WRITE_OFF() serialWriteTarget = 0
 
 class SerialWrapper : public Stream {
 private:
@@ -205,13 +217,9 @@ private:
         return 0;
     }
     
-    // Helper to collect available data from all sources
+    // Helper to collect available data from all sources EXCEPT main Serial
     void collectAvailableData() {
-        // Read from main Serial
-        while (Serial.available() && ((readBufferHead + 1) % READ_BUFFER_SIZE) != readBufferTail) {
-            readBuffer[readBufferHead] = Serial.read();
-            readBufferHead = (readBufferHead + 1) % READ_BUFFER_SIZE;
-        }
+        // Do NOT read from main Serial - let it maintain its own buffer
         
         // Read from USBSer1 if enabled
         if (usbSer1Enabled) {
@@ -395,20 +403,17 @@ public:
     // Stream interface implementation
     virtual int available(void) override {
         // Use serialTarget if set, otherwise default to main Serial
-        uint8_t targetMask = serialTarget ? serialTarget : SERIAL_PORT_MAIN;
+        uint8_t targetMask = serialReadTarget ? serialReadTarget : SERIAL_PORT_MAIN;
         return available(targetMask);
     }
     
     // Available with specific bitmask
     int available(uint8_t portMask) {
         if (portMask == SERIAL_PORT_MAIN) {
-            // For main USB only, use the unified buffer
-            collectAvailableData();
-            return (readBufferHead >= readBufferTail) ? 
-                   (readBufferHead - readBufferTail) : 
-                   (READ_BUFFER_SIZE - readBufferTail + readBufferHead);
+            // For main USB only, delegate directly to Serial to preserve its buffer
+            return Serial.available();
         } else {
-            // For other port combinations, return direct count
+            // For other port combinations, return direct count from each port
             int totalAvailable = 0;
             
             if (portMask & SERIAL_PORT_MAIN) {
@@ -435,24 +440,32 @@ public:
                 totalAvailable += Serial2.available();
             }
             
+            // Also add data from our internal buffer (from non-main ports)
+            collectAvailableData();
+            int bufferAvailable = (readBufferHead >= readBufferTail) ? 
+                   (readBufferHead - readBufferTail) : 
+                   (READ_BUFFER_SIZE - readBufferTail + readBufferHead);
+            totalAvailable += bufferAvailable;
+            
             return totalAvailable;
         }
     }
     
     virtual int read(void) override {
-        // If serialTarget is 0 or only main Serial, use unified buffer
-        uint8_t targetMask = serialTarget ? serialTarget : SERIAL_PORT_MAIN;
+        // If serialTarget is 0 or only main Serial, delegate directly to Serial
+        uint8_t targetMask = serialReadTarget ? serialReadTarget : SERIAL_PORT_MAIN;
         if (targetMask == SERIAL_PORT_MAIN) {
+            return Serial.read();
+        } else {
+            // For multiple ports, first check our internal buffer (from non-main ports)
             collectAvailableData();
-            if (readBufferHead == readBufferTail) {
-                return -1; // No data available
+            if (readBufferHead != readBufferTail) {
+                uint8_t data = readBuffer[readBufferTail];
+                readBufferTail = (readBufferTail + 1) % READ_BUFFER_SIZE;
+                return data;
             }
             
-            uint8_t data = readBuffer[readBufferTail];
-            readBufferTail = (readBufferTail + 1) % READ_BUFFER_SIZE;
-            return data;
-        } else {
-            // For multiple ports, read from first available port in priority order
+            // Then read from ports in priority order
             if ((targetMask & SERIAL_PORT_MAIN) && Serial.available()) {
                 return Serial.read();
             }
@@ -473,16 +486,18 @@ public:
     }
     
     virtual int peek(void) override {
-        // If serialTarget is 0 or only main Serial, use unified buffer
-        uint8_t targetMask = serialTarget ? serialTarget : SERIAL_PORT_MAIN;
+        // If serialTarget is 0 or only main Serial, delegate directly to Serial
+        uint8_t targetMask = serialReadTarget ? serialReadTarget : SERIAL_PORT_MAIN;
         if (targetMask == SERIAL_PORT_MAIN) {
-            collectAvailableData();
-            if (readBufferHead == readBufferTail) {
-                return -1; // No data available
-            }
-            return readBuffer[readBufferTail];
+            return Serial.peek();
         } else {
-            // For multiple ports, peek from first available port in priority order
+            // For multiple ports, first check our internal buffer (from non-main ports)
+            collectAvailableData();
+            if (readBufferHead != readBufferTail) {
+                return readBuffer[readBufferTail];
+            }
+            
+            // Then peek from ports in priority order
             if ((targetMask & SERIAL_PORT_MAIN) && Serial.available()) {
                 return Serial.peek();
             }
@@ -504,13 +519,13 @@ public:
     
     virtual size_t write(uint8_t c) override {
         // Use serialTarget if set, otherwise default to main Serial
-        uint8_t targetMask = serialTarget ? serialTarget : SERIAL_PORT_MAIN;
+        uint8_t targetMask = serialWriteTarget ? serialWriteTarget : SERIAL_PORT_MAIN;
         return write(c, targetMask);
     }
     
     virtual size_t write(const uint8_t* buffer, size_t size) override {
         // Use serialTarget if set, otherwise default to main Serial
-        uint8_t targetMask = serialTarget ? serialTarget : SERIAL_PORT_MAIN;
+        uint8_t targetMask = serialWriteTarget ? serialWriteTarget : SERIAL_PORT_MAIN;
         return write(buffer, size, targetMask);
     }
     
@@ -576,8 +591,8 @@ public:
     }
     
         virtual void flush() override {
-        // Use serialTarget if set, otherwise default to main Serial
-        uint8_t targetMask = serialTarget ? serialTarget : SERIAL_PORT_MAIN;
+        // Use serialWriteTarget if set, otherwise default to main Serial
+        uint8_t targetMask = serialWriteTarget ? serialWriteTarget : SERIAL_PORT_MAIN;
         flush(targetMask);
     }
     
@@ -1002,23 +1017,66 @@ public:
     
     // Methods to control Serial redirection
     static void setSerialTarget(uint8_t targetMask) {
-        serialTarget = targetMask;
+        serialReadTarget = targetMask;
+        serialWriteTarget = targetMask;
+    }
+    
+    static void setSerialReadTarget(uint8_t targetMask) {
+        serialReadTarget = targetMask;
+    }
+    
+    static void setSerialWriteTarget(uint8_t targetMask) {
+        serialWriteTarget = targetMask;
     }
     
     static uint8_t getSerialTarget() {
-        return serialTarget;
+        return serialReadTarget;
+    }
+    
+    static uint8_t getSerialReadTarget() {
+        return serialReadTarget;
+    }
+    
+    static uint8_t getSerialWriteTarget() {
+        return serialWriteTarget;
     }
     
     static void enableSerialRedirection(uint8_t targetMask) {
-        serialTarget = targetMask;
+        serialReadTarget = targetMask;
+        serialWriteTarget = targetMask;
+    }
+    
+    static void enableSerialReadRedirection(uint8_t targetMask) {
+        serialReadTarget = targetMask;
+    }
+    
+    static void enableSerialWriteRedirection(uint8_t targetMask) {
+        serialWriteTarget = targetMask;
     }
     
     static void disableSerialRedirection() {
-        serialTarget = 0;
+        serialReadTarget = 0;
+        serialWriteTarget = 0;
+    }
+    
+    static void disableSerialReadRedirection() {
+        serialReadTarget = 0;
+    }
+    
+    static void disableSerialWriteRedirection() {
+        serialWriteTarget = 0;
     }
     
     static bool isSerialRedirectionEnabled() {
-        return serialTarget != 0;
+        return serialReadTarget != 0 || serialWriteTarget != 0;
+    }
+    
+    static bool isSerialReadRedirectionEnabled() {
+        return serialReadTarget != 0;
+    }
+    
+    static bool isSerialWriteRedirectionEnabled() {
+        return serialWriteTarget != 0;
     }
 };
 

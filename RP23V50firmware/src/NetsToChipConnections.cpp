@@ -12,6 +12,10 @@
 #include "Peripherals.h"
 #include "Probing.h"
 #include "Graphics.h"
+#include "SerialWrapper.h"
+
+#define Serial SerialWrap
+
 // don't try to understand this, it's still a mess
 bool debugNTCC5 = false;
 int startEndChip[2] = { -1, -1 };

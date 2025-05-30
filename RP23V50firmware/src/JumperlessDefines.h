@@ -390,10 +390,7 @@ extern int probeRev;
 
 
 
-#define MCP_GPIO_0 122
-#define MCP_GPIO_1 123
-#define MCP_GPIO_2 124
-#define MCP_GPIO_3 125
+
 
 
 

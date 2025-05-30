@@ -378,10 +378,10 @@ int initI2C(int sdaPin, int sclPin, int speed) {
         Wire1.setClock(speed);
         Wire1.begin();
 
-        Serial.println("sdaPin: ");
-        Serial.println(gpio_get_function(sdaPin));
-        Serial.println("sclPin: ");
-        Serial.println(gpio_get_function(sclPin));
+        // Serial.println("sdaPin: ");
+        // Serial.println(gpio_get_function(sdaPin));
+        // Serial.println("sclPin: ");
+        // Serial.println(gpio_get_function(sclPin));
         if (i2c1Pins[0] == sdaPin && i2c1Pins[1] == sclPin && i2c1Pins[2] == speed) {
           return gpioI2Cmap[sdaFound][2] + 10; //returns 11 if the pins are already set
           }
