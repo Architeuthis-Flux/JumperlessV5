@@ -9,7 +9,7 @@
 #include "NetManager.h"
 #include "Peripherals.h"
 #include "SerialWrapper.h"
-
+#include "oled.h"
  #define Serial SerialWrap
 // Define the global configuration instance
 
@@ -112,6 +112,10 @@ int parseNetColorMode(const char* str) {
 
 int parseArbitraryFunction(const char* str) {
     return parseFromTable(arbitraryFunctionTable, arbitraryFunctionTableSize, str);
+}
+
+int parseFont(const char* str) {
+    return parseFromTable(fontTable, fontTableSize, str);
 }
 
 
@@ -333,6 +337,7 @@ void updateConfigFromFile(const char* filename) {
             else if (strcmp(key, "gpio_scl") == 0) jumperlessConfig.top_oled.gpio_scl = parseInt(value);
             else if (strcmp(key, "connect_on_boot") == 0) jumperlessConfig.top_oled.connect_on_boot = parseBool(value);
             else if (strcmp(key, "lock_connection") == 0) jumperlessConfig.top_oled.lock_connection = parseBool(value);
+            else if (strcmp(key, "font") == 0) jumperlessConfig.top_oled.font = parseFont(value);
         }
     }
     file.close();
@@ -473,6 +478,8 @@ void saveConfigToFile(const char* filename) {
     file.print("scl_row = "); file.print(jumperlessConfig.top_oled.scl_row); file.println(";");
     file.print("connect_on_boot = "); file.print(jumperlessConfig.top_oled.connect_on_boot ? 1:0); file.println(";");
     file.print("lock_connection = "); file.print(jumperlessConfig.top_oled.lock_connection ? 1:0); file.println(";");
+    file.print("show_in_terminal = "); file.print(jumperlessConfig.top_oled.show_in_terminal ? 1:0); file.println(";");
+    file.print("font = "); file.print(jumperlessConfig.top_oled.font); file.println(";");
     file.close();
     //core1busy = false;
 }
@@ -764,6 +771,10 @@ void printConfigSectionToSerial(int section, bool showNames, bool pasteable) {
         Serial.print("connect_on_boot = "); Serial.print(getStringFromTable(jumperlessConfig.top_oled.connect_on_boot, boolTable)); Serial.println(";");
         if (pasteable == true) Serial.print("`[top_oled] ");
         Serial.print("lock_connection = "); Serial.print(getStringFromTable(jumperlessConfig.top_oled.lock_connection, boolTable)); Serial.println(";");
+        if (pasteable == true) Serial.print("`[top_oled] ");
+        Serial.print("show_in_terminal = "); Serial.print(getStringFromTable(jumperlessConfig.top_oled.show_in_terminal, boolTable)); Serial.println(";");
+        if (pasteable == true) Serial.print("`[top_oled] ");
+        Serial.print("font = "); Serial.print(getStringFromTable(jumperlessConfig.top_oled.font, fontTable)); Serial.println(";");
     }
 
     if (section == -1) {
@@ -897,6 +908,9 @@ void printSettingChange(const char* section, const char* key, const char* oldVal
     } else if (strcmp(section, "logo_pads") == 0) {
         oldName = getStringFromTable(atoi(oldValue), arbitraryFunctionTable);
         newName = getStringFromTable(atoi(newValue), arbitraryFunctionTable);
+    } else if (strcmp(section, "top_oled") == 0 && strcmp(key, "font") == 0) {
+        oldName = getStringFromTable(atoi(oldValue), fontTable);
+        newName = getStringFromTable(atoi(newValue), fontTable);
     } else if (
         (strcmp(section, "dacs") == 0 && (strcmp(key, "set_dacs_on_startup") == 0 || strcmp(key, "set_rails_on_startup") == 0)) ||
         (strcmp(section, "debug") == 0) ||
@@ -1324,15 +1338,20 @@ void updateConfigValue(const char* section, const char* key, const char* value) 
         else if (strcmp(key, "autoconnect_flashing") == 0) sprintf(oldValue, "%d", jumperlessConfig.serial_2.autoconnect_flashing);
     }
     else if (strcmp(section, "top_oled") == 0) {
-        if (strcmp(key, "i2c_address") == 0) sprintf(oldValue, "%d", jumperlessConfig.top_oled.i2c_address);
+        if (strcmp(key, "enabled") == 0) sprintf(oldValue, "%d", jumperlessConfig.top_oled.enabled);
+        else if (strcmp(key, "i2c_address") == 0) sprintf(oldValue, "%d", jumperlessConfig.top_oled.i2c_address);
         else if (strcmp(key, "width") == 0) sprintf(oldValue, "%d", jumperlessConfig.top_oled.width);
         else if (strcmp(key, "height") == 0) sprintf(oldValue, "%d", jumperlessConfig.top_oled.height);
         else if (strcmp(key, "sda_pin") == 0) sprintf(oldValue, "%d", jumperlessConfig.top_oled.sda_pin);
         else if (strcmp(key, "scl_pin") == 0) sprintf(oldValue, "%d", jumperlessConfig.top_oled.scl_pin);
+        else if (strcmp(key, "gpio_sda") == 0) sprintf(oldValue, "%d", jumperlessConfig.top_oled.gpio_sda);
+        else if (strcmp(key, "gpio_scl") == 0) sprintf(oldValue, "%d", jumperlessConfig.top_oled.gpio_scl);
         else if (strcmp(key, "sda_row") == 0) sprintf(oldValue, "%d", jumperlessConfig.top_oled.sda_row);
         else if (strcmp(key, "scl_row") == 0) sprintf(oldValue, "%d", jumperlessConfig.top_oled.scl_row);
         else if (strcmp(key, "connect_on_boot") == 0) sprintf(oldValue, "%d", jumperlessConfig.top_oled.connect_on_boot);
         else if (strcmp(key, "lock_connection") == 0) sprintf(oldValue, "%d", jumperlessConfig.top_oled.lock_connection);
+        else if (strcmp(key, "show_in_terminal") == 0) sprintf(oldValue, "%d", jumperlessConfig.top_oled.show_in_terminal);
+        else if (strcmp(key, "font") == 0) sprintf(oldValue, "%d", jumperlessConfig.top_oled.font);
     }
     // Update the config structure
     // Accept string names for enums/bools and convert to int
@@ -1430,6 +1449,17 @@ void updateConfigValue(const char* section, const char* key, const char* value) 
         else if (strcmp(key, "scl_row") == 0) jumperlessConfig.top_oled.scl_row = parseInt(value);
         else if (strcmp(key, "connect_on_boot") == 0) jumperlessConfig.top_oled.connect_on_boot = parseBool(value);
         else if (strcmp(key, "lock_connection") == 0) jumperlessConfig.top_oled.lock_connection = parseBool(value);
+        else if (strcmp(key, "show_in_terminal") == 0) jumperlessConfig.top_oled.show_in_terminal = parseBool(value);
+        else if (strcmp(key, "font") == 0) {
+            jumperlessConfig.top_oled.font = parseFont(value);
+            
+            // Convert config value directly to FontFamily (now sequential)
+            FontFamily fontFamily = (FontFamily)jumperlessConfig.top_oled.font;
+            
+            // Set font using the new smart font system (default to size 1)
+            oled.setFontForSize(fontFamily, 1);
+            oled.show();
+        }
     }
     saveConfigToFile("/config.txt");
     printSettingChange(section, key, oldValue, value);

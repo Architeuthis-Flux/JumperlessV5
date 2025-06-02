@@ -157,6 +157,8 @@ struct config {
             int connect_on_boot = 0;
             int lock_connection = 0;
             int autoconnect_check_interval = -1;
+            int font = 1;
+            int show_in_terminal = 0;
         } top_oled;
     
 };

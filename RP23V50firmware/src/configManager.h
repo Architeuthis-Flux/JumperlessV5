@@ -2,7 +2,7 @@
 
 #include "config.h"
 #include <FatFS.h>
-
+#include "oled.h"
 
 extern bool configChanged;
 // Global configuration instance
@@ -34,6 +34,7 @@ void parseCommaSeparatedInts(const char* str, int* array, int maxValues);
 bool parseBool(const char* str);
 float parseFloat(const char* str);
 int parseInt(const char* str);
+int parseFont(const char* str);
 void trim(char* str);
 void toLower(char* str); 
 void updateConfigValue(const char* section, const char* key, const char* value);
@@ -52,7 +53,21 @@ extern const char* arbitraryFunctionStrings[];
 
 // Generic struct for mapping string to int value
 
-
+// struct font fontList[] = {
+//   { &Eurostile_Next_LT_Com_Light_Extended6pt7b, "Eurostl", "Eurostile" },
+//   { &BerkeleyMono6pt7b, "Berkley", "Berkeley" },
+//   { &JumperlessLowerc12pt7b, "Jumprls", "Jumperless" },
+//   { &Jokerman8pt7b, "Jokermn", "Jokerman" },
+// };
+const StringIntEntry fontTable[] = {
+    {"eurostile", 0},
+    {"jokerman", 1},
+    {"comicsans", 2},
+    {"courier", 3},
+    {"science", 4},
+    {"scienceext", 5}
+};
+const int fontTableSize = sizeof(fontTable) / sizeof(fontTable[0]);
 // Table for parseBool
 const StringIntEntry boolTable[] = {
     {"true", 1},

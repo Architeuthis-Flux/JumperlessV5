@@ -1,0 +1,5 @@
+Checking pico > cppcheck (board: jumperless_v5; platform: https://github.com/maxgerhardt/platform-raspberrypi.git; framework: arduino)
+--------------------------------------------------------------------------------
+Error: Nothing to check.
+Error: cppcheck failed to perform check! Please examine tool output in verbose mode.
+

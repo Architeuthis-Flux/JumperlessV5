@@ -48,7 +48,7 @@ int selectMultipleIndex = 0;
 char hardCodeOptions[10][10] = { "Tx",  "Rx", "SDA",   "SCL",  "5V",
                                 "3V3", "8V", "USB 2", "Print" };
 int brightnessOptionMap[] = { 3, 4, 6, 9, 10, 14, 18, 26, 32, 42, 48 };
-int menuBrightnessOptionMap[] = {  -80, -60, -30, -15, 0, 20, 50, 100, 150, 200};
+int menuBrightnessOptionMap[] = { -80, -60, -30, -15, 0, 20, 50, 100, 150, 200 };
 
 struct action {
   int previousMenuPositions[10];
@@ -109,41 +109,7 @@ void readMenuFile(int flashOrLocal) {
         menuLineIndex++;
         }
       }
-    //Serial.println(menuLineIndex);
-    // Split menuTree into lines and store in menuLines[]
-  //   int menuIndex = 0;
-  //   int bufferIndex = 0;
-  //   char buffer[256];
-  //   menuLineIndex = 0;
-  //   while (menuTree[menuIndex] != '\0') {
-  //     if (menuTree[menuIndex] == '\n' || menuTree[menuIndex] == '\r') {
-  //       if (bufferIndex > 0) {
-  //         buffer[bufferIndex] = '\0';
-  //         menuLines[menuLineIndex] = String(buffer);
-  //         menuLineIndex++;
-  //         bufferIndex = 0;
-  //       }
-  //       // Skip consecutive newlines
-  //       menuIndex++;
-  //       continue;
-  //     }
-  //     buffer[bufferIndex++] = menuTree[menuIndex++];
-  //     // Prevent buffer overflow
-  //     if (bufferIndex >= 255) {
-  //       buffer[255] = '\0';
-  //       menuLines[menuLineIndex] = String(buffer);
-  //       menuLineIndex++;
-  //       bufferIndex = 0;
-  //     }
-  //   }
-  //   // Add last line if any
-  //   if (bufferIndex > 0) {
-  //     buffer[bufferIndex] = '\0';
-  //     menuLines[menuLineIndex] = String(buffer);
-  //     menuLineIndex++;
-  //   }
-  //   menuLineIndex--;
-  // }
+
     }
   }
 
@@ -183,6 +149,12 @@ void parseMenuFile(void) {
       menuLines[i].remove(menuLines[i].length() - 1, 1);
       } else {
       stayOnTop[i] = 0;
+      }
+
+    // Check if line ends with ^ for font selection action
+    if (menuLines[i].endsWith("^")) {
+      actions[i] = 6;
+      menuLines[i].remove(menuLines[i].length() - 1, 1); // Remove the ^
       }
     int starIndex = menuLines[i].indexOf("*");
     int starCount = 0;
@@ -241,6 +213,10 @@ void parseMenuFile(void) {
         selectMultiple[selectMultipleIndex] = i;
         selectMultipleIndex++;
         }
+
+      // if (menuLines[i].indexOf("^") != -1) {
+      //   menuLines[i].remove(actionIndex, 3);
+      //   }
 
       menuLines[i].remove(actionIndex, 3);
       }
@@ -558,7 +534,7 @@ int getMenuSelection(void) {
   int subMenuStartIndex = 0;
   int subMenuEndIndex = menuLineIndex;
   int firstTime = 1;
-
+  int showFonts = 0;
   int lastSubmenuOption = 0;
   int back = 0;
   subSelection = -1;
@@ -570,6 +546,8 @@ int getMenuSelection(void) {
   //   }
   // }
   //delay(10);
+
+
 
   for (int i = 0; i < 10; i++) {
     previousMenuSelection[i] = -1;
@@ -616,7 +594,11 @@ int getMenuSelection(void) {
       return -2;
       }
     delayMicroseconds(400);
-    if (encoderButtonState == RELEASED && lastButtonEncoderState == PRESSED) {
+
+
+
+
+    if (encoderButtonState == RELEASED && lastButtonEncoderState == PRESSED) { //! click
 
       lastMenuLevel = menuLevel;
       noInputTimer = millis();
@@ -657,459 +639,488 @@ int getMenuSelection(void) {
       // Serial.println();
       while (encoderButtonState == RELEASED)
         ;
-      } else if (encoderDirectionState == UP || firstTime == 1 ||
-                 force == 1) { // ||
-      // lastMenuLevel > menuLevel) {
-      encoderDirectionState = NONE;
-      firstTime = 0;
-      // currentAction.Category
-      resetPosition = true;
-      noInputTimer = millis();
-      lastMenuPosition = menuPosition;
-      if (returningFromTimeout == 0) {
-        menuPosition += 1;
-        }
-      returningFromTimeout = 0;
-      if (menuPosition > subMenuEndIndex) {
-        menuPosition = subMenuStartIndex;
-        }
-
-      int loopCount = 0;
-      for (int i = menuPosition; i <= menuLineIndex; i++) {
-        // Serial.print(i);
-        if (menuLevels[i] == menuLevel) {
-          // Serial.println("^\n\r");
-          menuPosition = i;
-          // currentAction.Category = getActionCategory(menuPosition);
-          break;
-          }
-        if (i == subMenuEndIndex && loopCount == 0) {
-          // Serial.println();
-          // Serial.print(i);
-          // Serial.println("\n\n\r");
-          loopCount++;
-          i = subMenuStartIndex - 1;
-          } else if (i == subMenuEndIndex && loopCount == 1) {
-
-            Serial.println("!!! ");
-            b.clear();
-            returnToMenuPosition = -1;
-            returnToMenuLevel = -1;
-            // doMenuAction(menuPosition);
-
-            // for (int i = 0; i < 8; i++) {
-            //   if (subMenuChoices[i] != -1) {
-            //     Serial.print(menuLines[subMenuChoices[i]]);
-            //     Serial.print(" > ");
-            //   }
-            // }
-
-            // Serial.println();
-            int keepSelecting = 0;
-
-            for (int i = 0; i < 10; i++) {
-              if (selectMultiple[i] == menuPosition) {
-                keepSelecting = 1;
-                }
-              if (i >= selectMultipleIndex) {
-                break;
-                }
-              }
-
-            if (keepSelecting == 0) {
-              delayMicroseconds(100);
-
-              return doMenuAction();
-              } else {
-              encoderButtonState = RELEASED;
-              lastButtonEncoderState = PRESSED;
-              // menuPosition++;
-              break;
-              }
-            break;
-            // break;
-            }
-        }
-
-      delayMicroseconds(100);
-      Serial.print(" ");
-      if (actions[menuPosition] == 0) {
-        Serial.print("\r                                              \r");
-
-       // oled.clear();
-        for (int j = 0; j <= menuLevels[menuPosition]; j++) {
-          Serial.print(">");
-
-          if (j > 8) {
-            break;
-            }
-          }
-
-        Serial.print(menuLines[menuPosition]);
-        oled.clearPrintShow(menuLines[menuPosition], 2, 5, 8, true, true, true);
-        } else {
-        //Serial.println(menuLines[menuPosition-1]);
-        Serial.println(" ");
-        //oled.print(" ");
-
-        }
-
-      /// Serial.print(menuLines[menuPosition]);
-
-      if (stayOnTopLevel != -1 && stayOnTopIndex != -1 &&
-          menuLevel != stayOnTopLevel) {
-        b.clear();
-        b.print(menuLines[stayOnTopIndex].c_str(), menuColors[stayOnTopLevel],
-                0xFFFFFF, 0, 0,
-                menuLines[stayOnTopIndex].length() >= 7 || menuLevel == 0 ? 1
-                                                                          : 3);
-        b.printMenuReminder(menuLevel, menuColors[menuLevel]);
-        b.print(
-            menuLines[menuPosition].c_str(), menuColors[menuLevel], 0xFFFFFF, 0,
-            1, menuLines[menuPosition].length() >= 7 || menuLevel == 0 ? 1 : 3);
-
-        } else {
-
-        b.clear();
-        b.print(menuLines[menuPosition].c_str(), menuColors[menuLevel],
-                0xFFFFFF, 0, -1,
-                menuLines[menuPosition].length() >= 7 || menuLevel == 0 ? 1
-                                                                        : 3);
-        b.printMenuReminder(menuLevel, menuColors[menuLevel]);
-        }
-
-      if (menuLevel != lastMenuLevel) {
-        // Serial.println();
-        }
-      showLEDsCore2 = 2;
-      lastMenuLevel = menuLevel;
-      // previousMenuSelection[menuLevel] = menuPosition;
-      //  b.print(menuPosition);
-
-      } else if (encoderDirectionState == DOWN || (lastMenuLevel < menuLevel)) {
+      } else if (encoderDirectionState == UP || firstTime == 1 || force == 1) { // ! up
+        // lastMenuLevel > menuLevel) {
         encoderDirectionState = NONE;
+        firstTime = 0;
+        // currentAction.Category
+        resetPosition = true;
         noInputTimer = millis();
-        // lastMenuLevel = menuLevel;
         lastMenuPosition = menuPosition;
-        // if (back == 1) {
-        //   back = 0;
-        // } else {
-        if (menuPosition == previousMenuSelection[menuLevel]) {
-          previousMenuSelection[menuLevel] = -1;
-          } else {
-          menuPosition -= 1;
+        if (returningFromTimeout == 0) {
+          menuPosition += 1;
+          }
+        returningFromTimeout = 0;
+        if (menuPosition > subMenuEndIndex) {
+          menuPosition = subMenuStartIndex;
+          }
 
-          if (menuPosition < subMenuStartIndex) {
-            menuPosition = subMenuEndIndex;
+        int loopCount = 0;
+        for (int i = menuPosition; i <= menuLineIndex; i++) {
+          // Serial.print(i);
+          if (menuLevels[i] == menuLevel) {
+            // Serial.println("^\n\r");
+            menuPosition = i;
+            // currentAction.Category = getActionCategory(menuPosition);
+            break;
             }
+          if (i == subMenuEndIndex && loopCount == 0) {
+            // Serial.println();
+            // Serial.print(i);
+            // Serial.println("\n\n\r");
+            loopCount++;
+            i = subMenuStartIndex - 1;
+            } else if (i == subMenuEndIndex && loopCount == 1) {
 
-          int loopCount = 0;
+              Serial.println("!!! ");
+              b.clear();
+              returnToMenuPosition = -1;
+              returnToMenuLevel = -1;
+              // doMenuAction(menuPosition);
 
-          for (int i = menuPosition; i >= 0; i--) {
+              // for (int i = 0; i < 8; i++) {
+              //   if (subMenuChoices[i] != -1) {
+              //     Serial.print(menuLines[subMenuChoices[i]]);
+              //     Serial.print(" > ");
+              //   }
+              // }
 
-            if (menuLevels[i] == menuLevel) {
+              // Serial.println();
+              int keepSelecting = 0;
 
-              menuPosition = i;
-              // currentAction.Category = getActionCategory(menuPosition);
-              break;
-              }
-            if (i == subMenuStartIndex && loopCount == 0) {
-              loopCount++;
-
-              i = subMenuEndIndex + 1;
-              } else if (i == subMenuStartIndex && loopCount == 1) {
-
-                Serial.println("!!! ");
-
-                b.clear();
-                returnToMenuPosition = -1;
-                returnToMenuLevel = -1;
-
-                // for (int i = 0; i < 8; i++) {
-                //   if (chosen[i] != -1) {
-                //     Serial.print(menuLines[chosen[i]]);
-                //     Serial.print(" -> ");
-                //   }
-                // }
-
-                if (actions[menuPosition] == 3 && subSelection != -1) {
-
-
-                  // Serial.println("get float voltage");
-                  getActionFloat(menuPosition);
+              for (int i = 0; i < 10; i++) {
+                if (selectMultiple[i] == menuPosition) {
+                  keepSelecting = 1;
                   }
-                int keepSelecting = 0;
-
-                for (int i = 0; i < 10; i++) {
-                  if (selectMultiple[i] == menuPosition) {
-                    keepSelecting = 1;
-                    }
-                  if (i >= selectMultipleIndex) {
-                    break;
-                    }
-                  }
-
-                if (keepSelecting == 0) {
-
-                  return doMenuAction();
-                  } else {
-                  encoderButtonState = RELEASED;
-                  lastButtonEncoderState = PRESSED;
-                  // menuPosition++;
+                if (i >= selectMultipleIndex) {
                   break;
                   }
+                }
+
+              if (keepSelecting == 0) {
+                delayMicroseconds(100);
+
+                return doMenuAction();
+                } else {
+                encoderButtonState = RELEASED;
+                lastButtonEncoderState = PRESSED;
+                // menuPosition++;
                 break;
                 }
-            }
-          // Serial.println("Fuck");
+              break;
+              // break;
+              }
           }
-        // }
-        //         Serial.print("   \t\t");
-        // Serial.println(menuPosition);
-        // if (menuLevel == lastMenuLevel) {
 
-        // Serial.print(menuLevel);
         delayMicroseconds(100);
         Serial.print(" ");
-        if (actions[menuPosition] == 0 && numberOfChoices[menuPosition] == 0) {
+        if (actions[menuPosition] == 0) {
           Serial.print("\r                                              \r");
-          // oled.clear();
 
+          // oled.clear();
           for (int j = 0; j <= menuLevels[menuPosition]; j++) {
             Serial.print(">");
-            // oled.clearPrintShow(">", 2, 5, 8, false, false);
+
             if (j > 8) {
               break;
               }
             }
 
-          Serial.print(menuLines[menuPosition]);
-          oled.clearPrintShow(menuLines[menuPosition], 2, 5, 8, true, true, true);
-          } else {
-          //Serial.println(menuLines[menuPosition-1]);
-          Serial.println(" ");
-         // oled.print(" ");
-          }
+
+          
+
+          String menuLine = menuLines[menuPosition];
+          menuLine.replace("~", "±");
+          menuLine.replace("_", "-");
+          Serial.print(menuLine.c_str());
+
+          menuLine.replace("±", "+-");
+            
 
 
-        if (actions[menuPosition] == 1 && subSelection != -1) {
-          for (int a = 0; a < 8; a++) {
-            subMenuChoices[a] = -1;
+          oled.clearPrintShow(menuLine.c_str(), 2, true, true, true, -1, -1);
+          } else if (actions[menuPosition] == 6) {
+            // Map highlightedOption directly to FontFamily enum (now sequential)
+            FontFamily previewFont = oled.getFontFamily(menuLines[menuPosition]);
+
+            // Show font preview with both sizes
+            oled.clearPrintShow(menuLines[menuPosition], 2, previewFont, true, true, true, -1, -1);
+            //oled.clearPrintShow("Preview", 2, previewFont, false, true, true, -1, -1);
+            } else {
+            //Serial.println(menuLines[menuPosition-1]);
+            Serial.println(" ");
+            //oled.print(" ");
+
             }
-          int nextOption = 0;
 
-          subMenuChoices[subSelection] = selectNodeAction(subSelection);
-          maxNumSelections = numberOfChoices[menuPosition];
-          // Serial.println(maxNumSelections);
-          // Serial.println();
-          while (nextOption != -1 && maxNumSelections > 1) {
-            // Serial.println(maxNumSelections);
-            // Serial.println();
-            //  Serial.println("fuck");
-            nextOption = selectSubmenuOption(lastMenuPosition, lastMenuLevel);
+          /// Serial.print(menuLines[menuPosition]);
 
-            if (nextOption == -1) {
-              // Serial.println("-1");
-              break;
-              }
-            // Serial.println(nextOption);
-            subMenuChoices[nextOption] = selectNodeAction(nextOption);
-            maxNumSelections--;
-            /// Serial.println("fuck");
-            // Serial.print("[ ");
-
-            // for (int a = 0; a < numberOfChoices[menuPosition]; a++) {
-            //   Serial.print(subMenuChoices[a]);
-            //   Serial.print(",");
-            // }
-            // Serial.println(" ] \n\r");
-            }
-          returnToMenuPosition = -1;
-          returnToMenuLevel = -1;
-
-          // menuLevel++;
-
-          // if (keepSelecting == 0) {
-
-          return doMenuAction();
-          // } else {
-          //   encoderButtonState = RELEASED;
-          //   lastButtonEncoderState = PRESSED;
-          //  // menuPosition++;
-          //  break;
-          // }
-
-          } else if (actions[menuPosition] == 3 && subSelection != -1) {
-
-            // Serial.println("get float voltage");
-            // Serial.println(subSelection);
-            // Serial.println(subSelection);
-            // Serial.println(subSelection);
-
-            getActionFloat(menuPosition, subSelection);
-
-            // doMenuAction();
-            return doMenuAction();
+          if (stayOnTopLevel != -1 && stayOnTopIndex != -1 &&
+              menuLevel != stayOnTopLevel) {
+            b.clear();
+            b.print(menuLines[stayOnTopIndex].c_str(), menuColors[stayOnTopLevel],
+                    0xFFFFFF, 0, 0,
+                    menuLines[stayOnTopIndex].length() >= 7 || menuLevel == 0 ? 1
+                                                                              : 3);
+            b.printMenuReminder(menuLevel, menuColors[menuLevel]);
+            b.print(
+                menuLines[menuPosition].c_str(), menuColors[menuLevel], 0xFFFFFF, 0,
+                1, menuLines[menuPosition].length() >= 7 || menuLevel == 0 ? 1 : 3);
 
             } else {
 
-            if ((stayOnTopLevel != -1 && stayOnTopIndex != -1) &&
-                menuLevel != stayOnTopLevel) {
-              b.clear();
-              b.print(menuLines[stayOnTopIndex].c_str(), menuColors[stayOnTopLevel],
-                      0xFFFFFF, 0, 0,
-                      menuLines[stayOnTopIndex].length() >= 7 || menuLevel == 0
-                          ? 1
-                          : 3);
-              b.printMenuReminder(menuLevel, menuColors[menuLevel]);
-              b.print(menuLines[menuPosition].c_str(), menuColors[menuLevel],
-                      0xFFFFFF, 0, 1,
-                      menuLines[menuPosition].length() >= 7 || menuLevel == 0 ? 1
-                                                                              : 3);
-
-              } else {
-
-              b.clear();
-              b.print(menuLines[menuPosition].c_str(), menuColors[menuLevel],
-                      0xFFFFFF, 0, -1,
-                      menuLines[menuPosition].length() >= 7 || menuLevel == 0 ? 1
-                                                                              : 3);
-              b.printMenuReminder(menuLevel, menuColors[menuLevel]);
-              }
-            if (numberOfChoices[menuPosition] > 0) {
-              // Serial.println("  fuck     !!");
-              subSelection = selectSubmenuOption(menuPosition, menuLevel);
-
-              if (subSelection != -1) {
-                // menuLevel++;
-                // Serial.print("subselection: ");
-                // Serial.println(subSelection);
-                encoderButtonState = RELEASED;
-                lastButtonEncoderState = PRESSED;
-                }
-              lastMenuPosition = menuPosition;
-
-              force = 0;
-              }
+            b.clear();
+            b.print(menuLines[menuPosition].c_str(), menuColors[menuLevel],
+                    0xFFFFFF, 0, -1,
+                    menuLines[menuPosition].length() >= 7 || menuLevel == 0 ? 1
+                                                                            : 3);
+            b.printMenuReminder(menuLevel, menuColors[menuLevel]);
             }
 
+          if (menuLevel != lastMenuLevel) {
+            // Serial.println();
+            }
           showLEDsCore2 = 2;
           lastMenuLevel = menuLevel;
           // previousMenuSelection[menuLevel] = menuPosition;
+          //  b.print(menuPosition);
 
-          // b.print(menuPosition);
-        }
+        } else if (encoderDirectionState == DOWN || (lastMenuLevel < menuLevel)) { //! down
+          encoderDirectionState = NONE;
+          noInputTimer = millis();
+          // lastMenuLevel = menuLevel;
+          lastMenuPosition = menuPosition;
+          // if (back == 1) {
+          //   back = 0;
+          // } else {
+          if (menuPosition == previousMenuSelection[menuLevel]) {
+            previousMenuSelection[menuLevel] = -1;
+            } else {
+            menuPosition -= 1;
 
-      delayMicroseconds(80);
+            if (menuPosition < subMenuStartIndex) {
+              menuPosition = subMenuEndIndex;
+              }
 
-      if (encoderButtonState == HELD) {
-        noInputTimer = millis();
-        lastMenuLevel = menuLevel;
-        // Serial.println("Held");
+            int loopCount = 0;
 
-        // if (stayOnTopLevel == menuLevel) {
+            for (int i = menuPosition; i >= 0; i--) {
 
-        stayOnTopLevel = -1;
-        stayOnTopIndex = -1;
-        //}
-        firstTime = 1;
-        int noPrevious = 0;
+              if (menuLevels[i] == menuLevel) {
 
-        for (int i = menuLevel + 1; i < 10; i++) {
-          previousMenuSelection[i] = -1;
+                menuPosition = i;
+                // currentAction.Category = getActionCategory(menuPosition);
+                break;
+                }
+              if (i == subMenuStartIndex && loopCount == 0) {
+                loopCount++;
+
+                i = subMenuEndIndex + 1;
+                } else if (i == subMenuStartIndex && loopCount == 1) {
+
+                  Serial.println("!!! ");
+
+                  b.clear();
+                  returnToMenuPosition = -1;
+                  returnToMenuLevel = -1;
+
+                  // for (int i = 0; i < 8; i++) {
+                  //   if (chosen[i] != -1) {
+                  //     Serial.print(menuLines[chosen[i]]);
+                  //     Serial.print(" -> ");
+                  //   }
+                  // }
+
+                  if (actions[menuPosition] == 3 && subSelection != -1) {
+
+
+                    // Serial.println("get float voltage");
+                    getActionFloat(menuPosition);
+                    }
+                  int keepSelecting = 0;
+
+                  for (int i = 0; i < 10; i++) {
+                    if (selectMultiple[i] == menuPosition) {
+                      keepSelecting = 1;
+                      }
+                    if (i >= selectMultipleIndex) {
+                      break;
+                      }
+                    }
+
+                  if (keepSelecting == 0) {
+
+                    return doMenuAction();
+                    } else {
+                    encoderButtonState = RELEASED;
+                    lastButtonEncoderState = PRESSED;
+                    // menuPosition++;
+                    break;
+                    }
+                  break;
+                  }
+              }
+            // Serial.println("Fuck");
+            }
+          // }
+          //         Serial.print("   \t\t");
+          // Serial.println(menuPosition);
+          // if (menuLevel == lastMenuLevel) {
+
+          // Serial.print(menuLevel);
+          delayMicroseconds(100);
+          Serial.print(" ");
+          if (actions[menuPosition] == 0 && numberOfChoices[menuPosition] == 0) {
+            Serial.print("\r                                              \r");
+            // oled.clear();
+
+            for (int j = 0; j <= menuLevels[menuPosition]; j++) {
+              Serial.print(">");
+              // oled.clearPrintShow(">", 2, 5, 8, false, false);
+              if (j > 8) {
+                break;
+                }
+              }
+
+            String menuLine = menuLines[menuPosition];
+            menuLine.replace("~", "±");
+            Serial.print(menuLine.c_str());
+            menuLine.replace("±", "+-");
+
+            oled.clearPrintShow(menuLine.c_str(), 2, true, true, true, -1, -1);
+            } else if (actions[menuPosition] == 6) {
+              // Map highlightedOption directly to FontFamily enum (now sequential)
+              FontFamily previewFont = oled.getFontFamily(menuLines[menuPosition]);
+
+              // Show font preview with both sizes
+              oled.clearPrintShow(menuLines[menuPosition], 2, previewFont, true, true, true, -1, -1);
+              //oled.clearPrintShow("Preview", 2, previewFont, false, true, true, -1, -1);
+              } else {
+              //Serial.println(menuLines[menuPosition-1]);
+              Serial.println(" ");
+              //oled.print(" ");
+
+              }
+
+
+            if (actions[menuPosition] == 1 && subSelection != -1) {
+              for (int a = 0; a < 8; a++) {
+                subMenuChoices[a] = -1;
+                }
+              int nextOption = 0;
+
+              subMenuChoices[subSelection] = selectNodeAction(subSelection);
+              maxNumSelections = numberOfChoices[menuPosition];
+              // Serial.println(maxNumSelections);
+              // Serial.println();
+              while (nextOption != -1 && maxNumSelections > 1) {
+                // Serial.println(maxNumSelections);
+                // Serial.println();
+                //  Serial.println("fuck");
+                nextOption = selectSubmenuOption(lastMenuPosition, lastMenuLevel);
+
+                if (nextOption == -1) {
+                  // Serial.println("-1");
+                  break;
+                  }
+                // Serial.println(nextOption);
+                subMenuChoices[nextOption] = selectNodeAction(nextOption);
+                maxNumSelections--;
+                /// Serial.println("fuck");
+                // Serial.print("[ ");
+
+                // for (int a = 0; a < numberOfChoices[menuPosition]; a++) {
+                //   Serial.print(subMenuChoices[a]);
+                //   Serial.print(",");
+                // }
+                // Serial.println(" ] \n\r");
+                }
+              returnToMenuPosition = -1;
+              returnToMenuLevel = -1;
+
+              // menuLevel++;
+
+              // if (keepSelecting == 0) {
+
+              return doMenuAction();
+              // } else {
+              //   encoderButtonState = RELEASED;
+              //   lastButtonEncoderState = PRESSED;
+              //  // menuPosition++;
+              //  break;
+              // }
+
+              } else if (actions[menuPosition] == 3 && subSelection != -1) {
+
+                // Serial.println("get float voltage");
+                // Serial.println(subSelection);
+                // Serial.println(subSelection);
+                // Serial.println(subSelection);
+
+                getActionFloat(menuPosition, subSelection);
+
+                // doMenuAction();
+                return doMenuAction();
+
+                } else {
+
+                if ((stayOnTopLevel != -1 && stayOnTopIndex != -1) &&
+                    menuLevel != stayOnTopLevel) {
+                  b.clear();
+                  b.print(menuLines[stayOnTopIndex].c_str(), menuColors[stayOnTopLevel],
+                          0xFFFFFF, 0, 0,
+                          menuLines[stayOnTopIndex].length() >= 7 || menuLevel == 0
+                              ? 1
+                              : 3);
+                  b.printMenuReminder(menuLevel, menuColors[menuLevel]);
+                  b.print(menuLines[menuPosition].c_str(), menuColors[menuLevel],
+                          0xFFFFFF, 0, 1,
+                          menuLines[menuPosition].length() >= 7 || menuLevel == 0 ? 1
+                                                                                  : 3);
+
+                  } else {
+
+                  b.clear();
+                  b.print(menuLines[menuPosition].c_str(), menuColors[menuLevel],
+                          0xFFFFFF, 0, -1,
+                          menuLines[menuPosition].length() >= 7 || menuLevel == 0 ? 1
+                                                                                  : 3);
+                  b.printMenuReminder(menuLevel, menuColors[menuLevel]);
+                  }
+                if (numberOfChoices[menuPosition] > 0) {
+                  // Serial.println("  fuck     !!");
+                  subSelection = selectSubmenuOption(menuPosition, menuLevel);
+
+                  if (subSelection != -1) {
+                    // menuLevel++;
+                    // Serial.print("subselection: ");
+                    // Serial.println(subSelection);
+                    encoderButtonState = RELEASED;
+                    lastButtonEncoderState = PRESSED;
+                    }
+                  lastMenuPosition = menuPosition;
+
+                  force = 0;
+                  }
+                }
+
+              showLEDsCore2 = 2;
+              lastMenuLevel = menuLevel;
+              // previousMenuSelection[menuLevel] = menuPosition;
+
+              // b.print(menuPosition);
           }
 
-        if (menuLevel > 1) {
-          menuLevel -= 1;
-          // b.clear();
-          // return 0;
-          } else if (menuLevel == 1) {
-            menuLevel = 0;
-            // menuPosition = 0;
-            } else {
-            b.clear();
-            return -2;
-            }
-          // Serial.print("Menu Level: ");
-          // Serial.println(menuLevel);
+        delayMicroseconds(80);
 
-          if (menuLevel == 0) {
-            subMenuStartIndex = 0;
-            subMenuEndIndex = menuLineIndex - 1;
-            } else {
+        if (encoderButtonState == HELD) {
+          noInputTimer = millis();
+          lastMenuLevel = menuLevel;
+          // Serial.println("Held");
 
-            subMenuEndIndex = menuLineIndex;
+          // if (stayOnTopLevel == menuLevel) {
 
-            for (int i = menuPosition + 1; i <= menuLineIndex; i++) {
+          stayOnTopLevel = -1;
+          stayOnTopIndex = -1;
+          //}
+          firstTime = 1;
+          int noPrevious = 0;
 
-              if (menuLevels[i] < menuLevel) {
-                subMenuEndIndex = i;
-                break;
-                }
-              }
-
-            for (int i = subMenuEndIndex - 1; i > 0; i--) {
-              if (menuLevels[i] < menuLevel) {
-                subMenuStartIndex = i;
-                // Serial.print("\n\rsubMenuStartIndex: ");
-                // Serial.println(subMenuStartIndex);
-                // Serial.print("subMenuEndIndex: ");
-                // Serial.println(subMenuEndIndex);
-                break;
-                }
-              }
+          for (int i = menuLevel + 1; i < 10; i++) {
+            previousMenuSelection[i] = -1;
             }
 
-          if (previousMenuSelection[menuLevel] == -1) {
-            menuPosition = subMenuStartIndex;
-            }
-
-          if (previousMenuSelection[menuLevel] != -1) {
-
-            if (stayOnTopLevel != -1 && stayOnTopIndex != -1) {
+          if (menuLevel > 1) {
+            menuLevel -= 1;
+            // b.clear();
+            // return 0;
+            } else if (menuLevel == 1) {
+              menuLevel = 0;
+              // menuPosition = 0;
+              } else {
               b.clear();
-              b.print(menuLines[stayOnTopIndex].c_str(), menuColors[stayOnTopLevel],
-                      0xFFFFFF, 0, 0,
-                      menuLines[stayOnTopIndex].length() >= 7 || menuLevel == 0
-                          ? 1
-                          : 3);
-              b.printMenuReminder(menuLevel, menuColors[menuLevel]);
-              b.print(menuLines[menuPosition].c_str(), menuColors[menuLevel],
-                      0xFFFFFF, 0, 1,
-                      menuLines[menuPosition].length() >= 7 || menuLevel == 0 ? 1
-                                                                              : 3);
+              return -2;
+              }
+            // Serial.print("Menu Level: ");
+            // Serial.println(menuLevel);
 
+            if (menuLevel == 0) {
+              subMenuStartIndex = 0;
+              subMenuEndIndex = menuLineIndex - 1;
               } else {
 
-              menuPosition = previousMenuSelection[menuLevel];
-              b.clear();
-              b.print(menuLines[menuPosition].c_str(), menuColors[menuLevel],
-                      0xFFFFFF, 0, -1,
-                      menuLines[menuPosition].length() >= 7 || menuLevel == 0 ? 1
-                                                                              : 3);
-              b.printMenuReminder(menuLevel, menuColors[menuLevel]);
+              subMenuEndIndex = menuLineIndex;
+
+              for (int i = menuPosition + 1; i <= menuLineIndex; i++) {
+
+                if (menuLevels[i] < menuLevel) {
+                  subMenuEndIndex = i;
+                  break;
+                  }
+                }
+
+              for (int i = subMenuEndIndex - 1; i > 0; i--) {
+                if (menuLevels[i] < menuLevel) {
+                  subMenuStartIndex = i;
+                  // Serial.print("\n\rsubMenuStartIndex: ");
+                  // Serial.println(subMenuStartIndex);
+                  // Serial.print("subMenuEndIndex: ");
+                  // Serial.println(subMenuEndIndex);
+                  break;
+                  }
+                }
               }
-            }
-          // back = 1;
-          //  delay(500); // you'll step back a level every 500ms
-          noInputTimer = millis();
 
-          while (encoderButtonState == HELD) {
-            if (millis() - noInputTimer > 1000) {
-              encoderButtonState = IDLE;
-              break;
+            if (previousMenuSelection[menuLevel] == -1) {
+              menuPosition = subMenuStartIndex;
               }
-            }
 
-          // if (encoderDirectionState == DOWN || encoderDirectionState == UP) {
-          //   encoderButtonState = IDLE;
+            if (previousMenuSelection[menuLevel] != -1) {
 
-          //   break;
-          // }
-          // this determines if you just
-          // co back to the top level or if you go back to the previous level
-          //   ;
-        }
+              if (stayOnTopLevel != -1 && stayOnTopIndex != -1) {
+                b.clear();
+                b.print(menuLines[stayOnTopIndex].c_str(), menuColors[stayOnTopLevel],
+                        0xFFFFFF, 0, 0,
+                        menuLines[stayOnTopIndex].length() >= 7 || menuLevel == 0
+                            ? 1
+                            : 3);
+                b.printMenuReminder(menuLevel, menuColors[menuLevel]);
+                b.print(menuLines[menuPosition].c_str(), menuColors[menuLevel],
+                        0xFFFFFF, 0, 1,
+                        menuLines[menuPosition].length() >= 7 || menuLevel == 0 ? 1
+                                                                                : 3);
+
+                } else {
+
+                menuPosition = previousMenuSelection[menuLevel];
+                b.clear();
+                b.print(menuLines[menuPosition].c_str(), menuColors[menuLevel],
+                        0xFFFFFF, 0, -1,
+                        menuLines[menuPosition].length() >= 7 || menuLevel == 0 ? 1
+                                                                                : 3);
+                b.printMenuReminder(menuLevel, menuColors[menuLevel]);
+                }
+              }
+            // back = 1;
+            //  delay(500); // you'll step back a level every 500ms
+            noInputTimer = millis();
+
+            while (encoderButtonState == HELD) {
+              if (millis() - noInputTimer > 1000) {
+                encoderButtonState = IDLE;
+                break;
+                }
+              }
+
+            // if (encoderDirectionState == DOWN || encoderDirectionState == UP) {
+            //   encoderButtonState = IDLE;
+
+            //   break;
+            // }
+            // this determines if you just
+            // co back to the top level or if you go back to the previous level
+            //   ;
+          }
     }
 
   return -1;
@@ -1140,9 +1151,11 @@ int selectSubmenuOption(int menuPosition, int menuLevel) {
   int menuOptionLengths[8];
   int maxMenuOptionLength = 0;
   int maxExists = -1;
+  // int showFonts = 0;
   for (int i = 0; i < 8; i++) {
     subMenuStrings[i] = "";
     }
+
 
   int shiftStars = -2;
   int lastOption = 0;
@@ -1224,11 +1237,11 @@ int selectSubmenuOption(int menuPosition, int menuLevel) {
       menuType = 2;
       }
     // if (previousMenuSelection[1] != -1) {
-    //   Serial.print("previousMenuSelection[1]: ");
+      // Serial.print("previousMenuSelection[1]: ");
 
-    //   Serial.print(previousMenuSelection[1]);
-    //   Serial.print(" ");
-    //   Serial.println(menuLines[previousMenuSelection[1]]);
+      // Serial.print(previousMenuSelection[1]);
+      // Serial.print(" ");
+      // Serial.println(menuLines[previousMenuSelection[1]]);
     // }
 
     if (menuLines[previousMenuSelection[1]].indexOf("Load") != -1) {
@@ -1236,26 +1249,32 @@ int selectSubmenuOption(int menuPosition, int menuLevel) {
       menuType = 3;
       }
 
-    if (menuLines[previousMenuSelection[menuLevel-2]].indexOf("Bright") != -1 && menuLines[previousMenuSelection[menuLevel-1]].indexOf("Menu") != -1 ){
+    if (menuLines[previousMenuSelection[menuLevel - 2]].indexOf("Bright") != -1 && menuLines[previousMenuSelection[menuLevel - 1]].indexOf("Menu") != -1) {
 
       brightnessMenu = 1;
       }
 
-    if (menuLines[previousMenuSelection[menuLevel-2]].indexOf("Bright") != -1 && menuLines[previousMenuSelection[menuLevel-1]].indexOf("Rails") != -1 ){
+    if (menuLines[previousMenuSelection[menuLevel - 2]].indexOf("Bright") != -1 && menuLines[previousMenuSelection[menuLevel - 1]].indexOf("Rails") != -1) {
 
       brightnessMenu = 2;
       }
 
-    if (menuLines[previousMenuSelection[menuLevel-2]].indexOf("Bright") != -1 && menuLines[previousMenuSelection[menuLevel-1]].indexOf("Wires") != -1 ){
+    if (menuLines[previousMenuSelection[menuLevel - 2]].indexOf("Bright") != -1 && menuLines[previousMenuSelection[menuLevel - 1]].indexOf("Wires") != -1) {
 
       brightnessMenu = 3;
       }
-      
-      
-    if (menuLines[previousMenuSelection[menuLevel-2]].indexOf("Bright") != -1 && menuLines[previousMenuSelection[menuLevel-1]].indexOf("Special") != -1 ){
+
+
+    if (menuLines[previousMenuSelection[menuLevel - 2]].indexOf("Bright") != -1 && menuLines[previousMenuSelection[menuLevel - 1]].indexOf("Special") != -1) {
 
       brightnessMenu = 4;
       }
+
+    // if (menuLines[previousMenuSelection[menuLevel - 1]].indexOf("Font") != -1) {
+    //   Serial.println("Font\n\r");
+    //   showFonts = 1;
+    //   }
+
 
 
     // Serial.print("menuType: ");
@@ -1349,112 +1368,112 @@ int selectSubmenuOption(int menuPosition, int menuLevel) {
                   switch (highlightedOption) {
                     case 0:
                       menuBrightnessSetting = -70;
-                    break;
-                  case 1:
-                    menuBrightnessSetting = -55;
-                    break;
-                  case 2:
-                    menuBrightnessSetting = -45;
-                    break;
-                  case 3:
-                    menuBrightnessSetting = -35;
-                    break;
-                  case 4:
-                    menuBrightnessSetting = -15;
-                    break;
-                  case 5:
-                    menuBrightnessSetting = -5;
-                    break;
-                  case 6:
-                    menuBrightnessSetting = 0;
-                    break;
-                  case 7:
-                    menuBrightnessSetting = 30;
-                    break;
-                  case 8:
-                    menuBrightnessSetting = 60;
-                    break;
-                  case 9:
-                    menuBrightnessSetting = 60;
-                    break;
-                  default:
-                    menuBrightnessSetting = 0;
-                    break;
-                  }
+                      break;
+                    case 1:
+                      menuBrightnessSetting = -55;
+                      break;
+                    case 2:
+                      menuBrightnessSetting = -45;
+                      break;
+                    case 3:
+                      menuBrightnessSetting = -35;
+                      break;
+                    case 4:
+                      menuBrightnessSetting = -15;
+                      break;
+                    case 5:
+                      menuBrightnessSetting = -5;
+                      break;
+                    case 6:
+                      menuBrightnessSetting = 0;
+                      break;
+                    case 7:
+                      menuBrightnessSetting = 30;
+                      break;
+                    case 8:
+                      menuBrightnessSetting = 60;
+                      break;
+                    case 9:
+                      menuBrightnessSetting = 60;
+                      break;
+                    default:
+                      menuBrightnessSetting = 0;
+                      break;
+                    }
 
-                                  b.clear();
-                b.print("B", scaleBrightness(menuColors[0], menuBrightnessOptionMap[highlightedOption]), 0xffffff, 0, 0, 3);
-                b.print("r", scaleBrightness(menuColors[1], menuBrightnessOptionMap[highlightedOption]), 0xffffff, 1, 0, 3);
-                b.print("i", scaleBrightness(menuColors[2], menuBrightnessOptionMap[highlightedOption]), 0xffffff, 2, 0, 3);
-                b.print("g", scaleBrightness(menuColors[3], menuBrightnessOptionMap[highlightedOption]), 0xffffff, 3, 0, 3);
-                b.print("h", scaleBrightness(menuColors[4], menuBrightnessOptionMap[highlightedOption]), 0xffffff, 4, 0, 3);
-                b.print("t", scaleBrightness(menuColors[5], menuBrightnessOptionMap[highlightedOption]), 0xffffff, 5, 0, 3);
+                  b.clear();
+                  b.print("B", scaleBrightness(menuColors[0], menuBrightnessOptionMap[highlightedOption]), 0xffffff, 0, 0, 3);
+                  b.print("r", scaleBrightness(menuColors[1], menuBrightnessOptionMap[highlightedOption]), 0xffffff, 1, 0, 3);
+                  b.print("i", scaleBrightness(menuColors[2], menuBrightnessOptionMap[highlightedOption]), 0xffffff, 2, 0, 3);
+                  b.print("g", scaleBrightness(menuColors[3], menuBrightnessOptionMap[highlightedOption]), 0xffffff, 3, 0, 3);
+                  b.print("h", scaleBrightness(menuColors[4], menuBrightnessOptionMap[highlightedOption]), 0xffffff, 4, 0, 3);
+                  b.print("t", scaleBrightness(menuColors[5], menuBrightnessOptionMap[highlightedOption]), 0xffffff, 5, 0, 3);
 
-                b.printMenuReminder(menuLevel, scaleBrightness(menuColors[menuLevel], menuBrightnessSetting));
+                  b.printMenuReminder(menuLevel, scaleBrightness(menuColors[menuLevel], menuBrightnessSetting));
 
 
-                } else {
+                  } else {
                   uint32_t scaledColor[6];
                   hsvColor scaledColorHsv[6];
                   switch (brightnessMenu) {
                     case 2:
                       LEDbrightnessRail = (int)(highlightedOption * 1.35) + 50;
                       jumperlessConfig.display.rail_brightness = LEDbrightnessRail;
-                      
+
                       // for (int i = 0; i < 6; i++) {
                       //   scaledColorHsv[i] = RgbToHsv(menuColors[i]);
                       //   scaledColorHsv[i].v = LEDbrightnessRail;  
                       //   scaledColor[i] = HsvToRaw(scaledColorHsv[i]);
                       // }
 
-                                      b.clear();
-                b.print("B", scaleBrightness(menuColors[0], menuBrightnessOptionMap[highlightedOption]), 0xffffff, 0, 0, 3);
-                b.print("r", scaleBrightness(menuColors[1], menuBrightnessOptionMap[highlightedOption]), 0xffffff, 1, 0, 3);
-                b.print("i", scaleBrightness(menuColors[2], menuBrightnessOptionMap[highlightedOption]), 0xffffff, 2, 0, 3);
-                b.print("g", scaleBrightness(menuColors[3], menuBrightnessOptionMap[highlightedOption]), 0xffffff, 3, 0, 3);
-                b.print("h", scaleBrightness(menuColors[4], menuBrightnessOptionMap[highlightedOption]), 0xffffff, 4, 0, 3);
-                b.print("t", scaleBrightness(menuColors[5], menuBrightnessOptionMap[highlightedOption]), 0xffffff, 5, 0, 3);
+                      b.clear();
+                      b.print("B", scaleBrightness(menuColors[0], menuBrightnessOptionMap[highlightedOption]), 0xffffff, 0, 0, 3);
+                      b.print("r", scaleBrightness(menuColors[1], menuBrightnessOptionMap[highlightedOption]), 0xffffff, 1, 0, 3);
+                      b.print("i", scaleBrightness(menuColors[2], menuBrightnessOptionMap[highlightedOption]), 0xffffff, 2, 0, 3);
+                      b.print("g", scaleBrightness(menuColors[3], menuBrightnessOptionMap[highlightedOption]), 0xffffff, 3, 0, 3);
+                      b.print("h", scaleBrightness(menuColors[4], menuBrightnessOptionMap[highlightedOption]), 0xffffff, 4, 0, 3);
+                      b.print("t", scaleBrightness(menuColors[5], menuBrightnessOptionMap[highlightedOption]), 0xffffff, 5, 0, 3);
 
-                b.printMenuReminder(menuLevel, scaleBrightness(menuColors[menuLevel], menuBrightnessSetting));
+                      b.printMenuReminder(menuLevel, scaleBrightness(menuColors[menuLevel], menuBrightnessSetting));
 
                       break;
                     case 3:
                       LEDbrightness = highlightedOption * 3 + 3;
                       jumperlessConfig.display.led_brightness = LEDbrightness;
-                      
+
                       for (int i = 0; i < 6; i++) {
-                          scaledColorHsv[i] = RgbToHsv(menuColors[i]);
-                        scaledColorHsv[i].v = LEDbrightness;  
+                        scaledColorHsv[i] = RgbToHsv(menuColors[i]);
+                        scaledColorHsv[i].v = LEDbrightness;
                         scaledColor[i] = HsvToRaw(scaledColorHsv[i]);
-                      }
+                        }
 
                       b.clear();
-                b.print("B", scaledColor[0], 0xffffff, 0, 0, 3);
-                b.print("r", scaledColor[1], 0xffffff, 1, 0, 3);
-                b.print("i", scaledColor[2], 0xffffff, 2, 0, 3);
-                b.print("g", scaledColor[3], 0xffffff, 3, 0, 3);
-                b.print("h", scaledColor[4], 0xffffff, 4, 0, 3);
-                b.print("t", scaledColor[5], 0xffffff, 5, 0, 3);
+                      b.print("B", scaledColor[0], 0xffffff, 0, 0, 3);
+                      b.print("r", scaledColor[1], 0xffffff, 1, 0, 3);
+                      b.print("i", scaledColor[2], 0xffffff, 2, 0, 3);
+                      b.print("g", scaledColor[3], 0xffffff, 3, 0, 3);
+                      b.print("h", scaledColor[4], 0xffffff, 4, 0, 3);
+                      b.print("t", scaledColor[5], 0xffffff, 5, 0, 3);
                     case 4:
                       LEDbrightnessSpecial = highlightedOption * 5 + 5;
                       jumperlessConfig.display.special_net_brightness = LEDbrightnessSpecial;
-                      
+
                       for (int i = 0; i < 6; i++) {
                         scaledColorHsv[i] = RgbToHsv(menuColors[i]);
-                        scaledColorHsv[i].v = LEDbrightnessSpecial;  
+                        scaledColorHsv[i].v = LEDbrightnessSpecial;
                         scaledColor[i] = HsvToRaw(scaledColorHsv[i]);
-                      }
+                        }
 
                       b.clear();
-                b.print("B", scaledColor[0], 0xffffff, 0, 0, 3);
-                b.print("r", scaledColor[1], 0xffffff, 1, 0, 3);
-                b.print("i", scaledColor[2], 0xffffff, 2, 0, 3);
-                b.print("g", scaledColor[3], 0xffffff, 3, 0, 3);
-                b.print("h", scaledColor[4], 0xffffff, 4, 0, 3);
-                b.print("t", scaledColor[5], 0xffffff, 5, 0, 3);
+                      b.print("B", scaledColor[0], 0xffffff, 0, 0, 3);
+                      b.print("r", scaledColor[1], 0xffffff, 1, 0, 3);
+                      b.print("i", scaledColor[2], 0xffffff, 2, 0, 3);
+                      b.print("g", scaledColor[3], 0xffffff, 3, 0, 3);
+                      b.print("h", scaledColor[4], 0xffffff, 4, 0, 3);
+                      b.print("t", scaledColor[5], 0xffffff, 5, 0, 3);
                       break;
+                    }
                   }
-                }
                 // b.print("Bright" , menuColors[menuLevel-1],
                 //         0xFFFFFF, 0, -1, 3);
                 // b.printMenuReminder(menuLevel, menuColors[menuLevel]);
@@ -1485,7 +1504,7 @@ int selectSubmenuOption(int menuPosition, int menuLevel) {
               int loopCount = 0;
               int nudge = 0;
               int moveMax = 0;
-              Serial.print("\r                      \r");
+              Serial.print("\r                          \r");
               for (int j = 0; j <= menuLevels[menuPosition]; j++) {
                 Serial.print(">");
                 if (j > 8) {
@@ -1495,8 +1514,22 @@ int selectSubmenuOption(int menuPosition, int menuLevel) {
                 }
               Serial.print(" ");
 
-              Serial.print(subMenuStrings[highlightedOption]);
-              oled.clearPrintShow(subMenuStrings[highlightedOption], 2, 5, 8, true, true);
+              // Serial.print(subMenuStrings[highlightedOption]);
+
+              // if (showFonts == 1) {
+
+              //   Serial.println(highlightedOption);
+              //   oled.setFont(highlightedOption);
+              //   }
+
+              String menuLine = subMenuStrings[highlightedOption];
+              menuLine.replace("~", "±");
+              menuLine.replace("_", "-");
+              Serial.print(menuLine.c_str());
+              menuLine.replace("±", "+-");
+
+              oled.clearPrintShow(menuLine.c_str(), 2, true, true, true, 5, 8);
+
               for (int i = 0; i < 7; i++) {
 
                 if (i != (3)) {
@@ -1539,8 +1572,18 @@ int selectSubmenuOption(int menuPosition, int menuLevel) {
                     }
                   }
                 Serial.print(" ");
-                Serial.print(subMenuStrings[highlightedOption]);
-                oled.clearPrintShow(subMenuStrings[highlightedOption], 2, 5, 8, true, true);
+               // Serial.print(subMenuStrings[highlightedOption]);
+
+                if (actions[menuPosition] == 6) {
+                  oled.setFont(highlightedOption);
+                  }
+
+                String menuLine = subMenuStrings[highlightedOption];
+                menuLine.replace("~", "±");
+                menuLine.replace("_", "-");
+                Serial.print(menuLine.c_str());
+                menuLine.replace("±", "+-");
+                oled.clearPrintShow(menuLine.c_str(), 2, true, true, true, 5, 8);
 
                 for (int i = 0; i < numberOfChoices[menuPosition]; i++) {
 
@@ -1573,7 +1616,7 @@ int selectSubmenuOption(int menuPosition, int menuLevel) {
                           subMenuColors[(highlightedOption + menuLevel) % 8],
                           backgroundColor, 0, 1, 1);
 
-                  Serial.print("\r                      \r");
+                  Serial.print("\r                         \r");
                   oled.clear();
                   for (int j = 0; j <= menuLevels[menuPosition]; j++) {
                     Serial.print(">");
@@ -1583,8 +1626,14 @@ int selectSubmenuOption(int menuPosition, int menuLevel) {
                       }
                     }
                   Serial.print(" ");
-                  Serial.print(subMenuStrings[highlightedOption]);
-                  oled.clearPrintShow(subMenuStrings[highlightedOption], 2, 5, 8, true, true);
+                  // Serial.print(subMenuStrings[highlightedOption]);
+
+                  String menuLine = subMenuStrings[highlightedOption];
+                  menuLine.replace("~", "±");
+                  menuLine.replace("_", "-");
+                  Serial.print(menuLine.c_str());
+                  menuLine.replace("±", "+-");
+                  oled.clearPrintShow(menuLine.c_str(), 2, true, true, true, 5, 8);
                   } else if (menuType == 3) {
                     // Serial.println(subMenuColors[(highlightedOption + menuLevel) % 8],
 
@@ -1913,8 +1962,8 @@ int selectNodeAction(int whichSelection) {
 
           Serial.print(">>>> ");
           printNodeOrName(highlightedNode, 1);
-          oled.clearPrintShow("> ", 2, 5, 8, true, false);
-          oled.clearPrintShow(definesToChar(highlightedNode, 0), 3, 8, 6, false, true);
+          oled.clearPrintShow("> ", 2, true, false);
+          oled.clearPrintShow(definesToChar(highlightedNode, 0), 2, false, true);
           // oled.clrPrintfsh(">>>> %s", definesToChar(highlightedNode, 1));
           //oled.show();
          // oled.clearPrintShow(">>>>", 3, 5, 5, true);
@@ -1966,9 +2015,9 @@ int selectNodeAction(int whichSelection) {
           Serial.print(">>>> ");
           printNodeOrName(highlightedNode, 1);
 
-          oled.clearPrintShow("> ", 2, 5, 8, true, false);
+          oled.clearPrintShow("> ", 2, true, false);
 
-          oled.clearPrintShow(definesToChar(highlightedNode, 0), 2, 5, 6, false, true);
+          oled.clearPrintShow(definesToChar(highlightedNode, 0), 2, false, true);
 
           // oled.clrPrintfsh(">>>> %s", definesToChar(highlightedNode, 1));
 
@@ -2177,7 +2226,7 @@ float getActionFloat(int menuPosition, int rail) {
             scrollAcceleration = 0.1;
             }
           lastScrollTime = micros();
-  currentChoice += scrollAcceleration;
+          currentChoice += scrollAcceleration;
           if (currentChoice < jumperlessConfig.dacs.limit_max) {
             //currentChoice += scrollAcceleration;
             } else {
@@ -2235,7 +2284,7 @@ float getActionFloat(int menuPosition, int rail) {
                           Serial.print(floatString);
                           // oled.setTextSize(3);
                           // oled.clrPrintfsh("%s", floatString);
-                          oled.clearPrintShow(floatString, 2, 5, 5, true, true, true);
+                          oled.clearPrintShow(floatString, 2, true, true, true);
                           if (rail == 0) {
                             railVoltage[0] = currentChoice;
                             railVoltage[1] = currentChoice;
@@ -2276,7 +2325,7 @@ float getActionFloat(int menuPosition, int rail) {
 
           } else if (encoderDirectionState == DOWN) {
             encoderDirectionState = NONE;
-            
+
             if (snapToValue > 0 && snap != 0) {
               snapToValue--;
               continue;
@@ -2293,14 +2342,14 @@ float getActionFloat(int menuPosition, int rail) {
               scrollAcceleration = 0.1;
               }
             lastScrollTime = micros();
-currentChoice -= scrollAcceleration;
+            currentChoice -= scrollAcceleration;
             if (currentChoice > jumperlessConfig.dacs.limit_min) {
-              
+
               } else {
               currentChoice = jumperlessConfig.dacs.limit_min;
               }
 
-            
+
 
             if (currentChoice > max) {
               currentChoice = max;
@@ -2347,7 +2396,7 @@ currentChoice -= scrollAcceleration;
                             //oled.clearPrintShow(floatString, 1, 0, 0, true);
                             // oled.setTextSize(3);
                             // oled.clrPrintfsh("%s", floatString);
-                            oled.clearPrintShow(floatString, 2, 5, 5, true, true, true);
+                            oled.clearPrintShow(floatString, 2, true, true, true);
                             // Serial.println(currentChoice);
                             if (rail == 0) {
                               railVoltage[0] = currentChoice;
@@ -2417,6 +2466,49 @@ currentChoice -= scrollAcceleration;
 
 // subSelection
 
+actionCategories getActionCategory(void) {
+
+  if (menuLines[currentAction.previousMenuPositions[0]].indexOf("Slots") !=
+    -1) {
+    return SLOTSACTION;
+    } else if (menuLines[currentAction.previousMenuPositions[0]].indexOf(
+      "Rails") != -1) {
+      return RAILSACTION;
+      } else if (menuLines[currentAction.previousMenuPositions[0]].indexOf(
+        "Show") != -1) {
+        return SHOWACTION;
+        } else if (menuLines[currentAction.previousMenuPositions[0]].indexOf(
+          "Output") != -1) {
+          return OUTPUTACTION;
+          } else if (menuLines[currentAction.previousMenuPositions[0]].indexOf(
+            "Arduino") != -1) {
+            return ARDUINOACTION;
+            } else if (menuLines[currentAction.previousMenuPositions[0]].indexOf(
+              "Probe") != -1) {
+              return PROBEACTION;
+              } else if (menuLines[currentAction.previousMenuPositions[0]].indexOf(
+                "Display") != -1) {
+                return DISPLAYACTION;
+
+                } else if (menuLines[currentAction.previousMenuPositions[0]].indexOf(
+                  "Apps") != -1) {
+                  return APPSACTION;
+
+                  } else if (menuLines[currentAction.previousMenuPositions[0]].indexOf(
+                    "Routing") != -1) {
+                    return ROUTINGACTION;
+
+                    } else if (menuLines[currentAction.previousMenuPositions[0]].indexOf(
+                      "OLED") != -1) {
+                      return OLEDACTION;
+
+                      } else {
+                      return NOCATEGORY;
+                      }
+
+                    return NOCATEGORY;
+  }
+
 int defconDisplay = -1;
 int doMenuAction(int menuPosition, int selection) {
 
@@ -2424,537 +2516,618 @@ int doMenuAction(int menuPosition, int selection) {
   printActionStruct();
   clearLEDsExceptRails();
   showLEDsCore2 = -1;
-  actionCategories currentCategory;
+  actionCategories currentCategory = getActionCategory();
 
-  if (menuLines[currentAction.previousMenuPositions[0]].indexOf("Slots") !=
-      -1) {
-    currentCategory = SLOTSACTION;
-    } else if (menuLines[currentAction.previousMenuPositions[0]].indexOf(
-      "Rails") != -1) {
-      currentCategory = RAILSACTION;
-      } else if (menuLines[currentAction.previousMenuPositions[0]].indexOf(
-        "Show") != -1) {
-        currentCategory = SHOWACTION;
-        } else if (menuLines[currentAction.previousMenuPositions[0]].indexOf(
-          "Output") != -1) {
-          currentCategory = OUTPUTACTION;
-          } else if (menuLines[currentAction.previousMenuPositions[0]].indexOf(
-            "Arduino") != -1) {
-            currentCategory = ARDUINOACTION;
-            } else if (menuLines[currentAction.previousMenuPositions[0]].indexOf(
-              "Probe") != -1) {
-              currentCategory = PROBEACTION;
-              } else if (menuLines[currentAction.previousMenuPositions[0]].indexOf(
-                "Display") != -1) {
-                currentCategory = DISPLAYACTION;
 
-                } else if (menuLines[currentAction.previousMenuPositions[0]].indexOf(
-                  "Apps") != -1) {
-                  currentCategory = APPSACTION;
+  if (currentCategory == SHOWACTION) { //!Show 
 
-                  } else if (menuLines[currentAction.previousMenuPositions[0]].indexOf(
-                    "Routing") != -1) {
-                    currentCategory = ROUTINGACTION;
+    Serial.print("Show Action\n\r");
+    if (menuLines[currentAction.previousMenuPositions[1]].indexOf("Voltage") !=
+        -1) {
 
-                    } else {
-                    currentCategory = NOCATEGORY;
+      // printActionStruct();
+
+      for (int i = 0; i < 10; i++) {
+        if (currentAction.from[i] != -1) {
+          switch (currentAction.from[i]) {
+            case 0:
+              addBridgeToNodeFile(ADC0, currentAction.to[i], netSlot);
+              break;
+            case 1:
+
+              addBridgeToNodeFile(ADC1, currentAction.to[i], netSlot);
+              break;
+              // break;
+            case 2:
+
+              addBridgeToNodeFile(ADC2, currentAction.to[i], netSlot);
+              break;
+            case 3:
+              addBridgeToNodeFile(ADC3, currentAction.to[i], netSlot);
+              break;
+            case 4:
+              addBridgeToNodeFile(ADC4, currentAction.to[i], netSlot);
+              break;
+
+            default:
+              break;
+            }
+
+          // break;
+          }
+        }
+
+      refreshConnections();
+
+      } else if (menuLines[currentAction.previousMenuPositions[1]].indexOf(
+        "Current") != -1) {
+
+        // printActionStruct();
+
+        for (int i = 0; i < 10; i++) {
+          if (currentAction.from[i] != -1) {
+            switch (currentAction.from[i]) {
+              case 0:
+                addBridgeToNodeFile(ISENSE_PLUS, currentAction.to[i], netSlot);
+                break;
+              case 1:
+
+                addBridgeToNodeFile(ISENSE_MINUS, currentAction.to[i], netSlot);
+                break;
+                // break;
+
+              default:
+                break;
+              }
+
+            // break;
+            }
+          }
+        } else if (menuLines[currentAction.previousMenuPositions[1]].indexOf("Digital") != -1) {
+          if (menuLines[currentAction.previousMenuPositions[2]].indexOf("GPIO") != -1) {
+            for (int i = 0; i < 10; i++) {
+              if (currentAction.from[i] != -1) {
+                switch (currentAction.from[i]) {
+                  case 0:
+                    addBridgeToNodeFile(RP_GPIO_1, currentAction.to[i], netSlot);
+                    gpioState[0] = 2;
+                    break;
+                  case 1:
+                    addBridgeToNodeFile(RP_GPIO_2, currentAction.to[i], netSlot);
+                    gpioState[1] = 2;
+                    break;
+                  case 2:
+                    addBridgeToNodeFile(RP_GPIO_3, currentAction.to[i], netSlot);
+                    gpioState[2] = 2;
+                    break;
+                  case 3:
+                    addBridgeToNodeFile(RP_GPIO_4, currentAction.to[i], netSlot);
+                    gpioState[3] = 2;
+                    break;
+                  case 4:
+                    addBridgeToNodeFile(RP_GPIO_5, currentAction.to[i], netSlot);
+                    gpioState[4] = 2;
+                    break;
+                  case 5:
+                    addBridgeToNodeFile(RP_GPIO_6, currentAction.to[i], netSlot);
+                    gpioState[5] = 2;
+                    break;
+                  case 6:
+                    addBridgeToNodeFile(RP_GPIO_7, currentAction.to[i], netSlot);
+                    gpioState[6] = 2;
+                    break;
+                  case 7:
+                    addBridgeToNodeFile(RP_GPIO_8, currentAction.to[i], netSlot);
+                    gpioState[7] = 2;
+                    break;
+                  default:
+                    break;
+                  }
+                updateGPIOConfigFromState();
+                }
+              }
+            }
+          }
+
+        // digitalWrite(RESETPIN, HIGH);
+
+        // delayMicroseconds(200);
+
+        // digitalWrite(RESETPIN, LOW);
+
+        // showSavedColors(netSlot);
+        // sendPaths();
+        // sendAllPathsCore2 = 1;
+        // chooseShownReadings();
+
+        refreshConnections();
+
+        slotChanged = 0;
+
+        return 10;
+        // loadingFile = 1;
+
+    } else if (currentCategory == RAILSACTION) { //!Rails
+
+      Serial.print("Rails Action\n\r");
+      showLEDsCore2 = 1;
+      waitCore2();
+
+      switch (currentAction.from[0]) {
+        case 0: {
+        setTopRail(currentAction.analogVoltage, 1, 1);
+        delayMicroseconds(100);
+        setBotRail(currentAction.analogVoltage, 1, 1);
+        break;
+        }
+        case 1: {
+        // delay(100);
+        setTopRail(currentAction.analogVoltage, 1, 1);
+        break;
+        }
+        case 2: {
+        // delay(100);
+        setBotRail(currentAction.analogVoltage, 1, 1);
+        break;
+        }
+        default: {
+        break;
+        }
+        }
+
+      } else if (currentCategory == SLOTSACTION) { //!Slots
+
+        Serial.print("Slots Action\n\r");
+
+        if (menuLines[currentAction.previousMenuPositions[1]].indexOf("Save") !=
+            -1) {
+
+          if (currentAction.from[0] >= 0 && currentAction.from[0] < NUM_SLOTS) {
+            saveCurrentSlotToSlot(netSlot, currentAction.from[0]);
+            netSlot = currentAction.from[0];
+            }
+
+          } else if (menuLines[currentAction.previousMenuPositions[1]].indexOf(
+            "Load") != -1) {
+            if (currentAction.from[0] >= 0 && currentAction.from[0] < NUM_SLOTS) {
+              // saveCurrentSlotToSlot(netSlot, currentAction.from[0]);
+
+              netSlot = currentAction.from[0];
+              slotChanged = 1;
+              refreshConnections(-1);
+              chooseShownReadings();
+              printAllChangedNetColorFiles();
+              }
+            // netSlot = currentAction.from[0];
+            return currentAction.from[0];
+            } else if (menuLines[currentAction.previousMenuPositions[1]].indexOf(
+              "Clear") != -1) {
+              createSlots(currentAction.from[0], 0);
+              refreshConnections();
+
+              //  sendAllPathsCore2 = 1;
+              chooseShownReadings();
+              return 10;
+              }
+
+        } else if (currentCategory == OUTPUTACTION) { //!Output
+
+          Serial.print("Output Action\n\r");
+          printActionStruct();
+          if (menuLines[currentAction.previousMenuPositions[1]].indexOf("GPIO") !=
+              -1) {
+
+            printActionStruct();
+
+            for (int i = 0; i < 10; i++) {
+              if (currentAction.from[i] != -1) {
+                switch (currentAction.from[i]) {
+                  case 0:
+                    addBridgeToNodeFile(RP_GPIO_1, currentAction.to[i], netSlot);
+                    break;
+                  case 1:
+
+                    addBridgeToNodeFile(RP_GPIO_2, currentAction.to[i], netSlot);
+                    break;
+
+                  case 2:
+
+                    addBridgeToNodeFile(RP_GPIO_3, currentAction.to[i], netSlot);
+                    break;
+                  case 3:
+
+                    addBridgeToNodeFile(RP_GPIO_4, currentAction.to[i], netSlot);
+                    break;
+
+                  case 4:
+
+                    addBridgeToNodeFile(RP_GPIO_5, currentAction.to[i], netSlot);
+                    break;
+
+                  case 5:
+
+                    addBridgeToNodeFile(RP_GPIO_6, currentAction.to[i], netSlot);
+                    break;
+
+                  case 6:
+
+                    addBridgeToNodeFile(RP_GPIO_7, currentAction.to[i], netSlot);
+                    break;
+
+                  case 7:
+
+                    addBridgeToNodeFile(RP_GPIO_8, currentAction.to[i], netSlot);
+                    break;
+
+                  default:
+                    break;
+                  }
+
+                // break;
+                }
+
+
+
+              // break;
+
+              }
+
+
+            } else if (menuLines[currentAction.previousMenuPositions[1]].indexOf(
+              "Voltage") != -1) {
+
+              printActionStruct();
+
+              for (int i = 0; i < 10; i++) {
+                if (currentAction.from[i] != -1 && currentAction.to[i] != -1) {
+                  switch (currentAction.from[i]) {
+                    case 0:
+                      addBridgeToNodeFile(DAC0, currentAction.to[i], netSlot);
+                      // setDac0_5Vvoltage(currentAction.analogVoltage);
+                      dacOutput[0] = currentAction.analogVoltage;
+                      break;
+                    case 1:
+
+                      addBridgeToNodeFile(DAC1, currentAction.to[i], netSlot);
+                      dacOutput[1] = currentAction.analogVoltage;
+                      // setDac1_8Vvoltage(currentAction.analogVoltage);
+                      break;
+                      // break;
+
+                    default:
+                      break;
                     }
+                  }
+                }
+              refreshConnections();
+              setRailsAndDACs();
 
-                  if (currentCategory == SHOWACTION) {
+              } else if (menuLines[currentAction.previousMenuPositions[1]].indexOf(
+                "UART") != -1) {
+                for (int i = 0; i < 10; i++) {
+                  if (currentAction.from[i] != -1 && currentAction.to[i] != -1) {
+                    switch (currentAction.from[i]) {
+                      case 0:
+                        addBridgeToNodeFile(RP_UART_TX, currentAction.to[i], netSlot);
+                        break;
+                      case 1:
 
-                    Serial.print("Show Action\n\r");
-                    if (menuLines[currentAction.previousMenuPositions[1]].indexOf("Voltage") !=
-                        -1) {
+                        addBridgeToNodeFile(RP_UART_RX, currentAction.to[i], netSlot);
+                        break;
+                        // break;
+                      default:
+                        break;
+                      }
 
-                      // printActionStruct();
-
-                      for (int i = 0; i < 10; i++) {
-                        if (currentAction.from[i] != -1) {
-                          switch (currentAction.from[i]) {
-                            case 0:
-                              addBridgeToNodeFile(ADC0, currentAction.to[i], netSlot);
-                              break;
-                            case 1:
-
-                              addBridgeToNodeFile(ADC1, currentAction.to[i], netSlot);
-                              break;
-                              // break;
-                            case 2:
-
-                              addBridgeToNodeFile(ADC2, currentAction.to[i], netSlot);
-                              break;
-                            case 3:
-                              addBridgeToNodeFile(ADC3, currentAction.to[i], netSlot);
-                              break;
-                            case 4:
-                              addBridgeToNodeFile(ADC4, currentAction.to[i], netSlot);
-                              break;
-
-                            default:
-                              break;
+                    // break;
+                    }
+                  }
+                } else if (menuLines[currentAction.previousMenuPositions[1]].indexOf("Limits") != -1) {
+                  if (menuLines[currentAction.previousMenuPositions[2]].indexOf("Min Max") != -1) {
+                    Serial.print("Min Max\n\r");
+                    if (currentAction.from[0] == 0) {
+                      jumperlessConfig.dacs.limit_min = 0.0;
+                      } else if (currentAction.from[0] == 1) {
+                        jumperlessConfig.dacs.limit_min = 0.0;
+                        } else if (currentAction.from[0] == 2) {
+                          jumperlessConfig.dacs.limit_min = -5.0;
+                          } else if (currentAction.from[0] == 3) {
+                            jumperlessConfig.dacs.limit_min = -8.0;
                             }
 
-                          // break;
-                          }
-                        }
+                          if (currentAction.from[0] == 0) {
+                            jumperlessConfig.dacs.limit_max = 3.3;
+                            } else if (currentAction.from[0] == 1) {
+                              jumperlessConfig.dacs.limit_max = 5.0;
+                              } else if (currentAction.from[0] == 2) {
+                                jumperlessConfig.dacs.limit_max = 5.0;
+                                } else if (currentAction.from[0] == 3) {
+                                  jumperlessConfig.dacs.limit_max = 8.0;
+                                  }
 
-                      refreshConnections();
+                                configChanged = true;
+                    }
+                  }
+
+          } else if (currentCategory == APPSACTION) {
+
+            Serial.print("Apps Action\n\r");
+
+            if (menuLines[currentAction.previousMenuPositions[1]].indexOf("Games") !=
+                -1) {
+              doomOn = 1;
+              Serial.println("\n\n\n\rGames\n\r");
+              }
+            // digitalWrite(RESETPIN, HIGH);
+
+            // delayMicroseconds(200);
+
+            // digitalWrite(RESETPIN, LOW);
+
+            // showSavedColors(netSlot);
+            // sendPaths();
+            // sendAllPathsCore2 = 1;
+            // chooseShownReadings();
+
+            // slotChanged = 0;
+            inClickMenu = 0;
+
+
+            for (int i = 0; i < NUM_APPS; i++) {
+              if (menuLines[currentAction.previousMenuPositions[1]].indexOf(apps[i].name) != -1) {
+                runApp(i);
+                //showLEDsCore2 = -1;
+                refreshConnections(-1, 0);
+                break;
+                }
+              }
+
+
+            return 10;
+
+            } else if (currentCategory == ARDUINOACTION) {
+
+              Serial.print("Arduino Action\n\r");
+
+              } else if (currentCategory == PROBEACTION) {
+
+                Serial.print("Probe Action\n\r");
+
+                } else if (currentCategory == ROUTINGACTION) { //!Routing Options
+
+                  if (menuLines[currentAction.previousMenuPositions[1]].indexOf("Stack") !=
+                    -1) {
+                    if (menuLines[currentAction.previousMenuPositions[2]].indexOf("Rails") !=
+                      -1) {
+                      powerDuplicates = currentAction.from[0];
+
+                      if (currentAction.fromAscii[0][0] == 'M' || currentAction.fromAscii[0][0] == 'm') {
+                        powerPriority = 2;
+                        powerDuplicates = 7;
+
+                        } else {
+                        powerPriority = 1;
+                        }
+                      } else if (menuLines[currentAction.previousMenuPositions[2]].indexOf("Paths") !=
+                      -1) {
+                        pathDuplicates = currentAction.from[0];
+                        if (currentAction.fromAscii[0][0] == 'M' || currentAction.fromAscii[0][0] == 'm') {
+                          //pathPriority = 2;
+                          pathDuplicates = 7;
+                          }
+                        } else if (menuLines[currentAction.previousMenuPositions[2]].indexOf("DACs") != -1)
+                          {
+                          dacDuplicates = currentAction.from[0];
+                          if (currentAction.fromAscii[0][0] == 'M' || currentAction.fromAscii[0][0] == 'm') {
+                            dacPriority = 2;
+                            dacDuplicates = 4;
+                            } else {
+                            dacPriority = 1;
+                            }
+                          }
+
+                    }
+                  Serial.print("\n\rDuplicate Rails: ");
+                  Serial.print(powerDuplicates);
+                  Serial.print("\n\r");
+                  Serial.print("Rail Priority: ");
+                  Serial.print(powerPriority);
+
+
+                  Serial.print("\n\n\rDuplicate DACs: ");
+                  Serial.print(dacDuplicates);
+                  Serial.print("\n\rDAC Priority: ");
+                  Serial.print(dacPriority);
+                  Serial.print("\n\n\rDuplicate Paths: ");
+                  Serial.print(pathDuplicates);
+
+                  Serial.print("\n\n\r");
+
+                  // Serial.print("Routing Action\n\r");
+                  refreshConnections();
+
+                  saveDuplicateSettings(0);
+
+                  } else if (currentCategory == DISPLAYACTION) {//!Display Options
+
+
+
+
+
+                    if (menuLines[currentAction.previousMenuPositions[1]].indexOf("Jumpers") !=
+                        -1) {
+                      if (currentAction.from[0] == 0) {
+                        jumperlessConfig.display.lines_wires = 1;
+                        } else {
+                        jumperlessConfig.display.lines_wires = 0;
+                        }
+                      debugFlagSet(12);
+
 
                       } else if (menuLines[currentAction.previousMenuPositions[1]].indexOf(
-                        "Current") != -1) {
+                        "Bright") != -1) {
 
-                        // printActionStruct();
-
-                        for (int i = 0; i < 10; i++) {
-                          if (currentAction.from[i] != -1) {
-                            switch (currentAction.from[i]) {
-                              case 0:
-                                addBridgeToNodeFile(ISENSE_PLUS, currentAction.to[i], netSlot);
-                                break;
-                              case 1:
-
-                                addBridgeToNodeFile(ISENSE_MINUS, currentAction.to[i], netSlot);
-                                break;
-                                // break;
-
-                              default:
-                                break;
-                              }
-
-                            // break;
-                            }
-                          }
-                        } else if (menuLines[currentAction.previousMenuPositions[1]].indexOf("Digital") != -1) {
-                          if (menuLines[currentAction.previousMenuPositions[2]].indexOf("GPIO") != -1) {
-                            for (int i = 0; i < 10; i++) {
-                              if (currentAction.from[i] != -1) {
-                                switch (currentAction.from[i]) {
-                                  case 0:
-                                    addBridgeToNodeFile(RP_GPIO_1, currentAction.to[i], netSlot);
-                                    gpioState[0] = 2;
-                                    break;
-                                  case 1:
-                                    addBridgeToNodeFile(RP_GPIO_2, currentAction.to[i], netSlot);
-                                    gpioState[1] = 2;
-                                    break;
-                                  case 2:
-                                    addBridgeToNodeFile(RP_GPIO_3, currentAction.to[i], netSlot);
-                                    gpioState[2] = 2;
-                                    break;
-                                  case 3:
-                                    addBridgeToNodeFile(RP_GPIO_4, currentAction.to[i], netSlot);
-                                    gpioState[3] = 2;
-                                    break;
-                                  case 4:
-                                    addBridgeToNodeFile(RP_GPIO_5, currentAction.to[i], netSlot);
-                                    gpioState[4] = 2;
-                                    break;
-                                  case 5:
-                                    addBridgeToNodeFile(RP_GPIO_6, currentAction.to[i], netSlot);
-                                    gpioState[5] = 2;
-                                    break;
-                                  case 6:
-                                    addBridgeToNodeFile(RP_GPIO_7, currentAction.to[i], netSlot);
-                                    gpioState[6] = 2;
-                                    break;
-                                  case 7:
-                                    addBridgeToNodeFile(RP_GPIO_8, currentAction.to[i], netSlot);
-                                    gpioState[7] = 2;
-                                    break;
-                                  default:
-                                    break;
-                                  }
-                                updateGPIOConfigFromState();
+                        if (menuLines[currentAction.previousMenuPositions[2]].indexOf("Rails") != -1) {
+                          //LEDbrightnessRail = currentAction.from[0] * 10 + 30;
+                          } else if (menuLines[currentAction.previousMenuPositions[2]].indexOf("Wires") != -1) {
+                            //LEDbrightness = currentAction.from[0] * 5 + 5;
+                            } else if (menuLines[currentAction.previousMenuPositions[2]].indexOf("Special") != -1) {
+                              // LEDbrightnessSpecial = currentAction.from[0] * 5 + 5;
+                              } else if (menuLines[currentAction.previousMenuPositions[2]].indexOf("Menu") != -1) {
+                                menuBrightnessSetting = menuBrightnessOptionMap[currentAction.from[0]];
                                 }
-                              }
-                            }
-                          }
 
-                        // digitalWrite(RESETPIN, HIGH);
 
-                        // delayMicroseconds(200);
+                              saveLEDbrightness(0);
+                              showNets();
+                              showLEDsCore2 = 2;
+                        } else if (menuLines[currentAction.previousMenuPositions[1]].indexOf(
+                          "DEFCON") != -1) {
 
-                        // digitalWrite(RESETPIN, LOW);
-
-                        // showSavedColors(netSlot);
-                        // sendPaths();
-                        // sendAllPathsCore2 = 1;
-                        // chooseShownReadings();
-
-                        refreshConnections();
-
-                        slotChanged = 0;
-
-                        return 10;
-                        // loadingFile = 1;
-
-                    } else if (currentCategory == RAILSACTION) {
-
-                      Serial.print("Rails Action\n\r");
-                      showLEDsCore2 = 1;
-                      waitCore2();
-
-                      switch (currentAction.from[0]) {
-                        case 0: {
-                        setTopRail(currentAction.analogVoltage, 1, 1);
-                        delayMicroseconds(100);
-                        setBotRail(currentAction.analogVoltage, 1, 1);
-                        break;
-                        }
-                        case 1: {
-                        // delay(100);
-                        setTopRail(currentAction.analogVoltage, 1, 1);
-                        break;
-                        }
-                        case 2: {
-                        // delay(100);
-                        setBotRail(currentAction.analogVoltage, 1, 1);
-                        break;
-                        }
-                        default: {
-                        break;
-                        }
-                        }
-
-                      } else if (currentCategory == SLOTSACTION) {
-
-                        Serial.print("Slots Action\n\r");
-
-                        if (menuLines[currentAction.previousMenuPositions[1]].indexOf("Save") !=
-                            -1) {
-
-                          if (currentAction.from[0] >= 0 && currentAction.from[0] < NUM_SLOTS) {
-                            saveCurrentSlotToSlot(netSlot, currentAction.from[0]);
-                            netSlot = currentAction.from[0];
-                            }
+                          if (currentAction.from[0] == 0) {
+                            strcpy(defconString, "Jumper less V5");
+                            defconDisplay = 0;
+                            } else if (currentAction.from[0] == 1) {
+                              defconDisplay = -1;
+                              } else if (currentAction.from[0] == 2) {
+                                strcpy(defconString, " Fuck    You   ");
+                                // defconString[0] = "  Fuck   You";
+                                defconDisplay = 0;
+                                }
 
                           } else if (menuLines[currentAction.previousMenuPositions[1]].indexOf(
-                            "Load") != -1) {
-                            if (currentAction.from[0] >= 0 && currentAction.from[0] < NUM_SLOTS) {
-                              // saveCurrentSlotToSlot(netSlot, currentAction.from[0]);
-
-                              netSlot = currentAction.from[0];
-                              slotChanged = 1;
-                              refreshConnections(-1);
-                              chooseShownReadings();
-                              printAllChangedNetColorFiles();
+                            "Colors") != -1) {
+                            if (currentAction.from[0] == 0) {
+                              netColorMode = 0;
+                              } else {
+                              netColorMode = 1;
                               }
-                            // netSlot = currentAction.from[0];
-                            return currentAction.from[0];
-                            } else if (menuLines[currentAction.previousMenuPositions[1]].indexOf(
-                              "Clear") != -1) {
-                              createSlots(currentAction.from[0], 0);
-                              refreshConnections();
+                            debugFlagSet(13);
+                            }
+                          Serial.print("Display Action\n\r");
 
-                              //  sendAllPathsCore2 = 1;
-                              chooseShownReadings();
-                              return 10;
+                    } else if (currentCategory == OLEDACTION) {   //!OLED Options
+
+                      // LEDbrightness = (brightnessOptionMap[currentAction.from[0]]);
+                      // LEDbrightnessSpecial = (specialBrightnessOptionMap[currentAction.from[0]]);
+                      if (menuLines[currentAction.previousMenuPositions[1]].indexOf("ConnectOn Boot") != -1) {
+                        if (currentAction.from[0] == 0) {
+                          jumperlessConfig.top_oled.connect_on_boot = 1;
+                          } else if (currentAction.from[0] == 1) {
+                            jumperlessConfig.top_oled.connect_on_boot = 0;
+                            }
+                          oled.init();
+                          oled.clear();
+                          oled.setTextSize(1);
+                          oled.print("Connect \nOn Boot: ");
+                          oled.setTextSize(2);
+                          if (jumperlessConfig.top_oled.connect_on_boot == 1) {
+                            oled.print("On");
+                            } else {
+                            oled.print("Off");
+                            }
+                          oled.show();
+                          oled.setTextSize(1);
+                          configChanged = true;
+
+                        } else if (menuLines[currentAction.previousMenuPositions[1]].indexOf("Lock   Connect") != -1) {
+                          if (currentAction.from[0] == 0) {
+                            jumperlessConfig.top_oled.lock_connection = 1;
+                            } else if (currentAction.from[0] == 1) {
+                              jumperlessConfig.top_oled.lock_connection = 0;
                               }
-
-                        } else if (currentCategory == OUTPUTACTION) {
-
-                          Serial.print("Output Action\n\r");
-                          printActionStruct();
-                          if (menuLines[currentAction.previousMenuPositions[1]].indexOf("GPIO") !=
-                              -1) {
-
-                            printActionStruct();
-
-                            for (int i = 0; i < 10; i++) {
-                              if (currentAction.from[i] != -1) {
-                                switch (currentAction.from[i]) {
-                                  case 0:
-                                    addBridgeToNodeFile(RP_GPIO_1, currentAction.to[i], netSlot);
-                                    break;
-                                  case 1:
-
-                                    addBridgeToNodeFile(RP_GPIO_2, currentAction.to[i], netSlot);
-                                    break;
-
-                                  case 2:
-
-                                    addBridgeToNodeFile(RP_GPIO_3, currentAction.to[i], netSlot);
-                                    break;
-                                  case 3:
-
-                                    addBridgeToNodeFile(RP_GPIO_4, currentAction.to[i], netSlot);
-                                    break;
-
-                                  case 4:
-
-                                    addBridgeToNodeFile(RP_GPIO_5, currentAction.to[i], netSlot);
-                                    break;
-
-                                  case 5:
-
-                                    addBridgeToNodeFile(RP_GPIO_6, currentAction.to[i], netSlot);
-                                    break;
-
-                                  case 6:
-
-                                    addBridgeToNodeFile(RP_GPIO_7, currentAction.to[i], netSlot);
-                                    break;
-
-                                  case 7:
-
-                                    addBridgeToNodeFile(RP_GPIO_8, currentAction.to[i], netSlot);
-                                    break;
-
-                                  default:
-                                    break;
-                                  }
-
-                                // break;
-                                }
-
-
-
-                              // break;
-
+                            oled.clear();
+                            oled.setTextSize(1);
+                            oled.print("Lock \nConnection: ");
+                            oled.setTextSize(2);
+                            if (jumperlessConfig.top_oled.lock_connection == 1) {
+                              oled.print("On");
+                              } else {
+                              oled.print("Off");
                               }
-
-
-                            } else if (menuLines[currentAction.previousMenuPositions[1]].indexOf(
-                              "Voltage") != -1) {
-
-                              printActionStruct();
-
-                              for (int i = 0; i < 10; i++) {
-                                if (currentAction.from[i] != -1 && currentAction.to[i] != -1) {
-                                  switch (currentAction.from[i]) {
-                                    case 0:
-                                      addBridgeToNodeFile(DAC0, currentAction.to[i], netSlot);
-                                      // setDac0_5Vvoltage(currentAction.analogVoltage);
-                                      dacOutput[0] = currentAction.analogVoltage;
-                                      break;
-                                    case 1:
-
-                                      addBridgeToNodeFile(DAC1, currentAction.to[i], netSlot);
-                                      dacOutput[1] = currentAction.analogVoltage;
-                                      // setDac1_8Vvoltage(currentAction.analogVoltage);
-                                      break;
-                                      // break;
-
-                                    default:
-                                      break;
-                                    }
-                                  }
-                                }
-                              refreshConnections();
-                              setRailsAndDACs();
-
-                              } else if (menuLines[currentAction.previousMenuPositions[1]].indexOf(
-                                "UART") != -1) {
-                                for (int i = 0; i < 10; i++) {
-                                  if (currentAction.from[i] != -1 && currentAction.to[i] != -1) {
-                                    switch (currentAction.from[i]) {
-                                      case 0:
-                                        addBridgeToNodeFile(RP_UART_TX, currentAction.to[i], netSlot);
-                                        break;
-                                      case 1:
-
-                                        addBridgeToNodeFile(RP_UART_RX, currentAction.to[i], netSlot);
-                                        break;
-                                        // break;
-                                      default:
-                                        break;
-                                      }
-
-                                    // break;
-                                    }
-                                  }
-                                } else if (menuLines[currentAction.previousMenuPositions[1]].indexOf("Limits") != -1) {
-                                  if (menuLines[currentAction.previousMenuPositions[2]].indexOf("Min Max") != -1) {
-                                    Serial.print("Min Max\n\r");
-                                    if (currentAction.from[0] == 0) {
-                                      jumperlessConfig.dacs.limit_min = 0.0;
-                                      } else if (currentAction.from[0] == 1) {
-                                        jumperlessConfig.dacs.limit_min = 0.0;
-                                        } else if (currentAction.from[0] == 2) {
-                                          jumperlessConfig.dacs.limit_min = -5.0;
-                                          } else if (currentAction.from[0] == 3) {
-                                            jumperlessConfig.dacs.limit_min = -8.0;
-                                            }
-
-                                    if (currentAction.from[0] == 0) {
-                                      jumperlessConfig.dacs.limit_max = 3.3;
-                                      } else if (currentAction.from[0] == 1) {
-                                        jumperlessConfig.dacs.limit_max = 5.0;
-                                        } else if (currentAction.from[0] == 2) {
-                                          jumperlessConfig.dacs.limit_max = 5.0;
-                                          } else if (currentAction.from[0] == 3) {
-                                            jumperlessConfig.dacs.limit_max = 8.0;
-                                            }
-
+                            oled.show();
+                            oled.setTextSize(1);
                             configChanged = true;
-                                  }
+                          } else if (menuLines[currentAction.previousMenuPositions[1]].indexOf("Connect") != -1) {
+                            if (currentAction.from[0] == 0) {
+                              jumperlessConfig.top_oled.enabled = 1;
+                              oled.init();
+                              oled.clear();
+                              oled.setTextSize(1);
+                              oled.print("OLED Connected");
+                              oled.show();
+                              delay(100);
+                              oled.clear();
+                              oled.showJogo32h();
+                              oled.show();
+                              } else if (currentAction.from[0] == 1) {
+                                oled.clear();
+                                oled.setTextSize(1);
+                                oled.print("Disconnecting OLED");
+                                oled.show();
+                                delay(100);
+                                oled.clear();
+                                oled.show();
+                                oled.disconnect();
+                                jumperlessConfig.top_oled.enabled = 0;
+
+                                }
+                            } else if (menuLines[currentAction.previousMenuPositions[1]].indexOf("Font") != -1) {
+                              // Map the menu selection to FontFamily value for config
+                              FontFamily selectedFamily;
+                              int configFontValue;
+
+                              if (menuLines[currentAction.previousMenuPositions[2]].indexOf("Jokermn") != -1) {
+                                selectedFamily = FONT_JOKERMAN;
+                                configFontValue = 1;
+                                } else if (menuLines[currentAction.previousMenuPositions[2]].indexOf("Eurostl") != -1) {
+                                  selectedFamily = FONT_EUROSTILE;
+                                  configFontValue = 0;
+                                  } else if (menuLines[currentAction.previousMenuPositions[2]].indexOf("ComicSns") != -1) {
+                                    selectedFamily = FONT_COMIC_SANS;
+                                    configFontValue = 2;
+                                    } else if (menuLines[currentAction.previousMenuPositions[2]].indexOf("Courier") != -1) {
+                                      selectedFamily = FONT_COURIER_NEW;
+                                      configFontValue = 3;
+                                      } else if (menuLines[currentAction.previousMenuPositions[2]].indexOf("Science") != -1) {
+                                        selectedFamily = FONT_NEW_SCIENCE_MEDIUM;
+                                        configFontValue = 4;
+                                        } else if (menuLines[currentAction.previousMenuPositions[2]].indexOf("SciExt") != -1) {
+                                          selectedFamily = FONT_NEW_SCIENCE_MEDIUM_EXTENDED;
+                                          configFontValue = 5;
+                                          }
+
+                                        // Set the font family (smart selection will choose appropriate size)
+                                        oled.setFontForSize(selectedFamily, 1);
+
+                                        // Update config with FontFamily value
+                                        jumperlessConfig.top_oled.font = configFontValue;
+                                        configChanged = true;
+
+                                        // oled.clearPrintShow("Font Set:", 1, selectedFamily, true, true, true, 5, 8);
+                                        // delay(1000);
+                                        // oled.clearPrintShow("Preview Text", 2, selectedFamily, true, true, true, 5, 8);
+
+                                        Serial.print("Font family set to: ");
+                                        Serial.print("Config value: ");
+                                        Serial.println(configFontValue);
+
+                              } else if (menuLines[currentAction.previousMenuPositions[1]].indexOf("Demo") != -1) {
+                                //oled.testCentering();
+                               // oledExample();
+                                //oled.test();
                                 }
 
-                          } else if (currentCategory == APPSACTION) {
-
-                            Serial.print("Apps Action\n\r");
-
-                            if (menuLines[currentAction.previousMenuPositions[1]].indexOf("Games") !=
-                                -1) {
-                              doomOn = 1;
-                              Serial.println("\n\n\n\rGames\n\r");
-                              }
-                            // digitalWrite(RESETPIN, HIGH);
-
-                            // delayMicroseconds(200);
-
-                            // digitalWrite(RESETPIN, LOW);
-
-                            // showSavedColors(netSlot);
-                            // sendPaths();
-                            // sendAllPathsCore2 = 1;
-                            // chooseShownReadings();
-
-                            // slotChanged = 0;
-                            inClickMenu = 0;
 
 
-                            for (int i = 0; i < NUM_APPS; i++) {
-                              if (menuLines[currentAction.previousMenuPositions[1]].indexOf(apps[i].name) != -1) {
-                                runApp(i);
-                                //showLEDsCore2 = -1;
-                                refreshConnections(-1, 0);
-                                break;
-                                }
-                              }
 
 
-                            return 10;
+                      } else if (currentCategory == NOCATEGORY) {
 
-                            } else if (currentCategory == ARDUINOACTION) {
+                        Serial.print("No Category\n\r");
+                        }
 
-                              Serial.print("Arduino Action\n\r");
-
-                              } else if (currentCategory == PROBEACTION) {
-
-                                Serial.print("Probe Action\n\r");
-
-                                } else if (currentCategory == ROUTINGACTION) {
-
-                                  if (menuLines[currentAction.previousMenuPositions[1]].indexOf("Stack") !=
-                                    -1) {
-                                    if (menuLines[currentAction.previousMenuPositions[2]].indexOf("Rails") !=
-                                      -1) {
-                                      powerDuplicates = currentAction.from[0];
-
-                                      if (currentAction.fromAscii[0][0] == 'M' || currentAction.fromAscii[0][0] == 'm') {
-                                        powerPriority = 2;
-                                        powerDuplicates = 7;
-
-                                        } else {
-                                        powerPriority = 1;
-                                        }
-                                      } else if (menuLines[currentAction.previousMenuPositions[2]].indexOf("Paths") !=
-                                      -1) {
-                                        pathDuplicates = currentAction.from[0];
-                                        if (currentAction.fromAscii[0][0] == 'M' || currentAction.fromAscii[0][0] == 'm') {
-                                          //pathPriority = 2;
-                                          pathDuplicates = 7;
-                                          }
-                                        } else if (menuLines[currentAction.previousMenuPositions[2]].indexOf("DACs") != -1)
-                                          {
-                                          dacDuplicates = currentAction.from[0];
-                                          if (currentAction.fromAscii[0][0] == 'M' || currentAction.fromAscii[0][0] == 'm') {
-                                            dacPriority = 2;
-                                            dacDuplicates = 4;
-                                            } else {
-                                            dacPriority = 1;
-                                            }
-                                          }
-
-                                    }
-                                  Serial.print("\n\rDuplicate Rails: ");
-                                  Serial.print(powerDuplicates);
-                                  Serial.print("\n\r");
-                                  Serial.print("Rail Priority: ");
-                                  Serial.print(powerPriority);
-
-
-                                  Serial.print("\n\n\rDuplicate DACs: ");
-                                  Serial.print(dacDuplicates);
-                                  Serial.print("\n\rDAC Priority: ");
-                                  Serial.print(dacPriority);
-                                  Serial.print("\n\n\rDuplicate Paths: ");
-                                  Serial.print(pathDuplicates);
-
-                                  Serial.print("\n\n\r");
-
-                                  // Serial.print("Routing Action\n\r");
-                                  refreshConnections();
-
-                                  saveDuplicateSettings(0);
-
-                                  } else if (currentCategory == DISPLAYACTION) {
-
-                                      
-                                       
-                                        // LEDbrightness = (brightnessOptionMap[currentAction.from[0]]);
-                                        // LEDbrightnessSpecial = (specialBrightnessOptionMap[currentAction.from[0]]);
-
-
-                                    if (menuLines[currentAction.previousMenuPositions[1]].indexOf("Jumpers") !=
-                                        -1) {
-                                      if (currentAction.from[0] == 0) {
-                                        jumperlessConfig.display.lines_wires = 1;
-                                        } else {
-                                        jumperlessConfig.display.lines_wires = 0;
-                                        }
-                                      debugFlagSet(12);
-
-
-                                      } else if (menuLines[currentAction.previousMenuPositions[1]].indexOf(
-                                        "Bright") != -1) {
-
-                                        if (menuLines[currentAction.previousMenuPositions[2]].indexOf("Rails") != -1) {
-                                          //LEDbrightnessRail = currentAction.from[0] * 10 + 30;
-                                        } else if (menuLines[currentAction.previousMenuPositions[2]].indexOf("Wires") != -1) {
-                                          //LEDbrightness = currentAction.from[0] * 5 + 5;
-                                        } else if (menuLines[currentAction.previousMenuPositions[2]].indexOf("Special") != -1) {
-                                         // LEDbrightnessSpecial = currentAction.from[0] * 5 + 5;
-                                        } else if (menuLines[currentAction.previousMenuPositions[2]].indexOf("Menu") != -1) {
-                                          menuBrightnessSetting = menuBrightnessOptionMap[currentAction.from[0]];
-                                          }
-                                        
-
-                                        saveLEDbrightness(0);
-                                        showNets();
-                                        showLEDsCore2 = 2;
-                                        } else if (menuLines[currentAction.previousMenuPositions[1]].indexOf(
-                                          "DEFCON") != -1) {
-
-                                          if (currentAction.from[0] == 0) {
-                                            strcpy(defconString, "Jumper less V5");
-                                            defconDisplay = 0;
-                                            } else if (currentAction.from[0] == 1) {
-                                              defconDisplay = -1;
-                                              } else if (currentAction.from[0] == 2) {
-                                                strcpy(defconString, " Fuck    You   ");
-                                                // defconString[0] = "  Fuck   You";
-                                                defconDisplay = 0;
-                                                }
-
-                                          } else if (menuLines[currentAction.previousMenuPositions[1]].indexOf(
-                                            "Colors") != -1) {
-                                            if (currentAction.from[0] == 0) {
-                                              netColorMode = 0;
-                                              } else {
-                                              netColorMode = 1;
-                                              }
-                                            debugFlagSet(13);
-                                            }
-                                          Serial.print("Display Action\n\r");
-
-                                    } else if (currentCategory == NOCATEGORY) {
-
-                                      Serial.print("No Category\n\r");
-                                      }
-
-                                    return 1;
+                      return 1;
   }
 
 String categoryNames[] = { "Show",  "Rails", "Slots",   "Output",    "Arduino",
@@ -3050,48 +3223,32 @@ char LEDbrightnessMenu(void) {
     saveLEDbrightness(0);
 
     return ' ';
-    } 
-    else if (input == 'n') {  
+    } else if (input == 'n') {
       int hue = colorPicker();
       Serial.print("Hue: ");
       Serial.println(hue);
       Serial.print("Color: ");
-      hsvColor hsv = {(uint8_t)hue, 255, LEDbrightness};
+      hsvColor hsv = { (uint8_t)hue, 255, LEDbrightness };
       Serial.printf("0x%06X\n\r", HsvToRaw(hsv));
       return ' ';
-    }
-    else if (input == 'd') {
-      saveLEDbrightness(1);
+      } else if (input == 'd') {
+        saveLEDbrightness(1);
 
-      return ' ';
-      } else if (input == 'l') {
-        Serial.print("\n\r\t+ = increase\n\r\t- = decrease\n\r\tm = exit\n\n\r");
-        Serial.flush();
-        while (input == 'l') {
+        return ' ';
+        } else if (input == 'l') {
+          Serial.print("\n\r\t+ = increase\n\r\t- = decrease\n\r\tm = exit\n\n\r");
+          Serial.flush();
+          while (input == 'l') {
 
-          while (Serial.available() == 0)
-            ;
-          char input2 = Serial.read();
-          if (input2 == '+') {
-            LEDbrightness += 1;
+            while (Serial.available() == 0)
+              ;
+            char input2 = Serial.read();
+            if (input2 == '+') {
+              LEDbrightness += 1;
 
-            if (LEDbrightness > 200) {
+              if (LEDbrightness > 200) {
 
-              LEDbrightness = 200;
-              }
-            Serial.print("\r                            \r");
-            Serial.print("LED brightness:  ");
-            Serial.print(LEDbrightness);
-            Serial.print("   ");
-            //Serial.print("\n\r");
-            Serial.flush();
-
-            showLEDsCore2 = 2;
-            } else if (input2 == '-') {
-              LEDbrightness -= 1;
-
-              if (LEDbrightness < 2) {
-                LEDbrightness = 1;
+                LEDbrightness = 200;
                 }
               Serial.print("\r                            \r");
               Serial.print("LED brightness:  ");
@@ -3101,59 +3258,58 @@ char LEDbrightnessMenu(void) {
               Serial.flush();
 
               showLEDsCore2 = 2;
-              } else if (input2 == 'x' || input2 == ' ' || input2 == 'm') {
-                input = ' ';
-                } else {
-                }
-              //showNets();
+              } else if (input2 == '-') {
+                LEDbrightness -= 1;
 
-              // for (int i = 8; i <= numberOfNets; i++) {
-              //   lightUpNet(i, -1, 1, LEDbrightness, 0);
-              // }
-              showLEDsCore2 = 1;
-
-              if (Serial.available() == 0) {
+                if (LEDbrightness < 2) {
+                  LEDbrightness = 1;
+                  }
                 Serial.print("\r                            \r");
                 Serial.print("LED brightness:  ");
                 Serial.print(LEDbrightness);
                 Serial.print("   ");
                 //Serial.print("\n\r");
                 Serial.flush();
-                if (LEDbrightness > 50) {
-                  // Serial.print("Brightness settings above ~50 will cause
-                  // significant heating, it's not recommended\n\r");
+
+                showLEDsCore2 = 2;
+                } else if (input2 == 'x' || input2 == ' ' || input2 == 'm') {
+                  input = ' ';
+                  } else {
                   }
-                }
-          }
-        } else if (input == 'r') {
-          Serial.print("\n\r\t+ = increase\n\r\t- = decrease\n\r\tm = exit\n\n\r");
-          while (input == 'r') {
+                //showNets();
 
-            while (Serial.available() == 0)
-              ;
-            char input2 = Serial.read();
-            if (input2 == '+' || input2 == '=') {
+                // for (int i = 8; i <= numberOfNets; i++) {
+                //   lightUpNet(i, -1, 1, LEDbrightness, 0);
+                // }
+                showLEDsCore2 = 1;
 
-              LEDbrightnessRail += 1;
+                if (Serial.available() == 0) {
+                  Serial.print("\r                            \r");
+                  Serial.print("LED brightness:  ");
+                  Serial.print(LEDbrightness);
+                  Serial.print("   ");
+                  //Serial.print("\n\r");
+                  Serial.flush();
+                  if (LEDbrightness > 50) {
+                    // Serial.print("Brightness settings above ~50 will cause
+                    // significant heating, it's not recommended\n\r");
+                    }
+                  }
+            }
+          } else if (input == 'r') {
+            Serial.print("\n\r\t+ = increase\n\r\t- = decrease\n\r\tm = exit\n\n\r");
+            while (input == 'r') {
 
-              if (LEDbrightnessRail > 200) {
+              while (Serial.available() == 0)
+                ;
+              char input2 = Serial.read();
+              if (input2 == '+' || input2 == '=') {
 
-                LEDbrightnessRail = 200;
-                }
-              Serial.print("\r                            \r");
-              Serial.print("Rail brightness:  ");
-              Serial.print(LEDbrightnessRail);
-              Serial.print("   ");
-              //Serial.print("\n\r");
-              Serial.flush();
+                LEDbrightnessRail += 1;
 
-              showLEDsCore2 = 2;
-              } else if (input2 == '-' || input2 == '_') {
+                if (LEDbrightnessRail > 200) {
 
-                LEDbrightnessRail -= 1;
-
-                if (LEDbrightnessRail < 2) {
-                  LEDbrightnessRail = 1;
+                  LEDbrightnessRail = 200;
                   }
                 Serial.print("\r                            \r");
                 Serial.print("Rail brightness:  ");
@@ -3163,78 +3319,73 @@ char LEDbrightnessMenu(void) {
                 Serial.flush();
 
                 showLEDsCore2 = 2;
-                } else if (input2 == 'x' || input2 == ' ' || input2 == 'm') {
-                  input = ' ';
-                  saveLEDbrightness(0);
-                  return ' ';
-                  } else {
-                  }
-                lightUpRail(-1, -1, 1, LEDbrightnessRail);
+                } else if (input2 == '-' || input2 == '_') {
 
-                if (Serial.available() == 0) {
+                  LEDbrightnessRail -= 1;
+
+                  if (LEDbrightnessRail < 2) {
+                    LEDbrightnessRail = 1;
+                    }
                   Serial.print("\r                            \r");
                   Serial.print("Rail brightness:  ");
                   Serial.print(LEDbrightnessRail);
+                  Serial.print("   ");
                   //Serial.print("\n\r");
                   Serial.flush();
-                  if (LEDbrightnessRail > 50) {
-                    // Serial.println("Brightness settings above ~50 will cause
-                    // significant heating, it's not recommended\n\n\r");
+
+                  showLEDsCore2 = 2;
+                  } else if (input2 == 'x' || input2 == ' ' || input2 == 'm') {
+                    input = ' ';
+                    saveLEDbrightness(0);
+                    return ' ';
+                    } else {
                     }
-                  }
-            }
+                  lightUpRail(-1, -1, 1, LEDbrightnessRail);
 
-          // Serial.print(input);
-            //Serial.print("\n\r");
-          } else if (input == 'h') {
-            Serial.print("\n\r\t+ = increase\n\r\t- = decrease\n\r\tm = exit\n\n\r");
-            b.clear();
-            b.print("B", menuColors[0], 0xffffff, 0, 0, 1);
-            b.print("r", menuColors[1], 0xffffff, 1, 0, 1);
-            b.print("i", menuColors[2], 0xffffff, 2, 0, 1);
-            b.print("g", menuColors[3], 0xffffff, 3, 0, 1);
-            b.print("h", menuColors[4], 0xffffff, 4, 0, 1);
-            b.print("t", menuColors[5], 0xffffff, 5, 0, 1);
-
-            b.print("n", menuColors[6], 0xffffff, 1, 1, 2);
-            b.print("e", menuColors[4], 0xffffff, 2, 1, 2);
-            b.print("s", menuColors[2], 0xffffff, 3, 1, 2);
-            b.print("s", menuColors[0], 0xffffff, 4, 1, 2);
-
-            showLEDsCore2 = 2;
-            while (input == 'h') {
-
-              while (Serial.available() == 0)
-                ;
-              char input2 = Serial.read();
-              if (input2 == '+') {
-                menuBrightnessSetting += 5;
-                if (menuBrightnessSetting > 150) {
-                  menuBrightnessSetting = 150;
-                  }
-
-                b.clear();
-
-                b.print("B", menuColors[0], 0xffffff, 0, 0, 1);
-                b.print("r", menuColors[1], 0xffffff, 1, 0, 1);
-                b.print("i", menuColors[2], 0xffffff, 2, 0, 1);
-                b.print("g", menuColors[3], 0xffffff, 3, 0, 1);
-                b.print("h", menuColors[4], 0xffffff, 4, 0, 1);
-                b.print("t", menuColors[5], 0xffffff, 5, 0, 1);
-
-                b.print("n", menuColors[6], 0xffffff, 1, 1, 2);
-                b.print("e", menuColors[4], 0xffffff, 2, 1, 2);
-                b.print("s", menuColors[2], 0xffffff, 3, 1, 2);
-                b.print("s", menuColors[0], 0xffffff, 4, 1, 2);
-
-                showLEDsCore2 = 2;
-                } else if (input2 == '-') {
-
-                  menuBrightnessSetting -= 5;
-                  if (menuBrightnessSetting < -100) {
-                    menuBrightnessSetting = -100;
+                  if (Serial.available() == 0) {
+                    Serial.print("\r                            \r");
+                    Serial.print("Rail brightness:  ");
+                    Serial.print(LEDbrightnessRail);
+                    //Serial.print("\n\r");
+                    Serial.flush();
+                    if (LEDbrightnessRail > 50) {
+                      // Serial.println("Brightness settings above ~50 will cause
+                      // significant heating, it's not recommended\n\n\r");
+                      }
                     }
+              }
+
+            // Serial.print(input);
+              //Serial.print("\n\r");
+            } else if (input == 'h') {
+              Serial.print("\n\r\t+ = increase\n\r\t- = decrease\n\r\tm = exit\n\n\r");
+              b.clear();
+              b.print("B", menuColors[0], 0xffffff, 0, 0, 1);
+              b.print("r", menuColors[1], 0xffffff, 1, 0, 1);
+              b.print("i", menuColors[2], 0xffffff, 2, 0, 1);
+              b.print("g", menuColors[3], 0xffffff, 3, 0, 1);
+              b.print("h", menuColors[4], 0xffffff, 4, 0, 1);
+              b.print("t", menuColors[5], 0xffffff, 5, 0, 1);
+
+              b.print("n", menuColors[6], 0xffffff, 1, 1, 2);
+              b.print("e", menuColors[4], 0xffffff, 2, 1, 2);
+              b.print("s", menuColors[2], 0xffffff, 3, 1, 2);
+              b.print("s", menuColors[0], 0xffffff, 4, 1, 2);
+
+              showLEDsCore2 = 2;
+              while (input == 'h') {
+
+                while (Serial.available() == 0)
+                  ;
+                char input2 = Serial.read();
+                if (input2 == '+') {
+                  menuBrightnessSetting += 5;
+                  if (menuBrightnessSetting > 150) {
+                    menuBrightnessSetting = 150;
+                    }
+
                   b.clear();
+
                   b.print("B", menuColors[0], 0xffffff, 0, 0, 1);
                   b.print("r", menuColors[1], 0xffffff, 1, 0, 1);
                   b.print("i", menuColors[2], 0xffffff, 2, 0, 1);
@@ -3248,234 +3399,254 @@ char LEDbrightnessMenu(void) {
                   b.print("s", menuColors[0], 0xffffff, 4, 1, 2);
 
                   showLEDsCore2 = 2;
-                  } else if (input2 == 'x') {
-                    input = ' ';
-                    } else {
-                    }
-                  lightUpRail(-1, -1, 1, LEDbrightnessRail);
-
-                  if (Serial.available() == 0) {
-
-                    Serial.print("Click menu brightness:  ");
-                    Serial.print(menuBrightnessSetting);
-                    Serial.print("\n\r");
-                    }
-              }
-
-            // Serial.print(input);
-            Serial.print("\n\r");
-            } else if (input == 's') {
-              // Serial.print("\n\r\t+ = increase\n\r\t- = decrease\n\r\tx =
-              // exit\n\n\r");
-              while (input == 's') {
-
-                while (Serial.available() == 0)
-                  ;
-                char input2 = Serial.read();
-                if (input2 == '+') {
-
-                  LEDbrightnessSpecial += 1;
-
-                  if (LEDbrightnessSpecial > 200) {
-
-                    LEDbrightnessSpecial = 200;
-                    }
-
-                  // showLEDsCore2 = 2;
                   } else if (input2 == '-') {
 
-                    LEDbrightnessSpecial -= 1;
-
-                    if (LEDbrightnessSpecial < 2) {
-                      LEDbrightnessSpecial = 1;
+                    menuBrightnessSetting -= 5;
+                    if (menuBrightnessSetting < -100) {
+                      menuBrightnessSetting = -100;
                       }
+                    b.clear();
+                    b.print("B", menuColors[0], 0xffffff, 0, 0, 1);
+                    b.print("r", menuColors[1], 0xffffff, 1, 0, 1);
+                    b.print("i", menuColors[2], 0xffffff, 2, 0, 1);
+                    b.print("g", menuColors[3], 0xffffff, 3, 0, 1);
+                    b.print("h", menuColors[4], 0xffffff, 4, 0, 1);
+                    b.print("t", menuColors[5], 0xffffff, 5, 0, 1);
 
-                    // showLEDsCore2 = 2;
-                    } else if (input2 == 'x' || input2 == ' ' || input2 == 'm') {
+                    b.print("n", menuColors[6], 0xffffff, 1, 1, 2);
+                    b.print("e", menuColors[4], 0xffffff, 2, 1, 2);
+                    b.print("s", menuColors[2], 0xffffff, 3, 1, 2);
+                    b.print("s", menuColors[0], 0xffffff, 4, 1, 2);
+
+                    showLEDsCore2 = 2;
+                    } else if (input2 == 'x') {
                       input = ' ';
-                      saveLEDbrightness(0);
-                      return ' ';
                       } else {
                       }
+                    lightUpRail(-1, -1, 1, LEDbrightnessRail);
 
-                    for (int i = 0; i < 8; i++) {
-                      lightUpNet(i, -1, 1, LEDbrightnessSpecial, 0);
-                      }
-                    showLEDsCore2 = 1;
                     if (Serial.available() == 0) {
 
-                      Serial.print("Special brightness:  ");
-                      Serial.print(LEDbrightnessSpecial);
+                      Serial.print("Click menu brightness:  ");
+                      Serial.print(menuBrightnessSetting);
                       Serial.print("\n\r");
-                      if (LEDbrightnessSpecial > 70) {
-                        // Serial.print("Brightness settings above ~70 for special nets will
-                        // cause significant heating, it's not recommended\n\n\r ");
-                        }
                       }
                 }
 
               // Serial.print(input);
               Serial.print("\n\r");
-              } else if (input == 't') {
-
-                Serial.print("\n\r\t+ = increase\n\r\t- = decrease\n\r\tm = exit\n\n\r");
-                while (input == 't') {
+              } else if (input == 's') {
+                // Serial.print("\n\r\t+ = increase\n\r\t- = decrease\n\r\tx =
+                // exit\n\n\r");
+                while (input == 's') {
 
                   while (Serial.available() == 0)
                     ;
                   char input2 = Serial.read();
                   if (input2 == '+') {
 
-                    LEDbrightness += 1;
-                    LEDbrightnessRail += 1;
                     LEDbrightnessSpecial += 1;
 
-                    if (LEDbrightness > 200) {
-
-                      LEDbrightness = 200;
-                      }
-                    if (LEDbrightnessRail > 200) {
-
-                      LEDbrightnessRail = 200;
-                      }
                     if (LEDbrightnessSpecial > 200) {
 
                       LEDbrightnessSpecial = 200;
                       }
 
-                    showLEDsCore2 = 1;
+                    // showLEDsCore2 = 2;
                     } else if (input2 == '-') {
 
-                      LEDbrightness -= 1;
-                      LEDbrightnessRail -= 1;
                       LEDbrightnessSpecial -= 1;
 
-                      if (LEDbrightness < 2) {
-                        LEDbrightness = 1;
-                        }
-                      if (LEDbrightnessRail < 2) {
-                        LEDbrightnessRail = 1;
-                        }
                       if (LEDbrightnessSpecial < 2) {
                         LEDbrightnessSpecial = 1;
                         }
 
-                      showLEDsCore2 = 1;
-                      } else if (input2 == 'x' || input2 == ' ' || input2 == 'm' ||
-                                 input2 == 'l') {
-                      input = ' ';
-                      saveLEDbrightness(0);
-                      return ' ';
-                      } else {
+                      // showLEDsCore2 = 2;
+                      } else if (input2 == 'x' || input2 == ' ' || input2 == 'm') {
+                        input = ' ';
+                        saveLEDbrightness(0);
+                        return ' ';
+                        } else {
                         }
 
-                      for (int i = 6; i <= numberOfNets; i++) {
-                        lightUpNet(i, -1, 1, LEDbrightness, 0);
-                        }
-
-                      lightUpRail(-1, -1, 1, LEDbrightnessRail);
-                      for (int i = 0; i < 6; i++) {
+                      for (int i = 0; i < 8; i++) {
                         lightUpNet(i, -1, 1, LEDbrightnessSpecial, 0);
                         }
                       showLEDsCore2 = 1;
-
                       if (Serial.available() == 0) {
 
-                        Serial.print("LED brightness:      ");
-                        Serial.print(LEDbrightness);
-                        Serial.print("\n\r");
-                        Serial.print("Rail brightness:     ");
-                        Serial.print(LEDbrightnessRail);
-                        Serial.print("\n\r");
                         Serial.print("Special brightness:  ");
                         Serial.print(LEDbrightnessSpecial);
-                        Serial.print("    ");
-                        Serial.flush();
-                        if (LEDbrightness > 50 || LEDbrightnessRail > 50 ||
-                            LEDbrightnessSpecial > 70) {
-                          // Serial.print("Brightness settings above ~50 will cause
-                          // significant heating, it's not recommended\n\n\r ");
+                        Serial.print("\n\r");
+                        if (LEDbrightnessSpecial > 70) {
+                          // Serial.print("Brightness settings above ~70 for special nets will
+                          // cause significant heating, it's not recommended\n\n\r ");
                           }
                         }
                   }
-                } else if (input == 'b') {
-                  Serial.print("\n\rPress any key to exit\n\n\r");
-                  leds.clear();
-                  pauseCore2 = 1;
-                  while (Serial.available() == 0) {
-                    //startupColorsV5();
-                    drawAnimatedImage(0);
-                    delay(80);
-                    drawAnimatedImage(1);
-                    //  delay(100);
 
-                   // clearLEDsExceptRails();
-                    //showLEDsCore2 = 1;
+                // Serial.print(input);
+                Serial.print("\n\r");
+                } else if (input == 't') {
 
-                   // delay(2000);
-                    // rainbowBounce(3);
-                    }
-                  pauseCore2 = 0;
-                  //showNets();
-                  //lightUpRail(-1, -1, 1);
-                  showLEDsCore2 = -1;
+                  Serial.print("\n\r\t+ = increase\n\r\t- = decrease\n\r\tm = exit\n\n\r");
+                  while (input == 't') {
 
-                  input = '!'; // this tells the main fuction to reset the leds
-                  } else if (input == 'c') {
-                    Serial.print("\n\rPress any key to exit\n\n\r");
-                    pauseCore2 = 1;
-                    while (Serial.available() == 0) {
+                    while (Serial.available() == 0)
+                      ;
+                    char input2 = Serial.read();
+                    if (input2 == '+') {
 
-                      randomColors();
-                      leds.show();
-                      delayMicroseconds(random(500, 80000));
-                      showLEDsCore2 = -3;
-                      }
-                    pauseCore2 = 0;
-                    showLEDsCore2 = -1;
-                    //delay(100);
-                    input = '!';
-                    } else if (input == 'p') {
-                      for (int i = 0; i < LED_COUNT; i++) {
-                        uint32_t color = leds.getPixelColor(i);
-                        rgbColor currentPixel = unpackRgb(color);
-                        char padZero = '0';
+                      LEDbrightness += 1;
+                      LEDbrightnessRail += 1;
+                      LEDbrightnessSpecial += 1;
 
-                        // String colorString =
-                        //     ("0x") + (currentPixel.r > 15 ? : '0') + String(currentPixel.r,
-                        //     16)
-                        //     + (currentPixel.g > 15 ? : '0') + String(currentPixel.g, 16) +
-                        //     (currentPixel.b > 15 ? : '0') + String(currentPixel.b, 16);
-                        Serial.print("0x");
-                        currentPixel.r > 15 ? : Serial.print(padZero);
-                        Serial.print(currentPixel.r, 16);
-                        currentPixel.g > 15 ? : Serial.print(padZero);
-                        Serial.print(currentPixel.g, 16);
-                        currentPixel.b > 15 ? : Serial.print(padZero);
-                        Serial.print(currentPixel.b, 16);
-                        Serial.print(", ");
+                      if (LEDbrightness > 200) {
 
-                        if (i % 8 == 0 && i > 0) {
-                          Serial.println();
-                          }
+                        LEDbrightness = 200;
+                        }
+                      if (LEDbrightnessRail > 200) {
 
-                        // Serial.println(colorString);
+                        LEDbrightnessRail = 200;
+                        }
+                      if (LEDbrightnessSpecial > 200) {
+
+                        LEDbrightnessSpecial = 200;
                         }
 
-                      return ' ';
-                      } else if (input == '?') {
-                        showLoss();
-                        while (Serial.available() == 0) {
+                      showLEDsCore2 = 1;
+                      } else if (input2 == '-') {
+
+                        LEDbrightness -= 1;
+                        LEDbrightnessRail -= 1;
+                        LEDbrightnessSpecial -= 1;
+
+                        if (LEDbrightness < 2) {
+                          LEDbrightness = 1;
                           }
-                        showLEDsCore2 = -1;
+                        if (LEDbrightnessRail < 2) {
+                          LEDbrightnessRail = 1;
+                          }
+                        if (LEDbrightnessSpecial < 2) {
+                          LEDbrightnessSpecial = 1;
+                          }
+
+                        showLEDsCore2 = 1;
+                        } else if (input2 == 'x' || input2 == ' ' || input2 == 'm' ||
+                                   input2 == 'l') {
+                        input = ' ';
+                        saveLEDbrightness(0);
                         return ' ';
                         } else {
-                        saveLEDbrightness(0);
-                        assignNetColors();
+                          }
 
-                        return input;
+                        for (int i = 6; i <= numberOfNets; i++) {
+                          lightUpNet(i, -1, 1, LEDbrightness, 0);
+                          }
+
+                        lightUpRail(-1, -1, 1, LEDbrightnessRail);
+                        for (int i = 0; i < 6; i++) {
+                          lightUpNet(i, -1, 1, LEDbrightnessSpecial, 0);
+                          }
+                        showLEDsCore2 = 1;
+
+                        if (Serial.available() == 0) {
+
+                          Serial.print("LED brightness:      ");
+                          Serial.print(LEDbrightness);
+                          Serial.print("\n\r");
+                          Serial.print("Rail brightness:     ");
+                          Serial.print(LEDbrightnessRail);
+                          Serial.print("\n\r");
+                          Serial.print("Special brightness:  ");
+                          Serial.print(LEDbrightnessSpecial);
+                          Serial.print("    ");
+                          Serial.flush();
+                          if (LEDbrightness > 50 || LEDbrightnessRail > 50 ||
+                              LEDbrightnessSpecial > 70) {
+                            // Serial.print("Brightness settings above ~50 will cause
+                            // significant heating, it's not recommended\n\n\r ");
+                            }
+                          }
+                    }
+                  } else if (input == 'b') {
+                    Serial.print("\n\rPress any key to exit\n\n\r");
+                    leds.clear();
+                    pauseCore2 = 1;
+                    while (Serial.available() == 0) {
+                      //startupColorsV5();
+                      drawAnimatedImage(0);
+                      delay(80);
+                      drawAnimatedImage(1);
+                      //  delay(100);
+
+                     // clearLEDsExceptRails();
+                      //showLEDsCore2 = 1;
+
+                     // delay(2000);
+                      // rainbowBounce(3);
+                      }
+                    pauseCore2 = 0;
+                    //showNets();
+                    //lightUpRail(-1, -1, 1);
+                    showLEDsCore2 = -1;
+
+                    input = '!'; // this tells the main fuction to reset the leds
+                    } else if (input == 'c') {
+                      Serial.print("\n\rPress any key to exit\n\n\r");
+                      pauseCore2 = 1;
+                      while (Serial.available() == 0) {
+
+                        randomColors();
+                        leds.show();
+                        delayMicroseconds(random(500, 80000));
+                        showLEDsCore2 = -3;
                         }
-                      return input;
+                      pauseCore2 = 0;
+                      showLEDsCore2 = -1;
+                      //delay(100);
+                      input = '!';
+                      } else if (input == 'p') {
+                        for (int i = 0; i < LED_COUNT; i++) {
+                          uint32_t color = leds.getPixelColor(i);
+                          rgbColor currentPixel = unpackRgb(color);
+                          char padZero = '0';
+
+                          // String colorString =
+                          //     ("0x") + (currentPixel.r > 15 ? : '0') + String(currentPixel.r,
+                          //     16)
+                          //     + (currentPixel.g > 15 ? : '0') + String(currentPixel.g, 16) +
+                          //     (currentPixel.b > 15 ? : '0') + String(currentPixel.b, 16);
+                          Serial.print("0x");
+                          currentPixel.r > 15 ? : Serial.print(padZero);
+                          Serial.print(currentPixel.r, 16);
+                          currentPixel.g > 15 ? : Serial.print(padZero);
+                          Serial.print(currentPixel.g, 16);
+                          currentPixel.b > 15 ? : Serial.print(padZero);
+                          Serial.print(currentPixel.b, 16);
+                          Serial.print(", ");
+
+                          if (i % 8 == 0 && i > 0) {
+                            Serial.println();
+                            }
+
+                          // Serial.println(colorString);
+                          }
+
+                        return ' ';
+                        } else if (input == '?') {
+                          showLoss();
+                          while (Serial.available() == 0) {
+                            }
+                          showLEDsCore2 = -1;
+                          return ' ';
+                          } else {
+                          saveLEDbrightness(0);
+                          assignNetColors();
+
+                          return input;
+                          }
+                        return input;
   }
 
 

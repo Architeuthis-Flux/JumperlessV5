@@ -136,20 +136,20 @@ extern ledClass leds;
 //extern CRGB probeLEDs[1];
 // extern Adafruit_NeoMatrix matrix;
 //extern bool debugLEDs;
-extern int highlightedNet;
-extern int highlightedRow;
-extern rgbColor highlightedOriginalColor;
-extern int probeConnectHighlight;
+// extern int highlightedNet;
+// extern int highlightedRow;
+// extern rgbColor highlightedOriginalColor;
+// extern int probeConnectHighlight;
 
-extern int warningRow;
-extern int warningNet;
-extern rgbColor warningOriginalColor;
+// extern int warningRow;
+// extern int warningNet;
+// extern rgbColor warningOriginalColor;
 
-extern int brightenedNode;
-extern int brightenedNet;
-extern int brightenedRail;
-extern rgbColor brightenedOriginalColor;
-extern int brightenedAmount;
+// extern int brightenedNode;
+// extern int brightenedNet;
+// extern int brightenedRail;
+// extern rgbColor brightenedOriginalColor;
+// extern int brightenedAmount;
 extern bool lightUpName;
 
 extern int netColorMode; // 0 = rainbow, 1 = shuffle
@@ -338,14 +338,7 @@ char* colorToName(rgbColor color, int length = -1);
 void dumpLEDdata(void);
 int colorToVT100(uint32_t color, int colorDepth = 256);
 
-extern unsigned long warningTimeout;
-extern unsigned long warningTimer;
-
-void clearHighlighting(void);
-int brightenNet(int node, int addBrightness = 5);
-int encoderNetHighlight(int print = 1);
-int warnNet(int node);
-void warnNetTimeout(int clearAll = 1);
+// Highlighting functions moved to Highlighting.h
 
 struct rgbColor shiftHue(struct rgbColor colorToShift, int hueShift = 0,
                          int brightnessShift = 0, int saturationShift = 0,

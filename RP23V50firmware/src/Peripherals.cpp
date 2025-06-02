@@ -36,6 +36,7 @@
 #include "Graphics.h"
 #include "Probing.h"
 #include "hardware/adc.h"
+#include "Highlighting.h"
 // #define CS_PIN 17
 
 // MCP23S17 MCPIO(17, 16, 19, 18, 0x27); //  SW SPI address 0x00

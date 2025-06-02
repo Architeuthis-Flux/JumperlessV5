@@ -42,6 +42,7 @@ enum actionCategories {
   DISPLAYACTION,
   APPSACTION,
   ROUTINGACTION,
+  OLEDACTION,
   NOCATEGORY
 };
 

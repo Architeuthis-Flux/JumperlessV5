@@ -64,6 +64,7 @@ KevinC@ppucc.io
 #endif
 #include "UserCode.h"
 #include "SerialWrapper.h"
+#include "Highlighting.h"
 
 #define Serial SerialWrap
 
@@ -295,7 +296,7 @@ int serSource = 0;
 int readInNodesArduino = 0;
 
 
-const char firmwareVersion[] = "5.1.2.10"; // remember to update this
+const char firmwareVersion[] = "5.1.3.0"; // remember to update this
 
 int firstLoop = 1;
 
@@ -311,7 +312,7 @@ int lastWarningNet = -1;
 
 
 
-int firstConnection = -1;
+
 unsigned long timer = 0;
 int lastProbeButton = 0;
 unsigned long waitTimer = 0;
@@ -333,16 +334,13 @@ void loop() {
       calibrateDacs();
       firstStart = false;
       }
-    firstLoop = 0;
+    firstLoop = 2;
 
 
     // Serial.println("--------------------------------");
     loadChangedNetColorsFromFile(netSlot, 0);
 
-    if (jumperlessConfig.top_oled.connect_on_boot == 1) {
-      //Serial.println("Initializing OLED");
-      oled.init();
-      }
+
 
     if (jumperlessConfig.serial_1.connect_on_boot == 1) {
       connectArduino(0, 0);
@@ -363,6 +361,15 @@ void loop() {
     goto loadfile;
     }
 
+  if (firstLoop == 2) {
+
+    if (jumperlessConfig.top_oled.connect_on_boot == 1) {
+      //Serial.println("Initializing OLED");
+      oled.init();
+      }
+
+    firstLoop = 1;
+    }
 
 menu:
 
@@ -530,6 +537,9 @@ menu:
       int encoderNetHighlighted = encoderNetHighlight();
       if (encoderNetHighlighted != -1) {
         firstConnection = encoderNetHighlighted;
+        // Serial.print("firstConnection: ");
+        // Serial.println(firstConnection);
+        // Serial.flush();
         } else {
         // firstConnection = -1;
         }
@@ -552,8 +562,9 @@ menu:
       int probeReading = justReadProbe(true);
 
 
+      checkForReadingChanges();
 
-      warnNetTimeout();
+      warnNetTimeout(1);
       if (probeReading > 0) {
         // Serial.print("probeReading = ");
         // Serial.println(probeReading);
@@ -563,7 +574,9 @@ menu:
           // Serial.println(probeReading);
           // Serial.flush();
 
-
+          // Serial.print("firstConnection: ");
+          // Serial.println(probeReading);
+          // Serial.flush();
           firstConnection = probeReading;
           }
         // Serial.print("lastValidProbeReading = ");
@@ -776,7 +789,7 @@ menu:
 
     // Serial.print("Serial target = ");
     // Serial.println(Serial.getSerialTarget());
-      input = SerialWrap.read();
+    input = SerialWrap.read();
     // Serial.print("input = ");
     // Serial.println(input);
     // for (int i = 0; i < 10; i++) {
@@ -966,9 +979,9 @@ menu:
         } else if (probePowerDAC == 0) {
           setDac1voltage(f1, 1);
           }
-          configChanged = true;
-          Serial.printf("DAC %d = %0.2f V\n", !probePowerDAC, f1);
-          Serial.flush();
+        configChanged = true;
+        Serial.printf("DAC %d = %0.2f V\n", !probePowerDAC, f1);
+        Serial.flush();
         // playDoom();
         // doomOn = 0;
         break;
@@ -982,7 +995,7 @@ menu:
       }
       case '@': {
       // printWireStatus();
-      
+
       i2cScan(8, 7, 22, 23, 1);
       oledTest(8, 7, 22, 23, 1);
 
@@ -1021,13 +1034,13 @@ menu:
         } else {
         resetArduino();
         }
-goto dontshowmenu;
+      goto dontshowmenu;
       break;
       }
 
       case 'A': {
-       // delay(100);
-       int justAsk = 0;
+      // delay(100);
+      int justAsk = 0;
       while (SerialWrap.available() > 0) {
         // Serial.print("checking for arduino connection");
         char c = SerialWrap.read();
@@ -1045,24 +1058,24 @@ goto dontshowmenu;
             break;
             }
           } else {
-            break;
-            }
+          break;
+          }
         }
       if (justAsk == 0) {
-      connectArduino(0);
-      //   removeBridgeFromNodeFile(NANO_D1, RP_UART_RX, netSlot, 0);
-      //   removeBridgeFromNodeFile(NANO_D0, RP_UART_TX, netSlot, 0);
-      //   addBridgeToNodeFile(RP_UART_RX, NANO_D1, netSlot, 0, 1);
-      //   addBridgeToNodeFile(RP_UART_TX, NANO_D0, netSlot, 0, 1);
-      //   //ManualArduinoReset = true;
-        //  // goto loadfile;
-        //   refreshConnections(-1);
+        connectArduino(0);
+        //   removeBridgeFromNodeFile(NANO_D1, RP_UART_RX, netSlot, 0);
+        //   removeBridgeFromNodeFile(NANO_D0, RP_UART_TX, netSlot, 0);
+        //   addBridgeToNodeFile(RP_UART_RX, NANO_D1, netSlot, 0, 1);
+        //   addBridgeToNodeFile(RP_UART_TX, NANO_D0, netSlot, 0, 1);
+        //   //ManualArduinoReset = true;
+          //  // goto loadfile;
+          //   refreshConnections(-1);
         }
       break;
       }
       case 'a': {
-       // delay(100);
-       int justAsk = 0;
+      // delay(100);
+      int justAsk = 0;
       while (SerialWrap.available() > 0) {
         // Serial.print("checking for arduino connection");
         char c = SerialWrap.read();
@@ -1080,20 +1093,61 @@ goto dontshowmenu;
             break;
             }
           } else {
-            break;
-            }
+          break;
+          }
         }
       if (justAsk == 0) {
         disconnectArduino(0);
-      // removeBridgeFromNodeFile(NANO_D1, RP_UART_RX, netSlot, 0);
-      // removeBridgeFromNodeFile(NANO_D0, RP_UART_TX, netSlot, 0);
-      // // removeBridgeFromNodeFile(RP_UART_RX, -1, netSlot, 0);
-      // // removeBridgeFromNodeFile(RP_UART_TX, -1, netSlot, 0);
-      // //refreshLocalConnections(-1);
-      // refreshConnections(-1);
-      }
+        // removeBridgeFromNodeFile(NANO_D1, RP_UART_RX, netSlot, 0);
+        // removeBridgeFromNodeFile(NANO_D0, RP_UART_TX, netSlot, 0);
+        // // removeBridgeFromNodeFile(RP_UART_RX, -1, netSlot, 0);
+        // // removeBridgeFromNodeFile(RP_UART_TX, -1, netSlot, 0);
+        // //refreshLocalConnections(-1);
+        // refreshConnections(-1);
+        }
       //goto loadfile;
       break;
+      }
+
+      case 'F':
+        oled.cycleFont();
+        break;
+
+      case '=': {
+      //  while (SerialWrap.available() == 0) {
+      //  }
+      //  char o = SerialWrap.read();
+       //oled.testCharBounds("Fuck", 2);
+
+      Serial.println("\n\r");
+      //oled.debugJokermanBaseline();
+      oled.dumpFrameBuffer();
+      oled.testMenuPositioning();
+      oled.dumpFrameBuffer();
+      //  if (isDigit(o)) {
+      //  if (o == '0') {
+      //   oled.setFont(0);
+      //   } else if (o == '1') {
+      //     oled.setFont(1);
+      //     }
+      // else if (o == '2') {
+      //   oled.setFont(2);
+      //   }
+      // else if (o == '3') {
+      //   oled.setFont(3);
+      //   }
+      // } else {
+      //   oled.clear();
+
+      // }
+
+
+      break;
+
+
+
+
+
       }
 
 

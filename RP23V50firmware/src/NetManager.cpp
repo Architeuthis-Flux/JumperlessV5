@@ -12,6 +12,7 @@
 #include "Graphics.h"
 #include "Probing.h"
 #include "SerialWrapper.h"
+#include "Highlighting.h"
 #define Serial SerialWrap
 // Define a struct that holds both the long and short strings as well as the defined value
 // struct DefineInfo {
@@ -1406,7 +1407,7 @@ void listNets(int liveUpdate)
           //   break;
           //   }
 
-          int newBoldNode = encoderNetHighlight(0);
+          int newBoldNode = encoderNetHighlight(0,0);
           if (newBoldNode != boldNode) {
             boldNode = newBoldNode;
             changed = 1;

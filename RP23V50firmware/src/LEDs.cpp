@@ -13,7 +13,7 @@
 #include <Adafruit_NeoPixel.h>
 #include "config.h"
 // #include <FastLED.h>
-
+#include "Highlighting.h"
 // CRGB probeLEDs[1];
 
 // bool splitLEDs;
@@ -58,9 +58,7 @@ uint32_t DACcolorOverride1Default = 0x458040;
 uint32_t GPIOcolorOverride0Default = 0x4050b0;
 uint32_t GPIOcolorOverride1Default = 0x2560a0;
 
-int highlightedNet = -1;
-int probeConnectHighlight = -1;
-int brightenedNode = -1;
+// Highlighting variables moved to Highlighting.cpp
 
 
 // #if REV < 4
@@ -181,9 +179,7 @@ int brightnessC2 = 0;
 int hueShiftC2 = 0;
 int lightUpNetCore2 = 0;
 
-int brightenedNet = 0;
-int brightenedRail = -1;
-int brightenedAmount = 80;
+// More highlighting variables moved to Highlighting.cpp
 
 int logoFlash = 0;
 int numberOfShownNets = 0;
@@ -2336,15 +2332,19 @@ void lightUpNet(int netNumber, int node, int onOff, int brightness2,
                 // net[netNumber].rawColor = color;
                 // net[netNumber].color = unpackRgb(color);
 
-                if (probeHighlight - 1 !=
-                    (nodesToPixelMap[net[netNumber].nodes[j]])) {
+                if (probeHighlight - 1 != (nodesToPixelMap[net[netNumber].nodes[j]])) {
                   // Serial.print("nodesToPixelMap[net[netNumber].nodes[j]] = ");
                   // Serial.println(nodesToPixelMap[net[netNumber].nodes[j]]);
                   if (net[netNumber].nodes[j] >= NANO_D0) {
                     if (brightenedNet == netNumber) {
-                      color = scaleBrightness(color, brightenedAmount * 5);
+                      
+                      if (brightenedNode == net[netNumber].nodes[j]) {
+                        color = scaleBrightness(color, brightenedNodeAmount);
+                        } else {
+                          color = scaleBrightness(color, brightenedNetAmount);
+                        }
                       } else {
-                      color = scaleBrightness(color, brightenedAmount * 8);
+                      color = scaleBrightness(color, 0);
                       }
                     leds.setPixelColor(
                         (nodesToPixelMap[net[netNumber].nodes[j]]) + 320, color);
@@ -3277,338 +3277,350 @@ void logoSwirl(int start, int spread, int probe) {
 
 bool lightUpName = false;
 
-rgbColor highlightedOriginalColor;
-rgbColor brightenedOriginalColor;
-rgbColor warningOriginalColor;
+// rgbColor highlightedOriginalColor;
+// rgbColor brightenedOriginalColor;
+// rgbColor warningOriginalColor;
 
-int highlightedRow = -1;
-
-
-void clearHighlighting(void) {
-
-  // netColors[highlightedNet] = highlightedOriginalColor;
-  // netColors[brightenedNet] = brightenedOriginalColor;
-  // netColors[warningNet] = warningOriginalColor;
-
-  for (int i = 4; i < numberOfRowAnimations; i++) {
-    rowAnimations[i].row = -1;
-    rowAnimations[i].net = -1;
-    }
-  probeConnectHighlight = -1;
-  highlightedNet = -1;
-  brightenedNet = -1;
-  warningNet = -1;
-  warningRow = -1;
-  brightenedRail = -1;
-  brightenedNode = -1;
-  highlightedRow = -1;
-
-  assignNetColors();
-  }
+// int highlightedRow = -1;
 
 
+// void clearHighlighting(void) {
 
-int lastNodeHighlighted = -1;
-int lastNetPrinted = -1;
+//   // netColors[highlightedNet] = highlightedOriginalColor;
+//   // netColors[brightenedNet] = brightenedOriginalColor;
+//   // netColors[warningNet] = warningOriginalColor;
 
-int currentHighlightedNode = 0;
-int currentHighlightedNet = -2;
+//   for (int i = 4; i < numberOfRowAnimations; i++) {
+//     rowAnimations[i].row = -1;
+//     rowAnimations[i].net = -1;
+//     }
+//   probeConnectHighlight = -1;
+//   highlightedNet = -1;
+//   brightenedNet = -1;
+//   warningNet = -1;
+//   warningRow = -1;
+//   brightenedRail = -1;
+//   brightenedNode = -1;
+//   highlightedRow = -1;
 
-int encoderNetHighlight(int print) {
-  int lastDivider = rotaryDivider;
-  rotaryDivider = 4;
-  int returnNode = -1;
-
-  // if (inClickMenu == 1)
-  //   return -1;
-  //rotaryEncoderStuff();
-  if (encoderDirectionState == UP) {
-    //Serial.println(encoderPosition);
-    encoderDirectionState = NONE;
-    if (highlightedNet < 0) {
-      highlightedNet = -1;
-      brightenedNet = -1;
-      currentHighlightedNode = 0;
-      }
-    currentHighlightedNode++;
-    if (net[highlightedNet].nodes[currentHighlightedNode] <= 0) {
-      currentHighlightedNode = 0;
-      highlightedNet++;
-      if (highlightedNet > numberOfNets - 1) {
-        highlightedNet = -2;
-        brightenedNet = -2;
-        currentHighlightedNode = 0;
-        }
-      brightenedNet = highlightedNet;
-      brightenedNode = net[highlightedNet].nodes[currentHighlightedNode];
-      if (highlightedNet != 0 && net[highlightedNet].nodes[currentHighlightedNode] != 0) {
-        returnNode = net[highlightedNet].nodes[currentHighlightedNode];
-        }
-      highlightNets(0, highlightedNet, print);
-      // Serial.print("highlightedNet: ");
-      // Serial.println(highlightedNet);
-      // Serial.flush();
-      }
-    if (highlightedNet > numberOfNets - 1) {
-      highlightedNet = -2;
-      brightenedNet = -2;
-      currentHighlightedNode = 0;
-      }
-    brightenedNet = highlightedNet;
-    brightenedNode = net[highlightedNet].nodes[currentHighlightedNode];
-    if (highlightedNet != 0 && net[highlightedNet].nodes[currentHighlightedNode] != 0) {
-      returnNode = net[highlightedNet].nodes[currentHighlightedNode];
-      }
-    // Serial.print("returnNode: ");
-    // Serial.println(returnNode);
-    // Serial.flush();
-    highlightNets(0, highlightedNet, print);
-    // Serial.print("highlightedNet: ");
-    // Serial.println(highlightedNet);
-    // Serial.flush();
-    //assignNetColors();
-   // assignNetColors();
-
-    } else if (encoderDirectionState == DOWN) {
-      //Serial.println(encoderPosition);
-      encoderDirectionState = NONE;
-      if (highlightedNet == 0) {
-
-        highlightedNet = numberOfNets;
-        brightenedNet = numberOfNets;
-        }
-
-      currentHighlightedNode--;
-
-      if (currentHighlightedNode < 0) {
-        highlightedNet--;
-        if (highlightedNet < 0) {
-          highlightedNet = numberOfNets;
-          brightenedNet = numberOfNets;
-          currentHighlightedNode = 0;
-          }
-        currentHighlightedNode = MAX_NODES - 1;
-        while (net[highlightedNet].nodes[currentHighlightedNode] <= 0) {
-          currentHighlightedNode--;
-          if (currentHighlightedNode < 0) {
-            highlightedNet--;
-            if (highlightedNet < 0) {
-              highlightedNet = numberOfNets;
-              brightenedNet = numberOfNets;
-              currentHighlightedNode = 0;
-              }
-
-            }
-          }
-        }
-      brightenedNet = highlightedNet;
-      brightenedNode = net[highlightedNet].nodes[currentHighlightedNode];
-      if (highlightedNet != 0 && net[highlightedNet].nodes[currentHighlightedNode] != 0) {
-        returnNode = net[highlightedNet].nodes[currentHighlightedNode];
-        }
-      // Serial.print("returnNode: ");
-      // Serial.println(returnNode);
-      // Serial.flush();
-      highlightNets(0, highlightedNet, print);
-      // Serial.print("highlightedNet: ");
-      // Serial.println(highlightedNet);
-      // Serial.flush();
-      // assignNetColors();
+//   assignNetColors();
+//   }
 
 
 
-      }
-    if (returnNode != lastNodeHighlighted) {
-      // b.clear();
-     // b.printRawRow(0b00000100, lastNodeHighlighted-2, 0x000000, 0x000000);
-     // b.printRawRow(0b00000100, lastNodeHighlighted, 0x0000000, 0x000000);
+// int lastNodeHighlighted = -1;
+// int lastNetPrinted = -1;
 
-     // b.printRawRow(0b00000100, returnNode-2, 0x0f0f00, 0x000000);
-     // b.printRawRow(0b00000100, returnNode, 0x0f0f00, 0x000000);
+// int currentHighlightedNode = 0;
+// int currentHighlightedNet = -2;
 
-      lastNodeHighlighted = returnNode;
-      // showLEDsCore2 = 2;
-      }
-    //rotaryDivider = lastDivider;
-    return returnNode;
-  }
+// int encoderNetHighlight(int print) {
+//   int lastDivider = rotaryDivider;
+//   rotaryDivider = 4;
+//   int returnNode = -1;
 
+//   // if (inClickMenu == 1)
+//   //   return -1;
+//   //rotaryEncoderStuff();
+//   if (encoderDirectionState == UP) {
+//     //Serial.println(encoderPosition);
+//     encoderDirectionState = NONE;
+//     if (highlightedNet < 0) {
+//       highlightedNet = -1;
+//       brightenedNet = -1;
+//       currentHighlightedNode = 0;
+//       }
+//     currentHighlightedNode++;
+//     if (highlightedNet >= 0 && highlightedNet < numberOfNets && net[highlightedNet].nodes[currentHighlightedNode] <= 0) {
+//       currentHighlightedNode = 0;
+//       highlightedNet++;
+//       if (highlightedNet > numberOfNets - 1) {
+//         highlightedNet = -2;
+//         brightenedNet = -2;
+//         currentHighlightedNode = 0;
+//         }
+//       brightenedNet = highlightedNet;
+//       if (highlightedNet >= 0 && highlightedNet < numberOfNets) {
+//         brightenedNode = net[highlightedNet].nodes[currentHighlightedNode];
+//         if (highlightedNet != 0 && net[highlightedNet].nodes[currentHighlightedNode] != 0) {
+//           returnNode = net[highlightedNet].nodes[currentHighlightedNode];
+//           }
+//         } else {
+//         brightenedNode = -1;
+//         }
+//       highlightNets(0, highlightedNet, print);
+//       // Serial.print("highlightedNet: ");
+//       // Serial.println(highlightedNet);
+//       // Serial.flush();
+//       }
+//     if (highlightedNet > numberOfNets - 1) {
+//       highlightedNet = -2;
+//       brightenedNet = -2;
+//       currentHighlightedNode = 0;
+//       }
+//     brightenedNet = highlightedNet;
+//     if (highlightedNet >= 0 && highlightedNet < numberOfNets) {
+//       brightenedNode = net[highlightedNet].nodes[currentHighlightedNode];
+//       if (highlightedNet != 0 && net[highlightedNet].nodes[currentHighlightedNode] != 0) {
+//         returnNode = net[highlightedNet].nodes[currentHighlightedNode];
+//         }
+//       } else {
+//       brightenedNode = -1;
+//       }
+//     // Serial.print("returnNode: ");
+//     // Serial.println(returnNode);
+//     // Serial.flush();
+//     highlightNets(0, highlightedNet, print);
+//     // Serial.print("highlightedNet: ");
+//     // Serial.println(highlightedNet);
+//     // Serial.flush();
+//     //assignNetColors();
+//    // assignNetColors();
 
+//     } else if (encoderDirectionState == DOWN) {
+//       //Serial.println(encoderPosition);
+//       encoderDirectionState = NONE;
+//       if (highlightedNet == 0) {
 
+//         highlightedNet = numberOfNets - 1;
+//         brightenedNet = numberOfNets - 1;
+//         }
 
+//       currentHighlightedNode--;
 
+//       if (currentHighlightedNode < 0) {
+//         highlightedNet--;
+//         if (highlightedNet < 0) {
+//           highlightedNet = numberOfNets - 1;
+//           brightenedNet = numberOfNets - 1;
+//           currentHighlightedNode = 0;
+//           }
+//         currentHighlightedNode = MAX_NODES - 1;
+//         while (highlightedNet >= 0 && highlightedNet < numberOfNets && net[highlightedNet].nodes[currentHighlightedNode] <= 0) {
+//           currentHighlightedNode--;
+//           if (currentHighlightedNode < 0) {
+//             highlightedNet--;
+//             if (highlightedNet < 0) {
+//               highlightedNet = numberOfNets - 1;
+//               brightenedNet = numberOfNets - 1;
+//               currentHighlightedNode = 0;
+//               }
 
-
-int brightenNet(int node, int addBrightness) {
-
-  if (node == -1) {
-    netColors[brightenedNet] = brightenedOriginalColor;
-    brightenedNode = -1;
-    brightenedNet = 0;
-    brightenedRail = -1;
-    return -1;
-    }
-  addBrightness = 0;
-
-  for (int i = 0; i <= numberOfPaths; i++) {
-
-    if (node == path[i].node1 || node == path[i].node2) {
-      /// if (brightenedNet != i) {
-      brightenedNet = path[i].net;
-      brightenedNode = node;
-      // Serial.print("\n\n\rbrightenedNet: ");
-      // Serial.println(brightenedNet);
-      // Serial.print("net ");
-      // Serial.print(path[i].net);
-      if (brightenedNet == 1) {
-        brightenedRail = 1;
-        // lightUpRail(-1, 1, 1, addBrightness);
-        } else if (brightenedNet == 2) {
-          brightenedRail = 0;
-          // lightUpRail(-1, 0, 1, addBrightness);
-          } else if (brightenedNet == 3) {
-            brightenedRail = 2;
-            // lightUpRail(-1, 2, 1, addBrightness);
-            } else {
-            brightenedRail = -1;
-            // lightUpNet(brightenedNet, addBrightness);
-            }
-          // Serial.print("\n\rbrightenedNet = ");
-          // Serial.println(brightenedNet);
-          brightenedOriginalColor = netColors[brightenedNet];
-          assignNetColors();
-          return brightenedNet;
-      }
-    }
-  switch (node) {
-    case (GND): {
-    //  Serial.print("\n\rGND");
-    brightenedNet = 1;
-    brightenedRail = 1;
-    // lightUpRail(-1, 1, 1, addBrightness);
-    return 1;
-    }
-    case (TOP_RAIL): {
-    // Serial.print("\n\rTOP_RAIL");
-    brightenedNet = 2;
-    brightenedRail = 0;
-    // lightUpRail(-1, 0, 1, addBrightness);
-    return 2;
-    }
-    case (BOTTOM_RAIL): {
-    //Serial.print("\n\rBOTTOM_RAIL");
-    brightenedNet = 3;
-    brightenedRail = 2;
-    // lightUpRail(-1, 2, 1, addBrightness);
-    return 3;
-    }
-    }
-
-
-  return -1;
-  }
-
-int warningRow = -1;
-int warningNet = -1;
-unsigned long warningTimeout = 0;
-unsigned long warningTimer = 0;
-
-/// @brief  mark a net as warning
-/// @param -1 to clear warning
-/// @return warningNet
-int warnNet(int node) {
-  // Serial.print("warnNet node = ");
-  // Serial.println(node);
-  // Serial.flush();
-  if (node == -1) {
-    netColors[warningNet] = warningOriginalColor;
-
-    warningNet = -1;
-    warningRow = -1;
-    // Serial.print("warningNet = ");
-    // Serial.println(warningNet);
-    // Serial.flush();
-    // brightenedRail = -1;
-    return -1;
-    }
-  // addBrightness = 0;
-  warningRow = bbPixelToNodesMap[node];
-
-  for (int i = 0; i <= numberOfPaths; i++) {
-
-    if (node == path[i].node1 || node == path[i].node2) {
-      /// if (brightenedNet != i) {
-      warningNet = path[i].net;
-
-      // Serial.print("warningNet = ");
-      // Serial.println(warningNet);
-      // Serial.flush();
-
-
-      if (warningNet == 1) {
-        // brightenedRail = 1;
-        // lightUpRail(-1, 1, 1, addBrightness);
-        } else if (warningNet == 2) {
-          // brightenedRail = 0;
-          // lightUpRail(-1, 0, 1, addBrightness);
-          } else if (warningNet == 3) {
-            // brightenedRail = 2;
-            // lightUpRail(-1, 2, 1, addBrightness);
-            } else {
-            // brightenedRail = -1;
-            // lightUpNet(brightenedNet, addBrightness);
-            }
-
-          warningOriginalColor = netColors[warningNet];
-          assignNetColors();
-          warningTimer = millis();
-          return warningNet;
-      }
-    }
+//             }
+//           }
+//         }
+//       brightenedNet = highlightedNet;
+//       if (highlightedNet >= 0 && highlightedNet < numberOfNets) {
+//         brightenedNode = net[highlightedNet].nodes[currentHighlightedNode];
+//         if (highlightedNet != 0 && net[highlightedNet].nodes[currentHighlightedNode] != 0) {
+//           returnNode = net[highlightedNet].nodes[currentHighlightedNode];
+//           }
+//         } else {
+//         brightenedNode = -1;
+//         }
+//       // Serial.print("returnNode: ");
+//       // Serial.println(returnNode);
+//       // Serial.flush();
+//       highlightNets(0, highlightedNet, print);
+//       // Serial.print("highlightedNet: ");
+//       // Serial.println(highlightedNet);
+//       // Serial.flush();
+//       // assignNetColors();
 
 
 
-  return -1;
-  }
-unsigned long lastWarningTimer = 0;
-unsigned long lastHighlightTimer = 0;
-void warnNetTimeout(int clearAll) {
-  // Serial.print("warningTimer = ");
-  // Serial.println(warningTimer);
-  // Serial.print("warningTimeout = ");
-  // Serial.println(warningTimeout);
-  // Serial.flush();
-  if (lastWarningTimer == 0) {
-    lastWarningTimer = millis();
-    }
+//       }
+//     if (returnNode != lastNodeHighlighted) {
+//       // b.clear();
+//      // b.printRawRow(0b00000100, lastNodeHighlighted-2, 0x000000, 0x000000);
+//      // b.printRawRow(0b00000100, lastNodeHighlighted, 0x0000000, 0x000000);
 
-  if (lastHighlightTimer == 0) {
-    lastHighlightTimer = millis();
-    }
+//      // b.printRawRow(0b00000100, returnNode-2, 0x0f0f00, 0x000000);
+//      // b.printRawRow(0b00000100, returnNode, 0x0f0f00, 0x000000);
 
-  if (warningTimer > 0 && millis() - warningTimer > warningTimeout) {
-    //warningTimeout = 0;
-    if (clearAll == 1) {
-      clearHighlighting();
-      } else {
-      // netColors[warningNet] = warningOriginalColor;
+//       lastNodeHighlighted = returnNode;
+//       // showLEDsCore2 = 2;
+//       }
+//     //rotaryDivider = lastDivider;
+//     return returnNode;
+//   }
 
 
-      warningNet = -1;
-      warningRow = -1;
-      }
-    lastWarningTimer = millis();
-    warningTimer = 0;
 
-    assignNetColors();
-    } else {
-    lastWarningTimer = millis() - lastWarningTimer;
-    // Serial.print("lastWarningTimer = ");  
-    // Serial.println(lastWarningTimer);
-    // Serial.flush();
-   // warningTimer = millis();
-    }
-  }
+
+
+
+
+// int brightenNet(int node, int addBrightness) {
+
+//   if (node == -1) {
+//     netColors[brightenedNet] = brightenedOriginalColor;
+//     brightenedNode = -1;
+//     brightenedNet = 0;
+//     brightenedRail = -1;
+//     return -1;
+//     }
+//   addBrightness = 0;
+
+//   for (int i = 0; i <= numberOfPaths; i++) {
+
+//     if (node == path[i].node1 || node == path[i].node2) {
+//       /// if (brightenedNet != i) {
+//       brightenedNet = path[i].net;
+//       brightenedNode = node;
+//       // Serial.print("\n\n\rbrightenedNet: ");
+//       // Serial.println(brightenedNet);
+//       // Serial.print("net ");
+//       // Serial.print(path[i].net);
+//       if (brightenedNet == 1) {
+//         brightenedRail = 1;
+//         // lightUpRail(-1, 1, 1, addBrightness);
+//         } else if (brightenedNet == 2) {
+//           brightenedRail = 0;
+//           // lightUpRail(-1, 0, 1, addBrightness);
+//           } else if (brightenedNet == 3) {
+//             brightenedRail = 2;
+//             // lightUpRail(-1, 2, 1, addBrightness);
+//             } else {
+//             brightenedRail = -1;
+//             // lightUpNet(brightenedNet, addBrightness);
+//             }
+//           // Serial.print("\n\rbrightenedNet = ");
+//           // Serial.println(brightenedNet);
+//           brightenedOriginalColor = netColors[brightenedNet];
+//           assignNetColors();
+//           return brightenedNet;
+//       }
+//     }
+//   switch (node) {
+//     case (GND): {
+//     //  Serial.print("\n\rGND");
+//     brightenedNet = 1;
+//     brightenedRail = 1;
+//     // lightUpRail(-1, 1, 1, addBrightness);
+//     return 1;
+//     }
+//     case (TOP_RAIL): {
+//     // Serial.print("\n\rTOP_RAIL");
+//     brightenedNet = 2;
+//     brightenedRail = 0;
+//     // lightUpRail(-1, 0, 1, addBrightness);
+//     return 2;
+//     }
+//     case (BOTTOM_RAIL): {
+//     //Serial.print("\n\rBOTTOM_RAIL");
+//     brightenedNet = 3;
+//     brightenedRail = 2;
+//     // lightUpRail(-1, 2, 1, addBrightness);
+//     return 3;
+//     }
+//     }
+
+
+//   return -1;
+//   }
+
+// int warningRow = -1;
+// int warningNet = -1;
+// unsigned long warningTimeout = 0;
+// unsigned long warningTimer = 0;
+
+// /// @brief  mark a net as warning
+// /// @param -1 to clear warning
+// /// @return warningNet
+// int warnNet(int node) {
+//   // Serial.print("warnNet node = ");
+//   // Serial.println(node);
+//   // Serial.flush();
+//   if (node == -1) {
+//     netColors[warningNet] = warningOriginalColor;
+
+//     warningNet = -1;
+//     warningRow = -1;
+//     // Serial.print("warningNet = ");
+//     // Serial.println(warningNet);
+//     // Serial.flush();
+//     // brightenedRail = -1;
+//     return -1;
+//     }
+//   // addBrightness = 0;
+//   warningRow = bbPixelToNodesMap[node];
+
+//   for (int i = 0; i <= numberOfPaths; i++) {
+
+//     if (node == path[i].node1 || node == path[i].node2) {
+//       /// if (brightenedNet != i) {
+//       warningNet = path[i].net;
+
+//       // Serial.print("warningNet = ");
+//       // Serial.println(warningNet);
+//       // Serial.flush();
+
+
+//       if (warningNet == 1) {
+//         // brightenedRail = 1;
+//         // lightUpRail(-1, 1, 1, addBrightness);
+//         } else if (warningNet == 2) {
+//           // brightenedRail = 0;
+//           // lightUpRail(-1, 0, 1, addBrightness);
+//           } else if (warningNet == 3) {
+//             // brightenedRail = 2;
+//             // lightUpRail(-1, 2, 1, addBrightness);
+//             } else {
+//             // brightenedRail = -1;
+//             // lightUpNet(brightenedNet, addBrightness);
+//             }
+
+//           warningOriginalColor = netColors[warningNet];
+//           assignNetColors();
+//           warningTimer = millis();
+//           return warningNet;
+//       }
+//     }
+
+
+
+//   return -1;
+//   }
+// unsigned long lastWarningTimer = 0;
+// unsigned long lastHighlightTimer = 0;
+// void warnNetTimeout(int clearAll) {
+//   // Serial.print("warningTimer = ");
+//   // Serial.println(warningTimer);
+//   // Serial.print("warningTimeout = ");
+//   // Serial.println(warningTimeout);
+//   // Serial.flush();
+//   if (lastWarningTimer == 0) {
+//     lastWarningTimer = millis();
+//     }
+
+//   if (lastHighlightTimer == 0) {
+//     lastHighlightTimer = millis();
+//     }
+
+//   if (warningTimer > 0 && millis() - warningTimer > warningTimeout) {
+//     //warningTimeout = 0;
+//     if (clearAll == 1) {
+//       clearHighlighting();
+//       } else {
+//       // netColors[warningNet] = warningOriginalColor;
+
+
+//       warningNet = -1;
+//       warningRow = -1;
+//       }
+//     lastWarningTimer = millis();
+//     warningTimer = 0;
+
+//     assignNetColors();
+//     } else {
+//     lastWarningTimer = millis() - lastWarningTimer;
+//     // Serial.print("lastWarningTimer = ");  
+//     // Serial.println(lastWarningTimer);
+//     // Serial.flush();
+//    // warningTimer = millis();
+//     }
+//   }
 // uint32_t rawSpecialNetColors[8] = // dim
 //     {0x000000, 0x001C04, 0x1C0702, 0x1C0107,
 //      0x231111, 0x230913, 0x232323, 0x232323};
