@@ -40,3 +40,4 @@ JumperlessWokwiBridge/build/Jumperless/PKG-00.toc
 JumperlessWokwiBridge/build/Jumperless/warn-Jumperless.txt
 JumperlessWokwiBridge/JumperlessDMG/Jumperless.app/Contents/Frameworks/psutil/_psutil_posix.abi3.so
 *.so
+/RP23V50firmware/.cache

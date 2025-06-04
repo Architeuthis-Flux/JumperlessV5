@@ -3,10 +3,11 @@
 #define PERIPHERALS_H
 // #include "Adafruit_MCP4725.h"
 // #include "MCP4725.h"
-#include <Arduino.h>
+// #include <Arduino.h>
 #include "INA219.h"
 #include <Wire.h>
 #include "JumperlessDefines.h"
+#include <cstdlib>
 //#include "MCP23S17.h"
 
 

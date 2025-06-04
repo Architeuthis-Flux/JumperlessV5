@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: MIT
-
+#include <Arduino.h>
 #include "Peripherals.h"
 //#include "Adafruit_INA219.h"
 
@@ -7,11 +7,11 @@
 #include "MatrixState.h"
 #include "NetManager.h"
 
-#include "hardware/adc.h"
+//#include "hardware/adc.h"
 #include "hardware/gpio.h"
 // #include "pico/cyw43_arch.h"
-#include "pico/stdlib.h"
-#include <Arduino.h>
+//#include "pico/stdlib.h"
+//#include <Arduino.h>
 #include <stdio.h>
 #include <oled.h>
 
@@ -27,16 +27,29 @@
 // #include "pio_spi.h"
 
 #include "PersistentStuff.h"
-// #include <Adafruit_MCP23X17.h>
-#include "FileParsing.h"
+// #include <Adafruit_MCP23X17.h> 
+//#include "FileParsing.h"
 #include <Wire.h>
 
-#include "CH446Q.h"
+//#include "CH446Q.h"
 #include "Commands.h"
 #include "Graphics.h"
 #include "Probing.h"
-#include "hardware/adc.h"
+//#include "hardware/adc.h"
 #include "Highlighting.h"
+
+
+// Compatibility for clangd - these are provided by Arduino.h at compile time
+#ifndef abs
+#define abs(x) ((x) < 0 ? -(x) : (x))
+#endif
+#ifndef sin
+extern double sin(double);
+#endif
+#ifndef round
+extern double round(double);
+#endif
+
 // #define CS_PIN 17
 
 // MCP23S17 MCPIO(17, 16, 19, 18, 0x27); //  SW SPI address 0x00
@@ -422,7 +435,7 @@ void setGPIO(void) {
 
 int gpioReadWithFloating(int pin, unsigned long usDelay) { //2 = floating, 1 = high, 0 = low
   enum measuredState state = unknownState;
-  int settleDelay = 12;
+  int settleDelay = 18;
   int reading = -1;
   int readingPulldown = -1;
   int readingPullup = -1;
@@ -443,10 +456,19 @@ int gpioReadWithFloating(int pin, unsigned long usDelay) { //2 = floating, 1 = h
     // pullupState = -1;
     // pulldownState = -1;
     } else if (gpio_is_pulled_up(pin) == 1) {
+      if (gpio_get(pin) == 0) { ///don't mess with the pullups if the pin is already being pulled down
+        //state = high;
+        return low;
+        } 
       pullupState = 1;
       gpio_disable_pulls(pin);
       } else if (gpio_is_pulled_down(pin) == 1) {
         pulldownState = 1;
+        if (gpio_get(pin) == 1) { ///don't mess with the pullups if the pin is already being pulled up
+          //state = high;
+          return high;
+          } 
+
         gpio_disable_pulls(pin);
         }
 

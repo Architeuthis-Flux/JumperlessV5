@@ -16,7 +16,7 @@
 #define TERM_COLOR_NETS 1
 
 extern volatile int sendAllPathsCore2;
-#define PICO_RP2350B 1
+#define PICO_RP2350A 0
 #define INPUTBUFFERLENGTH 8000
 
 #define PROTOTYPE_VERSION 3 //1 is the hw without the rearranged probe connections

@@ -36,14 +36,18 @@
         "random": "cpp",
         "span": "cpp",
         "text_encoding": "cpp",
-        "ostream": "cpp"
+        "ostream": "cpp",
+        "*.h": "cpp",
+        "*.ino": "cpp"
     },
     "cortex-debug.registerUseNaturalFormat": false,
-    "C_Cpp.errorSquiggles": "disabled",
     "clang-format.language.cpp.style": "file",
     "C_Cpp.clang_format_style": "Visual Studio",
     "cmake.ignoreCMakeListsMissing": true,
     "C_Cpp.formatting": "vcFormat",
-    "cortex-debug.variableUseNaturalFormat": false
-
+    "cortex-debug.variableUseNaturalFormat": false,
+    
+    // Use default IntelliSense engine
+    "C_Cpp.intelliSenseEngine": "clangd"
+    
 }

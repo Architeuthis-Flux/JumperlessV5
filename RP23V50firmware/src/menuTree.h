@@ -1,7 +1,7 @@
 #ifndef MENUTREE_H
 
 #define MENUTREE_H
-
+#include <Arduino.h>
 
 char menuTree[] = { "\n\
 $Rails$\n\
@@ -265,7 +265,7 @@ String menuLines[] = {
 
        "OLED",
        "-Connect",
-       "-Dis    connect",
+       //"-Dis    connect",
        "-ConnectOn Boot",
        "--*On**Off*",
        "-Lock   Connect",

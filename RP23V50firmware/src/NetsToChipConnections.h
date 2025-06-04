@@ -74,13 +74,13 @@ int printPathType (int pathIndex);
 
 void swapNodes (int);
 
-int ijklPaths(int pathNumber, int allowStacking = 0);
+int ijklPaths(int pathNumber, int allowStacking = 1);
 
-void commitPaths(int allowStacking = 0,int powerOnly = -1);
+void commitPaths(int allowStacking = 2,int powerOnly = -1, int noOrOnlyDuplicates = 2);
 int checkForOverlappingPaths(void);
 void printPathsCompact(int showCullDupes = 1);
 
-void resolveAltPaths(int allowStacking = 0, int powerOnly = -1);
+void resolveAltPaths(int allowStacking = 0, int powerOnly = -1, int noOrOnlyDuplicates = 2);
 
 void printChipStatus(void);
 
@@ -88,7 +88,7 @@ void duplicateSFnets (void);
 
 void swapDuplicateNode (int);
 
-void resolveUncommittedHops(int allowStacking = 0, int powerOnly = -1);
+void resolveUncommittedHops(int allowStacking = 2, int powerOnly = -1, int noOrOnlyDuplicates = 2);
 void resolveUncommittedHops2(void);
 
 bool freeOrSameNetX(int chip, int x, int net, int allowStacking = 0);

@@ -7,23 +7,24 @@
 #include "LEDs.h"
 
 
+
 struct netStruct{ 
 
 int16_t number; //nets are uint8_t, nodes are int8_t
 
 const char *name; // human readable "Net 3"
 
-int16_t nodes[MAX_NODES] = {};//maybe make this smaller and allow nets to just stay connected currently 64x64 is 4 Kb
+int16_t nodes[MAX_NODES];//maybe make this smaller and allow nets to just stay connected currently 64x64 is 4 Kb
 
 int16_t bridges[MAX_NODES][2]; //either store them here or in one long array that references the net
 
-int16_t specialFunction = -1; // store #defined number for that special function -1 for regular net
+int16_t specialFunction; // store #defined number for that special function -1 for regular net
 
 int16_t intersections[8]; //if this net shares a node with another net, store this here. If it's a regular net, we'll need a function to just merge them into one new net. special functions can intersect though (except Power and Ground), 0x7f is a reserved empty net that nothing and intersect
 
 int16_t doNotIntersectNodes[8]; //if the net tries to share a node with a net that contains any #defined nodes here, it won't connect and throw an error (SUPPLY to GND)
 
-int8_t visible = 0; //this isn't implemented - priority = 1 means it will move connections to take the most direct path, priority = 2 means connections will be doubled up when possible, priority = 3 means both
+int8_t visible; //this isn't implemented - priority = 1 means it will move connections to take the most direct path, priority = 2 means connections will be doubled up when possible, priority = 3 means both
 
 rgbColor color; //color of the net in hex
 
@@ -31,15 +32,15 @@ uint32_t rawColor; //color of the net in hex (for the machine)
 
 char *colorName; //name of the color
 
-bool machine = false; //whether this net was created by the machine or by the user
+bool machine; //whether this net was created by the machine or by the user
 
-int priority = 1; //when duplicating paths, it will make this many copies every time it runs through
+int priority; //when duplicating paths, it will make this many copies every time it runs through
 
-int duplicatePaths[MAX_DUPLICATE] = {-1, -1, -1, -1,-1, -1, -1, -1,-1,-1}; // if the paths are redundant (for lower resistance) this is the pathNumber of the other one(s)
+int duplicatePaths[MAX_DUPLICATE]; // if the paths are redundant (for lower resistance) this is the pathNumber of the other one(s)
 
-int numberOfDuplicates = 0; // if the paths are redundant (for lower resistance) this is the number of duplicates
+int numberOfDuplicates; // if the paths are redundant (for lower resistance) this is the number of duplicates
 
-uint8_t termColor = 15; //terminal color index for 255 color mode (default is white)
+uint8_t termColor; //terminal color index for 255 color mode (default is white)
 //uint16_t uniqueID; //this is a unique ID for the net, it's used to identify the net in the machine
 };
 
@@ -72,6 +73,9 @@ struct pathStruct{
   int duplicate = 0; // the "parent" path if 1, the "child" path if 2, 0 if not a duplicate
 
 };
+
+extern int indexByChip[MAX_BRIDGES];
+extern int indexByNet[MAX_BRIDGES];
 
 void initNets(void);
 

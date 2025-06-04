@@ -54,11 +54,17 @@ void isrFromPio(void) {
   }
 
 struct pathStruct lastPath[MAX_BRIDGES];
-struct pathStruct emptyPath = { 99, 99, 99, 99, 99, 99, 99, 99, 99, 99, 99, 99, 99, 99, 99, 99 };
+struct pathStruct emptyPath;
+
+
 //struct pathStruct newPath[MAX_BRIDGES];
 int lastPathNumber = 0;
 int changedPaths[MAX_BRIDGES];
 int changedPathsCount = 0;
+
+// Index array for chip-ordered processing while keeping main path array in net order
+int chipOrderedIndex[MAX_BRIDGES];
+bool chipOrderValid = false;
 
 void initCH446Q(void) {
 
@@ -110,6 +116,14 @@ void initCH446Q(void) {
     lastPath[i].y[2] = -1;
     lastPath[i].y[3] = -1;
     }
+  
+  chipOrderValid = false; // Initialize chip order as invalid
+  emptyPath.node1 = -1;
+  emptyPath.node2 = -1;
+  emptyPath.net = 0;
+  for (int i = 0; i < 4; i++) {
+    emptyPath.chip[i] = 13;
+    }
   }
 
 void sendPaths(int clean) {
@@ -125,7 +139,8 @@ void sendPaths(int clean) {
 
   unsigned long pathTimer = micros();
 
-  sortPathsByChipXY();
+  // Create chip-ordered index for efficient hardware operations while keeping paths in net order
+  createChipOrderedIndex();
 
   if (clean == 1) {
     digitalWrite(RESETPIN, HIGH);
@@ -156,6 +171,7 @@ void refreshPaths(void) {
   for (int i = 0; i < MAX_BRIDGES; i++) {
     lastPath[i] = emptyPath;
     }
+  chipOrderValid = false; // Invalidate chip order index
   sendAllPaths(1);
   }
 
@@ -172,17 +188,18 @@ void sendAllPaths(int clean) // should we sort them by chip? for now, no
         }
       }
 
-    // Send all paths and update lastPath and lastChipXY
+    // Send all paths in chip order for hardware efficiency, but preserve net order in path array
     for (int i = 0; i < numberOfPaths; i++) {
-      sendPath(i, 1, 0);
-      lastPath[i] = path[i];
+      int pathIdx = chipOrderValid ? chipOrderedIndex[i] : i;
+      sendPath(pathIdx, 1, 0);
+      lastPath[pathIdx] = path[pathIdx];
 
       // Update lastChipXY
       for (int j = 0; j < 4; j++) {
-        if (path[i].chip[j] != -1 && path[i].x[j] != -1 && path[i].y[j] != -1) {
-          int chip = path[i].chip[j];
-          int x = path[i].x[j];
-          int y = path[i].y[j];
+        if (path[pathIdx].chip[j] != -1 && path[pathIdx].x[j] != -1 && path[pathIdx].y[j] != -1) {
+          int chip = path[pathIdx].chip[j];
+          int x = path[pathIdx].x[j];
+          int y = path[pathIdx].y[j];
 
           if (chip >= 0 && chip < 12 && x >= 0 && x < 16 && y >= 0 && y < 8) {
             lastChipXY[chip].connected[x][y] = true;
@@ -519,24 +536,40 @@ void sendXYraw(int chip, int x, int y, int setOrClear) {
 
 void createXYarray(void) { }
 
-// Sorts the global path array by chip, x, y (element-wise, for all 4 possible values)
-void sortPathsByChipXY() {
+// Creates an index array sorted by chip, x, y while keeping main path array in net order
+void createChipOrderedIndex() {
+  // Initialize index array
+  for (int i = 0; i < numberOfPaths; i++) {
+    chipOrderedIndex[i] = i;
+    }
+  
+  // Sort the index array based on chip, x, y values of the paths they point to
   for (int i = 0; i < numberOfPaths - 1; i++) {
     for (int j = 0; j < numberOfPaths - i - 1; j++) {
       bool swap = false;
       for (int k = 0; k < 4; k++) {
-        if (path[j].chip[k] < path[j + 1].chip[k]) break;
-        if (path[j].chip[k] > path[j + 1].chip[k]) { swap = true; break; }
-        if (path[j].x[k] < path[j + 1].x[k]) break;
-        if (path[j].x[k] > path[j + 1].x[k]) { swap = true; break; }
-        if (path[j].y[k] < path[j + 1].y[k]) break;
-        if (path[j].y[k] > path[j + 1].y[k]) { swap = true; break; }
+        int idx1 = chipOrderedIndex[j];
+        int idx2 = chipOrderedIndex[j + 1];
+        
+        if (path[idx1].chip[k] < path[idx2].chip[k]) break;
+        if (path[idx1].chip[k] > path[idx2].chip[k]) { swap = true; break; }
+        if (path[idx1].x[k] < path[idx2].x[k]) break;
+        if (path[idx1].x[k] > path[idx2].x[k]) { swap = true; break; }
+        if (path[idx1].y[k] < path[idx2].y[k]) break;
+        if (path[idx1].y[k] > path[idx2].y[k]) { swap = true; break; }
         }
       if (swap) {
-        pathStruct temp = path[j];
-        path[j] = path[j + 1];
-        path[j + 1] = temp;
+        int temp = chipOrderedIndex[j];
+        chipOrderedIndex[j] = chipOrderedIndex[j + 1];
+        chipOrderedIndex[j + 1] = temp;
         }
       }
     }
+  chipOrderValid = true;
   }
+
+// Legacy function name kept for compatibility, but now creates index instead of sorting
+void sortPathsByChipXY() {
+  createChipOrderedIndex();
+  }
+

@@ -1,0 +1,55 @@
+CompileFlags:
+  Compiler: arm-none-eabi-gcc
+  Add:
+    # C++ standard library include paths
+    - "-I/Users/kevinsanto/.platformio/packages/toolchain-rp2040-earlephilhower/arm-none-eabi/include/c++/14.2.0"
+    - "-I/Users/kevinsanto/.platformio/packages/toolchain-rp2040-earlephilhower/arm-none-eabi/include/c++/14.2.0/arm-none-eabi/thumb"
+    - "-I/Users/kevinsanto/.platformio/packages/toolchain-rp2040-earlephilhower/arm-none-eabi/include/c++/14.2.0/backward"
+    
+    # System include paths from ARM GCC
+    - "-I/Users/kevinsanto/.platformio/packages/toolchain-rp2040-earlephilhower/lib/gcc/arm-none-eabi/14.2.0/include"
+    - "-I/Users/kevinsanto/.platformio/packages/toolchain-rp2040-earlephilhower/lib/gcc/arm-none-eabi/14.2.0/include-fixed"
+    - "-I/Users/kevinsanto/.platformio/packages/toolchain-rp2040-earlephilhower/arm-none-eabi/include"
+    
+    # Project includes
+    - "-Iinclude"
+    - "-Isrc"
+    - "-Iboards/jumperless_v5"
+    
+    # Library dependencies
+    - "-I.pio/libdeps/pico/INA219/src"
+    - "-I.pio/libdeps/pico/Adafruit NeoPixel/src" 
+    - "-I.pio/libdeps/pico/Adafruit MCP4725/src"
+    - "-I.pio/libdeps/pico/Adafruit BusIO/src"
+    - "-I.pio/libdeps/pico/Adafruit SSD1306"
+    - "-I.pio/libdeps/pico/Adafruit MCP4728/src"
+    - "-I.pio/libdeps/pico/U8g2/src"
+    - "-I.pio/libdeps/pico/PNGdec/src"
+    - "-I.pio/libdeps/pico/SafeString/src"
+    - "-I.pio/libdeps/pico/ArduinoJson/src"
+    - "-I.pio/libdeps/pico/Arduino_JSON/src"
+    
+    # Arduino Core includes (framework-specific)
+    - "-I/Users/kevinsanto/.platformio/packages/framework-arduinopico/cores/rp2040"
+    - "-I/Users/kevinsanto/.platformio/packages/framework-arduinopico/variants/rpipico"
+    - "-I/Users/kevinsanto/.platformio/packages/framework-arduinopico/libraries"
+    
+    # Arduino preprocessor defines
+    - "-DARDUINO=10607"
+    - "-DARDUINO_RASPBERRY_PI_PICO"
+    - "-DBOARD_NAME=\"jumperless_v5\""
+    - "-DPICO_RP2350A=0"
+    - "-DF_CPU=133000000L"
+    - "-DUSE_TINYUSB"
+    - "-DCFG_TUSB_CONFIG_FILE=\"custom_tusb_config.h\""
+    
+    # C++ standard and settings
+    - "-std=c++11"
+    - "-fno-rtti"
+    - "-fno-exceptions"
+
+Diagnostics:
+  ClangTidy:
+    Remove: 
+      - misc-definitions-in-headers
+  UnusedIncludes: None

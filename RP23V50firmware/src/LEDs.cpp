@@ -164,7 +164,7 @@ ledClass leds;
 
 
 
-struct changedNetColors changedNetColors[MAX_NETS] = { {0, 0} };
+struct changedNetColors changedNetColors[MAX_NETS];
 rgbColor netColors[MAX_NETS] = { 0 };
 
 uint8_t saturation = 254;

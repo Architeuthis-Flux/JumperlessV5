@@ -2913,7 +2913,8 @@ int doMenuAction(int menuPosition, int selection) {
                         pathDuplicates = currentAction.from[0];
                         if (currentAction.fromAscii[0][0] == 'M' || currentAction.fromAscii[0][0] == 'm') {
                           //pathPriority = 2;
-                          pathDuplicates = 7;
+                          pathDuplicates = 5;
+                          jumperlessConfig.routing.stack_paths = 5;
                           }
                         } else if (menuLines[currentAction.previousMenuPositions[2]].indexOf("DACs") != -1)
                           {
@@ -2921,8 +2922,10 @@ int doMenuAction(int menuPosition, int selection) {
                           if (currentAction.fromAscii[0][0] == 'M' || currentAction.fromAscii[0][0] == 'm') {
                             dacPriority = 2;
                             dacDuplicates = 4;
+                            jumperlessConfig.routing.stack_dacs = 4;
                             } else {
                             dacPriority = 1;
+                            jumperlessConfig.routing.stack_dacs = 1;
                             }
                           }
 
@@ -3049,7 +3052,7 @@ int doMenuAction(int menuPosition, int selection) {
                             oled.setTextSize(1);
                             configChanged = true;
                           } else if (menuLines[currentAction.previousMenuPositions[1]].indexOf("Connect") != -1) {
-                            if (currentAction.from[0] == 0) {
+                          if (oled.checkConnection() == 0) {
                               jumperlessConfig.top_oled.enabled = 1;
                               oled.init();
                               oled.clear();
@@ -3060,7 +3063,7 @@ int doMenuAction(int menuPosition, int selection) {
                               oled.clear();
                               oled.showJogo32h();
                               oled.show();
-                              } else if (currentAction.from[0] == 1) {
+                              } else {
                                 oled.clear();
                                 oled.setTextSize(1);
                                 oled.print("Disconnecting OLED");

@@ -1,14 +1,13 @@
 #include "Graphics.h"
 #include "Adafruit_NeoPixel.h"
 #include "Commands.h"
-#include "Doom.h"
 #include "JumperlessDefines.h"
 #include "MatrixState.h"
 #include "NetManager.h"
 #include "Peripherals.h"
 #include "PersistentStuff.h"
 #include "Probing.h"
-#include "leds.h"
+#include "LEDs.h"
 #include "Menus.h"  
 #include "Peripherals.h"
 #include "SerialWrapper.h"
@@ -215,7 +214,7 @@ int colorCycle = 0;
 int defNudge = 0;
 
 
-int filledPaths[64][4] = { -1 }; // node1 node2 rowfilled
+int filledPaths[MAX_BRIDGES][4] = { -1 }; // node1 node2 rowfilled
 
 
 void changeTerminalColor(int termColor) {
@@ -258,7 +257,7 @@ void drawWires(int net) {
   int fillSequence[6] = { 0, 1, 2, 3, 4, 0 };
   int fillIndex = 0;
 
-  for (int i = 0; i < 64; i++) {
+  for (int i = 0; i < MAX_BRIDGES; i++) {
     for (int j = 0; j < 4; j++) {
       filledPaths[i][j] = -1;
       }
@@ -283,7 +282,7 @@ void drawWires(int net) {
   // }
   if (net == -1) {
 
-    for (int i = 0; i <= numberOfPaths; i++) {
+    for (int i = 0; i <= numberOfPaths && i < MAX_BRIDGES; i++) {
 
 
       int sameLevel = 0;
@@ -291,6 +290,10 @@ void drawWires(int net) {
       int bothOnBottom = 0;
       int bothOnBB = 0;
       int whichIsLarger = 0;
+
+      if (path[i].duplicate == 1) {
+        continue;
+        }
 
       if (path[i].node1 != -1 && path[i].node2 != -1 &&
           path[i].node1 != path[i].node2) {
@@ -466,7 +469,7 @@ void drawWires(int net) {
 
           uint32_t color3 = 0x100010;
 
-          rgbColor colorRGB = netColors[wireStatus[i][j]];
+          rgbColor colorRGB = (wireStatus[i][j] < MAX_NETS) ? netColors[wireStatus[i][j]] : netColors[0];
 
           hsvColor colorHSV = RgbToHsv(colorRGB);
 
@@ -487,7 +490,7 @@ void drawWires(int net) {
 
           uint32_t color3 = 0x100010;
 
-          rgbColor colorRGB = netColors[wireStatus[i][j]];
+          rgbColor colorRGB = (wireStatus[i][j] < MAX_NETS) ? netColors[wireStatus[i][j]] : netColors[0];
           // Serial.print("netColors[wireStatus[");
           // Serial.print(i);
           // Serial.print("][");
@@ -1061,7 +1064,7 @@ void showRowAnimation(int index, int net) {
     // Serial.println(rowAnimations[net].direction);
 
     if (jumperlessConfig.display.lines_wires == 0 || numberOfShownNets > MAX_NETS_FOR_WIRES) {
-      for (int i = 0; i <= numberOfPaths; i++) {
+      for (int i = 0; i <= numberOfPaths && i < MAX_BRIDGES; i++) {
         if (path[i].net == actualNet) {
           if (path[i].skip == true) {
             continue;
@@ -1108,7 +1111,7 @@ void showRowAnimation(int index, int net) {
         }
       }
 
-    for (int i = 0; i <= numberOfPaths; i++) {
+    for (int i = 0; i <= numberOfPaths && i < MAX_BRIDGES; i++) {
       //     if (path[i].skip == true) {
       //   continue;
       // }
@@ -2240,11 +2243,12 @@ void doomIntro(void) {
 
 void playDoom(void) {
   // core1busy = 1;
+#if INCLUDE_DOOM == 1
   core2busy = 1;
   int pixMap[10] = { 9, 8, 7, 6, 5, 4, 3, 2, 1, 0 };
   // doomIntro();
   doomIntro();
-  for (int l = 0; l < 4; l++) {
+  for (int l = 0; l < 1; l++) {
 
     for (int f = 0; f <= 39; f++) {
       for (int r = 0; r < 60; r++) {
@@ -2280,7 +2284,7 @@ void playDoom(void) {
       delay(150);
       }
     }
-
+#endif	// INCLUDE_DOOM
   // core1busy = 0;
   core2busy = 0;
   }
@@ -2421,9 +2425,7 @@ void drawImage(int imageIndex) {
                 } else if (i == GND_T_LED || i == VIN_LED) {
 
                   pixel = scaleBrightness(pixel, brightnessSetLogo2[cycleCount]);
-                  }
-
-                else if (i == RST_0_LED || i == RST_1_LED || i == GND_B_LED || i == V3V3_LED || i == V5V_LED) {
+                  } else if (i == RST_0_LED || i == RST_1_LED || i == GND_B_LED || i == V3V3_LED || i == V5V_LED) {
 
             pixel = scaleBrightness(pixel, brightnessSetLogo[cycleCount]);
             } else {

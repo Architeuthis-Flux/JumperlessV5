@@ -10,8 +10,11 @@ KevinC@ppucc.io
 
 */
 
-#define PICO_RP2350B 1
+#define PICO_RP2350A 0
+// #include <pico/stdlib.h>
 #include <Arduino.h>
+
+
 
 //  #define LED LED_BUILTIN
 //  #ifdef USE_TINYUSB
@@ -296,7 +299,7 @@ int serSource = 0;
 int readInNodesArduino = 0;
 
 
-const char firmwareVersion[] = "5.1.3.0"; // remember to update this
+const char firmwareVersion[] = "5.1.3.2"; // remember to update this
 
 int firstLoop = 1;
 
@@ -963,11 +966,11 @@ menu:
       char f[8] = { ' ' };
       int index = 0;
       float f1 = 0.0;
-
-      while (SerialWrap.available() == 0) {
+      unsigned long timer = millis();
+      while (Serial.available() == 0 && millis() - timer < 1000) {
         }
       while (index < 8) {
-        f[index] = SerialWrap.read();
+        f[index] = Serial.read();
         index++;
         }
 
@@ -975,9 +978,9 @@ menu:
       // Serial.print("f = ");
       // Serial.println(f1);
       if (probePowerDAC == 1) {
-        setDac0voltage(f1, 1);
+        setDac0voltage(f1, 1, 1);
         } else if (probePowerDAC == 0) {
-          setDac1voltage(f1, 1);
+          setDac1voltage(f1, 1, 1);
           }
         configChanged = true;
         Serial.printf("DAC %d = %0.2f V\n", !probePowerDAC, f1);
@@ -1323,22 +1326,20 @@ menu:
         break;
       case 'b': {
       int showDupes = 1;
-      char in = SerialWrap.read();
+      char in = Serial.read();
       if (in == '0') {
         showDupes = 0;
         } else if (in == '2') {
           showDupes = 2;
           }
         Serial.print("\n\rpathDuplicates: ");
-        Serial.println(pathDuplicates);
+        Serial.println(jumperlessConfig.routing.stack_paths);
         Serial.print("dacDuplicates: ");
-        Serial.println(dacDuplicates);
-        Serial.print("powerDuplicates: ");
-        Serial.println(powerDuplicates);
-        Serial.print("dacPriority: ");
-        Serial.println(dacPriority);
-        Serial.print("powerPriority: ");
-        Serial.println(powerPriority);
+        Serial.println(jumperlessConfig.routing.stack_dacs);
+        Serial.print("railsDuplicates: ");
+        Serial.println(jumperlessConfig.routing.stack_rails);
+        Serial.print("railPriority: ");
+        Serial.println(jumperlessConfig.routing.rail_priority);
         couldntFindPath(1);
         Serial.print("\n\rBridge Array\n\r");
         printBridgeArray();

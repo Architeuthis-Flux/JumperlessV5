@@ -2,6 +2,9 @@
 
 #include "NetManager.h"
 //#include "FileParsing.h"
+#include "JumperlessDefines.h"
+#include <string.h>
+#include <math.h>
 #include "MatrixState.h"
 #include "NetsToChipConnections.h"
 #include "Peripherals.h"
@@ -13,6 +16,7 @@
 #include "Probing.h"
 #include "SerialWrapper.h"
 #include "Highlighting.h"
+
 #define Serial SerialWrap
 // Define a struct that holds both the long and short strings as well as the defined value
 // struct DefineInfo {
@@ -909,7 +913,7 @@ void listNets(int liveUpdate)
     // Serial.println(liveUpdate);
 
     ///0 = none, 1 = adc, 2 = gpio input, 3 = gpio output, 4 = uart tx, 5 = uart rx, 6 = other
-    int netsShowingSpecial[numberOfNets + 1];
+    int netsShowingSpecial[MAX_NETS];
     // int netsShowingSpecialIndex = 0;
     int showVoltage = 0;
     int showGPIO = 0;
@@ -1377,7 +1381,7 @@ void listNets(int liveUpdate)
               }
             }
           for (int i = 0; i < 8; i++) {
-            if (abs(lastADC[i] - adcReadings[i]) > 0.02) {
+            if (fabs(lastADC[i] - adcReadings[i]) > 0.02) {
               changed = 1;
               lastADC[i] = adcReadings[i];
               }

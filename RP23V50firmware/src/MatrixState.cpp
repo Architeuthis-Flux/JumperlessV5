@@ -45,7 +45,11 @@ CHIP_K, CHIP_L };                                           //60
 // const int xHopMap[12][12][16] =  //[chip] [other chip][x]
 // {
 
-#include <pico/rand.h>
+
+int indexByChip[MAX_BRIDGES] = {0};
+int indexByNet[MAX_BRIDGES] = {0};
+
+//#include <pico/rand.h>
 
 void initNets(void) {
   for (int i = 0; i < 6; i++) {
@@ -436,13 +440,13 @@ struct chipStatus ch[12] = {
       {8,'I',
       {-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1}, // x status
       {-1,-1,-1,-1,-1,-1,-1,-1}, //y status
-      {NANO_A0, NANO_D1, NANO_A2, NANO_D3, NANO_A4, NANO_D5, NANO_A6, NANO_D7, NANO_D11, NANO_D9, NANO_D13,ISENSE_PLUS/*NANO_RESET_0*/ /* , CHIP_L, CHIP_J, CHIP_K,RP_UART_RX }, //this is for V5r1 change this for V5r2
+      {NANO_A0, NANO_D1, NANO_A2, NANO_D3, NANO_A4, NANO_D5, NANO_A6, NANO_D7, NANO_D11, NANO_D9, NANO_D13,ISENSE_PLUS or NANO_RESET_0  , CHIP_L, CHIP_J, CHIP_K,RP_UART_RX }, //this is for V5r1 change this for V5r2
       {CHIP_A,CHIP_B,CHIP_C,CHIP_D,CHIP_E,CHIP_F,CHIP_G,CHIP_H}},
 
       {9,'J',
       {-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1}, // x status
       {-1,-1,-1,-1,-1,-1,-1,-1}, //y status
-      {NANO_D0, NANO_A1, NANO_D2, NANO_A3, NANO_D4, NANO_A5, NANO_D6, NANO_A7, NANO_D8, NANO_D10, NANO_D12, ISENSE_MINUS/*NANO_RESET_1*/ /*, CHIP_L, CHIP_I, CHIP_K, RP_UART_TX},  //this is for V5r1 change this for V5r2
+      {NANO_D0, NANO_A1, NANO_D2, NANO_A3, NANO_D4, NANO_A5, NANO_D6, NANO_A7, NANO_D8, NANO_D10, NANO_D12, ISENSE_MINUS or NANO_RESET_1, CHIP_L, CHIP_I, CHIP_K, RP_UART_TX},  //this is for V5r1 change this for V5r2
       {CHIP_A,CHIP_B,CHIP_C,CHIP_D,CHIP_E,CHIP_F,CHIP_G,CHIP_H}},
 
       {10,'K',

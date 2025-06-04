@@ -5,7 +5,7 @@
 #include "LEDs.h"
 //#include "LittleFS.h"
 #include "Commands.h"
-#include "MachineCommands.h"
+// #include "MachineCommands.h"
 #include "MatrixState.h"
 #include "NetManager.h"
 #include "Probing.h"
@@ -347,7 +347,7 @@ void inputNodeFileList(int addRotaryConnections) {
   nodeFileBuffer = FatFS.open("nodeFileBuffer.txt", "w+");
   // openFileThreadSafe(wplus, slot);
   nodeFileString.trim();
-  if (nodeFileString.endsWith("}") == -1) {
+  if (nodeFileString.endsWith("}") == 0) {
     nodeFileString.concat(" } \n\r");
     }
   int openBraceIdx = nodeFileString.indexOf("{");

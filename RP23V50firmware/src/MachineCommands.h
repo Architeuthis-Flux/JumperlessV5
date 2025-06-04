@@ -25,7 +25,7 @@ enum machineModeInstruction
     getunconnectedpaths
 };
 
-extern char inputBuffer[INPUTBUFFERLENGTH];
+extern char inputBuffer[100];
 extern char machineModeInstructionString[NUMBEROFINSTRUCTIONS][20];
 
 enum machineModeInstruction parseMachineInstructions(int *sequenceNumber);
