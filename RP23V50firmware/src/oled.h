@@ -133,7 +133,7 @@ public:
     void displayMultiLineText(const char* text, bool center);
     
     // Debug functions
-    void dumpFrameBufferQuarterSize(int clearFirst = 0, int x_pos = 40, int y_pos = 28, int border = 1);
+    void dumpFrameBufferQuarterSize(int clearFirst = 0, int x_pos = 40, int y_pos = 24, int border = 1);
     void dumpFrameBuffer();
     
     // Positioning functions (simplified)

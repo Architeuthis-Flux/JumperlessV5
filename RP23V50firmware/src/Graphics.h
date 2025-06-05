@@ -137,6 +137,8 @@ void dumpLEDs(int posX = 50, int posY = 27, int pixelsOrRows = 0, int header = 0
 void dumpHeader(int posX = 50, int posY = 20, int absolute = 1, int wide = 0);
 void dumpHeaderHex();
 void moveCursor(int posX = -1, int posY = -1, int absolute = 1);
+void saveCursorPosition(void);
+void restoreCursorPosition(void);
 
 
 

@@ -3118,7 +3118,13 @@ int doMenuAction(int menuPosition, int selection) {
                         
                                         Serial.println(oled.getFontName(selectedFamily));
 
-                              } else if (menuLines[currentAction.previousMenuPositions[1]].indexOf("Demo") != -1) {
+                              } else if (menuLines[currentAction.previousMenuPositions[1]].indexOf("Show in Term") != -1) {
+                                if (jumperlessConfig.top_oled.show_in_terminal == 1) {
+                                  jumperlessConfig.top_oled.show_in_terminal = 0;
+                                  } else {
+                                    jumperlessConfig.top_oled.show_in_terminal = 1;
+                                    }
+                                configChanged = true;
                                 //oled.testCentering();
                                // oledExample();
                                 //oled.test();

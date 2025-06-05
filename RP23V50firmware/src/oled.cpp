@@ -19,6 +19,7 @@
 #include <cstdio>
 #include <cstring>
 #include <vector>
+#include "Graphics.h"
 //#include "font_bounds_example.h"
 #include "Adafruit_GFX.h"
 #include "Highlighting.h"
@@ -850,7 +851,7 @@ void oled::dumpFrameBufferQuarterSize(int clearFirst, int x_pos, int y_pos, int 
        // Serial.println("No framebuffer available");
         return;
     }
-
+saveCursorPosition();
     Serial.printf("\033[%d;%dH", y_pos-1, x_pos +1);
     Serial.printf("\033[0K");
     Serial.printf("\033[1B");
@@ -942,6 +943,7 @@ void oled::dumpFrameBufferQuarterSize(int clearFirst, int x_pos, int y_pos, int 
         Serial.println("                                                                  ");
     }
     Serial.printf("\033[%dB",y_pos - (SCREEN_HEIGHT / 2 ) + 2);
+restoreCursorPosition();
 }
 
 

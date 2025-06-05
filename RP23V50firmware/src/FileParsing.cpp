@@ -1936,10 +1936,17 @@ void replaceSFNamesWithDefinedInts(void) {
   specialFunctionsString.replace("GROUND", "100");
   specialFunctionsString.replace("TOP_RAIL", "101");
   specialFunctionsString.replace("TOPRAIL", "101");
+  specialFunctionsString.replace("T_R", "101");
+  specialFunctionsString.replace("TOP_R", "101");
   specialFunctionsString.replace("BOTTOM_RAIL", "102");
   specialFunctionsString.replace("BOT_RAIL", "102");
   specialFunctionsString.replace("BOTTOMRAIL", "102");
   specialFunctionsString.replace("BOTRAIL", "102");
+  specialFunctionsString.replace("B_R", "102");
+  specialFunctionsString.replace("BOT_R", "102");
+
+
+
   specialFunctionsString.replace("SUPPLY_5V", "105");
   specialFunctionsString.replace("SUPPLY_3V3", "103");
 
@@ -1957,11 +1964,15 @@ void replaceSFNamesWithDefinedInts(void) {
   specialFunctionsString.replace("CURRENT_SENSE_MINUS", "109");
   specialFunctionsString.replace("CURRENT_SENSE_PLUS", "108");
   specialFunctionsString.replace("ISENSE_MINUS", "109");
+  
   specialFunctionsString.replace("ISENSE_PLUS", "108");
-  specialFunctionsString.replace("ISENSE_POS", "108");
-  specialFunctionsString.replace("ISENSE_NEG", "109");
+
   specialFunctionsString.replace("ISENSE_NEGATIVE", "109");
   specialFunctionsString.replace("ISENSE_POSITIVE", "108");
+  specialFunctionsString.replace("ISENSE_POS", "108");
+  specialFunctionsString.replace("ISENSE_NEG", "109");
+  specialFunctionsString.replace("ISENSE_N", "109");
+  specialFunctionsString.replace("ISENSE_P", "108");
 
   specialFunctionsString.replace("BUFFER_IN", "139");
   specialFunctionsString.replace("BUFFER_OUT", "140");
@@ -1980,13 +1991,14 @@ void replaceSFNamesWithDefinedInts(void) {
   specialFunctionsString.replace("ADC2_8V", "112");
   specialFunctionsString.replace("ADC3_8V", "113");
   specialFunctionsString.replace("ADC4_5V", "114");
-  specialFunctionsString.replace("ADC7_PROBE", "115");
+  specialFunctionsString.replace("ADC7_PROBE", "139");
+  specialFunctionsString.replace("PROBE", "139");
   specialFunctionsString.replace("ADC0", "110");
   specialFunctionsString.replace("ADC1", "111");
   specialFunctionsString.replace("ADC2", "112");
   specialFunctionsString.replace("ADC3", "113");
   specialFunctionsString.replace("ADC4", "114");
-  specialFunctionsString.replace("ADC7", "115");
+  specialFunctionsString.replace("ADC7", "139");
 
   specialFunctionsString.replace("ADC_0", "110");
   specialFunctionsString.replace("ADC_1", "111");

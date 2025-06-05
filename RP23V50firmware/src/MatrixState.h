@@ -115,6 +115,12 @@ int uncommittedHops; //store the path number of the uncommitted hop
 // int8_t yStatus[8];  //store the row/nano it's connected to
 
 // };
+struct nodeStruct{
+  const char* name;
+  int16_t define;
+};
+
+extern struct nodeStruct nodeNames[30];
 
 extern const char *connectionNamesX[12][16];
 
@@ -124,6 +130,8 @@ char* xName(int chip, int x);
 
 char* yName(int chip, int y);
 
+void printAllConnectableNodes(void);
+void printAllConnectableNodes(int actuallyCheck);
 
 extern struct justXY justXY[MAX_BRIDGES];
 
@@ -165,34 +173,6 @@ const int16_t reversePinMap[110];// = {NANO_D0, NANO_D1, NANO_D2, NANO_D3, NANO_
 };
 extern struct nanoStatus nano;
 
-const int duplucateSFnodes[26][4] = {  // [] [sf chip1,  x pin1, sf chip2, x pin2]
-{CHIP_I,0,CHIP_K,0},
-{CHIP_J,1,CHIP_K,1},
-{CHIP_I,2,CHIP_K,2},
-{CHIP_J,2,CHIP_K,4},
-{CHIP_I,3,CHIP_K,5},
-{CHIP_J,3,CHIP_K,3},
-{CHIP_I,4,CHIP_L,12},
-{CHIP_J,4,CHIP_K,6},
-{CHIP_I,5,CHIP_K,7},
-{CHIP_J,5,CHIP_L,13},
-{CHIP_J,6,CHIP_K,8},
-{CHIP_I,7,CHIP_K,9},
-{CHIP_I,8,CHIP_K,13},
-{CHIP_J,8,CHIP_K,10},
-{CHIP_I,9,CHIP_K,11},
-{CHIP_J,9,CHIP_K,12},
-{CHIP_J,10,CHIP_K,14},
-{CHIP_I,12,CHIP_L,7},
-{CHIP_J,12,CHIP_L,6},
-{CHIP_I,13,CHIP_L,2},
-{CHIP_J,13,CHIP_L,3},
-{CHIP_J,14,CHIP_L,14},
-{CHIP_I,15,CHIP_J,15},
-//{CHIP_I,15,CHIP_L,15},  //rev2
-///{CHIP_J,15,CHIP_L,15},
-{CHIP_K,15,CHIP_L,4},
-};
 
 
  struct SFmapPair {

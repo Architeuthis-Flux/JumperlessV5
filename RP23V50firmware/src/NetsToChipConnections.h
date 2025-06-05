@@ -85,7 +85,7 @@ void resolveAltPaths(int allowStacking = 0, int powerOnly = -1, int noOrOnlyDupl
 
 void printChipStatus(void);
 
-void duplicateSFnets (void);
+
 
 void swapDuplicateNode (int);
 

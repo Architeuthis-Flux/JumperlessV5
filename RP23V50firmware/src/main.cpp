@@ -303,13 +303,13 @@ int serSource = 0;
 int readInNodesArduino = 0;
 
 
-const char firmwareVersion[] = "5.1.4.0"; // remember to update this
+const char firmwareVersion[] = "5.1.4.1"; // remember to update this
 
 int firstLoop = 1;
 
 volatile int probeActive = 0;
 
-int showExtraMenu = 1;
+int showExtraMenu = 0;
 
 int lastHighlightedNet = -1;
 int lastBrightenedNet = -1;
@@ -422,7 +422,28 @@ menu:
   Serial.print("\td = set debug flags\n\r");
   Serial.print("\tl = LED brightness / test\n\r");
   Serial.print("\t\b\b`/~ = edit / print config\n\r");
+  Serial.print("\te = show extra options\n\r");
+        if (showExtraMenu == 1) {
+      Serial.println();
+      
+     
 
+    Serial.print("\to = load node file by slot\n\r");
+    Serial.print("\tp = print all connectable nodes\n\r");
+    Serial.print("\tF = cycle font\n\r");
+    Serial.print("\t_ = print micros per byte\n\r");
+    Serial.print("\t@ = scan I2C\n\r");
+    Serial.print("\t$ = calibrate DACs\n\r");
+    Serial.print("\t= = dump oled frame buffer\n\r");
+    Serial.print("\tk = show oled in terminal\n\r");
+    Serial.print("\tR = show board LEDs\n\r");
+
+    
+
+
+
+   // Serial.print("\n\r");
+    }
   Serial.println();
 
   //Serial.print("\t$ = calibrate DACs\n\r");
@@ -453,10 +474,12 @@ menu:
     //       } else {
     //       Serial.print(" - off");
     //       }
-    Serial.println();
+   
 
 
-    Serial.println();
+
+ Serial.println();
+   
 
     Serial.print("\tf = load node file\n\r");
     Serial.print("\tx = clear all connections\n\r");
@@ -464,45 +487,9 @@ menu:
     Serial.print("\t- = remove connections\n\r");
 
     //Serial.print("\te = extra menu options\n\r");
+ Serial.println();
 
-    //if (showExtraMenu == 1) {
-      //Serial.println();
-
-
-
-
-
-
-
-
-      //Serial.print("\to = load node file by slot\n\r");
-     // Serial.print("\tu = scan board\n\r");
-
-
-
-
-
-      //Serial.print("\t` = edit config\n\r");
-
-
-     // }
-
-    // for (int i = 0; i < 10; i++) {
-    //   Serial.print("gpioState[");
-    //   Serial.print(i);
-    //   Serial.print("]: ");
-    //   Serial.print(gpioState[i]);
-    //   Serial.print("\tgpioNet[");
-    //   Serial.print(i);
-    //   Serial.print("]: ");
-    //   Serial.println(gpioNet[i]);
-    //   }
-
-    Serial.print("\n\n\r");
-    //b.clear();
-      //Serial.println(yesNoMenu());
-
-
+ Serial.println();
 
     Serial.flush();
 
@@ -831,7 +818,7 @@ menu:
 
 
     switch (input) {
-      case 'k': {
+      case 'k': { //!  k
       // for (int i = 0; i < 255; i++) {
       //   Serial.print(i);
       //   Serial.print(": ");
@@ -840,12 +827,17 @@ menu:
       //   }
 
       // Call the demo function directly - it will check for range input itself
-      Serial.println("Displaying color names (enter range like '10-200' for specific range)");
-      colorPicker(0, 255);
-
+      // Serial.println("Displaying color names (enter range like '10-200' for specific range)");
+      // colorPicker(0, 255);
+    if (jumperlessConfig.top_oled.show_in_terminal == 1) {
+      jumperlessConfig.top_oled.show_in_terminal = 0;
+    } else {
+      jumperlessConfig.top_oled.show_in_terminal = 1;
+    }
+    configChanged = true;
       break;
       }
-      case 'R': {
+      case 'R': { //!  R
       //printWireStatus();
 
      // for (int i = 0; i < 10; i++) {
@@ -860,7 +852,11 @@ menu:
        goto dontshowmenu;
       break;
       }
-      case '.': {
+      case 'p': { //!  p
+      printAllConnectableNodes();
+      break;
+      }
+      case '.': { //!  .  
       //initOLED();
       if (jumperlessConfig.top_oled.enabled == 0) {
         jumperlessConfig.top_oled.enabled = 1;
@@ -877,21 +873,21 @@ menu:
       break;
       }
 
-      case 'c': {
+      case 'c': { //!  c
       printChipStateArray();
       break;
       }
 
-      case '_': {
+      case '_': { //!  _
       printMicrosPerByte();
       break;
       }
 
-      case 'g': {
+      case 'g': { //!  g
       printGPIOState();
       break;
       }
-      case '&': {
+      case '&': { //!  &
       loadChangedNetColorsFromFile(netSlot, 0);
       break;
       int node1 = -1;
@@ -921,14 +917,14 @@ menu:
       break;
       }
 
-      case '\'': {
+      case '\'': { //!  '
       pauseCore2 = 1;
       delay(1);
       drawAnimatedImage(0);
       pauseCore2 = 0;
       break;
       }
-      case 'x': {
+      case 'x': { //!  x
       digitalWrite(RESETPIN, HIGH);
       delay(1);
       refreshPaths();
@@ -941,7 +937,7 @@ menu:
       break;
       }
 
-      case '+': {
+      case '+': { //!  +
 
       readStringFromSerial(0, 0);
       goto loadfile;
@@ -949,21 +945,21 @@ menu:
       break;
       }
 
-      case '-': {
+      case '-': { //!  -
       readStringFromSerial(0, 1);
       goto loadfile;
       break;
       }
 
 
-      case '~': {
+      case '~': { //!  ~
       core1busy = 1;
       waitCore2();
       printConfigToSerial();
       core1busy = 0;
       break;
       }
-      case '`': {
+      case '`': { //!  `
       core1busy = 1;
       waitCore2();
       readConfigFromSerial();
@@ -975,7 +971,7 @@ menu:
               // break;
               // }
 
-      case '^': {
+      case '^': { //!  ^  
       // doomOn = 1;
       // Serial.println(yesNoMenu());
       // break;
@@ -1007,21 +1003,21 @@ menu:
       }
 
 
-      case '?': {
+      case '?': { //!  ?
       Serial.print("Jumperless firmware version: ");
       Serial.println(firmwareVersion);
       break;
       }
-      case '@': {
+      case '@': { //!  @
       // printWireStatus();
 
       i2cScan(8, 7, 22, 23, 1);
-      oledTest(8, 7, 22, 23, 1);
+      //oledTest(8, 7, 22, 23, 1);
 
       // printPathArray();
       break;
       }
-      case '$': {
+      case '$': { //!  $
       // return current slot number
       for (int d = 0; d < 4; d++) {
         Serial.print("dacSpread[");
@@ -1041,7 +1037,7 @@ menu:
       // Serial.println(netSlot);
       break;
       }
-      case 'r': {
+      case 'r': { //!  r
       if (SerialWrap.available() > 0) {
         char c = SerialWrap.read();
         if (c == '0' || c == '2' || c == 't') {
@@ -1057,7 +1053,7 @@ menu:
       break;
       }
 
-      case 'A': {
+      case 'A': { //!  A
       // delay(100);
       int justAsk = 0;
       while (SerialWrap.available() > 0) {
@@ -1092,7 +1088,7 @@ menu:
         }
       break;
       }
-      case 'a': {
+      case 'a': { //!  a
       // delay(100);
       int justAsk = 0;
       while (SerialWrap.available() > 0) {
@@ -1128,11 +1124,11 @@ menu:
       break;
       }
 
-      case 'F':
+      case 'F': //!  F
         oled.cycleFont();
         break;
 
-      case '=': {
+      case '=': { //!  =
       //  while (SerialWrap.available() == 0) {
       //  }
       //  char o = SerialWrap.read();
@@ -1141,8 +1137,8 @@ menu:
       Serial.println("\n\r");
       //oled.debugJokermanBaseline();
       oled.dumpFrameBuffer();
-      oled.testMenuPositioning();
-      oled.dumpFrameBuffer();
+      // oled.testMenuPositioning();
+      // oled.dumpFrameBuffer();
       //  if (isDigit(o)) {
       //  if (o == '0') {
       //   oled.setFont(0);
@@ -1160,7 +1156,7 @@ menu:
 
       // }
 
-
+      goto dontshowmenu;
       break;
 
 
@@ -1171,7 +1167,7 @@ menu:
 
 
 
-      case 'i': {
+      case 'i': { //!  i
       if (oled.isConnected() == false) {
         if (oled.init() == false) {
           Serial.println("Failed to initialize OLED");
@@ -1181,12 +1177,12 @@ menu:
 
 
 
-      oledTest(NANO_D2, NANO_D3, 22, 23);
+      //oledTest(NANO_D2, NANO_D3, 22, 23);
 
       break;
       }
 
-      case '#': {
+      case '#': { //!  #
       // pauseCore2 = 1;
       //  while (slotChanged == 0)
       //  {
@@ -1207,7 +1203,7 @@ menu:
 
       break;
       }
-      case 'e': {
+      case 'e': { //!  e
       if (showExtraMenu == 0) {
         showExtraMenu = 1;
         } else {
@@ -1216,12 +1212,12 @@ menu:
       break;
       }
 
-      case 's': {
+      case 's': {//!  s
       printSlots(-1);
 
       break;
       }
-      case 'v':
+      case 'v':{ //!  v
         if (SerialWrap.available() > 0) {
           char c = SerialWrap.read();
 
@@ -1317,6 +1313,7 @@ menu:
           goto dontshowmenu;
            break;
           }
+      }
       case '}': {
       // probeActive = 1;
       //   Serial.print("pdebugLEDs = ");

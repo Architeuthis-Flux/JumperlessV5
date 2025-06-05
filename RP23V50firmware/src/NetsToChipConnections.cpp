@@ -2513,31 +2513,6 @@ void commitPaths(int allowStacking, int powerOnly, int noOrOnlyDuplicates) {
   // duplicateSFnets();
 }
 
-void duplicateSFnets(void) {
-  // if (debugNTCC2)
-  // {
-  //     Serial.println("duplicateSFnets()");
-  // }
-  for (int i = 0; i < 26; i++) {
-    if (ch[duplucateSFnodes[i][0]].xStatus[duplucateSFnodes[i][1]] > 0) {
-      if (ch[duplucateSFnodes[i][2]].xStatus[duplucateSFnodes[i][3]] == -1) {
-        setChipXStatus(
-            duplucateSFnodes[i][2], duplucateSFnodes[i][3],
-            ch[duplucateSFnodes[i][0]].xStatus[duplucateSFnodes[i][1]],
-            "duplicateSFnets copy forward");
-      }
-    }
-
-    if (ch[duplucateSFnodes[i][2]].xStatus[duplucateSFnodes[i][3]] > 0) {
-      if (ch[duplucateSFnodes[i][0]].xStatus[duplucateSFnodes[i][1]] == -1) {
-        setChipXStatus(
-            duplucateSFnodes[i][0], duplucateSFnodes[i][1],
-            ch[duplucateSFnodes[i][2]].xStatus[duplucateSFnodes[i][3]],
-            "duplicateSFnets copy backward");
-      }
-    }
-  }
-}
 
 int ijklPaths(int pathNumber, int currentAllowStacking) {
   // return 0;
@@ -4364,25 +4339,7 @@ void resolveUncommittedHops(int allowStacking, int powerOnly,
   }
 }
 
-void swapDuplicateNode(int pathIndex) {
-  for (int i = 0; i < 26; i++) {
-    if ((duplucateSFnodes[i][0] == path[pathIndex].chip[1]) &&
-        (duplucateSFnodes[i][1] ==
-         xMapForNode(path[pathIndex].node2, path[pathIndex].chip[1]))) {
-      if (debugNTCC2) {
-        Serial.print("swapping ");
-        printChipNumToChar(path[pathIndex].chip[1]);
-        Serial.print(" with ");
-        printChipNumToChar(duplucateSFnodes[i][2]);
-      }
 
-      path[pathIndex].chip[1] = duplucateSFnodes[i][2];
-      break;
-
-      // path[pathIndex].x[1] = duplucateSFnodes[i][3];
-    }
-  }
-}
 
 int checkForOverlappingPaths() {
   int found = 0;
