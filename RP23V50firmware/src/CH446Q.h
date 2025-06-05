@@ -25,4 +25,5 @@ void sortPathsByChipXY(void);
 void printChipStateArray(void);
 void updateChipStateArray(void);
 void createChipOrderedIndex(void);
+void printLastChipStateArray(void);
 #endif

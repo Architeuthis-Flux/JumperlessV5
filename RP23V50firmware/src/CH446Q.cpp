@@ -388,6 +388,9 @@ void printChipStateArray(void) {
     }
   }
 
+void printLastChipStateArray(void) {
+
+}
 
 // New function to update the current chip state array based on paths
 void updateChipStateArray() {
@@ -395,7 +398,7 @@ void updateChipStateArray() {
   bool newChipXY[12][16][8] = { {{false}} };
 
   // Set connections based on current paths
-  for (int i = 0; i < numberOfPaths; i++) {
+  for (int i = 0; i < MAX_NETS; i++) {
     for (int j = 0; j < 4; j++) {
       if (path[i].chip[j] != -1 && path[i].x[j] != -1 && path[i].y[j] != -1) {
         int chip = path[i].chip[j];
@@ -415,7 +418,7 @@ void updateChipStateArray() {
     }
 
   // Find paths that have changed from last state
-  for (int i = 0; i < numberOfPaths; i++) {
+  for (int i = 0; i < MAX_NETS; i++) {
     for (int j = 0; j < 4; j++) {
       if (path[i].chip[j] != -1 && path[i].x[j] != -1 && path[i].y[j] != -1) {
         int chip = path[i].chip[j];

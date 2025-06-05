@@ -48,6 +48,6 @@
     "cortex-debug.variableUseNaturalFormat": false,
     
     // Use default IntelliSense engine
-    "C_Cpp.intelliSenseEngine": "clangd"
+    "C_Cpp.intelliSenseEngine": "disabled"
     
 }

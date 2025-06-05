@@ -51,16 +51,55 @@ int indexByNet[MAX_BRIDGES] = {0};
 
 //#include <pico/rand.h>
 
+
+// void initPaths(void) {
+//   for (int i = 0; i < MAX_BRIDGES; i++) {
+//     path[i].net = 0;
+//     path[i].node1 = 0;
+//     path[i].node2 = 0;
+//     path[i].duplicate = 0;
+//     path[i].pathType = BBtoBB;
+//     path[i].nodeType[0] = BB;
+//     path[i].nodeType[1] = BB;
+//     path[i].nodeType[2] = BB;
+//     path[i].sameChip = false;
+//     path[i].skip = false;
+//     path[i].altPathNeeded = false;
+
+
+//   }
+// }
+
+
 void initNets(void) {
   for (int i = 0; i < 6; i++) {
+    net[i].priority = 1;
     //net[i].uniqueID = i;
   }
 
 
-
   for (int i = 6; i < MAX_NETS; i++) {
-    //net[i].uniqueID = get_rand_32() & 0x0000ffff;
+    // uint16_t   uniqueID = net[i].uniqueID;
+
+    net[i] = {0, " ", {}, {{}}, 0, {}, {}, 0, 0, 0, 0, false};
+    net[i].priority = 1;
+    net[i].termColor = 15; // white
+
+
   }
+  // for (int i = 6; i < MAX_NETS; i++) {
+  //   net[i].priority = 1;
+  //   net[i].visible = 0;
+  //   net[i].name = "";
+  //   for (int j = 0; j < MAX_DUPLICATE; j++) {
+  //     net[i].duplicatePaths[j] = -1;
+  //   }
+  //   net[i].machine = false;
+  //   net[i].numberOfDuplicates = 0;
+  //   net[i].termColor = 15;
+
+
+  // }
 }
 
 

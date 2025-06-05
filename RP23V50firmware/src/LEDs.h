@@ -258,13 +258,23 @@ const int bbPixelToNodesMap[120] = {
 
 };
 
+struct headerStruct {
+  int node;
+  int pixel;
+  const char* name;
+};
+
+extern struct headerStruct headerMap[30];
+
+extern int headerMapPrintOrder[30];
+
 const int bbPixelToNodesMapV5[35][2] = {
-{NANO_D1, 400}, {NANO_D0, 401}, {NANO_RESET_1, 402}, {NANO_D2, 404}, {NANO_D3, 405},
+{NANO_D1, 400}, {NANO_D0, 401}, {NANO_RESET_1, 402}, {NANO_GND_1, 403}, {NANO_D2, 404}, {NANO_D3, 405},
 {NANO_D4, 406}, {NANO_D5, 407}, {NANO_D6, 408}, {NANO_D7, 409}, {NANO_D8, 410}, 
 {NANO_D9, 411}, {NANO_D10, 412}, {NANO_D11, 413}, {NANO_D12, 414}, {NANO_D13, 415},
-{NANO_AREF, 417}, {NANO_A0, 418}, {NANO_A1, 419}, {NANO_A2, 420},
-{NANO_A3, 421}, {NANO_A4, 422}, {NANO_A5, 423}, {NANO_A6, 424}, {NANO_A7, 425},
-{NANO_RESET_0, 427}
+{NANO_3V3, 416}, {NANO_AREF, 417}, {NANO_A0, 418}, {NANO_A1, 419}, {NANO_A2, 420},
+{NANO_A3, 421}, {NANO_A4, 422}, {NANO_A5, 423}, {NANO_A6, 424}, {NANO_A7, 425}, {NANO_5V, 426},
+{NANO_RESET_0, 427}, {NANO_GND_0, 428}, {NANO_VIN, 429}
 };
 
 extern uint32_t

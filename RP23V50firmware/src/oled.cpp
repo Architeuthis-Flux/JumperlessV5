@@ -89,6 +89,9 @@ FontSizeMapping fontFamilyMap[] = {
 // Constructor
 oled::oled() {}
 
+
+
+
 // Initialization
 int oled::init() {
     if (jumperlessConfig.top_oled.enabled == 0) {
@@ -102,10 +105,10 @@ int oled::init() {
     sda_row = jumperlessConfig.top_oled.sda_row;
     scl_row = jumperlessConfig.top_oled.scl_row;
     success = connect();
-
+    // delay(100);
     if (checkConnection() == false) {
         oledConnected = false;
-        disconnect();
+       /// disconnect();
         return 0;
     }
     // Set font family from config (defaults to size 1 variant)
@@ -162,18 +165,7 @@ int oled::cycleFont(void) {
     clearPrintShow((String)fontList[fontFamilyMap[currentFontFamily].size2Index].longName, 2);
     return currentFontFamily;
 }
-void oled::setFont(const GFXfont* font) {
-    currentFont = font;
-    
-    display.setFont(currentFont);
 
-    for (int i = 0; i < numFonts; i++) {
-        if (fontList[i].font == currentFont) {
-            currentFontFamily = fontList[i].family;
-            break;
-        }
-    }
-}
 FontFamily oled::getFontFamily(String fontName) {
     for (int i = 0; i < numFonts; i++) {
         if (fontList[i].longName == fontName) {
@@ -203,11 +195,26 @@ int oled::setFont(String fontName, int justGetIndex) {
     }
     return -1;
 }
+void oled::setFont(const GFXfont* font) {
+    currentFont = font;
+    
+    display.setFont(currentFont);
 
+    for (int i = 0; i < numFonts; i++) {
+        if (fontList[i].font == currentFont) {
+            currentFontFamily = fontList[i].family;
+            break;
+        }
+    }
+}
 int oled::setFont(char* fontName, int justGetIndex) {
     return setFont((String)fontName, justGetIndex);
 }
-
+void oled::setFont(FontFamily fontFamily) {
+    currentFontFamily = fontFamily;
+    currentFont = fontList[fontFamily].font;
+    display.setFont(currentFont);
+}
 void oled::setFont(int fontIndex) {
     if (fontIndex < 0 || fontIndex >= numFonts) {
         currentFont = fontList[0].font;
@@ -215,6 +222,7 @@ void oled::setFont(int fontIndex) {
         currentFont = fontList[fontIndex].font;
     }
     currentFontFamily = fontList[fontIndex].family;
+    
     
     display.setFont(currentFont);
 }
@@ -242,6 +250,16 @@ void oled::setFontForSize(FontFamily family, int textSize) {
     }
     
     setFont(fontIndex);
+}
+
+String oled::getFontName(FontFamily fontFamily) {
+
+    for (int i = 0; i < numFonts; i++) {
+        if (fontList[i].family == fontFamily) {
+            return fontList[i].longName;
+        }
+    }
+    return "Unknown";
 }
 
 // CORE POSITIONING FUNCTIONS
@@ -1022,6 +1040,12 @@ void oled::disconnect(void) {
     gpioState[jumperlessConfig.top_oled.scl_pin - 20] = 4;
     oledConnected = false;
     refreshConnections(-1, 0, 0);
+}
+
+char scratchPad[40];
+
+char* oled::getScratchPad(void) {
+    return scratchPad;
 }
 
 // GLOBAL FUNCTIONS

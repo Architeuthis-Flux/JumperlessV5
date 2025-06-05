@@ -1081,10 +1081,12 @@ void setCSex(int chip, int value) {
     }
 
   if (value > 0) {
-    digitalWrite(chip + 28, HIGH);
+    gpio_put(chip + 28, 1);
+    //digitalWrite(chip + 28, HIGH);
     // Serial.println(chip+28);
     } else {
-    digitalWrite(chip + 28, LOW);
+    gpio_put(chip + 28, 0);
+    //digitalWrite(chip + 28, LOW);
     // Serial.println(chip+28);
     }
   }
@@ -1185,7 +1187,7 @@ void chooseShownReadings(void) {
 
   inaConnected = 0;
 
-  for (int i = 0; i <= newBridgeIndex; i++) {
+  for (int i = 0; i < numberOfPaths; i++) {
 
     if (path[i].node1 == ADC0 || path[i].node2 == ADC0) {
       showADCreadings[0] = path[i].net;
@@ -1213,16 +1215,16 @@ void chooseShownReadings(void) {
 
 
 
-    if (path[i].node1 == ADC7 || path[i].node2 == ADC7) {
-      showADCreadings[7] = path[i].net;
-      }
+    // if (path[i].node1 == ADC7 || path[i].node2 == ADC7) {
+    //   showADCreadings[7] = path[i].net;
+    //   }
 
 
-    if (path[i].node1 == ROUTABLE_BUFFER_IN ||
-        path[i].node2 == ROUTABLE_BUFFER_IN) { // routable buffer in is
-      // hardwired to probe sense adc
-      showADCreadings[7] = path[i].net;
-      }
+    // if (path[i].node1 == ROUTABLE_BUFFER_IN ||
+    //     path[i].node2 == ROUTABLE_BUFFER_IN) { // routable buffer in is
+    //   // hardwired to probe sense adc
+    //   showADCreadings[7] = path[i].net;
+    //   }
 
 
     // for (int j = 0; j < 8; j++) {
@@ -1282,32 +1284,36 @@ void chooseShownReadings(void) {
 
       inaConnected = 1;
 
-      switch (showReadings) {
-        case 0:
-          break;
+      // switch (showReadings) {
+      //   case 0:
+      //     break;
 
-        case 1:
-          showINA0[0] = 1;
-          showINA0[1] = 0;
-          showINA0[2] = 0;
-          break;
-        case 2:
-          showINA0[0] = 1;
-          showINA0[1] = 1;
-          showINA0[2] = 0;
-          break;
-        case 3:
+      //   case 1:
+      //     showINA0[0] = 1;
+      //     showINA0[1] = 0;
+      //     showINA0[2] = 0;
+      //     break;
+      //   case 2:
+      //     showINA0[0] = 1;
+      //     showINA0[1] = 1;
+      //     showINA0[2] = 0;
+      //     break;
+      //   case 3:
 
-          showINA0[0] = 1;
-          showINA0[1] = 1;
-          showINA0[2] = 1;
-          break;
-        }
+      //     showINA0[0] = 1;
+      //     showINA0[1] = 1;
+      //     showINA0[2] = 1;
+      //     break;
+      //   }
 
       // Serial.println(showINA0[0]);
       // Serial.println(showINA0[1]);
       // Serial.println(showINA0[2]);
       // Serial.println(" ");
+
+      showINA0[0] = 1;
+      showINA0[1] = 0;
+      showINA0[2] = 0;
       }
     }
   if (inaConnected == 0) {
@@ -1730,14 +1736,19 @@ uint32_t measurementToColor(float measurement, float min, float max) {
 
 void showMeasurements(int samples, int printOrBB, int oneShot) {
   unsigned long startMillis = millis();
-  int printInterval = 250;
-  while (Serial.available() == 0 && Serial1.available() == 0 &&
-         checkProbeButton() == 0)
+  int printInterval = 150;
+  static unsigned long lastPrintTime = 0;
+  // while (Serial.available() == 0 && Serial1.available() == 0 &&
+  //        checkProbeButton() == 0)
 
-    {
+  //   {
 
+    if (millis() - lastPrintTime < printInterval) {
+      return;
+      }
     Serial.print("\r                                                                      \r");
-    Serial.flush();
+    lastPrintTime = millis();
+    //Serial.flush();
     int adc0ReadingUnscaled;
     float adc0Reading;
 
@@ -1875,9 +1886,9 @@ void showMeasurements(int samples, int printOrBB, int oneShot) {
       bs += Serial.print("INA 0: ");
       bs += Serial.print(INA0.getCurrent_mA());
       bs += Serial.print("mA\t");
-      bs += Serial.print("\tINA 1: ");
-      bs += Serial.print(INA1.getCurrent_mA());
-      bs += Serial.print("mA\t");
+      // bs += Serial.print("\tINA 1: ");
+      // bs += Serial.print(INA1.getCurrent_mA());
+      // bs += Serial.print("mA\t");
       }
 
     if (showINA0[1] == 1) {
@@ -1892,19 +1903,20 @@ void showMeasurements(int samples, int printOrBB, int oneShot) {
       }
     // Serial.print(digitalRead(buttonPin));
     bs += Serial.print("      \r");
-    rotaryEncoderStuff();
-    if (encoderButtonState != IDLE) {
-      // showReadings = 0;
-      return;
-      }
-    while (millis() - startMillis < printInterval &&
-           (Serial.available() == 0 && checkProbeButton() == 0)) {
+    // rotaryEncoderStuff();
+    // if (encoderButtonState != IDLE) {
+    //   // showReadings = 0;
+    //   return;
+    //   }
+    // while (millis() - startMillis < printInterval &&
+    //        (Serial.available() == 0 && checkProbeButton() == 0)) {
 
-      showLEDmeasurements();
-      delayMicroseconds(5000);
-      }
+    //   showLEDmeasurements();
+    //   delayMicroseconds(5000);
+    //   }
     startMillis = millis();
-    }
+    Serial.flush();
+    
   }
 
 float readAdcVoltage(int channel, int samples) {

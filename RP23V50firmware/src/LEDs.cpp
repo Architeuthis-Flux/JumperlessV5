@@ -227,12 +227,32 @@ rgbColor railColors[4] = { {0xFF, 0x32, 0x30},
                           {0xFF, 0x32, 0x30},
                           {0x00, 0xFF, 0x30} };
 
+struct headerStruct headerMap[30] = {
 
-//    uint32_t railColorsV5[4][3] = 
-// {{0x1C0110, 0x001C04, 0x1C0110}, 
-//  {0x210904, 0x001C04, 0x210904},
-//  {0x301A02, 0x001C04, 0x120932},
-//  {0x1C0110, 0x001C04, 0x1C0110}};
+{NANO_D1, 400, "D1"}, {NANO_D0, 401, "D0"}, 
+{NANO_RESET_1, 402, "RST"}, {NANO_GND_1, 403, "GND"}, 
+{NANO_D2, 404, "D2"}, {NANO_D3, 405, "D3"},
+{NANO_D4, 406, "D4"}, {NANO_D5, 407, "D5"}, 
+{NANO_D6, 408, "D6"}, {NANO_D7, 409, "D7"}, 
+{NANO_D8, 410, "D8"}, {NANO_D9, 411, "D9"},
+{NANO_D10, 412, "D10"}, {NANO_D11, 413, "D11"}, 
+{NANO_D12, 414, "D12"}, 
+
+{NANO_D13, 415, "D13"},
+{NANO_3V3, 416, "3V3"}, {NANO_AREF, 417, "REF"}, 
+{NANO_A0, 418, "A0"}, {NANO_A1, 419, "A1"}, 
+{NANO_A2, 420, "A2"},{NANO_A3, 421, "A3"}, 
+{NANO_A4, 422, "A4"}, {NANO_A5, 423, "A5"}, 
+{NANO_A6, 424, "A6"}, {NANO_A7, 425, "A7"}, 
+{NANO_5V, 426, "5V"}, {NANO_RESET_0, 427, "RST"}, 
+{NANO_GND_0, 428, "GND"}, {NANO_VIN, 429, "VIN"}
+
+};
+
+int headerMapPrintOrder[30] = {
+  14, 13, 12, 11, 10, 9, 8, 7, 6, 5, 4, 3, 2, 1, 0, 
+  15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29
+};
 
 // int x = matrix.width();
 int pass = 0;

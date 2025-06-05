@@ -579,11 +579,11 @@ void saveDuplicateSettings(int forceDefaults) {
     }
 #endif
 
-  // Save to config file
-  jumperlessConfig.routing.stack_paths = pathDuplicates;
-  jumperlessConfig.routing.stack_rails = dacDuplicates;
-  jumperlessConfig.routing.stack_dacs = powerDuplicates;
-  jumperlessConfig.routing.rail_priority = dacPriority;
+  // // Save to config file
+  // jumperlessConfig.routing.stack_paths = pathDuplicates;
+  // jumperlessConfig.routing.stack_rails = dacDuplicates;
+  // jumperlessConfig.routing.stack_dacs = powerDuplicates;
+  // jumperlessConfig.routing.rail_priority = dacPriority;
 
   configChanged = true;
 
@@ -914,8 +914,8 @@ void readSettingsFromConfig() {
 
   // Routing settings
   pathDuplicates = jumperlessConfig.routing.stack_paths;
-  dacDuplicates = jumperlessConfig.routing.stack_rails;
-  powerDuplicates = jumperlessConfig.routing.stack_dacs;
+  powerDuplicates = jumperlessConfig.routing.stack_rails;  // powerDuplicates is used for rail stacking
+  dacDuplicates = jumperlessConfig.routing.stack_dacs;    // dacDuplicates is used for DAC stacking
   dacPriority = jumperlessConfig.routing.rail_priority;
 
   // DAC calibration

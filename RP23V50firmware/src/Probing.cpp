@@ -662,7 +662,7 @@ if (setOrClear == 1 && firstConnection == -1) {
             Serial.flush();
             } else {
 
-            Serial.print("\t connected\n\r");
+            Serial.print("   \tconnected\n\r");
             Serial.flush();
             }
 
@@ -2493,7 +2493,7 @@ int selectFromLastFound(void) {
   Serial.print("\n\n\r");
   delay(10);
 
-  uint32_t previousColor[connectedRowsIndex];
+  uint32_t previousColor[10];
 
   for (int i = 0; i < connectedRowsIndex; i++) {
     previousColor[i] = leds.getPixelColor(nodesToPixelMap[connectedRows[i]]);

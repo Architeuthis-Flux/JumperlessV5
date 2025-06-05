@@ -8,10 +8,11 @@
 
 extern int numberOfUniqueNets;
 extern int numberOfNets;
-extern int numberOfPaths;
+extern volatile int numberOfPaths;
 
 extern bool debugNTCC;
 extern bool debugNTCC2;
+extern bool debugNTCC4;
 
 extern int powerPriority;
 extern int dacPriority;

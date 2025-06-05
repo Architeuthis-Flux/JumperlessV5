@@ -1958,6 +1958,10 @@ void replaceSFNamesWithDefinedInts(void) {
   specialFunctionsString.replace("CURRENT_SENSE_PLUS", "108");
   specialFunctionsString.replace("ISENSE_MINUS", "109");
   specialFunctionsString.replace("ISENSE_PLUS", "108");
+  specialFunctionsString.replace("ISENSE_POS", "108");
+  specialFunctionsString.replace("ISENSE_NEG", "109");
+  specialFunctionsString.replace("ISENSE_NEGATIVE", "109");
+  specialFunctionsString.replace("ISENSE_POSITIVE", "108");
 
   specialFunctionsString.replace("BUFFER_IN", "139");
   specialFunctionsString.replace("BUFFER_OUT", "140");

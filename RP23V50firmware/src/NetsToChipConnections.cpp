@@ -7,16 +7,16 @@
 
 // Compatibility for clangd - these are provided by Arduino.h at compile time
 #ifndef malloc
-extern void* malloc(size_t size);
+extern void *malloc(size_t size);
 #endif
 #ifndef free
-extern void free(void* ptr);
+extern void free(void *ptr);
 #endif
 #ifndef strlen
-extern size_t strlen(const char* str);
+extern size_t strlen(const char *str);
 #endif
 #ifndef strcpy
-extern char* strcpy(char* dest, const char* src);
+extern char *strcpy(char *dest, const char *src);
 #endif
 
 #include "Commands.h"
@@ -29,6 +29,108 @@ extern char* strcpy(char* dest, const char* src);
 #include "SerialWrapper.h"
 
 #define Serial SerialWrap
+
+// Compile-time debug flags - set to 1 to enable, 0 to disable
+#ifndef DEBUG_NTCC1_ENABLED
+#define DEBUG_NTCC1_ENABLED 0  // Basic path routing debug
+#endif
+
+#ifndef DEBUG_NTCC2_ENABLED
+#define DEBUG_NTCC2_ENABLED 0  // Detailed routing and alt paths
+#endif
+
+#ifndef DEBUG_NTCC3_ENABLED
+#define DEBUG_NTCC3_ENABLED 0  // Path conflicts and overlaps
+#endif
+
+#ifndef DEBUG_NTCC5_ENABLED
+#define DEBUG_NTCC5_ENABLED 0  // Bridge-to-path conversion debug
+#endif
+
+#ifndef DEBUG_NTCC6_ENABLED
+#define DEBUG_NTCC6_ENABLED 0  // Transaction state and conflict validation
+#endif
+
+// Debug macros - completely removed at compile time when disabled
+#if DEBUG_NTCC1_ENABLED
+  #define DEBUG_NTCC1_PRINT(x) do { if(debugNTCC) { Serial.print(x); } } while(0)
+  #define DEBUG_NTCC1_PRINTLN(x) do { if(debugNTCC) { Serial.println(x); } } while(0)
+  #define DEBUG_NTCC1_PRINTF(fmt, ...) do { if(debugNTCC) { Serial.printf(fmt, ##__VA_ARGS__); } } while(0)
+#else
+  #define DEBUG_NTCC1_PRINT(x)
+  #define DEBUG_NTCC1_PRINTLN(x)
+  #define DEBUG_NTCC1_PRINTF(fmt, ...)
+#endif
+
+#if DEBUG_NTCC2_ENABLED
+  #define DEBUG_NTCC2_PRINT(x) do { if(debugNTCC2) { Serial.print(x); } } while(0)
+  #define DEBUG_NTCC2_PRINTLN(x) do { if(debugNTCC2) { Serial.println(x); } } while(0)
+  #define DEBUG_NTCC2_PRINTF(fmt, ...) do { if(debugNTCC2) { Serial.printf(fmt, ##__VA_ARGS__); } } while(0)
+#else
+  #define DEBUG_NTCC2_PRINT(x)
+  #define DEBUG_NTCC2_PRINTLN(x)
+  #define DEBUG_NTCC2_PRINTF(fmt, ...)
+#endif
+
+#if DEBUG_NTCC3_ENABLED
+  #define DEBUG_NTCC3_PRINT(x) do { if(debugNTCC3) { Serial.print(x); } } while(0)
+  #define DEBUG_NTCC3_PRINTLN(x) do { if(debugNTCC3) { Serial.println(x); } } while(0)
+  #define DEBUG_NTCC3_PRINTF(fmt, ...) do { if(debugNTCC3) { Serial.printf(fmt, ##__VA_ARGS__); } } while(0)
+#else
+  #define DEBUG_NTCC3_PRINT(x)
+  #define DEBUG_NTCC3_PRINTLN(x)
+  #define DEBUG_NTCC3_PRINTF(fmt, ...)
+#endif
+
+#if DEBUG_NTCC5_ENABLED
+  #define DEBUG_NTCC5_PRINT(x) do { if(debugNTCC5) { Serial.print(x); } } while(0)
+  #define DEBUG_NTCC5_PRINTLN(x) do { if(debugNTCC5) { Serial.println(x); } } while(0)
+  #define DEBUG_NTCC5_PRINTF(fmt, ...) do { if(debugNTCC5) { Serial.printf(fmt, ##__VA_ARGS__); } } while(0)
+#else
+  #define DEBUG_NTCC5_PRINT(x)
+  #define DEBUG_NTCC5_PRINTLN(x)
+  #define DEBUG_NTCC5_PRINTF(fmt, ...)
+#endif
+
+#if DEBUG_NTCC6_ENABLED
+  #define DEBUG_NTCC6_PRINT(x) do { if(debugNTCC6) { Serial.print(x); } } while(0)
+  #define DEBUG_NTCC6_PRINTLN(x) do { if(debugNTCC6) { Serial.println(x); } } while(0)
+  #define DEBUG_NTCC6_PRINTF(fmt, ...) do { if(debugNTCC6) { Serial.printf(fmt, ##__VA_ARGS__); } } while(0)
+#else
+  #define DEBUG_NTCC6_PRINT(x)
+  #define DEBUG_NTCC6_PRINTLN(x)
+  #define DEBUG_NTCC6_PRINTF(fmt, ...)
+#endif
+
+// Convenience macro for any NTCC debug output
+#if DEBUG_NTCC1_ENABLED || DEBUG_NTCC2_ENABLED || DEBUG_NTCC3_ENABLED || DEBUG_NTCC5_ENABLED || DEBUG_NTCC6_ENABLED
+  #define DEBUG_NTCC_ANY_ENABLED 1
+#else
+  #define DEBUG_NTCC_ANY_ENABLED 0
+#endif
+
+/*
+ * USAGE EXAMPLES FOR CONVERTING DEBUG CODE:
+ * 
+ * OLD: if (debugNTCC2) { Serial.print("Value: "); Serial.println(value); }
+ * NEW: DEBUG_NTCC2_PRINT("Value: "); DEBUG_NTCC2_PRINTLN(value);
+ * 
+ * OLD: if (debugNTCC6) { Serial.printf("Chip %c at %d,%d\n", chip, x, y); }
+ * NEW: DEBUG_NTCC6_PRINTF("Chip %c at %d,%d\n", chip, x, y);
+ * 
+ * For expensive validation functions:
+ * OLD: someExpensiveValidationFunction();
+ * NEW: #if DEBUG_NTCC6_ENABLED
+ *      someExpensiveValidationFunction();
+ *      #endif
+ * 
+ * Debug level meanings:
+ * NTCC1 - Basic path routing (replaces debugNTCC)
+ * NTCC2 - Detailed routing and alt paths (replaces debugNTCC2) 
+ * NTCC3 - Path conflicts and overlaps (replaces debugNTCC3)
+ * NTCC5 - Bridge-to-path conversion (replaces debugNTCC5)
+ * NTCC6 - Transaction state validation (replaces debugNTCC6)
+ */
 
 // don't try to understand this, it's still a mess
 bool debugNTCC5 = false;
@@ -52,7 +154,7 @@ int sfChipsLeastToMostCrowded[4] = {
 
 int numberOfUniqueNets = 0;
 int numberOfNets = 0;
-int numberOfPaths = 0;
+volatile int numberOfPaths = 0;
 
 int pathsWithCandidates[MAX_BRIDGES] = {0};
 int pathsWithCandidatesIndex = 0;
@@ -70,6 +172,478 @@ bool debugNTCC = 0; // EEPROM.read(DEBUG_NETTOCHIPCONNECTIONSADDRESS);
 bool debugNTCC2 = 0; // EEPROM.read(DEBUG_NETTOCHIPCONNECTIONSALTADDRESS);
 
 bool debugNTCC3 = false;
+
+bool debugNTCC4 = true; // Debug for forcing path updates
+
+bool debugNTCC6 = false; // Debug for ijkl paths and direct connections
+
+// State backup structures for transactional assignment
+struct ChipStateBackup {
+  int8_t xStatus[16];
+  int8_t yStatus[8];
+};
+
+struct PathStateBackup {
+  int net;
+  int node1;
+  int node2;
+  int chip[4];
+  int x[6];
+  int y[6];
+  bool altPathNeeded;
+  bool sameChip;
+  bool skip;
+};
+
+
+
+
+static ChipStateBackup chipBackup[12];
+static PathStateBackup pathBackup;
+static bool backupValid = false;
+
+// Helper function to save current chip and path state
+void saveRoutingState(int pathIndex) {
+  // Save all chip states
+  for (int i = 0; i < 12; i++) {
+    for (int j = 0; j < 16; j++) {
+      chipBackup[i].xStatus[j] = ch[i].xStatus[j];
+    }
+    for (int j = 0; j < 8; j++) {
+      chipBackup[i].yStatus[j] = ch[i].yStatus[j];
+    }
+  }
+
+  // Save path state
+  pathBackup.net = path[pathIndex].net;
+  pathBackup.node1 = path[pathIndex].node1;
+  pathBackup.node2 = path[pathIndex].node2;
+  pathBackup.altPathNeeded = path[pathIndex].altPathNeeded;
+  pathBackup.sameChip = path[pathIndex].sameChip;
+  pathBackup.skip = path[pathIndex].skip;
+
+  for (int i = 0; i < 4; i++) {
+    pathBackup.chip[i] = path[pathIndex].chip[i];
+  }
+  for (int i = 0; i < 6; i++) {
+    pathBackup.x[i] = path[pathIndex].x[i];
+    pathBackup.y[i] = path[pathIndex].y[i];
+  }
+
+  backupValid = true;
+
+  DEBUG_NTCC6_PRINT("State saved for path[");
+  DEBUG_NTCC6_PRINT(pathIndex);
+  DEBUG_NTCC6_PRINTLN("]");
+}
+
+// Helper function to restore chip and path state from backup
+void restoreRoutingState(int pathIndex) {
+  if (!backupValid) {
+    if (debugNTCC6) {
+      Serial.println(
+          "ERROR: Attempted to restore state but no backup available!");
+    }
+    return;
+  }
+
+  // Restore all chip states
+  for (int i = 0; i < 12; i++) {
+    for (int j = 0; j < 16; j++) {
+      ch[i].xStatus[j] = chipBackup[i].xStatus[j];
+    }
+    for (int j = 0; j < 8; j++) {
+      ch[i].yStatus[j] = chipBackup[i].yStatus[j];
+    }
+  }
+
+  // Restore path state
+  path[pathIndex].net = pathBackup.net;
+  path[pathIndex].node1 = pathBackup.node1;
+  path[pathIndex].node2 = pathBackup.node2;
+  path[pathIndex].altPathNeeded = pathBackup.altPathNeeded;
+  path[pathIndex].sameChip = pathBackup.sameChip;
+  path[pathIndex].skip = pathBackup.skip;
+
+  for (int i = 0; i < 4; i++) {
+    path[pathIndex].chip[i] = pathBackup.chip[i];
+  }
+  for (int i = 0; i < 6; i++) {
+    path[pathIndex].x[i] = pathBackup.x[i];
+    path[pathIndex].y[i] = pathBackup.y[i];
+  }
+
+  DEBUG_NTCC6_PRINT("State restored for path[");
+  DEBUG_NTCC6_PRINT(pathIndex);
+  DEBUG_NTCC6_PRINTLN("]");
+}
+
+// Helper function to commit current state (clear backup)
+void commitRoutingState(void) {
+  backupValid = false;
+  if (debugNTCC6) {
+    Serial.println("State committed (backup cleared)");
+  }
+}
+
+// Helper function to validate state consistency after transactions
+void validateTransactionConsistency(void) {
+#if DEBUG_NTCC6_ENABLED
+  DEBUG_NTCC6_PRINTLN("\n=== TRANSACTION CONSISTENCY CHECK ===");
+
+    // Check for paths that have assigned positions but skip flag is set
+    for (int i = 0; i < numberOfPaths; i++) {
+      if (path[i].skip) {
+        bool hasAssignedPositions = false;
+        for (int j = 0; j < 4; j++) {
+          if (path[i].x[j] >= 0 || path[i].y[j] >= 0) {
+            hasAssignedPositions = true;
+            break;
+          }
+        }
+        if (hasAssignedPositions) {
+          Serial.print("INCONSISTENCY: Path[");
+          Serial.print(i);
+          Serial.println("] has skip=true but has assigned positions");
+        }
+      }
+    }
+
+    // Check for chip positions assigned to multiple nets
+    for (int chip = 0; chip < 12; chip++) {
+      for (int x = 0; x < 16; x++) {
+        if (ch[chip].xStatus[x] > 0) {
+          int pathCount = 0;
+          for (int p = 0; p < numberOfPaths; p++) {
+            if (path[p].skip)
+              continue;
+            for (int seg = 0; seg < 4; seg++) {
+              if (path[p].chip[seg] == chip && path[p].x[seg] == x) {
+                pathCount++;
+              }
+            }
+          }
+          if (pathCount == 0) {
+            Serial.print("INCONSISTENCY: Chip ");
+            Serial.print(chipNumToChar(chip));
+            Serial.print(" X[");
+            Serial.print(x);
+            Serial.print("] assigned to net ");
+            Serial.print(ch[chip].xStatus[x]);
+            Serial.println(" but no paths use it");
+          }
+        }
+      }
+
+      for (int y = 0; y < 8; y++) {
+        if (ch[chip].yStatus[y] > 0) {
+          int pathCount = 0;
+          for (int p = 0; p < numberOfPaths; p++) {
+            if (path[p].skip)
+              continue;
+            for (int seg = 0; seg < 4; seg++) {
+              if (path[p].chip[seg] == chip && path[p].y[seg] == y) {
+                pathCount++;
+              }
+            }
+          }
+          if (pathCount == 0) {
+            Serial.print("INCONSISTENCY: Chip ");
+            Serial.print(chipNumToChar(chip));
+            Serial.print(" Y[");
+            Serial.print(y);
+            Serial.print("] assigned to net ");
+            Serial.print(ch[chip].yStatus[y]);
+            Serial.println(" but no paths use it");
+          }
+        }
+      }
+    }
+
+    DEBUG_NTCC6_PRINTLN("=== END CONSISTENCY CHECK ===\n");
+#endif
+}
+
+// Helper function to track direct Y status assignments
+void setChipYStatus(int chip, int y, int net, const char *location) {
+  if (debugNTCC6 && ch[chip].yStatus[y] != -1 && ch[chip].yStatus[y] != net) {
+    DEBUG_NTCC6_PRINT("DIRECT Y ASSIGNMENT CONFLICT: ");
+    DEBUG_NTCC6_PRINT(location);
+    DEBUG_NTCC6_PRINT(" - Chip ");
+    DEBUG_NTCC6_PRINT(chipNumToChar(chip));
+    DEBUG_NTCC6_PRINT(" Y[");
+    DEBUG_NTCC6_PRINT(y);
+    DEBUG_NTCC6_PRINT("] occupied by net ");
+    DEBUG_NTCC6_PRINT(ch[chip].yStatus[y]);
+    DEBUG_NTCC6_PRINT(", overwriting with net ");
+    DEBUG_NTCC6_PRINTLN(net);
+  }
+  ch[chip].yStatus[y] = net;
+}
+
+// Helper function to detect and report routing conflicts
+void detectAndReportConflicts(void) {
+#if DEBUG_NTCC6_ENABLED
+  DEBUG_NTCC6_PRINTLN("\n=== CONFLICT DETECTION REPORT ===");
+
+    // Check for X conflicts
+    for (int chip = 0; chip < 12; chip++) {
+      for (int x = 0; x < 16; x++) {
+        if (ch[chip].xStatus[x] > 0) {
+          // Count how many paths use this X position
+          int pathCount = 0;
+          int nets[MAX_NETS];
+          int netCount = 0;
+
+          for (int pathIdx = 0; pathIdx < numberOfPaths; pathIdx++) {
+            if (path[pathIdx].skip)
+              continue;
+
+            for (int seg = 0; seg < 4; seg++) {
+              if (path[pathIdx].chip[seg] == chip &&
+                  path[pathIdx].x[seg] == x) {
+                pathCount++;
+
+                // Track unique nets
+                bool netExists = false;
+                for (int n = 0; n < netCount; n++) {
+                  if (nets[n] == path[pathIdx].net) {
+                    netExists = true;
+                    break;
+                  }
+                }
+                if (!netExists && netCount < MAX_NETS) {
+                  nets[netCount++] = path[pathIdx].net;
+                }
+              }
+            }
+          }
+
+          if (netCount > 1) {
+            Serial.print("X CONFLICT: Chip ");
+            Serial.print(chipNumToChar(chip));
+            Serial.print(" X[");
+            Serial.print(x);
+            Serial.print("] used by nets: ");
+            for (int n = 0; n < netCount; n++) {
+              Serial.print(nets[n]);
+              if (n < netCount - 1)
+                Serial.print(", ");
+            }
+            Serial.println();
+          }
+        }
+      }
+    }
+
+    // Check for Y conflicts
+    for (int chip = 0; chip < 12; chip++) {
+      for (int y = 0; y < 8; y++) {
+        if (ch[chip].yStatus[y] > 0) {
+          // Count how many paths use this Y position
+          int pathCount = 0;
+          int nets[MAX_NETS];
+          int netCount = 0;
+
+          for (int pathIdx = 0; pathIdx < numberOfPaths; pathIdx++) {
+            if (path[pathIdx].skip)
+              continue;
+
+            for (int seg = 0; seg < 4; seg++) {
+              if (path[pathIdx].chip[seg] == chip &&
+                  path[pathIdx].y[seg] == y) {
+                pathCount++;
+
+                // Track unique nets
+                bool netExists = false;
+                for (int n = 0; n < netCount; n++) {
+                  if (nets[n] == path[pathIdx].net) {
+                    netExists = true;
+                    break;
+                  }
+                }
+                if (!netExists && netCount < MAX_NETS) {
+                  nets[netCount++] = path[pathIdx].net;
+                }
+              }
+            }
+          }
+
+          if (netCount > 1) {
+            Serial.print("Y CONFLICT: Chip ");
+            Serial.print(chipNumToChar(chip));
+            Serial.print(" Y[");
+            Serial.print(y);
+            Serial.print("] used by nets: ");
+            for (int n = 0; n < netCount; n++) {
+              Serial.print(nets[n]);
+              if (n < netCount - 1)
+                Serial.print(", ");
+            }
+            Serial.println();
+          }
+        }
+      }
+    }
+
+    DEBUG_NTCC6_PRINTLN("=== END CONFLICT DETECTION ===\n");
+#endif
+}
+
+// Helper function to safely set chip X status with validation
+bool setChipXStatus(int chip, int x, int net, const char *location) {
+  // Bounds checking to prevent crashes
+  if (chip < 0 || chip >= 12 || x < 0 || x >= 16 || net < 0 ||
+      net >= MAX_NETS) {
+    DEBUG_NTCC6_PRINT("ERROR: Invalid parameters in setChipXStatus - ");
+    DEBUG_NTCC6_PRINT(location);
+    DEBUG_NTCC6_PRINT(" chip=");
+    DEBUG_NTCC6_PRINT(chip);
+    DEBUG_NTCC6_PRINT(" x=");
+    DEBUG_NTCC6_PRINT(x);
+    DEBUG_NTCC6_PRINT(" net=");
+    DEBUG_NTCC6_PRINTLN(net);
+    return false; // Invalid parameters, assignment failed
+  }
+
+  // Check for overlap conflicts before assignment
+  if (ch[chip].xStatus[x] != -1 && ch[chip].xStatus[x] != net) {
+    DEBUG_NTCC6_PRINT("WARNING: X position conflict in ");
+    DEBUG_NTCC6_PRINT(location);
+    DEBUG_NTCC6_PRINT(" - Chip ");
+    DEBUG_NTCC6_PRINT(chipNumToChar(chip));
+    DEBUG_NTCC6_PRINT(" X[");
+    DEBUG_NTCC6_PRINT(x);
+    DEBUG_NTCC6_PRINT("] already occupied by net ");
+    DEBUG_NTCC6_PRINT(ch[chip].xStatus[x]);
+    DEBUG_NTCC6_PRINT(", trying to assign net ");
+    DEBUG_NTCC6_PRINTLN(net);
+    return false; // Assignment failed due to conflict
+  }
+
+  // Assign the X position
+  ch[chip].xStatus[x] = net;
+
+  DEBUG_NTCC6_PRINT("SUCCESS: ");
+  DEBUG_NTCC6_PRINT(location);
+  DEBUG_NTCC6_PRINT(" - Assigned X=");
+  DEBUG_NTCC6_PRINT(x);
+  DEBUG_NTCC6_PRINT(" on chip ");
+  DEBUG_NTCC6_PRINT(chipNumToChar(chip));
+  DEBUG_NTCC6_PRINT(" to net ");
+  DEBUG_NTCC6_PRINTLN(net);
+
+  return true; // Assignment successful
+}
+
+// Helper function to safely set chip Y status with validation (improved
+// version)
+bool setChipYStatusSafe(int chip, int y, int net, const char *location) {
+  // Bounds checking to prevent crashes
+  if (chip < 0 || chip >= 12 || y < 0 || y >= 8 || net < 0 || net >= MAX_NETS) {
+    DEBUG_NTCC6_PRINT("ERROR: Invalid parameters in setChipYStatusSafe - ");
+    DEBUG_NTCC6_PRINT(location);
+    DEBUG_NTCC6_PRINT(" chip=");
+    DEBUG_NTCC6_PRINT(chip);
+    DEBUG_NTCC6_PRINT(" y=");
+    DEBUG_NTCC6_PRINT(y);
+    DEBUG_NTCC6_PRINT(" net=");
+    DEBUG_NTCC6_PRINTLN(net);
+    return false; // Invalid parameters, assignment failed
+  }
+
+  // Check for overlap conflicts before assignment
+  if (ch[chip].yStatus[y] != -1 && ch[chip].yStatus[y] != net) {
+    DEBUG_NTCC6_PRINT("WARNING: Y position conflict in ");
+    DEBUG_NTCC6_PRINT(location);
+    DEBUG_NTCC6_PRINT(" - Chip ");
+    DEBUG_NTCC6_PRINT(chipNumToChar(chip));
+    DEBUG_NTCC6_PRINT(" Y[");
+    DEBUG_NTCC6_PRINT(y);
+    DEBUG_NTCC6_PRINT("] already occupied by net ");
+    DEBUG_NTCC6_PRINT(ch[chip].yStatus[y]);
+    DEBUG_NTCC6_PRINT(", trying to assign net ");
+    DEBUG_NTCC6_PRINTLN(net);
+    return false; // Assignment failed due to conflict
+  }
+
+  // Assign the Y position
+  ch[chip].yStatus[y] = net;
+
+  DEBUG_NTCC6_PRINT("SUCCESS: ");
+  DEBUG_NTCC6_PRINT(location);
+  DEBUG_NTCC6_PRINT(" - Assigned Y=");
+  DEBUG_NTCC6_PRINT(y);
+  DEBUG_NTCC6_PRINT(" on chip ");
+  DEBUG_NTCC6_PRINT(chipNumToChar(chip));
+  DEBUG_NTCC6_PRINT(" to net ");
+  DEBUG_NTCC6_PRINTLN(net);
+
+  return true; // Assignment successful
+}
+
+// Helper function to safely set path X coordinates with validation
+bool setPathX(int pathIndex, int xIndex, int xValue) {
+  // Bounds checking to prevent crashes
+  if (pathIndex < 0 || pathIndex >= MAX_BRIDGES || xIndex < 0 || xIndex >= 16) {
+    return false; // Invalid parameters, assignment failed
+  }
+
+  // Allow special values (-2, -1) without conflict checking
+  if (xValue < 0) {
+    path[pathIndex].x[xIndex] = xValue;
+    return true;
+  }
+
+  // Check for conflicts when overwriting existing real coordinates
+  if (path[pathIndex].x[xIndex] >= 0 && path[pathIndex].x[xIndex] != xValue) {
+    DEBUG_NTCC6_PRINT("WARNING: X coordinate conflict - path[");
+    DEBUG_NTCC6_PRINT(pathIndex);
+    DEBUG_NTCC6_PRINT("].x[");
+    DEBUG_NTCC6_PRINT(xIndex);
+    DEBUG_NTCC6_PRINT("] already set to ");
+    DEBUG_NTCC6_PRINT(path[pathIndex].x[xIndex]);
+    DEBUG_NTCC6_PRINT(", trying to assign ");
+    DEBUG_NTCC6_PRINTLN(xValue);
+    return false; // Conflict detected
+  }
+
+  // Assign the X coordinate
+  path[pathIndex].x[xIndex] = xValue;
+  return true; // Assignment successful
+}
+
+// Helper function to safely set path Y coordinates with validation
+bool setPathY(int pathIndex, int yIndex, int yValue) {
+  // Bounds checking to prevent crashes
+  if (pathIndex < 0 || pathIndex >= MAX_BRIDGES || yIndex < 0 || yIndex >= 8) {
+    return false; // Invalid parameters, assignment failed
+  }
+
+  // Allow special values (-2, -1) without conflict checking
+  if (yValue < 0) {
+    path[pathIndex].y[yIndex] = yValue;
+    return true;
+  }
+
+  // Check for conflicts when overwriting existing real coordinates
+  if (path[pathIndex].y[yIndex] >= 0 && path[pathIndex].y[yIndex] != yValue) {
+    DEBUG_NTCC6_PRINT("WARNING: Y coordinate conflict - path[");
+    DEBUG_NTCC6_PRINT(pathIndex);
+    DEBUG_NTCC6_PRINT("].y[");
+    DEBUG_NTCC6_PRINT(yIndex);
+    DEBUG_NTCC6_PRINT("] already set to ");
+    DEBUG_NTCC6_PRINT(path[pathIndex].y[yIndex]);
+    DEBUG_NTCC6_PRINT(", trying to assign ");
+    DEBUG_NTCC6_PRINTLN(yValue);
+    return false; // Conflict detected
+  }
+
+  // Assign the Y coordinate
+  path[pathIndex].y[yIndex] = yValue;
+  return true; // Assignment successful
+}
+
 int pathIndex = 0;
 
 int powerDuplicates = 2;
@@ -78,9 +652,419 @@ int pathDuplicates = 2;
 int powerPriority = 1;
 int dacPriority = 1;
 
+// Y position limits to prevent high-priority nets from using all positions
+int yPositionLimits[MAX_NETS] = {0}; // 0 = no limit
+int yPositionUsage[MAX_NETS] = {0};  // Track current usage per net
+
 // Or maybe a more useful way to default to: run a set number of connections
 // (like 2-4) for power, then 2 for every regular jumper, then fill in the rest
 // of with more power connections.
+
+void initializeYPositionLimits(void) {
+  // Clear usage counters
+  for (int i = 0; i < MAX_NETS; i++) {
+    yPositionUsage[i] = 0;
+    yPositionLimits[i] = 0; // 0 = no limit
+  }
+
+  // Set limits for high-priority nets to prevent them from monopolizing Y
+  // positions Reserve at least 2 Y positions per chip for inter-chip hops
+  yPositionLimits[1] =
+      3; // GND - reduced to leave more room for inter-chip hops
+  yPositionLimits[2] = 2; // Top Rail - limit to 2 positions
+  yPositionLimits[3] = 2; // Bottom Rail - limit to 2 positions
+  yPositionLimits[4] = 2; // DAC0 - limit to 2 positions
+  yPositionLimits[5] = 2; // DAC1 - limit to 2 positions
+
+  DEBUG_NTCC2_PRINTLN(
+      "Y position limits initialized (reserving space for inter-chip hops):");
+  DEBUG_NTCC2_PRINTLN("  GND (net 1): max 3 Y positions");
+  DEBUG_NTCC2_PRINTLN("  Power rails: max 2 Y positions each");
+  DEBUG_NTCC2_PRINTLN("  DACs: max 2 Y positions each");
+}
+
+bool canNetUseMoreYPositions(int net) {
+  // Bounds checking to prevent crashes
+  if (net < 0 || net >= MAX_NETS) {
+    return true; // Invalid net, allow to prevent blocking
+  }
+
+  if (yPositionLimits[net] == 0) {
+    return true; // No limit set
+  }
+  return yPositionUsage[net] < yPositionLimits[net];
+}
+
+// Function prototypes for forward declarations
+bool assignYPositionWithTracking(int chip, int yPos, int net);
+void setChipYStatus(int chip, int y, int net, const char *location);
+bool resolveYPositionConflicts(void);
+void validateNoYPositionOverlaps(void);
+
+// bool assignYPositionWithTracking(int chip, int yPos, int net) {
+//   // Bounds checking to prevent crashes
+//   if (chip < 0 || chip >= 12 || yPos < 0 || yPos >= 8 || net < 0 || net >=
+//   MAX_NETS) {
+//     return false; // Invalid parameters, assignment failed
+//   }
+
+//   // Check for overlap conflicts before assignment
+//   if (ch[chip].yStatus[yPos] != -1 && ch[chip].yStatus[yPos] != net) {
+//     if (debugNTCC6) {
+//       Serial.print("WARNING: Y position overlap detected! Chip ");
+//       Serial.print(chipNumToChar(chip));
+//       Serial.print(" Y[");
+//       Serial.print(yPos);
+//       Serial.print("] already occupied by net ");
+//       Serial.print(ch[chip].yStatus[yPos]);
+//       Serial.print(", trying to assign net ");
+//       Serial.println(net);
+//     }
+//     // Don't overwrite - this could cause the overlap issue
+//     return false; // Assignment failed due to conflict
+//   }
+
+//   // Only track new Y position usage if this Y position wasn't already used
+//   by this net bool alreadyUsedByThisNet = false; if (ch[chip].yStatus[yPos]
+//   == net) {
+//     alreadyUsedByThisNet = true;
+//   }
+
+//   // Assign the Y position
+//   ch[chip].yStatus[yPos] = net;
+
+//   // Track usage if this is a new Y position for this net
+//   if (!alreadyUsedByThisNet && yPositionLimits[net] > 0) {
+//     // Count how many unique Y positions this net currently uses
+//     int uniqueYPositions = 0;
+//     for (int checkChip = 0; checkChip < 12; checkChip++) {
+//       for (int checkY = 0; checkY < 8; checkY++) {
+//         if (ch[checkChip].yStatus[checkY] == net) {
+//           // Check if we've already counted this Y position
+//           bool alreadyCounted = false;
+//           for (int prevChip = 0; prevChip < checkChip; prevChip++) {
+//             if (ch[prevChip].yStatus[checkY] == net) {
+//               alreadyCounted = true;
+//               break;
+//             }
+//           }
+//           if (!alreadyCounted) {
+//             uniqueYPositions++;
+//           }
+//         }
+//       }
+//     }
+//     yPositionUsage[net] = uniqueYPositions;
+
+//     if (debugNTCC2) {
+//       Serial.print("  Assigned Y=");
+//       Serial.print(yPos);
+//       Serial.print(" on chip ");
+//       Serial.print(chipNumToChar(chip));
+//       Serial.print(" to net ");
+//       Serial.print(net);
+//       Serial.print(" (usage now: ");
+//       Serial.print(yPositionUsage[net]);
+//       Serial.print("/");
+//       Serial.print(yPositionLimits[net]);
+//       Serial.println(")");
+//     }
+//   }
+
+//   return true; // Assignment successful
+// }
+
+void printYPositionUsageReport(void) {
+  if (debugNTCC2) {
+    Serial.println("\nY Position Usage Report:");
+    Serial.println("Net\tName\t\tUsage/Limit");
+    for (int net = 1; net < 6; net++) { // Check main power/special nets
+      if (yPositionLimits[net] > 0) {
+        Serial.print(net);
+        Serial.print("\t");
+        switch (net) {
+        case 1:
+          Serial.print("GND\t\t");
+          break;
+        case 2:
+          Serial.print("Top Rail\t");
+          break;
+        case 3:
+          Serial.print("Bottom Rail\t");
+          break;
+        case 4:
+          Serial.print("DAC0\t\t");
+          break;
+        case 5:
+          Serial.print("DAC1\t\t");
+          break;
+        default:
+          Serial.print("Unknown\t\t");
+          break;
+        }
+        Serial.print(yPositionUsage[net]);
+        Serial.print("/");
+        Serial.print(yPositionLimits[net]);
+        if (yPositionUsage[net] >= yPositionLimits[net]) {
+          Serial.print(" (LIMIT REACHED)");
+        }
+        Serial.println();
+      }
+    }
+    Serial.println();
+  }
+}
+
+bool resolveYPositionConflicts(void) {
+  if (debugNTCC6) {
+    Serial.println("\nResolving Y position conflicts (simple approach)...");
+  }
+
+  bool foundConflicts = false;
+
+  // Simple approach: just look for paths that have overlapping Y positions
+  for (int i = 0; i < numberOfPaths; i++) {
+    if (path[i].skip)
+      continue; // Skip already failed paths
+
+    for (int j = i + 1; j < numberOfPaths; j++) {
+      if (path[j].skip)
+        continue; // Skip already failed paths
+      if (path[i].net == path[j].net)
+        continue; // Same net is OK
+
+      // Check if these paths overlap on any chip
+      for (int seg1 = 0; seg1 < 4; seg1++) {
+        for (int seg2 = 0; seg2 < 4; seg2++) {
+          if (path[i].chip[seg1] == path[j].chip[seg2] &&
+              path[i].chip[seg1] != -1 && path[i].y[seg1] == path[j].y[seg2] &&
+              path[i].y[seg1] > 0) {
+
+            foundConflicts = true;
+            if (debugNTCC6) {
+              Serial.print("CONFLICT: Path ");
+              Serial.print(i);
+              Serial.print(" (net ");
+              Serial.print(path[i].net);
+              Serial.print(") and path ");
+              Serial.print(j);
+              Serial.print(" (net ");
+              Serial.print(path[j].net);
+              Serial.print(") both use chip ");
+              Serial.print(chipNumToChar(path[i].chip[seg1]));
+              Serial.print(" Y[");
+              Serial.print(path[i].y[seg1]);
+              Serial.println("]");
+            }
+
+            // Simple resolution: mark the higher-numbered path as unconnectable
+            path[j].skip = true;
+            if (debugNTCC6) {
+              Serial.print("  Simple resolution: marked path[");
+              Serial.print(j);
+              Serial.println("] as unconnectable");
+            }
+            break;
+          }
+        }
+        if (path[j].skip)
+          break; // Don't check more if already marked
+      }
+    }
+  }
+
+  return foundConflicts;
+}
+
+void validateNoYPositionOverlaps(void) {
+  if (debugNTCC6) {
+    Serial.println("\nQuick Y position overlap check...");
+    bool foundOverlaps = false;
+
+    // Simple check: compare path pairs for overlaps
+    for (int i = 0; i < numberOfPaths; i++) {
+      if (path[i].skip)
+        continue;
+
+      for (int j = i + 1; j < numberOfPaths; j++) {
+        if (path[j].skip)
+          continue;
+        if (path[i].net == path[j].net)
+          continue; // Same net is OK
+
+        // Quick check for any Y overlap
+        for (int seg1 = 0; seg1 < 4; seg1++) {
+          for (int seg2 = 0; seg2 < 4; seg2++) {
+            if (path[i].chip[seg1] == path[j].chip[seg2] &&
+                path[i].chip[seg1] != -1 &&
+                path[i].y[seg1] == path[j].y[seg2] && path[i].y[seg1] > 0) {
+
+              foundOverlaps = true;
+              Serial.print("OVERLAP: Path ");
+              Serial.print(i);
+              Serial.print(" and ");
+              Serial.print(j);
+              Serial.print(" both use chip ");
+              Serial.print(chipNumToChar(path[i].chip[seg1]));
+              Serial.print(" Y[");
+              Serial.print(path[i].y[seg1]);
+              Serial.print("] nets ");
+              Serial.print(path[i].net);
+              Serial.print(" and ");
+              Serial.println(path[j].net);
+            }
+          }
+        }
+      }
+    }
+
+    if (!foundOverlaps) {
+      Serial.println("No Y position overlaps detected");
+    }
+  }
+}
+
+bool isGpioConnection(int pathIndex) {
+  for (int i = 0; i < 10; i++) {
+    if (path[pathIndex].node1 == gpioDef[i][0] ||
+        path[pathIndex].node2 == gpioDef[i][1]) {
+      return true;
+    }
+  }
+  return false;
+}
+
+int getNetPriority(int netNumber) {
+  // Bounds checking to prevent crashes
+  if (netNumber < 0 || netNumber > MAX_NETS) {
+    return 0;
+  }
+
+  return net[netNumber].priority;
+}
+
+void frontloadPriorityConnections(void) {
+  DEBUG_NTCC2_PRINTLN("Frontloading connections by priority...");
+
+  // Safety checks to prevent crashes
+  if (numberOfPaths <= 0 || numberOfPaths > MAX_BRIDGES) {
+    DEBUG_NTCC2_PRINT("Invalid numberOfPaths: ");
+    DEBUG_NTCC2_PRINTLN(numberOfPaths);
+    return;
+  }
+
+  // Use a simple in-place sorting approach to avoid large stack allocations
+  // First, move all duplicates to the end
+  int writeIndex = 0;
+
+  // Pass 1: Copy non-duplicates to front, preserving order
+  for (int i = 0; i < numberOfPaths; i++) {
+    if (path[i].duplicate == 0) {
+      if (writeIndex != i) {
+        path[writeIndex] = path[i];
+      }
+      writeIndex++;
+    }
+  }
+
+  // Store where duplicates should start
+  int duplicateStartIndex = writeIndex;
+
+  // Pass 2: Copy duplicates to end
+  for (int i = 0; i < numberOfPaths; i++) {
+    if (path[i].duplicate == 1) {
+      path[writeIndex] = path[i];
+      writeIndex++;
+    }
+  }
+
+  // Now sort the non-duplicate section by priority
+  // Simple insertion sort for priority paths (nets > 3 with priority > 1)
+  for (int i = 1; i < duplicateStartIndex; i++) {
+    pathStruct current = path[i];
+    int currentPriority = (current.net > 3) ? getNetPriority(current.net) : 1;
+    bool currentIsGpio =
+        ((current.node1 >= NANO_D0 && current.node1 <= NANO_A7) ||
+         (current.node2 >= NANO_D0 && current.node2 <= NANO_A7));
+
+    int j = i - 1;
+
+    // Move elements that should come after current path
+    while (j >= 0) {
+      int comparePriority = (path[j].net > 3) ? getNetPriority(path[j].net) : 1;
+      bool compareIsGpio =
+          ((path[j].node1 >= NANO_D0 && path[j].node1 <= NANO_A7) ||
+           (path[j].node2 >= NANO_D0 && path[j].node2 <= NANO_A7));
+
+      bool shouldMoveCurrentForward = false;
+
+      // Higher priority should come first
+      if (currentPriority > comparePriority) {
+        shouldMoveCurrentForward = true;
+      } else if (currentPriority == comparePriority) {
+        // Same priority - GPIO connections get preference
+        if (currentIsGpio && !compareIsGpio) {
+          shouldMoveCurrentForward = true;
+        }
+      }
+
+      if (!shouldMoveCurrentForward) {
+        break;
+      }
+
+      path[j + 1] = path[j];
+      j--;
+    }
+
+    path[j + 1] = current;
+  }
+
+  DEBUG_NTCC2_PRINT("Priority frontloading complete using in-place sort\n");
+
+  // Count and show priority paths
+#if DEBUG_NTCC2_ENABLED
+  if (debugNTCC2) {
+    int priorityCount = 0;
+    for (int i = 0; i < duplicateStartIndex; i++) {
+      if (path[i].net > 3 && getNetPriority(path[i].net) > 1) {
+        priorityCount++;
+      }
+    }
+
+    DEBUG_NTCC2_PRINT("Found ");
+    DEBUG_NTCC2_PRINT(priorityCount);
+    DEBUG_NTCC2_PRINT(" priority paths out of ");
+    DEBUG_NTCC2_PRINT(duplicateStartIndex);
+    DEBUG_NTCC2_PRINTLN(" non-duplicate paths");
+
+    // Show the first few priority connections for verification
+    if (priorityCount > 0) {
+      DEBUG_NTCC2_PRINTLN("Top priority connections:");
+      int shown = 0;
+      for (int i = 0; i < duplicateStartIndex && shown < 5; i++) {
+        if (path[i].net > 3 && getNetPriority(path[i].net) > 1) {
+          DEBUG_NTCC2_PRINT("  [");
+          DEBUG_NTCC2_PRINT(i);
+          DEBUG_NTCC2_PRINT("] net ");
+          DEBUG_NTCC2_PRINT(path[i].net);
+          DEBUG_NTCC2_PRINT(" priority ");
+          DEBUG_NTCC2_PRINT(getNetPriority(path[i].net));
+          DEBUG_NTCC2_PRINT(": ");
+          printNodeOrName(path[i].node1);
+          DEBUG_NTCC2_PRINT("-");
+          printNodeOrName(path[i].node2);
+          if ((path[i].node1 >= NANO_D0 && path[i].node1 <= NANO_A7) ||
+              (path[i].node2 >= NANO_D0 && path[i].node2 <= NANO_A7)) {
+            DEBUG_NTCC2_PRINT(" [GPIO]");
+          }
+          DEBUG_NTCC2_PRINTLN();
+          shown++;
+        }
+      }
+    }
+  }
+#endif
+}
 
 void clearAllNTCC(void) {
 
@@ -126,7 +1110,7 @@ void clearAllNTCC(void) {
       }
     }
   }
-  //clang-format off
+  // //clang-format off
   // struct netStruct net[MAX_NETS] = { //these are the special function nets
   // that will always be made
   // //netNumber,       ,netName          ,memberNodes[] ,memberBridges[][2]
@@ -167,46 +1151,8 @@ void clearAllNTCC(void) {
 
   //clang-format on
 
-  net[1].rawColor = rawSpecialNetColors[1];
-  net[2].rawColor = rawSpecialNetColors[2];
-  net[3].rawColor = rawSpecialNetColors[3];
-  net[4].rawColor = rawSpecialNetColors[4];
-  net[5].rawColor = rawSpecialNetColors[5];
-
-  net[1].machine = false;
-  net[2].machine = false;
-  net[3].machine = false;
-  net[4].machine = false;
-  net[5].machine = false;
-
-  net[1].priority = jumperlessConfig.routing.rail_priority;
-  net[2].priority = jumperlessConfig.routing.rail_priority;
-  net[3].priority = jumperlessConfig.routing.rail_priority;
-  net[4].priority = dacPriority;
-  net[5].priority = dacPriority;
-
-  for (int i = 6; i < numberOfNets + 6; i++) {
-    // uint16_t   uniqueID = net[i].uniqueID;
-
-    net[i] = {0, " ", {}, {{}}, 0, {}, {}, 0, 0, 0, 0, false};
-    net[i].termColor = 15; // white
-
-    // if (changedNetColors[i].uniqueID != 0) {
-    //     for (int j = 0; j < MAX_NETS; j++) {
-    //       if (changedNetColors[j].uniqueID == uniqueID) {
-    //         //net[i].color = changedNetColors[j].color;
-
-    //         net[i].uniqueID = 12345;
-    //         changedNetColors[j].uniqueID = net[i].uniqueID;
-    //         //net[i].uniqueID = changedNetColors[j].uniqueID;
-    //         break;
-    //       }
-    //     }
-    //  //   }
-    // if (net[i].uniqueID == 0) {
-    //   net[i].uniqueID = uniqueID;
-    // }
-  }
+  initNets();
+  initializeYPositionLimits();
 
   for (int i = 0; i < 12; i++) {
     ch[i].uncommittedHops = 0;
@@ -279,13 +1225,14 @@ void sortPathsByNet(
     printBridgeArray();
   }
 
-  numberOfNets = 0;
-  for (int i = 0; i < MAX_NETS - 1; i++) {
-    if (net[i].number != 0 && net[i].number != -1) {
+  numberOfNets = 1;
+  for (int i = 1; i < MAX_NETS - 1; i++) {
+    if (net[i].number == 0 || net[i].number == -1) {
+      break;
+      // continue;
+    } else {
       numberOfNets++;
       // break;
-    } else {
-      break;
     }
   }
 
@@ -473,6 +1420,12 @@ void bridgesToPaths(
   int duplicateStartIndex = 0;
   // allowStacking = 0;
   sortPathsByNet();
+
+  // Frontload connections by priority routing
+ //frontloadPriorityConnections();
+
+  DEBUG_NTCC2_PRINT("After priority frontloading - total paths: ");
+  DEBUG_NTCC2_PRINTLN(numberOfPaths);
   //   Serial.print("number of paths: ");
   // Serial.println(numberOfPaths);
   // Serial.print("number of shown paths: ");
@@ -562,15 +1515,22 @@ void bridgesToPaths(
   // resolveUncommittedHops(0, -1, 0);
 
   commitPaths(2, -1, 0);
+  // printPathsCompact(2);
+  // printChipStatus();
 
   resolveAltPaths(2, -1, 0);
-
+  // printPathsCompact(2);
+  // printChipStatus();
   resolveUncommittedHops(2, -1, 0);
-
+  // printPathsCompact(2 );
+  // printChipStatus();
   // Serial.println("no duplicates");
 
   // printPathsCompact(2);
   // printChipStatus();
+
+  // Serial.println("fillUnused: ");
+  // Serial.println(fillUnused);
 
   if (fillUnused == 1) {
     fillUnusedPaths(jumperlessConfig.routing.stack_paths,
@@ -596,19 +1556,43 @@ void bridgesToPaths(
 
     resolveUncommittedHops(0, -1, 1);
   }
+
   couldntFindPath(1);
   // couldntFindPath();
   checkForOverlappingPaths();
   // Serial.println("only duplicates");
   // printPathsCompact();
   // printChipStatus();
+
+  //   printPathsCompact(2 );
+  // printChipStatus();
+#if DEBUG_NTCC2_ENABLED
   if (debugNTCC2) {
-    delay(10);
-    printPathsCompact();
-    delay(10);
+    // delay(10);
+    printPathsCompact(2);
+    // delay(10);
     printChipStatus();
-    delay(10);
+    // delay(10);
+    printYPositionUsageReport();
   }
+#endif
+
+  // Resolve any Y position conflicts before final validation
+  // if (resolveYPositionConflicts()) {
+  //   if (debugNTCC6) {
+  //     Serial.println("Conflicts were found and resolved - re-validating...");
+  //   }
+  // }
+
+  // Detect and report any remaining conflicts
+#if DEBUG_NTCC6_ENABLED
+  detectAndReportConflicts();
+#endif
+
+  // Validate transaction consistency
+#if DEBUG_NTCC6_ENABLED
+  // validateTransactionConsistency();
+#endif
 }
 
 void fillUnusedPaths(int duplicatePathsOverride, int duplicatePathsPower,
@@ -629,6 +1613,8 @@ void fillUnusedPaths(int duplicatePathsOverride, int duplicatePathsPower,
   }
 
   for (int n = 0; n < numberOfNets; n++) {
+    // Serial.print("numberOfNets: ");
+    // Serial.println(numberOfNets);
     // Serial.print("net[");
     // Serial.print(n);
     // Serial.print("] \n\rnumber: ");
@@ -657,18 +1643,27 @@ void fillUnusedPaths(int duplicatePathsOverride, int duplicatePathsPower,
 
   int duplindex = 0;
   // first figure out which paths need duplicates
+  // Set duplicates once per net, not once per path to avoid exponential
+  // duplication
+  bool netProcessed[MAX_NETS] = {false};
   for (int i = 0; i < numberOfPaths; i++) {
-    if (bridgeCount[path[i].net] > 0) {
-      // path[i].duplicate = 1;
-      // net[path[i].net].duplicatePaths[duplindex] = i;
+    if (path[i].net > 0 &&
+        !netProcessed[path[i].net]) { // Only process each net once
+      netProcessed[path[i].net] = true;
       if (path[i].net <= 3) {
         net[path[i].net].numberOfDuplicates = duplicatePathsPower;
       } else if (path[i].net == 4 || path[i].net == 5) {
         net[path[i].net].numberOfDuplicates = duplicatePathsDac;
       } else {
-        net[path[i].net].numberOfDuplicates = duplicatePathsOverride;
+        net[path[i].net].numberOfDuplicates =
+            jumperlessConfig.routing.stack_paths;
       }
     }
+
+    // Serial.print("net[");
+    // Serial.print(path[i].net);
+    // Serial.print("] numberOfDuplicates: ");
+    // Serial.println(net[path[i].net].numberOfDuplicates);
   }
 
   // get the nodes in the net and cycle them, so if the bridges are A-B, B-C,
@@ -690,6 +1685,9 @@ void fillUnusedPaths(int duplicatePathsOverride, int duplicatePathsPower,
 
   for (int i = 1; i < numberOfNets; i++) {
     if (net[i].numberOfDuplicates == 0) {
+      // Serial.print("net[");
+      // Serial.print(i);
+      // Serial.println("] numberOfDuplicates is 0");
       continue;
     }
 
@@ -805,12 +1803,12 @@ void fillUnusedPaths(int duplicatePathsOverride, int duplicatePathsPower,
           continue;
         }
 
-        if (newBridges[i][j][0] >= 110 && newBridges[i][j][0] <= 115 ||
-            newBridges[i][j][1] >= 110 && newBridges[i][j][1] <= 115) {
-          continue;
-        }
+        // if (newBridges[i][j][0] >= 110 && newBridges[i][j][0] <= 115 ||
+        //     newBridges[i][j][1] >= 110 && newBridges[i][j][1] <= 115) {
+        //   continue;
+        // }
 
-        if (priorities[i] <= 0) {
+        if (priorities[i] < 0) { ///!
           continue;
         }
 
@@ -843,7 +1841,7 @@ void fillUnusedPaths(int duplicatePathsOverride, int duplicatePathsPower,
           path[numberOfPaths].skip = false;
           path[numberOfPaths].duplicate = 1;
           numberOfPaths++;
-          if (numberOfPaths >= MAX_BRIDGES - 1) {
+          if (numberOfPaths >= MAX_BRIDGES) {
             // maxxed = 1;
             return;
             break;
@@ -889,7 +1887,7 @@ void fillUnusedPaths(int duplicatePathsOverride, int duplicatePathsPower,
         path[numberOfPaths].skip = false;
         path[numberOfPaths].duplicate = 1;
         numberOfPaths++;
-        if (numberOfPaths >= MAX_BRIDGES - 1) {
+        if (numberOfPaths >= MAX_BRIDGES) {
           // maxxed = 1;
           return;
           break;
@@ -903,36 +1901,32 @@ void fillUnusedPaths(int duplicatePathsOverride, int duplicatePathsPower,
 }
 
 void commitPaths(int allowStacking, int powerOnly, int noOrOnlyDuplicates) {
-  if (debugNTCC2) {
-    Serial.println("commitPaths()\n\r");
-  }
+  DEBUG_NTCC2_PRINTLN("commitPaths()\n\r");
 
   for (int i = 0; i < numberOfPaths; i++) {
     // duplicateSFnets();
     // Serial.print(i);
     // Serial.print(" \t");
 
-    if (debugNTCC == true) {
-      Serial.print("\n\rpath[");
-      Serial.print(i);
-      Serial.print("] net: ");
-      Serial.print(path[i].net);
-      Serial.print("   \t ");
+    DEBUG_NTCC1_PRINT("\n\rpath[");
+    DEBUG_NTCC1_PRINT(i);
+    DEBUG_NTCC1_PRINT("] net: ");
+    DEBUG_NTCC1_PRINT(path[i].net);
+    DEBUG_NTCC1_PRINT("   \t ");
 
+    if (debugNTCC) {
       printNodeOrName(path[i].node1);
-      Serial.print(" to ");
-      printNodeOrName(path[i].node2);
-      // Serial.print("\n\r");
     }
-    // if (path[i].altPathNeeded == true)
-    // {
-    //     // if (debugNTCC2 == true)
-    //     // {
-    //     //     Serial.println("\taltPathNeeded flag already set\n\r");
-    //     // }
+    DEBUG_NTCC1_PRINT(" to ");
+    if (debugNTCC) {
+      printNodeOrName(path[i].node2);
+    }
 
-    //     continue;
-    // }
+    // Skip paths that are already successfully committed (x values set and no
+    // altPath needed)
+    if (path[i].x[0] >= 0 && path[i].x[1] >= 0 && !path[i].altPathNeeded) {
+      continue; // Path already committed successfully
+    }
 
     if (powerOnly == 1 && path[i].net > 5) {
       continue;
@@ -954,6 +1948,10 @@ void commitPaths(int allowStacking, int powerOnly, int noOrOnlyDuplicates) {
     bool pathCommitted = false;
     int maxStackingAttempts =
         (allowStacking == 2) ? 1 : 0; // 0-1 if allowStacking==2, 0-0 otherwise
+
+    // Store original path state for retry attempts
+    bool originalAltPathNeeded = path[i].altPathNeeded;
+
     for (int stackingAttempt = 0;
          stackingAttempt <= maxStackingAttempts && !pathCommitted;
          stackingAttempt++) {
@@ -962,7 +1960,7 @@ void commitPaths(int allowStacking, int powerOnly, int noOrOnlyDuplicates) {
 
       // Reset altPathNeeded for retry attempt
       if (stackingAttempt == 1) {
-        path[i].altPathNeeded = false;
+        path[i].altPathNeeded = originalAltPathNeeded; // Restore original state
       }
 
       switch (path[i].pathType) {
@@ -979,12 +1977,14 @@ void commitPaths(int allowStacking, int powerOnly, int noOrOnlyDuplicates) {
             path[i].chip[1]) { // && (ch[path[i].chip[0]].yStatus[0] == -1)) {
           // if (path[i].sameChip == true ){
           //  Serial.print("same chip  ");
-          path[i].y[0] = yMapForNode(path[i].node1, path[i].chip[0]);
-          path[i].y[1] = yMapForNode(path[i].node2, path[i].chip[0]);
-          ch[path[i].chip[0]].yStatus[path[i].y[0]] = path[i].net;
-          ch[path[i].chip[0]].yStatus[path[i].y[1]] = path[i].net;
-          path[i].x[0] = -2;
-          path[i].x[1] = -2;
+          setPathY(i, 0, yMapForNode(path[i].node1, path[i].chip[0]));
+          setPathY(i, 1, yMapForNode(path[i].node2, path[i].chip[0]));
+          setChipYStatusSafe(path[i].chip[0], path[i].y[0], path[i].net,
+                             "same-chip Y0");
+          setChipYStatusSafe(path[i].chip[0], path[i].y[1], path[i].net,
+                             "same-chip Y1");
+          setPathX(i, 0, -2);
+          setPathX(i, 1, -2);
 
           if (debugNTCC == true) {
             Serial.print("path [");
@@ -1013,73 +2013,162 @@ void commitPaths(int allowStacking, int powerOnly, int noOrOnlyDuplicates) {
           pathCommitted = true;
           break;
         }
-        if (debugNTCC2 == true) {
-          Serial.print("xMapL0c0: ");
-          Serial.println(xMapL0c0);
-          Serial.print("xMapL0c1: ");
 
-          Serial.println(xMapL0c1);
-          Serial.print("xMapL1c0: ");
-          Serial.println(xMapL1c0);
-          Serial.print("xMapL1c1: ");
-          Serial.println(xMapL1c1);
-        }
-        // changed to not stack paths for redundant connections
-        // if ((xMapL1c0 != -1) &&
-        //     ch[path[i].chip[0]].xStatus[xMapL1c0] ==
-        //         path[i].net) // check if lane 1 shares a net first so it
-        //         should
-        //                      // prefer sharing lanes
-        // {
-        //   freeLane = 1;
-        // } else
+        DEBUG_NTCC2_PRINT("xMapL0c0: ");
+        DEBUG_NTCC2_PRINTLN(xMapL0c0);
+        DEBUG_NTCC2_PRINT("xMapL0c1: ");
+        DEBUG_NTCC2_PRINTLN(xMapL0c1);
+        DEBUG_NTCC2_PRINT("xMapL1c0: ");
+        DEBUG_NTCC2_PRINTLN(xMapL1c0);
+        DEBUG_NTCC2_PRINT("xMapL1c1: ");
+        DEBUG_NTCC2_PRINTLN(xMapL1c1);
 
-        if (freeOrSameNetX(path[i].chip[0], xMapL0c0, path[i].net,
-                           currentAllowStacking) == true) {
+        // Check if we can commit this path without conflicts
+        bool canCommitLane0 =
+            freeOrSameNetX(path[i].chip[0], xMapL0c0, path[i].net,
+                           currentAllowStacking) &&
+            freeOrSameNetX(path[i].chip[1], xMapL0c1, path[i].net,
+                           currentAllowStacking);
+        bool canCommitLane1 =
+            (xMapL1c0 != -1) &&
+            freeOrSameNetX(path[i].chip[0], xMapL1c0, path[i].net,
+                           currentAllowStacking) &&
+            freeOrSameNetX(path[i].chip[1], xMapL1c1, path[i].net,
+                           currentAllowStacking);
+
+        if (canCommitLane0) {
           freeLane = 0;
-        } else if ((xMapL1c0 != -1) &&
-                   freeOrSameNetX(path[i].chip[0], xMapL1c0, path[i].net,
-                                  currentAllowStacking) ==
-                       true) // || ch[path[i].chip[0]].xStatus[xMapL1c0] ==
-        // path[i].net))
-        {
+        } else if (canCommitLane1) {
           freeLane = 1;
         } else {
           path[i].altPathNeeded = true;
-
-          if (debugNTCC2 == true) {
-            Serial.print(
-                "\tno free lanes for path, setting altPathNeeded flag");
-            Serial.print(" \t ");
-            Serial.print(ch[path[i].chip[0]].xStatus[xMapL0c0]);
-            Serial.print(" \t ");
-            Serial.print(ch[path[i].chip[0]].xStatus[xMapL1c0]);
-            Serial.print(" \t ");
-            Serial.print(ch[path[i].chip[1]].xStatus[xMapL0c1]);
-            Serial.print(" \t ");
-            Serial.print(ch[path[i].chip[1]].xStatus[xMapL1c1]);
-            Serial.println(" \t ");
-          }
+          DEBUG_NTCC2_PRINT(
+              "\tno free lanes for path, setting altPathNeeded flag");
+          DEBUG_NTCC2_PRINT(" \t ");
+          DEBUG_NTCC2_PRINT(ch[path[i].chip[0]].xStatus[xMapL0c0]);
+          DEBUG_NTCC2_PRINT(" \t ");
+          DEBUG_NTCC2_PRINT(ch[path[i].chip[0]].xStatus[xMapL1c0]);
+          DEBUG_NTCC2_PRINT(" \t ");
+          DEBUG_NTCC2_PRINT(ch[path[i].chip[1]].xStatus[xMapL0c1]);
+          DEBUG_NTCC2_PRINT(" \t ");
+          DEBUG_NTCC2_PRINT(ch[path[i].chip[1]].xStatus[xMapL1c1]);
+          DEBUG_NTCC2_PRINTLN(" \t ");
           break;
         }
 
-        if (freeLane == 0) {
-          ch[path[i].chip[0]].xStatus[xMapL0c0] = path[i].net;
-          ch[path[i].chip[1]].xStatus[xMapL0c1] = path[i].net;
-          path[i].x[0] = xMapL0c0;
-          path[i].x[1] = xMapL0c1;
-        } else if (freeLane == 1) {
-          ch[path[i].chip[0]].xStatus[xMapL1c0] = path[i].net;
-          ch[path[i].chip[1]].xStatus[xMapL1c1] = path[i].net;
+        // Save state before making any assignments
+        saveRoutingState(i);
 
-          path[i].x[0] = xMapL1c0;
-          path[i].x[1] = xMapL1c1;
+        bool allAssignmentsSuccessful = false;
+
+        // Only commit chip state after validating ALL connections
+        if (freeLane == 0) {
+          bool x0Success = setChipXStatus(path[i].chip[0], xMapL0c0,
+                                          path[i].net, "BBtoBB lane0 chip0");
+          bool x1Success = setChipXStatus(path[i].chip[1], xMapL0c1,
+                                          path[i].net, "BBtoBB lane0 chip1");
+          bool pathX0Success = setPathX(i, 0, xMapL0c0);
+          bool pathX1Success = setPathX(i, 1, xMapL0c1);
+
+          if (!x0Success || !x1Success || !pathX0Success || !pathX1Success) {
+            if (debugNTCC6) {
+              Serial.print("BBtoBB lane0 X assignment failed for path[");
+              Serial.print(i);
+              Serial.println("], will restore state");
+            }
+            allAssignmentsSuccessful = false;
+          } else {
+            allAssignmentsSuccessful = true;
+          }
+        } else if (freeLane == 1) {
+          bool x0Success = setChipXStatus(path[i].chip[0], xMapL1c0,
+                                          path[i].net, "BBtoBB lane1 chip0");
+          bool x1Success = setChipXStatus(path[i].chip[1], xMapL1c1,
+                                          path[i].net, "BBtoBB lane1 chip1");
+          bool pathX0Success = setPathX(i, 0, xMapL1c0);
+          bool pathX1Success = setPathX(i, 1, xMapL1c1);
+
+          if (!x0Success || !x1Success || !pathX0Success || !pathX1Success) {
+            if (debugNTCC6) {
+              Serial.print("BBtoBB lane1 X assignment failed for path[");
+              Serial.print(i);
+              Serial.println("], will restore state");
+            }
+            allAssignmentsSuccessful = false;
+          } else {
+            allAssignmentsSuccessful = true;
+          }
         }
 
-        path[i].y[0] = yMapForNode(path[i].node1, path[i].chip[0]);
-        path[i].y[1] = yMapForNode(path[i].node2, path[i].chip[1]);
-        ch[path[i].chip[0]].yStatus[path[i].y[0]] = path[i].net;
-        ch[path[i].chip[1]].yStatus[path[i].y[1]] = path[i].net;
+        // Continue with Y assignments only if X assignments succeeded
+        if (allAssignmentsSuccessful) {
+          bool y0PathSuccess =
+              setPathY(i, 0, yMapForNode(path[i].node1, path[i].chip[0]));
+          bool y1PathSuccess =
+              setPathY(i, 1, yMapForNode(path[i].node2, path[i].chip[1]));
+
+          // Check if Y position assignments succeed
+          bool y0ChipSuccess = false;
+          bool y1ChipSuccess = false;
+
+          if (y0PathSuccess) {
+            y0ChipSuccess =
+                setChipYStatusSafe(path[i].chip[0], path[i].y[0], path[i].net,
+                                   "BBtoBB Y0 assignment");
+          }
+          if (y1PathSuccess) {
+            y1ChipSuccess =
+                setChipYStatusSafe(path[i].chip[1], path[i].y[1], path[i].net,
+                                   "BBtoBB Y1 assignment");
+          }
+
+          if (!y0PathSuccess || !y1PathSuccess || !y0ChipSuccess ||
+              !y1ChipSuccess) {
+            allAssignmentsSuccessful = false;
+            if (debugNTCC6) {
+              Serial.print("Path[");
+              Serial.print(i);
+              Serial.print("] net ");
+              Serial.print(path[i].net);
+              Serial.print(" Y assignment failed");
+              if (!y0PathSuccess || !y0ChipSuccess) {
+                Serial.print(" (Y0=");
+                Serial.print(path[i].y[0]);
+                Serial.print(" on chip ");
+                Serial.print(chipNumToChar(path[i].chip[0]));
+                Serial.print(" failed)");
+              }
+              if (!y1PathSuccess || !y1ChipSuccess) {
+                Serial.print(" (Y1=");
+                Serial.print(path[i].y[1]);
+                Serial.print(" on chip ");
+                Serial.print(chipNumToChar(path[i].chip[1]));
+                Serial.print(" failed)");
+              }
+              Serial.println(", will restore state");
+            }
+          }
+        }
+
+        // Handle success or failure
+        if (allAssignmentsSuccessful) {
+          commitRoutingState();
+          if (debugNTCC6) {
+            Serial.print("BBtoBB path[");
+            Serial.print(i);
+            Serial.println("] assignments committed successfully");
+          }
+        } else {
+          restoreRoutingState(i);
+          path[i].altPathNeeded = true;
+          if (debugNTCC6) {
+            Serial.print("BBtoBB path[");
+            Serial.print(i);
+            Serial.println(
+                "] assignments failed, state restored, marked for alt routing");
+          }
+          break;
+        }
 
         if (debugNTCC2 == true) {
           Serial.print(" \tchip[0]: ");
@@ -1132,21 +2221,67 @@ void commitPaths(int allowStacking, int powerOnly, int noOrOnlyDuplicates) {
                            currentAllowStacking) == true &&
             freeOrSameNetY(path[i].chip[1], yMapSFc1, path[i].net,
                            currentAllowStacking) == true) {
-          path[i].x[0] = xMapBBc0;
-          path[i].x[1] = xMapSFc1;
 
-          path[i].y[0] = yMapForNode(path[i].node1, path[i].chip[0]);
+          // Save state before making any assignments
+          saveRoutingState(i);
 
-          path[i].y[1] =
-              path[i].chip[0]; // bb to sf connections are always in chip order,
+          bool pathX0Success = setPathX(i, 0, xMapBBc0);
+          bool pathX1Success = setPathX(i, 1, xMapSFc1);
+
+          bool pathY0Success =
+              setPathY(i, 0, yMapForNode(path[i].node1, path[i].chip[0]));
+
+          bool pathY1Success = setPathY(
+              i, 1,
+              path[i]
+                  .chip[0]); // bb to sf connections are always in chip order,
           // so chip A is always connected to sf y 0
 
-          ch[path[i].chip[0]].xStatus[xMapBBc0] = path[i].net;
-          ch[path[i].chip[0]].yStatus[path[i].y[0]] = path[i].net;
+          bool chipX0Success = false;
+          bool chipY0Success = false;
+          bool chipX1Success = false;
+          bool chipY1Success = false;
 
-          ch[path[i].chip[1]].xStatus[path[i].x[1]] = path[i].net;
+          if (pathX0Success) {
+            chipX0Success = setChipXStatus(path[i].chip[0], xMapBBc0,
+                                           path[i].net, "BBtoSF chip0");
+          }
+          if (pathY0Success) {
+            chipY0Success = setChipYStatusSafe(path[i].chip[0], path[i].y[0],
+                                               path[i].net, "BBtoSF Y0");
+          }
+          if (pathX1Success) {
+            chipX1Success = setChipXStatus(path[i].chip[1], path[i].x[1],
+                                           path[i].net, "BBtoSF chip1");
+          }
+          if (pathY1Success) {
+            chipY1Success = setChipYStatusSafe(path[i].chip[1], path[i].chip[0],
+                                               path[i].net, "BBtoSF Y1");
+          }
 
-          ch[path[i].chip[1]].yStatus[path[i].chip[0]] = path[i].net;
+          bool allAssignmentsSuccessful = pathX0Success && pathX1Success &&
+                                          pathY0Success && pathY1Success &&
+                                          chipX0Success && chipY0Success &&
+                                          chipX1Success && chipY1Success;
+
+          if (allAssignmentsSuccessful) {
+            commitRoutingState();
+            pathCommitted = true;
+            if (debugNTCC6) {
+              Serial.print("BBtoSF path[");
+              Serial.print(i);
+              Serial.println("] assignments committed successfully");
+            }
+          } else {
+            restoreRoutingState(i);
+            path[i].altPathNeeded = true;
+            if (debugNTCC6) {
+              Serial.print("BBtoSF assignment failed for path[");
+              Serial.print(i);
+              Serial.println("], state restored, marking for alt routing");
+            }
+            break;
+          }
 
           if (debugNTCC2 == true) {
             // delay(10);
@@ -1197,21 +2332,111 @@ void commitPaths(int allowStacking, int powerOnly, int noOrOnlyDuplicates) {
         int xMapNANOC0 = xMapForNode(path[i].node1, path[i].chip[0]);
         int xMapNANOC1 = xMapForNode(path[i].node2, path[i].chip[1]);
 
+        if (debugNTCC6 && path[i].net == 23) {
+          Serial.print("GP_8-D3 in commitPaths NANOtoSF path[");
+          Serial.print(i);
+          Serial.print("] - chip[0]=");
+          Serial.print(chipNumToChar(path[i].chip[0]));
+          Serial.print(" chip[1]=");
+          Serial.print(chipNumToChar(path[i].chip[1]));
+          Serial.print(" xMapNANOC0=");
+          Serial.print(xMapNANOC0);
+          Serial.print(" xMapNANOC1=");
+          Serial.println(xMapNANOC1);
+        }
+
+        if (debugNTCC2) {
+          Serial.print("NANOtoNANO path[");
+          Serial.print(i);
+          Serial.print("] - chip[0]=");
+          Serial.print(chipNumToChar(path[i].chip[0]));
+          Serial.print(" chip[1]=");
+          Serial.print(chipNumToChar(path[i].chip[1]));
+          Serial.print(" xMapNANOC0=");
+          Serial.print(xMapNANOC0);
+          Serial.print(" xMapNANOC1=");
+          Serial.println(xMapNANOC1);
+        }
+
         if (path[i].chip[0] == path[i].chip[1]) {
-          if (freeOrSameNetX(path[i].chip[0], xMapNANOC0, path[i].net,
-                             currentAllowStacking) == true) {
-            if (freeOrSameNetX(path[i].chip[0], xMapNANOC1, path[i].net,
-                               currentAllowStacking) == true) {
-              ch[path[i].chip[0]].xStatus[xMapNANOC0] = path[i].net;
-              ch[path[i].chip[1]].xStatus[xMapNANOC1] = path[i].net;
+          if (debugNTCC2) {
+            Serial.print("Same chip - checking X connections...");
+          }
+          bool x0Free = freeOrSameNetX(path[i].chip[0], xMapNANOC0, path[i].net,
+                                       currentAllowStacking);
+          bool x1Free = freeOrSameNetX(path[i].chip[0], xMapNANOC1, path[i].net,
+                                       currentAllowStacking);
+          if (debugNTCC2) {
+            Serial.print(" x0Free=");
+            Serial.print(x0Free);
+            Serial.print(" x1Free=");
+            Serial.println(x1Free);
+          }
 
-              path[i].x[0] = xMapNANOC0;
-              path[i].x[1] = xMapNANOC1;
+          // Check if this would violate Y position limits for high-traffic
+          // chips
+          bool respectsYLimits = true;
+          if (path[i].chip[0] >= 8) { // Special function chips
+            if (!canNetUseMoreYPositions(path[i].net)) {
+              respectsYLimits = false;
+              if (debugNTCC2) {
+                Serial.print(" - rejected same-chip connection due to Y limits "
+                             "for net ");
+                Serial.println(path[i].net);
+              }
+            }
+          }
 
-              path[i].y[0] = -2;
-              path[i].y[1] = -2;
+          if (x0Free == true && respectsYLimits) {
+            if (x1Free == true) {
+              if (debugNTCC2) {
+                Serial.print("COMMITTING NANOtoNANO same-chip path[");
+                Serial.print(i);
+                Serial.print("] - setting x[0]=");
+                Serial.print(xMapNANOC0);
+                Serial.print(" x[1]=");
+                Serial.println(xMapNANOC1);
+              }
 
-              path[i].sameChip = true;
+              // Save state before making any assignments
+              saveRoutingState(i);
+
+              bool chipX0Success =
+                  setChipXStatus(path[i].chip[0], xMapNANOC0, path[i].net,
+                                 "NANOtoNANO same-chip x0");
+              bool chipX1Success =
+                  setChipXStatus(path[i].chip[1], xMapNANOC1, path[i].net,
+                                 "NANOtoNANO same-chip x1");
+
+              bool pathX0Success = setPathX(i, 0, xMapNANOC0);
+              bool pathX1Success = setPathX(i, 1, xMapNANOC1);
+
+              bool pathY0Success = setPathY(i, 0, -2);
+              bool pathY1Success = setPathY(i, 1, -2);
+
+              bool allAssignmentsSuccessful = chipX0Success && chipX1Success &&
+                                              pathX0Success && pathX1Success &&
+                                              pathY0Success && pathY1Success;
+
+              if (allAssignmentsSuccessful) {
+                commitRoutingState();
+                path[i].sameChip = true;
+                pathCommitted = true;
+                if (debugNTCC6) {
+                  Serial.print("NANOtoNANO same-chip path[");
+                  Serial.print(i);
+                  Serial.println("] assignments committed successfully");
+                }
+              } else {
+                restoreRoutingState(i);
+                path[i].altPathNeeded = true;
+                if (debugNTCC6) {
+                  Serial.print(
+                      "NANOtoNANO same-chip assignment failed for path[");
+                  Serial.print(i);
+                  Serial.println("], state restored, marking for alt routing");
+                }
+              }
               // Serial.print(" ?????????");
               if (debugNTCC2) {
                 Serial.print(" \t\t\tchip[0]: ");
@@ -1233,10 +2458,34 @@ void commitPaths(int allowStacking, int powerOnly, int noOrOnlyDuplicates) {
                 Serial.print(path[i].y[1]);
               }
               pathCommitted = true;
+            } else {
+              // Same chip but one X connection not available - need alt path
+              path[i].altPathNeeded = true;
+              if (debugNTCC2) {
+                Serial.print("NANOtoNANO same chip: X1 connection conflict, "
+                             "setting altPathNeeded for path ");
+                Serial.println(i);
+              }
+            }
+          } else {
+            // Same chip but one X connection not available - need alt path
+            path[i].altPathNeeded = true;
+            if (debugNTCC2) {
+              Serial.print("NANOtoNANO same chip: X0 connection conflict, "
+                           "setting altPathNeeded for path ");
+              Serial.println(i);
             }
           }
         } else {
           path[i].altPathNeeded = true;
+          if (debugNTCC6 && path[i].net == 23) {
+            Serial.print("GP_8-D3 setting altPathNeeded flag in commitPaths "
+                         "(different chips: ");
+            Serial.print(chipNumToChar(path[i].chip[0]));
+            Serial.print(" != ");
+            Serial.print(chipNumToChar(path[i].chip[1]));
+            Serial.println(")");
+          }
           if (debugNTCC2) {
             Serial.print(
                 "\n\rno direct path, setting altPathNeeded flag (NANOtoNANO)");
@@ -1272,32 +2521,63 @@ void duplicateSFnets(void) {
   for (int i = 0; i < 26; i++) {
     if (ch[duplucateSFnodes[i][0]].xStatus[duplucateSFnodes[i][1]] > 0) {
       if (ch[duplucateSFnodes[i][2]].xStatus[duplucateSFnodes[i][3]] == -1) {
-        ch[duplucateSFnodes[i][2]].xStatus[duplucateSFnodes[i][3]] =
-            ch[duplucateSFnodes[i][0]].xStatus[duplucateSFnodes[i][1]];
+        setChipXStatus(
+            duplucateSFnodes[i][2], duplucateSFnodes[i][3],
+            ch[duplucateSFnodes[i][0]].xStatus[duplucateSFnodes[i][1]],
+            "duplicateSFnets copy forward");
       }
     }
 
     if (ch[duplucateSFnodes[i][2]].xStatus[duplucateSFnodes[i][3]] > 0) {
       if (ch[duplucateSFnodes[i][0]].xStatus[duplucateSFnodes[i][1]] == -1) {
-        ch[duplucateSFnodes[i][0]].xStatus[duplucateSFnodes[i][1]] =
-            ch[duplucateSFnodes[i][2]].xStatus[duplucateSFnodes[i][3]];
+        setChipXStatus(
+            duplucateSFnodes[i][0], duplucateSFnodes[i][1],
+            ch[duplucateSFnodes[i][2]].xStatus[duplucateSFnodes[i][3]],
+            "duplicateSFnets copy backward");
       }
     }
   }
 }
 
-int ijklPaths(int pathNumber, int allowStacking) {
+int ijklPaths(int pathNumber, int currentAllowStacking) {
   // return 0;
   int chip0 = path[pathNumber].chip[0];
   int chip1 = path[pathNumber].chip[1];
   // int chip2 = path[pathNumber].chip[2];
   // int chip3 = path[pathNumber].chip[3];
 
+  if (debugNTCC6) {
+    Serial.print("ijklPaths() called for path[");
+    Serial.print(pathNumber);
+    Serial.print("] net=");
+    Serial.print(path[pathNumber].net);
+    Serial.print(" chips=[");
+    Serial.print(chipNumToChar(chip0));
+    Serial.print(",");
+    Serial.print(chipNumToChar(chip1));
+    Serial.print("]");
+  }
+
   if (chip0 == chip1) {
+    if (debugNTCC6) {
+      Serial.println(" - same chip, skipping");
+    }
     return 0;
   }
   if (chip0 < 8 || chip1 < 8) { // allow it to find a hop here
+    if (debugNTCC6) {
+      Serial.println(" - involves breadboard chip, skipping");
+    }
     return 0;
+  }
+
+  // Check if this path is already committed (prevent duplicates)
+  if (path[pathNumber].x[0] != -1 && path[pathNumber].x[1] != -1 &&
+      !path[pathNumber].altPathNeeded) {
+    if (debugNTCC) {
+      Serial.println("ijklPaths: path already committed, skipping");
+    }
+    return 1; // Path already exists and is committed
   }
 
   int x0 = -1;
@@ -1317,38 +2597,100 @@ int ijklPaths(int pathNumber, int allowStacking) {
   //     (ch[chip1].xStatus[x1] == -1 ||
   //      ch[chip1].xStatus[x1] == path[pathNumber].net)) {
 
-  if (freeOrSameNetX(chip0, x0, path[pathNumber].net, allowStacking) == true &&
-      freeOrSameNetX(chip1, x1, path[pathNumber].net, allowStacking) == true) {
-    ch[chip0].xStatus[x0] = path[pathNumber].net;
-    ch[chip1].xStatus[x1] = path[pathNumber].net;
-    path[pathNumber].x[0] = xMapForNode(path[pathNumber].node1, chip0);
-    path[pathNumber].x[1] = xMapForNode(path[pathNumber].node2, chip1);
+  if (freeOrSameNetX(chip0, x0, path[pathNumber].net, currentAllowStacking) ==
+          true &&
+      freeOrSameNetX(chip1, x1, path[pathNumber].net, currentAllowStacking) ==
+          true) {
 
-    if (path[pathNumber].x[0] != -1 && path[pathNumber].x[1] != -1) {
-      ch[chip0].xStatus[path[pathNumber].x[0]] = path[pathNumber].net;
-      ch[chip1].xStatus[path[pathNumber].x[1]] = path[pathNumber].net;
+    if (debugNTCC6) {
+      Serial.print(" - SUCCESS! Direct ijkl connection established: ");
+      Serial.print(chipNumToChar(chip0));
+      Serial.print(".X[");
+      Serial.print(x0);
+      Serial.print("] <-> ");
+      Serial.print(chipNumToChar(chip1));
+      Serial.print(".X[");
+      Serial.print(x1);
+      Serial.println("]");
     }
+
+    // Save state before making any assignments
+    saveRoutingState(pathNumber);
+
+    bool interChipX0Success = setChipXStatus(chip0, x0, path[pathNumber].net,
+                                             "ijklPaths inter-chip x0");
+    bool interChipX1Success = setChipXStatus(chip1, x1, path[pathNumber].net,
+                                             "ijklPaths inter-chip x1");
+    bool pathX0Success =
+        setPathX(pathNumber, 0, xMapForNode(path[pathNumber].node1, chip0));
+    bool pathX1Success =
+        setPathX(pathNumber, 1, xMapForNode(path[pathNumber].node2, chip1));
+
+    bool nodeX0Success = true;
+    bool nodeX1Success = true;
+    if (path[pathNumber].x[0] != -1 && path[pathNumber].x[1] != -1) {
+      nodeX0Success = setChipXStatus(chip0, path[pathNumber].x[0],
+                                     path[pathNumber].net, "ijklPaths node x0");
+      nodeX1Success = setChipXStatus(chip1, path[pathNumber].x[1],
+                                     path[pathNumber].net, "ijklPaths node x1");
+    }
+
+    bool allAssignmentsSuccessful = interChipX0Success && interChipX1Success &&
+                                    pathX0Success && pathX1Success &&
+                                    nodeX0Success && nodeX1Success;
+
+    if (!allAssignmentsSuccessful) {
+      restoreRoutingState(pathNumber);
+      if (debugNTCC6) {
+        Serial.print("ijklPaths assignment failed for path[");
+        Serial.print(pathNumber);
+        Serial.println("], state restored, connection not established");
+      }
+      return 0; // Failed to establish connection
+    }
+
+    // If we get here, all assignments succeeded
+    commitRoutingState();
 
     ch[path[pathNumber].chip[0]].uncommittedHops++;
     ch[path[pathNumber].chip[1]].uncommittedHops++;
-    path[pathNumber].y[0] = -2;
-    path[pathNumber].y[1] = -2;
+
     path[pathNumber].sameChip = true;
-    path[pathNumber].altPathNeeded = false;
+    // path[pathNumber].altPathNeeded = false;
 
     path[pathNumber].chip[2] = chip0;
     path[pathNumber].chip[3] = chip1;
-    path[pathNumber].x[2] = x0;
-    path[pathNumber].x[3] = x1;
+    setPathX(pathNumber, 2, x0);
+    setPathX(pathNumber, 3, x1);
 
-    path[pathNumber].y[2] = -2;
-    path[pathNumber].y[3] = -2;
+    // For direct ijkl connections between special function chips, Y values
+    // still need resolving Set them to -2 so resolveUncommittedHops can resolve
+    // them
+    setPathY(pathNumber, 0, -2);
+    setPathY(pathNumber, 1, -2);
+    setPathY(pathNumber, 2, -2);
+    setPathY(pathNumber, 3, -2);
     //  printPathsCompact();
     //  printChipStatus();
     // Serial.print("pathNumber: ");
     // Serial.println(pathNumber);
     return 1;
   } else {
+    if (debugNTCC6) {
+      Serial.print(" - FAILED: ijkl connections not available (");
+      Serial.print(chipNumToChar(chip0));
+      Serial.print(".X[");
+      Serial.print(x0);
+      Serial.print("]=");
+      Serial.print(ch[chip0].xStatus[x0]);
+      Serial.print(", ");
+      Serial.print(chipNumToChar(chip1));
+      Serial.print(".X[");
+      Serial.print(x1);
+      Serial.print("]=");
+      Serial.print(ch[chip1].xStatus[x1]);
+      Serial.println(")");
+    }
     return 0;
   }
 }
@@ -1363,7 +2705,7 @@ void resolveAltPaths(int allowStacking, int powerOnly, int noOrOnlyDuplicates) {
   // return;
   int couldFindPath = -1;
 
-  for (int i = 0; i <= numberOfPaths; i++) {
+  for (int i = 0; i < numberOfPaths; i++) {
     if (powerOnly == 1 && path[i].net > 5) {
       continue;
     }
@@ -1386,10 +2728,6 @@ void resolveAltPaths(int allowStacking, int powerOnly, int noOrOnlyDuplicates) {
       // Serial.print("numberOfPaths = ");
       // Serial.println(numberOfPaths);
 
-      if (ijklPaths(i, allowStacking) == 1) {
-        continue;
-      }
-
       // Try alt path first without stacking, then with stacking if needed (only
       // if allowStacking is 2)
       bool altPathResolved = false;
@@ -1408,6 +2746,26 @@ void resolveAltPaths(int allowStacking, int powerOnly, int noOrOnlyDuplicates) {
           path[i].altPathNeeded = true;
         }
 
+        // Try ijklPaths first with current stacking setting
+        if (debugNTCC6 && path[i].net == 23) {
+          Serial.print("Trying ijklPaths for GP_8-D3 connection (path[");
+          Serial.print(i);
+          Serial.println("])");
+        }
+
+        if (ijklPaths(i, currentAllowStacking) == 1) {
+          if (debugNTCC6 && path[i].net == 23) {
+            Serial.println("ijklPaths SUCCESS for GP_8-D3!");
+          }
+          altPathResolved = true;
+          continue;
+        }
+
+        if (debugNTCC6 && path[i].net == 23) {
+          Serial.println(
+              "ijklPaths failed for GP_8-D3, trying other alt paths...");
+        }
+
         switch (path[i].pathType) {
         case BBtoBB: {
           int foundPath = 0;
@@ -1418,8 +2776,10 @@ void resolveAltPaths(int allowStacking, int powerOnly, int noOrOnlyDuplicates) {
           int yNode1 = yMapForNode(path[i].node1, path[i].chip[0]);
           int yNode2 = yMapForNode(path[i].node2, path[i].chip[1]);
 
-          ch[path[i].chip[0]].yStatus[yNode1] = path[i].net;
-          ch[path[i].chip[1]].yStatus[yNode2] = path[i].net;
+          setChipYStatusSafe(path[i].chip[0], yNode1, path[i].net,
+                             "BBtoBB alt Y0");
+          setChipYStatusSafe(path[i].chip[1], yNode2, path[i].net,
+                             "BBtoBB alt Y1");
 
           if (foundPath == 1) {
             couldFindPath = i;
@@ -1510,8 +2870,10 @@ void resolveAltPaths(int allowStacking, int powerOnly, int noOrOnlyDuplicates) {
               if (freeOrSameNetX(bb, xMapL0c1, path[i].net,
                                  currentAllowStacking) == true) {
                 // if (ch[bb].yStatus[0] == -1) {
-                ch[bb].xStatus[xMapL0c0] = path[i].net;
-                ch[bb].xStatus[xMapL0c1] = path[i].net;
+                setChipXStatus(bb, xMapL0c0, path[i].net,
+                               "BBtoBB alt lane0 hop chip x0");
+                setChipXStatus(bb, xMapL0c1, path[i].net,
+                               "BBtoBB alt lane0 hop chip x1");
 
                 //   if (giveUpOnL == 0) {
                 //     ch[CHIP_L].yStatus[bb] = path[i].net;
@@ -1522,22 +2884,24 @@ void resolveAltPaths(int allowStacking, int powerOnly, int noOrOnlyDuplicates) {
                 // if (debugNTCC2) {
                 //     Serial.println("Gave up on L  ");
                 // Serial.println(bb);
-                //  // }
+                //                  // }
 
-                path[i].y[2] = 0;
-                path[i].y[3] = 0;
-                ch[bb].yStatus[0] = path[i].net;
+                setPathY(i, 2, 0);
+                setPathY(i, 3, 0);
+                setChipYStatusSafe(bb, 0, path[i].net, "BBtoBB hop Y=0");
                 //}
 
                 path[i].sameChip = true;
 
                 path[i].chip[2] = bb;
                 path[i].chip[3] = bb;
-                path[i].x[2] = xMapL0c0;
-                path[i].x[3] = xMapL0c1;
+                setPathX(i, 2, xMapL0c0);
+                setPathX(i, 3, xMapL0c1);
 
-                ch[bb].xStatus[xMapL0c0] = path[i].net;
-                ch[bb].xStatus[xMapL0c1] = path[i].net;
+                setChipXStatus(bb, xMapL0c0, path[i].net,
+                               "BBtoBB alt lane0 hop chip x0 dup");
+                setChipXStatus(bb, xMapL0c1, path[i].net,
+                               "BBtoBB alt lane0 hop chip x1 dup");
 
                 // Serial.print("!!!!3 bb: ");
                 // Serial.println(bb);
@@ -1547,21 +2911,23 @@ void resolveAltPaths(int allowStacking, int powerOnly, int noOrOnlyDuplicates) {
                 path[i].altPathNeeded = false;
                 altPathResolved = true;
 
-                path[i].x[0] = xMapForChipLane0(path[i].chip[0], bb);
-                path[i].x[1] = xMapForChipLane0(path[i].chip[1], bb);
+                setPathX(i, 0, xMapForChipLane0(path[i].chip[0], bb));
+                setPathX(i, 1, xMapForChipLane0(path[i].chip[1], bb));
 
-                ch[path[i].chip[0]]
-                    .xStatus[xMapForChipLane0(path[i].chip[0], bb)] =
-                    path[i].net;
-                ch[path[i].chip[1]]
-                    .xStatus[xMapForChipLane0(path[i].chip[1], bb)] =
-                    path[i].net;
+                setChipXStatus(path[i].chip[0],
+                               xMapForChipLane0(path[i].chip[0], bb),
+                               path[i].net, "BBtoBB alt lane0 chip0");
+                setChipXStatus(path[i].chip[1],
+                               xMapForChipLane0(path[i].chip[1], bb),
+                               path[i].net, "BBtoBB alt lane0 chip1");
 
-                path[i].y[0] = yMapForNode(path[i].node1, path[i].chip[0]);
-                path[i].y[1] = yMapForNode(path[i].node2, path[i].chip[1]);
+                setPathY(i, 0, yMapForNode(path[i].node1, path[i].chip[0]));
+                setPathY(i, 1, yMapForNode(path[i].node2, path[i].chip[1]));
 
-                ch[path[i].chip[0]].yStatus[path[i].y[0]] = path[i].net;
-                ch[path[i].chip[1]].yStatus[path[i].y[1]] = path[i].net;
+                setChipYStatusSafe(path[i].chip[0], path[i].y[0], path[i].net,
+                                   "BBtoBB alt lane0 y0");
+                setChipYStatusSafe(path[i].chip[1], path[i].y[1], path[i].net,
+                                   "BBtoBB alt lane0 y1");
 
                 if (debugNTCC2) {
                   Serial.print("\n\r");
@@ -1587,8 +2953,10 @@ void resolveAltPaths(int allowStacking, int powerOnly, int noOrOnlyDuplicates) {
                                currentAllowStacking) == true) {
               if (freeOrSameNetX(bb, xMapL1c1, path[i].net,
                                  currentAllowStacking) == true) {
-                ch[bb].xStatus[xMapL1c0] = path[i].net;
-                ch[bb].xStatus[xMapL1c1] = path[i].net;
+                setChipXStatus(bb, xMapL1c0, path[i].net,
+                               "BBtoBB alt lane1 hop x0");
+                setChipXStatus(bb, xMapL1c1, path[i].net,
+                               "BBtoBB alt lane1 hop x1");
 
                 //   if (giveUpOnL == 0) {
                 //     // Serial.print("Give up on L?");
@@ -1600,37 +2968,42 @@ void resolveAltPaths(int allowStacking, int powerOnly, int noOrOnlyDuplicates) {
                 // if (debugNTCC2) {
                 // Serial.println("Gave up on L");
                 //}
-                path[i].y[2] = 0;
-                path[i].y[3] = 0;
-                ch[bb].yStatus[0] = path[i].net;
+                setPathY(i, 2, 0);
+                setPathY(i, 3, 0);
+                setChipYStatusSafe(bb, 0, path[i].net,
+                                   "BBtoBB alt lane1 hop y0");
                 /// }
 
                 path[i].chip[2] = bb;
                 path[i].chip[3] = bb;
-                path[i].x[2] = xMapL1c0;
-                path[i].x[3] = xMapL1c1;
+                setPathX(i, 2, xMapL1c0);
+                setPathX(i, 3, xMapL1c1);
                 path[i].sameChip = true;
                 path[i].altPathNeeded = false;
                 altPathResolved = true;
 
-                ch[bb].xStatus[xMapL1c0] = path[i].net;
-                ch[bb].xStatus[xMapL1c1] = path[i].net;
+                setChipXStatus(bb, xMapL1c0, path[i].net,
+                               "BBtoBB alt lane1 hop x0 dup");
+                setChipXStatus(bb, xMapL1c1, path[i].net,
+                               "BBtoBB alt lane1 hop x1 dup");
 
-                path[i].x[0] = xMapForChipLane1(path[i].chip[0], bb);
-                path[i].x[1] = xMapForChipLane1(path[i].chip[1], bb);
+                setPathX(i, 0, xMapForChipLane1(path[i].chip[0], bb));
+                setPathX(i, 1, xMapForChipLane1(path[i].chip[1], bb));
 
-                ch[path[i].chip[0]]
-                    .xStatus[xMapForChipLane1(path[i].chip[0], bb)] =
-                    path[i].net;
-                ch[path[i].chip[1]]
-                    .xStatus[xMapForChipLane1(path[i].chip[1], bb)] =
-                    path[i].net;
+                setChipXStatus(path[i].chip[0],
+                               xMapForChipLane1(path[i].chip[0], bb),
+                               path[i].net, "BBtoBB alt lane1 chip0");
+                setChipXStatus(path[i].chip[1],
+                               xMapForChipLane1(path[i].chip[1], bb),
+                               path[i].net, "BBtoBB alt lane1 chip1");
 
-                path[i].y[0] = yMapForNode(path[i].node1, path[i].chip[0]);
-                path[i].y[1] = yMapForNode(path[i].node2, path[i].chip[1]);
+                setPathY(i, 0, yMapForNode(path[i].node1, path[i].chip[0]));
+                setPathY(i, 1, yMapForNode(path[i].node2, path[i].chip[1]));
 
-                ch[path[i].chip[0]].yStatus[path[i].y[0]] = path[i].net;
-                ch[path[i].chip[1]].yStatus[path[i].y[1]] = path[i].net;
+                setChipYStatusSafe(path[i].chip[0], path[i].y[0], path[i].net,
+                                   "BBtoBB alt lane1 y0");
+                setChipYStatusSafe(path[i].chip[1], path[i].y[1], path[i].net,
+                                   "BBtoBB alt lane1 y1");
 
                 if (debugNTCC2) {
                   Serial.print("\n\r");
@@ -1664,37 +3037,42 @@ void resolveAltPaths(int allowStacking, int powerOnly, int noOrOnlyDuplicates) {
                 if (debugNTCC2) {
                   Serial.println("Gave up on L");
                 }
-                path[i].y[2] = 0;
-                path[i].y[3] = 0;
-                ch[bb].yStatus[0] = path[i].net;
+                setPathY(i, 2, 0);
+                setPathY(i, 3, 0);
+                setChipYStatusSafe(bb, 0, path[i].net,
+                                   "BBtoBB alt mixed hop y0");
                 //}
 
-                ch[bb].xStatus[xMapL0c0] = path[i].net;
-                ch[bb].xStatus[xMapL1c1] = path[i].net;
+                setChipXStatus(bb, xMapL0c0, path[i].net,
+                               "BBtoBB alt mixed hop x0");
+                setChipXStatus(bb, xMapL1c1, path[i].net,
+                               "BBtoBB alt mixed hop x1");
 
                 path[i].chip[2] = bb;
                 path[i].chip[3] = bb;
-                path[i].x[2] = xMapL0c0;
-                path[i].x[3] = xMapL1c1;
+                setPathX(i, 2, xMapL0c0);
+                setPathX(i, 3, xMapL1c1);
 
                 path[i].altPathNeeded = false;
                 altPathResolved = true;
 
-                path[i].x[0] = xMapForChipLane0(path[i].chip[0], bb);
-                path[i].x[1] = xMapForChipLane1(path[i].chip[1], bb);
+                setPathX(i, 0, xMapForChipLane0(path[i].chip[0], bb));
+                setPathX(i, 1, xMapForChipLane1(path[i].chip[1], bb));
 
-                ch[path[i].chip[0]]
-                    .xStatus[xMapForChipLane0(path[i].chip[0], bb)] =
-                    path[i].net;
-                ch[path[i].chip[1]]
-                    .xStatus[xMapForChipLane1(path[i].chip[1], bb)] =
-                    path[i].net;
+                setChipXStatus(path[i].chip[0],
+                               xMapForChipLane0(path[i].chip[0], bb),
+                               path[i].net, "BBtoBB alt mixed chip0");
+                setChipXStatus(path[i].chip[1],
+                               xMapForChipLane1(path[i].chip[1], bb),
+                               path[i].net, "BBtoBB alt mixed chip1");
 
-                path[i].y[0] = yMapForNode(path[i].node1, path[i].chip[0]);
-                path[i].y[1] = yMapForNode(path[i].node2, path[i].chip[1]);
+                setPathY(i, 0, yMapForNode(path[i].node1, path[i].chip[0]));
+                setPathY(i, 1, yMapForNode(path[i].node2, path[i].chip[1]));
 
-                ch[path[i].chip[0]].yStatus[path[i].y[0]] = path[i].net;
-                ch[path[i].chip[1]].yStatus[path[i].y[1]] = path[i].net;
+                setChipYStatusSafe(path[i].chip[0], path[i].y[0], path[i].net,
+                                   "BBtoBB alt mixed y0");
+                setChipYStatusSafe(path[i].chip[1], path[i].y[1], path[i].net,
+                                   "BBtoBB alt mixed y1");
 
                 path[i].sameChip = true;
                 if (debugNTCC2) {
@@ -1731,38 +3109,43 @@ void resolveAltPaths(int allowStacking, int powerOnly, int noOrOnlyDuplicates) {
                 //     if (debugNTCC2) {
                 //       Serial.println("Gave up on L");
                 //     }
-                path[i].y[2] = 0;
-                path[i].y[3] = 0;
-                ch[bb].yStatus[0] = path[i].net;
+                setPathY(i, 2, 0);
+                setPathY(i, 3, 0);
+                setChipYStatusSafe(bb, 0, path[i].net,
+                                   "BBtoBB alt mixed2 hop y0");
                 //}
 
-                ch[bb].xStatus[xMapL0c1] = path[i].net;
-                ch[bb].xStatus[xMapL1c0] = path[i].net;
+                setChipXStatus(bb, xMapL0c1, path[i].net,
+                               "BBtoBB alt mixed2 hop x0");
+                setChipXStatus(bb, xMapL1c0, path[i].net,
+                               "BBtoBB alt mixed2 hop x1");
 
                 path[i].chip[2] = bb;
                 path[i].chip[3] = bb;
-                path[i].x[2] = xMapL0c1;
-                path[i].x[3] = xMapL1c0;
+                setPathX(i, 2, xMapL0c1);
+                setPathX(i, 3, xMapL1c0);
                 // path[i].y[2] = -2;
                 // path[i].y[3] = -2;
                 path[i].altPathNeeded = false;
                 altPathResolved = true;
                 path[i].sameChip = true;
-                path[i].x[0] = xMapForChipLane1(path[i].chip[0], bb);
-                path[i].x[1] = xMapForChipLane0(path[i].chip[1], bb);
+                setPathX(i, 0, xMapForChipLane1(path[i].chip[0], bb));
+                setPathX(i, 1, xMapForChipLane0(path[i].chip[1], bb));
 
-                ch[path[i].chip[0]]
-                    .xStatus[xMapForChipLane1(path[i].chip[0], bb)] =
-                    path[i].net;
-                ch[path[i].chip[1]]
-                    .xStatus[xMapForChipLane0(path[i].chip[1], bb)] =
-                    path[i].net;
+                setChipXStatus(path[i].chip[0],
+                               xMapForChipLane1(path[i].chip[0], bb),
+                               path[i].net, "BBtoBB alt mixed2 chip0");
+                setChipXStatus(path[i].chip[1],
+                               xMapForChipLane0(path[i].chip[1], bb),
+                               path[i].net, "BBtoBB alt mixed2 chip1");
 
-                path[i].y[0] = yMapForNode(path[i].node1, path[i].chip[0]);
-                path[i].y[1] = yMapForNode(path[i].node2, path[i].chip[1]);
+                setPathY(i, 0, yMapForNode(path[i].node1, path[i].chip[0]));
+                setPathY(i, 1, yMapForNode(path[i].node2, path[i].chip[1]));
 
-                ch[path[i].chip[0]].yStatus[path[i].y[0]] = path[i].net;
-                ch[path[i].chip[1]].yStatus[path[i].y[1]] = path[i].net;
+                setChipYStatusSafe(path[i].chip[0], path[i].y[0], path[i].net,
+                                   "BBtoBB alt mixed2 y0");
+                setChipYStatusSafe(path[i].chip[1], path[i].y[1], path[i].net,
+                                   "BBtoBB alt mixed2 y1");
 
                 if (debugNTCC2) {
                   Serial.print("\n\r");
@@ -1904,8 +3287,10 @@ void resolveAltPaths(int allowStacking, int powerOnly, int noOrOnlyDuplicates) {
 
                   path[i].sameChip = true;
 
-                  ch[bb].xStatus[chip1Lane] = path[i].net;
-                  ch[bb].xStatus[chip2Lane] = path[i].net;
+                  setChipXStatus(bb, chip1Lane, path[i].net,
+                                 "NANOtoNANO alt hop x0");
+                  setChipXStatus(bb, chip2Lane, path[i].net,
+                                 "NANOtoNANO alt hop x1");
 
                   if (path[i].chip[0] != path[i].chip[1]) {
                     //                 Serial.println("VVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVV");
@@ -1918,34 +3303,37 @@ void resolveAltPaths(int allowStacking, int powerOnly, int noOrOnlyDuplicates) {
 
                     path[i].chip[2] = bb;
                     path[i].chip[3] = bb;
-                    path[i].y[2] = 0;
-                    path[i].y[3] = 0;
-                    ch[bb].yStatus[0] = path[i].net;
+                    setPathY(i, 2, 0);
+                    setPathY(i, 3, 0);
+                    setChipYStatusSafe(bb, 0, path[i].net,
+                                       "NANOtoNANO alt hop y0");
 
-                    path[i].x[2] = chip1Lane;
-                    path[i].x[3] = chip2Lane;
+                    setPathX(i, 2, chip1Lane);
+                    setPathX(i, 3, chip2Lane);
                   }
 
                   path[i].altPathNeeded = false;
                   altPathResolved = true;
 
-                  path[i].x[0] = xMapForNode(path[i].node1, path[i].chip[0]);
-                  path[i].x[1] = xMapForNode(path[i].node2, path[i].chip[1]);
-                  ch[path[i].chip[0]]
-                      .xStatus[xMapForNode(path[i].node1, path[i].chip[0])] =
-                      path[i].net;
-                  ch[path[i].chip[1]]
-                      .xStatus[xMapForNode(path[i].node2, path[i].chip[1])] =
-                      path[i].net;
+                  setPathX(i, 0, xMapForNode(path[i].node1, path[i].chip[0]));
+                  setPathX(i, 1, xMapForNode(path[i].node2, path[i].chip[1]));
+                  setChipXStatus(path[i].chip[0],
+                                 xMapForNode(path[i].node1, path[i].chip[0]),
+                                 path[i].net, "NANOtoNANO alt chip0");
+                  setChipXStatus(path[i].chip[1],
+                                 xMapForNode(path[i].node2, path[i].chip[1]),
+                                 path[i].net, "NANOtoNANO alt chip1");
 
-                  path[i].y[0] = bb;
-                  path[i].y[1] = bb;
+                  setPathY(i, 0, bb);
+                  setPathY(i, 1, bb);
 
                   //            Serial.print(">>>> path ");
                   // Serial.println(i);
 
-                  ch[path[i].chip[0]].yStatus[bb] = path[i].net;
-                  ch[path[i].chip[1]].yStatus[bb] = path[i].net;
+                  setChipYStatusSafe(path[i].chip[0], bb, path[i].net,
+                                     "NANOtoNANO alt y0");
+                  setChipYStatusSafe(path[i].chip[1], bb, path[i].net,
+                                     "NANOtoNANO alt y1");
 
                   if (debugNTCC2) {
                     Serial.println("\n\r");
@@ -2045,40 +3433,45 @@ void resolveAltPaths(int allowStacking, int powerOnly, int noOrOnlyDuplicates) {
                   // Serial.print("path :");
                   // Serial.println(i);
                   //  printPathsCompact();
-                  ch[bb].xStatus[chip1Lane] = path[i].net;
-                  ch[bb].xStatus[chip2Lane] = path[i].net;
-                  ch[bb].yStatus[0] = path[i].net;
+                  setChipXStatus(bb, chip1Lane, path[i].net,
+                                 "NANOtoNANO random bb hop x0");
+                  setChipXStatus(bb, chip2Lane, path[i].net,
+                                 "NANOtoNANO random bb hop x1");
+                  setChipYStatusSafe(bb, 0, path[i].net,
+                                     "NANOtoNANO random bb hop y0");
                   if (path[i].chip[0] !=
                       path[i].chip[1]) // this makes it not try to find a third
                   // chip if it doesn't need to
                   {
                     path[i].chip[2] = bb;
-                    path[i].x[2] = chip1Lane;
-                    path[i].x[3] = chip2Lane;
+                    setPathX(i, 2, chip1Lane);
+                    setPathX(i, 3, chip2Lane);
 
-                    path[i].y[2] = 0;
-                    path[i].y[3] = 0;
+                    setPathY(i, 2, 0);
+                    setPathY(i, 3, 0);
                   }
 
                   path[i].sameChip = true;
                   path[i].altPathNeeded = false;
                   altPathResolved = true;
 
-                  path[i].x[0] = xMapForNode(path[i].node1, path[i].chip[0]);
-                  path[i].x[1] = xMapForNode(path[i].node2, path[i].chip[1]);
-                  ch[path[i].chip[0]]
-                      .xStatus[xMapForNode(path[i].node1, path[i].chip[0])] =
-                      path[i].net;
-                  ch[path[i].chip[1]]
-                      .xStatus[xMapForNode(path[i].node2, path[i].chip[1])] =
-                      path[i].net;
+                  setPathX(i, 0, xMapForNode(path[i].node1, path[i].chip[0]));
+                  setPathX(i, 1, xMapForNode(path[i].node2, path[i].chip[1]));
+                  setChipXStatus(path[i].chip[0],
+                                 xMapForNode(path[i].node1, path[i].chip[0]),
+                                 path[i].net, "NANOtoNANO random bb chip0");
+                  setChipXStatus(path[i].chip[1],
+                                 xMapForNode(path[i].node2, path[i].chip[1]),
+                                 path[i].net, "NANOtoNANO random bb chip1");
                   // Serial.print(">>>> path ");
                   // Serial.println(i);
 
-                  path[i].y[0] = bb;
-                  path[i].y[1] = bb;
-                  ch[path[i].chip[0]].yStatus[bb] = path[i].net;
-                  ch[path[i].chip[1]].yStatus[bb] = path[i].net;
+                  setPathY(i, 0, bb);
+                  setPathY(i, 1, bb);
+                  setChipYStatusSafe(path[i].chip[0], bb, path[i].net,
+                                     "NANOtoNANO random bb y0");
+                  setChipYStatusSafe(path[i].chip[1], bb, path[i].net,
+                                     "NANOtoNANO random bb y1");
 
                   if (debugNTCC2) {
                     Serial.print("\n\r");
@@ -2276,16 +3669,20 @@ void resolveAltPaths(int allowStacking, int powerOnly, int noOrOnlyDuplicates) {
                 if (freeLane == 0) {
                   path[i].chip[2] = bb;
                   path[i].chip[3] = bb;
-                  ch[path[i].chip[0]].xStatus[xMapL0c0] = path[i].net;
-                  ch[path[i].chip[1]].xStatus[SFnode] = path[i].net;
+                  setChipXStatus(path[i].chip[0], xMapL0c0, path[i].net,
+                                 "BBtoSF alt lane0 chip0");
+                  setChipXStatus(path[i].chip[1], SFnode, path[i].net,
+                                 "BBtoSF alt lane0 chip1");
 
-                  ch[path[i].chip[2]].xStatus[xMapL0c1] = path[i].net;
-                  ch[path[i].chip[2]].xStatus[xMapBB] = path[i].net;
+                  setChipXStatus(path[i].chip[2], xMapL0c1, path[i].net,
+                                 "BBtoSF alt lane0 hop x0");
+                  setChipXStatus(path[i].chip[2], xMapBB, path[i].net,
+                                 "BBtoSF alt lane0 hop x1");
 
-                  path[i].x[0] = xMapL0c0;
-                  path[i].x[1] = SFnode;
+                  setPathX(i, 0, xMapL0c0);
+                  setPathX(i, 1, SFnode);
 
-                  path[i].x[2] = xMapL0c1;
+                  setPathX(i, 2, xMapL0c1);
                   // Serial.print("\n\r\t\t\t\txBB: ");
                   // Serial.println(bb);
 
@@ -2293,48 +3690,60 @@ void resolveAltPaths(int allowStacking, int powerOnly, int noOrOnlyDuplicates) {
                   // Serial.println(xMapBB);
                   path[i].chip[3] = path[i].chip[2];
 
-                  path[i].x[3] = xMapBB;
+                  setPathX(i, 3, xMapBB);
 
-                  path[i].y[0] = yMapForNode(path[i].node1, path[i].chip[0]);
-                  path[i].y[1] = yMapSF;
-                  path[i].y[2] = 0;
-                  path[i].y[3] = 0;
-                  ch[bb].yStatus[0] = path[i].net;
+                  setPathY(i, 0, yMapForNode(path[i].node1, path[i].chip[0]));
+                  setPathY(i, 1, yMapSF);
+                  setPathY(i, 2, 0);
+                  setPathY(i, 3, 0);
+                  setChipYStatusSafe(bb, 0, path[i].net,
+                                     "BBtoSF alt lane0 bb y0");
 
-                  ch[path[i].chip[0]].yStatus[path[i].y[0]] = path[i].net;
+                  setChipYStatusSafe(path[i].chip[0], path[i].y[0], path[i].net,
+                                     "BBtoSF alt lane0 chip0 y0");
 
-                  ch[path[i].chip[1]].yStatus[path[i].y[1]] = path[i].net;
-                  ch[path[i].chip[2]].yStatus[0] = path[i].net;
+                  setChipYStatusSafe(path[i].chip[1], path[i].y[1], path[i].net,
+                                     "BBtoSF alt lane0 chip1 y1");
+                  setChipYStatusSafe(path[i].chip[2], 0, path[i].net,
+                                     "BBtoSF alt lane0 hop y0");
 
                   path[i].sameChip = true;
                 } else if (freeLane == 1) {
                   path[i].chip[2] = bb;
                   path[i].chip[3] = bb;
-                  ch[path[i].chip[0]].xStatus[xMapL1c0] = path[i].net;
-                  ch[path[i].chip[1]].xStatus[SFnode] = path[i].net;
+                  setChipXStatus(path[i].chip[0], xMapL1c0, path[i].net,
+                                 "BBtoSF alt lane1 chip0");
+                  setChipXStatus(path[i].chip[1], SFnode, path[i].net,
+                                 "BBtoSF alt lane1 chip1");
 
-                  ch[path[i].chip[2]].xStatus[xMapL1c1] = path[i].net;
-                  ch[path[i].chip[2]].xStatus[xMapBB] = path[i].net;
+                  setChipXStatus(path[i].chip[2], xMapL1c1, path[i].net,
+                                 "BBtoSF alt lane1 hop x0");
+                  setChipXStatus(path[i].chip[2], xMapBB, path[i].net,
+                                 "BBtoSF alt lane1 hop x1");
 
-                  path[i].x[0] = xMapL1c0;
-                  path[i].x[1] = SFnode;
+                  setPathX(i, 0, xMapL1c0);
+                  setPathX(i, 1, SFnode);
 
-                  path[i].x[2] = xMapL1c1;
+                  setPathX(i, 2, xMapL1c1);
                   xMapBB = xMapForChipLane0(path[i].chip[2], path[i].chip[1]);
-                  path[i].x[3] = xMapBB;
+                  setPathX(i, 3, xMapBB);
 
                   path[i].chip[3] = path[i].chip[2];
 
-                  path[i].y[0] = yMapForNode(path[i].node1, path[i].chip[0]);
-                  path[i].y[1] = yMapSF;
-                  path[i].y[2] = 0;
-                  path[i].y[3] = 0;
-                  ch[bb].yStatus[0] = path[i].net;
+                  setPathY(i, 0, yMapForNode(path[i].node1, path[i].chip[0]));
+                  setPathY(i, 1, yMapSF);
+                  setPathY(i, 2, 0);
+                  setPathY(i, 3, 0);
+                  setChipYStatusSafe(bb, 0, path[i].net,
+                                     "BBtoSF alt lane1 bb y0");
 
-                  ch[path[i].chip[0]].yStatus[path[i].y[0]] = path[i].net;
+                  setChipYStatusSafe(path[i].chip[0], path[i].y[0], path[i].net,
+                                     "BBtoSF alt lane1 chip0 y0");
 
-                  ch[path[i].chip[1]].yStatus[path[i].y[1]] = path[i].net;
-                  ch[path[i].chip[2]].yStatus[0] = path[i].net;
+                  setChipYStatusSafe(path[i].chip[1], path[i].y[1], path[i].net,
+                                     "BBtoSF alt lane1 chip1 y1");
+                  setChipYStatusSafe(path[i].chip[2], 0, path[i].net,
+                                     "BBtoSF alt lane1 hop y0");
                 }
 
                 foundPath = 1;
@@ -2514,26 +3923,8 @@ void couldntFindPath(int forcePrint) {
 }
 
 void resolveUncommittedHops2(void) {}
-
-void resolveUncommittedHops(int allowStacking, int powerOnly,
-                            int noOrOnlyDuplicates) { /// fix this
-  // return;
-  if (debugNTCC2) {
-    Serial.print("\n\r");
-    Serial.print("resolveUncommittedHops()");
-    Serial.print("\n\r");
-  }
-
-  // return;
-  /// return;
-
-  // printPathsCompact();
-  // printChipStatus();
-
-  int freeXSearchOrder[12][16] = {
-
-      // this disallows bounces from sf x pins that would cause problems (5V,
-      // GND, etc.)
+  const int freeXSearchOrder[12][16] = {
+      // this disallows bounces from sf x pins that would cause problems (5V, GND, etc.)
       {-1, -1, 2, 3, 4, 5, 6, 7, 8, -1, 10, 11, 12, -1, 14, 15},        // a
       {0, 1, -1, -1, 4, 5, 6, 7, 8, 9, 10, -1, 12, 13, 14, -1},         // b
       {0, 1, 2, 3, -1, -1, 6, 7, 8, -1, 10, 11, 12, -1, 14, 15},        // c
@@ -2548,405 +3939,429 @@ void resolveUncommittedHops(int allowStacking, int powerOnly,
       {-1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, 12, 13, 14, -1}, // l
   };
 
-  // Allocate arrays on heap instead of stack to prevent stack overflow
-  int *pathsWithSameXChips = (int *)malloc(numberOfPaths * sizeof(int));
-  int *pathsWithSameYChips = (int *)malloc(numberOfPaths * sizeof(int));
-
-  // Check for allocation failure
-  if (pathsWithSameXChips == NULL || pathsWithSameYChips == NULL) {
-    if (debugNTCC2) {
-      Serial.println("Memory allocation failed in resolveUncommittedHops()");
-    }
-    // Clean up any successful allocations
-    if (pathsWithSameXChips != NULL)
-      free(pathsWithSameXChips);
-    if (pathsWithSameYChips != NULL)
-      free(pathsWithSameYChips);
-    return;
+void resolveUncommittedHops(int allowStacking, int powerOnly,
+                            int noOrOnlyDuplicates) {
+  if (debugNTCC2) {
+    Serial.println("\nresolveUncommittedHops()");
   }
 
+
   for (int i = 0; i < numberOfPaths; i++) {
-    if (powerOnly == 1 && path[i].net > 5) {
-      if (path[i].duplicate == 1) {
-      }
-
+    // Filter paths based on powerOnly and duplicates flags
+    if (powerOnly == 1 && (path[i].net > 5 || path[i].duplicate == 1)) {
       continue;
     }
-    if (powerOnly == 1 && path[i].duplicate == 1) {
-      continue;
-    }
-
     if (noOrOnlyDuplicates == 1 && path[i].duplicate == 0) {
       continue;
     }
-
     if (noOrOnlyDuplicates == 0 && path[i].duplicate == 1) {
       continue;
     }
-    // printPathsCompact();
-    // printChipStatus();
-    pathsWithSameXChips[i] = -1;
-    pathsWithSameYChips[i] = -1;
-    int sameChips[2][4] = {//[x,y][chip]
-                           {-1, -1, -1, -1},
-                           {-1, -1, -1, -1}};
-    int xFlag = -1;
-    int yFlag = -1;
 
-    for (int chip = 0; chip < 4; chip++) {
-      if (path[i].chip[chip] != -1) {
-        for (int chip2 = 0; chip2 < 4; chip2++) {
-          if ((path[i].chip[chip] == path[i].chip[chip2] && chip != chip2) ||
-              (chip == 2 &&
-               path[i].chip[2] !=
-                   -1)) //(path[i].x[3] != -1 || path[i].y[3] != -1)) )
-          {
-            for (int xy = 0; xy < 6; xy++) {
-              if (path[i].x[xy] == -2) {
-                xFlag = 1;
-              }
-              if (path[i].y[xy] == -2) {
-                yFlag = 1;
-              }
-            }
+    // Check if this path needs resolution
+    bool hasUnresolvedY = false;
+    bool hasUnresolvedX = false;
 
-            if (xFlag == 1) {
-              sameChips[0][chip] = path[i].chip[chip];
-              //  Serial.print("sameChips[0][chip]: ");
-              //  Serial.println(sameChips[0][chip]);
+    for (int checkY = 0; checkY < 4; checkY++) {
+      if (path[i].y[checkY] == -2) {
+        hasUnresolvedY = true;
+        break;
+      }
+    }
 
-              pathsWithSameXChips[i] = 1;
-            }
-            if (yFlag == 1) {
-              sameChips[1][chip] = path[i].chip[chip];
-              //  Serial.print("sameChips[1][chip]: ");
-              //  Serial.println(sameChips[1][chip]);
+    for (int checkX = 0; checkX < 4; checkX++) {
+      if (path[i].x[checkX] == -2) {
+        hasUnresolvedX = true;
+        break;
+      }
+    }
 
-              pathsWithSameYChips[i] = 1;
-            }
+    // Skip paths that don't need resolution
+    if (!hasUnresolvedY && !hasUnresolvedX) {
+      continue;
+    }
+
+    if (debugNTCC2) {
+      Serial.print("Path[");
+      Serial.print(i);
+      Serial.print("] net=");
+      Serial.print(path[i].net);
+      Serial.print(" has unresolved positions: ");
+      if (hasUnresolvedY) Serial.print("Y ");
+      if (hasUnresolvedX) Serial.print("X ");
+      Serial.println();
+    }
+
+    // Save state before making changes
+    saveRoutingState(i);
+    bool allAssignmentsSucceeded = true;
+
+    // Handle X position assignments
+    if (hasUnresolvedX) {
+      // For same-chip connections, find one X position that works for both nodes
+      if (path[i].sameChip && path[i].chip[0] == path[i].chip[1] && 
+          path[i].x[0] == -2 && path[i].x[1] == -2) {
+        
+        int targetChip = path[i].chip[0];
+        int sharedX = -1;
+        
+        // Find a free X position that can be used for both nodes on the same chip
+        for (int searchIdx = 0; searchIdx < 16; searchIdx++) {
+          if (freeXSearchOrder[targetChip][searchIdx] == -1) {
+            continue;
+          }
+          
+          int testX = freeXSearchOrder[targetChip][searchIdx];
+          if (freeOrSameNetX(targetChip, testX, path[i].net, allowStacking)) {
+            sharedX = testX;
+            break;
           }
         }
-      }
-    }
-
-    // for (int t = 0; t < 4; t++)
-    // {
-    //     Serial.print(sameChips[0][t]);
-    //     Serial.print(", ");
-    //     Serial.print(sameChips[1][t]);
-    //     Serial.println("  ");
-    // }
-    // Serial.println("  \n\r");
-
-    if (pathsWithSameXChips[i] == 1 || pathsWithSameYChips[i] == 1) {
-      if (debugNTCC2) {
-        Serial.print("\n\r");
-        Serial.print(i);
-        Serial.print("\tsame chips: x");
-      }
-      for (int chip = 0; chip < 4; chip++) {
-        if (debugNTCC2) {
-          Serial.print(chipNumToChar(sameChips[0][chip]));
-          Serial.print(", ");
+        
+        if (sharedX != -1) {
+          // Assign the same X position to both positions for same-chip connection
+          bool success = setPathX(i, 0, sharedX) && setPathX(i, 1, sharedX);
+          bool chipSuccess = false;
+          if (success) {
+            chipSuccess = setChipXStatus(targetChip, sharedX, path[i].net, "resolveUncommittedHops same-chip X");
+          }
+          
+          if (!success || !chipSuccess) {
+            allAssignmentsSucceeded = false;
+          } else {
+            if (debugNTCC2) {
+              Serial.print("  Assigned shared X=");
+              Serial.print(sharedX);
+              Serial.print(" to same-chip path[");
+              Serial.print(i);
+              Serial.print("] on chip ");
+              Serial.println(chipNumToChar(targetChip));
+            }
+          }
+        } else {
+          allAssignmentsSucceeded = false;
+          if (debugNTCC2) {
+            Serial.print("ERROR: No free shared X found for same-chip path[");
+            Serial.print(i);
+            Serial.println("]");
+          }
         }
-      }
-      if (debugNTCC2) {
-        Serial.print("\ty");
-      }
-      for (int chip = 0; chip < 4; chip++) {
-        if (debugNTCC2) {
-          Serial.print(chipNumToChar(sameChips[1][chip]));
-          Serial.print(", ");
-        }
-      }
-      if (debugNTCC2) {
-        Serial.println(" ");
-      }
-    }
-
-    if (pathsWithSameXChips[i] == 1 || pathsWithSameYChips[i] == 1) {
-      if (pathsWithSameXChips[i] == 1) {
-        int freeX = -1;
-        int otherChip = -1;
-        int otherChipX = -1;
-        int lastFreeX = -1;
-
-        int foundChipXs[2][3] = {{-1, -1, -1}, {-1, -1, -1}};
-
-        for (int chip = 0; chip < 3; chip++) {
-          if (sameChips[0][chip] != -1) // && sameChips[0][chip] > 8)
-          {
-            for (int freeXidx = 0; freeXidx < 16; freeXidx++) {
-              int otherChipXStatus = 99;
-
-              if (freeXSearchOrder[sameChips[0][chip]][freeXidx] == -1) {
+      } else {
+        // Regular X position assignment for positions that still need resolution
+        for (int pos = 0; pos < 4; pos++) {
+          if (path[i].chip[pos] != -1 && path[i].x[pos] == -2) {
+            int freeX = -1;
+            
+            // Find free X position using search order
+            for (int searchIdx = 0; searchIdx < 16; searchIdx++) {
+              if (freeXSearchOrder[path[i].chip[pos]][searchIdx] == -1) {
                 continue;
               }
-
-              // if (ch[sameChips[0][chip]].xStatus
-              //             [freeXSearchOrder[sameChips[0][chip]][freeXidx]] ==
-              //         -1 ||
-              //     ch[sameChips[0][chip]].xStatus
-              //             [freeXSearchOrder[sameChips[0][chip]][freeXidx]] ==
-              //         path[i].net) {
-
-              if (freeOrSameNetX(sameChips[0][chip],
-                                 freeXSearchOrder[sameChips[0][chip]][freeXidx],
-                                 path[i].net, allowStacking) == true) {
-                otherChip =
-                    ch[sameChips[0][chip]]
-                        .xMap[freeXSearchOrder[sameChips[0][chip]][freeXidx]];
-                int thisChip = sameChips[0][chip];
-                // Serial.print("other Chip = ");
-                // Serial.println(chipNumToChar(otherChip));
-                int otherChipFree = 0;
-                otherChipX = -1;
-
-                for (int xOtherCheck = 0; xOtherCheck < 16; xOtherCheck++) {
-                  //             int lane = -1;
-                  int lane = -1;
-
-                  if (sameChips[0][chip] < 8) {
-                    otherChip =
-                        ch[thisChip].xMap[freeXSearchOrder[thisChip][freeXidx]];
-
-                    if (freeXidx % 2 == 0) {
-                      lane = 0;
-                    } else {
-                      lane = 1;
-                    }
-
-                    if (lane == 1) {
-                      otherChipX = xMapForChipLane1(otherChip, thisChip);
-                    } else if (lane == 0) {
-                      otherChipX = xMapForChipLane0(otherChip, thisChip);
-                    }
-                    // Serial.print("otherChipX = ");
-                    // Serial.println(otherChipX);
-
-                    otherChipXStatus = ch[otherChip].xStatus[otherChipX];
-                  }
-
-                  // if (ch[otherChip].xMap[xOtherCheck] ==
-                  // sameChips[0][chip])
-                  // {
-                  //     if (ch[otherChip].xStatus[xOtherCheck] == -1 ||
-                  //     ch[otherChip].xStatus[xOtherCheck] == path[i].net)
-                  //     {
-
-                  //     }
-                  // }
-                }
-                if ((otherChipXStatus == -1 ||
-                     (otherChipXStatus == path[i].net && allowStacking == 1))) {
-                  freeX = freeXSearchOrder[sameChips[0][chip]][freeXidx];
-                  // lastFreeX = freeX;
-                  //  ch[otherChip].xStatus[otherChipX] = path[i].net;
-                  break;
-                }
-              }
-            }
-
-            // if (chip >= 2)
-            // {
-            //     path[i].x[2] = freeX;
-            //     path[i].x[3] = freeX;
-            //     ch[sameChips[0][chip]].xStatus[freeX] = path[i].net;
-            // }
-            // else
-            // {
-            // Serial.print("freeX = ");
-            /// Serial.println(freeX);
-            path[i].x[chip] = freeX;
-
-            foundChipXs[0][0] = sameChips[0][chip];
-            foundChipXs[0][1] = freeX;
-
-            foundChipXs[1][0] = otherChip;
-            foundChipXs[1][1] = otherChipX;
-
-            // ch[otherChip].xStatus[otherChipX] = path[i].net;
-
-            // ch[sameChips[0][chip]].xStatus[freeX] = path[i].net;
-
-            // Serial.print("path: ");
-            // Serial.print(i);
-            // Serial.print("\nfreeX: ");
-            // Serial.print(freeX);
-            // Serial.print("  status: ");
-            // Serial.print(ch[sameChips[0][chip]].xStatus[freeX]);
-            // Serial.println(" ");
-            //}
-          }
-        }
-
-        // for (int i = 0; i < 2; i++) {
-        //   Serial.print("foundChipXs[");
-        //   Serial.print(i);
-        //   Serial.print("][0]: ");
-        //   Serial.println(foundChipXs[i][0]);
-        //   Serial.print("foundChipXs[");
-        //   Serial.print(i);
-        //   Serial.print("][1]: ");
-        //   Serial.println(foundChipXs[i][1]);
-        // }
-
-        ch[foundChipXs[0][0]].xStatus[foundChipXs[0][1]] = path[i].net;
-
-        ch[foundChipXs[1][0]].xStatus[foundChipXs[1][1]] = path[i].net;
-      }
-
-      // continue; /// the fucked part is in the y
-      if (pathsWithSameYChips[i] == 1) {
-        // int chipPairs[2] =  {-1, -1};
-        // for (int t = 0; t < 4; t++)
-        // {
-        //     Serial.print("\n\n\r");
-        //     Serial.print(sameChips[0][t]);
-        //     Serial.print(", ");
-        //     Serial.print(sameChips[1][t]);
-        //     Serial.println("  ");
-
-        //     if (sameChips[0][t] != -1 && sameChips[1][t] != -1)
-        //     {
-        //         if (sameChips[0][t]!= chipPairs[0] )
-        //         {
-        //             chipPairs[0] = sameChips[0][t];
-        //             chipPairs[1] = sameChips[1][t];
-        //             break;
-        //         }
-
-        //     }
-        int chipPairs[2] = {-1, -1};
-        for (int t = 0; t < 4; t++) {
-          if (sameChips[1][t] != -1) {
-            bool isUnique = true;
-            for (int i = 0; i < 2; i++) {
-              if (sameChips[1][t] == chipPairs[i]) {
-                isUnique = false;
+              
+              int testX = freeXSearchOrder[path[i].chip[pos]][searchIdx];
+              if (freeOrSameNetX(path[i].chip[pos], testX, path[i].net, allowStacking)) {
+                freeX = testX;
                 break;
               }
             }
-            if (isUnique) {
-              for (int i = 0; i < 2; i++) {
-                if (chipPairs[i] == -1) {
-                  chipPairs[i] = sameChips[1][t];
-                  break;
-                }
+
+            if (freeX != -1) {
+              bool pathXSuccess = setPathX(i, pos, freeX);
+              bool chipXSuccess = false;
+              if (pathXSuccess) {
+                chipXSuccess = setChipXStatus(path[i].chip[pos], freeX, path[i].net, "resolveUncommittedHops X");
               }
+
+              if (!pathXSuccess || !chipXSuccess) {
+                allAssignmentsSucceeded = false;
+                break;
+              }
+
+              if (debugNTCC2) {
+                Serial.print("  Assigned X=");
+                Serial.print(freeX);
+                Serial.print(" to position ");
+                Serial.print(pos);
+                Serial.print(" chip ");
+                Serial.println(chipNumToChar(path[i].chip[pos]));
+              }
+            } else {
+              allAssignmentsSucceeded = false;
+              if (debugNTCC2) {
+                Serial.print("ERROR: No free X found for position ");
+                Serial.print(pos);
+                Serial.println();
+              }
+              break;
             }
           }
         }
+      }
+    }
 
-        // Serial.print("\n\n\rchipPairs[0]: ");
-        // Serial.println(chipPairs[0]);
-        // Serial.print("chipPairs[1]: ");
-        // Serial.println(chipPairs[1]);
-        // Serial.print("sameChips[1][0]: ");
-        // Serial.println(sameChips[1][0]);
-        // Serial.print("sameChips[1][1]: ");
-        // Serial.println(sameChips[1][1]);
-        // Serial.print("sameChips[1][2]: ");
-        // Serial.println(sameChips[1][2]);
-        // Serial.print("sameChips[1][3]: ");
-        // Serial.println(sameChips[1][3]);
+    // Handle Y position assignments
+    if (allAssignmentsSucceeded && hasUnresolvedY) {
+      // Check if this is an ijkl inter-chip path
+      bool isIjklPath = false;
+      if (path[i].chip[0] != path[i].chip[1] && path[i].chip[2] != -1 && path[i].chip[3] != -1) {
+        // Check if positions 0&2 are same chip and positions 1&3 are same chip
+        if (path[i].chip[0] == path[i].chip[2] && path[i].chip[1] == path[i].chip[3]) {
+          isIjklPath = true;
+          if (debugNTCC2) {
+            Serial.print("Detected ijkl inter-chip path[");
+            Serial.print(i);
+            Serial.print("] - positions 0&2 on chip ");
+            Serial.print(chipNumToChar(path[i].chip[0]));
+            Serial.print(", positions 1&3 on chip ");
+            Serial.println(chipNumToChar(path[i].chip[1]));
+          }
+        }
+      }
 
-        // Serial.println("  !!!!!!!!!!!!!!!!!!!!!!!!!!!!!\n\r");
-        // printPathsCompact();
-        // printChipStatus();
-        for (int pairs = 0; pairs < 2; pairs++) {
-          int freeY = -1;
-          for (int chip = 0; chip < 4; chip++) {
-            if (sameChips[1][chip] != -1 &&
-                sameChips[1][chip] == chipPairs[pairs]) {
-              for (int freeYsearch = 0; freeYsearch < 8;
-                   freeYsearch++) ////////// make it search l chip connections
-              /// first
-              {
-                if (sameChips[1][chip] < 8 && freeYsearch != 0) {
-                  // Serial.print("continued chip: ");
-                  // Serial.print(sameChips[1][chip]);
-                  // Serial.print("\tfreeYsearch: ");
-                  // Serial.println(freeYsearch);
+      if (isIjklPath) {
+        // Handle ijkl paths: assign same Y to chip pairs (0&2, 1&3)
+        int chipPairs[2][2] = {{0, 2}, {1, 3}}; // {pos0, pos2} and {pos1, pos3}
+        
+        for (int pairIdx = 0; pairIdx < 2; pairIdx++) {
+          int pos1 = chipPairs[pairIdx][0];
+          int pos2 = chipPairs[pairIdx][1];
+          
+          // Check if this chip pair needs Y resolution
+          bool needsY = (path[i].chip[pos1] != -1 && path[i].y[pos1] == -2) ||
+                        (path[i].chip[pos2] != -1 && path[i].y[pos2] == -2);
+          
+          if (needsY) {
+            int targetChip = path[i].chip[pos1]; // Both positions should be same chip
+            int freeY = -1;
+            
+            for (int testY = 0; testY < 8; testY++) {
+              // For breadboard chips, only allow Y=0
+              if (targetChip < 8 && testY != 0) {
+                continue;
+              }
 
-                  continue;
+              // Check if this Y position is free
+              if (!freeOrSameNetY(targetChip, testY, path[i].net, allowStacking)) {
+                continue;
+              }
+
+              // For special function chips, check breadboard chip X connection
+              if (targetChip >= 8) {
+                int bbChipX = xMapForChipLane0(testY, targetChip);
+                if (bbChipX != -1) {
+                  if (!freeOrSameNetX(testY, bbChipX, path[i].net, allowStacking)) {
+                    continue;
+                  }
                 }
+              }
 
-                if ((ch[sameChips[1][chip]].yStatus[freeYsearch] == -1 ||
-                     ch[sameChips[1][chip]].yStatus[freeYsearch] ==
-                         path[i].net)) {
-                  // if (freeOrSameNetY(sameChips[1][chip], freeYsearch,
-                  // path[i].net,
-                  //                    allowStacking) == true) {
-                  // Serial.print("pairs: ");
-                  // Serial.println(pairs);
-                  // Serial.print("chiploop: ");
-                  // Serial.println(chip);
-                  // Serial.print("chip: ");
-                  // Serial.println(sameChips[1][chip]);
-                  // Serial.print("ch[sameChips[1][");
-                  // Serial.print(chip);
-                  // Serial.print("]].yStatus[");
-                  // Serial.print(freeYsearch);
-                  // Serial.print("]: ");
-                  // Serial.println(ch[sameChips[1][chip]].yStatus[freeYsearch]);
+              freeY = testY;
+              break;
+            }
 
-                  freeY = freeYsearch;
-                  //  Serial.print("freeY: ");
-                  //  Serial.println(freeY);
+            if (freeY != -1) {
+              // Assign same Y to both positions in the pair
+              bool success = true;
+              
+              if (path[i].y[pos1] == -2) {
+                success &= setPathY(i, pos1, freeY);
+              }
+              if (path[i].y[pos2] == -2) {
+                success &= setPathY(i, pos2, freeY);
+              }
+              
+              bool chipYSuccess = setChipYStatusSafe(targetChip, freeY, path[i].net, "resolveUncommittedHops ijkl Y");
+              
+              if (!success || !chipYSuccess) {
+                allAssignmentsSucceeded = false;
+                if (debugNTCC2) {
+                  Serial.print("ERROR: Failed ijkl Y assignment for chip ");
+                  Serial.println(chipNumToChar(targetChip));
+                }
+                break;
+              }
 
-                  if (path[i].y[chip] == -2) {
-                    // Serial.print("path: ");
-                    // Serial.print(i);
-                    // Serial.print("\n\rchip: ");
-                    // printChipNumToChar(chip);
-                    // Serial.print("\n\rfreeYsearch: ");
-                    // Serial.print(freeYsearch);
-                    // Serial.print("\n\rstatus: ");
-                    // Serial.print(ch[sameChips[1][chip]].yStatus[freeYsearch]);
-                    // Serial.println(" \n\n\r");
-                    // Serial.print("\n\n\rfreeY After search : ");
-                    // Serial.println(freeY);
-
-                    path[i].y[chip] = freeY;
-                    ch[sameChips[1][chip]].yStatus[freeY] = path[i].net;
-
-                    int otherChipX =
-                        xMapForChipLane0(freeY, sameChips[1][chip]);
-                    // Serial.print("otherChipX: ");
-                    // Serial.println(otherChipX);
-                    ch[freeY].xStatus[otherChipX] = path[i].net;
-
-                    ch[path[i].chip[0]].yStatus[freeY] = path[i].net;
-                    ch[path[i].chip[1]].yStatus[freeY] = path[i].net;
-
-                    // Serial.print("\t ");
-                    // Serial.print(path[i].y[chip]);
-
-                    // Serial.print("\t ");
-                    // Serial.print("sameChips[1][chip]: ");
-                    // printChipNumToChar(sameChips[1][chip]);
+              // Update breadboard chip X status for special function chips
+              if (targetChip >= 8) {
+                int bbChipX = xMapForChipLane0(freeY, targetChip);
+                if (bbChipX != -1) {
+                  bool xSuccess = setChipXStatus(freeY, bbChipX, path[i].net, "resolveUncommittedHops ijkl BB X");
+                  if (!xSuccess) {
+                    allAssignmentsSucceeded = false;
+                    if (debugNTCC2) {
+                      Serial.print("ERROR: Failed ijkl BB X assignment for chip ");
+                      Serial.println(chipNumToChar(freeY));
+                    }
                     break;
                   }
-
-                  /// Serial.println(" \r\n");
-                  continue;
-                  // break;
                 }
               }
+
+              if (debugNTCC2) {
+                Serial.print("  Assigned Y=");
+                Serial.print(freeY);
+                Serial.print(" to ijkl chip pair: positions ");
+                Serial.print(pos1);
+                Serial.print("&");
+                Serial.print(pos2);
+                Serial.print(" on chip ");
+                Serial.println(chipNumToChar(targetChip));
+              }
+            } else {
+              allAssignmentsSucceeded = false;
+              if (debugNTCC2) {
+                Serial.print("ERROR: No free Y found for ijkl chip ");
+                Serial.println(chipNumToChar(targetChip));
+              }
+              break;
             }
           }
         }
+      } else {
+        // Handle regular paths: assign Y to each position independently
+        for (int pos = 0; pos < 4; pos++) {
+          if (path[i].chip[pos] != -1 && path[i].y[pos] == -2) {
+            int freeY = -1;
+            
+            for (int testY = 0; testY < 8; testY++) {
+              // For breadboard chips, only allow Y=0
+              if (path[i].chip[pos] < 8 && testY != 0) {
+                continue;
+              }
+
+              // Check if this Y position is free
+              if (!freeOrSameNetY(path[i].chip[pos], testY, path[i].net, allowStacking)) {
+                continue;
+              }
+
+              // For special function chips, check breadboard chip X connection
+              if (path[i].chip[pos] >= 8) {
+                int bbChipX = xMapForChipLane0(testY, path[i].chip[pos]);
+                if (bbChipX != -1) {
+                  if (!freeOrSameNetX(testY, bbChipX, path[i].net, allowStacking)) {
+                    continue;
+                  }
+                }
+              }
+
+              freeY = testY;
+              break;
+            }
+
+            if (freeY != -1) {
+              bool pathYSuccess = setPathY(i, pos, freeY);
+              bool chipYSuccess = false;
+              if (pathYSuccess) {
+                chipYSuccess = setChipYStatusSafe(path[i].chip[pos], freeY, path[i].net, "resolveUncommittedHops Y");
+              }
+
+              if (!pathYSuccess || !chipYSuccess) {
+                allAssignmentsSucceeded = false;
+                break;
+              }
+
+              // Update breadboard chip X status for special function chips
+              if (path[i].chip[pos] >= 8) {
+                int bbChipX = xMapForChipLane0(freeY, path[i].chip[pos]);
+                if (bbChipX != -1) {
+                  bool xSuccess = setChipXStatus(freeY, bbChipX, path[i].net, "resolveUncommittedHops BB X for SF");
+                  if (!xSuccess) {
+                    allAssignmentsSucceeded = false;
+                    break;
+                  }
+                }
+              }
+
+              if (debugNTCC2) {
+                Serial.print("  Assigned Y=");
+                Serial.print(freeY);
+                Serial.print(" to position ");
+                Serial.print(pos);
+                Serial.print(" chip ");
+                Serial.println(chipNumToChar(path[i].chip[pos]));
+              }
+            } else {
+              allAssignmentsSucceeded = false;
+              if (debugNTCC2) {
+                Serial.print("ERROR: No free Y found for position ");
+                Serial.print(pos);
+                Serial.println();
+              }
+              break;
+            }
+          }
+        }
+      }
+    }
+
+    // Commit or restore based on success
+    if (allAssignmentsSucceeded) {
+      commitRoutingState();
+      if (debugNTCC2) {
+        Serial.print("SUCCESS: All positions resolved for path[");
+        Serial.print(i);
+        Serial.println("]");
+      }
+    } else {
+      restoreRoutingState(i);
+      path[i].altPathNeeded = true;
+      if (debugNTCC2) {
+        Serial.print("FAILED: Position assignments failed for path[");
+        Serial.print(i);
+        Serial.println("], state restored");
       }
     }
   }
 
-  // Clean up heap-allocated arrays
-  free(pathsWithSameXChips);
-  free(pathsWithSameYChips);
-
-  //  printPathsCompact();
-  // printChipStatus();
+  // Debug: Show final path states
+  if (debugNTCC2) {
+    Serial.println("Final path Y values after resolveUncommittedHops:");
+    int unresolvedCount = 0;
+    for (int i = 0; i < numberOfPaths; i++) {
+      bool hasNegTwo = false;
+      for (int j = 0; j < 4; j++) {
+        if (path[i].y[j] == -2) {
+          hasNegTwo = true;
+          break;
+        }
+      }
+      if (hasNegTwo) {
+        unresolvedCount++;
+        Serial.print("  path[");
+        Serial.print(i);
+        Serial.print("] net=");
+        Serial.print(path[i].net);
+        Serial.print(" (");
+        printNodeOrName(path[i].node1);
+        Serial.print("-");
+        printNodeOrName(path[i].node2);
+        Serial.print(") still has -2: ");
+        Serial.print("chips=[");
+        for (int j = 0; j < 4; j++) {
+          if (path[i].chip[j] != -1) {
+            Serial.print(chipNumToChar(path[i].chip[j]));
+            if (j < 3 && path[i].chip[j + 1] != -1)
+              Serial.print(",");
+          }
+        }
+        Serial.print("] y=[");
+        for (int j = 0; j < 4; j++) {
+          Serial.print(path[i].y[j]);
+          if (j < 3)
+            Serial.print(",");
+        }
+        Serial.print("] altPathNeeded=");
+        Serial.println(path[i].altPathNeeded);
+      }
+    }
+    if (unresolvedCount == 0) {
+      Serial.println("  All Y positions successfully resolved!");
+    } else {
+      Serial.print("  WARNING: ");
+      Serial.print(unresolvedCount);
+      Serial.println(" paths still have unresolved Y positions (-2)");
+    }
+  }
 }
 
 void swapDuplicateNode(int pathIndex) {
@@ -2972,6 +4387,9 @@ void swapDuplicateNode(int pathIndex) {
 int checkForOverlappingPaths() {
   int found = 0;
 
+  // printPathsCompact(2);
+  // printChipStatus();
+
   for (int i = 0; i < numberOfPaths; i++) {
     int fchip[4] = {path[i].chip[0], path[i].chip[1], path[i].chip[2],
                     path[i].chip[3]};
@@ -2989,10 +4407,14 @@ int checkForOverlappingPaths() {
       for (int f = 0; f < 4; f++) {
         for (int s = 0; s < 4; s++) {
           if (fchip[f] == schip[s] && fchip[f] != -1) {
-            if (path[i].x[f] == -1 || path[j].x[s] == -1) {
+            if (path[i].x[f] <= 0 || path[j].x[s] <= 0) {
               continue;
             }
-            if (path[i].x[f] == path[j].x[s]) {
+            if (path[i].y[f] <= 0 || path[j].y[s] <= 0) {
+              continue;
+            }
+            if (path[i].x[f] == path[j].x[s] && path[i].skip == 0 &&
+                path[j].skip == 0) {
               // if (debugNTCC3) {
               Serial.print("Path ");
               Serial.print(i);
@@ -3006,13 +4428,15 @@ int checkForOverlappingPaths() {
               Serial.print(path[i].net);
               Serial.print(" and ");
               Serial.println(path[j].net);
+              path[i].skip = 1;
 
               // printPathsCompact();
               // printChipStatus();
               // }
               // return 1;
               found++;
-            } else if (path[i].y[f] == path[j].y[s]) {
+            } else if (path[i].y[f] == path[j].y[s] && path[i].skip == 0 &&
+                       path[j].skip == 0) {
               // if (debugNTCC3) {
               Serial.print("Path ");
               Serial.print(i);
@@ -3026,7 +4450,7 @@ int checkForOverlappingPaths() {
               Serial.print(path[i].net);
               Serial.print(" and ");
               Serial.println(path[j].net);
-
+              path[i].skip = 1;
               // printPathsCompact();
               // printChipStatus();
               // }
@@ -3105,7 +4529,7 @@ void printPathsCompact(int showCullDupes) {
       break;
     case 1:
 
-      if (path[i].duplicate > 0 && path[i].x[0] == -1 && path[i].x[1] == -1) {
+      if (path[i].duplicate > 0 && path[i].x[0] < 0 && path[i].x[1] < 0) {
         skipLine = 1;
         // continue;
       }
@@ -3709,7 +5133,23 @@ void resolveChipCandidates(void) {
   int nodesToResolve[2] = {
       0, 0}; // {node1,node2} 0 = already found, 1 = needs resolving
 
+  static int gndChipAlternator = 0; // Static counter for alternating GND chips
+
   for (int pathIndex = 0; pathIndex < numberOfPaths; pathIndex++) {
+    // For duplicate path handling with stack_rails > 0, only process GND paths
+    // Return early if not GND net since it's the only one with multiple routes
+    if (path[pathIndex].duplicate == 1 && jumperlessConfig.routing.stack_rails > 0) {
+      if (path[pathIndex].net != 1) {
+        continue; // Skip non-GND nets for duplicate path processing when stacking
+      }
+      
+      if (debugNTCC) {
+        Serial.print("Processing GND duplicate path[");
+        Serial.print(pathIndex);
+        Serial.println("] with stacking enabled");
+      }
+    }
+
     nodesToResolve[0] = 0;
     nodesToResolve[1] = 0;
 
@@ -3727,10 +5167,109 @@ void resolveChipCandidates(void) {
 
     for (int nodeOneOrTwo = 0; nodeOneOrTwo < 2; nodeOneOrTwo++) {
       if (nodesToResolve[nodeOneOrTwo] == 1) {
-        path[pathIndex].chip[nodeOneOrTwo] =
-            moreAvailableChip(path[pathIndex].candidates[nodeOneOrTwo][0],
-                              path[pathIndex].candidates[nodeOneOrTwo][1]);
-        if (debugNTCC) {
+        // Check if this is a GND path (net 1)
+        bool isGndPath = (path[pathIndex].net == 1);
+        bool isGndDuplicateWithStacking = (isGndPath && path[pathIndex].duplicate == 1 && jumperlessConfig.routing.stack_rails > 0);
+        int selectedChip = -1;
+
+        if (isGndPath) {
+          // Special handling for GND paths to balance between chips K and L
+          int chipK = -1, chipL = -1;
+          
+          // Find K and L in the candidates
+          for (int candIdx = 0; candIdx < 3; candIdx++) {
+            if (path[pathIndex].candidates[nodeOneOrTwo][candIdx] == CHIP_K) {
+              chipK = CHIP_K;
+            } else if (path[pathIndex].candidates[nodeOneOrTwo][candIdx] == CHIP_L) {
+              chipL = CHIP_L;
+            }
+          }
+
+          if (chipK != -1 && chipL != -1) {
+            // Both K and L are candidates
+            if (isGndDuplicateWithStacking) {
+              // For GND duplicate paths with stacking enabled, ensure we use both chips
+              // Use the opposite chip from what was chosen for the primary path
+              bool primaryUsesK = false, primaryUsesL = false;
+              
+              // Check what chips are already used by non-duplicate GND paths
+              for (int checkPath = 0; checkPath < pathIndex; checkPath++) {
+                if (path[checkPath].net == 1 && path[checkPath].duplicate == 0) {
+                  if (path[checkPath].chip[0] == CHIP_K || path[checkPath].chip[1] == CHIP_K) {
+                    primaryUsesK = true;
+                  }
+                  if (path[checkPath].chip[0] == CHIP_L || path[checkPath].chip[1] == CHIP_L) {
+                    primaryUsesL = true;
+                  }
+                }
+              }
+              
+              // For duplicates, prefer the chip that's less used, or alternate if both are used
+              if (primaryUsesK && !primaryUsesL) {
+                selectedChip = chipL;
+              } else if (primaryUsesL && !primaryUsesK) {
+                selectedChip = chipK;
+              } else {
+                // Both or neither used, alternate
+                selectedChip = (gndChipAlternator % 2 == 0) ? chipK : chipL;
+                gndChipAlternator++;
+              }
+              
+              if (debugNTCC) {
+                Serial.print("GND duplicate path[");
+                Serial.print(pathIndex);
+                Serial.print("] stacking enabled, selected chip ");
+                Serial.print(chipNumToChar(selectedChip));
+                Serial.print(" (primaryUsesK=");
+                Serial.print(primaryUsesK);
+                Serial.print(", primaryUsesL=");
+                Serial.print(primaryUsesL);
+                Serial.println(")");
+              }
+            } else if (jumperlessConfig.routing.stack_rails > 0) {
+              // When stacking is enabled, prefer the less crowded chip but allow both
+              selectedChip = moreAvailableChip(chipK, chipL);
+              
+              if (debugNTCC) {
+                Serial.print("GND path[");
+                Serial.print(pathIndex);
+                Serial.print("] stacking enabled, selected chip ");
+                Serial.print(chipNumToChar(selectedChip));
+                Serial.println(" (less crowded)");
+              }
+            } else {
+              // Alternate between K and L when not stacking
+              selectedChip = (gndChipAlternator % 2 == 0) ? chipK : chipL;
+              gndChipAlternator++;
+              
+              if (debugNTCC) {
+                Serial.print("GND path[");
+                Serial.print(pathIndex);
+                Serial.print("] alternating to chip ");
+                Serial.print(chipNumToChar(selectedChip));
+                Serial.print(" (alternator: ");
+                Serial.print(gndChipAlternator - 1);
+                Serial.println(")");
+              }
+            }
+          } else if (chipK != -1) {
+            selectedChip = chipK;
+          } else if (chipL != -1) {
+            selectedChip = chipL;
+          } else {
+            // Fall back to standard selection if neither K nor L found
+            selectedChip = moreAvailableChip(path[pathIndex].candidates[nodeOneOrTwo][0],
+                                           path[pathIndex].candidates[nodeOneOrTwo][1]);
+          }
+        } else {
+          // Standard chip selection for non-GND paths
+          selectedChip = moreAvailableChip(path[pathIndex].candidates[nodeOneOrTwo][0],
+                                         path[pathIndex].candidates[nodeOneOrTwo][1]);
+        }
+
+        path[pathIndex].chip[nodeOneOrTwo] = selectedChip;
+        
+        if (debugNTCC && !isGndPath) {
           Serial.print("path[");
           Serial.print(pathIndex);
           Serial.print("] chip from ");
@@ -3979,9 +5518,13 @@ void clearChipsOnPathToNegOne(void) {
     }
   }
 }
+
+
+
+
 /*
 So the nets are all made, now we need to figure out which chip connections
-need to be made to make that phycically happen
+need to be made to make that phycially happen
 
 start with the special function nets, they're the highest priority
 
@@ -4271,5 +5814,5 @@ struct pathStruct{
   int candidates[3][3];
 
 };
-
 */
+

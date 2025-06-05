@@ -104,6 +104,10 @@ volatile int startupAnimationFinished = 0;
 unsigned long startupTimers[10];
 
 
+volatile int dumpLED = 0;
+unsigned long dumpLEDTimer = 0;
+unsigned long dumpLEDrate = 20;
+
 
 void setup() {
   pinMode(RESETPIN, OUTPUT_12MA);
@@ -153,7 +157,7 @@ void setup() {
   // Serial.print("config loaded in ");
   // Serial.print(millis() - start);
   // Serial.println("ms");
-
+  initNets();
   backpowered = 0;
 
 
@@ -299,7 +303,7 @@ int serSource = 0;
 int readInNodesArduino = 0;
 
 
-const char firmwareVersion[] = "5.1.3.2"; // remember to update this
+const char firmwareVersion[] = "5.1.4.0"; // remember to update this
 
 int firstLoop = 1;
 
@@ -331,6 +335,9 @@ volatile int core1passthrough = 1;
 #include <hardware/gpio.h>
 void loop() {
 
+
+
+menu:
   if (firstLoop == 1) {
 
     if (firstStart == true) {
@@ -371,10 +378,10 @@ void loop() {
       oled.init();
       }
 
-    firstLoop = 1;
+    firstLoop = 0;
     }
 
-menu:
+
 
   if (SerialWrap.available() > 20) { //this is so if you dump a lot of data into the serial buffer, it will consume it and not keep looping
     while (SerialWrap.available() > 0) {
@@ -741,29 +748,29 @@ menu:
             lastWarningNet = warningNet;
             }
 
-
+         // Serial.println(showReadings);
           if (showReadings >= 1) {
             //chooseShownReadings();
-            showMeasurements(8, 2, 0);
+            showMeasurements(16, 0, 0);
             }
 
-          if (millis() - oled.lastConnectionCheck > oled.connectionCheckInterval && jumperlessConfig.top_oled.enabled == 1) {
-            ///Serial.println("oled connection lost");
-            oled.checkConnection();
-            if (oled.isConnected() == false) {
-              // Serial.println("oled connection lost");
-              oled.oledConnected = false;
-              oled.disconnect();
-              jumperlessConfig.top_oled.enabled = 0;
-              if (jumperlessConfig.top_oled.lock_connection == 1 && oled.connectionRetries < oled.maxConnectionRetries) {
-                oled.connectionRetries++;
-                // if (oled.connectionRetries > oled.maxConnectionRetries) {
-                //   oled.connectionRetries = 0;
-                oled.init();
-                //}
-                }
-              }
-            }
+          // if (millis() - oled.lastConnectionCheck > oled.connectionCheckInterval && jumperlessConfig.top_oled.enabled == 1) {
+          //   ///Serial.println("oled connection lost");
+          //   oled.checkConnection();
+          //   if (oled.isConnected() == false) {
+          //     // Serial.println("oled connection lost");
+          //     oled.oledConnected = false;
+          //     oled.disconnect();
+          //     jumperlessConfig.top_oled.enabled = 0;
+          //     if (jumperlessConfig.top_oled.lock_connection == 1 && oled.connectionRetries < oled.maxConnectionRetries) {
+          //       oled.connectionRetries++;
+          //       // if (oled.connectionRetries > oled.maxConnectionRetries) {
+          //       //   oled.connectionRetries = 0;
+          //       oled.init();
+          //       //}
+          //       }
+          //     }
+          //   }
       }
 
     if (slotChanged == 1) {
@@ -839,9 +846,18 @@ menu:
       break;
       }
       case 'R': {
-      printWireStatus();
+      //printWireStatus();
+
+     // for (int i = 0; i < 10; i++) {
+        if (dumpLED == 1) {
+          dumpLED = 0;
+        } else {
+          dumpLED = 1;
+        }
+       // }
       // printSerial1stuff();
        //printAllRLEimageData();
+       goto dontshowmenu;
       break;
       }
       case '.': {
@@ -1228,7 +1244,43 @@ menu:
                   }
                 Serial.println(probeVoltage);
                 }
-            }
+            } else if (c == 'i') {
+              if (SerialWrap.available() > 0) {
+                char c = SerialWrap.read();
+                  if (c == '1') {
+                  float iSense = INA1.getCurrent_mA();
+                  Serial.print("ina1 = ");
+                  Serial.print(iSense);
+                  Serial.println("mA");
+                }
+              } else {
+                float iSense = INA0.getCurrent_mA();
+                Serial.print("ina0 = ");
+                Serial.print(iSense);
+                Serial.print("mA \t");
+
+                iSense = INA0.getBusVoltage();
+                Serial.print(iSense);
+                Serial.print("V \t");
+
+                iSense = INA0.getPower_mW();
+                Serial.print(iSense);
+                Serial.println("mW");
+
+
+              }
+              } else if (c == 'l') {
+                
+                if (showReadings == 1) {
+                  showReadings = 0;
+                  Serial.println("showReadings = 0");
+                } else {
+                  showReadings = 1;
+                  Serial.println("showReadings = 1");
+                }
+                chooseShownReadings();
+                
+              }
           Serial.flush();
           } else {
           Serial.println();
@@ -1263,7 +1315,7 @@ menu:
           // Serial.println(showReadings);
 
           goto dontshowmenu;
-          // break;
+           break;
           }
       case '}': {
       // probeActive = 1;
@@ -1665,6 +1717,23 @@ void loop1() {
       passthroughStatus = secondSerialHandler();
       }
 
+
+          if (dumpLED == 1) {
+          
+          if (millis() - dumpLEDTimer > dumpLEDrate) {
+            if (core1busy == false) {
+              core2busy = true;
+              core1busy = true;
+              delayMicroseconds(2000);
+              dumpLEDs();
+              delayMicroseconds(1000);
+              core2busy = false;
+              core1busy = false;
+            }
+            
+            dumpLEDTimer = millis();
+            }
+          }
     //     } else {
     //      //core1passthrough = 0;
     //      }
@@ -1799,6 +1868,8 @@ void core2stuff() // core 2 handles the LEDs and the CH446Q8
 
           core2busy = false;
           netUpdateRefreshCount = 0;
+
+
           }
         }
 

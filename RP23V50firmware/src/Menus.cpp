@@ -2899,14 +2899,14 @@ int doMenuAction(int menuPosition, int selection) {
                     -1) {
                     if (menuLines[currentAction.previousMenuPositions[2]].indexOf("Rails") !=
                       -1) {
-                      powerDuplicates = currentAction.from[0];
+                      jumperlessConfig.routing.stack_rails = currentAction.from[0];
 
                       if (currentAction.fromAscii[0][0] == 'M' || currentAction.fromAscii[0][0] == 'm') {
-                        powerPriority = 2;
-                        powerDuplicates = 7;
+                        jumperlessConfig.routing.rail_priority = 2;
+                        jumperlessConfig.routing.stack_rails = 7;
 
                         } else {
-                        powerPriority = 1;
+                        jumperlessConfig.routing.rail_priority = 1;
                         }
                       } else if (menuLines[currentAction.previousMenuPositions[2]].indexOf("Paths") !=
                       -1) {
@@ -2931,25 +2931,25 @@ int doMenuAction(int menuPosition, int selection) {
 
                     }
                   Serial.print("\n\rDuplicate Rails: ");
-                  Serial.print(powerDuplicates);
-                  Serial.print("\n\r");
+                  Serial.println(jumperlessConfig.routing.stack_rails);
+                  
                   Serial.print("Rail Priority: ");
-                  Serial.print(powerPriority);
+                  Serial.println(jumperlessConfig.routing.rail_priority);
 
 
-                  Serial.print("\n\n\rDuplicate DACs: ");
-                  Serial.print(dacDuplicates);
-                  Serial.print("\n\rDAC Priority: ");
-                  Serial.print(dacPriority);
-                  Serial.print("\n\n\rDuplicate Paths: ");
-                  Serial.print(pathDuplicates);
+                  Serial.print("Duplicate DACs: ");
+                  Serial.print(jumperlessConfig.routing.stack_dacs);
+                  // Serial.print("\n\rDAC Priority: ");
+                  // Serial.print(jumperlessConfig.routing.dac_priority);
+                  Serial.print("Duplicate Paths: ");
+                  Serial.println(jumperlessConfig.routing.stack_paths);
 
-                  Serial.print("\n\n\r");
+                  // Serial.print("\n\n\r");
 
                   // Serial.print("Routing Action\n\r");
-                  refreshConnections();
-
-                  saveDuplicateSettings(0);
+                  refreshConnections(-1, 1, 1);
+                  configChanged = true;
+                  //saveDuplicateSettings(0);
 
                   } else if (currentCategory == DISPLAYACTION) {//!Display Options
 
@@ -3019,11 +3019,12 @@ int doMenuAction(int menuPosition, int selection) {
                           } else if (currentAction.from[0] == 1) {
                             jumperlessConfig.top_oled.connect_on_boot = 0;
                             }
-                          oled.init();
+                          //oled.init();
                           oled.clear();
                           oled.setTextSize(1);
-                          oled.print("Connect \nOn Boot: ");
+                          oled.clearPrintShow("Connect \nOn Boot: ", 1, true, false, false, 0, 0);
                           oled.setTextSize(2);
+                          // oled.setCursor(0, 0);
                           if (jumperlessConfig.top_oled.connect_on_boot == 1) {
                             oled.print("On");
                             } else {
@@ -3054,12 +3055,13 @@ int doMenuAction(int menuPosition, int selection) {
                           } else if (menuLines[currentAction.previousMenuPositions[1]].indexOf("Connect") != -1) {
                           if (oled.checkConnection() == 0) {
                               jumperlessConfig.top_oled.enabled = 1;
+                              showLEDsCore2 = 1;
                               oled.init();
                               oled.clear();
                               oled.setTextSize(1);
                               oled.print("OLED Connected");
                               oled.show();
-                              delay(100);
+                              delay(300);
                               oled.clear();
                               oled.showJogo32h();
                               oled.show();
@@ -3068,7 +3070,7 @@ int doMenuAction(int menuPosition, int selection) {
                                 oled.setTextSize(1);
                                 oled.print("Disconnecting OLED");
                                 oled.show();
-                                delay(100);
+                                delay(300);
                                 oled.clear();
                                 oled.show();
                                 oled.disconnect();
@@ -3101,7 +3103,8 @@ int doMenuAction(int menuPosition, int selection) {
                                           }
 
                                         // Set the font family (smart selection will choose appropriate size)
-                                        oled.setFontForSize(selectedFamily, 1);
+                                        //oled.setFontForSize(selectedFamily, 1);
+                                        oled.setFont((FontFamily)selectedFamily);
 
                                         // Update config with FontFamily value
                                         jumperlessConfig.top_oled.font = configFontValue;
@@ -3111,9 +3114,9 @@ int doMenuAction(int menuPosition, int selection) {
                                         // delay(1000);
                                         // oled.clearPrintShow("Preview Text", 2, selectedFamily, true, true, true, 5, 8);
 
-                                        Serial.print("Font family set to: ");
-                                        Serial.print("Config value: ");
-                                        Serial.println(configFontValue);
+                                        Serial.print("Font set to: ");
+                        
+                                        Serial.println(oled.getFontName(selectedFamily));
 
                               } else if (menuLines[currentAction.previousMenuPositions[1]].indexOf("Demo") != -1) {
                                 //oled.testCentering();

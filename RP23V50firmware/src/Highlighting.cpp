@@ -248,7 +248,7 @@ int encoderNetHighlight(int print, int mode, int divider) {
         int connectedNet = -1;
         
         // Check if current scrolledRow has any connections
-        for (int i = 0; i <= numberOfPaths; i++) {
+        for (int i = 0; i < numberOfPaths; i++) {
           if (path[i].node1 == scrolledRow || path[i].node2 == scrolledRow) {
             foundConnection = true;
             connectedNet = path[i].net;
@@ -281,7 +281,7 @@ int encoderNetHighlight(int print, int mode, int divider) {
         int connectedNet = -1;
         
         // Check if current scrolledRow has any connections
-        for (int i = 0; i <= numberOfPaths; i++) {
+        for (int i = 0; i < numberOfPaths; i++) {
           if (path[i].node1 == scrolledRow || path[i].node2 == scrolledRow) {
             foundConnection = true;
             connectedNet = path[i].net;
@@ -342,7 +342,7 @@ int brightenNet(int node, int addBrightness) {
     }
   addBrightness = 0;
 
-  for (int i = 0; i <= numberOfPaths; i++) {
+  for (int i = 0; i < numberOfPaths; i++) {
 
     if (node == path[i].node1 || node == path[i].node2) {
       /// if (brightenedNet != i) {
@@ -420,7 +420,7 @@ int warnNet(int node) {
   // addBrightness = 0;
   warningRow = bbPixelToNodesMap[node];
 
-  for (int i = 0; i <= numberOfPaths; i++) {
+  for (int i = 0; i < numberOfPaths; i++) {
 
     if (node == path[i].node1 || node == path[i].node2) {
       /// if (brightenedNet != i) {

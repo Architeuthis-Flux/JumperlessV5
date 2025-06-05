@@ -114,8 +114,10 @@ public:
     int setFont(String fontName, int justGetIndex = 0);
     int setFont(char* fontName, int justGetIndex = 0);
     void setFont(const GFXfont* font);
+    void setFont(FontFamily fontFamily);
     void setFont(int fontIndex);
     void setFontForSize(FontFamily family, int textSize);
+    String getFontName(FontFamily fontFamily);
     
     // Simplified display functions
     void clearPrintShow(const char* text, int textSize, bool clear = true, bool show = true, bool center = true, int x_pos = -1, int y_pos = -1);
@@ -168,6 +170,10 @@ public:
     
     int connectionRetries = 0;
     int maxConnectionRetries = 4;
+
+
+    char scratchPad[40];
+    char* getScratchPad(void);
 };
 
 // Global functions

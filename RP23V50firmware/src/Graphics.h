@@ -125,7 +125,7 @@ void defcon(int start, int spread, int color = 0, int nudge = 1);
 void printTextFromMenu(int print = 1);
 int attractMode(void);
 
-void changeTerminalColor(int termColor = -1);
+void changeTerminalColor(int termColor = -1, bool flush = true);
 
 
 void drawImage(int imageIndex = 0);
@@ -133,6 +133,10 @@ void drawAnimatedImage(int imageIndex = 0, int speed = 2000);
 void printRLEimageData(int imageIndex);
 void printAllRLEimageData(void);
 
+void dumpLEDs(int posX = 50, int posY = 27, int pixelsOrRows = 0, int header = 0, int rgbOrRaw = 0, int logo = 0);
+void dumpHeader(int posX = 50, int posY = 20, int absolute = 1, int wide = 0);
+void dumpHeaderHex();
+void moveCursor(int posX = -1, int posY = -1, int absolute = 1);
 
 
 

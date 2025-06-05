@@ -39,7 +39,7 @@ CompileFlags:
     - "-DARDUINO_RASPBERRY_PI_PICO"
     - "-DBOARD_NAME=\"jumperless_v5\""
     - "-DPICO_RP2350A=0"
-    - "-DF_CPU=133000000L"
+    - "-DF_CPU=150000000L"
     - "-DUSE_TINYUSB"
     - "-DCFG_TUSB_CONFIG_FILE=\"custom_tusb_config.h\""
     
