@@ -13,9 +13,11 @@ String menuLines[] = {
   "Apps",
   "-Bounce Startup",
   "-Calib  DACs",
-   "-Custom App",
-   //"-Show   Image",
+  "-Custom App",
+  "-XLSX   GUI",
 
+  //"-Show   Image",
+ 
 
  //   "-Oscill oscope",
  //   "-MIDI   Synth", 
