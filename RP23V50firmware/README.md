@@ -1,7 +1,7 @@
 # Getting Started
 ![guideNoHighlight](https://github.com/user-attachments/assets/dda9717f-4d94-4421-b145-e08cfc68a900)
 
-(Optionally: [update](UPDATE.md) your firmware)
+You probably want to install the [app](APP.md) first, to get the latest firmware.
 # Here's a super-quick rundown of the how to use the thing:
 
 ## The Probe
