@@ -17,7 +17,7 @@ The link above will magically lead you to the latest version, and will look some
   1. download `JumperlessWokwiBridge.py` and `requirements.txt`
   2. open your favorite terminal, navigate to the folder where you downloaded the two files above.
   3. `pip install -r requirements.txt` # run this command to install the needed Python libraries
-  4. `python3 jumperlesswokwibridge.py` # update the firmware
+  4. `python3 JumperlessWokwiBridge.py` # update the firmware
 
 ## Straight up firmware update
 If the steps above don't work for you, or don't want to fiddle with Python:
