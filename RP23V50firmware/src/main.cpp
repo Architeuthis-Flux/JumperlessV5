@@ -160,7 +160,19 @@ void setup() {
   initNets();
   backpowered = 0;
 
+  if (jumperlessConfig.serial_1.function >= 5 && jumperlessConfig.serial_1.function <= 6) {
+    dumpLED = 1;
+    }
+  if (jumperlessConfig.serial_2.function >= 5 && jumperlessConfig.serial_2.function <= 6) {
+    dumpLED = 1;
+    }
 
+  if (jumperlessConfig.serial_1.function == 4 || jumperlessConfig.serial_1.function == 6) {
+    jumperlessConfig.top_oled.show_in_terminal = 2;
+    }
+  if (jumperlessConfig.serial_2.function == 4 || jumperlessConfig.serial_2.function == 6) {
+    jumperlessConfig.top_oled.show_in_terminal = 3;
+    }
 
   // uint8_t serialTarget = SERIAL_PORT_MAIN;
   // //SerialWrap.enableSerial1(true);
@@ -304,6 +316,7 @@ int readInNodesArduino = 0;
 
 
 const char firmwareVersion[] = "5.1.4.1"; // remember to update this
+const bool newConfigOptions = false; // set to true when config options are added/changed
 
 int firstLoop = 1;
 
@@ -829,7 +842,7 @@ menu:
       // Call the demo function directly - it will check for range input itself
       // Serial.println("Displaying color names (enter range like '10-200' for specific range)");
       // colorPicker(0, 255);
-    if (jumperlessConfig.top_oled.show_in_terminal == 1) {
+    if (jumperlessConfig.top_oled.show_in_terminal > 0) {
       jumperlessConfig.top_oled.show_in_terminal = 0;
     } else {
       jumperlessConfig.top_oled.show_in_terminal = 1;

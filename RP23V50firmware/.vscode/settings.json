@@ -46,6 +46,32 @@
     "cmake.ignoreCMakeListsMissing": true,
     "C_Cpp.formatting": "vcFormat",
     "cortex-debug.variableUseNaturalFormat": false,
+    "files.trimTrailingWhitespace": false,
+    "C_Cpp.vcFormat.indent.preserveWithinParentheses": true,
+    "C_Cpp.enhancedColorization": "enabled",
+    "C_Cpp.doxygen.generateOnType": true,
+    "C_Cpp.vcFormat.wrap.preserveBlocks": "allOneLineScopes",
+    
+    // Editor settings to prevent line wrapping
+    "editor.wordWrap": "off",
+    "editor.rulers": [400],
+    "editor.scrollBeyondLastLine": true,
+    
+    // C++ formatter settings to prevent wrapping in parentheses
+    "C_Cpp.vcFormat.wrap.preserveBlocksOnSeparateLines": false,
+    "C_Cpp.vcFormat.newLine.beforeOpenBrace.function": "ignore",
+    "C_Cpp.vcFormat.newLine.beforeOpenBrace.block": "ignore",
+    "C_Cpp.vcFormat.newLine.beforeOpenBrace.lambda":"ignore",
+    "C_Cpp.vcFormat.space.beforeFunctionOpenParenthesis": "ignore",
+    "C_Cpp.vcFormat.space.withinParameterListParentheses": false,
+    "C_Cpp.vcFormat.space.betweenEmptyParameterListParentheses": false,
+    "C_Cpp.vcFormat.space.afterKeywordsInControlFlowStatements": "ignore",
+    "C_Cpp.vcFormat.space.withinControlFlowStatementParentheses": false,
+    "C_Cpp.vcFormat.space.beforeControlFlowStatementParentheses": true,
+    "C_Cpp.vcFormat.space.aroundBinaryOperators": "insert",
+    "C_Cpp.vcFormat.space.aroundAssignmentOperators": "insert",
+    "C_Cpp.vcFormat.space.pointerReferenceAlignment": "left",
+    "C_Cpp.vcFormat.space.aroundTernaryOperators": "insert",
     
     // Use default IntelliSense engine
     "C_Cpp.intelliSenseEngine": "disabled"

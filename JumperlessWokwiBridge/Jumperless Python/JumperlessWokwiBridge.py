@@ -2636,7 +2636,7 @@ def upload_with_attempts_limit(sketch_dir, arduino_port, fqbn, input_dir, discov
         ]
         
         for path in cli_paths:
-            if os.path.isfile(path) or shutil.which(path if path == "arduino-cli" else None):
+            if os.path.isfile(path) or (path == "arduino-cli" and shutil.which(path)):
                 cli_path = path
                 break
         

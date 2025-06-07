@@ -659,6 +659,9 @@ int highlightNets(int probeReading, int encoderNetHighlighted, int print) {
           if (adc != -1) {
             ADCcolorOverride0 = -2;
             ADCcolorOverride1 = -2;
+            logoOverrideMap[0].colorOverride = logoOverrideMap[0].defaultOverride;
+            logoOverrideMap[1].colorOverride = logoOverrideMap[1].defaultOverride;
+            logoOverriden = true;
             if (print == 1) {
               Serial.print("ADC ");
               Serial.print(adc);
@@ -681,7 +684,9 @@ int highlightNets(int probeReading, int encoderNetHighlighted, int print) {
           if (gpioInputNumber != -1) {
             GPIOcolorOverride0 = -2;
             GPIOcolorOverride1 = -2;
-
+            logoOverrideMap[4].colorOverride = logoOverrideMap[4].defaultOverride;
+            logoOverrideMap[5].colorOverride = logoOverrideMap[5].defaultOverride;
+            logoOverriden = true;
             if (print == 1) {
               Serial.print("GPIO ");
               Serial.print(gpioInputNumber + 1);
@@ -722,7 +727,9 @@ int highlightNets(int probeReading, int encoderNetHighlighted, int print) {
           if (gpioOutputNumber != -1) {
             GPIOcolorOverride0 = -2;
             GPIOcolorOverride1 = -2;
-
+            logoOverrideMap[4].colorOverride = logoOverrideMap[4].defaultOverride;
+            logoOverrideMap[5].colorOverride = logoOverrideMap[5].defaultOverride;
+            logoOverriden = true;
             if (print == 1) {
               Serial.print("GPIO ");
               Serial.print(gpioOutputNumber + 1);

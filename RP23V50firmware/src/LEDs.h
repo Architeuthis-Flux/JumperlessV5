@@ -95,6 +95,38 @@ extern  uint32_t VINcolorOverride;
 extern  uint32_t V3V3colorOverride;
 extern  uint32_t V5VcolorOverride;
 
+
+
+
+typedef enum {
+  ADC_0,
+  ADC_1,
+  DAC_0,
+  DAC_1,
+  GPIO_0,
+  GPIO_1,
+  LOGO_TOP,
+  LOGO_BOTTOM,
+  LOGO,
+
+} logoOverrideNames;
+
+
+void setLogoOverride(logoOverrideNames ledNumber, uint32_t colorOverride);
+uint32_t getLogoOverride(logoOverrideNames ledNumber);
+// extern logoOverrideNames overrideNames;
+
+struct logoColorOverrideMap {
+  int ledNumber;
+  uint32_t colorOverride;
+  uint32_t defaultOverride;
+  
+};
+
+extern struct logoColorOverrideMap logoOverrideMap[15];
+
+extern volatile bool logoOverriden;
+
 void clearColorOverrides(bool logo = true, bool pads = true, bool header = true);
 
 
@@ -347,7 +379,7 @@ char* colorToName(int hue, int length = -1);
 char* colorToName(rgbColor color, int length = -1);
 void dumpLEDdata(void);
 int colorToVT100(uint32_t color, int colorDepth = 256);
-
+int colorToAnsi(uint32_t color);
 // Highlighting functions moved to Highlighting.h
 
 struct rgbColor shiftHue(struct rgbColor colorToShift, int hueShift = 0,

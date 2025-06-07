@@ -35,6 +35,12 @@ bool parseBool(const char* str);
 float parseFloat(const char* str);
 int parseInt(const char* str);
 int parseFont(const char* str);
+int parseSerialPort(const char* str);
+int parseDumpFormat(const char* str);
+
+// External variables from main.cpp
+extern const char firmwareVersion[];
+extern const bool newConfigOptions;
 void trim(char* str);
 void toLower(char* str); 
 void updateConfigValue(const char* section, const char* key, const char* value);
@@ -100,9 +106,69 @@ const StringIntEntry uartFunctionTable[] = {
     {"control", 2},
     {"port_1", 2},
     {"gpio", 3},
-    {"auxiliary", 3}
+    {"auxiliary", 3},
+    {"oled", 4},
+    {"leds", 5},
+    {"led", 5},
+    {"oled_leds", 6},
+    {"leds_oled", 6},
 };
 const int uartFunctionTableSize = sizeof(uartFunctionTable) / sizeof(uartFunctionTable[0]);
+
+
+const StringIntEntry serialPortTable[] = {
+    {"off", -1},
+    {"disable", -1},
+    {"main", 0},
+
+    {"usb_1", 1},
+    {"usb_2", 2},
+    {"usb_3", 3},
+    {"usb_4", 4},
+    {"usb_5", 5},
+    {"usb_6", 6},
+    {"usb_7", 7},
+    {"usb_8", 8},
+
+    {"usb1", 1},
+    {"usb2", 2},
+    {"usb3", 3},
+    {"usb4", 4},
+    {"usb5", 5},
+    {"usb6", 6},
+    {"usb7", 7},
+    {"usb8", 8},
+
+    {"usb0", 0},
+    {"usb", 0},
+
+    {"port1", 1},
+    {"port2", 2},
+    {"port3", 3},
+    {"port4", 4},
+    {"port5", 5},
+    {"port6", 6},
+    {"port7", 7},
+    {"port8", 8},
+    
+    {"uart1", 11},
+    {"uart2", 12},
+    {"uart3", 13},
+
+
+
+};
+const int serialPortTableSize = sizeof(serialPortTable) / sizeof(serialPortTable[0]);
+
+// Table for parseDumpFormat
+const StringIntEntry dumpFormatTable[] = {
+    {"image", 0},
+    {"terminal", 0},
+    {"rgb", 1},
+    {"raw", 2},
+    {"uint32", 2}
+};
+const int dumpFormatTableSize = sizeof(dumpFormatTable) / sizeof(dumpFormatTable[0]);
 
 // Table for parseLinesWires
 const StringIntEntry linesWiresTable[] = {

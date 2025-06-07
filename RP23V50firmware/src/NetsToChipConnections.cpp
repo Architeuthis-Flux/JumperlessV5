@@ -4373,6 +4373,76 @@ int checkForOverlappingPaths() {
             if (path[i].x[f] == path[j].x[s] && path[i].skip == 0 &&
                 path[j].skip == 0) {
               // if (debugNTCC3) {
+              if (path[i].duplicate > 0 || path[j].duplicate > 0) {
+              if (path[i].duplicate > 0) {
+                path[i].net = -1;
+                path[i].duplicate = 0;
+                path[i].chip[0] = -1;
+                path[i].chip[1] = -1;
+                path[i].chip[2] = -1;
+                path[i].chip[3] = -1;
+                path[i].x[0] = -1;
+                path[i].x[1] = -1;
+                path[i].x[2] = -1;
+                path[i].x[3] = -1;
+                path[i].y[0] = -1;
+                path[i].y[1] = -1;
+                path[i].y[2] = -1;
+                path[i].y[3] = -1;
+                path[i].altPathNeeded = false;
+                path[i].sameChip = false;
+                path[i].skip = 0;
+                // Serial.print("Duplicate path ");
+                // Serial.print(i);
+                // Serial.print(" and ");
+                // Serial.print(j);
+                // Serial.print(" overlap at x ");
+                // Serial.print(path[i].x[f]);
+                // Serial.print(" on chip ");
+                // Serial.print(chipNumToChar(fchip[f]));
+                // Serial.print("   nets ");
+                // Serial.print(path[i].net);
+                // Serial.print(" and ");
+                // Serial.print(path[j].net);
+                // Serial.println("   skipping");
+                
+              }
+              if (path[j].duplicate > 0) {
+                path[j].net = -1;
+                path[j].duplicate = 0;
+                path[j].chip[0] = -1;
+                path[j].chip[1] = -1;
+                path[j].chip[2] = -1;
+                path[j].chip[3] = -1;
+                path[j].x[0] = -1;
+                path[j].x[1] = -1;
+                path[j].x[2] = -1;
+                path[j].x[3] = -1;
+                path[j].y[0] = -1;
+                path[j].y[1] = -1;
+                path[j].y[2] = -1;
+                path[j].y[3] = -1;
+                path[j].altPathNeeded = false;
+                path[j].sameChip = false;
+                path[j].skip = 0;
+                // Serial.print("Duplicate path ");
+                // Serial.print(i);
+                // Serial.print(" and ");
+                // Serial.print(j);
+                // Serial.print(" overlap at x ");
+                // Serial.print(path[i].x[f]);
+                // Serial.print(" on chip ");
+                // Serial.print(chipNumToChar(fchip[f]));
+                // Serial.print("   nets ");
+                // Serial.print(path[i].net);
+                // Serial.print(" and ");
+                // Serial.print(path[j].net);
+                // Serial.println("   skipping");
+               
+              }
+              continue;
+              }
+
               Serial.print("Path ");
               Serial.print(i);
               Serial.print(" and ");
@@ -4395,6 +4465,74 @@ int checkForOverlappingPaths() {
             } else if (path[i].y[f] == path[j].y[s] && path[i].skip == 0 &&
                        path[j].skip == 0) {
               // if (debugNTCC3) {
+              if (path[i].duplicate > 0 || path[j].duplicate > 0) {
+              if (path[i].duplicate > 0) {
+                path[i].net = -1;
+                path[i].duplicate = 0;
+                path[i].chip[0] = -1;
+                path[i].chip[1] = -1;
+                path[i].chip[2] = -1;
+                path[i].chip[3] = -1;
+                path[i].x[0] = -1;
+                path[i].x[1] = -1;
+                path[i].x[2] = -1;
+                path[i].x[3] = -1;
+                path[i].y[0] = -1;
+                path[i].y[1] = -1;
+                path[i].y[2] = -1;
+                path[i].y[3] = -1;
+                path[i].altPathNeeded = false;
+                path[i].sameChip = false;
+                path[i].skip = 0;
+                // Serial.print("Duplicate path ");
+                // Serial.print(i);
+                // Serial.print(" and ");
+                // Serial.print(j);
+                // Serial.print(" overlap at y ");
+                // Serial.print(path[i].y[f]);
+                // Serial.print(" on chip ");
+                // Serial.print(chipNumToChar(fchip[f]));
+                // Serial.print("   nets ");
+                // Serial.print(path[i].net);
+                // Serial.print(" and ");
+                // Serial.println(path[j].net);
+                // Serial.println("   skipping");
+              }
+              if (path[j].duplicate > 0) {
+                path[j].net = -1;
+                path[j].duplicate = 0;
+                path[j].chip[0] = -1;
+                path[j].chip[1] = -1;
+                path[j].chip[2] = -1;
+                path[j].chip[3] = -1;
+                path[j].x[0] = -1;
+                path[j].x[1] = -1;
+                path[j].x[2] = -1;
+                path[j].x[3] = -1;
+                path[j].y[0] = -1;
+                path[j].y[1] = -1;
+                path[j].y[2] = -1;
+                path[j].y[3] = -1;
+                path[j].altPathNeeded = false;
+                path[j].sameChip = false;
+                path[j].skip = 0;
+                // Serial.print("Duplicate path ");
+                // Serial.print(i);
+                // Serial.print(" and ");
+                // Serial.print(j);
+                // Serial.print(" overlap at y ");
+                // Serial.print(path[i].y[f]);
+                // Serial.print(" on chip ");
+                // Serial.print(chipNumToChar(fchip[f]));
+                // Serial.print("   nets ");
+                // Serial.print(path[i].net);
+                // Serial.print(" and ");
+                // Serial.println(path[j].net);
+                // Serial.println("   skipping");
+              }
+              continue;
+              }
+
               Serial.print("Path ");
               Serial.print(i);
               Serial.print(" and ");

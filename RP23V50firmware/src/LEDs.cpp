@@ -60,6 +60,31 @@ uint32_t GPIOcolorOverride1Default = 0x2560a0;
 
 // Highlighting variables moved to Highlighting.cpp
 
+struct logoColorOverrideMap logoOverrideMap[15] = {
+
+    {ADC_LED_0, (uint32_t)-1, ADCcolorOverride0Default},
+  {ADC_LED_1, (uint32_t)-1, ADCcolorOverride1Default},
+  {DAC_LED_0, (uint32_t)-1, DACcolorOverride0Default},
+  {DAC_LED_1, (uint32_t)-1, DACcolorOverride1Default},
+  {GPIO_LED_0, (uint32_t)-1, GPIOcolorOverride0Default},
+  {GPIO_LED_1, (uint32_t)-1, GPIOcolorOverride1Default},
+
+  {LOGO_LED_START+0, (uint32_t)-1, logoColorOverrideTopDefault},
+  {LOGO_LED_START+1, (uint32_t)-1, logoColorOverrideTopDefault},
+  {LOGO_LED_START+2, (uint32_t)-1, logoColorOverrideTopDefault},
+  {LOGO_LED_START+3, (uint32_t)-1, logoColorOverrideBottomDefault},
+  {LOGO_LED_START+4, (uint32_t)-1, logoColorOverrideBottomDefault},
+  {LOGO_LED_START+5, (uint32_t)-1, logoColorOverrideBottomDefault},
+  {LOGO_LED_START+6, (uint32_t)-1, logoColorOverrideDefault},
+  
+
+  
+
+
+};
+
+volatile bool logoOverriden = false;
+
 
 // #if REV < 4
 // bool splitLEDs = 0;
@@ -424,20 +449,141 @@ int closestPaletteHueIdx(int hue) {
   return minIdx;
   }
 int colorToVT100(uint32_t color, int colorDepth) {
-
+  if (colorDepth == 256) {
+return colorToAnsi(color);
+  }
 
   rgbColor input = unpackRgb(color);
+  // if (abs(input.r - input.g) < 5 && abs(input.g - input.b) < 5 && abs(input.r - input.b) < 5) {
+  //   if (input.r > 4) {
+  //     return 15;
+  //     } else {
+  //     return 0;
+  //     }
+  //   }
 
   hsvColor inputHsv = RgbToHsv(input);
+
+  if (inputHsv.s < 140) {
+    if (inputHsv.v > 6) {
+      return 15;
+      } else {
+      return 0;
+      }
+    }
+
   //inputHsv.v = 254;
   int hue = inputHsv.h;
   int hueIdx = closestPaletteHueIdx(hue);
-  if (colorDepth == 256) {
+ 
     return colorNames[hueIdx].termColor256;
-    } else {
-    return colorNames[hueIdx].termColor16;
+
+  }
+
+
+  int colorToAnsi(uint32_t color) {
+
+    unsigned long startTime = micros();
+    if (color == 0x000000) {
+      return 0;
+      }
+    if (color == 0xffffff) {
+      return 15;
+      }
+
+  rgbColor input = unpackRgb(color);
+  hsvColor hsv = RgbToHsv(input);
+
+
+  hsv.v = 232;
+
+  
+  
+  input = HsvToRgb(hsv);
+  
+  // Standard 16 colors (0-15)
+  static const rgbColor ansi16[16] = {
+    {0, 0, 0},       // 0: black
+    {128, 0, 0},     // 1: dark red
+    {0, 128, 0},     // 2: dark green
+    {128, 128, 0},   // 3: dark yellow
+    {0, 0, 128},     // 4: dark blue
+    {128, 0, 128},   // 5: dark magenta
+    {0, 128, 128},   // 6: dark cyan
+    {192, 192, 192}, // 7: light gray
+    {128, 128, 128}, // 8: dark gray
+    {255, 0, 0},     // 9: bright red
+    {0, 255, 0},     // 10: bright green
+    {255, 255, 0},   // 11: bright yellow
+    {0, 0, 255},     // 12: bright blue
+    {255, 0, 255},   // 13: bright magenta
+    {0, 255, 255},   // 14: bright cyan
+    {255, 255, 255}  // 15: white
+  };
+  
+  // 6x6x6 RGB cube levels (for colors 16-231)
+  static const uint8_t cubeLevels[6] = {0, 95, 135, 175, 215, 255};
+  
+  int bestColor = 0;
+  int minDistance = INT_MAX;
+  
+  // Check standard 16 colors (0-15)
+  for (int i = 0; i < 16; i++) {
+    int dr = input.r - ansi16[i].r;
+    int dg = input.g - ansi16[i].g;
+    int db = input.b - ansi16[i].b;
+    int distance = dr*dr + dg*dg + db*db;
+    
+    if (distance < minDistance) {
+      minDistance = distance;
+      bestColor = i;
     }
   }
+  
+  // Check 6x6x6 RGB cube (colors 16-231)
+  for (int r = 0; r < 6; r++) {
+    for (int g = 0; g < 6; g++) {
+      for (int b = 0; b < 6; b++) {
+        uint8_t cubeR = cubeLevels[r];
+        uint8_t cubeG = cubeLevels[g];
+        uint8_t cubeB = cubeLevels[b];
+        
+        int dr = input.r - cubeR;
+        int dg = input.g - cubeG;
+        int db = input.b - cubeB;
+        int distance = dr*dr + dg*dg + db*db;
+        
+        if (distance < minDistance) {
+          minDistance = distance;
+          bestColor = 16 + 36*r + 6*g + b;
+        }
+      }
+    }
+  }
+  
+  // Check grayscale ramp (colors 232-255)
+  for (int i = 0; i < 24; i++) {
+    uint8_t gray = 8 + i * 10;  // 8, 18, 28, ..., 238
+    
+    int dr = input.r - gray;
+    int dg = input.g - gray;
+    int db = input.b - gray;
+    int distance = dr*dr + dg*dg + db*db;
+    
+    if (distance < minDistance) {
+      minDistance = distance;
+      bestColor = 232 + i;
+    }
+  }
+  // Serial.print("\n\r colorToAnsi time: ");
+  // Serial.print(micros() - startTime);
+  // Serial.print("\n\r");
+  return bestColor;
+}
+
+
+
+
 
 ///@brief Convert a color to a name
 ///@param color Color to convert
@@ -1383,11 +1529,178 @@ uint32_t colorPicker(uint8_t startHue, uint8_t brightness) {
     return HsvToRaw(hsvColor{ (uint8_t)(centerHue % 255), 255, brightness });
   }
 
+// logoOverrideNames overrideNames = {
+//   ADC_0,
+//   ADC_1,
+//   DAC_0,
+//   DAC_1,
+//   GPIO_0,
+//   GPIO_1,
+//   LOGO_TOP_0,
+//   LOGO_TOP_1,
+//   LOGO_TOP_2,
+//   LOGO_BOTTOM_0,
+//   LOGO_BOTTOM_1,
+//   LOGO_BOTTOM_2,
+// };
+
+uint32_t getLogoOverride(logoOverrideNames ledNumber) {
+  if (logoLedAccess == true) {
+    return -1;
+  }
+  logoLedAccess = true;
+  uint32_t color = -1;
+  switch (ledNumber) {
+    case ADC_0:
+      color = ADCcolorOverride0;
+      break;
+    case ADC_1:
+      color = ADCcolorOverride1;
+      break;
+    case DAC_0:
+      color = DACcolorOverride0;
+      break;
+    case DAC_1:
+      color = DACcolorOverride1;
+      break;
+    case GPIO_0:
+      color = GPIOcolorOverride0;
+      break;
+    case GPIO_1:
+      color = GPIOcolorOverride1;
+      break;
+    case LOGO_TOP:
+      color = logoColorOverrideTop;
+      break;
+    case LOGO_BOTTOM:
+      color = logoColorOverrideBottom;
+      break;
+    case LOGO:
+      color = logoColorOverride;
+  }
+  logoLedAccess = false;
+  return color;
+}
+
+
+void setLogoOverride(logoOverrideNames ledNumber, uint32_t colorOverride) {
+  if  (logoLedAccess == true) {
+    return;
+    }
+  
+
+  if (colorOverride == -1){
+
+  switch (ledNumber) {
+    case ADC_0...GPIO_1:
+      clearColorOverrides(false, true, false);
+      break;
+    case LOGO_TOP...LOGO:
+      clearColorOverrides(true, false, false);
+      break;
+    default:
+      break;
+  }
+
+  } else {
+logoLedAccess = true;
+  logoOverrideMap[ledNumber].colorOverride = colorOverride;
+  switch (ledNumber) {
+    case ADC_0:
+      if (colorOverride == -2) {
+        ADCcolorOverride0 = logoOverrideMap[ADC_0].defaultOverride;
+      } else {
+        ADCcolorOverride0 = colorOverride;
+      }
+      break;
+    case ADC_1:
+      if (colorOverride == -2) {
+        ADCcolorOverride1 = logoOverrideMap[ADC_1].defaultOverride;
+      } else {
+        ADCcolorOverride1 = colorOverride;
+      }
+      break;
+    case DAC_0:
+      if (colorOverride == -2) {
+        DACcolorOverride0 = logoOverrideMap[DAC_0].defaultOverride;
+      } else {
+        DACcolorOverride0 = colorOverride;
+      }
+      break;
+    case DAC_1:
+      if (colorOverride == -2) {
+        DACcolorOverride1 = logoOverrideMap[DAC_1].defaultOverride;
+      } else {
+        DACcolorOverride1 = colorOverride;
+      }
+      break;
+    case GPIO_0:  
+      if (colorOverride == -2) {
+        GPIOcolorOverride0 = logoOverrideMap[GPIO_0].defaultOverride;
+      } else {
+        GPIOcolorOverride0 = colorOverride;
+      }
+      break;
+    case GPIO_1:
+      if (colorOverride == -2) {
+        GPIOcolorOverride1 = logoOverrideMap[GPIO_1].defaultOverride;
+      } else {
+        GPIOcolorOverride1 = colorOverride;
+      }
+      break;
+    case LOGO_TOP:
+      if (colorOverride == -2) {
+        logoColorOverrideTop = logoOverrideMap[LOGO_TOP].defaultOverride;
+      } else {
+        logoColorOverrideTop = colorOverride;
+      }
+      break;
+    case LOGO_BOTTOM:
+      if (colorOverride == -2) {
+        logoColorOverrideBottom = logoOverrideMap[LOGO_BOTTOM].defaultOverride;
+      } else {
+          logoColorOverrideBottom = colorOverride;
+      }
+      break;
+    case LOGO:
+      if (colorOverride == -2) {
+        logoColorOverride = logoOverrideMap[LOGO].defaultOverride;
+      } else {
+        logoColorOverride = colorOverride;
+      }
+      logoColorOverrideTop = colorOverride;
+      logoColorOverrideBottom = colorOverride;
+      break;
+    default:
+      break;
+  }
+  }
+
+  logoOverriden = true;
+  logoLedAccess = false;
+  }
+
+
+
 void clearColorOverrides(bool logo, bool pads, bool header) {
+
+  if (logoLedAccess == true) {
+    return;
+    }
+  logoLedAccess = true;
+
   if (logo) {
     logoColorOverride = -1;
     logoColorOverrideTop = -1;
     logoColorOverrideBottom = -1;
+    logoOverriden = false;
+    logoOverrideMap[6].colorOverride = -1;
+    logoOverrideMap[7].colorOverride = -1;
+    logoOverrideMap[8].colorOverride = -1;
+    logoOverrideMap[9].colorOverride = -1;
+    logoOverrideMap[10].colorOverride = -1;
+    logoOverrideMap[11].colorOverride = -1;
+    logoOverrideMap[12].colorOverride = -1;
     }
   if (pads) {
     ADCcolorOverride0 = -1;
@@ -1396,6 +1709,14 @@ void clearColorOverrides(bool logo, bool pads, bool header) {
     DACcolorOverride1 = -1;
     GPIOcolorOverride0 = -1;
     GPIOcolorOverride1 = -1;
+    logoOverriden = false;
+    logoOverrideMap[0].colorOverride = -1;
+    logoOverrideMap[1].colorOverride = -1;
+    logoOverrideMap[2].colorOverride = -1;
+    logoOverrideMap[3].colorOverride = -1;
+    logoOverrideMap[4].colorOverride = -1;
+    logoOverrideMap[5].colorOverride = -1;
+    
     }
   if (header) {
     RST0colorOverride = -1;
@@ -1406,6 +1727,7 @@ void clearColorOverrides(bool logo, bool pads, bool header) {
     V3V3colorOverride = -1;
     V5VcolorOverride = -1;
     }
+  logoLedAccess = false;
   }
 
 void printColorName(int hue) {
@@ -3055,54 +3377,7 @@ void setupSwirlColors(void) {
     //  logoColors8vSelect[LOGO_COLOR_LENGTH - i] =   logoColors8vSelect[i];
     }
 
-  //   //delay(2000);
-  //   for (int i = 0; i < LOGO_COLOR_LENGTH; i++) {
-  // Serial.print("logoColorsCold: ");
-  // Serial.print(i);
-  // Serial.print(" ");
-  // Serial.println(logoColorsCold[i], HEX);
 
-  //   }
-  //   Serial.println(" ");
-  //     for (int i = 0; i <= LOGO_COLOR_LENGTH; i++) {
-  // Serial.print("logoColorsHot: ");
-  // Serial.print(i);
-  // Serial.print(" ");
-  // Serial.println(logoColorsHot[i], HEX);
-
-  //   }
-
-  //     for (int i = 0; i < LOGO_COLOR_LENGTH; i++) {
-  // Serial.print("logoColorsPink: ");
-  // Serial.print(i);
-  // Serial.print(" ");
-  // Serial.println(logoColorsPink[i], HEX);
-
-  //   }
-
-  //     for (int i = 0; i < LOGO_COLOR_LENGTH; i++) {
-  // Serial.print("logoColorsGreen: ");
-  // Serial.print(i);
-  // Serial.print(" ");
-  // Serial.println(logoColorsGreen[i], HEX);
-
-  //   }
-
-  //     for (int i = 0; i < LOGO_COLOR_LENGTH; i++) {
-  // Serial.print("logoColorsYellow: ");
-  // Serial.print(i);
-  // Serial.print(" ");
-  // Serial.println(logoColorsYellow[i], HEX);
-
-  //   }
-
-  //     for (int i = 0; i < LOGO_COLOR_LENGTH; i++) {
-  // Serial.print("logoColors8vSelect: ");
-  // Serial.print(i);
-  // Serial.print(" ");
-  // Serial.println(logoColors8vSelect[i], HEX);
-
-  //   }
   }
 
 
@@ -3115,7 +3390,10 @@ void logoSwirl(int start, int spread, int probe) {
 
 
 
-
+if (logoLedAccess == true) {
+  return;
+}
+logoLedAccess = true;
 
   if (probe == 1) {
     int selectionBrightness = 33;
@@ -3288,6 +3566,7 @@ void logoSwirl(int start, int spread, int probe) {
         //leds.setPixelColor(LOGO_LED_START + 6, 0);
         }
 
+logoLedAccess = false;
 
   }
 
@@ -3297,353 +3576,7 @@ void logoSwirl(int start, int spread, int probe) {
 
 bool lightUpName = false;
 
-// rgbColor highlightedOriginalColor;
-// rgbColor brightenedOriginalColor;
-// rgbColor warningOriginalColor;
 
-// int highlightedRow = -1;
-
-
-// void clearHighlighting(void) {
-
-//   // netColors[highlightedNet] = highlightedOriginalColor;
-//   // netColors[brightenedNet] = brightenedOriginalColor;
-//   // netColors[warningNet] = warningOriginalColor;
-
-//   for (int i = 4; i < numberOfRowAnimations; i++) {
-//     rowAnimations[i].row = -1;
-//     rowAnimations[i].net = -1;
-//     }
-//   probeConnectHighlight = -1;
-//   highlightedNet = -1;
-//   brightenedNet = -1;
-//   warningNet = -1;
-//   warningRow = -1;
-//   brightenedRail = -1;
-//   brightenedNode = -1;
-//   highlightedRow = -1;
-
-//   assignNetColors();
-//   }
-
-
-
-// int lastNodeHighlighted = -1;
-// int lastNetPrinted = -1;
-
-// int currentHighlightedNode = 0;
-// int currentHighlightedNet = -2;
-
-// int encoderNetHighlight(int print) {
-//   int lastDivider = rotaryDivider;
-//   rotaryDivider = 4;
-//   int returnNode = -1;
-
-//   // if (inClickMenu == 1)
-//   //   return -1;
-//   //rotaryEncoderStuff();
-//   if (encoderDirectionState == UP) {
-//     //Serial.println(encoderPosition);
-//     encoderDirectionState = NONE;
-//     if (highlightedNet < 0) {
-//       highlightedNet = -1;
-//       brightenedNet = -1;
-//       currentHighlightedNode = 0;
-//       }
-//     currentHighlightedNode++;
-//     if (highlightedNet >= 0 && highlightedNet < numberOfNets && net[highlightedNet].nodes[currentHighlightedNode] <= 0) {
-//       currentHighlightedNode = 0;
-//       highlightedNet++;
-//       if (highlightedNet > numberOfNets - 1) {
-//         highlightedNet = -2;
-//         brightenedNet = -2;
-//         currentHighlightedNode = 0;
-//         }
-//       brightenedNet = highlightedNet;
-//       if (highlightedNet >= 0 && highlightedNet < numberOfNets) {
-//         brightenedNode = net[highlightedNet].nodes[currentHighlightedNode];
-//         if (highlightedNet != 0 && net[highlightedNet].nodes[currentHighlightedNode] != 0) {
-//           returnNode = net[highlightedNet].nodes[currentHighlightedNode];
-//           }
-//         } else {
-//         brightenedNode = -1;
-//         }
-//       highlightNets(0, highlightedNet, print);
-//       // Serial.print("highlightedNet: ");
-//       // Serial.println(highlightedNet);
-//       // Serial.flush();
-//       }
-//     if (highlightedNet > numberOfNets - 1) {
-//       highlightedNet = -2;
-//       brightenedNet = -2;
-//       currentHighlightedNode = 0;
-//       }
-//     brightenedNet = highlightedNet;
-//     if (highlightedNet >= 0 && highlightedNet < numberOfNets) {
-//       brightenedNode = net[highlightedNet].nodes[currentHighlightedNode];
-//       if (highlightedNet != 0 && net[highlightedNet].nodes[currentHighlightedNode] != 0) {
-//         returnNode = net[highlightedNet].nodes[currentHighlightedNode];
-//         }
-//       } else {
-//       brightenedNode = -1;
-//       }
-//     // Serial.print("returnNode: ");
-//     // Serial.println(returnNode);
-//     // Serial.flush();
-//     highlightNets(0, highlightedNet, print);
-//     // Serial.print("highlightedNet: ");
-//     // Serial.println(highlightedNet);
-//     // Serial.flush();
-//     //assignNetColors();
-//    // assignNetColors();
-
-//     } else if (encoderDirectionState == DOWN) {
-//       //Serial.println(encoderPosition);
-//       encoderDirectionState = NONE;
-//       if (highlightedNet == 0) {
-
-//         highlightedNet = numberOfNets - 1;
-//         brightenedNet = numberOfNets - 1;
-//         }
-
-//       currentHighlightedNode--;
-
-//       if (currentHighlightedNode < 0) {
-//         highlightedNet--;
-//         if (highlightedNet < 0) {
-//           highlightedNet = numberOfNets - 1;
-//           brightenedNet = numberOfNets - 1;
-//           currentHighlightedNode = 0;
-//           }
-//         currentHighlightedNode = MAX_NODES - 1;
-//         while (highlightedNet >= 0 && highlightedNet < numberOfNets && net[highlightedNet].nodes[currentHighlightedNode] <= 0) {
-//           currentHighlightedNode--;
-//           if (currentHighlightedNode < 0) {
-//             highlightedNet--;
-//             if (highlightedNet < 0) {
-//               highlightedNet = numberOfNets - 1;
-//               brightenedNet = numberOfNets - 1;
-//               currentHighlightedNode = 0;
-//               }
-
-//             }
-//           }
-//         }
-//       brightenedNet = highlightedNet;
-//       if (highlightedNet >= 0 && highlightedNet < numberOfNets) {
-//         brightenedNode = net[highlightedNet].nodes[currentHighlightedNode];
-//         if (highlightedNet != 0 && net[highlightedNet].nodes[currentHighlightedNode] != 0) {
-//           returnNode = net[highlightedNet].nodes[currentHighlightedNode];
-//           }
-//         } else {
-//         brightenedNode = -1;
-//         }
-//       // Serial.print("returnNode: ");
-//       // Serial.println(returnNode);
-//       // Serial.flush();
-//       highlightNets(0, highlightedNet, print);
-//       // Serial.print("highlightedNet: ");
-//       // Serial.println(highlightedNet);
-//       // Serial.flush();
-//       // assignNetColors();
-
-
-
-//       }
-//     if (returnNode != lastNodeHighlighted) {
-//       // b.clear();
-//      // b.printRawRow(0b00000100, lastNodeHighlighted-2, 0x000000, 0x000000);
-//      // b.printRawRow(0b00000100, lastNodeHighlighted, 0x0000000, 0x000000);
-
-//      // b.printRawRow(0b00000100, returnNode-2, 0x0f0f00, 0x000000);
-//      // b.printRawRow(0b00000100, returnNode, 0x0f0f00, 0x000000);
-
-//       lastNodeHighlighted = returnNode;
-//       // showLEDsCore2 = 2;
-//       }
-//     //rotaryDivider = lastDivider;
-//     return returnNode;
-//   }
-
-
-
-
-
-
-
-// int brightenNet(int node, int addBrightness) {
-
-//   if (node == -1) {
-//     netColors[brightenedNet] = brightenedOriginalColor;
-//     brightenedNode = -1;
-//     brightenedNet = 0;
-//     brightenedRail = -1;
-//     return -1;
-//     }
-//   addBrightness = 0;
-
-//   for (int i = 0; i <= numberOfPaths; i++) {
-
-//     if (node == path[i].node1 || node == path[i].node2) {
-//       /// if (brightenedNet != i) {
-//       brightenedNet = path[i].net;
-//       brightenedNode = node;
-//       // Serial.print("\n\n\rbrightenedNet: ");
-//       // Serial.println(brightenedNet);
-//       // Serial.print("net ");
-//       // Serial.print(path[i].net);
-//       if (brightenedNet == 1) {
-//         brightenedRail = 1;
-//         // lightUpRail(-1, 1, 1, addBrightness);
-//         } else if (brightenedNet == 2) {
-//           brightenedRail = 0;
-//           // lightUpRail(-1, 0, 1, addBrightness);
-//           } else if (brightenedNet == 3) {
-//             brightenedRail = 2;
-//             // lightUpRail(-1, 2, 1, addBrightness);
-//             } else {
-//             brightenedRail = -1;
-//             // lightUpNet(brightenedNet, addBrightness);
-//             }
-//           // Serial.print("\n\rbrightenedNet = ");
-//           // Serial.println(brightenedNet);
-//           brightenedOriginalColor = netColors[brightenedNet];
-//           assignNetColors();
-//           return brightenedNet;
-//       }
-//     }
-//   switch (node) {
-//     case (GND): {
-//     //  Serial.print("\n\rGND");
-//     brightenedNet = 1;
-//     brightenedRail = 1;
-//     // lightUpRail(-1, 1, 1, addBrightness);
-//     return 1;
-//     }
-//     case (TOP_RAIL): {
-//     // Serial.print("\n\rTOP_RAIL");
-//     brightenedNet = 2;
-//     brightenedRail = 0;
-//     // lightUpRail(-1, 0, 1, addBrightness);
-//     return 2;
-//     }
-//     case (BOTTOM_RAIL): {
-//     //Serial.print("\n\rBOTTOM_RAIL");
-//     brightenedNet = 3;
-//     brightenedRail = 2;
-//     // lightUpRail(-1, 2, 1, addBrightness);
-//     return 3;
-//     }
-//     }
-
-
-//   return -1;
-//   }
-
-// int warningRow = -1;
-// int warningNet = -1;
-// unsigned long warningTimeout = 0;
-// unsigned long warningTimer = 0;
-
-// /// @brief  mark a net as warning
-// /// @param -1 to clear warning
-// /// @return warningNet
-// int warnNet(int node) {
-//   // Serial.print("warnNet node = ");
-//   // Serial.println(node);
-//   // Serial.flush();
-//   if (node == -1) {
-//     netColors[warningNet] = warningOriginalColor;
-
-//     warningNet = -1;
-//     warningRow = -1;
-//     // Serial.print("warningNet = ");
-//     // Serial.println(warningNet);
-//     // Serial.flush();
-//     // brightenedRail = -1;
-//     return -1;
-//     }
-//   // addBrightness = 0;
-//   warningRow = bbPixelToNodesMap[node];
-
-//   for (int i = 0; i <= numberOfPaths; i++) {
-
-//     if (node == path[i].node1 || node == path[i].node2) {
-//       /// if (brightenedNet != i) {
-//       warningNet = path[i].net;
-
-//       // Serial.print("warningNet = ");
-//       // Serial.println(warningNet);
-//       // Serial.flush();
-
-
-//       if (warningNet == 1) {
-//         // brightenedRail = 1;
-//         // lightUpRail(-1, 1, 1, addBrightness);
-//         } else if (warningNet == 2) {
-//           // brightenedRail = 0;
-//           // lightUpRail(-1, 0, 1, addBrightness);
-//           } else if (warningNet == 3) {
-//             // brightenedRail = 2;
-//             // lightUpRail(-1, 2, 1, addBrightness);
-//             } else {
-//             // brightenedRail = -1;
-//             // lightUpNet(brightenedNet, addBrightness);
-//             }
-
-//           warningOriginalColor = netColors[warningNet];
-//           assignNetColors();
-//           warningTimer = millis();
-//           return warningNet;
-//       }
-//     }
-
-
-
-//   return -1;
-//   }
-// unsigned long lastWarningTimer = 0;
-// unsigned long lastHighlightTimer = 0;
-// void warnNetTimeout(int clearAll) {
-//   // Serial.print("warningTimer = ");
-//   // Serial.println(warningTimer);
-//   // Serial.print("warningTimeout = ");
-//   // Serial.println(warningTimeout);
-//   // Serial.flush();
-//   if (lastWarningTimer == 0) {
-//     lastWarningTimer = millis();
-//     }
-
-//   if (lastHighlightTimer == 0) {
-//     lastHighlightTimer = millis();
-//     }
-
-//   if (warningTimer > 0 && millis() - warningTimer > warningTimeout) {
-//     //warningTimeout = 0;
-//     if (clearAll == 1) {
-//       clearHighlighting();
-//       } else {
-//       // netColors[warningNet] = warningOriginalColor;
-
-
-//       warningNet = -1;
-//       warningRow = -1;
-//       }
-//     lastWarningTimer = millis();
-//     warningTimer = 0;
-
-//     assignNetColors();
-//     } else {
-//     lastWarningTimer = millis() - lastWarningTimer;
-//     // Serial.print("lastWarningTimer = ");  
-//     // Serial.println(lastWarningTimer);
-//     // Serial.flush();
-//    // warningTimer = millis();
-//     }
-//   }
-// uint32_t rawSpecialNetColors[8] = // dim
-//     {0x000000, 0x001C04, 0x1C0702, 0x1C0107,
-//      0x231111, 0x230913, 0x232323, 0x232323};
 uint32_t rstColors[2] = { 0x2000b9, 0x0020f9, };
 
 ///0 = rst_b 1 = rst_t  2 = vin  3 = 3v3  4 = 5v  5 = gnd_t  6 = gnd_b
@@ -3654,7 +3587,9 @@ unsigned long colorFlash[2] = { 0,0 };
 
 void lightUpHeader(void) {
 
-
+while (logoLedAccess == true) {
+}
+logoLedAccess = true;
   if (rstColors[0] != headerColors[0] && colorFlash[0] == 0) {
     colorFlash[0] = millis();
     } else if (rstColors[0] != headerColors[0] && millis() - colorFlash[0] > 150) {
@@ -3787,6 +3722,7 @@ void lightUpHeader(void) {
               }
             }
 
+  logoLedAccess = false;
   }
 
 

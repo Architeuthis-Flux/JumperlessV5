@@ -88,6 +88,8 @@ struct config {
         int rail_brightness = 55;
         int special_net_brightness = 20;
         int net_color_mode = 0;
+        int dump_leds = -1;
+        int dump_format = 0;
     } display;
 
     struct gpio {
@@ -158,7 +160,7 @@ struct config {
             int lock_connection = 0;
             int autoconnect_check_interval = -1;
             int font = 1;
-            int show_in_terminal = 0;
+            int show_in_terminal = -1;
         } top_oled;
     
 };

@@ -1039,7 +1039,9 @@ int selectSFprobeMenu(int function) {
     clearColorOverrides(1, 1, 0);
     ADCcolorOverride0 = -2;
     ADCcolorOverride1 = -2;
-
+    logoOverrideMap[0].colorOverride = logoOverrideMap[0].defaultOverride;
+    logoOverrideMap[1].colorOverride = logoOverrideMap[1].defaultOverride;
+    logoOverriden = true;
     break;
     }
     case DAC_PAD: {
@@ -1052,7 +1054,9 @@ int selectSFprobeMenu(int function) {
     clearColorOverrides(1, 1, 0);
     DACcolorOverride0 = -2;
     DACcolorOverride1 = -2;
-
+    logoOverrideMap[2].colorOverride = logoOverrideMap[2].defaultOverride;
+    logoOverrideMap[3].colorOverride = logoOverrideMap[3].defaultOverride;
+    logoOverriden = true;
     break;
     }
     case GPIO_PAD: {
@@ -1064,7 +1068,9 @@ int selectSFprobeMenu(int function) {
     clearColorOverrides(1, 1, 0);
     GPIOcolorOverride0 = -2;
     GPIOcolorOverride1 = -2;
-
+    logoOverrideMap[4].colorOverride = logoOverrideMap[4].defaultOverride;
+    logoOverrideMap[5].colorOverride = logoOverrideMap[5].defaultOverride;
+    logoOverriden = true;
     break;
     }
     case LOGO_PAD_TOP:
@@ -1093,6 +1099,7 @@ int selectSFprobeMenu(int function) {
       clearColorOverrides(1, 1, 0);
       logoColorOverrideTop = -2;
       
+      
       break;
       }
       case LOGO_PAD_BOTTOM: {
@@ -1119,7 +1126,8 @@ int selectSFprobeMenu(int function) {
       function = RP_UART_RX;
       clearColorOverrides(1, 1, 0);
       logoColorOverrideBottom = -2;
-      break;
+      
+        break;
       }
       case BUILDING_PAD_TOP: {
       inPadMenu = 1;
@@ -3196,30 +3204,30 @@ void checkPads(void) {
     case LOGO_PAD_TOP:
       Serial.print("Top guy");
       clearColorOverrides(1, 1, 0);
-      logoColorOverrideTop = -2;
+      setLogoOverride(LOGO_TOP, -2);
       break;
     case LOGO_PAD_BOTTOM:
       Serial.print("Bottom guy");
       clearColorOverrides(1, 1, 0);
-      logoColorOverrideBottom = -2;
+      setLogoOverride(LOGO_BOTTOM, -2);
       break;
     case ADC_PAD:
       Serial.print("ADC pad");
       clearColorOverrides(1, 1, 0);
-      ADCcolorOverride0 = -2;
-      ADCcolorOverride1 = -2;
+      setLogoOverride(ADC_0, -2);
+      setLogoOverride(ADC_1, -2);
       break;
     case DAC_PAD:
       Serial.print("DAC pad");
       clearColorOverrides(1, 1, 0);
-      DACcolorOverride0 = -2;
-      DACcolorOverride1 = -2;
+      setLogoOverride(DAC_0, -2);
+      setLogoOverride(DAC_1, -2);
       break;
     case GPIO_PAD:
       Serial.print("GPIO pad");
       clearColorOverrides(1, 1, 0);
-      GPIOcolorOverride0 = -2;
-      GPIOcolorOverride1 = -2;
+      setLogoOverride(GPIO_0, -2);
+      setLogoOverride(GPIO_1, -2);
       break;
     case BUILDING_PAD_TOP:
       Serial.print("Building top");

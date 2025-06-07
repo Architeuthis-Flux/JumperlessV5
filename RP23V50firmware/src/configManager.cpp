@@ -10,6 +10,7 @@
 #include "Peripherals.h"
 #include "SerialWrapper.h"
 #include "oled.h"
+#include "ArduinoStuff.h"
  #define Serial SerialWrap
 // Define the global configuration instance
 
@@ -116,6 +117,14 @@ int parseArbitraryFunction(const char* str) {
 
 int parseFont(const char* str) {
     return parseFromTable(fontTable, fontTableSize, str);
+}
+
+int parseSerialPort(const char* str) {
+    return parseFromTable(serialPortTable, serialPortTableSize, str);
+}
+
+int parseDumpFormat(const char* str) {
+    return parseFromTable(dumpFormatTable, dumpFormatTableSize, str);
 }
 
 
@@ -229,6 +238,12 @@ void updateConfigFromFile(const char* filename) {
     char section[32] = "";
     char key[32];
     char value[64];
+    // Config version tracking  
+    const char* currentFirmwareVersion = firmwareVersion;
+    
+    bool foundConfigVersion = false;
+    char configFirmwareVersion[16] = {0};
+    bool needsReset = false;
     
     while (file.available()) {
         int bytesRead = file.readBytesUntil('\n', line, sizeof(line)-1);
@@ -255,7 +270,12 @@ void updateConfigFromFile(const char* filename) {
         toLower(key);
 
         // Update config based on section and key
-        if (strcmp(section, "hardware") == 0) {
+        if (strcmp(section, "config") == 0) {
+            if (strcmp(key, "firmware_version") == 0) {
+                strncpy(configFirmwareVersion, value, sizeof(configFirmwareVersion)-1);
+                foundConfigVersion = true;
+            }
+        } else if (strcmp(section, "hardware") == 0) {
             if (strcmp(key, "generation") == 0) jumperlessConfig.hardware.generation = parseInt(value);
             else if (strcmp(key, "revision") == 0) jumperlessConfig.hardware.revision = parseInt(value);
             else if (strcmp(key, "probe_revision") == 0) jumperlessConfig.hardware.probe_revision = parseInt(value);
@@ -307,6 +327,8 @@ void updateConfigFromFile(const char* filename) {
             else if (strcmp(key, "rail_brightness") == 0) jumperlessConfig.display.rail_brightness = parseInt(value);
             else if (strcmp(key, "special_net_brightness") == 0) jumperlessConfig.display.special_net_brightness = parseInt(value);
             else if (strcmp(key, "net_color_mode") == 0) jumperlessConfig.display.net_color_mode = parseNetColorMode(value);
+            else if (strcmp(key, "dump_leds") == 0) jumperlessConfig.display.dump_leds = parseSerialPort(value);
+            else if (strcmp(key, "dump_format") == 0) jumperlessConfig.display.dump_format = parseDumpFormat(value);
         } else if (strcmp(section, "gpio") == 0) {
             if (strcmp(key, "direction") == 0) parseCommaSeparatedInts(value, jumperlessConfig.gpio.direction, 10);
             else if (strcmp(key, "pulls") == 0) parseCommaSeparatedInts(value, jumperlessConfig.gpio.pulls, 10);
@@ -337,11 +359,50 @@ void updateConfigFromFile(const char* filename) {
             else if (strcmp(key, "gpio_scl") == 0) jumperlessConfig.top_oled.gpio_scl = parseInt(value);
             else if (strcmp(key, "connect_on_boot") == 0) jumperlessConfig.top_oled.connect_on_boot = parseBool(value);
             else if (strcmp(key, "lock_connection") == 0) jumperlessConfig.top_oled.lock_connection = parseBool(value);
+            else if (strcmp(key, "show_in_terminal") == 0) jumperlessConfig.top_oled.show_in_terminal = parseSerialPort(value);
             else if (strcmp(key, "font") == 0) jumperlessConfig.top_oled.font = parseFont(value);
         }
     }
     file.close();
 
+    // Check if config needs to be reset due to version differences
+    if (!foundConfigVersion) {
+        // Old config without version tracking - reset to be safe
+        Serial.println("Config file missing version info. Resetting to defaults (preserving hardware/calibration)...");
+        needsReset = true;
+    } else {
+        // Parse version numbers to compare
+        int configMajor = 0, configMinor = 0, configPatch = 0, configBuild = 0;
+        int currentMajor = 0, currentMinor = 0, currentPatch = 0, currentBuild = 0;
+        
+        sscanf(configFirmwareVersion, "%d.%d.%d.%d", &configMajor, &configMinor, &configPatch, &configBuild);
+        sscanf(currentFirmwareVersion, "%d.%d.%d.%d", &currentMajor, &currentMinor, &currentPatch, &currentBuild);
+        
+        // Check if firmware is more than one version behind
+        bool majorVersionDiff = (currentMajor > configMajor);
+        bool minorVersionDiff = (currentMajor == configMajor && currentMinor > configMinor + 1);
+        
+        if (majorVersionDiff || minorVersionDiff) {
+            Serial.print("Config from firmware ");
+            Serial.print(configFirmwareVersion);
+            Serial.print(" is too old for current firmware ");
+            Serial.print(currentFirmwareVersion);
+            Serial.println(". Resetting to defaults (preserving hardware/calibration)...");
+            needsReset = true;
+        } else if (newConfigOptions && strcmp(configFirmwareVersion, currentFirmwareVersion) != 0) {
+            Serial.print("Config from firmware ");
+            Serial.print(configFirmwareVersion);
+            Serial.print(" has new options in firmware ");
+            Serial.print(currentFirmwareVersion);
+            Serial.println(". Resetting to defaults (preserving hardware/calibration)...");
+            needsReset = true;
+        }
+    }
+    
+    if (needsReset) {
+        resetConfigToDefaults(0, 0);  // Keep calibration and hardware
+        return;
+    }
     
     readSettingsFromConfig();
     //initChipStatus();
@@ -358,6 +419,11 @@ void saveConfigToFile(const char* filename) {
         Serial.println("Failed to create config file");
         return;
     }
+
+    // Write config metadata section
+    file.println("[config]");
+    file.print("firmware_version = "); file.print(firmwareVersion); file.println(";");
+    file.println();
 
     // Write hardware version section
     file.println("[hardware]");
@@ -426,6 +492,8 @@ void saveConfigToFile(const char* filename) {
     file.print("rail_brightness = "); file.print(jumperlessConfig.display.rail_brightness); file.println(";");
     file.print("special_net_brightness = "); file.print(jumperlessConfig.display.special_net_brightness); file.println(";");
     file.print("net_color_mode = "); file.print(jumperlessConfig.display.net_color_mode); file.println(";");
+    file.print("dump_leds = "); file.print(jumperlessConfig.display.dump_leds); file.println(";");
+    file.print("dump_format = "); file.print(jumperlessConfig.display.dump_format); file.println(";");
     file.println();
 
     // Write GPIO section
@@ -523,7 +591,8 @@ void loadConfig(void) {
 }
 
 int parseSectionName(const char* sectionName) {
-    if (strcmp(sectionName, "hardware") == 0) return 0;
+    if (strcmp(sectionName, "config") == 0) return -2; // Special case for config section
+    else if (strcmp(sectionName, "hardware") == 0) return 0;
     else if (strcmp(sectionName, "dacs") == 0) return 1;
     else if (strcmp(sectionName, "debug") == 0) return 2;
     else if (strcmp(sectionName, "routing") == 0) return 3;
@@ -552,6 +621,14 @@ void printConfigSectionToSerial(int section, bool showNames, bool pasteable) {
     if (section == -1) {
         Serial.println("Jumperless Config:\n\r");
     }
+    
+    // Print config metadata section
+    if (section == -1 || section == -2) {
+        Serial.print("\n`[config] ");
+        if (pasteable == false) Serial.println();
+        Serial.print("firmware_version = "); Serial.print(firmwareVersion); Serial.println(";");
+    }
+    
     // Print hardware version section
     if (section == -1 || section == 0) {
         Serial.print("\n`[hardware] ");
@@ -667,6 +744,10 @@ void printConfigSectionToSerial(int section, bool showNames, bool pasteable) {
         Serial.print("special_net_brightness = "); Serial.print(jumperlessConfig.display.special_net_brightness); Serial.println(";");
         if (pasteable == true) Serial.print("`[display] ");
         Serial.print("net_color_mode = "); Serial.print(getStringFromTable(jumperlessConfig.display.net_color_mode, netColorModeTable)); Serial.println(";");
+        if (pasteable == true) Serial.print("`[display] ");
+        Serial.print("dump_leds = "); Serial.print(getStringFromTable(jumperlessConfig.display.dump_leds, serialPortTable)); Serial.println(";");
+        if (pasteable == true) Serial.print("`[display] ");
+        Serial.print("dump_format = "); Serial.print(getStringFromTable(jumperlessConfig.display.dump_format, dumpFormatTable)); Serial.println(";");
     }
 
     // Print GPIO section
@@ -772,7 +853,7 @@ void printConfigSectionToSerial(int section, bool showNames, bool pasteable) {
         if (pasteable == true) Serial.print("`[top_oled] ");
         Serial.print("lock_connection = "); Serial.print(getStringFromTable(jumperlessConfig.top_oled.lock_connection, boolTable)); Serial.println(";");
         if (pasteable == true) Serial.print("`[top_oled] ");
-        Serial.print("show_in_terminal = "); Serial.print(getStringFromTable(jumperlessConfig.top_oled.show_in_terminal, boolTable)); Serial.println(";");
+        Serial.print("show_in_terminal = "); Serial.print(getStringFromTable(jumperlessConfig.top_oled.show_in_terminal, serialPortTable)); Serial.println(";");
         if (pasteable == true) Serial.print("`[top_oled] ");
         Serial.print("font = "); Serial.print(getStringFromTable(jumperlessConfig.top_oled.font, fontTable)); Serial.println(";");
     }
@@ -905,12 +986,24 @@ void printSettingChange(const char* section, const char* key, const char* oldVal
     } else if ((strcmp(section, "serial_1") == 0 || strcmp(section, "serial_2") == 0 || strcmp(section, "gpio") == 0) && (strstr(key, "function") != NULL)) {
         oldName = getStringFromTable(atoi(oldValue), uartFunctionTable);
         newName = getStringFromTable(atoi(newValue), uartFunctionTable);
+        initArduino();
     } else if (strcmp(section, "logo_pads") == 0) {
         oldName = getStringFromTable(atoi(oldValue), arbitraryFunctionTable);
         newName = getStringFromTable(atoi(newValue), arbitraryFunctionTable);
     } else if (strcmp(section, "top_oled") == 0 && strcmp(key, "font") == 0) {
         oldName = getStringFromTable(atoi(oldValue), fontTable);
         newName = getStringFromTable(atoi(newValue), fontTable);
+    } else if (strcmp(section, "top_oled") == 0 && strcmp(key, "show_in_terminal") == 0) {
+        oldName = getStringFromTable(atoi(oldValue), serialPortTable);
+        newName = getStringFromTable(atoi(newValue), serialPortTable);
+        initArduino();
+    } else if (strcmp(section, "display") == 0 && strcmp(key, "dump_leds") == 0) {
+        oldName = getStringFromTable(atoi(oldValue), serialPortTable);
+        newName = getStringFromTable(atoi(newValue), serialPortTable);
+        initArduino();
+    } else if (strcmp(section, "display") == 0 && strcmp(key, "dump_format") == 0) {
+        oldName = getStringFromTable(atoi(oldValue), dumpFormatTable);
+        newName = getStringFromTable(atoi(newValue), dumpFormatTable);
     } else if (
         (strcmp(section, "dacs") == 0 && (strcmp(key, "set_dacs_on_startup") == 0 || strcmp(key, "set_rails_on_startup") == 0)) ||
         (strcmp(section, "debug") == 0) ||
@@ -1296,6 +1389,8 @@ void updateConfigValue(const char* section, const char* key, const char* value) 
         else if (strcmp(key, "rail_brightness") == 0) sprintf(oldValue, "%d", jumperlessConfig.display.rail_brightness);
         else if (strcmp(key, "special_net_brightness") == 0) sprintf(oldValue, "%d", jumperlessConfig.display.special_net_brightness);
         else if (strcmp(key, "net_color_mode") == 0) sprintf(oldValue, "%d", jumperlessConfig.display.net_color_mode);
+        else if (strcmp(key, "dump_leds") == 0) sprintf(oldValue, "%d", jumperlessConfig.display.dump_leds);
+        else if (strcmp(key, "dump_format") == 0) sprintf(oldValue, "%d", jumperlessConfig.display.dump_format);
     }
     else if (strcmp(section, "gpio") == 0) {
         if (strcmp(key, "direction") == 0) {
@@ -1409,6 +1504,8 @@ void updateConfigValue(const char* section, const char* key, const char* value) 
         else if (strcmp(key, "rail_brightness") == 0) jumperlessConfig.display.rail_brightness = parseInt(value);
         else if (strcmp(key, "special_net_brightness") == 0) jumperlessConfig.display.special_net_brightness = parseInt(value);
         else if (strcmp(key, "net_color_mode") == 0) jumperlessConfig.display.net_color_mode = parseNetColorMode(value);
+        else if (strcmp(key, "dump_leds") == 0) jumperlessConfig.display.dump_leds = parseSerialPort(value);
+        else if (strcmp(key, "dump_format") == 0) jumperlessConfig.display.dump_format = parseDumpFormat(value);
     }
     else if (strcmp(section, "gpio") == 0) {
         if (strcmp(key, "direction") == 0) {
@@ -1449,7 +1546,7 @@ void updateConfigValue(const char* section, const char* key, const char* value) 
         else if (strcmp(key, "scl_row") == 0) jumperlessConfig.top_oled.scl_row = parseInt(value);
         else if (strcmp(key, "connect_on_boot") == 0) jumperlessConfig.top_oled.connect_on_boot = parseBool(value);
         else if (strcmp(key, "lock_connection") == 0) jumperlessConfig.top_oled.lock_connection = parseBool(value);
-        else if (strcmp(key, "show_in_terminal") == 0) jumperlessConfig.top_oled.show_in_terminal = parseBool(value);
+        else if (strcmp(key, "show_in_terminal") == 0) jumperlessConfig.top_oled.show_in_terminal = parseSerialPort(value);
         else if (strcmp(key, "font") == 0) {
             jumperlessConfig.top_oled.font = parseFont(value);
             
@@ -1620,7 +1717,8 @@ bool fastParseAndUpdateConfig(const char* configString) {
     }
     
     // Quick section validation - only proceed if it's a known section
-    if (strcmp(section, "hardware") != 0 && 
+    if (strcmp(section, "config") != 0 &&
+        strcmp(section, "hardware") != 0 && 
         strcmp(section, "dacs") != 0 && 
         strcmp(section, "debug") != 0 && 
         strcmp(section, "routing") != 0 && 

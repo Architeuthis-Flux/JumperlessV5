@@ -67,16 +67,16 @@ extern "C" {
 
 #define CFG_TUD_ENDOINT0_SIZE 64
 
-#define CFG_TUD_CDC 3
+#define CFG_TUD_CDC 4
 
 #define CFG_TUD_MSC 1
 #define CFG_TUD_HID 2
 #define CFG_TUD_MIDI 1
 #define CFG_TUD_VENDOR 1
 
-// CDC FIFO size of TX and RX
-#define CFG_TUD_CDC_RX_BUFSIZE 256
-#define CFG_TUD_CDC_TX_BUFSIZE 256
+// CDC FIFO size of TX and RX - Increased for dumpLEDs function
+#define CFG_TUD_CDC_RX_BUFSIZE 2048
+#define CFG_TUD_CDC_TX_BUFSIZE 4096
 
 // MSC Buffer size of Device Mass storage
 #define CFG_TUD_MSC_EP_BUFSIZE 512

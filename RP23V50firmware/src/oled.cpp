@@ -742,7 +742,7 @@ void oled::clear() {
 
 void oled::show() {
     
-    if (jumperlessConfig.top_oled.show_in_terminal == 1) {
+    if (jumperlessConfig.top_oled.show_in_terminal > 0) {
         dumpFrameBufferQuarterSize(1);
     }
     if (!oledConnected) return;
@@ -840,7 +840,11 @@ void oled::testMenuPositioning() {
 }
 
 // Debug frame buffer dump function (simplified)
-void oled::dumpFrameBufferQuarterSize(int clearFirst, int x_pos, int y_pos, int border) {
+
+unsigned long lastDumpTime = 0;
+unsigned long clearInterval = 2000;
+
+void oled::dumpFrameBufferQuarterSize(int clearFirst, int x_pos, int y_pos, int border, Stream* stream) {
     if (!oledConnected) {
        // Serial.println("OLED not connected");
         return;
@@ -851,17 +855,49 @@ void oled::dumpFrameBufferQuarterSize(int clearFirst, int x_pos, int y_pos, int 
        // Serial.println("No framebuffer available");
         return;
     }
-saveCursorPosition();
-    Serial.printf("\033[%d;%dH", y_pos-1, x_pos +1);
-    Serial.printf("\033[0K");
-    Serial.printf("\033[1B");
-    Serial.printf("\033[0K");
-    if (border == 1) {
-        Serial.println("╭────────────────────────────────────────────────────────────────╮");
-    } else if (border == 2) {
-        Serial.println("▗▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▖");
+
+    if (dumpingToSerial == false) {
+        dumpingToSerial = true;
     } else {
-        Serial.println("                                                                  ");
+        return;
+    }
+
+    if (jumperlessConfig.serial_2.function == 4 || jumperlessConfig.serial_2.function == 6) {
+      stream = &USBSer2;
+      y_pos = 1;
+      x_pos = 1;
+      if (millis() - lastDumpTime > clearInterval) {
+        stream->print("\033[2J\033[?25l");
+        lastDumpTime = millis();
+      }
+    } else if (jumperlessConfig.serial_1.function == 4 || jumperlessConfig.serial_1.function == 6) {
+      stream = &USBSer1;
+      y_pos = 1;
+      x_pos = 1;
+      if (millis() - lastDumpTime > clearInterval) {
+        stream->print("\033[2J\033[?25l");
+        lastDumpTime = millis();
+      }
+    } else {
+      stream = &Serial;
+      saveCursorPosition(stream);
+    stream->printf("\033[%d;%dH", y_pos-1, x_pos +1);
+    stream->printf("\033[0K");
+    stream->printf("\033[1B");
+    stream->printf("\033[0K");
+
+
+    }
+
+
+
+
+    if (border == 1) {
+        stream->println("╭────────────────────────────────────────────────────────────────╮");
+    } else if (border == 2) {
+        stream->println("▗▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▖");
+    } else {
+        stream->println("                                                                  ");
     }
     
     // Quarter block characters for different pixel combinations
@@ -886,14 +922,14 @@ saveCursorPosition();
     
     // Process framebuffer in 2x2 blocks to create 64x16 output
     for (int blockRow = 0; blockRow < SCREEN_HEIGHT / 2; blockRow++) {
-        Serial.printf("\033[%dC",x_pos);
-        Serial.printf("\033[0K");
+        stream->printf("\033[%dC",x_pos);
+        stream->printf("\033[0K");
         if (border == 1) {
-            Serial.print("│"); // Left border
+            stream->print("│"); // Left border
         } else if (border == 2) {
-            Serial.print("▐"); // Left border
+            stream->print("▐"); // Left border
         } else {
-            Serial.print(" "); // Left border
+            stream->print(" "); // Left border
         }
         
         for (int blockCol = 0; blockCol < SCREEN_WIDTH / 2; blockCol++) {
@@ -922,28 +958,33 @@ saveCursorPosition();
             }
             
             // Print the appropriate quarter block character
-            Serial.print(quarterBlocks[pixelMask]);
+            stream->print(quarterBlocks[pixelMask]);
         }
         
         if (border == 1) {
-            Serial.println("│"); // Right border and newline
+            stream->println("│"); // Right border and newline
         } else if (border == 2) {
-            Serial.println("▌"); // Right border and newline
+            stream->println("▌"); // Right border and newline
         } else {
-            Serial.println(" "); // Right border and newline
+            stream->println(" "); // Right border and newline
         }
     }
-    Serial.printf("\033[%dC",x_pos);
-    Serial.printf("\033[0K");
+    stream->printf("\033[%dC",x_pos);
+    stream->printf("\033[0K");
     if (border == 1) {
-        Serial.println("╰────────────────────────────────────────────────────────────────╯");
+        stream->println("╰────────────────────────────────────────────────────────────────╯");
     } else if (border == 2) {
-        Serial.println("▝▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▘");
+        stream->println("▝▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▘");
     } else {
-        Serial.println("                                                                  ");
+        stream->println("                                                                  ");
     }
-    Serial.printf("\033[%dB",y_pos - (SCREEN_HEIGHT / 2 ) + 2);
-restoreCursorPosition();
+    stream->printf("\033[%dB",y_pos - (SCREEN_HEIGHT / 2 ) + 2);
+    if (stream == &Serial) {
+      restoreCursorPosition(stream);
+    } else {
+      stream->printf("\033[%d;%dH", y_pos-1, x_pos +1);
+    }
+    dumpingToSerial = false;
 }
 
 

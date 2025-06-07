@@ -26,7 +26,7 @@ extern bool debugMM;
 extern bool calibrateOnStart;
 extern bool firstStart;
 
-
+extern const char firmwareVersion[16];
 
 void debugFlagSet(int flag);
 void debugFlagInit(int forceDefaults = 0);
