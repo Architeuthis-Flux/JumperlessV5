@@ -66,10 +66,12 @@ KevinC@ppucc.io
 #include "USBfs.h"
 #endif
 #include "UserCode.h"
-#include "SerialWrapper.h"
+//#include "SerialWrapper.h"
 #include "Highlighting.h"
 
-#define Serial SerialWrap
+// #define Serial SerialWrap
+// #define USBSer1 SerialWrap
+// #define USBSer2 SerialWrap
 
 //#define Serial SerialWrap
 
@@ -128,9 +130,12 @@ void setup() {
 
     // SerialWrap.enableSerial1(true);
 
-    // SerialWrap.enableUSBSer1(true);
+    // Serial.enableUSBSer1(true);
 
-    //Serial.begin(115200);
+   
+   // Serial.begin(115200);
+    // USBSer1.begin(115200);
+    // USBSer2.begin(115200);
 
   startupTimers[0] = millis();
   // Initialize FatFS
@@ -160,6 +165,8 @@ void setup() {
   initNets();
   backpowered = 0;
 
+  // delay(1000);
+
   if (jumperlessConfig.serial_1.function >= 5 && jumperlessConfig.serial_1.function <= 6) {
     dumpLED = 1;
     }
@@ -174,6 +181,31 @@ void setup() {
     jumperlessConfig.top_oled.show_in_terminal = 3;
     }
 
+// Serial.println("Serial 1 baud rate: ");
+// Serial.println(jumperlessConfig.serial_1.baud_rate);
+// Serial.println("Serial 2 baud rate: ");
+// Serial.println(jumperlessConfig.serial_2.baud_rate);
+
+// Serial.println("Serial 1 function: ");
+// Serial.println(jumperlessConfig.serial_1.function);
+// Serial.println("Serial 2 function: ");
+// Serial.println(jumperlessConfig.serial_2.function);
+
+//if (jumperlessConfig.serial_1.function != 0) {
+  //Serial.begin(jumperlessConfig.serial_1.baud_rate);
+
+  //Serial.enableUSBSer1(true);
+  //USBSer1.begin(jumperlessConfig.serial_1.baud_rate);
+  //}
+
+if (jumperlessConfig.serial_2.function != 0) {
+ // Serial.begin(jumperlessConfig.serial_2.baud_rate);
+  //Serial.enableUSBSer2(true);
+  //USBSer2.begin(jumperlessConfig.serial_2.baud_rate);
+  }
+
+
+   Serial.begin(115200);
   // uint8_t serialTarget = SERIAL_PORT_MAIN;
   // //SerialWrap.enableSerial1(true);
   // Serial.enableSerial1(true);
@@ -199,8 +231,7 @@ void setup() {
 
 
   //Serial.println("Hello! This automatically goes to all enabled ports!");
-  initArduino();
-  initSecondSerial();
+
   initDAC();
   pinMode(PROBE_PIN, OUTPUT_8MA);
   pinMode(BUTTON_PIN, INPUT_PULLDOWN);
@@ -219,9 +250,16 @@ void setup() {
 
   digitalWrite(RESETPIN, LOW);
 
+
+
+
+
   while (core2initFinished == 0) {
     // delayMicroseconds(1);
     }
+
+
+initSecondSerial();
 
   drawAnimatedImage(0);
   startupAnimationFinished = 1;
@@ -233,7 +271,8 @@ void setup() {
   startupTimers[5] = millis();
 
   delayMicroseconds(100);
-
+  initArduino();
+  
   // delay(100);
   initMenu();
   startupTimers[6] = millis();
@@ -252,8 +291,8 @@ void setup() {
   createSlots(-1, 0);
   startupTimers[9] = millis();
 
-  // Test the new DefineInfo structs
-  //testDefineInfoStructs();
+      // Test the new DefineInfo structs
+    //testDefineInfoStructs();
 
   }
 
@@ -315,8 +354,8 @@ int serSource = 0;
 int readInNodesArduino = 0;
 
 
-const char firmwareVersion[] = "5.1.4.1"; // remember to update this
-const bool newConfigOptions = false; // set to true when config options are added/changed
+const char firmwareVersion[] = "5.1.4.3"; // remember to update this
+const bool newConfigOptions = true; // set to true when config options are added/changed
 
 int firstLoop = 1;
 
@@ -365,13 +404,6 @@ menu:
 
 
 
-    if (jumperlessConfig.serial_1.connect_on_boot == 1) {
-      connectArduino(0, 0);
-      }
-    if (jumperlessConfig.serial_2.connect_on_boot == 1) {
-      connectArduino(0, 0);
-      }
-
     //routableBufferPower(1, 1);
     if (attract == 1) {
       defconDisplay = 0;
@@ -396,9 +428,9 @@ menu:
 
 
 
-  if (SerialWrap.available() > 20) { //this is so if you dump a lot of data into the serial buffer, it will consume it and not keep looping
-    while (SerialWrap.available() > 0) {
-      char c = SerialWrap.read();
+  if (Serial.available() > 20) { //this is so if you dump a lot of data into the serial buffer, it will consume it and not keep looping
+    while (Serial.available() > 0) {
+      char c = Serial.read();
       //Serial.print(c);
      // Serial.flush();
       }
@@ -539,7 +571,7 @@ menu:
     //Serial.setSerialTarget(serialTarget);
 
         //! This is the main busy wait loop waiting for input
-    while (SerialWrap.available() == 0 && connectFromArduino == '\0' && slotChanged == 0) {
+    while (Serial.available() == 0 && connectFromArduino == '\0' && slotChanged == 0) {
 
       //warningNet = 7;
       //firstConnection = -1;
@@ -799,7 +831,7 @@ menu:
 
     // Serial.print("Serial target = ");
     // Serial.println(Serial.getSerialTarget());
-    input = SerialWrap.read();
+    input = Serial.read();
     // Serial.print("input = ");
     // Serial.println(input);
     // for (int i = 0; i < 10; i++) {
@@ -905,11 +937,11 @@ menu:
       break;
       int node1 = -1;
       int node2 = -1;
-      while (SerialWrap.available() == 0) {
+      while (Serial.available() == 0) {
         }
       //char c = Serial.read();
-      node1 = SerialWrap.parseInt();
-      node2 = SerialWrap.parseInt();
+      node1 = Serial.parseInt();
+      node2 = Serial.parseInt();
       Serial.print("node1 = ");
       Serial.println(node1);
       Serial.print("node2 = ");
@@ -1051,8 +1083,8 @@ menu:
       break;
       }
       case 'r': { //!  r
-      if (SerialWrap.available() > 0) {
-        char c = SerialWrap.read();
+      if (Serial.available() > 0) {
+        char c = Serial.read();
         if (c == '0' || c == '2' || c == 't') {
           resetArduino(0);
           }
@@ -1069,28 +1101,32 @@ menu:
       case 'A': { //!  A
       // delay(100);
       int justAsk = 0;
-      while (SerialWrap.available() > 0) {
+      if (Serial.available() > 0) {
         // Serial.print("checking for arduino connection");
-        char c = SerialWrap.read();
-        if (c == ' ') {
-          continue;
-          }
+        char c = Serial.read();
+        // if (c == ' ') {
+        //   continue;
+        //   }
         if (c == '?') {
           if (checkIfArduinoIsConnected() == 1) {
             justAsk = 1;
             Serial.println("Y");
-            break;
+            Serial.flush();
+            //break;
             } else {
             justAsk = 1;
             Serial.println("n");
-            break;
+            Serial.flush();
+            //break;
             }
           } else {
-          break;
+          //break;
           }
         }
       if (justAsk == 0) {
         connectArduino(0);
+        Serial.println("UART connected to Arduino D0 and D1");
+        Serial.flush();
         //   removeBridgeFromNodeFile(NANO_D1, RP_UART_RX, netSlot, 0);
         //   removeBridgeFromNodeFile(NANO_D0, RP_UART_TX, netSlot, 0);
         //   addBridgeToNodeFile(RP_UART_RX, NANO_D1, netSlot, 0, 1);
@@ -1099,33 +1135,38 @@ menu:
           //  // goto loadfile;
           //   refreshConnections(-1);
         }
+        goto dontshowmenu;
       break;
       }
       case 'a': { //!  a
       // delay(100);
       int justAsk = 0;
-      while (SerialWrap.available() > 0) {
+      while (Serial.available() > 0) {
         // Serial.print("checking for arduino connection");
-        char c = SerialWrap.read();
-        if (c == ' ') {
-          continue;
-          }
+        char c = Serial.read();
+        // if (c == ' ') {
+        //   continue;
+        //   }
         if (c == '?') {
           if (checkIfArduinoIsConnected() == 1) {
             justAsk = 1;
             Serial.println("Y");
-            break;
+            Serial.flush();
+            //break;
             } else {
             justAsk = 1;
             Serial.println("n");
-            break;
+            Serial.flush();
+            //break;
             }
           } else {
-          break;
+         // break;
           }
         }
       if (justAsk == 0) {
         disconnectArduino(0);
+        Serial.println("UART disconnected from Arduino D0 and D1");
+        Serial.flush();
         // removeBridgeFromNodeFile(NANO_D1, RP_UART_RX, netSlot, 0);
         // removeBridgeFromNodeFile(NANO_D0, RP_UART_TX, netSlot, 0);
         // // removeBridgeFromNodeFile(RP_UART_RX, -1, netSlot, 0);
@@ -1134,6 +1175,7 @@ menu:
         // refreshConnections(-1);
         }
       //goto loadfile;
+      goto dontshowmenu;
       break;
       }
 
@@ -1200,7 +1242,7 @@ menu:
       //  while (slotChanged == 0)
       //  {
       //
-      while (SerialWrap.available() == 0 && slotChanged == 0) {
+      while (Serial.available() == 0 && slotChanged == 0) {
         if (slotChanged == 1) {
           // b.print("Jumperless", 0x101000, 0x020002, 0);
           // delay(100);
@@ -1231,8 +1273,8 @@ menu:
       break;
       }
       case 'v':{ //!  v
-        if (SerialWrap.available() > 0) {
-          char c = SerialWrap.read();
+        if (Serial.available() > 0) {
+          char c = Serial.read();
 
           if (isdigit(c) == 1) {
             int adc = c - '0';
@@ -1254,8 +1296,8 @@ menu:
                 Serial.println(probeVoltage);
                 }
             } else if (c == 'i') {
-              if (SerialWrap.available() > 0) {
-                char c = SerialWrap.read();
+              if (Serial.available() > 0) {
+                char c = Serial.read();
                   if (c == '1') {
                   float iSense = INA1.getCurrent_mA();
                   Serial.print("ina1 = ");
@@ -1626,10 +1668,10 @@ menu:
               Serial.println("\n\n\n\r");
               Serial.flush();
 
-              while (SerialWrap.available() == 0)
+              while (Serial.available() == 0)
                 ;
 
-              int toggleDebug = SerialWrap.read();
+              int toggleDebug = Serial.read();
               Serial.write(toggleDebug);
               toggleDebug -= '0';
 
@@ -1649,7 +1691,7 @@ menu:
 
       case ':':
 
-        if (SerialWrap.read() == ':') {
+        if (Serial.read() == ':') {
           // Serial.print("\n\r");
           // Serial.print("entering machine mode\n\r");
           // machineMode();
@@ -1661,16 +1703,16 @@ menu:
           }
 
       default:
-        while (SerialWrap.available() > 0) {
-          int f = SerialWrap.read();
+        while (Serial.available() > 0) {
+          int f = Serial.read();
           // delayMicroseconds(30);
           }
 
         break;
       }
     delayMicroseconds(1000);
-    while (SerialWrap.available() > 0) {
-      SerialWrap.read();
+    while (Serial.available() > 5) {
+      Serial.read();
       delayMicroseconds(1000);
       }
     goto menu;

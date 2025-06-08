@@ -1,0 +1,28 @@
+# Arduino CLI Upload Configuration
+# Edit this file to customize arduino-cli upload options
+# One option per line, comments start with #
+# Available placeholders: {cli_path}, {arduino_port}, {fqbn}, {build_path}, {discovery_timeout}, {sketch_dir}
+# IMPORTANT: Arduino CLI requires NO SPACES between option flags and values
+
+# Full upload command with common options
+upload
+-p{arduino_port}
+-b{fqbn}
+-v
+# --verify
+# --discovery-timeout {discovery_timeout}
+
+# Upload field options (uncomment to use):
+# --upload-field timeout=10
+# --upload-field attempts=1
+# --upload-field wait_for_upload_port=true
+
+# Build path options (uncomment ONE if needed):
+# --build-path{build_path}   # Specify build directory
+# --input-dir{build_path}    # Alternative build directory flag
+
+# Custom avrdude config (uncomment and adjust path):
+# --upload-field avrdude.config.file=./avrdudeCustom.conf
+
+# The sketch directory must be last (Arduino CLI auto-detects compiled files)
+{sketch_dir}

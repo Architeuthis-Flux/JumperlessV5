@@ -24,9 +24,23 @@ extern uint8_t paritytypeUSBSer1, paritytypeUSBSer2;
 extern uint8_t stopbitsUSBSer1, stopbitsUSBSer2;
 extern int baudRateUSBSer1, baudRateUSBSer2;
 extern volatile int backpowered;
+
+
 #ifdef USE_TINYUSB
+#include "usb_interface_config.h"
+
+#if USB_CDC_ENABLE_COUNT >= 2
 extern Adafruit_USBD_CDC USBSer1;
+#endif
+
+#if USB_CDC_ENABLE_COUNT >= 3
 extern Adafruit_USBD_CDC USBSer2;
+#endif
+
+#if USB_CDC_ENABLE_COUNT >= 4
+extern Adafruit_USBD_CDC USBSer3;
+#endif
+
 #endif
 extern volatile int arduinoInReset;
 
@@ -62,5 +76,6 @@ int checkIfArduinoIsConnected(void);
 int handleSerialPassthrough(int serial = 2, int print = 0, int printPassthroughFlashing = 0, int checkForCommands = 1);
 
 void printMicrosPerByte(void);
+void printUSBInterfaceNames(void);
 
 #endif

@@ -327,6 +327,70 @@ noArduinocli = True
 # Threading locks for thread-safe operations
 serial_lock = threading.Lock()
 wokwi_update_lock = threading.Lock()
+arduino_flash_lock = threading.Lock()  # Prevent concurrent Arduino uploads
+
+# Global process tracking for cleanup
+active_processes = []
+active_threads = []
+
+def cleanup_on_exit():
+    """Clean up all active processes and threads on script exit"""
+    global active_processes, active_threads, ser, serialconnected
+    import subprocess
+    
+    safe_print("\nCleaning up processes and threads...", Fore.YELLOW)
+    
+    # Terminate active subprocesses
+    for process in active_processes[:]:  # Copy list to avoid modification during iteration
+        try:
+            if process.poll() is None:  # Process is still running
+                safe_print(f"Terminating subprocess PID {process.pid}...", Fore.CYAN)
+                process.terminate()
+                try:
+                    process.wait(timeout=2)
+                    safe_print(f"Subprocess PID {process.pid} terminated gracefully", Fore.GREEN)
+                except subprocess.TimeoutExpired:
+                    safe_print(f"Force killing subprocess PID {process.pid}...", Fore.RED)
+                    process.kill()
+                    try:
+                        process.wait(timeout=1)
+                    except subprocess.TimeoutExpired:
+                        safe_print(f"Subprocess PID {process.pid} is unresponsive", Fore.RED)
+            active_processes.remove(process)
+        except Exception as e:
+            safe_print(f"Error terminating subprocess: {e}", Fore.RED)
+    
+    # Signal threads to stop (daemon threads will be killed automatically)
+    # Non-daemon threads need to be handled if they don't respond to interrupts
+    non_daemon_threads = [t for t in active_threads if t.is_alive() and not t.daemon]
+    if non_daemon_threads:
+        safe_print(f"Waiting for {len(non_daemon_threads)} non-daemon threads to finish...", Fore.CYAN)
+        for thread in non_daemon_threads:
+            try:
+                thread.join(timeout=2)  # Wait up to 2 seconds for each thread
+                if thread.is_alive():
+                    safe_print(f"Thread {thread.name} is still running (will be force-terminated)", Fore.YELLOW)
+                else:
+                    safe_print(f"Thread {thread.name} finished cleanly", Fore.GREEN)
+            except Exception as e:
+                safe_print(f"Error waiting for thread {thread.name}: {e}", Fore.RED)
+    
+    # Close serial connections
+    try:
+        if ser and serialconnected:
+            ser.close()
+            safe_print("Closed Jumperless serial connection", Fore.GREEN)
+    except Exception as e:
+        safe_print(f"Error closing serial connection: {e}", Fore.RED)
+    
+    # Force clear Arduino port one final time
+    try:
+        if arduinoPort:
+            force_clear_arduino_port()
+    except Exception as e:
+        safe_print(f"Error in final Arduino port clear: {e}", Fore.RED)
+    
+    safe_print("Cleanup completed", Fore.GREEN)
 
 # Debug and configuration flags
 debug = False
@@ -371,6 +435,7 @@ slotAPIurls = ['!', '!', '!', '!', '!', '!', '!', '!', '!']
 numAssignedSlots = 0
 currentSlotUpdate = 0
 wokwiUpdateRate = 3.0
+forceArduinoFlash = 0  # Global flag to force Arduino flash regardless of content changes
 
 # Local file management (new)
 slotFilePaths = ['!', '!', '!', '!', '!', '!', '!', '!']  # Local .ino file paths
@@ -566,11 +631,20 @@ def process_local_file_and_flash(slot_number):
                 # Store in sketch array
                 sketch[slot_number] = content
                 
-                # Check if content has actually changed
-                if lastsketch[slot_number] != content:
+                # Check if content has actually changed OR if force flash is requested
+                global forceArduinoFlash
+                content_changed = lastsketch[slot_number] != content
+                should_flash = content_changed or forceArduinoFlash
+                
+                if should_flash:
                     lastsketch[slot_number] = content
                     
-                    safe_print(f"\nLocal file changed for slot {slot_number}: {os.path.basename(file_path)}", Fore.MAGENTA)
+                    if forceArduinoFlash:
+                        safe_print(f"\nForce flashing local file for slot {slot_number}: {os.path.basename(file_path)}", Fore.MAGENTA)
+                        forceArduinoFlash = 0  # Reset flag after use
+                    else:
+                        safe_print(f"\nLocal file changed for slot {slot_number}: {os.path.basename(file_path)}", Fore.MAGENTA)
+                    
                     if debugWokwi:
                         safe_print(f"File path: {file_path}", Fore.CYAN)
                         safe_print(content[:200] + ('...' if len(content) > 200 else ''), Fore.CYAN)
@@ -581,6 +655,7 @@ def process_local_file_and_flash(slot_number):
                         return flash_thread is not None
                     except Exception as e:
                         safe_print(f"Error flashing local file for slot {slot_number}: {e}", Fore.RED)
+                        forceArduinoFlash = 0  # Reset flag on error too
                         return False
                 else:
                     if debugWokwi:
@@ -1463,6 +1538,119 @@ def assign_wokwi_slots():
         return (changes_made, True)
 
 # ============================================================================
+# FLASH COMMAND FUNCTIONS
+# ============================================================================
+
+def handle_flash_command():
+    """Handle the flash command - flash Arduino with assigned slot content"""
+    global slotURLs, slotFilePaths, numAssignedSlots, noArduinocli, disableArduinoFlashing, forceArduinoFlash
+    
+    if noArduinocli:
+        safe_print("Arduino CLI not available", Fore.RED)
+        safe_print("Install pyduinocli with: pip install pyduinocli", Fore.CYAN)
+        return
+    
+    # Set force flag to bypass "sketch unchanged" checks and disableArduinoFlashing
+    forceArduinoFlash = 1
+    
+    if disableArduinoFlashing:
+        safe_print("Arduino flashing is disabled, but 'flash' command overrides this setting", Fore.YELLOW)
+    
+    # Count and find assigned slots
+    assigned_slots = []
+    for i in range(8):
+        if slotURLs[i] != '!' or slotFilePaths[i] != '!':
+            assigned_slots.append(i)
+    
+    if not assigned_slots:
+        safe_print("No slots assigned. Use 'slots' command to assign projects first.", Fore.YELLOW)
+        forceArduinoFlash = 0  # Reset flag
+        return
+    
+    # If only one slot assigned, flash it directly
+    if len(assigned_slots) == 1:
+        slot_to_flash = assigned_slots[0]
+        safe_print(f"Flashing slot {slot_to_flash}...", Fore.CYAN)
+        
+        # Check if it's a local file or Wokwi URL
+        if slotFilePaths[slot_to_flash] != '!':
+            # Local .ino file
+            file_path = slotFilePaths[slot_to_flash]
+            if is_valid_ino_file(file_path):
+                content = read_local_ino_file(file_path)
+                if content:
+                    safe_print(f"Flashing local file: {os.path.basename(file_path)}", Fore.GREEN)
+                    flash_thread = flash_arduino_sketch_threaded(content, "", slot_to_flash)
+                    return flash_thread is not None
+                else:
+                    safe_print(f"Could not read file: {file_path}", Fore.RED)
+            else:
+                safe_print(f"Invalid or missing file: {file_path}", Fore.RED)
+        elif slotURLs[slot_to_flash] != '!':
+            # Wokwi URL
+            wokwi_url = slotURLs[slot_to_flash]
+            safe_print(f"Flashing Wokwi project: {wokwi_url}", Fore.GREEN)
+            return process_wokwi_sketch_and_flash(wokwi_url, slot_to_flash)
+    else:
+        # Multiple slots assigned, ask which one to flash
+        safe_print(f"Multiple slots assigned ({len(assigned_slots)}). Choose which to flash:", Fore.CYAN)
+        safe_print("")
+        
+        for slot_num in assigned_slots:
+            if slotFilePaths[slot_num] != '!':
+                file_path = slotFilePaths[slot_num]
+                file_name = os.path.basename(file_path)
+                file_status = "(valid)" if is_valid_ino_file(file_path) else "(missing)"
+                safe_print(f"  {slot_num}: [LOCAL] {file_name} {file_status}", 
+                          Fore.GREEN if is_valid_ino_file(file_path) else Fore.RED)
+            elif slotURLs[slot_num] != '!':
+                safe_print(f"  {slot_num}: [WOKWI] {slotURLs[slot_num]}", Fore.CYAN)
+        
+        try:
+            choice = input(f"\nEnter slot number to flash (0-7): ").strip()
+            
+            if not choice.isdigit():
+                safe_print("Invalid input. Please enter a number.", Fore.RED)
+                return False
+            
+            slot_choice = int(choice)
+            
+            if slot_choice not in assigned_slots:
+                safe_print(f"Slot {slot_choice} is not assigned. Available slots: {assigned_slots}", Fore.RED)
+                return False
+            
+            # Flash the chosen slot
+            safe_print(f"Flashing slot {slot_choice}...", Fore.CYAN)
+            
+            if slotFilePaths[slot_choice] != '!':
+                # Local .ino file
+                file_path = slotFilePaths[slot_choice]
+                if is_valid_ino_file(file_path):
+                    content = read_local_ino_file(file_path)
+                    if content:
+                        safe_print(f"Flashing local file: {os.path.basename(file_path)}", Fore.GREEN)
+                        flash_thread = flash_arduino_sketch_threaded(content, "", slot_choice)
+                        return flash_thread is not None
+                    else:
+                        safe_print(f"Could not read file: {file_path}", Fore.RED)
+                else:
+                    safe_print(f"Invalid or missing file: {file_path}", Fore.RED)
+            elif slotURLs[slot_choice] != '!':
+                # Wokwi URL
+                wokwi_url = slotURLs[slot_choice]
+                safe_print(f"Flashing Wokwi project: {wokwi_url}", Fore.GREEN)
+                return process_wokwi_sketch_and_flash(wokwi_url, slot_choice)
+            
+        except (ValueError, KeyboardInterrupt):
+            safe_print("Flash cancelled.", Fore.YELLOW)
+            forceArduinoFlash = 0  # Reset flag on cancellation
+            return False
+    
+    # Safety reset in case flag wasn't reset elsewhere
+    forceArduinoFlash = 0
+    return False
+
+# ============================================================================
 # MENU SYSTEM
 # ============================================================================
 
@@ -1476,8 +1664,10 @@ def bridge_menu():
     safe_print(" 'wokwi'   to " + ("enable" if noWokwiStuff else "disable") + " Wokwi updates " + ("and just use as a terminal" if not noWokwiStuff else ""), Fore.CYAN)
     safe_print(" 'rate'    to change the Wokwi update rate", Fore.GREEN)
     safe_print(" 'slots'   to assign Wokwi projects to slots - " + str(numAssignedSlots) + " assigned", Fore.YELLOW)
+    safe_print(" 'flash'   to flash Arduino with assigned slot content (works outside menu too)", Fore.MAGENTA)
     safe_print(" 'arduino' to " + ("enable" if disableArduinoFlashing else "disable") + " Arduino flashing from wokwi", Fore.RED)
     safe_print(" 'debug'   to " + ("disable" if debugWokwi else "enable") + " Wokwi debug output - " + ("on" if debugWokwi else "off"), Fore.MAGENTA)
+    safe_print(" 'config'  to edit Arduino CLI upload configuration", Fore.YELLOW)
     safe_print(" 'update'  to force firmware update - yours is up to date (" + currentString + ")", Fore.BLUE)
     safe_print(" 'status'  to check the serial connection status", Fore.CYAN) 
     safe_print(" 'exit'    to exit the menu", Fore.GREEN)
@@ -1509,6 +1699,9 @@ def bridge_menu():
                 debugWokwi = not debugWokwi
                 safe_print(f"Wokwi debug output {'enabled' if debugWokwi else 'disabled'}", Fore.CYAN)
                 continue
+            elif choice == 'config':
+                edit_arduino_cli_config()
+                continue
             elif choice == 'update':
                 update_jumperless_firmware(force=True)
                 menuEntered = 0
@@ -1522,6 +1715,9 @@ def bridge_menu():
                     menuEntered = 0
                     ser.write(b'm')
                     return
+            elif choice == 'flash':
+                handle_flash_command()
+                continue
             elif choice == 'rate':
                 try:
                     rate_input = input(f"Current update rate: {wokwiUpdateRate + 0.4}s\nEnter new rate (0.5-50.0): ")
@@ -1573,6 +1769,378 @@ def bridge_menu():
 # ARDUINO FLASHING FUNCTIONS
 # ============================================================================
 
+def get_arduino_cli_config():
+    """Get arduino-cli command configuration from file, create default if not exists"""
+    config_file = "JumperlessFiles/arduino_cli_config.txt"
+    
+    # Default configuration
+    default_config = [
+        "# Arduino CLI Upload Configuration",
+        "# Edit this file to customize arduino-cli upload options",
+        "# One option per line, comments start with #",
+        "# Available placeholders: {cli_path}, {arduino_port}, {fqbn}, {build_path}, {discovery_timeout}, {sketch_dir}",
+        "# IMPORTANT: Arduino CLI requires NO SPACES between option flags and values",
+        "",
+        "# Full upload command with common options",
+        "upload",
+        "-p{arduino_port}",
+        "-b{fqbn}",
+        "-v",
+        "# --verify",
+        "# --discovery-timeout {discovery_timeout}",
+        "",
+        "# Upload field options (uncomment to use):",
+        "# --upload-field timeout=10",
+        "# --upload-field attempts=1", 
+        "# --upload-field wait_for_upload_port=true",
+        "",
+        "# Build path options (uncomment ONE if needed):",
+        "# --build-path{build_path}   # Specify build directory",
+        "# --input-dir{build_path}    # Alternative build directory flag", 
+        "",
+        "# Custom avrdude config (uncomment and adjust path):",
+        "# --upload-field avrdude.config.file=./avrdudeCustom.conf",
+        "",
+        "# The sketch directory must be last (Arduino CLI auto-detects compiled files)",
+        "{sketch_dir}"
+    ]
+    
+    try:
+        # Create directory if it doesn't exist
+        pathlib.Path(config_file).parent.mkdir(parents=True, exist_ok=True)
+        
+        # Check if config file exists
+        if not os.path.exists(config_file):
+            # Create default config file
+            with open(config_file, 'w') as f:
+                f.write('\n'.join(default_config))
+            safe_print(f"Created default Arduino CLI config: {config_file}", Fore.CYAN)
+            safe_print("You can edit this file to customize arduino-cli upload options", Fore.BLUE)
+        
+        # Read config file
+        with open(config_file, 'r') as f:
+            lines = f.readlines()
+        
+        # Parse config (filter out comments and empty lines)
+        config_args = []
+        for line in lines:
+            line = line.strip()
+            if line and not line.startswith('#'):
+                config_args.append(line)
+        
+        return config_args
+        
+    except Exception as e:
+        safe_print(f"Error reading Arduino CLI config, using defaults: {e}", Fore.YELLOW)
+        # Return default config without comments
+        return [arg for arg in default_config if arg and not arg.startswith('#')]
+
+def build_arduino_cli_command(cli_path, arduino_port, fqbn, build_path, discovery_timeout, sketch_dir):
+    """Build arduino-cli command from configuration file"""
+    config_args = get_arduino_cli_config()
+    
+    # Create substitution dictionary
+    substitutions = {
+        'cli_path': cli_path,
+        'arduino_port': arduino_port,
+        'fqbn': fqbn,
+        'build_path': build_path or '',  # Empty if None
+        'input_dir': build_path or '',   # Legacy support
+        'discovery_timeout': discovery_timeout,
+        'sketch_dir': sketch_dir
+    }
+    
+    # Build command
+    cmd = [cli_path]  # Start with the CLI path
+    
+    for arg in config_args:
+        try:
+            # Substitute placeholders
+            formatted_arg = arg.format(**substitutions)
+            # Skip empty arguments and flags with empty values (can happen when build_path is None/empty)
+            stripped_arg = formatted_arg.strip()
+            if stripped_arg and not any(stripped_arg.endswith(' ') and flag in stripped_arg 
+                                      for flag in ['--build-path', '--input-dir']):
+                cmd.append(formatted_arg)
+        except KeyError as e:
+            safe_print(f"Warning: Unknown placeholder in Arduino CLI config: {e}", Fore.YELLOW)
+            if arg.strip():  # Only add non-empty args
+                cmd.append(arg)  # Use as-is if substitution fails
+        except Exception as e:
+            safe_print(f"Warning: Error formatting Arduino CLI argument '{arg}': {e}", Fore.YELLOW)
+            if arg.strip():  # Only add non-empty args
+                cmd.append(arg)  # Use as-is if formatting fails
+    
+    return cmd
+
+def command_to_inline_format(config_args):
+    """Convert config args with placeholders to inline command format for editing"""
+    # Use sample values for display/editing
+    sample_substitutions = {
+        'cli_path': 'arduino-cli',
+        'arduino_port': '/dev/ttyUSB0',
+        'fqbn': 'arduino:avr:nano',
+        'build_path': './build',
+        'input_dir': './build',  # Legacy support
+        'discovery_timeout': ' 2s',
+        'sketch_dir': './sketch'
+    }
+    
+    cmd_parts = []
+    for arg in config_args:
+        try:
+            formatted_arg = arg.format(**sample_substitutions)
+            cmd_parts.append(formatted_arg)
+        except:
+            cmd_parts.append(arg)
+    
+    return ' '.join(cmd_parts)
+
+def inline_format_to_config(command_string):
+    """Convert inline command format back to config args with placeholders"""
+    # Split command into parts
+    parts = command_string.strip().split()
+    
+    if not parts:
+        return []
+    
+    # Remove the cli_path (first part) since that's handled separately
+    if parts[0] in ['arduino-cli', './arduino-cli', './arduino-cli.exe', 'arduino-cli.exe']:
+        parts = parts[1:]
+    
+    config_args = []
+    i = 0
+    while i < len(parts):
+        part = parts[i]
+        
+        # Handle arguments that take values
+        if part in ['-p', '--port']:
+            config_args.append('-p{arduino_port}')
+            i += 2  # Skip the value
+        elif part in ['-b', '--fqbn']:
+            config_args.append('-b{fqbn}')
+            i += 2  # Skip the value
+        elif part == '--build-path':
+            config_args.append('--build-path{build_path}')
+            i += 2  # Skip the value
+        elif part == '--input-dir':
+            config_args.append('--build-path{build_path}')  # Convert legacy to new format
+            i += 2  # Skip the value
+        elif part == '--discovery-timeout':
+            config_args.append('--discovery-timeout{discovery_timeout}')
+            i += 2  # Skip the value
+        elif part.startswith('./') and (part.endswith('sketch') or 'sketch' in part):
+            # This is likely the sketch directory - put it at the end
+            config_args.append('{sketch_dir}')
+            i += 1
+        elif part.startswith('/') or part.startswith('./') or part.startswith('sketch'):
+            # Other paths might be sketch directory
+            config_args.append('{sketch_dir}')
+            i += 1
+        else:
+            # Single argument without value
+            config_args.append(part)
+            i += 1
+    
+    return config_args
+
+def edit_arduino_cli_config():
+    """Interactive editor for Arduino CLI configuration"""
+    config_file = "JumperlessFiles/arduino_cli_config.txt"
+    
+    # Ensure config file exists
+    get_arduino_cli_config()  # This will create the file if it doesn't exist
+    
+    try:
+        # Read current config
+        with open(config_file, 'r') as f:
+            lines = f.readlines()
+        
+        safe_print(f"\nCurrent Arduino CLI Configuration ({config_file}):", Fore.CYAN)
+        safe_print("=" * 60, Fore.BLUE)
+        
+        # Display current config with line numbers
+        for i, line in enumerate(lines, 1):
+            line_color = Fore.GREEN if not line.strip().startswith('#') and line.strip() else Fore.YELLOW
+            safe_print(f"{i:2d}: {line.rstrip()}", line_color)
+        
+        safe_print("=" * 60, Fore.BLUE)
+        safe_print("\nOptions:", Fore.CYAN)
+        safe_print("  'edit' - Open file in system editor", Fore.GREEN)
+        safe_print("  'inline' - Edit command directly (simple format)", Fore.MAGENTA)
+        safe_print("  'view' - View current configuration again", Fore.BLUE)
+        safe_print("  'reset' - Reset to default configuration", Fore.YELLOW)
+        safe_print("  'test' - Test current configuration", Fore.MAGENTA)
+        safe_print("  'enter' - Return to menu", Fore.WHITE)
+        
+        while True:
+            choice = input("\nconfig> ").strip().lower()
+            
+            if choice == '' or choice == 'exit' or choice == 'menu':
+                break
+            elif choice == 'edit':
+                # Try to open in system editor
+                try:
+                    import subprocess
+                    if sys.platform == "win32":
+                        subprocess.run(['notepad', config_file])
+                    elif sys.platform == "darwin":  # macOS
+                        subprocess.run(['open', '-t', config_file])
+                    else:  # Linux and others
+                        # Try common editors
+                        editors = ['nano', 'vim', 'vi', 'gedit']
+                        editor_found = False
+                        for editor in editors:
+                            try:
+                                subprocess.run([editor, config_file], check=True)
+                                editor_found = True
+                                break
+                            except (subprocess.CalledProcessError, FileNotFoundError):
+                                continue
+                        
+                        if not editor_found:
+                            safe_print("No editor found. Please manually edit: " + config_file, Fore.YELLOW)
+                    
+                    safe_print("File opened for editing. Press Enter when done...", Fore.GREEN)
+                    input()
+                    
+                    # Re-read and display updated config
+                    with open(config_file, 'r') as f:
+                        updated_lines = f.readlines()
+                    
+                    safe_print("\nUpdated configuration:", Fore.GREEN)
+                    for i, line in enumerate(updated_lines, 1):
+                        line_color = Fore.GREEN if not line.strip().startswith('#') and line.strip() else Fore.YELLOW
+                        safe_print(f"{i:2d}: {line.rstrip()}", line_color)
+                    
+                except Exception as e:
+                    safe_print(f"Could not open editor: {e}", Fore.RED)
+                    safe_print(f"Please manually edit: {config_file}", Fore.YELLOW)
+                
+            elif choice == 'inline':
+                # Edit the command in simple inline format
+                try:
+                    # Get current config args (non-comment lines)
+                    current_config = get_arduino_cli_config()
+                    
+                    # Convert to inline format for editing
+                    current_command = command_to_inline_format(current_config)
+                    
+                    safe_print("\nCurrent command:", Fore.CYAN)
+                    safe_print(current_command, Fore.GREEN)
+                    safe_print("\nEdit the command below (or press Enter to cancel):", Fore.YELLOW)
+                    
+                    # Get user input
+                    new_command = input("arduino-cli> ").strip()
+                    
+                    if not new_command:
+                        safe_print("Edit cancelled", Fore.BLUE)
+                        continue
+                    
+                    # Add arduino-cli prefix if not present
+                    if not new_command.startswith('arduino-cli'):
+                        new_command = 'arduino-cli ' + new_command
+                    
+                    # Convert back to config format
+                    new_config_args = inline_format_to_config(new_command)
+                    
+                    if not new_config_args:
+                        safe_print("Invalid command format", Fore.RED)
+                        continue
+                    
+                    # Create the new config file content
+                    new_config_content = [
+                        "# Arduino CLI Upload Configuration",
+                        "# Auto-generated from inline edit",
+                        "# Edit this file to customize arduino-cli upload options",
+                        "# Available placeholders: {cli_path}, {arduino_port}, {fqbn}, {build_path}, {discovery_timeout}, {sketch_dir}",
+                        "",
+                    ]
+                    
+                    # Add the config args
+                    for arg in new_config_args:
+                        new_config_content.append(arg)
+                    
+                    # Save to file
+                    with open(config_file, 'w') as f:
+                        f.write('\n'.join(new_config_content))
+                    
+                    safe_print("\nConfiguration updated!", Fore.GREEN)
+                    
+                    # Show the new command
+                    test_cmd = build_arduino_cli_command(
+                        cli_path="arduino-cli",
+                        arduino_port="/dev/ttyUSB0",
+                        fqbn="arduino:avr:nano",
+                        build_path="./build",
+                        discovery_timeout=" 2s",
+                        sketch_dir="./sketch"
+                    )
+                    
+                    safe_print("New command:", Fore.CYAN)
+                    safe_print(" ".join(test_cmd), Fore.GREEN)
+                    
+                except Exception as e:
+                    safe_print(f"Error in inline edit: {e}", Fore.RED)
+                
+            elif choice == 'view':
+                # Re-read and display current config
+                with open(config_file, 'r') as f:
+                    current_lines = f.readlines()
+                
+                safe_print(f"\nCurrent Arduino CLI Configuration:", Fore.CYAN)
+                safe_print("=" * 60, Fore.BLUE)
+                for i, line in enumerate(current_lines, 1):
+                    line_color = Fore.GREEN if not line.strip().startswith('#') and line.strip() else Fore.YELLOW
+                    safe_print(f"{i:2d}: {line.rstrip()}", line_color)
+                safe_print("=" * 60, Fore.BLUE)
+                
+            elif choice == 'reset':
+                confirm = input("Reset to default configuration? (y/N): ").strip().lower()
+                if confirm in ['y', 'yes']:
+                    # Remove the file so it gets recreated with defaults
+                    try:
+                        os.remove(config_file)
+                        get_arduino_cli_config()  # Recreate with defaults
+                        safe_print("Configuration reset to defaults", Fore.GREEN)
+                        
+                        # Display new config
+                        with open(config_file, 'r') as f:
+                            reset_lines = f.readlines()
+                        
+                        safe_print("\nReset configuration:", Fore.GREEN)
+                        for i, line in enumerate(reset_lines, 1):
+                            line_color = Fore.GREEN if not line.strip().startswith('#') and line.strip() else Fore.YELLOW
+                            safe_print(f"{i:2d}: {line.rstrip()}", line_color)
+                    except Exception as e:
+                        safe_print(f"Error resetting configuration: {e}", Fore.RED)
+                else:
+                    safe_print("Reset cancelled", Fore.BLUE)
+                    
+            elif choice == 'test':
+                # Test the current configuration by building a sample command
+                try:
+                    test_cmd = build_arduino_cli_command(
+                        cli_path="arduino-cli",
+                        arduino_port="/dev/ttyUSB0",
+                        fqbn="arduino:avr:nano",
+                        build_path="./build",
+                        discovery_timeout=" 2s",
+                        sketch_dir="./sketch"
+                    )
+                    
+                    safe_print("\nTest command that would be executed:", Fore.CYAN)
+                    safe_print(" ".join(test_cmd), Fore.GREEN)
+                    
+                except Exception as e:
+                    safe_print(f"Configuration test failed: {e}", Fore.RED)
+                    safe_print("Please check your configuration for errors", Fore.YELLOW)
+            else:
+                safe_print("Invalid option. Use 'edit', 'inline', 'view', 'reset', 'test', or press Enter to return", Fore.RED)
+    
+    except Exception as e:
+        safe_print(f"Error accessing Arduino CLI configuration: {e}", Fore.RED)
+
 def removeLibraryLines(line):
     """Filter function for Arduino libraries"""
     if line.startswith('#'):
@@ -1616,9 +2184,87 @@ def finddiagramindex(decoded):
         pass
     return -1
 
+def check_port_usage(port_name):
+    """Check what processes are using the Arduino port"""
+    try:
+        import subprocess
+        import sys
+        
+        if sys.platform == "darwin":  # macOS
+            result = subprocess.run(['lsof', port_name], capture_output=True, text=True, timeout=5)
+            if result.returncode == 0 and result.stdout.strip():
+                safe_print(f"Processes using {port_name}:", Fore.YELLOW)
+                for line in result.stdout.strip().split('\n')[1:]:  # Skip header
+                    safe_print(f"  {line}", Fore.YELLOW)
+                return True
+        elif sys.platform.startswith("linux"):
+            result = subprocess.run(['lsof', port_name], capture_output=True, text=True, timeout=5)
+            if result.returncode == 0 and result.stdout.strip():
+                safe_print(f"Processes using {port_name}:", Fore.YELLOW)
+                for line in result.stdout.strip().split('\n')[1:]:  # Skip header
+                    safe_print(f"  {line}", Fore.YELLOW)
+                return True
+        # Windows: could use netstat or handle.exe but those are more complex
+        return False
+    except Exception:
+        return False
+
+def force_clear_arduino_port():
+    """Manually force clear the Arduino port"""
+    global ser, serialconnected, arduinoPort
+    
+    if not arduinoPort:
+        safe_print("No Arduino port configured", Fore.RED)
+        return
+    
+    safe_print(f"Force clearing Arduino port {arduinoPort}...", Fore.CYAN)
+    
+    # Step 1: Check what's using the port
+    safe_print("Checking port usage:", Fore.YELLOW)
+    port_in_use = check_port_usage(arduinoPort)
+    if not port_in_use:
+        safe_print("No processes found using the port", Fore.GREEN)
+    
+    # Step 2: Force Jumperless to disconnect
+    # safe_print("Sending disconnect commands to Jumperless...", Fore.YELLOW)
+    # try:
+    #     if ser and serialconnected:
+    #         ser.write(b"a")  # Disconnect UART
+    #         time.sleep(0.3)
+    #         ser.write(b"a")  # Send again
+    #         time.sleep(0.3)
+    #         ser.write(b"m")  # Menu mode
+    #         time.sleep(0.5)
+    #         safe_print("Jumperless disconnect commands sent", Fore.GREEN)
+    #     else:
+    #         safe_print("Jumperless not connected", Fore.YELLOW)
+    # except Exception as e:
+    #     safe_print(f"Error sending disconnect commands: {e}", Fore.RED)
+    
+    # Step 3: Test port accessibility
+    safe_print("Testing Arduino port accessibility...", Fore.YELLOW)
+    for attempt in range(5):
+        try:
+            test_serial = serial.Serial(arduinoPort, 115200, timeout=0.1)
+            test_serial.close()
+            safe_print(f"Arduino port {arduinoPort} is now accessible! (attempt {attempt + 1})", Fore.GREEN)
+            return
+        except Exception as e:
+            if attempt < 4:
+                safe_print(f"Port still busy, waiting... (attempt {attempt + 1}/5)", Fore.YELLOW)
+                time.sleep(1.0)
+            else:
+                safe_print(f"Port still not accessible after 5 attempts: {e}", Fore.RED)
+    
+    # Step 4: Final diagnosis
+    safe_print("Final port usage check:", Fore.YELLOW)
+    check_port_usage(arduinoPort)
+    safe_print("Try unplugging and reconnecting the Arduino USB cable", Fore.CYAN)
+
 def flash_arduino_sketch_threaded(sketch_content, libraries_content="", slot_number=None):
     """Thread wrapper for Arduino sketch flashing"""
     def flash_worker():
+        arduino_port_was_busy = False
         try:
             result = flash_arduino_sketch(sketch_content, libraries_content, slot_number)
             if result:
@@ -1627,19 +2273,60 @@ def flash_arduino_sketch_threaded(sketch_content, libraries_content="", slot_num
                 safe_print(f"Arduino flash failed for slot {slot_number}", Fore.RED)
         except Exception as e:
             safe_print(f"Arduino flash thread error for slot {slot_number}: {e}", Fore.RED)
+        finally:
+            # Remove this thread from tracking
+            try:
+                current_thread = threading.current_thread()
+                if current_thread in active_threads:
+                    active_threads.remove(current_thread)
+            except:
+                pass
+            
+            # Simplified thread cleanup - just verify port is released
+            try:
+                if debugWokwi:
+                    safe_print(f"Thread cleanup for slot {slot_number}...", Fore.CYAN)
+                
+                # Brief wait for port to stabilize
+                time.sleep(0.2)
+                
+                # Single verification that Arduino port is released
+                try:
+                    test_serial = serial.Serial(arduinoPort, 115200, timeout=0.1)
+                    test_serial.close()
+                    if debugWokwi:
+                        safe_print(f"Arduino port {arduinoPort} released successfully", Fore.GREEN)
+                except Exception as port_test_error:
+                    if debugWokwi:
+                        safe_print(f"Note: Arduino port may still be busy: {port_test_error}", Fore.YELLOW)
+                    
+            except Exception as cleanup_error:
+                if debugWokwi:
+                    safe_print(f"Thread cleanup error: {cleanup_error}", Fore.YELLOW)
     
     # Start the flash operation in its own thread
-    flash_thread = threading.Thread(target=flash_worker, daemon=True)
+    flash_thread = threading.Thread(target=flash_worker, daemon=False)  # Non-daemon for proper cleanup
     flash_thread.start()
+    
+    # Track this thread for cleanup on exit
+    global active_threads
+    active_threads.append(flash_thread)
+    
     safe_print(f"Arduino flash started in background for slot {slot_number}...", Fore.CYAN)
+    
+    # Return thread so caller can wait for it if needed
     return flash_thread
 
 def flash_arduino_sketch(sketch_content, libraries_content="", slot_number=None):
     """Flash Arduino sketch to connected Arduino"""
-    global arduino, arduinoPort, ser, menuEntered, serialconnected
+    global arduino, arduinoPort, ser, menuEntered, serialconnected, arduino_flash_lock, forceArduinoFlash
     
-    if noArduinocli or disableArduinoFlashing or not arduino:
-        safe_print("Arduino flashing is disabled or Arduino CLI not available", Fore.YELLOW)
+    if noArduinocli or not arduino:
+        safe_print("Arduino CLI not available", Fore.RED)
+        return False
+    
+    if disableArduinoFlashing and not forceArduinoFlash:
+        safe_print("Arduino flashing is disabled", Fore.YELLOW)
         return False
     
     if not arduinoPort:
@@ -1650,16 +2337,40 @@ def flash_arduino_sketch(sketch_content, libraries_content="", slot_number=None)
         safe_print("Invalid or empty sketch content", Fore.RED)
         return False
     
+    # Acquire flash lock to prevent concurrent uploads
+    flash_acquired = arduino_flash_lock.acquire(blocking=False)
+    if not flash_acquired:
+        safe_print(f"Arduino flash already in progress, skipping slot {slot_number}", Fore.YELLOW)
+        return False
+    
     # Flag to track UART state
     uart_was_connected = False
     arduino_serial = None
     port_available = False
-
-    ser.write(b"A")
-    time.sleep(3.5)
-
+    uart_mode_changed = False
 
     try:
+        # Set UART mode for Arduino flashing
+        try:
+            ser.write(b"A?")
+            time.sleep(0.3)
+            response = ser.read_all() if hasattr(ser, 'read_all') else ser.read(ser.in_waiting or 1)
+            if b"Y" in response:
+                safe_print("UART lines are already connected", Fore.GREEN)
+                uart_was_connected = True
+            else:
+                safe_print("Setting UART mode...", Fore.CYAN)
+                ser.write(b"A")
+                uart_was_connected = False
+                uart_mode_changed = True
+            time.sleep(1.0)  # Allow UART mode to stabilize
+        except Exception as uart_error:
+            safe_print(f"UART mode setup issue: {uart_error}", Fore.YELLOW)
+            # Fallback: just set UART mode
+            ser.write(b"A")
+            uart_was_connected = False
+            uart_mode_changed = True
+            time.sleep(1.0)
         # Create sketch directory
         sketch_dir = './WokwiSketch'
         compile_dir = './WokwiSketch/compile'
@@ -1697,8 +2408,21 @@ def flash_arduino_sketch(sketch_content, libraries_content="", slot_number=None)
             cores = ['arduino:avr']
             arduino.core.install(cores, no_overwrite=True)
             safe_print("Arduino AVR core ready", Fore.GREEN)
+            
+            # List available boards to debug FQBN issues
+            try:
+                board_list = arduino.board.listall()
+                if debugWokwi:
+                    safe_print("Available boards:", Fore.CYAN)
+                    for board in board_list[:5]:  # Show first 5 boards
+                        safe_print(f"  {board}", Fore.CYAN)
+            except Exception as board_error:
+                safe_print(f"Could not list boards: {board_error}", Fore.YELLOW)
+                
         except Exception as e:
             safe_print(f"Warning: Arduino core installation issue: {e}", Fore.YELLOW)
+            # Try to continue anyway
+            safe_print("Attempting to proceed without core verification...", Fore.YELLOW)
         
         # Compile the sketch
         safe_print("Compiling Arduino sketch...", Fore.CYAN)
@@ -1709,11 +2433,11 @@ def flash_arduino_sketch(sketch_content, libraries_content="", slot_number=None)
         #         pass
         
         try:
+            # Compile without specifying build_path - let Arduino CLI use default location
             compile_result = arduino.compile(
                 sketch_dir,
                 port=arduinoPort,
                 fqbn="arduino:avr:nano",
-                build_path=compile_dir,
                 verify=False
             )
             safe_print("Sketch compiled successfully!", Fore.GREEN)
@@ -1727,81 +2451,152 @@ def flash_arduino_sketch(sketch_content, libraries_content="", slot_number=None)
                 except:
                     pass
             return False
-        
+        # Reset Arduino to bootloader mode before upload
+        safe_print("Resetting Arduino to bootloader mode...", Fore.CYAN)
+        try:
+            ser.write(b"r")
+            time.sleep(2.5)  # Give Arduino time to reset and enter bootloader
+            safe_print("Arduino reset complete", Fore.GREEN)
+        except Exception as reset_error:
+            safe_print(f"Could not send reset command: {reset_error}", Fore.YELLOW)
 
+        # Force clear Arduino port after reset
+        safe_print("Ensuring Arduino port is available...", Fore.CYAN)
+        try:
+            # Send disconnect command to ensure clean port state
+            if ser and ser.is_open:
+                ser.write(b"a")  # Disconnect UART briefly
+                time.sleep(0.2)
+            
+            # Test port accessibility
+            test_serial = serial.Serial(arduinoPort, 115200, timeout=0.1)
+            test_serial.close()
+            safe_print("Arduino port verified accessible", Fore.GREEN)
+        except Exception as port_error:
+            safe_print(f"Warning: Arduino port may be busy: {port_error}", Fore.YELLOW)
+        
+        # # Reset Arduino to enter bootloader mode
+        # safe_print("Resetting Arduino to bootloader mode...", Fore.YELLOW)
+        # try:
+        #     # Open Arduino port briefly to trigger DTR reset
+        #     arduino_reset_serial = serial.Serial(arduinoPort, 1200, timeout=0.1)
+        #     arduino_reset_serial.setDTR(False)
+        #     time.sleep(0.1)
+        #     arduino_reset_serial.setDTR(True)
+        #     time.sleep(0.1)
+        #     arduino_reset_serial.close()
+            
+        #     # Wait for Arduino to reset and enter bootloader
+        #     safe_print("Waiting for Arduino bootloader...", Fore.YELLOW)
+        #     time.sleep(2.0)  # Give Arduino time to reset and start bootloader
+            
+        # except Exception as reset_error:
+        #     safe_print(f"Could not reset Arduino via DTR: {reset_error}", Fore.YELLOW)
+        #     # Fallback: try manual reset command
+        #     try:
+        #         ser.write(b"r")
+        #         time.sleep(2.0)
+        #         safe_print("Sent manual reset command", Fore.YELLOW)
+        #     except Exception as manual_reset_error:
+        #         safe_print(f"Manual reset also failed: {manual_reset_error}", Fore.RED)
+        
         # Upload to Arduino
         safe_print("Uploading to Arduino...", Fore.CYAN)
-        ser.write(b"A")
-        time.sleep(1.1)
         
+        # First attempt without reset
         try:
-            # Perform the upload with minimal status updates and single attempt
-            # Using custom upload function to ensure -x attempts=1 flag is used
             upload_result = upload_with_attempts_limit(
                 sketch_dir,
                 arduinoPort,
                 "arduino:avr:nano",
-                compile_dir,
+                None,  # No custom build dir - Arduino CLI will use default
                 "2s"
             )
             
             safe_print("Arduino flashed successfully!", Fore.GREEN)
+            return True
             
-            # Restore original UART state if needed
-            if ser and serialconnected and not uart_was_connected:
+        except Exception as e:
+            error_msg = str(e).lower()
+            
+            # Check if it's a sync/communication error that might be fixed with a reset
+            sync_errors = ['not responding', 'timeout', 'sync', 'stk500_recv', 'stk500_getsync']
+            is_sync_error = any(err in error_msg for err in sync_errors)
+            
+            if is_sync_error:
+                safe_print(f"Upload failed with sync error, trying reset and retry...", Fore.YELLOW)
+                
+                # Reset Arduino and wait for it to stabilize
+                try:
+                    ser.write(b"r")
+                    time.sleep(2.0)  # Give Arduino time to reset and be ready
+                    safe_print("Arduino reset, retrying upload...", Fore.CYAN)
+                    
+                    # Second attempt after reset
+                    upload_result = upload_with_attempts_limit(
+                        sketch_dir,
+                        arduinoPort,
+                        "arduino:avr:nano",
+                        None,
+                        "2s"
+                    )
+                    
+                    safe_print("Arduino flashed successfully on retry!", Fore.GREEN)
+                    return True
+                    
+                except Exception as retry_error:
+                    safe_print(f"Retry also failed: {retry_error}", Fore.RED)
+            else:
+                safe_print(f"Upload failed: {e}", Fore.RED)
+            
+            return False
+    
+    except Exception as e:
+        safe_print(f"Arduino flashing error: {e}", Fore.RED)
+        return False
+    
+    finally:
+        # Always cleanup, regardless of success or failure
+        try:
+            # Close Arduino serial port if we opened it
+            if arduino_serial is not None:
+                try:
+                    if arduino_serial.is_open:
+                        arduino_serial.close()
+                        safe_print(f"Closed Arduino port {arduinoPort} in cleanup", Fore.YELLOW)
+                except Exception as close_error:
+                    safe_print(f"Note: Error closing Arduino port in cleanup: {close_error}", Fore.YELLOW)
+            
+            # Restore UART state if we changed it
+            if uart_mode_changed and ser and serialconnected:
                 try:
                     time.sleep(0.1)
                     ser.write(b"a")  # Disconnect UART
                     time.sleep(0.1)
-                except:
-                    pass
+                    safe_print("Restored UART mode", Fore.CYAN)
+                except Exception as uart_error:
+                    safe_print(f"Note: Error restoring UART mode: {uart_error}", Fore.YELLOW)
             
             # Send menu command to return to normal mode
             if ser and serialconnected:
                 try:
                     time.sleep(0.1)
                     ser.write(b'm')
-                except:
-                    pass
-            
-            return True
-            
-        except Exception as e:
-            safe_print(f"Upload failed: {e}", Fore.RED)
-            
-            # Restore original UART state if needed
-            if ser and serialconnected and not uart_was_connected:
-                try:
-                    ser.write(b"a")  # Disconnect UART
                     time.sleep(0.1)
-                except:
-                    pass
-            
-            # Try to parse JSON error message if available
-            try:
-                if hasattr(e, 'args') and len(e.args) > 0:
-                    error_data = e.args[0]
-                    if isinstance(error_data, dict) and '__stdout' in error_data:
-                        import json
-                        error_json = json.loads(error_data['__stdout'])
-                        if 'error' in error_json:
-                            safe_print(f"Detailed error: {error_json['error']}", Fore.RED)
-            except:
-                pass
-            return False
-    
-    except Exception as e:
-        safe_print(f"Arduino flashing error: {e}", Fore.RED)
-        
-        # Restore original UART state if needed
-        if ser and serialconnected and not uart_was_connected:
-            try:
-                ser.write(b"a")  # Disconnect UART
-                time.sleep(0.1)
-            except:
-                pass
-        
-        return False
+                except Exception as menu_error:
+                    safe_print(f"Note: Error sending menu command: {menu_error}", Fore.YELLOW)
+                    
+        except Exception as cleanup_error:
+            safe_print(f"Error in flash cleanup: {cleanup_error}", Fore.RED)
+        finally:
+            # Always release the flash lock - CRITICAL for preventing deadlocks
+            if flash_acquired:
+                try:
+                    arduino_flash_lock.release()
+                    if debugWokwi:
+                        safe_print(f"Released Arduino flash lock for slot {slot_number}", Fore.CYAN)
+                except Exception as lock_error:
+                    safe_print(f"Error releasing flash lock: {lock_error}", Fore.RED)
 
 def process_wokwi_sketch_and_flash(wokwi_url, slot_number=None):
     """Download Wokwi project and flash Arduino sketch if present - SIMPLIFIED VERSION"""
@@ -1976,17 +2771,28 @@ def process_wokwi_sketch_and_flash(wokwi_url, slot_number=None):
             # Store in the sketch array
             sketch[slot_number] = sketch_content
             
-            # Check if sketch has changed since last time
-            if lastsketch[slot_number] != sketch_content:
+            # Check if sketch has changed since last time OR if force flash is requested
+            global forceArduinoFlash
+            sketch_changed = lastsketch[slot_number] != sketch_content
+            should_flash = sketch_changed or forceArduinoFlash
+            
+            if should_flash:
                 lastsketch[slot_number] = sketch_content
                 
                 if debugWokwi:
-                    safe_print(f"Found new sketch for slot {slot_number}:", Fore.GREEN)
+                    if forceArduinoFlash:
+                        safe_print(f"Force flashing sketch for slot {slot_number}:", Fore.GREEN)
+                    else:
+                        safe_print(f"Found new sketch for slot {slot_number}:", Fore.GREEN)
                     safe_print(sketch_content[:200] + ('...' if len(sketch_content) > 200 else ''), Fore.CYAN)
                 
                 # Flash the Arduino if the sketch is valid
                 if len(sketch_content) > 10:
-                    safe_print(f"\nNew Arduino sketch for slot {slot_number} - flashing...", Fore.MAGENTA)
+                    if forceArduinoFlash:
+                        safe_print(f"\nForce flashing Arduino sketch for slot {slot_number}...", Fore.MAGENTA)
+                        forceArduinoFlash = 0  # Reset flag after use
+                    else:
+                        safe_print(f"\nNew Arduino sketch for slot {slot_number} - flashing...", Fore.MAGENTA)
                     
                     # Only flash once
                     try:
@@ -1995,9 +2801,11 @@ def process_wokwi_sketch_and_flash(wokwi_url, slot_number=None):
                         return flash_thread is not None
                     except Exception as e:
                         safe_print(f"Error during Arduino flashing: {e}", Fore.RED)
+                        forceArduinoFlash = 0  # Reset flag on error too
                         return False
                 else:
                     safe_print(f"Sketch too short. Not flashing.", Fore.YELLOW)
+                    forceArduinoFlash = 0  # Reset flag
             else:
                 if debugWokwi:
                     safe_print(f"Sketch for slot {slot_number} unchanged", Fore.BLUE)
@@ -2185,12 +2993,20 @@ def serial_term_out():
                         readline.add_history(output_buffer)
                 
                 # Handle special commands - check if it's a menu command
-                menu_commands = ['menu', 'slots', 'wokwi', 'update', 'status', 'rate', 'exit', 'arduino', 'debug']
+                menu_commands = ['menu', 'slots', 'wokwi', 'update', 'status', 'rate', 'exit', 'arduino', 'debug', 'config']
                 
                 if output_buffer.lower() in menu_commands:
                     # print("*", output_buffer, "*")
                     menuEntered = 1
                     bridge_menu()
+                    continue
+                elif output_buffer.lower() == 'flash':
+                    # Handle flash command directly without entering menu
+                    handle_flash_command()
+                    continue
+                elif output_buffer.lower() == 'clearport':
+                    # Force clear Arduino port
+                    force_clear_arduino_port()
                     continue
                 
                 # Send to serial port (only non-empty commands)
@@ -2372,15 +3188,18 @@ def main():
     # Start monitoring threads
     port_monitor = threading.Thread(target=check_presence, args=(portName, 0.1), daemon=True)
     port_monitor.start()
+    active_threads.append(port_monitor)
     
     serial_in = threading.Thread(target=serial_term_in, daemon=True)
     serial_in.start()
+    active_threads.append(serial_in)
     
     serial_out = threading.Thread(target=serial_term_out, daemon=True)
     serial_out.start()
+    active_threads.append(serial_out)
     
     time.sleep(0.1)
-    safe_print("Type 'menu' for App Menu", Fore.CYAN)
+    safe_print("Type 'menu' for App Menu, 'flash' to flash Arduino, or 'clearport' to clear Arduino port", Fore.CYAN)
     if READLINE_AVAILABLE:
         safe_print("Use ↑/↓ arrow keys for command history, Tab for completion", Fore.BLUE)
     # Send initial menu command
@@ -2480,23 +3299,30 @@ def main():
                                 if needs_update:
                                     lastDiagram[currentSlotUpdate] = current_diagram_hash
                                     
-                                    # Send to Jumperless (only if not updating firmware)
+                                    # Send to Jumperless (only if not updating firmware and not empty)
                                     if updateInProgress == 0:
-                                        with serial_lock:
-                                            if serialconnected and ser and ser.is_open:
-                                                try:
-                                                    cmd = f"o Slot {currentSlotUpdate} f {command}".encode()
-                                                    ser.write(cmd)
-                                                    safe_print(f"Updated slot {currentSlotUpdate}", Fore.GREEN)
-                                                    if debugWokwi:
-                                                        safe_print(f"Command sent: {command}", Fore.CYAN)
-                                                except Exception as e:
-                                                    safe_print(f"Serial write error: {e}", Fore.RED)
-                                                    portNotFound = 1
-                                                    serialconnected = 0
+                                        # Check if command is empty (just "{ }" or similar)
+                                        command_content = command.strip().replace('{', '').replace('}', '').replace(' ', '').replace(',', '')
+                                        
+                                        if command_content:  # Only send if there's actual content
+                                            with serial_lock:
+                                                if serialconnected and ser and ser.is_open:
+                                                    try:
+                                                        cmd = f"o Slot {currentSlotUpdate} f {command}".encode()
+                                                        ser.write(cmd)
+                                                        safe_print(f"Updated slot {currentSlotUpdate}", Fore.GREEN)
+                                                        if debugWokwi:
+                                                            safe_print(f"Command sent: {command}", Fore.CYAN)
+                                                    except Exception as e:
+                                                        safe_print(f"Serial write error: {e}", Fore.RED)
+                                                        portNotFound = 1
+                                                        serialconnected = 0
+                                        else:
+                                            if debugWokwi:
+                                                safe_print(f"Skipping empty project for slot {currentSlotUpdate}", Fore.BLUE)
                                 
                                 # Check for Arduino sketch changes and flash if needed
-                                if not noArduinocli and not disableArduinoFlashing and updateInProgress == 0:
+                                if not noArduinocli and (not disableArduinoFlashing or forceArduinoFlash) and updateInProgress == 0:
                                     try:
                                         # Process Arduino sketch for this slot
                                         process_wokwi_sketch_and_flash(current_wokwi_url, currentSlotUpdate)
@@ -2520,7 +3346,7 @@ def main():
                         # Process local .ino file
                         try:
                             # Check for Arduino sketch changes and flash if needed
-                            if not noArduinocli and not disableArduinoFlashing and updateInProgress == 0:
+                            if not noArduinocli and (not disableArduinoFlashing or forceArduinoFlash) and updateInProgress == 0:
                                 process_local_file_and_flash(currentSlotUpdate)
                             
                             # Move to next slot (only process one slot per loop iteration)
@@ -2610,12 +3436,12 @@ def get_command_suggestions():
     # Tab completion uses actual command history instead
     return [
         # App commands
-        'menu', 'slots', 'wokwi', 'skip', 'rate', 'update', 'status', 'exit', 'help',
+        'menu', 'slots', 'wokwi', 'flash', 'clearport', 'skip', 'rate', 'update', 'status', 'exit', 'help',
         # Jumperless device commands
         'r', 'm', 'f', 'n', 'l', 'b', 'c', 'x', 'clear', 'o', '?',
     ]
 
-def upload_with_attempts_limit(sketch_dir, arduino_port, fqbn, input_dir, discovery_timeout="2s"):
+def upload_with_attempts_limit(sketch_dir, arduino_port, fqbn, build_dir, discovery_timeout="2s"):
     """Custom upload function that calls arduino-cli directly with attempts limit"""
     global ser, arduinoPort
     notInSyncString = "avrdude: stk500_recv(): programmer is not responding"
@@ -2623,10 +3449,6 @@ def upload_with_attempts_limit(sketch_dir, arduino_port, fqbn, input_dir, discov
     
     try:
         import subprocess
-        # ser.write(b"r")
-        # time.sleep(0.5)
-        # ser.write(b"r")
-        
         # Get the arduino-cli path
         cli_path = None
         cli_paths = [
@@ -2643,67 +3465,152 @@ def upload_with_attempts_limit(sketch_dir, arduino_port, fqbn, input_dir, discov
         if not cli_path:
             raise Exception("arduino-cli not found")
         
-        # Ensure the Arduino port is closed before starting upload
+        # Verify FQBN is valid by listing available boards
         try:
-            # Check if the port is open and close it
-            arduino_serial = serial.Serial(arduino_port, 115200, timeout=0.5)
-            # arduino_serial.close()
-            safe_print(f"Arduino port {arduino_port} open before upload", Fore.CYAN)
-        except Exception as port_error:
-            # Port might already be closed or not exist
-            safe_print(f"Note: Arduino port {arduino_port} not accessible, make sure it's not in use by something else", Fore.RED)
-            safe_print(f"{port_error}", Fore.RED)
+            list_cmd = [cli_path, "board", "listall", "--format", "text"]
+            list_result = subprocess.run(list_cmd, capture_output=True, text=True, timeout=10)
+            if list_result.returncode == 0:
+                available_boards = list_result.stdout
+                if "arduino:avr:nano" not in available_boards:
+                    safe_print("Warning: arduino:avr:nano not found in available boards", Fore.YELLOW)
+                    # Look for alternative nano boards
+                    nano_boards = [line for line in available_boards.split('\n') if 'nano' in line.lower()]
+                    if nano_boards:
+                        safe_print("Available Nano boards:", Fore.CYAN)
+                        for board in nano_boards[:3]:
+                            safe_print(f"  {board}", Fore.CYAN)
+                else:
+                    safe_print("Verified: arduino:avr:nano is available", Fore.GREEN)
+            else:
+                safe_print(f"Could not verify FQBN (command failed: {list_result.stderr})", Fore.YELLOW)
+        except Exception as verify_error:
+            safe_print(f"Could not verify FQBN: {verify_error}", Fore.YELLOW)
+        
+        # Force clear and verify Arduino port before upload
+        arduino_serial = None
+        
+        # Step 1: Ensure Arduino port is accessible
+        safe_print("Verifying Arduino port accessibility...", Fore.YELLOW)
+        
+        # Step 2: Quick port accessibility check
+        for attempt in range(3):
             try:
-                arduino_serial.close()
-            except:
-                pass
-
-            raise Exception("Could not open Arduino port")
-        # Construct the command with attempts limit
-        cmd = [
-            cli_path,
-            "upload",
-            "-p", arduino_port,
-            "-b", fqbn,
-            "--input-dir", input_dir,
-            "--discovery-timeout", discovery_timeout,
-            "-v",
-            # "--upload-property", "attempts=1",  # This is the key flag we want to add
-            # "--upload-property", "avrdude.config.file=" + os.path.join(os.path.dirname(os.path.abspath(__file__)), "avrdudeCustom.conf"),
-            sketch_dir
-        ]
+                # Test if the port is available
+                arduino_serial = serial.Serial(arduino_port, 115200, timeout=0.1)
+                arduino_serial.close()  # Close it immediately after testing
+                arduino_serial = None
+                if debugWokwi:
+                    safe_print(f"Arduino port {arduino_port} verified available (attempt {attempt + 1})", Fore.CYAN)
+                break
+            except Exception as port_error:
+                if arduino_serial:
+                    try:
+                        arduino_serial.close()
+                    except:
+                        pass
+                    arduino_serial = None
+                
+                if attempt < 2:  # Not the last attempt
+                    if debugWokwi:
+                        safe_print(f"Arduino port busy, waiting... (attempt {attempt + 1})", Fore.YELLOW)
+                    time.sleep(0.5)  # Wait between attempts
+                else:
+                    # Final attempt - just warn but continue
+                    safe_print(f"Warning: Arduino port may be busy: {port_error}", Fore.YELLOW)
+                    safe_print("Attempting upload anyway...", Fore.CYAN)
+        
+        # Step 3: Brief stabilization delay
+        time.sleep(0.1)
+        # Build the command using the configurable system
+        # Note: Arduino CLI will automatically find compiled files in the sketch directory
+        cmd = build_arduino_cli_command(
+            cli_path=cli_path,
+            arduino_port=arduino_port,
+            fqbn=fqbn,
+            build_path=build_dir,
+            discovery_timeout=discovery_timeout,
+            sketch_dir=sketch_dir
+        )
         
         if debugWokwi:
-            safe_print(f"Running: {' '.join(cmd)}", Fore.BLUE)
+            safe_print(f"Generated upload command: {' '.join(cmd)}", Fore.MAGENTA)
+        
+        # Always show the Arduino CLI command being executed
+        safe_print(f"Arduino CLI command: {' '.join(cmd)}", Fore.BLUE)
         
         # Run the command with real-time output streaming
         process = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, 
                                  text=True, bufsize=1)
         
+        # Track this process for cleanup on exit
+        global active_processes
+        active_processes.append(process)
+        
         output_lines = []
         start_time = time.time()
         timeout = 45  # 45 second timeout
+        flash_failed = False
+        retries = 0
         
         # Stream output in real-time
         while True:
             # Check for timeout
             if time.time() - start_time > timeout:
+                safe_print("Upload timed out, terminating process...", Fore.YELLOW)
+                # Try to clean up on timeout
+                try:
+                    if arduino_serial and arduino_serial.is_open:
+                        arduino_serial.close()
+                except:
+                    pass
                 process.terminate()
                 try:
-                    process.wait(timeout=1)  # Give it 1 second to terminate gracefully
+                    process.wait(timeout=3)  # Give it 2 seconds to terminate gracefully
                 except subprocess.TimeoutExpired:
+                    safe_print("Process didn't terminate gracefully, force killing...", Fore.RED)
                     process.kill()  # Force kill if it doesn't terminate
+                    try:
+                        process.wait(timeout=1)  # Wait for kill to complete
+                    except subprocess.TimeoutExpired:
+                        pass  # Process is really stuck, move on
                 raise Exception(f"Upload timed out after {timeout} seconds")
             
             output = process.stdout.readline()
 
             if output == '' and process.poll() is not None:
                 break
-            if notInSyncString in output:
-                # ser.write(b"?")
-                safe_print("Arduino not in sync, try pressing the reset button", Fore.RED)
-                safe_print(f"{output.strip()}", Fore.RED)
-
+            if (notInSyncString in output):
+                # Arduino flash error detected - handle sync errors
+                safe_print(f"Arduino sync error detected (attempt {retries + 1}): {output.strip()}", Fore.YELLOW)
+                retries += 1
+                
+                # Try to send reset command to Arduino
+                # try:
+                #     if ser and ser.is_open:
+                #         ser.write(b"r")  # Send reset command
+                #         time.sleep(0.5)  # CRITICAL: Wait for reset to take effect
+                # except Exception as e:
+                #     safe_print(f"Error sending reset command: {e}", Fore.RED)
+                
+                if retries > 2:
+                    safe_print("Too many sync errors, terminating upload", Fore.RED)
+                    
+                    # Gracefully terminate the process
+                    try:
+                        if process.poll() is None:  # Only terminate if process is still running
+                            process.terminate()
+                            process.wait(timeout=2)  # Give it 2 seconds to terminate gracefully
+                    except subprocess.TimeoutExpired:
+                        safe_print("Process didn't terminate gracefully, force killing...", Fore.RED)
+                        try:
+                            process.kill()
+                            process.wait(timeout=1)  # Wait for kill to complete
+                        except subprocess.TimeoutExpired:
+                            safe_print("Process is unresponsive, continuing anyway...", Fore.RED)
+                    except Exception as term_error:
+                        safe_print(f"Error terminating process: {term_error}", Fore.RED)
+                    
+                    raise Exception(f"Upload failed after {retries} sync error attempts")
             elif output:
                 output_lines.append(output.strip())
                 # Print output in real-time with a prefix to distinguish it
@@ -2715,18 +3622,43 @@ def upload_with_attempts_limit(sketch_dir, arduino_port, fqbn, input_dir, discov
         # Wait for process to complete and get return code
         return_code = process.poll()
         
+        # If we detected a flash failure, ensure we have a non-zero return code
+        if flash_failed and return_code == 0:
+            return_code = 1
+        
         if return_code != 0:
             full_output = '\n'.join(output_lines)
             raise Exception(f"Upload failed with return code {return_code}: {full_output}")
         
         returnValue = {"success": True, "stdout": '\n'.join(output_lines), "stderr": ""}
         # safe_print(returnValue, Fore.GREEN)
+        try:
+            if process.poll() is None:  # Only terminate if process is still running
+                process.terminate()
+                process.wait(timeout=2)  # Give it 2 seconds to terminate gracefully
+        except subprocess.TimeoutExpired:
+            safe_print("Process didn't terminate gracefully, force killing...", Fore.RED)
+            try:
+                process.kill()
+                process.wait(timeout=1)  # Wait for kill to complete
+            except subprocess.TimeoutExpired:
+                # safe_print("Process is unresponsive, continuing anyway...", Fore.RED)
+                pass
+        except Exception as term_error:
+            safe_print(f"Error terminating process: {term_error}", Fore.RED)
         
         return returnValue
         
     except Exception as e:
         raise Exception(f"Custom upload failed: {e}")
     finally:
+        # Remove process from tracking
+        try:
+            if process in active_processes:
+                active_processes.remove(process)
+        except:
+            pass
+        
         # Ensure the Arduino port is closed in all cases (success, error, or timeout)
         if arduino_serial is not None:
             try:
@@ -2735,19 +3667,29 @@ def upload_with_attempts_limit(sketch_dir, arduino_port, fqbn, input_dir, discov
                     safe_print(f"Closed Arduino port {arduino_port} after upload", Fore.YELLOW)
             except Exception as close_error:
                 safe_print(f"Note: Error closing Arduino port: {close_error}", Fore.YELLOW)
+        
+        # Give a small delay to ensure port is fully released
+        time.sleep(0.1)
 
 if __name__ == "__main__":
+    # Register cleanup function for normal exit
+    import atexit
+    atexit.register(cleanup_on_exit)
+    
     try:
         main()
     except KeyboardInterrupt:
-        safe_print("\nExiting...", Fore.YELLOW)
+        safe_print("\nKeyboard interrupt received (Ctrl+C)", Fore.YELLOW)
+        cleanup_on_exit()
+        safe_print("Exiting...", Fore.YELLOW)
     except Exception as e:
         safe_print(f"Fatal error: {e}", Fore.RED)
-    # finally:
-        # Cleanup
-        # try:
-        #     with serial_lock:
-        #         if ser and ser.is_open:
-        #             ser.close()
-        # except:
-        #     pass
+        cleanup_on_exit()
+    finally:
+        # Ensure cleanup happens even if something goes wrong
+        try:
+            # Only call cleanup if it hasn't been called yet
+            if active_processes or (ser and serialconnected):
+                cleanup_on_exit()
+        except:
+            pass

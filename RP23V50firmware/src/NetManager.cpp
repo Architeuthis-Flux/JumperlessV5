@@ -14,10 +14,10 @@
 #include "LEDs.h"
 #include "Graphics.h"
 #include "Probing.h"
-#include "SerialWrapper.h"
+//#include "SerialWrapper.h"
 #include "Highlighting.h"
 
-#define Serial SerialWrap
+///#define Serial SerialWrap
 // Define a struct that holds both the long and short strings as well as the defined value
 // struct DefineInfo {
 //     const char* shortName;

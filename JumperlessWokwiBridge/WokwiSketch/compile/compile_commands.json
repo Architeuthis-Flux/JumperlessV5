@@ -32,17 +32,20 @@
  {
   "directory": "/Users/kevinsanto/Documents/GitHub/JumperlessV5/JumperlessWokwiBridge",
   "arguments": [
-   "/Users/kevinsanto/Library/Arduino15/packages/arduino/tools/avr-gcc/7.3.0-atmel3.6.1-arduino7/bin/avr-gcc",
+   "/Users/kevinsanto/Library/Arduino15/packages/arduino/tools/avr-gcc/7.3.0-atmel3.6.1-arduino7/bin/avr-g++",
    "-c",
    "-g",
    "-Os",
    "-w",
-   "-std=gnu11",
+   "-std=gnu++11",
+   "-fpermissive",
+   "-fno-exceptions",
    "-ffunction-sections",
    "-fdata-sections",
+   "-fno-threadsafe-statics",
+   "-Wno-error=narrowing",
    "-MMD",
    "-flto",
-   "-fno-fat-lto-objects",
    "-mmcu=atmega328p",
    "-DF_CPU=16000000L",
    "-DARDUINO=10607",
@@ -50,11 +53,11 @@
    "-DARDUINO_ARCH_AVR",
    "-I/Users/kevinsanto/Library/Arduino15/packages/arduino/hardware/avr/1.8.6/cores/arduino",
    "-I/Users/kevinsanto/Library/Arduino15/packages/arduino/hardware/avr/1.8.6/variants/eightanaloginputs",
-   "/Users/kevinsanto/Library/Arduino15/packages/arduino/hardware/avr/1.8.6/cores/arduino/WInterrupts.c",
+   "/Users/kevinsanto/Library/Arduino15/packages/arduino/hardware/avr/1.8.6/cores/arduino/abi.cpp",
    "-o",
-   "/Users/kevinsanto/Documents/GitHub/JumperlessV5/JumperlessWokwiBridge/WokwiSketch/compile/core/WInterrupts.c.o"
+   "/Users/kevinsanto/Documents/GitHub/JumperlessV5/JumperlessWokwiBridge/WokwiSketch/compile/core/abi.cpp.o"
   ],
-  "file": "/Users/kevinsanto/Library/Arduino15/packages/arduino/hardware/avr/1.8.6/cores/arduino/WInterrupts.c"
+  "file": "/Users/kevinsanto/Library/Arduino15/packages/arduino/hardware/avr/1.8.6/cores/arduino/abi.cpp"
  },
  {
   "directory": "/Users/kevinsanto/Documents/GitHub/JumperlessV5/JumperlessWokwiBridge",
@@ -80,11 +83,41 @@
    "-DARDUINO_ARCH_AVR",
    "-I/Users/kevinsanto/Library/Arduino15/packages/arduino/hardware/avr/1.8.6/cores/arduino",
    "-I/Users/kevinsanto/Library/Arduino15/packages/arduino/hardware/avr/1.8.6/variants/eightanaloginputs",
-   "/Users/kevinsanto/Library/Arduino15/packages/arduino/hardware/avr/1.8.6/cores/arduino/HardwareSerial0.cpp",
+   "/Users/kevinsanto/Library/Arduino15/packages/arduino/hardware/avr/1.8.6/cores/arduino/HardwareSerial1.cpp",
    "-o",
-   "/Users/kevinsanto/Documents/GitHub/JumperlessV5/JumperlessWokwiBridge/WokwiSketch/compile/core/HardwareSerial0.cpp.o"
+   "/Users/kevinsanto/Documents/GitHub/JumperlessV5/JumperlessWokwiBridge/WokwiSketch/compile/core/HardwareSerial1.cpp.o"
   ],
-  "file": "/Users/kevinsanto/Library/Arduino15/packages/arduino/hardware/avr/1.8.6/cores/arduino/HardwareSerial0.cpp"
+  "file": "/Users/kevinsanto/Library/Arduino15/packages/arduino/hardware/avr/1.8.6/cores/arduino/HardwareSerial1.cpp"
+ },
+ {
+  "directory": "/Users/kevinsanto/Documents/GitHub/JumperlessV5/JumperlessWokwiBridge",
+  "arguments": [
+   "/Users/kevinsanto/Library/Arduino15/packages/arduino/tools/avr-gcc/7.3.0-atmel3.6.1-arduino7/bin/avr-g++",
+   "-c",
+   "-g",
+   "-Os",
+   "-w",
+   "-std=gnu++11",
+   "-fpermissive",
+   "-fno-exceptions",
+   "-ffunction-sections",
+   "-fdata-sections",
+   "-fno-threadsafe-statics",
+   "-Wno-error=narrowing",
+   "-MMD",
+   "-flto",
+   "-mmcu=atmega328p",
+   "-DF_CPU=16000000L",
+   "-DARDUINO=10607",
+   "-DARDUINO_AVR_NANO",
+   "-DARDUINO_ARCH_AVR",
+   "-I/Users/kevinsanto/Library/Arduino15/packages/arduino/hardware/avr/1.8.6/cores/arduino",
+   "-I/Users/kevinsanto/Library/Arduino15/packages/arduino/hardware/avr/1.8.6/variants/eightanaloginputs",
+   "/Users/kevinsanto/Library/Arduino15/packages/arduino/hardware/avr/1.8.6/cores/arduino/HardwareSerial.cpp",
+   "-o",
+   "/Users/kevinsanto/Documents/GitHub/JumperlessV5/JumperlessWokwiBridge/WokwiSketch/compile/core/HardwareSerial.cpp.o"
+  ],
+  "file": "/Users/kevinsanto/Library/Arduino15/packages/arduino/hardware/avr/1.8.6/cores/arduino/HardwareSerial.cpp"
  },
  {
   "directory": "/Users/kevinsanto/Documents/GitHub/JumperlessV5/JumperlessWokwiBridge",
@@ -115,6 +148,36 @@
    "/Users/kevinsanto/Documents/GitHub/JumperlessV5/JumperlessWokwiBridge/WokwiSketch/compile/core/Stream.cpp.o"
   ],
   "file": "/Users/kevinsanto/Library/Arduino15/packages/arduino/hardware/avr/1.8.6/cores/arduino/Stream.cpp"
+ },
+ {
+  "directory": "/Users/kevinsanto/Documents/GitHub/JumperlessV5/JumperlessWokwiBridge",
+  "arguments": [
+   "/Users/kevinsanto/Library/Arduino15/packages/arduino/tools/avr-gcc/7.3.0-atmel3.6.1-arduino7/bin/avr-g++",
+   "-c",
+   "-g",
+   "-Os",
+   "-w",
+   "-std=gnu++11",
+   "-fpermissive",
+   "-fno-exceptions",
+   "-ffunction-sections",
+   "-fdata-sections",
+   "-fno-threadsafe-statics",
+   "-Wno-error=narrowing",
+   "-MMD",
+   "-flto",
+   "-mmcu=atmega328p",
+   "-DF_CPU=16000000L",
+   "-DARDUINO=10607",
+   "-DARDUINO_AVR_NANO",
+   "-DARDUINO_ARCH_AVR",
+   "-I/Users/kevinsanto/Library/Arduino15/packages/arduino/hardware/avr/1.8.6/cores/arduino",
+   "-I/Users/kevinsanto/Library/Arduino15/packages/arduino/hardware/avr/1.8.6/variants/eightanaloginputs",
+   "/Users/kevinsanto/Library/Arduino15/packages/arduino/hardware/avr/1.8.6/cores/arduino/HardwareSerial0.cpp",
+   "-o",
+   "/Users/kevinsanto/Documents/GitHub/JumperlessV5/JumperlessWokwiBridge/WokwiSketch/compile/core/HardwareSerial0.cpp.o"
+  ],
+  "file": "/Users/kevinsanto/Library/Arduino15/packages/arduino/hardware/avr/1.8.6/cores/arduino/HardwareSerial0.cpp"
  },
  {
   "directory": "/Users/kevinsanto/Documents/GitHub/JumperlessV5/JumperlessWokwiBridge",
@@ -230,29 +293,26 @@
    "-DARDUINO_ARCH_AVR",
    "-I/Users/kevinsanto/Library/Arduino15/packages/arduino/hardware/avr/1.8.6/cores/arduino",
    "-I/Users/kevinsanto/Library/Arduino15/packages/arduino/hardware/avr/1.8.6/variants/eightanaloginputs",
-   "/Users/kevinsanto/Library/Arduino15/packages/arduino/hardware/avr/1.8.6/cores/arduino/PluggableUSB.cpp",
+   "/Users/kevinsanto/Library/Arduino15/packages/arduino/hardware/avr/1.8.6/cores/arduino/HardwareSerial2.cpp",
    "-o",
-   "/Users/kevinsanto/Documents/GitHub/JumperlessV5/JumperlessWokwiBridge/WokwiSketch/compile/core/PluggableUSB.cpp.o"
+   "/Users/kevinsanto/Documents/GitHub/JumperlessV5/JumperlessWokwiBridge/WokwiSketch/compile/core/HardwareSerial2.cpp.o"
   ],
-  "file": "/Users/kevinsanto/Library/Arduino15/packages/arduino/hardware/avr/1.8.6/cores/arduino/PluggableUSB.cpp"
+  "file": "/Users/kevinsanto/Library/Arduino15/packages/arduino/hardware/avr/1.8.6/cores/arduino/HardwareSerial2.cpp"
  },
  {
   "directory": "/Users/kevinsanto/Documents/GitHub/JumperlessV5/JumperlessWokwiBridge",
   "arguments": [
-   "/Users/kevinsanto/Library/Arduino15/packages/arduino/tools/avr-gcc/7.3.0-atmel3.6.1-arduino7/bin/avr-g++",
+   "/Users/kevinsanto/Library/Arduino15/packages/arduino/tools/avr-gcc/7.3.0-atmel3.6.1-arduino7/bin/avr-gcc",
    "-c",
    "-g",
    "-Os",
    "-w",
-   "-std=gnu++11",
-   "-fpermissive",
-   "-fno-exceptions",
+   "-std=gnu11",
    "-ffunction-sections",
    "-fdata-sections",
-   "-fno-threadsafe-statics",
-   "-Wno-error=narrowing",
    "-MMD",
    "-flto",
+   "-fno-fat-lto-objects",
    "-mmcu=atmega328p",
    "-DF_CPU=16000000L",
    "-DARDUINO=10607",
@@ -260,11 +320,11 @@
    "-DARDUINO_ARCH_AVR",
    "-I/Users/kevinsanto/Library/Arduino15/packages/arduino/hardware/avr/1.8.6/cores/arduino",
    "-I/Users/kevinsanto/Library/Arduino15/packages/arduino/hardware/avr/1.8.6/variants/eightanaloginputs",
-   "/Users/kevinsanto/Library/Arduino15/packages/arduino/hardware/avr/1.8.6/cores/arduino/HardwareSerial3.cpp",
+   "/Users/kevinsanto/Library/Arduino15/packages/arduino/hardware/avr/1.8.6/cores/arduino/WInterrupts.c",
    "-o",
-   "/Users/kevinsanto/Documents/GitHub/JumperlessV5/JumperlessWokwiBridge/WokwiSketch/compile/core/HardwareSerial3.cpp.o"
+   "/Users/kevinsanto/Documents/GitHub/JumperlessV5/JumperlessWokwiBridge/WokwiSketch/compile/core/WInterrupts.c.o"
   ],
-  "file": "/Users/kevinsanto/Library/Arduino15/packages/arduino/hardware/avr/1.8.6/cores/arduino/HardwareSerial3.cpp"
+  "file": "/Users/kevinsanto/Library/Arduino15/packages/arduino/hardware/avr/1.8.6/cores/arduino/WInterrupts.c"
  },
  {
   "directory": "/Users/kevinsanto/Documents/GitHub/JumperlessV5/JumperlessWokwiBridge",
@@ -320,11 +380,11 @@
    "-DARDUINO_ARCH_AVR",
    "-I/Users/kevinsanto/Library/Arduino15/packages/arduino/hardware/avr/1.8.6/cores/arduino",
    "-I/Users/kevinsanto/Library/Arduino15/packages/arduino/hardware/avr/1.8.6/variants/eightanaloginputs",
-   "/Users/kevinsanto/Library/Arduino15/packages/arduino/hardware/avr/1.8.6/cores/arduino/HardwareSerial1.cpp",
+   "/Users/kevinsanto/Library/Arduino15/packages/arduino/hardware/avr/1.8.6/cores/arduino/PluggableUSB.cpp",
    "-o",
-   "/Users/kevinsanto/Documents/GitHub/JumperlessV5/JumperlessWokwiBridge/WokwiSketch/compile/core/HardwareSerial1.cpp.o"
+   "/Users/kevinsanto/Documents/GitHub/JumperlessV5/JumperlessWokwiBridge/WokwiSketch/compile/core/PluggableUSB.cpp.o"
   ],
-  "file": "/Users/kevinsanto/Library/Arduino15/packages/arduino/hardware/avr/1.8.6/cores/arduino/HardwareSerial1.cpp"
+  "file": "/Users/kevinsanto/Library/Arduino15/packages/arduino/hardware/avr/1.8.6/cores/arduino/PluggableUSB.cpp"
  },
  {
   "directory": "/Users/kevinsanto/Documents/GitHub/JumperlessV5/JumperlessWokwiBridge",
@@ -350,11 +410,11 @@
    "-DARDUINO_ARCH_AVR",
    "-I/Users/kevinsanto/Library/Arduino15/packages/arduino/hardware/avr/1.8.6/cores/arduino",
    "-I/Users/kevinsanto/Library/Arduino15/packages/arduino/hardware/avr/1.8.6/variants/eightanaloginputs",
-   "/Users/kevinsanto/Library/Arduino15/packages/arduino/hardware/avr/1.8.6/cores/arduino/HardwareSerial.cpp",
+   "/Users/kevinsanto/Library/Arduino15/packages/arduino/hardware/avr/1.8.6/cores/arduino/WMath.cpp",
    "-o",
-   "/Users/kevinsanto/Documents/GitHub/JumperlessV5/JumperlessWokwiBridge/WokwiSketch/compile/core/HardwareSerial.cpp.o"
+   "/Users/kevinsanto/Documents/GitHub/JumperlessV5/JumperlessWokwiBridge/WokwiSketch/compile/core/WMath.cpp.o"
   ],
-  "file": "/Users/kevinsanto/Library/Arduino15/packages/arduino/hardware/avr/1.8.6/cores/arduino/HardwareSerial.cpp"
+  "file": "/Users/kevinsanto/Library/Arduino15/packages/arduino/hardware/avr/1.8.6/cores/arduino/WMath.cpp"
  },
  {
   "directory": "/Users/kevinsanto/Documents/GitHub/JumperlessV5/JumperlessWokwiBridge",
@@ -380,29 +440,26 @@
    "-DARDUINO_ARCH_AVR",
    "-I/Users/kevinsanto/Library/Arduino15/packages/arduino/hardware/avr/1.8.6/cores/arduino",
    "-I/Users/kevinsanto/Library/Arduino15/packages/arduino/hardware/avr/1.8.6/variants/eightanaloginputs",
-   "/Users/kevinsanto/Library/Arduino15/packages/arduino/hardware/avr/1.8.6/cores/arduino/abi.cpp",
+   "/Users/kevinsanto/Library/Arduino15/packages/arduino/hardware/avr/1.8.6/cores/arduino/HardwareSerial3.cpp",
    "-o",
-   "/Users/kevinsanto/Documents/GitHub/JumperlessV5/JumperlessWokwiBridge/WokwiSketch/compile/core/abi.cpp.o"
+   "/Users/kevinsanto/Documents/GitHub/JumperlessV5/JumperlessWokwiBridge/WokwiSketch/compile/core/HardwareSerial3.cpp.o"
   ],
-  "file": "/Users/kevinsanto/Library/Arduino15/packages/arduino/hardware/avr/1.8.6/cores/arduino/abi.cpp"
+  "file": "/Users/kevinsanto/Library/Arduino15/packages/arduino/hardware/avr/1.8.6/cores/arduino/HardwareSerial3.cpp"
  },
  {
   "directory": "/Users/kevinsanto/Documents/GitHub/JumperlessV5/JumperlessWokwiBridge",
   "arguments": [
-   "/Users/kevinsanto/Library/Arduino15/packages/arduino/tools/avr-gcc/7.3.0-atmel3.6.1-arduino7/bin/avr-g++",
+   "/Users/kevinsanto/Library/Arduino15/packages/arduino/tools/avr-gcc/7.3.0-atmel3.6.1-arduino7/bin/avr-gcc",
    "-c",
    "-g",
    "-Os",
    "-w",
-   "-std=gnu++11",
-   "-fpermissive",
-   "-fno-exceptions",
+   "-std=gnu11",
    "-ffunction-sections",
    "-fdata-sections",
-   "-fno-threadsafe-statics",
-   "-Wno-error=narrowing",
    "-MMD",
    "-flto",
+   "-fno-fat-lto-objects",
    "-mmcu=atmega328p",
    "-DF_CPU=16000000L",
    "-DARDUINO=10607",
@@ -410,71 +467,11 @@
    "-DARDUINO_ARCH_AVR",
    "-I/Users/kevinsanto/Library/Arduino15/packages/arduino/hardware/avr/1.8.6/cores/arduino",
    "-I/Users/kevinsanto/Library/Arduino15/packages/arduino/hardware/avr/1.8.6/variants/eightanaloginputs",
-   "/Users/kevinsanto/Library/Arduino15/packages/arduino/hardware/avr/1.8.6/cores/arduino/HardwareSerial2.cpp",
+   "/Users/kevinsanto/Library/Arduino15/packages/arduino/hardware/avr/1.8.6/cores/arduino/hooks.c",
    "-o",
-   "/Users/kevinsanto/Documents/GitHub/JumperlessV5/JumperlessWokwiBridge/WokwiSketch/compile/core/HardwareSerial2.cpp.o"
+   "/Users/kevinsanto/Documents/GitHub/JumperlessV5/JumperlessWokwiBridge/WokwiSketch/compile/core/hooks.c.o"
   ],
-  "file": "/Users/kevinsanto/Library/Arduino15/packages/arduino/hardware/avr/1.8.6/cores/arduino/HardwareSerial2.cpp"
- },
- {
-  "directory": "/Users/kevinsanto/Documents/GitHub/JumperlessV5/JumperlessWokwiBridge",
-  "arguments": [
-   "/Users/kevinsanto/Library/Arduino15/packages/arduino/tools/avr-gcc/7.3.0-atmel3.6.1-arduino7/bin/avr-g++",
-   "-c",
-   "-g",
-   "-Os",
-   "-w",
-   "-std=gnu++11",
-   "-fpermissive",
-   "-fno-exceptions",
-   "-ffunction-sections",
-   "-fdata-sections",
-   "-fno-threadsafe-statics",
-   "-Wno-error=narrowing",
-   "-MMD",
-   "-flto",
-   "-mmcu=atmega328p",
-   "-DF_CPU=16000000L",
-   "-DARDUINO=10607",
-   "-DARDUINO_AVR_NANO",
-   "-DARDUINO_ARCH_AVR",
-   "-I/Users/kevinsanto/Library/Arduino15/packages/arduino/hardware/avr/1.8.6/cores/arduino",
-   "-I/Users/kevinsanto/Library/Arduino15/packages/arduino/hardware/avr/1.8.6/variants/eightanaloginputs",
-   "/Users/kevinsanto/Library/Arduino15/packages/arduino/hardware/avr/1.8.6/cores/arduino/IPAddress.cpp",
-   "-o",
-   "/Users/kevinsanto/Documents/GitHub/JumperlessV5/JumperlessWokwiBridge/WokwiSketch/compile/core/IPAddress.cpp.o"
-  ],
-  "file": "/Users/kevinsanto/Library/Arduino15/packages/arduino/hardware/avr/1.8.6/cores/arduino/IPAddress.cpp"
- },
- {
-  "directory": "/Users/kevinsanto/Documents/GitHub/JumperlessV5/JumperlessWokwiBridge",
-  "arguments": [
-   "/Users/kevinsanto/Library/Arduino15/packages/arduino/tools/avr-gcc/7.3.0-atmel3.6.1-arduino7/bin/avr-g++",
-   "-c",
-   "-g",
-   "-Os",
-   "-w",
-   "-std=gnu++11",
-   "-fpermissive",
-   "-fno-exceptions",
-   "-ffunction-sections",
-   "-fdata-sections",
-   "-fno-threadsafe-statics",
-   "-Wno-error=narrowing",
-   "-MMD",
-   "-flto",
-   "-mmcu=atmega328p",
-   "-DF_CPU=16000000L",
-   "-DARDUINO=10607",
-   "-DARDUINO_AVR_NANO",
-   "-DARDUINO_ARCH_AVR",
-   "-I/Users/kevinsanto/Library/Arduino15/packages/arduino/hardware/avr/1.8.6/cores/arduino",
-   "-I/Users/kevinsanto/Library/Arduino15/packages/arduino/hardware/avr/1.8.6/variants/eightanaloginputs",
-   "/Users/kevinsanto/Library/Arduino15/packages/arduino/hardware/avr/1.8.6/cores/arduino/main.cpp",
-   "-o",
-   "/Users/kevinsanto/Documents/GitHub/JumperlessV5/JumperlessWokwiBridge/WokwiSketch/compile/core/main.cpp.o"
-  ],
-  "file": "/Users/kevinsanto/Library/Arduino15/packages/arduino/hardware/avr/1.8.6/cores/arduino/main.cpp"
+  "file": "/Users/kevinsanto/Library/Arduino15/packages/arduino/hardware/avr/1.8.6/cores/arduino/hooks.c"
  },
  {
   "directory": "/Users/kevinsanto/Documents/GitHub/JumperlessV5/JumperlessWokwiBridge",
@@ -530,26 +527,29 @@
    "-DARDUINO_ARCH_AVR",
    "-I/Users/kevinsanto/Library/Arduino15/packages/arduino/hardware/avr/1.8.6/cores/arduino",
    "-I/Users/kevinsanto/Library/Arduino15/packages/arduino/hardware/avr/1.8.6/variants/eightanaloginputs",
-   "/Users/kevinsanto/Library/Arduino15/packages/arduino/hardware/avr/1.8.6/cores/arduino/WMath.cpp",
+   "/Users/kevinsanto/Library/Arduino15/packages/arduino/hardware/avr/1.8.6/cores/arduino/main.cpp",
    "-o",
-   "/Users/kevinsanto/Documents/GitHub/JumperlessV5/JumperlessWokwiBridge/WokwiSketch/compile/core/WMath.cpp.o"
+   "/Users/kevinsanto/Documents/GitHub/JumperlessV5/JumperlessWokwiBridge/WokwiSketch/compile/core/main.cpp.o"
   ],
-  "file": "/Users/kevinsanto/Library/Arduino15/packages/arduino/hardware/avr/1.8.6/cores/arduino/WMath.cpp"
+  "file": "/Users/kevinsanto/Library/Arduino15/packages/arduino/hardware/avr/1.8.6/cores/arduino/main.cpp"
  },
  {
   "directory": "/Users/kevinsanto/Documents/GitHub/JumperlessV5/JumperlessWokwiBridge",
   "arguments": [
-   "/Users/kevinsanto/Library/Arduino15/packages/arduino/tools/avr-gcc/7.3.0-atmel3.6.1-arduino7/bin/avr-gcc",
+   "/Users/kevinsanto/Library/Arduino15/packages/arduino/tools/avr-gcc/7.3.0-atmel3.6.1-arduino7/bin/avr-g++",
    "-c",
    "-g",
    "-Os",
    "-w",
-   "-std=gnu11",
+   "-std=gnu++11",
+   "-fpermissive",
+   "-fno-exceptions",
    "-ffunction-sections",
    "-fdata-sections",
+   "-fno-threadsafe-statics",
+   "-Wno-error=narrowing",
    "-MMD",
    "-flto",
-   "-fno-fat-lto-objects",
    "-mmcu=atmega328p",
    "-DF_CPU=16000000L",
    "-DARDUINO=10607",
@@ -557,11 +557,11 @@
    "-DARDUINO_ARCH_AVR",
    "-I/Users/kevinsanto/Library/Arduino15/packages/arduino/hardware/avr/1.8.6/cores/arduino",
    "-I/Users/kevinsanto/Library/Arduino15/packages/arduino/hardware/avr/1.8.6/variants/eightanaloginputs",
-   "/Users/kevinsanto/Library/Arduino15/packages/arduino/hardware/avr/1.8.6/cores/arduino/hooks.c",
+   "/Users/kevinsanto/Library/Arduino15/packages/arduino/hardware/avr/1.8.6/cores/arduino/IPAddress.cpp",
    "-o",
-   "/Users/kevinsanto/Documents/GitHub/JumperlessV5/JumperlessWokwiBridge/WokwiSketch/compile/core/hooks.c.o"
+   "/Users/kevinsanto/Documents/GitHub/JumperlessV5/JumperlessWokwiBridge/WokwiSketch/compile/core/IPAddress.cpp.o"
   ],
-  "file": "/Users/kevinsanto/Library/Arduino15/packages/arduino/hardware/avr/1.8.6/cores/arduino/hooks.c"
+  "file": "/Users/kevinsanto/Library/Arduino15/packages/arduino/hardware/avr/1.8.6/cores/arduino/IPAddress.cpp"
  },
  {
   "directory": "/Users/kevinsanto/Documents/GitHub/JumperlessV5/JumperlessWokwiBridge",
@@ -592,33 +592,6 @@
    "/Users/kevinsanto/Documents/GitHub/JumperlessV5/JumperlessWokwiBridge/WokwiSketch/compile/core/new.cpp.o"
   ],
   "file": "/Users/kevinsanto/Library/Arduino15/packages/arduino/hardware/avr/1.8.6/cores/arduino/new.cpp"
- },
- {
-  "directory": "/Users/kevinsanto/Documents/GitHub/JumperlessV5/JumperlessWokwiBridge",
-  "arguments": [
-   "/Users/kevinsanto/Library/Arduino15/packages/arduino/tools/avr-gcc/7.3.0-atmel3.6.1-arduino7/bin/avr-gcc",
-   "-c",
-   "-g",
-   "-Os",
-   "-w",
-   "-std=gnu11",
-   "-ffunction-sections",
-   "-fdata-sections",
-   "-MMD",
-   "-flto",
-   "-fno-fat-lto-objects",
-   "-mmcu=atmega328p",
-   "-DF_CPU=16000000L",
-   "-DARDUINO=10607",
-   "-DARDUINO_AVR_NANO",
-   "-DARDUINO_ARCH_AVR",
-   "-I/Users/kevinsanto/Library/Arduino15/packages/arduino/hardware/avr/1.8.6/cores/arduino",
-   "-I/Users/kevinsanto/Library/Arduino15/packages/arduino/hardware/avr/1.8.6/variants/eightanaloginputs",
-   "/Users/kevinsanto/Library/Arduino15/packages/arduino/hardware/avr/1.8.6/cores/arduino/wiring.c",
-   "-o",
-   "/Users/kevinsanto/Documents/GitHub/JumperlessV5/JumperlessWokwiBridge/WokwiSketch/compile/core/wiring.c.o"
-  ],
-  "file": "/Users/kevinsanto/Library/Arduino15/packages/arduino/hardware/avr/1.8.6/cores/arduino/wiring.c"
  },
  {
   "directory": "/Users/kevinsanto/Documents/GitHub/JumperlessV5/JumperlessWokwiBridge",
@@ -718,6 +691,33 @@
    "-DARDUINO_ARCH_AVR",
    "-I/Users/kevinsanto/Library/Arduino15/packages/arduino/hardware/avr/1.8.6/cores/arduino",
    "-I/Users/kevinsanto/Library/Arduino15/packages/arduino/hardware/avr/1.8.6/variants/eightanaloginputs",
+   "/Users/kevinsanto/Library/Arduino15/packages/arduino/hardware/avr/1.8.6/cores/arduino/wiring_pulse.c",
+   "-o",
+   "/Users/kevinsanto/Documents/GitHub/JumperlessV5/JumperlessWokwiBridge/WokwiSketch/compile/core/wiring_pulse.c.o"
+  ],
+  "file": "/Users/kevinsanto/Library/Arduino15/packages/arduino/hardware/avr/1.8.6/cores/arduino/wiring_pulse.c"
+ },
+ {
+  "directory": "/Users/kevinsanto/Documents/GitHub/JumperlessV5/JumperlessWokwiBridge",
+  "arguments": [
+   "/Users/kevinsanto/Library/Arduino15/packages/arduino/tools/avr-gcc/7.3.0-atmel3.6.1-arduino7/bin/avr-gcc",
+   "-c",
+   "-g",
+   "-Os",
+   "-w",
+   "-std=gnu11",
+   "-ffunction-sections",
+   "-fdata-sections",
+   "-MMD",
+   "-flto",
+   "-fno-fat-lto-objects",
+   "-mmcu=atmega328p",
+   "-DF_CPU=16000000L",
+   "-DARDUINO=10607",
+   "-DARDUINO_AVR_NANO",
+   "-DARDUINO_ARCH_AVR",
+   "-I/Users/kevinsanto/Library/Arduino15/packages/arduino/hardware/avr/1.8.6/cores/arduino",
+   "-I/Users/kevinsanto/Library/Arduino15/packages/arduino/hardware/avr/1.8.6/variants/eightanaloginputs",
    "/Users/kevinsanto/Library/Arduino15/packages/arduino/hardware/avr/1.8.6/cores/arduino/wiring_analog.c",
    "-o",
    "/Users/kevinsanto/Documents/GitHub/JumperlessV5/JumperlessWokwiBridge/WokwiSketch/compile/core/wiring_analog.c.o"
@@ -745,10 +745,10 @@
    "-DARDUINO_ARCH_AVR",
    "-I/Users/kevinsanto/Library/Arduino15/packages/arduino/hardware/avr/1.8.6/cores/arduino",
    "-I/Users/kevinsanto/Library/Arduino15/packages/arduino/hardware/avr/1.8.6/variants/eightanaloginputs",
-   "/Users/kevinsanto/Library/Arduino15/packages/arduino/hardware/avr/1.8.6/cores/arduino/wiring_pulse.c",
+   "/Users/kevinsanto/Library/Arduino15/packages/arduino/hardware/avr/1.8.6/cores/arduino/wiring.c",
    "-o",
-   "/Users/kevinsanto/Documents/GitHub/JumperlessV5/JumperlessWokwiBridge/WokwiSketch/compile/core/wiring_pulse.c.o"
+   "/Users/kevinsanto/Documents/GitHub/JumperlessV5/JumperlessWokwiBridge/WokwiSketch/compile/core/wiring.c.o"
   ],
-  "file": "/Users/kevinsanto/Library/Arduino15/packages/arduino/hardware/avr/1.8.6/cores/arduino/wiring_pulse.c"
+  "file": "/Users/kevinsanto/Library/Arduino15/packages/arduino/hardware/avr/1.8.6/cores/arduino/wiring.c"
  }
 ]

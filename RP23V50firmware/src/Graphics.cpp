@@ -10,12 +10,17 @@
 #include "Peripherals.h"
 #include "PersistentStuff.h"
 #include "Probing.h"
-#include "SerialWrapper.h"
+
 #include <cstdarg>
 
 #include "Images.h"
+#include "ArduinoStuff.h"
 
+#ifdef DONOTUSE_SERIALWRAPPER
+#include "SerialWrapper.h"
 #define Serial SerialWrap
+#endif
+
 /* clang-format off */
 
 // Non-blocking flush function with timeout
@@ -2077,7 +2082,7 @@ int serial2ClearSent = 0;
 
 void dumpLEDs(int posX, int posY, int pixelsOrRows, int header, int rgbOrRaw,
               int logo, Stream *stream) {
-
+  return;
   // Rate limiting - prevent excessive calls
   if (millis() - lastDumpAttemptTime < minDumpInterval) {
     return;

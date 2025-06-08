@@ -4,20 +4,23 @@
 
 #include <Arduino.h>
 
-#ifdef USE_TINYUSB
+//#ifdef USE_TINYUSB
 #include <Adafruit_TinyUSB.h>
+#include "ArduinoStuff.h"
 extern Adafruit_USBD_CDC USBSer1;
 extern Adafruit_USBD_CDC USBSer2;
-#endif
+extern Adafruit_USBD_CDC USBSer3;
+//#endif
 
-
+#ifdef DONOTUSE_SERIALWRAPPER
 
 // Port availability bitmask constants
 #define SERIAL_PORT_MAIN    0x01  // Bit 0: Serial (main USB)
 #define SERIAL_PORT_USBSER1 0x02  // Bit 1: USBSer1
 #define SERIAL_PORT_SERIAL1 0x04  // Bit 2: Serial1
 #define SERIAL_PORT_USBSER2 0x08  // Bit 3: USBSer2
-#define SERIAL_PORT_SERIAL2 0x10  // Bit 4: Serial2
+#define SERIAL_PORT_USBSER3 0x10  // Bit 4: USBSer3
+#define SERIAL_PORT_SERIAL2 0x20  // Bit 5: Serial2
 
 // Global volatile bitmasks to control Serial redirection
 // When 0, uses default Serial behavior
@@ -31,23 +34,23 @@ extern volatile uint8_t serialWriteTarget;
 #define SERIAL_REDIRECT_TO(mask) do { serialReadTarget = (mask); serialWriteTarget = (mask); } while(0)
 #define SERIAL_REDIRECT_OFF() do { serialReadTarget = 0; serialWriteTarget = 0; } while(0)
 #define SERIAL_REDIRECT_ALL() do { \
-    serialReadTarget = (SERIAL_PORT_MAIN | SERIAL_PORT_USBSER1 | SERIAL_PORT_SERIAL1 | SERIAL_PORT_USBSER2 | SERIAL_PORT_SERIAL2); \
-    serialWriteTarget = (SERIAL_PORT_MAIN | SERIAL_PORT_USBSER1 | SERIAL_PORT_SERIAL1 | SERIAL_PORT_USBSER2 | SERIAL_PORT_SERIAL2); \
+    serialReadTarget = (SERIAL_PORT_MAIN | SERIAL_PORT_USBSER1 | SERIAL_PORT_SERIAL1 | SERIAL_PORT_USBSER2 | SERIAL_PORT_USBSER3 | SERIAL_PORT_SERIAL2); \
+serialWriteTarget = (SERIAL_PORT_MAIN | SERIAL_PORT_USBSER1 | SERIAL_PORT_SERIAL1 | SERIAL_PORT_USBSER2 | SERIAL_PORT_USBSER3 | SERIAL_PORT_SERIAL2); \
 } while(0)
 
 // Additional convenience macros
-#define SERIAL_READ_FROM_ALL() serialReadTarget = (SERIAL_PORT_MAIN | SERIAL_PORT_USBSER1 | SERIAL_PORT_SERIAL1 | SERIAL_PORT_USBSER2 | SERIAL_PORT_SERIAL2)
-#define SERIAL_WRITE_TO_ALL() serialWriteTarget = (SERIAL_PORT_MAIN | SERIAL_PORT_USBSER1 | SERIAL_PORT_SERIAL1 | SERIAL_PORT_USBSER2 | SERIAL_PORT_SERIAL2)
+#define SERIAL_READ_FROM_ALL() serialReadTarget = (SERIAL_PORT_MAIN | SERIAL_PORT_USBSER1 | SERIAL_PORT_SERIAL1 | SERIAL_PORT_USBSER2 | SERIAL_PORT_USBSER3 | SERIAL_PORT_SERIAL2)
+#define SERIAL_WRITE_TO_ALL() serialWriteTarget = (SERIAL_PORT_MAIN | SERIAL_PORT_USBSER1 | SERIAL_PORT_SERIAL1 | SERIAL_PORT_USBSER2 | SERIAL_PORT_USBSER3 | SERIAL_PORT_SERIAL2)
 #define SERIAL_READ_OFF() serialReadTarget = 0
 #define SERIAL_WRITE_OFF() serialWriteTarget = 0
 
 class SerialWrapper : public Stream {
 private:
     // Configuration flags for individual ports
-    bool usbSer1Enabled = false;
-    bool serial1Enabled = false;
-    bool usbSer2Enabled = false;
-    bool serial2Enabled = false;
+    bool usbSer1Enabled = true;
+    bool serial1Enabled = true;
+    bool usbSer2Enabled = true;
+    bool serial2Enabled = true;
     
     // Buffer for read operations
     static const size_t READ_BUFFER_SIZE = 512;
@@ -1084,3 +1087,4 @@ public:
 extern SerialWrapper SerialWrap;
 
 #endif // SERIALWRAPPER_H
+#endif // DONOTUSE_SERIALWRAPPER

@@ -27,6 +27,8 @@
 #ifndef _TUSB_CONFIG_RP2040_H_
 #define _TUSB_CONFIG_RP2040_H_
 
+#include "usb_interface_config.h"
+
 #ifdef __cplusplus
 extern "C" {
 #endif
@@ -67,12 +69,18 @@ extern "C" {
 
 #define CFG_TUD_ENDOINT0_SIZE 64
 
-#define CFG_TUD_CDC 4
+// CRITICAL: Disable auto-generated descriptors FIRST
+#define CFG_TUD_DESC_AUTO 0
 
-#define CFG_TUD_MSC 1
-#define CFG_TUD_HID 2
-#define CFG_TUD_MIDI 1
-#define CFG_TUD_VENDOR 1
+#define CFG_TUD_CDC USB_CDC_ENABLE_COUNT
+
+// Enable multiple CDC descriptors  
+#define CFG_TUD_CDC_EP_BUFSIZE 64
+
+#define CFG_TUD_MSC USB_MSC_ENABLE
+#define CFG_TUD_HID USB_HID_ENABLE_COUNT
+#define CFG_TUD_MIDI USB_MIDI_ENABLE
+#define CFG_TUD_VENDOR USB_VENDOR_ENABLE
 
 // CDC FIFO size of TX and RX - Increased for dumpLEDs function
 #define CFG_TUD_CDC_RX_BUFSIZE 2048

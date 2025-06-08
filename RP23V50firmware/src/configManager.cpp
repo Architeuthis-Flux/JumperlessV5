@@ -8,10 +8,13 @@
 #include "configManager.h"
 #include "NetManager.h"
 #include "Peripherals.h"
-#include "SerialWrapper.h"
+
 #include "oled.h"
 #include "ArduinoStuff.h"
- #define Serial SerialWrap
+#ifdef DONOTUSE_SERIALWRAPPER
+#include "SerialWrapper.h"
+#define Serial SerialWrap
+#endif
 // Define the global configuration instance
 
 bool configChanged = false;
@@ -332,8 +335,8 @@ void updateConfigFromFile(const char* filename) {
         } else if (strcmp(section, "gpio") == 0) {
             if (strcmp(key, "direction") == 0) parseCommaSeparatedInts(value, jumperlessConfig.gpio.direction, 10);
             else if (strcmp(key, "pulls") == 0) parseCommaSeparatedInts(value, jumperlessConfig.gpio.pulls, 10);
-            else if (strcmp(key, "uart_tx_function") == 0) jumperlessConfig.gpio.uart_tx_function = parseUartFunction(value);
-            else if (strcmp(key, "uart_rx_function") == 0) jumperlessConfig.gpio.uart_rx_function = parseUartFunction(value);
+            else if (strcmp(key, "uart_tx_function") == 0) jumperlessConfig.gpio.uart_tx_function = parseArbitraryFunction(value);
+            else if (strcmp(key, "uart_rx_function") == 0) jumperlessConfig.gpio.uart_rx_function = parseArbitraryFunction(value);
         } else if (strcmp(section, "serial_1") == 0) {
             if (strcmp(key, "function") == 0) jumperlessConfig.serial_1.function = parseUartFunction(value);
             else if (strcmp(key, "baud_rate") == 0) jumperlessConfig.serial_1.baud_rate = parseInt(value);
@@ -768,9 +771,9 @@ void printConfigSectionToSerial(int section, bool showNames, bool pasteable) {
         }
         Serial.println(";");
         if (pasteable == true) Serial.print("`[gpio] ");
-        Serial.print("uart_tx_function = "); Serial.print(getStringFromTable(jumperlessConfig.gpio.uart_tx_function, uartFunctionTable)); Serial.println(";");
+        Serial.print("uart_tx_function = "); Serial.print(getStringFromTable(jumperlessConfig.gpio.uart_tx_function, arbitraryFunctionTable)); Serial.println(";");
         if (pasteable == true) Serial.print("`[gpio] ");
-        Serial.print("uart_rx_function = "); Serial.print(getStringFromTable(jumperlessConfig.gpio.uart_rx_function, uartFunctionTable)); Serial.println(";");
+        Serial.print("uart_rx_function = "); Serial.print(getStringFromTable(jumperlessConfig.gpio.uart_rx_function, arbitraryFunctionTable)); Serial.println(";");
     }
 
     // Print serial_1 section
@@ -1514,8 +1517,8 @@ void updateConfigValue(const char* section, const char* key, const char* value) 
         else if (strcmp(key, "pulls") == 0) {
             parseCommaSeparatedInts(value, jumperlessConfig.gpio.pulls, 10);
         }
-        else if (strcmp(key, "uart_tx_function") == 0) jumperlessConfig.gpio.uart_tx_function = parseUartFunction(value);
-        else if (strcmp(key, "uart_rx_function") == 0) jumperlessConfig.gpio.uart_rx_function = parseUartFunction(value);
+        else if (strcmp(key, "uart_tx_function") == 0) jumperlessConfig.gpio.uart_tx_function = parseArbitraryFunction(value);
+        else if (strcmp(key, "uart_rx_function") == 0) jumperlessConfig.gpio.uart_rx_function = parseArbitraryFunction(value);
     }
     else if (strcmp(section, "serial_1") == 0) {
         if (strcmp(key, "function") == 0) jumperlessConfig.serial_1.function = parseUartFunction(value);

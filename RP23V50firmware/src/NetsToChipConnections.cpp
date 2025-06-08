@@ -26,9 +26,9 @@ extern char *strcpy(char *dest, const char *src);
 #include "NetManager.h"
 #include "Peripherals.h"
 #include "Probing.h"
-#include "SerialWrapper.h"
+//#include "SerialWrapper.h"
 
-#define Serial SerialWrap
+//#define Serial SerialWrap
 
 // Compile-time debug flags - set to 1 to enable, 0 to disable
 #ifndef DEBUG_NTCC1_ENABLED

@@ -19,9 +19,14 @@
 #include "ArduinoStuff.h"
 #include "config.h"
 #include "CH446Q.h"
+#ifdef DONOTUSE_SERIALWRAPPER 
 #include "SerialWrapper.h"
+#endif
 
+#ifdef DONOTUSE_SERIALWRAPPER
 #define Serial SerialWrap
+#endif
+
 volatile bool netsUpdated = true;
 
 bool debugFP = EEPROM.read(DEBUG_FILEPARSINGADDRESS);
@@ -327,11 +332,11 @@ void inputNodeFileList(int addRotaryConnections) {
   int startInsertion = 0;
 
 
-  nodeFileString.read(SerialWrap);
+  nodeFileString.read(Serial);
   Serial.println("nodeFileString");
 
 
-  nodeFileString.printTo(SerialWrap);
+  nodeFileString.printTo(Serial);
 
   // Serial.println("\n\r\n\rnodeFileString");
 
@@ -544,7 +549,7 @@ void savePreformattedNodeFile(int source, int slot, int keepEncoder) {
       serialCommandBufferIndex = 0;
       }
 
-    specialFunctionsString.read(SerialWrap);
+      specialFunctionsString.read(Serial);
     specialFunctionsString.trim();
     if (specialFunctionsString.endsWith(",") == 0) {
       specialFunctionsString.concat(",\n\r");
@@ -1619,7 +1624,7 @@ void readStringFromSerial(int source, int addRemove) {
   // dash.concat("-");
   // comma.concat(",");
   if (source == 0) {
-    specialFunctionsString.read(SerialWrap);
+    specialFunctionsString.read(Serial);
     } else if (source == 1) {
       specialFunctionsString.read(Serial1);
       }

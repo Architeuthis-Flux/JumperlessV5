@@ -135,8 +135,8 @@ int lastRotaryDivider = 8;
 int rotaryDivider = 8;
 
 bool resetEncoderPosition = false;
-int32_t encoderPositionOffset = 0;
-volatile int32_t encoderPosition = 0;
+long encoderPositionOffset = 0;
+volatile long encoderPosition = 0;
 
 volatile int numberOfSteps = 0;
 
