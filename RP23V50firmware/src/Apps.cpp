@@ -20,6 +20,10 @@
 #include "Commands.h"
 #include "oled.h"
 
+extern "C" {
+#include "port/micropython_embed.h"
+}
+
 #include <PNGdec.h>
 // #include <PNGDisplay.h>
 #include <Adafruit_GFX.h>
@@ -64,8 +68,10 @@ struct app apps[30] = {
     {"Calib  DACs",     1,      1, calibrateDacs},
     {"I2C    Scan",     2,      1,                },
     {"Custom App",      3,      1, customApp},
+    {"Micropython",     7,      1, micropython},
     {"PNG Image",       4,      1, displayImage},
     {"Scan",            5,      1, scanBoard},
+    {"XLSX   GUI",      6,      1, xlsxGui},
 
     {"DOOM",           16,      1, playDoom},
 
@@ -114,6 +120,8 @@ void runApp(int index, char* name)
             case 4: displayImage(); break;
             case 0: bounceStartup(); break;
             case 2: i2cScan(); break;
+            case 6: xlsxGui(); break;
+            case 7: micropython(); break;
                 // case 2: logicAnalyzer(); break;
                 // case 3: oscilloscope(); break;
                 // case 4: midiSynth(); break;
@@ -146,6 +154,28 @@ void leaveApp(int lastNetSlot) {
     netSlot = lastNetSlot;
     refreshConnections(-1, 0, 1);
     }
+
+void micropython(void) {
+    char heap[8 * 1024];
+
+    // Initialise MicroPython.
+    //
+    // Note: &stack_top below should be good enough for many cases.
+    // However, depending on environment, there might be more appropriate
+    // ways to get the stack top value.
+    // eg. pthread_get_stackaddr_np, pthread_getattr_np,
+    // __builtin_frame_address/__builtin_stack_address, etc.
+    int stack_top;
+    mp_embed_init(&heap[0], sizeof(heap), &stack_top);
+
+    // Run the example scripts (they will be compiled first).
+    mp_embed_exec_str("print('hello world!', list(x + 1 for x in range(10)), end='eol\\n')");
+
+    // Deinitialise MicroPython.
+    mp_embed_deinit();
+
+    }
+
 
 //this just does a bunch of random stuff as an example
 void customApp(void) {
@@ -490,6 +520,165 @@ void customApp(void) {
 
     }
 
+void xlsxGui(void) {
+    //this is just a test for the xlsx parser
+    //it will read the serial data sent from the xlsx gui and print the contents to the serial monitor
+    // Serial.print(); is the Jumperless serial (seen in the terminal)
+    // USBSer1.print(); is the USB serial reply (seen on the second com port)
+
+    // Global variables
+    unsigned long startTime = millis();
+    unsigned long messageTime = startTime; // Time to print a message
+    unsigned long timeout = 1000000; //1000 seconds
+    
+    String string_from_UART = "";
+    String command = "", args = "";
+    String queuedCommand = "  "; // TODO: check if this is still needed
+    bool isEchoEnabled = true; // true causes serial commands to be echoed to the Jumperless serial, false mutes the echo
+    bool isJumperlessReply = false;
+
+    int DT = 10; // Delay time in milliseconds Excel needs
+
+    // One-time setup
+    //USBSer1.ignoreFlowControl(true);
+    USBSer1.println(F("Message,Jumperless GUI started"));
+    USBSer1.flush();
+
+    // Do continuously until timeout
+    while (millis() - startTime < timeout) {
+        uint32_t currentMillis = millis();
+
+        // Exit the app if the button is pressed or serial data is available
+        if (digitalRead(BUTTON_ENC) == 0 || Serial.available() > 0) {
+            Serial.println(F("Exiting XLSX GUI early"));
+            break;
+        }
+
+        // non-blocking test print
+        if (currentMillis > messageTime) { // every second
+            messageTime = currentMillis + 1000; // set next message time
+            USBSer1.dtr();
+            USBSer1.print(F("Message,Jumperless GUI is running..."));
+            USBSer1.print(F("\n")); // print a new line
+            USBSer1.flush();
+            USBSer1.println(F("|Message,,Jumperless GUI is running..."));
+            USBSer1.flush();
+        }
+
+        // Read serial data
+        if (USBSer1.available()) {
+            char c = USBSer1.read();
+            if(isEchoEnabled){
+                Serial.print(c);
+                Serial.flush(); // maybe not needed?
+            }
+            if ( (c != '\n') && (c != '\r') && (c != '|') ) {
+                string_from_UART += c;
+            }
+            else {
+                // Process the command
+                string_from_UART.trim();
+                if (string_from_UART.length() > 0) {
+                    delay(DT); // just to make sure it's not under the minimum timing for Excel
+                    // Parse the command and arguments
+                    int index_of_first_comma = string_from_UART.indexOf(',');
+                    bool isExcelCommand = false;
+                    // !!!! Drop leading ","s so that multiple commands can be sent from Excel !!!!
+                    if(index_of_first_comma == 0) { // If the first char is a comma, strip it and use the remainder as the string
+                        isExcelCommand = true;
+                        string_from_UART = string_from_UART.substring(1, string_from_UART.length());
+                        index_of_first_comma = string_from_UART.indexOf(','); // update the "1st" comma location
+                    }
+                    // If there is a comma, split the command and arguments
+                    if (index_of_first_comma != -1) {
+                        command = string_from_UART.substring(0, index_of_first_comma);
+                        args = string_from_UART.substring(index_of_first_comma + 1);
+                    } else {
+                        command = string_from_UART;
+                        args = "";
+                    }
+
+                    // Print the command and arguments
+                    USBSer1.print(F("Command: "));
+                    USBSer1.println(command);
+                    USBSer1.print(F("Arguments: "));
+                    USBSer1.println(args);
+                    USBSer1.flush();
+
+                    // Process <command> and <args>
+                    if( command == "h" || command == "help") {
+                        // Message dictionary:
+                        delay(DT); USBSer1.println(F(""));
+                        delay(DT); USBSer1.println(F("|'h' or 'help',, Prints this list"));
+                        delay(DT); USBSer1.println(F("|'echo,<val>' ,, Prints the echo setting; <val> (optional)"));
+                        delay(DT); USBSer1.println(F("|             ,, is 'on' or 'off' to set the echo setting accordingly"));
+                        delay(DT); USBSer1.println(F("|'TakeOnMe'   ,, Plays Take On Me from pin 11"));
+                        delay(DT); USBSer1.println(F("|'dance'      ,, progresses the 'dance' LED"));
+                        delay(DT); USBSer1.println(F("|             ,, pattern by one step"));
+                        delay(DT); USBSer1.println(F("|'send,<val>' ,, Sends a single-character command "));
+                        delay(DT); USBSer1.println(F("|             ,, to Jumperless (<val> = n, q, or Q)"));
+                        delay(DT); USBSer1.println(F("|'P0_?,<val>' ,, Sends <val> as 'f' command to Jumperless; prints"));
+                        delay(DT); USBSer1.println(F("|             ,, an abridged result; then sends 'n' to"));
+                        delay(DT); USBSer1.println(F("|             ,, Jumperless and prints an Excel-compatible result;"));
+                        delay(DT); USBSer1.println(F("|             ,, <val> = '' will clear all connections"));
+                        delay(DT); USBSer1.println(F("|             ,, P0_H/P0_L sets GPIO 0 HIGH/LOW respectively"));
+                        delay(DT); USBSer1.println(F("|             ,, TBD..."));
+                    }
+                    else if( command == "echo" ) {
+                        if( args == "" ) {
+                            USBSer1.print(F("Serial echo is currently "));
+                            if (isEchoEnabled) {
+                                USBSer1.println(F("enabled"));
+                            }
+                            else {
+                                USBSer1.println(F("disabled"));
+                            }
+                        }
+                        else if( args == "on") {
+                            isEchoEnabled = true;
+                        }
+                        else if( args == "off") {
+                            isEchoEnabled = false;
+                        }
+                        else { // If there is an argument, but it's not one of the known ones...
+                            USBSer1.println(F("The echo command only accepts the arguments 'on' and 'off'."));
+                        }
+                        delay(DT);
+                    }
+                    //else if( command == "TakeOnMe" ) {
+                    //    if( args == "" ) {
+                    //        playSong(11);
+                    //    }
+                    //    else if( args == "3" || args == "5" || args == "6" || args == "9" || args == "10" || args == "11" ) {
+                    //        uint8_t selectedPin = args.toInt();
+                    //        playSong(selectedPin);
+                    //    }
+                    //    else {
+                    //        USBSer1.print(F("Invalid argument following TakeOnMe command"));
+                    //    }
+                    //}
+                    else {
+                        USBSer1.print(F("Unknown command: "));
+                        if (isExcelCommand) {
+                            USBSer1.print(F(",")); // Added just for Excel
+                        }
+                        USBSer1.println(string_from_UART);
+                        delay(DT);
+                    }
+                    // Force a flush to ensure any reply is sent
+                    USBSer1.flush();
+                    // Clear the string for the next command
+                    string_from_UART = "";
+                }
+            }
+        }
+
+    }
+    // Force a flush to ensure any reply is sent
+    Serial.println(F("XLSX GUI Done!")); Serial.flush();
+    USBSer1.println(F("XLSX GUI Done!")); USBSer1.flush();
+    return;
+}
 
 void bounceStartup(void) {
 
