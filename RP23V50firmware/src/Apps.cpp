@@ -20,6 +20,10 @@
 #include "Commands.h"
 #include "oled.h"
 
+extern "C" {
+#include "port/micropython_embed.h"
+}
+
 #include <PNGdec.h>
 // #include <PNGDisplay.h>
 #include <Adafruit_GFX.h>
@@ -64,6 +68,7 @@ struct app apps[30] = {
     {"Calib  DACs",     1,      1, calibrateDacs},
     {"I2C    Scan",     2,      1,                },
     {"Custom App",      3,      1, customApp},
+    {"Micropython",     7,      1, micropython},
     {"PNG Image",       4,      1, displayImage},
     {"Scan",            5,      1, scanBoard},
     {"XLSX   GUI",      6,      1, xlsxGui},
@@ -116,7 +121,8 @@ void runApp(int index, char* name)
             case 0: bounceStartup(); break;
             case 2: i2cScan(); break;
             case 6: xlsxGui(); break;
-            // case 2: logicAnalyzer(); break;
+            case 7: micropython(); break;
+                // case 2: logicAnalyzer(); break;
                 // case 3: oscilloscope(); break;
                 // case 4: midiSynth(); break;
                 // case 5: i2cScanner(); break;
@@ -148,6 +154,28 @@ void leaveApp(int lastNetSlot) {
     netSlot = lastNetSlot;
     refreshConnections(-1, 0, 1);
     }
+
+void micropython(void) {
+    char heap[8 * 1024];
+
+    // Initialise MicroPython.
+    //
+    // Note: &stack_top below should be good enough for many cases.
+    // However, depending on environment, there might be more appropriate
+    // ways to get the stack top value.
+    // eg. pthread_get_stackaddr_np, pthread_getattr_np,
+    // __builtin_frame_address/__builtin_stack_address, etc.
+    int stack_top;
+    mp_embed_init(&heap[0], sizeof(heap), &stack_top);
+
+    // Run the example scripts (they will be compiled first).
+    mp_embed_exec_str("print('hello world!', list(x + 1 for x in range(10)), end='eol\\n')");
+
+    // Deinitialise MicroPython.
+    mp_embed_deinit();
+
+    }
+
 
 //this just does a bunch of random stuff as an example
 void customApp(void) {

@@ -15,6 +15,7 @@ String menuLines[] = {
   "-Calib  DACs",
   "-Custom App",
   "-XLSX   GUI",
+   "-Micropython",
 
   //"-Show   Image",
  
