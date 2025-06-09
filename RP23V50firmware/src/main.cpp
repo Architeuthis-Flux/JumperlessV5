@@ -354,7 +354,7 @@ int serSource = 0;
 int readInNodesArduino = 0;
 
 
-const char firmwareVersion[] = "5.1.4.3"; // remember to update this
+const char firmwareVersion[] = "5.1.5.0"; // remember to update this
 const bool newConfigOptions = true; // set to true when config options are added/changed
 
 int firstLoop = 1;
