@@ -725,6 +725,7 @@ int getMenuSelection(void) {
               break;
               }
             }
+            Serial.flush();
 
 
           
@@ -733,7 +734,7 @@ int getMenuSelection(void) {
           menuLine.replace("~", "±");
           menuLine.replace("_", "-");
           Serial.print(menuLine.c_str());
-
+          Serial.flush();
           menuLine.replace("±", "+-");
             
 
@@ -870,7 +871,7 @@ int getMenuSelection(void) {
           // Serial.print(menuLevel);
           delayMicroseconds(100);
           Serial.print(" ");
-          if (actions[menuPosition] == 0 && numberOfChoices[menuPosition] == 0) {
+          if (actions[menuPosition] == 0) {
             Serial.print("\r                                              \r");
             // oled.clear();
 
@@ -882,9 +883,13 @@ int getMenuSelection(void) {
                 }
               }
 
+            Serial.flush();
+
             String menuLine = menuLines[menuPosition];
             menuLine.replace("~", "±");
+            menuLine.replace("_", "-");
             Serial.print(menuLine.c_str());
+            Serial.flush(); 
             menuLine.replace("±", "+-");
 
             oled.clearPrintShow(menuLine.c_str(), 2, true, true, true, -1, -1);
@@ -2851,7 +2856,7 @@ int doMenuAction(int menuPosition, int selection) {
 
           } else if (currentCategory == APPSACTION) {
 
-            Serial.print("Apps Action\n\r");
+            Serial.print("Apps Action\n\r"); //!Apps Action
 
             if (menuLines[currentAction.previousMenuPositions[1]].indexOf("Games") !=
                 -1) {
@@ -2875,7 +2880,7 @@ int doMenuAction(int menuPosition, int selection) {
 
             for (int i = 0; i < NUM_APPS; i++) {
               if (menuLines[currentAction.previousMenuPositions[1]].indexOf(apps[i].name) != -1) {
-                runApp(i);
+                runApp(apps[i].index, apps[i].name);
                 //showLEDsCore2 = -1;
                 refreshConnections(-1, 0);
                 break;

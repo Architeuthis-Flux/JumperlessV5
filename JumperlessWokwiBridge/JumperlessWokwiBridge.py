@@ -33,10 +33,10 @@ try:
     # Configure readline for better command history
     readline.set_history_length(100)  # Keep last 100 commands
     # Enable tab completion if available
-    try:
-        readline.parse_and_bind("tab: complete")
-    except:
-        pass
+    # try:
+    #     readline.parse_and_bind("")
+    # except:
+    #     pass
 except ImportError:
     READLINE_AVAILABLE = False
 
@@ -75,6 +75,9 @@ except ImportError:
         RESET_ALL = '\033[0m' if platform.system() != 'Windows' else ''
     
     COLORS_AVAILABLE = False
+
+# Interactive mode will use termios on Unix-like systems
+import shutil
 
 # Platform-specific imports
 if sys.platform == "win32":
@@ -333,18 +336,26 @@ arduino_flash_lock = threading.Lock()  # Prevent concurrent Arduino uploads
 active_processes = []
 active_threads = []
 
+# Interactive mode settings
+interactive_mode = False
+original_settings = None
+
 def cleanup_on_exit():
     """Clean up all active processes and threads on script exit"""
-    global active_processes, active_threads, ser, serialconnected
+    global active_processes, active_threads, ser, serialconnected, interactive_mode
     import subprocess
     
-    safe_print("\nCleaning up processes and threads...", Fore.YELLOW)
+    # Disable interactive mode first
+    if interactive_mode:
+        disable_interactive_mode()
+    
+    # safe_print("\nCleaning up processes and threads...", Fore.YELLOW)
     
     # Terminate active subprocesses
     for process in active_processes[:]:  # Copy list to avoid modification during iteration
         try:
             if process.poll() is None:  # Process is still running
-                safe_print(f"Terminating subprocess PID {process.pid}...", Fore.CYAN)
+                # safe_print(f"Terminating subprocess PID {process.pid}...", Fore.CYAN)
                 process.terminate()
                 try:
                     process.wait(timeout=2)
@@ -728,228 +739,357 @@ def parse_hardware_id(hwid, des='unknown'):
 
 def is_jumperless_device(desc, pid, interface=None):
     """Check if device is a Jumperless device"""
-    # Check traditional identification methods
-    if (desc == "Jumperless" or 
-        pid in ["ACAB", "1312"] or 
-        "jumperless" in desc.lower()):
-        return True
+    return (desc == "Jumperless" or 
+            pid in ["ACAB", "1312"] or 
+            "jumperless" in desc.lower())
+
+def parse_firmware_version(response_str):
+    """Extract and parse firmware version from response string"""
+    global jumperlessFirmwareString, jumperlessFirmwareNumber, jumperlessV5
     
-    # Check new interface-based identification
-    if interface:
-        interface_lower = interface.lower()
-        if any(jl_interface in interface_lower for jl_interface in 
-               ["jl passthrough", "jl main", "jl control", "jl gpio", "jl auxiliary", 
-                "jl oled", "jl leds", "jumperless serial"]):
-            return True
+    try:
+        # Look for the firmware version line
+        lines = response_str.split('\n')
+        for line in lines:
+            # Clean up the line - remove carriage returns and extra whitespace
+            clean_line = line.replace('\r', '').strip()
+            
+            if "Jumperless firmware version:" in clean_line:
+                jumperlessFirmwareString = clean_line
+                
+                # Extract version part after the colon
+                if ':' in clean_line:
+                    version_part = clean_line.split(':', 1)[1].strip()
+                    
+                    # Clean version string - remove any non-digit/dot characters
+                    import re
+                    version_clean = re.sub(r'[^\d\.]', '', version_part)
+                    
+                    if version_clean:
+                        version_numbers = version_clean.split('.')
+                        # Filter out empty strings
+                        version_numbers = [v for v in version_numbers if v]
+                        
+                        if len(version_numbers) >= 3:
+                            jumperlessFirmwareNumber = version_numbers[:3]
+                            try:
+                                if int(version_numbers[0]) >= 5:
+                                    jumperlessV5 = True
+                            except ValueError:
+                                pass
+                        elif len(version_numbers) >= 1:
+                            # Handle shorter version numbers
+                            jumperlessFirmwareNumber = version_numbers + ['0'] * (3 - len(version_numbers))
+                            try:
+                                if int(version_numbers[0]) >= 5:
+                                    jumperlessV5 = True
+                            except ValueError:
+                                pass
+                    
+                    if debugWokwi:
+                        safe_print(f"Parsed version: {version_clean} -> {jumperlessFirmwareNumber}", Fore.CYAN)
+                    
+                    return True
+    except Exception as e:
+        if debugWokwi:
+            safe_print(f"Error parsing firmware version: {e}", Fore.YELLOW)
     
     return False
 
-def get_jumperless_port_function(interface, additional_attrs=None):
-    """Determine the function of a Jumperless port based on its interface name and other attributes"""
-    # Check interface field first
-    if interface:
-        interface_lower = interface.lower()
-        
-        if "jl passthrough" in interface_lower:
-            return 1, "JL Passthrough"
-        elif "jl main" in interface_lower or "jl control" in interface_lower:
-            return 2, "JL Main"
-        elif "jl gpio" in interface_lower or "jl auxiliary" in interface_lower:
-            return 3, "JL Gpio"
-        elif "jl oled" in interface_lower:
-            return 4, "JL Oled"
-        elif "jl leds" in interface_lower:
-            return 5, "JL Leds"
-        elif "jumperless serial 1" in interface_lower:
-            return 0, "Jumperless Serial 1"
-        elif "jumperless serial 2" in interface_lower:
-            return 0, "Jumperless Serial 2"
-        elif "jumperless serial" in interface_lower:
-            return 0, "Jumperless Serial"
+def find_main_port(jumperless_ports):
+    """Find the main Jumperless port using '?' query"""
     
-    # Check additional attributes for function information
-    if additional_attrs:
-        for attr_name, attr_value in additional_attrs.items():
-            if attr_value and isinstance(attr_value, str):
-                attr_lower = attr_value.lower()
-                
-                if "jl passthrough" in attr_lower:
-                    return 1, "JL Passthrough"
-                elif "jl main" in attr_lower or "jl control" in attr_lower:
-                    return 2, "JL Main"
-                elif "jl gpio" in attr_lower or "jl auxiliary" in attr_lower:
-                    return 3, "JL Gpio"
-                elif "jl oled" in attr_lower:
-                    return 4, "JL Oled"
-                elif "jl leds" in attr_lower:
-                    return 5, "JL Leds"
-                elif "jumperless serial 1" in attr_lower:
-                    return 0, "Jumperless Serial 1"
-                elif "jumperless serial 2" in attr_lower:
-                    return 0, "Jumperless Serial 2"
-                elif "jumperless serial" in attr_lower:
-                    return 0, "Jumperless Serial"
-    
-    return 0, "Unknown Jumperless"
-
-def choose_jumperless_port(jumperless_ports):
-    """Choose the correct Jumperless port by interface function and testing firmware response"""
-    global jumperlessFirmwareString, jumperlessFirmwareNumber, jumperlessV5
-    
-    jumperlessFirmwareString = ' '
-    
-    # Priority order for main communication port: JL Main/Control, then JL Passthrough, then others
-    priority_functions = [2, 1, 0]  # JL Main, JL Passthrough, then others
-    
-    # Sort ports by priority function
-    sorted_by_priority = []
-    for priority_func in priority_functions:
-        for port_info in jumperless_ports:
-            port_name, interface, function_num, function_name = port_info
-            if function_num == priority_func:
-                sorted_by_priority.append(port_info)
-    
-    # Add any remaining ports not in priority list
-    for port_info in jumperless_ports:
-        if port_info not in sorted_by_priority:
-            sorted_by_priority.append(port_info)
-    
-    # Test each port for firmware response
-    for try_port_idx, (port_name, interface, function_num, function_name) in enumerate(sorted_by_priority):
+    for port_name, desc, hwid, interface, additional_attrs in jumperless_ports:
         try:
-            with serial.Serial(port_name, 115200, timeout=1) as temp_ser:
-                safe_print(f"Testing {function_name} port {port_name}", Fore.CYAN)
-                temp_ser.write(b'?')
-                time.sleep(0.3)
+            with serial.Serial(port_name, 115200, timeout=1) as test_port:
+                if debugWokwi:
+                    safe_print(f"Testing {port_name} for main port", Fore.CYAN)
                 
-                if temp_ser.in_waiting > 0:
-                    input_buffer = b''
+                # Clear buffers thoroughly
+                test_port.reset_input_buffer()
+                test_port.reset_output_buffer()
+                time.sleep(0.1)
+                
+                # Send ? to check for firmware response
+                test_port.write(b'?')
+                test_port.flush()
+                time.sleep(0.5)  # Give more time for response
+                
+                if test_port.in_waiting > 0:
+                    response_buffer = b''
                     start_time = time.time()
                     
-                    # Read with timeout
-                    while time.time() - start_time < 0.5:
-                        if temp_ser.in_waiting > 0:
-                            input_buffer += temp_ser.read(temp_ser.in_waiting)
+                    # Read all available data with longer timeout
+                    while time.time() - start_time < 1.0:
+                        if test_port.in_waiting > 0:
+                            response_buffer += test_port.read(test_port.in_waiting)
+                            time.sleep(0.01)  # Small delay to catch additional data
                         else:
-                            time.sleep(0.1)
-                        
-                        if b'\n' in input_buffer or time.time() - start_time > 1:
-                            break
+                            time.sleep(0.05)
+                            # If no new data for 100ms, assume we have the complete response
+                            if test_port.in_waiting == 0:
+                                break
                     
-                    try:
-                        input_str = input_buffer.decode('utf-8', errors='ignore').strip()
-                        lines = input_str.split('\n')
-                        
-                        for line in lines:
-                            if line.startswith("Jumperless firmware version:"):
-                                jumperlessFirmwareString = line
+                    if response_buffer:
+                        try:
+                            response_str = response_buffer.decode('utf-8', errors='ignore')
+                            
+                            if debugWokwi:
+                                safe_print(f"Raw response from {port_name}: {repr(response_str[:200])}", Fore.BLUE)
+                            
+                            # Check if this looks like a firmware response
+                            if "Jumperless firmware version:" in response_str or "firmware" in response_str.lower():
+                                safe_print(f"✓ Found main port: {port_name}", Fore.GREEN)
                                 
-                                # Parse version number
-                                version_part = line[29:].strip()
-                                version_numbers = version_part.split('.')
-                                
-                                if len(version_numbers) >= 3:
-                                    jumperlessFirmwareNumber = version_numbers[:3]
-                                    
-                                    if int(version_numbers[0]) >= 5:
-                                        jumperlessV5 = True
-                                
-                                # Return the index in the original jumperless_ports list
-                                return jumperless_ports.index((port_name, interface, function_num, function_name))
-                    except Exception:
-                        continue
-        except Exception:
-            continue
+                                # Parse firmware info
+                                if parse_firmware_version(response_str):
+                                    return port_name
+                                else:
+                                    # Even if parsing failed, this is still the main port
+                                    safe_print("Firmware version parsing failed, but this is the main port", Fore.YELLOW)
+                                    return port_name
+                        except Exception as e:
+                            if debugWokwi:
+                                safe_print(f"Error decoding response from {port_name}: {e}", Fore.YELLOW)
+                            
+        except Exception as e:
+            if debugWokwi:
+                safe_print(f"Error testing {port_name}: {e}", Fore.YELLOW)
     
-    # If no port responded to firmware query, return the first priority port
-    return 0 if jumperless_ports else None
+    return None
+
+def query_port_function(port_name):
+    """Query individual port with ENQ to get its function"""
+    try:
+        with serial.Serial(port_name, 115200, timeout=0.5) as port:
+            # Clear buffers
+            port.reset_input_buffer()
+            port.reset_output_buffer()
+            time.sleep(0.05)
+            
+            # Send ENQ (0x05)
+            port.write(b"\x05\n")
+            port.flush()
+            time.sleep(0.2)
+            
+            # Read response
+            response_buffer = b''
+            start_time = time.time()
+            
+            while time.time() - start_time < 0.5:
+                if port.in_waiting > 0:
+                    response_buffer += port.read(port.in_waiting)
+                    time.sleep(0.01)
+                else:
+                    time.sleep(0.05)
+                    if port.in_waiting == 0:
+                        break
+            
+            if response_buffer:
+                response = response_buffer.decode('utf-8', errors='ignore').strip()
+                if debugWokwi:
+                    safe_print(f"Port {port_name} ENQ response: {response}", Fore.CYAN)
+                
+                # Parse the response to find this port's function
+                lines = response.split('\n')
+                for line in lines:
+                    line = line.strip()
+                    if line.startswith('CDC') and ':' in line:
+                        try:
+                            cdc_part, function_part = line.split(':', 1)
+                            function_desc = function_part.strip()
+                            return function_desc
+                        except:
+                            continue
+            
+    except Exception as e:
+        if debugWokwi:
+            safe_print(f"Error querying {port_name}: {e}", Fore.YELLOW)
+    
+    return None
+
+def get_all_port_functions(main_port_name, all_jumperless_ports):
+    """Get functions for all ports by querying main port first, then individual ports"""
+    port_functions = {}
+    
+    # First, query the main port to get all CDC info
+    try:
+        with serial.Serial(main_port_name, 115200, timeout=1) as main_port:
+            safe_print(f"Querying main port {main_port_name} for all CDC functions", Fore.CYAN)
+            
+            # Clear buffers
+            main_port.reset_input_buffer()
+            main_port.reset_output_buffer()
+            time.sleep(0.1)
+            
+            # Send ENQ (0x05)
+            main_port.write(b"\x05\n")
+            main_port.flush()
+            time.sleep(0.3)
+            
+            # Read response
+            response_buffer = b''
+            start_time = time.time()
+            
+            while time.time() - start_time < 1.0:
+                if main_port.in_waiting > 0:
+                    response_buffer += main_port.read(main_port.in_waiting)
+                    time.sleep(0.01)
+                else:
+                    time.sleep(0.1)
+                    if main_port.in_waiting == 0:
+                        break
+            
+            if response_buffer:
+                response = response_buffer.decode('utf-8', errors='ignore').strip()
+                safe_print(f"Main port ENQ response:\n{response}", Fore.YELLOW)
+                
+                # Parse CDC info: "CDC0: Jumperless Main", "CDC1: JL Passthrough", etc.
+                lines = response.split('\n')
+                for line in lines:
+                    line = line.strip()
+                    if line.startswith('CDC') and ':' in line:
+                        try:
+                            cdc_part, function_part = line.split(':', 1)
+                            cdc_num = int(cdc_part.replace('CDC', '').strip())
+                            function_desc = function_part.strip()
+                            port_functions[cdc_num] = function_desc
+                            
+                            if debugWokwi:
+                                safe_print(f"  CDC{cdc_num}: {function_desc}", Fore.GREEN)
+                        except (ValueError, IndexError) as e:
+                            if debugWokwi:
+                                safe_print(f"Error parsing line '{line}': {e}", Fore.YELLOW)
+                            continue
+    except Exception as e:
+        safe_print(f"Error querying main port: {e}", Fore.RED)
+    
+    # If we didn't get all the port info, try querying each port individually
+    num_detected_ports = len(all_jumperless_ports)
+    if len(port_functions) < num_detected_ports:
+        safe_print(f"Trying to query {num_detected_ports} individual ports for their functions", Fore.CYAN)
+        
+        for port_name, desc, hwid, interface, additional_attrs in all_jumperless_ports:
+            if port_name != main_port_name:  # Skip main port, we already know it
+                function = query_port_function(port_name)
+                if function:
+                    safe_print(f"Port {port_name}: {function}", Fore.GREEN)
+    
+    return port_functions
+
+def organize_jumperless_ports(main_port_name, all_jumperless_ports, port_functions):
+    """Organize ports by function with fallback to numerical order"""
+    organized_ports = {}
+    
+    # First, assign ports based on ENQ query results
+    for cdc_num, function_desc in port_functions.items():
+        # Try to find which physical port corresponds to this CDC number
+        port_assigned = False
+        
+        # Method 1: Try to find the port by querying it individually
+        for port_name, desc, hwid, interface, additional_attrs in all_jumperless_ports:
+            if port_name == main_port_name and 'main' in function_desc.lower():
+                organized_ports[port_name] = function_desc
+                port_assigned = True
+                break
+        
+        if not port_assigned:
+            # Method 2: Fallback to numerical order mapping
+            # Sort ports by name to get consistent ordering
+            sorted_ports = sorted([p[0] for p in all_jumperless_ports])
+            
+            if cdc_num < len(sorted_ports):
+                port_name = sorted_ports[cdc_num]
+                organized_ports[port_name] = function_desc
+                if debugWokwi:
+                    safe_print(f"Fallback: CDC{cdc_num} -> {port_name} ({function_desc})", Fore.YELLOW)
+    
+    # If we still don't have enough ports mapped, map remaining ports in order
+    unmapped_ports = [p[0] for p in all_jumperless_ports if p[0] not in organized_ports]
+    if unmapped_ports:
+        safe_print(f"Mapping {len(unmapped_ports)} remaining ports in numerical order", Fore.CYAN)
+        
+        for i, port_name in enumerate(sorted(unmapped_ports)):
+            if port_name == main_port_name:
+                organized_ports[port_name] = "Jumperless Main"
+            else:
+                organized_ports[port_name] = f"Jumperless Port {i + 1}"
+    
+    return organized_ports
+
+def choose_arduino_port(organized_ports, main_port_name):
+    """Choose the best port for Arduino programming"""
+    # Look for specific Arduino-friendly functions in order of preference
+    arduino_preferences = [
+        "passthrough", "jl passthrough", "arduino", "serial"
+    ]
+    
+    for port_name, function_desc in organized_ports.items():
+        if port_name != main_port_name:  # Don't use main port for Arduino
+            function_lower = function_desc.lower()
+            for pref in arduino_preferences:
+                if pref in function_lower:
+                    return port_name
+    
+    # Fallback: use any non-main port
+    for port_name in organized_ports:
+        if port_name != main_port_name:
+            return port_name
+    
+    return None
 
 def open_serial():
-    """Open serial connection with cross-platform port detection"""
+    """Open serial connection with simplified port detection"""
     global portName, ser, arduinoPort, serialconnected, portSelected, updateInProgress
     
     portSelected = False
-    found_ports = []
     
     safe_print("\nScanning for serial ports...\n", Fore.CYAN)
     
     while not portSelected and updateInProgress == 0:
         ports = get_available_ports()
-        jumperless_ports = []
-        other_ports = []
         
         if not ports:
             safe_print("No serial ports found. Please connect your Jumperless.", Fore.RED)
             time.sleep(2)
-            ports = get_available_ports()
-            while not ports:
-                time.sleep(2)
-                ports = get_available_ports()
             continue
         
-        # Categorize ports
+        # Find all Jumperless devices
+        jumperless_ports = []
+        other_ports = []
+        
         for i, (port, desc, hwid, interface, additional_attrs) in enumerate(ports, 1):
             vid, pid = parse_hardware_id(hwid, desc)
             
-            # Debug: Print all available fields for Jumperless devices
             if is_jumperless_device(desc, pid, interface):
-                safe_print(f"\n--- DEBUG: Jumperless Device {i} ---", Fore.YELLOW)
-                safe_print(f"Port: {port}", Fore.CYAN)
-                safe_print(f"Description: {desc}", Fore.CYAN)
-                safe_print(f"HWID: {hwid}", Fore.CYAN)
-                safe_print(f"Interface: {interface}", Fore.CYAN)
-                safe_print(f"VID: {vid}, PID: {pid}", Fore.CYAN)
-                safe_print(f"Additional attributes:", Fore.CYAN)
-                for attr_name, attr_value in additional_attrs.items():
-                    safe_print(f"  {attr_name}: {attr_value}", Fore.CYAN)
-                
-                function_num, function_name = get_jumperless_port_function(interface, additional_attrs)
-                jumperless_ports.append((port, interface, function_num, function_name))
-                
-                # Display with function information
-                interface_info = f" - {function_name}" if function_name != "Unknown" else ""
-                safe_print(f"{i}: {port} [{desc}]{interface_info}", Fore.MAGENTA)
-                safe_print(f"--- End DEBUG ---\n", Fore.YELLOW)
+                jumperless_ports.append((port, desc, hwid, interface, additional_attrs))
+                safe_print(f"{i}: {port} [{desc}]", Fore.MAGENTA)
             else:
                 other_ports.append((port, desc, hwid, interface, additional_attrs))
                 safe_print(f"{i}: {port} [{desc}]", Fore.BLUE)
-
-        if jumperless_ports:
-            safe_print(f"\nFound {len(jumperless_ports)} Jumperless interface(s):", Fore.CYAN)
-            for port_name, interface, function_num, function_name in jumperless_ports:
-                safe_print(f"  {port_name}: {function_name} (function {function_num})", Fore.YELLOW)
+        
+        if not jumperless_ports:
+            safe_print("No Jumperless devices found.", Fore.YELLOW)
+            selection = input("Enter port number manually or 'r' to rescan: ").strip()
+            if selection.lower() == 'r':
+                continue
             
-            # Choose the main port for communication
-            jumperless_index = choose_jumperless_port(jumperless_ports)
+            try:
+                port_idx = int(selection) - 1
+                if 0 <= port_idx < len(ports):
+                    portName = ports[port_idx][0]
+                    portSelected = True
+            except (ValueError, IndexError):
+                safe_print("Invalid selection.", Fore.RED)
+                continue
+        else:
+            # Step 1: Find the main port using '?' query
+            safe_print(f"\nFound {len(jumperless_ports)} Jumperless device(s). Finding main port...", Fore.CYAN)
             
-            if jumperless_index is not None and jumperless_index < len(jumperless_ports):
-                main_port_info = jumperless_ports[jumperless_index]
-                portName = main_port_info[0]
-                function_name = main_port_info[3]
-                
-                # Try to find Arduino port - look for JL Passthrough or similar
-                arduinoPort = None
-                for port_name, interface, function_num, fname in jumperless_ports:
-                    if function_num == 1:  # JL Passthrough
-                        arduinoPort = port_name
-                        break
-                
-                # If no dedicated passthrough port, use the next available Jumperless port
-                if not arduinoPort and len(jumperless_ports) > 1:
-                    for port_name, interface, function_num, fname in jumperless_ports:
-                        if port_name != portName:
-                            arduinoPort = port_name
-                            break
-                
-                portSelected = True
-                safe_print(f"\nSelected main communication port: {portName} ({function_name})", Fore.GREEN)
-                if arduinoPort:
-                    arduino_function = next((fname for pname, intf, fnum, fname in jumperless_ports if pname == arduinoPort), "Unknown")
-                    safe_print(f"Selected Arduino programming port: {arduinoPort} ({arduino_function})", Fore.GREEN)
-                else:
-                    safe_print("No separate Arduino programming port found", Fore.YELLOW)
-            else:
-                safe_print("Could not identify suitable Jumperless port automatically.", Fore.YELLOW)
+            main_port_name = find_main_port(jumperless_ports)
+            
+            if not main_port_name:
+                safe_print("Could not find main port automatically.", Fore.YELLOW)
                 # Manual selection fallback
                 try:
                     selection = input("\nSelect port number ('r' to rescan): ").strip()
@@ -964,20 +1104,35 @@ def open_serial():
                 except (ValueError, IndexError):
                     safe_print("Invalid selection. Please try again.", Fore.RED)
                     continue
-        else:
-            safe_print("No Jumperless devices found.", Fore.YELLOW)
-            selection = input("Enter port number manually or 'r' to rescan: ").strip()
-            if selection.lower() == 'r':
-                continue
-            
-            try:
-                port_idx = int(selection) - 1
-                if 0 <= port_idx < len(ports):
-                    portName = ports[port_idx][0]
-                    portSelected = True
-            except (ValueError, IndexError):
-                safe_print("Invalid selection.", Fore.RED)
-                continue
+            else:
+                # Step 2: Query for all port functions
+                safe_print(f"Main port found: {main_port_name}", Fore.GREEN)
+                
+                port_functions = get_all_port_functions(main_port_name, jumperless_ports)
+                
+                # Step 3: Organize ports by function
+                organized_ports = organize_jumperless_ports(main_port_name, jumperless_ports, port_functions)
+                
+                # Step 4: Set main communication port
+                portName = main_port_name
+                portSelected = True
+                
+                # Step 5: Choose Arduino port
+                arduinoPort = choose_arduino_port(organized_ports, main_port_name)
+                
+                # Display results
+                safe_print(f"\nPort assignments:", Fore.CYAN)
+                safe_print(f"Main communication: {portName} ({organized_ports.get(portName, 'Unknown')})", Fore.GREEN)
+                
+                if arduinoPort:
+                    safe_print(f"Arduino programming: {arduinoPort} ({organized_ports.get(arduinoPort, 'Unknown')})", Fore.GREEN)
+                else:
+                    safe_print("Arduino programming: Not available", Fore.YELLOW)
+                
+                if debugWokwi:
+                    safe_print(f"\nAll detected ports:", Fore.CYAN)
+                    for port_name, function_desc in organized_ports.items():
+                        safe_print(f"  {port_name}: {function_desc}", Fore.BLUE)
     
     # Attempt to open the selected port
     try:
@@ -1006,20 +1161,50 @@ def check_if_fw_is_old():
         return False
     
     try:
-        split_index = jumperlessFirmwareString.rfind(':')
-        currentString = jumperlessFirmwareString[split_index + 2:].strip()
+        # Extract version using robust parsing
+        version_found = False
+        currentString = ""
+        
+        if ':' in jumperlessFirmwareString:
+            version_part = jumperlessFirmwareString.split(':', 1)[1].strip()
+            
+            # Clean version string - remove any non-digit/dot characters at the start/end
+            import re
+            version_clean = re.sub(r'^[^\d]*|[^\d\.]*$', '', version_part)
+            # Also remove any characters after the version (like spaces, newlines, etc.)
+            version_clean = re.split(r'[^\d\.]', version_clean)[0]
+            
+            if version_clean and '.' in version_clean:
+                currentString = version_clean
+                version_found = True
+            else:
+                # Fallback: try to find version pattern in the string
+                version_match = re.search(r'(\d+\.\d+\.\d+)', jumperlessFirmwareString)
+                if version_match:
+                    currentString = version_match.group(1)
+                    version_found = True
+        
+        if not version_found:
+            safe_print(f"Could not parse firmware version from: {jumperlessFirmwareString}", Fore.YELLOW)
+            return False
         
         current_list = currentString.split('.')
         if len(current_list) < 3:
-            return False
+            # Pad short version numbers with zeros
+            current_list = current_list + ['0'] * (3 - len(current_list))
         
-        # Pad version numbers
+        # Pad version numbers for comparison
         for i in range(len(current_list)):
             if len(current_list[i]) < 2:
                 current_list[i] = '0' + current_list[i]
         
-        if int(current_list[0]) >= 5:
-            jumperlessV5 = True
+        # Determine if this is V5
+        try:
+            if int(current_list[0]) >= 5:
+                jumperlessV5 = True
+        except ValueError:
+            safe_print(f"Invalid major version number: {current_list[0]}", Fore.YELLOW)
+            return False
         
         # Check latest version online
         repo_url = ("https://github.com/Architeuthis-Flux/JumperlessV5/releases/latest" 
@@ -1031,22 +1216,25 @@ def check_if_fw_is_old():
         
         latest_list = version.split('.')
         if len(latest_list) < 3:
-            return False
+            # Pad short version numbers
+            latest_list = latest_list + ['0'] * (3 - len(latest_list))
         
-        # Pad latest version numbers
+        # Pad latest version numbers for comparison
         for i in range(len(latest_list)):
             if len(latest_list[i]) < 2:
-                latest_list[i] =  '0' + latest_list[i]
+                latest_list[i] = '0' + latest_list[i]
         
-        latest_int = int("".join(latest_list))
-        current_int = int("".join(current_list))
-        # safe_print(f"\nLatest firmware: {version}", Fore.CYAN)
-        # safe_print(f"Current version: {currentString}", Fore.CYAN)
+        try:
+            latest_int = int("".join(latest_list))
+            current_int = int("".join(current_list))
+        except ValueError as e:
+            safe_print(f"Version comparison failed: {e}", Fore.YELLOW)
+            return False
+        
         latestFirmware = version
         if latest_int > current_int:
             safe_print(f"\nLatest firmware: {version}", Fore.MAGENTA)
             safe_print(f"Current version: {currentString}", Fore.RED)
-
             update_jumperless_firmware(force=False)
             return True
         
@@ -1054,6 +1242,8 @@ def check_if_fw_is_old():
         
     except Exception as e:
         safe_print(f"Could not check firmware version: {e}", Fore.YELLOW)
+        if debugWokwi:
+            safe_print(f"Firmware string was: {repr(jumperlessFirmwareString)}", Fore.BLUE)
         noWokwiStuff = True
         return False
 
@@ -1783,21 +1973,22 @@ def handle_flash_command():
 
 def bridge_menu():
     """Main bridge menu"""
-    global menuEntered, wokwiUpdateRate, numAssignedSlots, currentString, noWokwiStuff, disableArduinoFlashing, noArduinocli, arduinoPort, debugWokwi
+    global menuEntered, wokwiUpdateRate, numAssignedSlots, currentString, noWokwiStuff, disableArduinoFlashing, noArduinocli, arduinoPort, debugWokwi, interactive_mode
 
     safe_print("\n\n         Jumperless App Menu\n", Fore.MAGENTA)
     
-    safe_print(" 'menu'    to open the app menu (this menu)", Fore.BLUE)  
-    safe_print(" 'wokwi'   to " + ("enable" if noWokwiStuff else "disable") + " Wokwi updates " + ("and just use as a terminal" if not noWokwiStuff else ""), Fore.CYAN)
-    safe_print(" 'rate'    to change the Wokwi update rate", Fore.GREEN)
-    safe_print(" 'slots'   to assign Wokwi projects to slots - " + str(numAssignedSlots) + " assigned", Fore.YELLOW)
-    safe_print(" 'flash'   to flash Arduino with assigned slot content (works outside menu too)", Fore.MAGENTA)
-    safe_print(" 'arduino' to " + ("enable" if disableArduinoFlashing else "disable") + " Arduino flashing from wokwi", Fore.RED)
-    safe_print(" 'debug'   to " + ("disable" if debugWokwi else "enable") + " Wokwi debug output - " + ("on" if debugWokwi else "off"), Fore.MAGENTA)
-    safe_print(" 'config'  to edit Arduino CLI upload configuration", Fore.YELLOW)
-    safe_print(" 'update'  to force firmware update - yours is up to date (" + currentString + ")", Fore.BLUE)
-    safe_print(" 'status'  to check the serial connection status", Fore.CYAN) 
-    safe_print(" 'exit'    to exit the menu", Fore.GREEN)
+    safe_print(" 'menu'        to open the app menu (this menu)", Fore.BLUE)  
+    safe_print(" 'interactive' to " + ("disable" if interactive_mode else "enable") + " real-time character mode - " + ("ON" if interactive_mode else "OFF") + " (device-controllable)", Fore.RED if interactive_mode else Fore.GREEN)
+    safe_print(" 'wokwi'       to " + ("enable" if noWokwiStuff else "disable") + " Wokwi updates " + ("and just use as a terminal" if not noWokwiStuff else ""), Fore.CYAN)
+    safe_print(" 'rate'        to change the Wokwi update rate", Fore.GREEN)
+    safe_print(" 'slots'       to assign Wokwi projects to slots - " + str(numAssignedSlots) + " assigned", Fore.YELLOW)
+    safe_print(" 'flash'       to flash Arduino with assigned slot content (works outside menu too)", Fore.MAGENTA)
+    safe_print(" 'arduino'     to " + ("enable" if disableArduinoFlashing else "disable") + " Arduino flashing from wokwi", Fore.RED)
+    safe_print(" 'debug'       to " + ("disable" if debugWokwi else "enable") + " Wokwi debug output - " + ("on" if debugWokwi else "off"), Fore.MAGENTA)
+    safe_print(" 'config'      to edit Arduino CLI upload configuration", Fore.YELLOW)
+    safe_print(" 'update'      to force firmware update - yours is up to date (" + currentString + ")", Fore.BLUE)
+    safe_print(" 'status'      to check the serial connection status", Fore.CYAN) 
+    safe_print(" 'exit'        to exit the menu", Fore.GREEN)
     
     while menuEntered:
         try:
@@ -1821,6 +2012,16 @@ def bridge_menu():
                     safe_print(f"Arduino flashing {status}", Fore.GREEN if not disableArduinoFlashing else Fore.YELLOW)
                     if not disableArduinoFlashing and not arduinoPort:
                         safe_print("Warning: No Arduino port configured. Use 'status' to check ports.", Fore.YELLOW)
+                continue
+            elif choice == 'interactive':
+                if interactive_mode:
+                    disable_interactive_mode()
+                else:
+                    if enable_interactive_mode():
+                        # Exit menu when entering interactive mode
+                        menuEntered = 0
+                        ser.write(b'm')
+                        return
                 continue
             elif choice == 'debug':
                 debugWokwi = not debugWokwi
@@ -2591,9 +2792,9 @@ def flash_arduino_sketch(sketch_content, libraries_content="", slot_number=None)
         safe_print("Ensuring Arduino port is available...", Fore.CYAN)
         try:
             # Send disconnect command to ensure clean port state
-            if ser and ser.is_open:
-                ser.write(b"a")  # Disconnect UART briefly
-                time.sleep(0.2)
+            # if ser and ser.is_open:
+            #     ser.write(b"a")  # Disconnect UART briefly
+            #     time.sleep(0.2)
             
             # Test port accessibility
             test_serial = serial.Serial(arduinoPort, 115200, timeout=0.1)
@@ -2990,7 +3191,8 @@ def check_presence(correct_port, interval):
                             portNotFound = 0
                             justreconnected = 1
                         
-                        safe_print(f"Reconnected to {correct_port}", Fore.GREEN)
+                        safe_print(f"\rReconnected to {correct_port}", Fore.GREEN)
+                        safe_print(f"\r", Fore.GREEN)
                         
                     except Exception as e:
                         with serial_lock:
@@ -3024,11 +3226,12 @@ def check_presence(correct_port, interval):
             time.sleep(0.1)
 
 def serial_term_in():
-    """Handle incoming serial data with reliable byte-by-byte reading"""
-    global serialconnected, ser, menuEntered, portNotFound, justreconnected, updateInProgress
+    """Handle incoming serial data with reliable byte-by-byte reading and interactive mode control"""
+    global serialconnected, ser, menuEntered, portNotFound, justreconnected, updateInProgress, interactive_mode
     
     while True:
-        if menuEntered == 0 and updateInProgress == 0:
+        # Always check for interactive mode control characters, even during menu/updates
+        if updateInProgress == 0:
             try:
                 if ser and ser.is_open and ser.in_waiting > 0:
                     input_buffer = b''
@@ -3051,9 +3254,33 @@ def serial_term_in():
                     
                     if input_buffer:
                         try:
-                            # Decode the complete buffer
-                            decoded_string = input_buffer.decode('utf-8', errors='ignore')
-                            print(decoded_string, end='')
+                            # Always check for interactive mode control characters
+                            filtered_buffer = b''
+                            
+                            for byte in input_buffer:
+                                if byte == 0x0E:  # SO (Shift Out) - Enable interactive mode
+                                    if debugWokwi:
+                                        safe_print(f"\nReceived SO (0x0E) - Interactive mode request", end="\n\r", color=Fore.BLUE)
+                                    if not interactive_mode:
+                                        safe_print("\nInteractive mode enabled by device", end="\n\r", color=Fore.RED)
+                                        enable_interactive_mode()
+                                elif byte == 0x0F:  # SI (Shift In) - Disable interactive mode
+                                    if debugWokwi:
+                                        safe_print(f"\nReceived SI (0x0F) - Interactive mode disable", end="\n\r", color=Fore.BLUE)
+                                    if interactive_mode:
+                                        disable_interactive_mode()
+                                        safe_print("Interactive mode disabled by device",end="\n\r", color=Fore.GREEN)
+                                else:
+                                    # Keep all other bytes for normal processing
+                                    filtered_buffer += bytes([byte])
+                            
+                            # Only print output if not in menu mode and there's actual content
+                            if menuEntered == 0 and filtered_buffer:
+                                decoded_string = filtered_buffer.decode('utf-8', errors='ignore')
+                                if interactive_mode:
+                                    print(decoded_string, end='')
+                                else:
+                                    print(decoded_string, end='')
                             
                             with serial_lock:
                                 portNotFound = 0
@@ -3083,12 +3310,18 @@ def serial_term_in():
         time.sleep(0.001)  # Very short sleep to prevent excessive CPU usage
 
 def serial_term_out():
-    """Handle outgoing serial commands with command history support"""
-    global serialconnected, ser, menuEntered, forceWokwiUpdate, noWokwiStuff, justreconnected, portNotFound, updateInProgress
+    """Handle outgoing serial commands with command history support and interactive mode"""
+    global serialconnected, ser, menuEntered, forceWokwiUpdate, noWokwiStuff, justreconnected, portNotFound, updateInProgress, interactive_mode
     
     while True:
         if menuEntered == 0 and updateInProgress == 0:
             try:
+                # Check if we should enter interactive mode
+                if interactive_mode and not menuEntered:
+                    # safe_print("Interactive mode is active, starting handler", Fore.CYAN)
+                    handle_interactive_input()
+                    continue
+                
                 # Clear any pending input buffer before reading
                 if hasattr(sys.stdin, 'flush'):
                     sys.stdin.flush()
@@ -3096,7 +3329,7 @@ def serial_term_out():
                 # Use readline for command history if available, otherwise fallback to input()
                 if READLINE_AVAILABLE:
                     try:
-                        output_buffer = input().strip()  # readline automatically handles history
+                        output_buffer = input() # readline automatically handles history
                     except (EOFError, KeyboardInterrupt):
                         # Handle Ctrl+D or Ctrl+C gracefully
                         if menuEntered == 0:
@@ -3104,10 +3337,13 @@ def serial_term_out():
                         else:
                             break
                 else:
-                    output_buffer = input().strip()  # Strip whitespace
+                    output_buffer = input()  # Strip whitespace
                 
                 # Skip empty commands
                 if not output_buffer:
+                    # if interactive_mode:
+                    #     handle_interactive_input()
+                    #     continue
                     time.sleep(0.01)
                     continue
                 
@@ -3127,6 +3363,16 @@ def serial_term_out():
                     menuEntered = 1
                     bridge_menu()
                     continue
+                elif output_buffer.lower() == 'interactive':
+                    # Toggle interactive mode
+                    if enable_interactive_mode():
+                        continue
+                elif output_buffer.lower() == 'status':
+                    # Quick status check
+                    safe_print(f"Interactive mode: {interactive_mode}", Fore.CYAN)
+                    safe_print(f"Menu entered: {menuEntered}", Fore.CYAN)
+                    safe_print(f"Update in progress: {updateInProgress}", Fore.CYAN)
+                    continue
                 elif output_buffer.lower() == 'flash':
                     # Handle flash command directly without entering menu
                     handle_flash_command()
@@ -3134,6 +3380,24 @@ def serial_term_out():
                 elif output_buffer.lower() == 'clearport':
                     # Force clear Arduino port
                     force_clear_arduino_port()
+                    continue
+                elif output_buffer.lower() == 'newline' or output_buffer.lower() == '\n':
+                    # Send just a newline
+                    with serial_lock:
+                        if serialconnected and ser and ser.is_open:
+                            try:
+                                ser.write(b'\n')
+                            except Exception:
+                                pass
+                    continue
+                elif output_buffer.lower() == '\t':
+                    # Send a tab character
+                    with serial_lock:
+                        if serialconnected and ser and ser.is_open:
+                            try:
+                                ser.write(b'\t')
+                            except Exception:
+                                pass
                     continue
                 
                 # Send to serial port (only non-empty commands)
@@ -3154,6 +3418,9 @@ def serial_term_out():
                             safe_print("Serial not connected", Fore.YELLOW)
                         
             except KeyboardInterrupt:
+                # Make sure to disable interactive mode on Ctrl+C
+                if interactive_mode:
+                    disable_interactive_mode()
                 break
             except EOFError:
                 # Handle end of file (Ctrl+D on Unix, Ctrl+Z on Windows)
@@ -3326,7 +3593,14 @@ def main():
     active_threads.append(serial_out)
     
     time.sleep(0.1)
-    safe_print("Type 'menu' for App Menu, 'flash' to flash Arduino, or 'clearport' to clear Arduino port", Fore.CYAN)
+    safe_print("Type 'menu' for App Menu, 'flash' to flash Arduino, 'interactive' for real-time mode", Fore.CYAN)
+    safe_print("Device can auto-enable interactive mode with SO (0x0E) and disable with SI (0x0F)", Fore.BLUE)
+    
+    if sys.platform == "win32":
+        safe_print("NOTE: Interactive mode not supported on Windows", Fore.YELLOW)
+    else:
+        safe_print("Interactive mode available (no special permissions needed)", Fore.GREEN)
+    
     if READLINE_AVAILABLE:
         safe_print("Use ↑/↓ arrow keys for command history, Tab for completion", Fore.BLUE)
     # Send initial menu command
@@ -3544,7 +3818,7 @@ def setup_tab_completion():
     readline.set_completer(completer)
     
     # Configure tab completion behavior
-    readline.parse_and_bind("tab: complete")
+    # readline.parse_and_bind("tab: complete")
     
     # Set completion display options
     try:
@@ -3557,13 +3831,151 @@ def setup_tab_completion():
     except:
         pass  # Some systems might not support these options
 
+def enable_interactive_mode():
+    """Enable character-by-character input mode"""
+    global interactive_mode, original_settings
+    
+    if interactive_mode:
+        return True
+    
+    # Check platform support first
+    if sys.platform == "win32":
+        safe_print("WARNING: Interactive mode not supported on Windows", Fore.YELLOW)
+        return False
+    
+    try:
+        # Disable readline completion and history during interactive mode
+        if READLINE_AVAILABLE:
+            # Save current completer and disable it
+            original_settings = {
+                'completer': readline.get_completer(),
+                'delims': readline.get_completer_delims()
+            }
+            readline.set_completer(None)  # Disable tab completion
+            readline.parse_and_bind("tab: self-insert")  # Make tab insert literal tab
+        
+        interactive_mode = True
+        safe_print("\nInteractive mode ON - (ESC to force off)", Fore.BLUE)
+        # safe_print("Using termios for raw terminal input", Fore.BLUE)
+        return True
+        
+    except Exception as e:
+        safe_print(f"Could not enable interactive mode: {e}", Fore.RED)
+        interactive_mode = False
+        return False
+
+def disable_interactive_mode():
+    """Disable interactive mode and restore normal input"""
+    global interactive_mode, original_settings
+    
+    if not interactive_mode:
+        return
+    
+    try:
+        # Restore readline completion and history
+        if READLINE_AVAILABLE and original_settings:
+            try:
+                readline.set_completer(original_settings.get('completer'))
+                readline.parse_and_bind("tab: complete")  # Restore tab completion
+                original_settings = None
+            except Exception as e:
+                safe_print(f"Error restoring readline settings: {e}", Fore.YELLOW)
+        
+        interactive_mode = False
+        safe_print("\nInteractive mode OFF - normal line input restored\r", Fore.GREEN)
+        
+    except Exception as e:
+        safe_print(f"Error disabling interactive mode: {e}", Fore.RED)
+
+def handle_interactive_input_simple():
+    """Simple approach using sys.stdin with raw mode"""
+    global interactive_mode, serialconnected, ser
+    
+    # safe_print("Using simple character-by-character input", Fore.GREEN)
+    
+    try:
+        import termios
+        import tty
+        import select
+        
+        # Save original terminal settings (separate from readline settings)
+        original_terminal_settings = termios.tcgetattr(sys.stdin.fileno())
+        
+        try:
+            # Set terminal to raw mode
+            tty.setraw(sys.stdin.fileno())
+            
+            while interactive_mode:
+                # Check if input is available with a short timeout
+                if select.select([sys.stdin], [], [], 0.1)[0]:
+                    char = sys.stdin.read(1)
+                    
+                    # Handle special characters
+                    # if char == '\x1b':  # ESC key
+                        # break  # Exit the loop, disable_interactive_mode will be called below
+                    if char == '\x03':  # Ctrl+C
+                        raise KeyboardInterrupt
+                    elif char == '\r':
+                        char = '\n'  # Convert to newline for MicroPython compatibility
+                    
+                    # Send character to serial port
+                    with serial_lock:
+                        if serialconnected and ser and ser.is_open:
+                            try:
+                                ser.write(char.encode('utf-8', errors='ignore'))
+                            except Exception as e:
+                                safe_print(f"Error sending character: {e}", Fore.RED)
+                                
+        finally:
+            # Always restore original terminal settings
+            try:
+                termios.tcsetattr(sys.stdin.fileno(), termios.TCSADRAIN, original_terminal_settings)
+            except:
+                pass
+            
+            # Disable interactive mode if we exited the loop
+            if interactive_mode:
+                disable_interactive_mode()
+                
+    except ImportError:
+        safe_print("WARNING: termios not available - cannot use interactive mode", Fore.YELLOW)
+        disable_interactive_mode()
+    except KeyboardInterrupt:
+        disable_interactive_mode()
+        safe_print("\nInteractive mode interrupted", Fore.YELLOW)
+    except Exception as e:
+        safe_print(f"Interactive mode error: {e}", Fore.RED)
+        disable_interactive_mode()
+        
+
+
+
+
+
+
+def handle_interactive_input():
+    """Handle character-by-character input in interactive mode"""
+    global interactive_mode, serialconnected, ser
+    
+    # Use simple termios approach on Unix/Linux/macOS
+    if sys.platform != "win32":
+        return handle_interactive_input_simple()
+    
+    # Windows not supported - disable interactive mode
+    safe_print("WARNING: Interactive mode not supported on Windows", Fore.YELLOW)
+    safe_print("Requires Unix/Linux/macOS with termios support", Fore.CYAN)
+    safe_print("Disabling interactive mode - using normal line input instead", Fore.BLUE)
+    
+    disable_interactive_mode()
+    return
+
 def get_command_suggestions():
     """Get list of common commands for tab completion"""
     # This function is now only used for reference/documentation
     # Tab completion uses actual command history instead
     return [
         # App commands
-        'menu', 'slots', 'wokwi', 'flash', 'clearport', 'skip', 'rate', 'update', 'status', 'exit', 'help',
+        'menu', 'slots', 'wokwi', 'flash', 'clearport', 'skip', 'rate', 'update', 'status', 'exit', 'help', 'interactive',
         # Jumperless device commands
         'r', 'm', 'f', 'n', 'l', 'b', 'c', 'x', 'clear', 'o', '?',
     ]

@@ -367,7 +367,7 @@ int lastHighlightedNet = -1;
 int lastBrightenedNet = -1;
 int lastWarningNet = -1;
 
-
+int dontShowMenu = 0;
 
 
 
@@ -445,6 +445,9 @@ menu:
 
   clearHighlighting();
 
+  if (dontShowMenu == 0) {
+
+    forceprintmenu:
   Serial.print("\n\n\r\t\tMenu\n\r");
 
   Serial.print("\n\r");
@@ -467,6 +470,7 @@ menu:
   Serial.print("\td = set debug flags\n\r");
   Serial.print("\tl = LED brightness / test\n\r");
   Serial.print("\t\b\b`/~ = edit / print config\n\r");
+  Serial.print("\tp = microPython REPL\n\r");
   Serial.print("\te = show extra options\n\r");
         if (showExtraMenu == 1) {
       Serial.println();
@@ -474,7 +478,7 @@ menu:
      
 
     Serial.print("\to = load node file by slot\n\r");
-    Serial.print("\tp = print all connectable nodes\n\r");
+    Serial.print("\tP = print all connectable nodes\n\r");
     Serial.print("\tF = cycle font\n\r");
     Serial.print("\t_ = print micros per byte\n\r");
     Serial.print("\t@ = scan I2C\n\r");
@@ -482,6 +486,7 @@ menu:
     Serial.print("\t= = dump oled frame buffer\n\r");
     Serial.print("\tk = show oled in terminal\n\r");
     Serial.print("\tR = show board LEDs\n\r");
+    Serial.print("\tE = don't show menu\n\r");
 
     
 
@@ -537,7 +542,7 @@ menu:
  Serial.println();
 
     Serial.flush();
-
+  }
     if (configChanged == true) {
       Serial.print("config changed, saving...");
       saveConfig();
@@ -863,6 +868,14 @@ menu:
 
 
     switch (input) {
+      case 'E': { //!  E
+      if (dontShowMenu == 0) {
+        dontShowMenu = 1;
+      } else {
+        dontShowMenu = 0;
+      }
+      break;
+      }
       case 'k': { //!  k
       // for (int i = 0; i < 255; i++) {
       //   Serial.print(i);
@@ -897,8 +910,12 @@ menu:
        goto dontshowmenu;
       break;
       }
-      case 'p': { //!  p
+      case 'P': { //!  p
       printAllConnectableNodes();
+      break;
+      }
+      case 'p': { //!  p
+      micropythonREPL();
       break;
       }
       case '.': { //!  .  
@@ -1051,6 +1068,7 @@ menu:
       case '?': { //!  ?
       Serial.print("Jumperless firmware version: ");
       Serial.println(firmwareVersion);
+      Serial.flush();
       break;
       }
       case '@': { //!  @
@@ -1458,7 +1476,7 @@ menu:
         break;
       }
       case 'm':
-
+goto forceprintmenu;
         break;
 
       case '!':
@@ -1573,9 +1591,9 @@ menu:
         readInNodesArduino = 0;
         break;
 
-      case '\n':
-        goto menu;
-        break;
+      // case '\n':
+      //   goto menu;
+      //   break;
 
       case 't':
         break;
@@ -1715,6 +1733,7 @@ menu:
       Serial.read();
       delayMicroseconds(1000);
       }
+      Serial.flush();
     goto menu;
   }
 
@@ -1750,6 +1769,9 @@ int lastTemp = 0;
 
 int passthroughStatus = 0;
 
+unsigned long serialInfoTimer = 0;
+
+
 void loop1() {
   // int timer = micros();
 
@@ -1764,6 +1786,11 @@ void loop1() {
       core2stuff();
       }
 
+
+  // if (millis() - serialInfoTimer > 10) {
+  //   serialInfoTimer = millis();
+    replyWithSerialInfo();
+   // }
 
     if (core1passthrough == 0 || inClickMenu == 1 || inPadMenu == 1 || probeActive == 1) {
       passthroughStatus = secondSerialHandler();

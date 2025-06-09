@@ -14,10 +14,13 @@ void setup() {
   pinMode(LED, OUTPUT);
   pinMode(BUTTON, INPUT_PULLUP);
   attachInterrupt(digitalPinToInterrupt(BUTTON), press_button, CHANGE);
+  Serial.begin(115200);
 }
 
 void loop() {
   // put your main code here, to run repeatedly:
   digitalWrite(LED, state);
+  Serial.println(state);
+  delay(1000);
 
 }

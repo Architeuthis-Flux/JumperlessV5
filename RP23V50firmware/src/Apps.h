@@ -1,14 +1,17 @@
 #ifndef APPS_H
 #define APPS_H
 
+#include <Arduino.h>
+#include <stdint.h>
+
 #define NUM_APPS 30
 
 
 struct app {
   char name[20];
-    const int index;
-    int works = 0;
-    void (*action)(void) = nullptr;
+    int index;
+    int works;
+    void (*action)(void);
 };
 
 
@@ -24,8 +27,8 @@ void bounceStartup(void);
 
 void customApp(void);
 void xlsxGui(void);
-
 void micropython(void);
+void micropythonREPL(void);
 
 void displayImage(void);
 const char* addressToHexString(uint8_t address);
