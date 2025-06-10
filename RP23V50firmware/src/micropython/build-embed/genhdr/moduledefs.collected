@@ -1,0 +1,21 @@
+MP_REGISTER_EXTENSIBLE_MODULE(MP_QSTR_array, mp_module_array);
+
+MP_REGISTER_EXTENSIBLE_MODULE(MP_QSTR_collections, mp_module_collections);
+
+MP_REGISTER_EXTENSIBLE_MODULE(MP_QSTR_io, mp_module_io);
+
+MP_REGISTER_EXTENSIBLE_MODULE(MP_QSTR_struct, mp_module_struct);
+
+MP_REGISTER_MODULE(MP_QSTR___main__, mp_module___main__);
+
+MP_REGISTER_MODULE(MP_QSTR_builtins, mp_module_builtins);
+
+MP_REGISTER_MODULE(MP_QSTR_gc, mp_module_gc);
+
+MP_REGISTER_MODULE(MP_QSTR_math, mp_module_math);
+
+MP_REGISTER_MODULE(MP_QSTR_micropython, mp_module_micropython);
+
+MP_REGISTER_MODULE(MP_QSTR_sys, mp_module_sys);
+
+MP_REGISTER_MODULE_DELEGATION(mp_module_sys, mp_module_sys_attr);

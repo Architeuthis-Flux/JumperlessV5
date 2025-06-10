@@ -1,0 +1,1 @@
+MP_REGISTER_MODULE(MP_QSTR_math, mp_module_math);

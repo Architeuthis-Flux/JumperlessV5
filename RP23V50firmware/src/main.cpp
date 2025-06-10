@@ -833,12 +833,21 @@ skipinput:
     goto dontshowmenu;
     break;
   }
-  case 'P': { //!  p
-  testPythonExecution();
-  // testPythonParser();
-  //  printAllConnectableNodes();
+
+  // Add this case for single Python command
+case '>': { //! > - Execute single Python command
+    readPythonCommand();
+    goto dontshowmenu;
     break;
-  }
+}
+
+// Modify the existing P case for Python command mode  
+case 'P': { //! P - Enter Python command mode
+    pythonCommandMode();
+    goto dontshowmenu;
+    break;
+}
+
   case 'p': { //!  p
     micropythonREPL();
     break;
@@ -1411,23 +1420,23 @@ skipinput:
     break;
   }
 
-  case '>': {
+  // case '>': {
 
-    if (netSlot == NUM_SLOTS - 1) {
-      netSlot = 0;
-    } else {
-      netSlot++;
-    }
+  //   if (netSlot == NUM_SLOTS - 1) {
+  //     netSlot = 0;
+  //   } else {
+  //     netSlot++;
+  //   }
 
-    Serial.print("\r                                         \r");
-    Serial.print("Slot ");
-    Serial.print(netSlot);
-    slotPreview = netSlot;
-    slotChanged = 1;
-    // printAllChangedNetColorFiles();
+  //   Serial.print("\r                                         \r");
+  //   Serial.print("Slot ");
+  //   Serial.print(netSlot);
+  //   slotPreview = netSlot;
+  //   slotChanged = 1;
+  //   // printAllChangedNetColorFiles();
 
-    goto loadfile;
-  }
+  //   goto loadfile;
+  // }
   case '<': {
 
     if (netSlot == 0) {

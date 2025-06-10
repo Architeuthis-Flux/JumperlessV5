@@ -24,6 +24,29 @@ static char mp_command_buffer[1024];
 static char mp_response_buffer[1024];
 static bool mp_command_pending = false;
 
+// Synchronous execution response buffer for direct Python calls
+static char sync_response_buffer[1024];
+
+// Global variables for synchronous execution results
+static char sync_command_response[1024];
+static char sync_value_result[256];
+static char sync_type_result[64];
+static int sync_execution_result = 0;
+
+// Command queue to avoid deadlock
+#define MAX_QUEUED_COMMANDS 5
+static char command_queue[MAX_QUEUED_COMMANDS][1024];
+static char response_queue[MAX_QUEUED_COMMANDS][1024];
+static int queue_write_index = 0;
+static int queue_read_index = 0;
+static int queued_commands = 0;
+
+// Forward declarations
+extern "C" int jumperless_execute_sync_c(const char* command);
+extern "C" int jumperless_execute_command_sync(const char* command, char* response_out);
+extern "C" int parse_response_for_python(const char* response, char* value_out, char* type_out);
+extern "C" int execute_hardware_direct(const char* command);
+
 // C function that can be called from MicroPython to execute Jumperless commands
 // This will be made available through a Python wrapper function
 void jumperless_execute_command_c(const char* command) {
@@ -32,28 +55,231 @@ void jumperless_execute_command_c(const char* command) {
     mp_command_pending = true;
 }
 
+// Synchronous execution function that returns results immediately
+// This is for when Python code needs to get actual return values
+int jumperless_execute_command_sync(const char* command, char* response_out) {
+    Serial.println("[SYNC_EXEC] Function entry");
+    Serial.flush();
+    
+    if (!command || !response_out) {
+        Serial.println("[SYNC_EXEC] Error: null parameters");
+        Serial.flush();
+        return -1;
+    }
+    
+    Serial.println("[SYNC_EXEC] Parameters validated");
+    Serial.flush();
+    
+    Serial.print("[SYNC_EXEC] Command length: ");
+    Serial.println(strlen(command));
+    Serial.flush();
+    
+    Serial.print("[SYNC_EXEC] About to parse and execute: '");
+    Serial.print(command);
+    Serial.println("'");
+    Serial.flush();
+    
+    Serial.println("[SYNC_EXEC] About to call parseAndExecutePythonCommand...");
+    Serial.flush();
+    
+    // Use a local buffer to avoid conflicts with queued commands
+    char local_response[1024];
+    memset(local_response, 0, sizeof(local_response)); // Clear the buffer
+    
+    Serial.println("[SYNC_EXEC] Local response buffer prepared, calling parser...");
+    Serial.flush();
+    
+    int result = parseAndExecutePythonCommand((char*)command, local_response);
+    
+    Serial.print("[SYNC_EXEC] parseAndExecutePythonCommand returned: ");
+    Serial.println(result);
+    Serial.print("[SYNC_EXEC] Response: ");
+    Serial.println(local_response);
+    Serial.flush();
+    
+    // Copy response to output buffer
+    strncpy(response_out, local_response, 1023);
+    response_out[1023] = '\0';
+    
+    Serial.println("[SYNC_EXEC] Response copied to output buffer");
+    Serial.flush();
+    
+    return result;
+}
 
+// Parse response string and extract typed value for Python
+// Returns: 0 = success, -1 = error, 1 = boolean true, 2 = boolean false
+int parse_response_for_python(const char* response, char* value_out, char* type_out) {
+    if (!response || !value_out || !type_out) {
+        return -1;
+    }
+    
+    // Initialize outputs
+    value_out[0] = '\0';
+    type_out[0] = '\0';
+    
+    // Check if it's an error response
+    if (strncmp(response, "ERROR:", 6) == 0) {
+        strcpy(type_out, "error");
+        strcpy(value_out, response + 7); // Skip "ERROR: "
+        return -1;
+    }
+    
+    // Check if it's a success response
+    if (strncmp(response, "SUCCESS:", 8) != 0) {
+        strcpy(type_out, "error");
+        strcpy(value_out, "Invalid response format");
+        return -1;
+    }
+    
+    // Look for " = " pattern to extract return values
+    const char* equals = strstr(response, " = ");
+    if (equals) {
+        const char* value_start = equals + 3; // Skip " = "
+        
+        // Parse different value types
+        if (strstr(value_start, "HIGH")) {
+            strcpy(type_out, "bool");
+            strcpy(value_out, "True");
+            return 1;
+        } else if (strstr(value_start, "LOW")) {
+            strcpy(type_out, "bool");
+            strcpy(value_out, "False");
+            return 2;
+        } else if (strstr(value_start, "true")) {
+            strcpy(type_out, "bool");
+            strcpy(value_out, "True");
+            return 1;
+        } else if (strstr(value_start, "false")) {
+            strcpy(type_out, "bool");
+            strcpy(value_out, "False");
+            return 2;
+        } else {
+            // Extract numeric value (find the number before units like V, mA, mW, mV)
+            char temp[64];
+            int i = 0;
+            
+            // Skip leading whitespace
+            while (*value_start == ' ' || *value_start == '\t') value_start++;
+            
+            // Copy digits, decimal point, and minus sign
+            while (i < 63 && *value_start && 
+                   ((*value_start >= '0' && *value_start <= '9') || 
+                    *value_start == '.' || *value_start == '-')) {
+                temp[i++] = *value_start++;
+            }
+            temp[i] = '\0';
+            
+            if (i > 0) {
+                strcpy(value_out, temp);
+                // Check if it contains a decimal point
+                if (strchr(temp, '.')) {
+                    strcpy(type_out, "float");
+                } else {
+                    strcpy(type_out, "int");
+                }
+                return 0;
+            }
+        }
+    }
+    
+    // If no " = " found, it's probably a status message
+    strcpy(type_out, "str");
+    strcpy(value_out, response);
+    return 0;
+}
 
 // Override MicroPython output to redirect to Arduino Serial
 void mp_hal_stdout_tx_strn_cooked(const char *str, size_t len) {
-    // Check if this is a command execution request
-    if (len > 5 && strncmp(str, "EXEC:", 5) == 0) {
-        // Extract and execute the command
-        char command[1024];
-        strncpy(command, str + 5, len - 5);
-        command[len - 5] = '\0';
+    // Check if this is a synchronous command execution request
+    if (len > 10 && strncmp(str, "SYNC_EXEC:", 10) == 0) {
+        // Extract command
+        size_t cmd_len = len - 10;
+        char sync_command[1024];
+        if (cmd_len >= sizeof(sync_command)) cmd_len = sizeof(sync_command) - 1;
+        
+        strncpy(sync_command, str + 10, cmd_len);
+        sync_command[cmd_len] = '\0';
         
         // Remove trailing newline if present
-        char* newline = strchr(command, '\n');
+        char* newline = strchr(sync_command, '\n');
         if (newline) *newline = '\0';
-        newline = strchr(command, '\r');
+        newline = strchr(sync_command, '\r');
         if (newline) *newline = '\0';
         
-        // Execute the command immediately
-        char response[1024];
-        int result = parseAndExecutePythonCommand(command, response);
-        Serial.print("RESULT: ");
-        Serial.println(response);
+        // Debug output
+        Serial.print("[SYNC] Executing: ");
+        Serial.println(sync_command);
+        Serial.flush();
+        
+        // Execute synchronously and store results
+        sync_execution_result = jumperless_execute_sync_c(sync_command);
+        
+        // Debug output
+        Serial.print("[SYNC] Result: ");
+        Serial.print(sync_execution_result);
+        Serial.print(", Value: ");
+        Serial.print(sync_value_result);
+        Serial.print(", Type: ");
+        Serial.println(sync_type_result);
+        Serial.flush();
+        
+        // Set the result values in the global namespace (ensure they're accessible)
+        // Use exec() to ensure they're set in the current execution context
+        String setup_globals = "exec(\"global _sync_result_ready, _sync_value, _sync_type, _sync_result\")";
+        mp_embed_exec_str(setup_globals.c_str());
+        
+        // Set a flag that Python can check
+        mp_embed_exec_str("_sync_result_ready = True");
+        
+        // Set the result values that Python can access
+        String value_cmd = "_sync_value = '";
+        value_cmd += sync_value_result;
+        value_cmd += "'";
+        mp_embed_exec_str(value_cmd.c_str());
+        
+        String type_cmd = "_sync_type = '";
+        type_cmd += sync_type_result;
+        type_cmd += "'";
+        mp_embed_exec_str(type_cmd.c_str());
+        
+        String result_cmd = "_sync_result = ";
+        result_cmd += sync_execution_result;
+        mp_embed_exec_str(result_cmd.c_str());
+        
+        Serial.println("[SYNC] Variables set in Python");
+        Serial.flush();
+        
+        return; // Don't print anything for sync commands
+    }
+    
+    // Check if this is a command execution request
+    if (len > 5 && strncmp(str, "EXEC:", 5) == 0) {
+        // Queue the command instead of executing immediately to avoid deadlock
+        if (queued_commands < MAX_QUEUED_COMMANDS) {
+            // Extract command
+            size_t cmd_len = len - 5;
+            if (cmd_len >= sizeof(command_queue[0])) cmd_len = sizeof(command_queue[0]) - 1;
+            
+            strncpy(command_queue[queue_write_index], str + 5, cmd_len);
+            command_queue[queue_write_index][cmd_len] = '\0';
+            
+            // Remove trailing newline if present
+            char* newline = strchr(command_queue[queue_write_index], '\n');
+            if (newline) *newline = '\0';
+            newline = strchr(command_queue[queue_write_index], '\r');
+            if (newline) *newline = '\0';
+            
+            // Advance queue
+            queue_write_index = (queue_write_index + 1) % MAX_QUEUED_COMMANDS;
+            queued_commands++;
+            
+            //Serial.print("COMMAND_QUEUED: ");
+            //Serial.println(command_queue[(queue_write_index - 1 + MAX_QUEUED_COMMANDS) % MAX_QUEUED_COMMANDS]);
+            Serial.flush();
+        } else {
+            Serial.println("COMMAND_QUEUE_FULL!");
+        }
         return;
     }
     
@@ -72,9 +298,82 @@ void mp_hal_stdout_tx_strn_cooked(const char *str, size_t len) {
 void processPendingMicroPythonCommands() {
     if (mp_command_pending) {
         int result = parseAndExecutePythonCommand(mp_command_buffer, mp_response_buffer);
-        Serial.print("MP_RESULT: ");
-        Serial.println(mp_response_buffer);
+       // Serial.print("MP_RESULT: ");
+        // Serial.println(mp_response_buffer);
+        Serial.flush();
         mp_command_pending = false;
+    }
+}
+
+// Function to process queued commands (safe to call from main loop)
+void processQueuedCommands() {
+    while (queued_commands > 0) {
+        // Get the next command from queue
+        char* command = command_queue[queue_read_index];
+        char* response = response_queue[queue_read_index];
+        
+        // Execute the command
+        int result = parseAndExecutePythonCommand(command, response);
+        
+        // Print result
+        // Serial.print("QUEUE_RESULT: ");
+        Serial.println(response);
+        Serial.flush();
+        
+        // Also send result back to MicroPython for future reference
+        String mp_result_cmd = "last_result = '";
+        mp_result_cmd += response;
+        mp_result_cmd += "'";
+        mp_embed_exec_str(mp_result_cmd.c_str());
+        
+        // Advance queue
+        queue_read_index = (queue_read_index + 1) % MAX_QUEUED_COMMANDS;
+        queued_commands--;
+    }
+}
+
+// Check if a command looks like a Python function call
+bool isPythonCommand(const char* command) {
+    if (!command) return false;
+    
+    // Look for function call pattern: functionName(
+    const char* openParen = strchr(command, '(');
+    if (!openParen) return false;
+    
+    // Check if it ends with )
+    const char* closeParen = strrchr(command, ')');
+    if (!closeParen || closeParen <= openParen) return false;
+    
+    // Check if function name matches our known Python functions
+    char funcName[64];
+    size_t nameLen = openParen - command;
+    if (nameLen >= sizeof(funcName)) return false;
+    
+    strncpy(funcName, command, nameLen);
+    funcName[nameLen] = '\0';
+    
+    // Remove trailing whitespace
+    for (int i = nameLen - 1; i >= 0 && (funcName[i] == ' ' || funcName[i] == '\t'); i--) {
+        funcName[i] = '\0';
+    }
+    
+    // Check against known Python function names
+    enum actionType action = getActionFromFunctionName(funcName);
+    return (action != action_none);
+}
+
+// Route command to appropriate parser
+bool processCommand(const char* command, char* response) {
+    if (isPythonCommand(command)) {
+        // Route to Python parser
+        int result = parseAndExecutePythonCommand((char*)command, response);
+        return (result == 0);
+    } else {
+        // Route to regular command system
+        // You'll need to call your existing command processor here
+        // For now, just indicate it's not a Python command
+        snprintf(response, 1024, "INFO: Not a Python command, routing to main command processor");
+        return false; // Let main processor handle it
     }
 }
 
@@ -95,6 +394,7 @@ static const functionMapping functionMap[] = {
     {"nodes", action_nodes},
     {"dac", action_dac},
     {"adc", action_adc},
+    {"ina", action_ina},
     {"config", action_config},
     {"arduino", action_arduino},
     {"uart", action_uart},
@@ -108,6 +408,10 @@ static const functionMapping functionMap[] = {
     {"setDac", action_dac},
     {"getDac", action_dac},
     {"getAdc", action_adc},
+    {"getInaCurrent", action_ina},
+    {"getInaVoltage", action_ina},
+    {"getInaBusVoltage", action_ina},
+    {"getInaPower", action_ina},
     {"setGpio", action_gpio},
     {"getGpio", action_gpio},
     {"setGpioDirection", action_gpio},
@@ -338,6 +642,7 @@ enum actionResult parsePythonCommandString(const char* command, pythonCommand* p
                 strcmp(functionMap[i].functionName, "nodes") == 0 ||
                 strcmp(functionMap[i].functionName, "dac") == 0 ||
                 strcmp(functionMap[i].functionName, "adc") == 0 ||
+                strcmp(functionMap[i].functionName, "ina") == 0 ||
                 strcmp(functionMap[i].functionName, "config") == 0 ||
                 strcmp(functionMap[i].functionName, "arduino") == 0 ||
                 strcmp(functionMap[i].functionName, "uart") == 0 ||
@@ -542,6 +847,87 @@ int parseAndExecutePythonCommand(char* command, char* response) {
                     return 0;
                 }
                 snprintf(response, 1024, "ERROR: Invalid arguments for adc(get)");
+                return -1;
+            }
+            break;
+        }
+        
+        case action_ina: {
+            if (parsedCmd.subAction == ina_sub_getCurrent) {
+                // Example: ina(getCurrent, sensor) or getInaCurrent(sensor)
+                if (parsedCmd.argCount >= 1 && parsedCmd.args[0].type == ARG_TYPE_INT) {
+                    int sensor = parsedCmd.args[0].value.intValue;
+                    
+                    // Validate sensor number (0 or 1)
+                    if (sensor < 0 || sensor > 1) {
+                        snprintf(response, 1024, "ERROR: INA sensor must be 0 or 1, got %d", sensor);
+                        return -1;
+                    }
+                    
+                    // Call actual Jumperless function
+                    float current = (sensor == 0) ? INA0.getCurrent_mA() : INA1.getCurrent_mA();
+                    snprintf(response, 1024, "SUCCESS: ina(getCurrent, sensor=%d) = %.3f mA", 
+                            sensor, current);
+                    return 0;
+                }
+                snprintf(response, 1024, "ERROR: Invalid arguments for ina(getCurrent)");
+                return -1;
+            } else if (parsedCmd.subAction == ina_sub_getVoltage) {
+                // Example: ina(getVoltage, sensor) or getInaVoltage(sensor)
+                if (parsedCmd.argCount >= 1 && parsedCmd.args[0].type == ARG_TYPE_INT) {
+                    int sensor = parsedCmd.args[0].value.intValue;
+                    
+                    // Validate sensor number (0 or 1)
+                    if (sensor < 0 || sensor > 1) {
+                        snprintf(response, 1024, "ERROR: INA sensor must be 0 or 1, got %d", sensor);
+                        return -1;
+                    }
+                    
+                    // Call actual Jumperless function
+                    float voltage = (sensor == 0) ? INA0.getShuntVoltage_mV() : INA1.getShuntVoltage_mV();
+                    snprintf(response, 1024, "SUCCESS: ina(getVoltage, sensor=%d) = %.3f mV", 
+                            sensor, voltage);
+                    return 0;
+                }
+                snprintf(response, 1024, "ERROR: Invalid arguments for ina(getVoltage)");
+                return -1;
+            } else if (parsedCmd.subAction == ina_sub_getBusVoltage) {
+                // Example: ina(getBusVoltage, sensor) or getInaBusVoltage(sensor)
+                if (parsedCmd.argCount >= 1 && parsedCmd.args[0].type == ARG_TYPE_INT) {
+                    int sensor = parsedCmd.args[0].value.intValue;
+                    
+                    // Validate sensor number (0 or 1)
+                    if (sensor < 0 || sensor > 1) {
+                        snprintf(response, 1024, "ERROR: INA sensor must be 0 or 1, got %d", sensor);
+                        return -1;
+                    }
+                    
+                    // Call actual Jumperless function
+                    float busVoltage = (sensor == 0) ? INA0.getBusVoltage() : INA1.getBusVoltage();
+                    snprintf(response, 1024, "SUCCESS: ina(getBusVoltage, sensor=%d) = %.3f V", 
+                            sensor, busVoltage);
+                    return 0;
+                }
+                snprintf(response, 1024, "ERROR: Invalid arguments for ina(getBusVoltage)");
+                return -1;
+            } else if (parsedCmd.subAction == ina_sub_getPower) {
+                // Example: ina(getPower, sensor) or getInaPower(sensor)
+                if (parsedCmd.argCount >= 1 && parsedCmd.args[0].type == ARG_TYPE_INT) {
+                    int sensor = parsedCmd.args[0].value.intValue;
+                    
+                    // Validate sensor number (0 or 1)
+                    if (sensor < 0 || sensor > 1) {
+                        snprintf(response, 1024, "ERROR: INA sensor must be 0 or 1, got %d", sensor);
+                        return -1;
+                    }
+                    
+                    // Call actual Jumperless function
+                    float power = (sensor == 0) ? INA0.getPower_mW() : INA1.getPower_mW();
+                    snprintf(response, 1024, "SUCCESS: ina(getPower, sensor=%d) = %.3f mW", 
+                            sensor, power);
+                    return 0;
+                }
+                snprintf(response, 1024, "ERROR: Invalid arguments for ina(getPower)");
                 return -1;
             }
             break;
@@ -793,12 +1179,13 @@ int parseAndExecutePythonCommand(char* command, char* response) {
             } else if (parsedCmd.subAction == oled_sub_connect || parsedCmd.subAction == oled_sub_init) {
                 // Example: oled(connect) or oled(init)
                 int result = oled.init();
-                if (result == 1) {
+                //if (result == 1) {
                     snprintf(response, 1024, "SUCCESS: oled(connect) - OLED connected");
-                } else {
-                    snprintf(response, 1024, "ERROR: oled(connect) - failed to connect OLED");
-                }
-                return result == 1 ? 0 : -1;
+                // } else {
+                //     snprintf(response, 1024, "ERROR: oled(connect) - failed to connect OLED");
+                // }
+                //return result == 1 ? 0 : -1;
+                return 0;
             } else if (parsedCmd.subAction == oled_sub_disconnect) {
                 // Example: oled(disconnect)
                 oled.disconnect();
@@ -889,15 +1276,325 @@ int parseAndExecutePythonCommand(char* command, char* response) {
     return -1;
 }
 
-#define MICROPYTHON_HEAP_SIZE 16 * 1024
-
+#define MICROPYTHON_HEAP_SIZE 32 * 1024
 bool microPythonInitialized = false;
+
 bool initMicroPython(void) {
-  if (microPythonInitialized) return true;
-  char heap[MICROPYTHON_HEAP_SIZE];
-  int stack_top;
-  mp_embed_init(&heap[0], sizeof(heap), &stack_top);
-  microPythonInitialized = true;
+  // Start with smaller heap to avoid memory issues
+  static char heap[MICROPYTHON_HEAP_SIZE] __attribute__((aligned(8)));
+
+  //   Serial.println("Heap allocated successfully");
+  //   Serial.flush();
+  //   delay(100);
+
+  // Get a more reliable stack pointer
+  char stack_dummy;
+  char *stack_top = &stack_dummy;
+
+  Serial.println("Initializing MicroPython REPL");
+  Serial.println("Heap size: " + String(sizeof(heap)) + " bytes");
+  Serial.flush();
+
+  mp_embed_init(&heap[0], sizeof(heap), stack_top);
+
+  // Auto-load JythonModule.py if it exists
+  Serial.println("Loading Jumperless module...");
+  
+  // Try to execute the JythonModule.py file from various locations
+  // We use a simple approach - test for existence first, then execute
+  
+  // Check for file existence and load
+//   String checkCommands[] = {
+//     "try:\n  exec(open('JythonModule.py').read())\n  print('MODULE_LOADED_0')\nexcept Exception as e: print('FAILED_0:', e)",         // Current directory
+//     "try:\n  exec(open('/JythonModule.py').read())\n  print('MODULE_LOADED_1')\nexcept Exception as e: print('FAILED_1:', e)",        // Root directory  
+//     "try:\n  exec(open('src/JythonModule.py').read())\n  print('MODULE_LOADED_2')\nexcept Exception as e: print('FAILED_2:', e)",     // src subdirectory
+//     "try:\n  exec(open('/src/JythonModule.py').read())\n  print('MODULE_LOADED_3')\nexcept Exception as e: print('FAILED_3:', e)",    // /src directory
+//     "try:\n  exec(open('../JythonModule.py').read())\n  print('MODULE_LOADED_4')\nexcept Exception as e: print('FAILED_4:', e)",      // Parent directory
+//     "try:\n  exec(open('./src/JythonModule.py').read())\n  print('MODULE_LOADED_5')\nexcept Exception as e: print('FAILED_5:', e)"   // Explicit ./src
+//   };
+  
+//   bool module_loaded = false;
+//   for (int i = 0; i < 6; i++) {
+//     // Execute the check command - MicroPython will print MODULE_LOADED_X if successful
+//     mp_embed_exec_str(checkCommands[i].c_str());
+//     delay(10); // Small delay to allow output
+//     // Note: We can't easily capture MicroPython output here, but the module will be loaded if successful
+//   }
+  
+//   // Also try to see what's in the current directory
+//   mp_embed_exec_str("try:\n  import os\n  print('CWD:', os.getcwd())\nexcept: pass");
+//   mp_embed_exec_str("try:\n  import os\n  print('LISTDIR:', os.listdir('.'))\nexcept: pass");
+  // Execute full embedded JythonModule
+  const char* full_module = R"""(
+
+_on_hardware = True
+
+# Global variables for synchronous execution (must be initialized)
+_sync_result_ready = False
+_sync_value = ''
+_sync_type = ''
+_sync_result = 0
+
+def _execute_sync(cmd):
+    """Execute a command synchronously and return the actual result"""
+    global _sync_result_ready, _sync_value, _sync_type, _sync_result
+    _sync_result_ready = False
+    print('SYNC_EXEC:' + cmd)
+    # Wait briefly for C code to process - try different timing approaches
+    try:
+        import time
+        time.sleep_ms(1)
+    except:
+        # Fallback: simple busy wait
+        for i in range(1000):
+            pass
+    
+    # Check multiple times with small delays
+    for attempt in range(10):
+        if _sync_result_ready:
+            if _sync_type == 'bool':
+                return _sync_value == 'True'
+            elif _sync_type == 'float':
+                return float(_sync_value)
+            elif _sync_type == 'int':
+                return int(_sync_value)
+            elif _sync_type == 'error':
+                raise RuntimeError(_sync_value)
+            else:
+                return _sync_value
+        # Small delay between checks
+        try:
+            import time
+            time.sleep_ms(1)
+        except:
+            for i in range(100):
+                pass
+    
+    # If we get here, sync failed
+    raise RuntimeError('Sync execution failed - timeout after 10 attempts')
+
+class JumperlessError(Exception):
+    pass
+
+def _execute_command(cmd):
+    if _on_hardware:
+        # Use synchronous execution that returns actual typed results
+        return _execute_sync(cmd)
+    else:
+        print('>COMMAND: ' + cmd)
+        return '<SUCCESS: Command sent (external mode)'
+
+class DAC:
+    def set(self, channel, voltage, save=False):
+        cmd = 'dac(set, ' + str(channel) + ', ' + str(voltage) + ', save=' + str(save) + ')'
+        return _execute_command(cmd)
+    def get(self, channel):
+        cmd = 'dac(get, ' + str(channel) + ')'
+        return _execute_command(cmd)
+
+class ADC:
+    def get(self, channel):
+        cmd = 'adc(get, ' + str(channel) + ')'
+        return _execute_command(cmd)
+    def read(self, channel):
+        return self.get(channel)
+
+class GPIO:
+    def __init__(self):
+        self.HIGH = 'HIGH'
+        self.LOW = 'LOW'
+        self.OUTPUT = 'OUTPUT'
+        self.INPUT = 'INPUT'
+    def set(self, pin, value):
+        if isinstance(value, bool):
+            value = 'HIGH' if value else 'LOW'
+        elif isinstance(value, int):
+            value = 'HIGH' if value else 'LOW'
+        cmd = 'gpio(set, ' + str(pin) + ', ' + str(value) + ')'
+        return _execute_command(cmd)
+    def get(self, pin):
+        cmd = 'gpio(get, ' + str(pin) + ')'
+        return _execute_command(cmd)
+    def direction(self, pin, direction):
+        cmd = 'gpio(direction, ' + str(pin) + ', ' + str(direction) + ')'
+        return _execute_command(cmd)
+
+class Nodes:
+    def connect(self, node1, node2, save=False):
+        cmd = 'nodes(connect, ' + str(node1) + ', ' + str(node2) + ', save=' + str(save) + ')'
+        return _execute_command(cmd)
+    def disconnect(self, node1, node2):
+        cmd = 'nodes(remove, ' + str(node1) + ', ' + str(node2) + ')'
+        return _execute_command(cmd)
+    def remove(self, node1, node2):
+        return self.disconnect(node1, node2)
+    def clear(self):
+        cmd = 'nodes(clear)'
+        return _execute_command(cmd)
+
+class OLED:
+    def connect(self):
+        cmd = 'oled(connect)'
+        return _execute_command(cmd)
+    def disconnect(self):
+        cmd = 'oled(disconnect)'
+        return _execute_command(cmd)
+    def print(self, text, size=2):
+        cmd = 'oled(print, "' + str(text) + '", ' + str(size) + ')'
+        return _execute_command(cmd)
+    def clear(self):
+        cmd = 'oled(clear)'
+        return _execute_command(cmd)
+    def show(self):
+        cmd = 'oled(show)'
+        return _execute_command(cmd)
+    def set_cursor(self, x, y):
+        cmd = 'oled(setCursor, ' + str(x) + ', ' + str(y) + ')'
+        return _execute_command(cmd)
+    def set_text_size(self, size):
+        cmd = 'oled(setTextSize, ' + str(size) + ')'
+        return _execute_command(cmd)
+    def cycle_font(self):
+        cmd = 'oled(cycleFont)'
+        return _execute_command(cmd)
+    def set_font(self, font):
+        if isinstance(font, str):
+            cmd = 'oled(setFont, "' + str(font) + '")'
+        else:
+            cmd = 'oled(setFont, ' + str(font) + ')'
+        return _execute_command(cmd)
+    def is_connected(self):
+        cmd = 'oled(isConnected)'
+        return _execute_command(cmd)
+
+class Arduino:
+    def reset(self):
+        cmd = 'arduino(reset)'
+        return _execute_command(cmd)
+    def flash(self):
+        cmd = 'arduino(flash)'
+        return _execute_command(cmd)
+
+class UART:
+    def connect(self):
+        cmd = 'uart(connect)'
+        return _execute_command(cmd)
+    def disconnect(self):
+        cmd = 'uart(disconnect)'
+        return _execute_command(cmd)
+
+class INA:
+    def get_current(self, sensor):
+        cmd = 'ina(getCurrent, ' + str(sensor) + ')'
+        return _execute_command(cmd)
+    def get_voltage(self, sensor):
+        cmd = 'ina(getVoltage, ' + str(sensor) + ')'
+        return _execute_command(cmd)
+    def get_bus_voltage(self, sensor):
+        cmd = 'ina(getBusVoltage, ' + str(sensor) + ')'
+        return _execute_command(cmd)
+    def get_power(self, sensor):
+        cmd = 'ina(getPower, ' + str(sensor) + ')'
+        return _execute_command(cmd)
+
+class Probe:
+    def tap(self, node):
+        cmd = 'probe(tap, ' + str(node) + ')'
+        return _execute_command(cmd)
+    def click(self, action='click'):
+        cmd = 'probe(' + str(action) + ')'
+        return _execute_command(cmd)
+
+# Create module instances
+dac = DAC()
+adc = ADC()
+ina = INA()
+gpio = GPIO()
+nodes = Nodes()
+oled = OLED()
+arduino = Arduino()
+uart = UART()
+probe = Probe()
+
+class JL:
+    def __init__(self):
+        self.dac = dac
+        self.adc = adc
+        self.ina = ina
+        self.gpio = gpio
+        self.nodes = nodes
+        self.oled = oled
+        self.arduino = arduino
+        self.uart = uart
+        self.probe = probe
+    
+    def read_voltage(self, channel):
+        return self.adc.get(channel)
+    
+    def set_voltage(self, channel, voltage, save=False):
+        return self.dac.set(channel, voltage, save)
+    
+    def connect_nodes(self, node1, node2, save=False):
+        return self.nodes.connect(node1, node2, save)
+    
+    def display(self, text, size=2):
+        return self.oled.print(text, size)
+    
+    def reset_arduino(self):
+        return self.arduino.reset()
+    
+    def help(self):
+        print('Jumperless MicroPython Module (Full Embedded)\\n\\r')
+        print('Main Namespace: jl.*\\n\\r')
+        print('Hardware Modules:\\n\\r')
+        print('  jl.dac.set(0, 2.5)      # Set DAC voltage')
+        print('  jl.adc.get(0)           # Read ADC')
+        print('  jl.ina.get_current(0)   # Read INA current')
+        print('  jl.gpio.set(5, "HIGH")  # Set GPIO')
+        print('  jl.nodes.connect(1, 5)  # Connect nodes')
+        print('  jl.oled.print("Hi")     # Display text')
+        print('  jl.arduino.reset()      # Reset Arduino')
+        print('  jl.uart.connect()       # Connect UART')
+        print('\\n\\rConvenience methods:\\n\\r')
+        print('  jl.read_voltage(0)      # Quick ADC read')
+        print('  jl.set_voltage(0, 2.5)  # Quick DAC set')
+        print('  jl.display("Hello!")    # Quick OLED print')
+        print('  jl.connect_nodes(1, 5)  # Quick node connect')
+        print('\\n\\rNew: Return Values & Variables:\\n\\r')
+        print('  voltage = jl.adc.get(0)        # Get actual voltage')
+        print('  current = jl.ina.get_current(0) # Get actual current')
+        print('  pin_state = jl.gpio.get(5)     # Get actual state')
+        print('  if jl.gpio.get(1): print("Pin 1 is HIGH")')
+        print('  if voltage > 3.0: jl.oled.print("High voltage!")')
+        print('')
+        return 'Help displayed'
+
+jl = JL()
+
+def help_jumperless():
+    return jl.help()
+
+def connect_nodes(node1, node2, save=False):
+    return nodes.connect(node1, node2, save)
+
+def set_voltage(channel, voltage, save=False):
+    return dac.set(channel, voltage, save)
+
+def read_voltage(channel):
+    return adc.get(channel)
+
+def display(text, size=2):
+    return oled.print(text, size)
+
+def reset_arduino():
+    return arduino.reset()
+)""";
+  // Execute the full embedded module
+  Serial.println("Executing full embedded module...");
+  mp_embed_exec_str(full_module);
+  Serial.println("Full embedded module execution completed.");
+  
+
   return true;
 }
 
@@ -948,23 +1645,17 @@ void micropythonREPL(void) {
       56,  // prompt alt 2
       51,  // prompt alt 3
   };
+  changeTerminalColor(replColors[6], true);
+  initMicroPython();
 
-  // Start with smaller heap to avoid memory issues
-  static char heap[MICROPYTHON_HEAP_SIZE] __attribute__((aligned(8)));
-
-  //   Serial.println("Heap allocated successfully");
-  //   Serial.flush();
-  //   delay(100);
-
-  // Get a more reliable stack pointer
-  char stack_dummy;
-  char *stack_top = &stack_dummy;
-
-  Serial.println("Initializing MicroPython REPL");
-  Serial.println("Heap size: " + String(sizeof(heap)) + " bytes");
-  Serial.flush();
-
-  mp_embed_init(&heap[0], sizeof(heap), stack_top);
+  
+  // Always show helpful messages
+  changeTerminalColor(replColors[7], true);
+  Serial.println("MicroPython REPL with embedded Jumperless hardware control!");
+  Serial.println("Type normal Python code, then 'run' to execute");
+  Serial.println("Remember: for loops need colons → for i in range(5):");
+  Serial.println("Use TAB for indentation (or exactly 4 spaces)");
+  Serial.println("Type help_jumperless() for hardware control commands");
 
   changeTerminalColor(replColors[0], true);
   Serial.println("MicroPython initialized successfully");
@@ -1076,7 +1767,7 @@ void micropythonREPL(void) {
           if (currentLine == "help") {
             changeTerminalColor(replColors[0], true);
             Serial.println("MicroPython REPL Help:");
-            Serial.println("  run or %% - Execute the code in buffer");
+            Serial.println("  run or ESC - Execute the Python code in buffer");
             Serial.println("  clear     - Clear the input buffer");
             Serial.println("  show      - Show current buffer content");
             Serial.println("  quit      - Exit REPL");
@@ -1100,16 +1791,18 @@ void micropythonREPL(void) {
             continue;
           }
 
-          if (currentLine == "run" || currentLine == "%%") {
+          if (currentLine == "run" || currentLine == "\033") {
             if (inputBuffer.length() > 0) {
               changeTerminalColor(replColors[7], true);
               Serial.println("\n\r Executing:\n\r");
               changeTerminalColor(replColors[3], true);
+              inputBuffer.replace("\n", "\n\r");
               Serial.println(inputBuffer);
               changeTerminalColor(replColors[6], true);
               Serial.println("\n\r--- Output ---\n\r");
               changeTerminalColor(replColors[2], true);
               mp_embed_exec_str(inputBuffer.c_str());
+              processQueuedCommands();
               changeTerminalColor(replColors[0], true);
               Serial.println("\n\r--- End ---\n\r");
 
@@ -1155,7 +1848,7 @@ void micropythonREPL(void) {
           // Handle empty input - just add a newline to buffer
           if (currentLine.length() == 0) {
             if (inputBuffer.length() > 0) {
-              inputBuffer += "\n\r";
+              inputBuffer += "\n";
             }
             changeTerminalColor(replColors[1], true);
             Serial.print(">>> ");
@@ -1164,22 +1857,31 @@ void micropythonREPL(void) {
             continue;
           }
 
-          // Add current line to buffer
+          // Clean up any prompt prefixes that might have leaked through
+          if (currentLine.startsWith(">>> ")) {
+            currentLine.remove(0, 4);
+          }
+          if (currentLine.startsWith("... ")) {
+            currentLine.remove(0, 4);
+          }
+
+          // Normalize excessive indentation (more than 8 spaces gets reduced to 4)
+          if (currentLine.length() > 0) {
+            int leadingSpaces = 0;
+            for (int i = 0; i < currentLine.length() && currentLine[i] == ' '; i++) {
+              leadingSpaces++;
+            }
+            if (leadingSpaces > 8) {
+              // Replace excessive indentation with reasonable amount
+              String content = currentLine.substring(leadingSpaces);
+              currentLine = "    " + content;  // 4 spaces for Python indentation
+            }
+          }
+
+          // Add current line to buffer with proper Python line endings
+          // Python expects Unix-style \n line endings, not \n\r
           if (inputBuffer.length() > 0) {
-            if (currentLine.startsWith(">>> ")) {
-              currentLine.remove(0, 4);
-            }
-
-            if (currentLine.startsWith("... ")) {
-              currentLine.remove(0, 4);
-              
-            }
-
-            if (currentLine.startsWith("run")) {
-              currentLine.remove(0, 3);
-              //inputBuffer += "\n\r";
-            }
-inputBuffer += "\n\r";
+            inputBuffer += "\n";  // Use Unix line endings for Python
           }
           inputBuffer += currentLine;
 
@@ -1245,6 +1947,9 @@ inputBuffer += "\n\r";
     }
 
     delayMicroseconds(10); // Small delay to prevent overwhelming the system
+    
+    // Process any queued commands from MicroPython
+    
   }
 
   // Cleanup
@@ -1394,6 +2099,10 @@ void testPythonParser() {
         "simulateProbe(tap, D7)",
         "setGpio(3, HIGH)",
         "getAdc(0)",
+        "getInaCurrent(0)",
+        "getInaVoltage(0)",
+        "getInaBusVoltage(0)",
+        "getInaPower(0)",
         "removeNodes(5, 8, save=True)",
         
         // New hierarchical syntax
@@ -1467,6 +2176,10 @@ void testPythonExecution() {
     // Test commands that will actually execute
     const char* testCommands[] = {
         "adc(get, 0)",
+        "ina(getCurrent, 0)",
+        "ina(getVoltage, 0)",
+        "ina(getBusVoltage, 1)",
+        "ina(getPower, 0)",
         "dac(set, 0, 2.5)",
         "nodes(connect, 1, 5)",
         "gpio(set, 13, HIGH)",
@@ -1531,6 +2244,14 @@ int parseDacSubAction(const char* subActionStr) {
 
 int parseAdcSubAction(const char* subActionStr) {
     if (strcmp(subActionStr, "get") == 0) return adc_sub_get;
+    return -1;
+}
+
+int parseInaSubAction(const char* subActionStr) {
+    if (strcmp(subActionStr, "getCurrent") == 0) return ina_sub_getCurrent;
+    if (strcmp(subActionStr, "getVoltage") == 0) return ina_sub_getVoltage;
+    if (strcmp(subActionStr, "getBusVoltage") == 0) return ina_sub_getBusVoltage;
+    if (strcmp(subActionStr, "getPower") == 0) return ina_sub_getPower;
     return -1;
 }
 
@@ -1603,6 +2324,7 @@ int parseSubAction(enum actionType action, const char* subActionStr) {
         case action_nodes: return parseNodesSubAction(subActionStr);
         case action_dac: return parseDacSubAction(subActionStr);
         case action_adc: return parseAdcSubAction(subActionStr);
+        case action_ina: return parseInaSubAction(subActionStr);
         case action_config: return parseConfigSubAction(subActionStr);
         case action_arduino: return parseArduinoSubAction(subActionStr);
         case action_uart: return parseUartSubAction(subActionStr);
@@ -1623,6 +2345,11 @@ int getLegacySubAction(const char* functionName, enum actionType action) {
         if (strncmp(functionName, "get", 3) == 0) return dac_sub_get;
     } else if (action == action_adc) {
         if (strncmp(functionName, "get", 3) == 0) return adc_sub_get;
+    } else if (action == action_ina) {
+        if (strstr(functionName, "Current")) return ina_sub_getCurrent;
+        if (strstr(functionName, "Voltage") && strstr(functionName, "Bus")) return ina_sub_getBusVoltage;
+        if (strstr(functionName, "Voltage")) return ina_sub_getVoltage;
+        if (strstr(functionName, "Power")) return ina_sub_getPower;
     } else if (action == action_gpio) {
         if (strncmp(functionName, "set", 3) == 0) {
             if (strstr(functionName, "Direction")) return gpio_sub_direction;
@@ -1706,6 +2433,14 @@ const char* subActionToString(enum actionType action, int subAction) {
             switch (subAction) {
                 case adc_sub_get: return "get";
                 default: return "unknown_adc";
+            }
+        case action_ina:
+            switch (subAction) {
+                case ina_sub_getCurrent: return "getCurrent";
+                case ina_sub_getVoltage: return "getVoltage";
+                case ina_sub_getBusVoltage: return "getBusVoltage";
+                case ina_sub_getPower: return "getPower";
+                default: return "unknown_ina";
             }
         case action_config:
             switch (subAction) {
@@ -1802,6 +2537,60 @@ extern "C" const char* jumperless_execute_command(const char* command) {
     return response;
 }
 
+// Synchronous execution function that can be called from embedded Python
+extern "C" int jumperless_execute_sync_c(const char* command) {
+    if (!command) {
+        Serial.println("[SYNC_C] Error: null command");
+        Serial.flush();
+        return -1;
+    }
+    
+    Serial.print("[SYNC_C] Starting execution of: ");
+    Serial.println(command);
+    Serial.flush();
+    
+    // REAL HARDWARE: Use direct hardware execution instead of complex parser
+    Serial.println("[SYNC_C] Using direct hardware execution...");
+    Serial.flush();
+    
+    sync_execution_result = execute_hardware_direct(command);
+    
+    Serial.print("[SYNC_C] Hardware execution completed with result: ");
+    Serial.println(sync_execution_result);
+    
+    // Skip the complex parsing for now
+    // int result = jumperless_execute_command_sync(command, sync_command_response);
+    // sync_execution_result = parse_response_for_python(sync_command_response, sync_value_result, sync_type_result);
+    
+    Serial.print("[SYNC_C] Final result: ");
+    Serial.print(sync_execution_result);
+    Serial.print(", Value: ");
+    Serial.print(sync_value_result);
+    Serial.print(", Type: ");
+    Serial.println(sync_type_result);
+    Serial.flush();
+    
+    return sync_execution_result;
+}
+
+// Functions to get parsed results (callable from embedded Python)
+extern "C" const char* jumperless_get_sync_value() {
+    return sync_value_result;
+}
+
+extern "C" const char* jumperless_get_sync_type() {
+    return sync_type_result;
+}
+
+extern "C" const char* jumperless_get_sync_response() {
+    return sync_command_response;
+}
+
+// Helper function to get string representation of command results
+extern "C" const char* jumperless_get_last_response() {
+    return sync_response_buffer;
+}
+
 void setupJumperlessModule(void) {
     if (!microPythonInitialized) {
         Serial.println("Setting up MicroPython for Jumperless...");
@@ -1811,12 +2600,8 @@ void setupJumperlessModule(void) {
         }
     }
     
-    // Make the jumperless_execute_command function available to MicroPython
-    // This allows Python code to call: jumperless_execute_command("dac(set, 0, 2.5)")
-    executeMicroPython("import sys");
-    executeMicroPython("class JumperlessNative:");
-    executeMicroPython("    @staticmethod");
-    executeMicroPython("    def execute(cmd): return 'Function registered'");
+    // The sync execution system is now built into JythonModule.py itself
+    // No additional setup needed since the module contains all necessary functions
     
     Serial.println("Jumperless MicroPython module ready!");
     Serial.println("Import with: import JythonModule as jl");
@@ -1824,6 +2609,9 @@ void setupJumperlessModule(void) {
     Serial.println("  jl.dac.set(0, 2.5)");
     Serial.println("  jl.nodes.connect(1, 5)");
     Serial.println("  jl.oled.print('Hello!')");
+    Serial.println("New: Use return values in variables and conditionals:");
+    Serial.println("  voltage = jl.adc.get(0)");
+    Serial.println("  if jl.gpio.get(1): print('Pin is HIGH')");
 }
 
 void testJumperlessModule(void) {
@@ -1857,4 +2645,363 @@ void testJumperlessModule(void) {
     }
     
     Serial.println("\nMicroPython module test completed!");
+}
+
+// Read a Python command from serial input
+void readPythonCommand() {
+    Serial.print(">>> ");
+    Serial.flush();
+    
+    String command = "";
+    char c;
+    
+    // Read until newline
+    while (true) {
+        if (Serial.available() > 0) {
+            c = Serial.read();
+            if (c == '\n' || c == '\r') {
+                if (command.length() > 0) {
+                    break;
+                }
+                // Ignore empty lines
+                continue;
+            } else if (c == '\b' || c == 0x7F) {
+                // Backspace
+                if (command.length() > 0) {
+                    command.remove(command.length() - 1);
+                    Serial.print("\b \b");
+                }
+            } else if (c >= 32 && c <= 126) {
+                // Printable character
+                command += c;
+                Serial.print(c);
+            }
+        }
+    }
+    
+    Serial.println(); // Echo newline
+    
+    if (command.length() > 0) {
+        char response[1024];
+        if (processCommand(command.c_str(), response)) {
+            Serial.println(response);
+        } else {
+            Serial.println("ERROR: Invalid Python command");
+        }
+    }
+}
+
+// Python command mode - interpret all input as Python commands
+void pythonCommandMode() {
+    Serial.println("\n=== Python Command Mode ===");
+    Serial.println("All input will be interpreted as Python commands");
+    Serial.println("Type 'exit' or 'quit' to return to main menu");
+    Serial.println("Type 'help' for Python command help\n");
+    
+    while (true) {
+        Serial.print("py> ");
+        Serial.flush();
+        
+        String command = "";
+        char c;
+        
+        // Read until newline
+        while (true) {
+            if (Serial.available() > 0) {
+                c = Serial.read();
+                if (c == '\n' || c == '\r') {
+                    if (command.length() > 0) {
+                        break;
+                    }
+                    // Ignore empty lines, show prompt again
+                    Serial.print("py> ");
+                    Serial.flush();
+                    continue;
+                } else if (c == '\b' || c == 0x7F) {
+                    // Backspace
+                    if (command.length() > 0) {
+                        command.remove(command.length() - 1);
+                        Serial.print("\b \b");
+                    }
+                } else if (c >= 32 && c <= 126) {
+                    // Printable character
+                    command += c;
+                    Serial.print(c);
+                }
+            }
+        }
+        
+        Serial.println(); // Echo newline
+        
+        // Check for exit commands
+        if (command.equals("exit") || command.equals("quit")) {
+            Serial.println("Exiting Python command mode\n");
+            break;
+        }
+        
+        // Check for help
+        if (command.equals("help")) {
+            Serial.println("Python Command Help:");
+            Serial.println("  dac(set, channel, voltage)     - Set DAC output");
+            Serial.println("  adc(get, channel)              - Read ADC input");
+            Serial.println("  gpio(set, pin, HIGH/LOW)       - Set GPIO pin");
+            Serial.println("  gpio(get, pin)                 - Read GPIO pin");
+            Serial.println("  nodes(connect, node1, node2)   - Connect nodes");
+            Serial.println("  nodes(remove, node1, node2)    - Disconnect nodes");
+            Serial.println("  oled(print, \"text\", size)      - Display on OLED");
+            Serial.println("  arduino(reset)                 - Reset Arduino");
+            Serial.println("  uart(connect/disconnect)       - UART control");
+            Serial.println("\nExamples:");
+            Serial.println("  dac(set, 0, 2.5)");
+            Serial.println("  gpio(set, 5, HIGH)");
+            Serial.println("  nodes(connect, 1, 5, save=false)");
+            Serial.println();
+            continue;
+        }
+        
+        if (command.length() > 0) {
+            char response[1024];
+            if (processCommand(command.c_str(), response)) {
+                Serial.println(response);
+            } else {
+                Serial.print("ERROR: ");
+                Serial.println(response);
+            }
+        }
+    }
+}
+
+// Simple direct hardware test function to bypass complex parser
+extern "C" int test_direct_hardware_sync(const char* command) {
+    Serial.print("[DIRECT_TEST] Testing: ");
+    Serial.println(command);
+    Serial.flush();
+    
+    // Simple hardcoded responses for testing
+    if (strcmp(command, "gpio(get, 1)") == 0) {
+        // Test GPIO read - return a fake boolean result
+        strcpy(sync_value_result, "False");
+        strcpy(sync_type_result, "bool");
+        Serial.println("[DIRECT_TEST] Returning fake GPIO False");
+        return 2; // 2 = boolean false
+    } 
+    else if (strcmp(command, "oled(connect)") == 0) {
+        // Test OLED connect - return success
+        strcpy(sync_value_result, "OLED connected");
+        strcpy(sync_type_result, "str");
+        Serial.println("[DIRECT_TEST] Returning fake OLED success");
+        return 0; // 0 = success
+    }
+    else {
+        // Unknown command
+        strcpy(sync_value_result, "Test command not supported");
+        strcpy(sync_type_result, "error");
+        Serial.println("[DIRECT_TEST] Unknown test command");
+        return -1;
+    }
+}
+
+// Direct hardware execution function - calls actual hardware without complex parser
+extern "C" int execute_hardware_direct(const char* command) {
+    Serial.print("[HARDWARE] Executing: ");
+    Serial.println(command);
+    Serial.flush();
+    
+    // Parse command into parts
+    if (strncmp(command, "gpio(get,", 9) == 0) {
+        // Extract pin number: gpio(get, 1) -> pin = 1
+        int pin = atoi(command + 9);
+        if (pin >= 1 && pin <= 10) {
+            int value = digitalRead(gpioDef[pin][0]);
+            strcpy(sync_value_result, value ? "True" : "False");
+            strcpy(sync_type_result, "bool");
+            Serial.print("[HARDWARE] GPIO pin ");
+            Serial.print(pin);
+            Serial.print(" read: ");
+            Serial.println(value ? "HIGH" : "LOW");
+            return value ? 1 : 2; // 1=True, 2=False
+        } else {
+            strcpy(sync_value_result, "Invalid GPIO pin");
+            strcpy(sync_type_result, "error");
+            return -1;
+        }
+    }
+    else if (strncmp(command, "gpio(set,", 9) == 0) {
+        // Extract pin and value: gpio(set, 1, HIGH) -> pin=1, value=HIGH
+        const char* comma1 = strchr(command + 9, ',');
+        if (comma1) {
+            int pin = atoi(command + 9);
+            const char* value_str = comma1 + 1;
+            while (*value_str == ' ') value_str++; // skip spaces
+            
+            int value = 0;
+            if (strncmp(value_str, "HIGH", 4) == 0 || strncmp(value_str, "1", 1) == 0) {
+                value = 1;
+            }
+            
+            if (pin >= 1 && pin <= 10) {
+                digitalWrite(gpioDef[pin][0], value);
+                strcpy(sync_value_result, "GPIO set");
+                strcpy(sync_type_result, "str");
+                Serial.print("[HARDWARE] GPIO pin ");
+                Serial.print(pin);
+                Serial.print(" set to ");
+                Serial.println(value ? "HIGH" : "LOW");
+                return 0;
+            }
+        }
+        strcpy(sync_value_result, "Invalid GPIO command");
+        strcpy(sync_type_result, "error");
+        return -1;
+    }
+    else if (strncmp(command, "adc(get,", 8) == 0) {
+        // Extract channel: adc(get, 0) -> channel = 0
+        int channel = atoi(command + 8);
+        float voltage = readAdcVoltage(channel, 32);
+        
+        // Convert float to string
+        snprintf(sync_value_result, sizeof(sync_value_result), "%.3f", voltage);
+        strcpy(sync_type_result, "float");
+        Serial.print("[HARDWARE] ADC channel ");
+        Serial.print(channel);
+        Serial.print(" voltage: ");
+        Serial.println(voltage);
+        return 0;
+    }
+    else if (strncmp(command, "ina(getCurrent,", 15) == 0) {
+        // Extract sensor: ina(getCurrent, 0) -> sensor = 0
+        int sensor = atoi(command + 15);
+        if (sensor == 0 || sensor == 1) {
+            float current = (sensor == 0) ? INA0.getCurrent_mA() : INA1.getCurrent_mA();
+            snprintf(sync_value_result, sizeof(sync_value_result), "%.3f", current);
+            strcpy(sync_type_result, "float");
+            Serial.print("[HARDWARE] INA");
+            Serial.print(sensor);
+            Serial.print(" current: ");
+            Serial.println(current);
+            return 0;
+        }
+    }
+    else if (strncmp(command, "ina(getVoltage,", 15) == 0) {
+        int sensor = atoi(command + 15);
+        if (sensor == 0 || sensor == 1) {
+            float voltage = (sensor == 0) ? INA0.getShuntVoltage_mV() : INA1.getShuntVoltage_mV();
+            snprintf(sync_value_result, sizeof(sync_value_result), "%.3f", voltage);
+            strcpy(sync_type_result, "float");
+            return 0;
+        }
+    }
+    else if (strncmp(command, "ina(getBusVoltage,", 18) == 0) {
+        int sensor = atoi(command + 18);
+        if (sensor == 0 || sensor == 1) {
+            float voltage = (sensor == 0) ? INA0.getBusVoltage() : INA1.getBusVoltage();
+            snprintf(sync_value_result, sizeof(sync_value_result), "%.3f", voltage);
+            strcpy(sync_type_result, "float");
+            return 0;
+        }
+    }
+    else if (strncmp(command, "ina(getPower,", 13) == 0) {
+        int sensor = atoi(command + 13);
+        if (sensor == 0 || sensor == 1) {
+            float power = (sensor == 0) ? INA0.getPower_mW() : INA1.getPower_mW();
+            snprintf(sync_value_result, sizeof(sync_value_result), "%.3f", power);
+            strcpy(sync_type_result, "float");
+            return 0;
+        }
+    }
+    else if (strncmp(command, "oled(connect)", 13) == 0) {
+        int result = oled.init();
+        strcpy(sync_value_result, "OLED connected");
+        strcpy(sync_type_result, "str");
+        Serial.println("[HARDWARE] OLED connected");
+        return 0;
+    }
+    else if (strncmp(command, "oled(disconnect)", 16) == 0) {
+        oled.disconnect();
+        strcpy(sync_value_result, "OLED disconnected");
+        strcpy(sync_type_result, "str");
+        return 0;
+    }
+    else if (strncmp(command, "oled(clear)", 11) == 0) {
+        oled.clear();
+        strcpy(sync_value_result, "OLED cleared");
+        strcpy(sync_type_result, "str");
+        return 0;
+    }
+    else if (strncmp(command, "oled(show)", 10) == 0) {
+        oled.show();
+        strcpy(sync_value_result, "OLED updated");
+        strcpy(sync_type_result, "str");
+        return 0;
+    }
+    else if (strncmp(command, "oled(print,", 11) == 0) {
+        // Extract text: oled(print, "Hello", 2) -> text="Hello", size=2
+        const char* text_start = strchr(command + 11, '"');
+        if (text_start) {
+            text_start++; // skip opening quote
+            const char* text_end = strchr(text_start, '"');
+            if (text_end) {
+                int text_len = text_end - text_start;
+                char text[128];
+                strncpy(text, text_start, text_len);
+                text[text_len] = '\0';
+                
+                // Extract size (default to 2)
+                int size = 2;
+                const char* size_start = text_end + 1;
+                while (*size_start && (*size_start == '"' || *size_start == ',' || *size_start == ' ')) size_start++;
+                if (*size_start >= '1' && *size_start <= '9') {
+                    size = atoi(size_start);
+                }
+                
+                oled.clearPrintShow(text, size, true, true, true);
+                strcpy(sync_value_result, "Text displayed");
+                strcpy(sync_type_result, "str");
+                Serial.print("[HARDWARE] OLED printed: ");
+                Serial.println(text);
+                return 0;
+            }
+        }
+    }
+    else if (strncmp(command, "dac(set,", 8) == 0) {
+        // Extract channel and voltage: dac(set, 0, 2.5) -> channel=0, voltage=2.5
+        const char* comma1 = strchr(command + 8, ',');
+        if (comma1) {
+            int channel = atoi(command + 8);
+            float voltage = atof(comma1 + 1);
+            setDacByNumber(channel, voltage, 0); // save=false for now
+            strcpy(sync_value_result, "DAC set");
+            strcpy(sync_type_result, "str");
+            Serial.print("[HARDWARE] DAC channel ");
+            Serial.print(channel);
+            Serial.print(" set to ");
+            Serial.println(voltage);
+            return 0;
+        }
+    }
+    else if (strncmp(command, "arduino(reset)", 14) == 0) {
+        resetArduino();
+        strcpy(sync_value_result, "Arduino reset");
+        strcpy(sync_type_result, "str");
+        return 0;
+    }
+    else if (strncmp(command, "uart(connect)", 13) == 0) {
+        connectArduino(0);
+        strcpy(sync_value_result, "UART connected");
+        strcpy(sync_type_result, "str");
+        return 0;
+    }
+    else if (strncmp(command, "uart(disconnect)", 16) == 0) {
+        disconnectArduino(0);
+        strcpy(sync_value_result, "UART disconnected");
+        strcpy(sync_type_result, "str");
+        return 0;
+    }
+    
+    // Unknown command
+    strcpy(sync_value_result, "Unknown command");
+    strcpy(sync_type_result, "error");
+    Serial.print("[HARDWARE] Unknown command: ");
+    Serial.println(command);
+    return -1;
 }

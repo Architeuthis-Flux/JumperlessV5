@@ -36,11 +36,12 @@ class JumperlessSerial:
             self.serial = serial.Serial(port, baudrate, timeout=self.timeout)
             time.sleep(2)  # Wait for connection to stabilize
             
-            # Test connection
-            response = self.execute("help")
+            # Test connection with a simple Python command
+            response = self.execute("adc(get, 0)")
             if "SUCCESS" in response or "ERROR" in response:
                 self.connected = True
                 print(f"Connected to Jumperless on {port}")
+                self.serial.write("E".encode())  # Hide menu
                 return True
             else:
                 print(f"Failed to verify connection to {port}")
@@ -63,8 +64,8 @@ class JumperlessSerial:
             return "ERROR: Not connected to Jumperless"
         
         try:
-            # Send command
-            self.serial.write(f"{command}\n".encode())
+            # Add > prefix for Python command recognition and send command
+            self.serial.write(f">{command}\n".encode())
             self.serial.flush()
             
             # Read response (with timeout)
@@ -248,6 +249,7 @@ Available commands:
   jl.nodes.connect(1, 5)     # Connect nodes 1 and 5
   jl.oled.print("Hello!")    # Display on OLED
   jl.arduino.reset()         # Reset Arduino
+  jl.execute("print('Hello from Python!')")  # Execute Python code
   
   Or use raw commands:
   dac(set, 0, 2.5)
@@ -327,7 +329,7 @@ def main():
     
     try:
         # Run demo
-        run_demo(jl)
+        # run_demo(jl)
         
         # Enter interactive mode
         interactive_mode(jl)

@@ -1,0 +1,1 @@
+MP_REGISTER_MODULE(MP_QSTR_builtins, mp_module_builtins);

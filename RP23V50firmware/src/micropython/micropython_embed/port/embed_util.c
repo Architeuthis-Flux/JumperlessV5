@@ -30,6 +30,9 @@
 #include "py/persistentcode.h"
 #include "py/runtime.h"
 #include "py/stackctrl.h"
+#include "py/lexer.h"
+#include "py/mperrno.h"
+#include "py/builtin.h"
 #include "shared/runtime/gchelper.h"
 #include "port/micropython_embed.h"
 
@@ -105,4 +108,49 @@ void __assert_func(const char *file, int line, const char *func, const char *exp
     for (;;) {
     }
 }
+#endif
+
+// Port-specific function implementations for embedded systems
+
+mp_import_stat_t mp_import_stat(const char *path) {
+    // For embedded systems, we don't support file imports
+    (void)path;
+    return MP_IMPORT_STAT_NO_EXIST;
+}
+
+mp_lexer_t *mp_lexer_new_from_file(qstr filename) {
+    // For embedded systems, we don't support file-based lexing
+    (void)filename;
+    mp_raise_OSError(MP_ENOENT);
+    return NULL;
+}
+
+// Stub for builtin open function - not supported in embedded mode
+static mp_obj_t mp_builtin_open_stub(size_t n_args, const mp_obj_t *args, mp_map_t *kwargs) {
+    (void)n_args;
+    (void)args;
+    (void)kwargs;
+    mp_raise_OSError(MP_ENOENT);
+    return mp_const_none;
+}
+MP_DEFINE_CONST_FUN_OBJ_KW(mp_builtin_open_obj, 1, mp_builtin_open_stub);
+
+#if !MICROPY_PY_SYS
+// Minimal sys module stubs when sys module is disabled
+mp_obj_t mp_module_sys_attr(mp_obj_t self_in, qstr attr, mp_obj_t set_val) {
+    (void)self_in;
+    (void)attr;
+    (void)set_val;
+    return MP_OBJ_NULL;
+}
+
+static const mp_rom_map_elem_t mp_module_sys_globals_table[] = {
+    { MP_ROM_QSTR(MP_QSTR___name__), MP_ROM_QSTR(MP_QSTR_sys) },
+};
+static MP_DEFINE_CONST_DICT(mp_module_sys_globals, mp_module_sys_globals_table);
+
+const mp_obj_module_t mp_module_sys = {
+    .base = { &mp_type_module },
+    .globals = (mp_obj_dict_t *)&mp_module_sys_globals,
+};
 #endif

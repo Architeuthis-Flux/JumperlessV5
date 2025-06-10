@@ -28,6 +28,9 @@ enum actionType {
     
     // ADC category
     action_adc,
+
+    // INA219 category
+    action_ina,
     
     // Config category
     action_config,
@@ -131,6 +134,13 @@ enum breadboardSubAction {
     breadboard_sub_print,
     breadboard_sub_clear,
     breadboard_sub_print_raw_row
+};
+
+enum inaSubAction {
+    ina_sub_getCurrent,
+    ina_sub_getVoltage,
+    ina_sub_getBusVoltage,
+    ina_sub_getPower
 };
 
 enum actionResult {
@@ -269,6 +279,18 @@ void testJumperlessModule(void);
 
 /// @brief Process any pending MicroPython commands
 void processPendingMicroPythonCommands(void);
+
+/// @brief Check if a command is a Python-style function call
+bool isPythonCommand(const char* command);
+
+/// @brief Route command to appropriate parser (Python or main)
+bool processCommand(const char* command, char* response);
+
+/// @brief Read a single Python command from serial input
+void readPythonCommand(void);
+
+/// @brief Enter Python command mode where all input is interpreted as Python
+void pythonCommandMode(void);
 
 char* parsePythonCommand(char* command = pythonCommandBuffer);
 

@@ -1,379 +1,172 @@
-# Jumperless MicroPython Module
-# This module provides a clean Python API for controlling Jumperless hardware
-# Works with: MicroPython REPL, .py scripts on filesystem, and external Python over serial
+# Full Jumperless MicroPython Module (Embedded)
+#print('Loading full embedded JythonModule...')
 
-import sys
+_on_hardware = True
 
-# Check if we're running on the actual Jumperless hardware
-_on_hardware = True  # Assume we're on hardware by default
+# Global variables for synchronous execution (must be initialized)
+_sync_result_ready = False
+_sync_value = ''
+_sync_type = ''
+_sync_result = 0
+
+def _execute_sync(cmd):
+    """Execute a command synchronously and return the actual result"""
+    global _sync_result_ready, _sync_value, _sync_type, _sync_result
+    _sync_result_ready = False
+    print('SYNC_EXEC:' + cmd)
+    # Wait briefly for C code to process
+    import time
+    time.sleep_ms(1)
+    if _sync_result_ready:
+        if _sync_type == 'bool':
+            return _sync_value == 'True'
+        elif _sync_type == 'float':
+            return float(_sync_value)
+        elif _sync_type == 'int':
+            return int(_sync_value)
+        elif _sync_type == 'error':
+            raise RuntimeError(_sync_value)
+        else:
+            return _sync_value
+    else:
+        raise RuntimeError('Sync execution failed')
 
 class JumperlessError(Exception):
-    """Exception raised when Jumperless commands fail"""
     pass
 
-def _execute_command(command):
-    """Execute a command on the Jumperless hardware"""
+def _execute_command(cmd):
     if _on_hardware:
-        # Running on actual hardware - use the EXEC: prefix mechanism
-        # This will be intercepted by the C++ mp_hal_stdout_tx_strn_cooked function
-        print(f"EXEC:{command}")
-        return f"SUCCESS: {command} executed"
+        # Use synchronous execution that returns actual typed results
+        return _execute_sync(cmd)
     else:
-        # Running on external Python - send over serial
-        print(f"COMMAND: {command}")
-        return "SUCCESS: Command sent (external mode)"
+        print('>COMMAND: ' + cmd)
+        return '<SUCCESS: Command sent (external mode)'
 
 class DAC:
-    """Digital-to-Analog Converter control"""
-    
-    @staticmethod
-    def set(channel, voltage, save=False):
-        """Set DAC output voltage
-        
-        Args:
-            channel (int): DAC channel (0 or 1)
-            voltage (float): Output voltage
-            save (bool): Save to persistent storage
-        
-        Returns:
-            str: Success message
-        """
-        cmd = f"dac(set, {channel}, {voltage}, save={str(save)})"
+    def set(self, channel, voltage, save=False):
+        cmd = 'dac(set, ' + str(channel) + ', ' + str(voltage) + ', save=' + str(save) + ')'
         return _execute_command(cmd)
-    
-    @staticmethod
-    def get(channel):
-        """Get DAC current setting
-        
-        Args:
-            channel (int): DAC channel (0 or 1)
-            
-        Returns:
-            str: Current DAC setting
-        """
-        cmd = f"dac(get, {channel})"
+    def get(self, channel):
+        cmd = 'dac(get, ' + str(channel) + ')'
         return _execute_command(cmd)
 
 class ADC:
-    """Analog-to-Digital Converter control"""
-    
-    @staticmethod
-    def get(channel):
-        """Read ADC voltage
-        
-        Args:
-            channel (int): ADC channel (0-4)
-            
-        Returns:
-            str: ADC reading with voltage
-        """
-        cmd = f"adc(get, {channel})"
+    def get(self, channel):
+        cmd = 'adc(get, ' + str(channel) + ')'
         return _execute_command(cmd)
-    
-    @staticmethod
-    def read(channel):
-        """Alias for get() - more intuitive name"""
-        return ADC.get(channel)
+    def read(self, channel):
+        return self.get(channel)
 
 class GPIO:
-    """General Purpose Input/Output control"""
-    
-    HIGH = "HIGH"
-    LOW = "LOW"
-    OUTPUT = "OUTPUT"
-    INPUT = "INPUT"
-    
-    @staticmethod
-    def set(pin, value):
-        """Set GPIO pin output
-        
-        Args:
-            pin (int): GPIO pin number (1-10)
-            value: Pin value (HIGH, LOW, 1, 0, True, False)
-            
-        Returns:
-            str: Success message
-        """
+    def __init__(self):
+        self.HIGH = 'HIGH'
+        self.LOW = 'LOW'
+        self.OUTPUT = 'OUTPUT'
+        self.INPUT = 'INPUT'
+    def set(self, pin, value):
         if isinstance(value, bool):
-            value = "HIGH" if value else "LOW"
+            value = 'HIGH' if value else 'LOW'
         elif isinstance(value, int):
-            value = "HIGH" if value else "LOW"
-        
-        cmd = f"gpio(set, {pin}, {value})"
+            value = 'HIGH' if value else 'LOW'
+        cmd = 'gpio(set, ' + str(pin) + ', ' + str(value) + ')'
         return _execute_command(cmd)
-    
-    @staticmethod
-    def get(pin):
-        """Read GPIO pin state
-        
-        Args:
-            pin (int): GPIO pin number (1-10)
-            
-        Returns:
-            str: Pin state (HIGH/LOW)
-        """
-        cmd = f"gpio(get, {pin})"
+    def get(self, pin):
+        cmd = 'gpio(get, ' + str(pin) + ')'
         return _execute_command(cmd)
-    
-    @staticmethod
-    def direction(pin, direction):
-        """Set GPIO pin direction
-        
-        Args:
-            pin (int): GPIO pin number (1-10)
-            direction (str): Direction (INPUT/OUTPUT)
-            
-        Returns:
-            str: Success message
-        """
-        cmd = f"gpio(direction, {pin}, {direction})"
+    def direction(self, pin, direction):
+        cmd = 'gpio(direction, ' + str(pin) + ', ' + str(direction) + ')'
         return _execute_command(cmd)
 
 class Nodes:
-    """Node connection management"""
-    
-    @staticmethod
-    def connect(node1, node2, save=False):
-        """Connect two nodes
-        
-        Args:
-            node1 (int): First node number
-            node2 (int): Second node number
-            save (bool): Save connection persistently
-            
-        Returns:
-            str: Success message
-        """
-        cmd = f"nodes(connect, {node1}, {node2}, save={str(save)})"
+    def connect(self, node1, node2, save=False):
+        cmd = 'nodes(connect, ' + str(node1) + ', ' + str(node2) + ', save=' + str(save) + ')'
         return _execute_command(cmd)
-    
-    @staticmethod
-    def disconnect(node1, node2):
-        """Disconnect two nodes
-        
-        Args:
-            node1 (int): First node number
-            node2 (int): Second node number
-            
-        Returns:
-            str: Success message
-        """
-        cmd = f"nodes(remove, {node1}, {node2})"
+    def disconnect(self, node1, node2):
+        cmd = 'nodes(remove, ' + str(node1) + ', ' + str(node2) + ')'
         return _execute_command(cmd)
-    
-    @staticmethod
-    def remove(node1, node2):
-        """Alias for disconnect()"""
-        return Nodes.disconnect(node1, node2)
-    
-    @staticmethod
-    def clear():
-        """Clear all node connections
-        
-        Returns:
-            str: Success message
-        """
-        cmd = "nodes(clear)"
+    def remove(self, node1, node2):
+        return self.disconnect(node1, node2)
+    def clear(self):
+        cmd = 'nodes(clear)'
         return _execute_command(cmd)
 
 class OLED:
-    """OLED display control"""
-    
-    @staticmethod
-    def connect():
-        """Connect to OLED display
-        
-        Returns:
-            str: Success/error message
-        """
-        cmd = "oled(connect)"
+    def connect(self):
+        cmd = 'oled(connect)'
         return _execute_command(cmd)
-    
-    @staticmethod
-    def disconnect():
-        """Disconnect OLED display
-        
-        Returns:
-            str: Success message
-        """
-        cmd = "oled(disconnect)"
+    def disconnect(self):
+        cmd = 'oled(disconnect)'
         return _execute_command(cmd)
-    
-    @staticmethod
-    def print(text, size=2):
-        """Print text to OLED (clears, prints, shows)
-        
-        Args:
-            text (str): Text to display
-            size (int): Text size (1-4)
-            
-        Returns:
-            str: Success message
-        """
-        cmd = f'oled(print, "{text}", {size})'
+    def print(self, text, size=2):
+        cmd = 'oled(print, "' + str(text) + '", ' + str(size) + ')'
         return _execute_command(cmd)
-    
-    @staticmethod
-    def clear():
-        """Clear OLED display
-        
-        Returns:
-            str: Success message
-        """
-        cmd = "oled(clear)"
+    def clear(self):
+        cmd = 'oled(clear)'
         return _execute_command(cmd)
-    
-    @staticmethod
-    def show():
-        """Update OLED display
-        
-        Returns:
-            str: Success message
-        """
-        cmd = "oled(show)"
+    def show(self):
+        cmd = 'oled(show)'
         return _execute_command(cmd)
-    
-    @staticmethod
-    def set_cursor(x, y):
-        """Set cursor position
-        
-        Args:
-            x (int): X coordinate
-            y (int): Y coordinate
-            
-        Returns:
-            str: Success message
-        """
-        cmd = f"oled(setCursor, {x}, {y})"
+    def set_cursor(self, x, y):
+        cmd = 'oled(setCursor, ' + str(x) + ', ' + str(y) + ')'
         return _execute_command(cmd)
-    
-    @staticmethod
-    def set_text_size(size):
-        """Set text size
-        
-        Args:
-            size (int): Text size (1-4)
-            
-        Returns:
-            str: Success message
-        """
-        cmd = f"oled(setTextSize, {size})"
+    def set_text_size(self, size):
+        cmd = 'oled(setTextSize, ' + str(size) + ')'
         return _execute_command(cmd)
-    
-    @staticmethod
-    def cycle_font():
-        """Cycle to next font
-        
-        Returns:
-            str: Success message with font info
-        """
-        cmd = "oled(cycleFont)"
+    def cycle_font(self):
+        cmd = 'oled(cycleFont)'
         return _execute_command(cmd)
-    
-    @staticmethod
-    def set_font(font):
-        """Set specific font
-        
-        Args:
-            font: Font name (str) or index (int)
-            
-        Returns:
-            str: Success message
-        """
+    def set_font(self, font):
         if isinstance(font, str):
-            cmd = f'oled(setFont, "{font}")'
+            cmd = 'oled(setFont, "' + str(font) + '")'
         else:
-            cmd = f"oled(setFont, {font})"
+            cmd = 'oled(setFont, ' + str(font) + ')'
         return _execute_command(cmd)
-    
-    @staticmethod
-    def is_connected():
-        """Check if OLED is connected
-        
-        Returns:
-            str: Connection status
-        """
-        cmd = "oled(isConnected)"
+    def is_connected(self):
+        cmd = 'oled(isConnected)'
         return _execute_command(cmd)
 
 class Arduino:
-    """Arduino control functions"""
-    
-    @staticmethod
-    def reset():
-        """Reset connected Arduino
-        
-        Returns:
-            str: Success message
-        """
-        cmd = "arduino(reset)"
+    def reset(self):
+        cmd = 'arduino(reset)'
         return _execute_command(cmd)
-    
-    @staticmethod
-    def flash():
-        """Flash Arduino (if implemented)
-        
-        Returns:
-            str: Success/error message
-        """
-        cmd = "arduino(flash)"
+    def flash(self):
+        cmd = 'arduino(flash)'
         return _execute_command(cmd)
 
 class UART:
-    """UART connection control"""
-    
-    @staticmethod
-    def connect():
-        """Connect UART to Arduino D0/D1
-        
-        Returns:
-            str: Success message
-        """
-        cmd = "uart(connect)"
+    def connect(self):
+        cmd = 'uart(connect)'
         return _execute_command(cmd)
-    
-    @staticmethod
-    def disconnect():
-        """Disconnect UART from Arduino D0/D1
-        
-        Returns:
-            str: Success message
-        """
-        cmd = "uart(disconnect)"
+    def disconnect(self):
+        cmd = 'uart(disconnect)'
+        return _execute_command(cmd)
+
+class INA:
+    def get_current(self, sensor):
+        cmd = 'ina(getCurrent, ' + str(sensor) + ')'
+        return _execute_command(cmd)
+    def get_voltage(self, sensor):
+        cmd = 'ina(getVoltage, ' + str(sensor) + ')'
+        return _execute_command(cmd)
+    def get_bus_voltage(self, sensor):
+        cmd = 'ina(getBusVoltage, ' + str(sensor) + ')'
+        return _execute_command(cmd)
+    def get_power(self, sensor):
+        cmd = 'ina(getPower, ' + str(sensor) + ')'
         return _execute_command(cmd)
 
 class Probe:
-    """Probe simulation functions"""
-    
-    @staticmethod
-    def tap(node):
-        """Simulate probe tap on node
-        
-        Args:
-            node: Node identifier (int or str)
-            
-        Returns:
-            str: Success message
-        """
-        cmd = f"probe(tap, {node})"
+    def tap(self, node):
+        cmd = 'probe(tap, ' + str(node) + ')'
         return _execute_command(cmd)
-    
-    @staticmethod
-    def click(action="click"):
-        """Simulate probe button click
-        
-        Args:
-            action (str): Click type (click, short_click, release)
-            
-        Returns:
-            str: Success message
-        """
-        cmd = f"probe({action})"
+    def click(self, action='click'):
+        cmd = 'probe(' + str(action) + ')'
         return _execute_command(cmd)
 
-# Create convenient module-level instances
+# Create module instances
 dac = DAC()
 adc = ADC()
+ina = INA()
 gpio = GPIO()
 nodes = Nodes()
 oled = OLED()
@@ -381,66 +174,77 @@ arduino = Arduino()
 uart = UART()
 probe = Probe()
 
-# Convenience functions for common operations
+class JL:
+    def __init__(self):
+        self.dac = dac
+        self.adc = adc
+        self.ina = ina
+        self.gpio = gpio
+        self.nodes = nodes
+        self.oled = oled
+        self.arduino = arduino
+        self.uart = uart
+        self.probe = probe
+    
+    def read_voltage(self, channel):
+        return self.adc.get(channel)
+    
+    def set_voltage(self, channel, voltage, save=False):
+        return self.dac.set(channel, voltage, save)
+    
+    def connect_nodes(self, node1, node2, save=False):
+        return self.nodes.connect(node1, node2, save)
+    
+    def display(self, text, size=2):
+        return self.oled.print(text, size)
+    
+    def reset_arduino(self):
+        return self.arduino.reset()
+    
+    def help(self):
+        print('Jumperless MicroPython Module (Full Embedded)\\n\\r')
+        print('Main Namespace: jl.*\\n\\r')
+        print('Hardware Modules:\\n\\r')
+        print('  jl.dac.set(0, 2.5)      # Set DAC voltage')
+        print('  jl.adc.get(0)           # Read ADC')
+        print('  jl.ina.get_current(0)   # Read INA current')
+        print('  jl.gpio.set(5, "HIGH")  # Set GPIO')
+        print('  jl.nodes.connect(1, 5)  # Connect nodes')
+        print('  jl.oled.print("Hi")     # Display text')
+        print('  jl.arduino.reset()      # Reset Arduino')
+        print('  jl.uart.connect()       # Connect UART')
+        print('\\n\\rConvenience methods:\\n\\r')
+        print('  jl.read_voltage(0)      # Quick ADC read')
+        print('  jl.set_voltage(0, 2.5)  # Quick DAC set')
+        print('  jl.display("Hello!")    # Quick OLED print')
+        print('  jl.connect_nodes(1, 5)  # Quick node connect')
+        print('\\n\\rNew: Return Values & Variables:\\n\\r')
+        print('  voltage = jl.adc.get(0)        # Get actual voltage')
+        print('  current = jl.ina.get_current(0) # Get actual current')
+        print('  pin_state = jl.gpio.get(5)     # Get actual state')
+        print('  if jl.gpio.get(1): print("Pin 1 is HIGH")')
+        print('  if voltage > 3.0: jl.oled.print("High voltage!")')
+        print('')
+        return 'Help displayed'
+
+jl = JL()
+
+def help_jumperless():
+    return jl.help()
+
 def connect_nodes(node1, node2, save=False):
-    """Shortcut to connect two nodes"""
     return nodes.connect(node1, node2, save)
 
 def set_voltage(channel, voltage, save=False):
-    """Shortcut to set DAC voltage"""
     return dac.set(channel, voltage, save)
 
 def read_voltage(channel):
-    """Shortcut to read ADC voltage"""
     return adc.get(channel)
 
 def display(text, size=2):
-    """Shortcut to display text on OLED"""
     return oled.print(text, size)
 
 def reset_arduino():
-    """Shortcut to reset Arduino"""
     return arduino.reset()
 
-# Module info
-__version__ = "1.0.0"
-__author__ = "Jumperless Team"
-__description__ = "MicroPython module for controlling Jumperless hardware"
-
-def help():
-    """Print module help"""
-    print("""
-Jumperless MicroPython Module v{}
-
-Main Classes:
-- dac      : Digital-to-Analog Converter control
-- adc      : Analog-to-Digital Converter control  
-- gpio     : General Purpose Input/Output control
-- nodes    : Node connection management
-- oled     : OLED display control
-- arduino  : Arduino control functions
-- uart     : UART connection control
-- probe    : Probe simulation functions
-
-Quick Examples:
-  dac.set(0, 2.5)           # Set DAC 0 to 2.5V
-  voltage = adc.get(0)      # Read ADC channel 0
-  gpio.set(5, gpio.HIGH)    # Set GPIO pin 5 HIGH
-  nodes.connect(1, 5)       # Connect nodes 1 and 5
-  oled.print("Hello!")      # Display text on OLED
-  arduino.reset()           # Reset connected Arduino
-
-Convenience Functions:
-  connect_nodes(1, 5)       # Quick node connection
-  set_voltage(0, 3.3)       # Quick DAC setting
-  read_voltage(0)           # Quick ADC reading
-  display("Hello!")         # Quick OLED display
-  reset_arduino()           # Quick Arduino reset
-
-For detailed help on any class, use: help(classname)
-Example: help(dac)
-    """.format(__version__))
-
-if __name__ == "__main__":
-    help()
-
+#print('Full JythonModule loaded successfully!')
