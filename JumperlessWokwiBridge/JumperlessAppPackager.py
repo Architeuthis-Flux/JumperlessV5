@@ -312,7 +312,7 @@ Categories=Development;Electronics;
 Terminal=true
 """
     
-    with open(appdir_path / "jumperless.desktop", "w") as f:
+    with open(appdir_path / "jumperless.desktop", "w", encoding='utf-8') as f:
         f.write(desktop_content)
     
     # Create AppRun script
@@ -330,7 +330,7 @@ exec "$HERE/jumperless_cli_launcher.sh" "$@"
 """
     
     apprun_path = appdir_path / "AppRun"
-    with open(apprun_path, "w") as f:
+    with open(apprun_path, "w", encoding='utf-8') as f:
         f.write(apprun_content)
     os.chmod(apprun_path, 0o755)
     
@@ -355,7 +355,7 @@ exec "$HERE/jumperless_cli_launcher.sh" "$@"
             except:
                 print("Warning: Could not convert icon. Creating placeholder.")
                 # Create a simple placeholder icon
-                with open(appdir_path / "jumperless.png", "w") as f:
+                with open(appdir_path / "jumperless.png", "w", encoding='utf-8') as f:
                     f.write("")  # Placeholder
     
     return True
@@ -703,7 +703,7 @@ echo ===============================================
 pause
 """
         
-        with open(windows_launcher_dest, 'w') as f:
+        with open(windows_launcher_dest, 'w', encoding='utf-8') as f:
             f.write(batch_launcher_content)
         print(f"✅ Created Windows launcher: jumperless_launcher.bat")
         
@@ -712,7 +712,7 @@ pause
         
         # For Windows, we need to create a .cmd file (which is executable) but without showing the extension
         windows_launcher_cmd = windows_folder / "jumperless_launcher.cmd"
-        with open(windows_launcher_cmd, 'w') as f:
+        with open(windows_launcher_cmd, 'w', encoding='utf-8') as f:
             f.write(batch_launcher_content)
         print(f"✅ Created Windows executable launcher: jumperless_launcher.cmd")
         
@@ -830,7 +830,7 @@ if __name__ == "__main__":
 '''
         
         python_wrapper_dest = windows_folder / "jumperless_launcher.py"
-        with open(python_wrapper_dest, 'w') as f:
+        with open(python_wrapper_dest, 'w', encoding='utf-8') as f:
             f.write(python_wrapper_content)
         print(f"✅ Created Python wrapper launcher: jumperless_launcher.py")
         
@@ -908,7 +908,7 @@ Visit: https://github.com/Architeuthis-Flux/JumperlessV5
 """
         
         readme_path = windows_folder / "README.md"
-        with open(readme_path, 'w') as f:
+        with open(readme_path, 'w', encoding='utf-8') as f:
             f.write(readme_content)
         print(f"✅ Created README.md")
         
@@ -1136,14 +1136,14 @@ cd "$SCRIPT_DIR"
 exec $PYTHON_CMD JumperlessWokwiBridge.py "$@"
 """
         
-        with open(macos_launcher_dest, 'w') as f:
+        with open(macos_launcher_dest, 'w', encoding='utf-8') as f:
             f.write(macos_launcher_content)
         os.chmod(macos_launcher_dest, 0o755)  # Make executable
         print(f"✅ Created and made executable: jumperless_launcher.sh")
         
         # Create executable copy without .sh extension for double-clicking
         macos_launcher_executable = macos_folder / "jumperless_launcher"
-        with open(macos_launcher_executable, 'w') as f:
+        with open(macos_launcher_executable, 'w', encoding='utf-8') as f:
             f.write(macos_launcher_content)
         os.chmod(macos_launcher_executable, 0o755)  # Make executable
         print(f"✅ Created executable launcher (no extension): jumperless_launcher")
@@ -1272,7 +1272,7 @@ exec $PYTHON_CMD JumperlessWokwiBridge.py "$@"
         python_wrapper_content += '    sys.exit(main())\n'
         
         python_wrapper_dest = macos_folder / "jumperless_launcher.py"
-        with open(python_wrapper_dest, 'w') as f:
+        with open(python_wrapper_dest, 'w', encoding='utf-8') as f:
             f.write(python_wrapper_content)
         os.chmod(python_wrapper_dest, 0o755)  # Make executable
         print(f"✅ Created Python wrapper launcher: jumperless_launcher.py")
@@ -1366,7 +1366,7 @@ Visit: https://github.com/Architeuthis-Flux/JumperlessV5
 """
         
         readme_path = macos_folder / "README.md"
-        with open(readme_path, 'w') as f:
+        with open(readme_path, 'w', encoding='utf-8') as f:
             f.write(readme_content)
         print(f"✅ Created README.md")
         
@@ -1582,7 +1582,7 @@ echo ""
 cd "$SCRIPT_DIR"
 exec $PYTHON_CMD JumperlessWokwiBridge.py "$@"
 """
-            with open(linux_launcher_dest, 'w') as f:
+            with open(linux_launcher_dest, 'w', encoding='utf-8') as f:
                 f.write(comprehensive_launcher_content)
             os.chmod(linux_launcher_dest, 0o755)
             print(f"✅ Created comprehensive launcher script")
@@ -1709,7 +1709,7 @@ exec $PYTHON_CMD JumperlessWokwiBridge.py "$@"
         python_wrapper_content += '    sys.exit(main())\n'
         
         python_wrapper_dest = linux_folder / "jumperless_launcher.py"
-        with open(python_wrapper_dest, 'w') as f:
+        with open(python_wrapper_dest, 'w', encoding='utf-8') as f:
             f.write(python_wrapper_content)
         os.chmod(python_wrapper_dest, 0o755)  # Make executable
         print(f"✅ Created Python wrapper launcher: jumperless_launcher.py")
@@ -1796,7 +1796,7 @@ Visit: https://github.com/Architeuthis-Flux/JumperlessV5
 """
         
         readme_path = linux_folder / "README.md"
-        with open(readme_path, 'w') as f:
+        with open(readme_path, 'w', encoding='utf-8') as f:
             f.write(readme_content)
         print(f"✅ Created README.md")
         
