@@ -1,0 +1,26 @@
+altgraph==0.17.4
+beautifulsoup4==4.13.4
+certifi==2025.4.26
+charset-normalizer==3.3.2
+colorama==0.4.6
+idna==3.10
+macholib==1.16.3
+packaging==25.0
+psutil==7.0.0
+pyduinocli==0.35.0
+pyinstaller==6.14.1
+pyinstaller-hooks-contrib==2025.5
+pynput==1.8.1
+# pyobjc-core==11.0
+# pyobjc-framework-ApplicationServices==11.0
+# pyobjc-framework-Cocoa==11.0
+# pyobjc-framework-CoreText==11.0
+# pyobjc-framework-Quartz==11.0
+pyserial==3.5
+requests==2.32.4
+setuptools==80.9.0
+six==1.17.0
+soupsieve==2.7
+termcolor==3.1.0
+typing_extensions==4.14.0
+urllib3==2.4.0
