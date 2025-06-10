@@ -585,22 +585,80 @@ def package_python_windows():
         else:
             print(f"⚠️  requirements.txt not found")
         
-        # Create Windows batch launcher script
+        # Create Windows batch launcher script with process killing
         windows_launcher_dest = windows_folder / "jumperless_launcher.bat"
         
         batch_launcher_content = """@echo off
+setlocal enabledelayedexpansion
+
 REM Jumperless Windows Launcher
-REM Auto-generated batch launcher
+REM Auto-generated batch launcher with process killing
+
+echo.
+echo ===============================================
+echo         Jumperless Windows Launcher
+echo ===============================================
+echo.
 
 REM Get the directory where this batch file is located
 set "SCRIPT_DIR=%~dp0"
 
+REM Kill existing instances first
+echo Checking for existing Jumperless instances...
+
+REM Kill any existing instances of Jumperless processes
+taskkill /F /IM "Jumperless.exe" >nul 2>&1
+taskkill /F /IM "JumperlessWokwiBridge.exe" >nul 2>&1
+taskkill /F /IM "Jumperless_cli.exe" >nul 2>&1
+taskkill /F /IM "jumperless_cli.exe" >nul 2>&1
+
+REM Kill Python processes running JumperlessWokwiBridge
+for /f "tokens=2" %%i in ('tasklist /fi "imagename eq python.exe" /fo table /nh 2^>nul') do (
+    tasklist /fi "pid eq %%i" /v /fo csv | findstr /i "JumperlessWokwiBridge" >nul
+    if !errorlevel! equ 0 (
+        taskkill /F /PID %%i >nul 2>&1
+    )
+)
+
+for /f "tokens=2" %%i in ('tasklist /fi "imagename eq python3.exe" /fo table /nh 2^>nul') do (
+    tasklist /fi "pid eq %%i" /v /fo csv | findstr /i "JumperlessWokwiBridge" >nul
+    if !errorlevel! equ 0 (
+        taskkill /F /PID %%i >nul 2>&1
+    )
+)
+
+REM Give processes time to terminate
+timeout /t 1 /nobreak >nul 2>&1
+
+echo Cleared existing instances.
+echo.
+
+REM Detect current terminal environment for better user experience
+set "TERMINAL_INFO=Unknown terminal"
+
+if defined WT_SESSION (
+    set "TERMINAL_INFO=Windows Terminal"
+) else if defined TABBY_CONFIG_DIRECTORY (
+    set "TERMINAL_INFO=Tabby Terminal"
+) else if defined HYPER_VERSION (
+    set "TERMINAL_INFO=Hyper Terminal"
+) else if defined ConEmuPID (
+    set "TERMINAL_INFO=ConEmu"
+) else if defined ANSICON (
+    set "TERMINAL_INFO=ANSICON-enabled terminal"
+) else if defined TERM (
+    set "TERMINAL_INFO=UNIX-style terminal (%TERM%)"
+)
+
+echo Running in: %TERMINAL_INFO%
+
 REM Check if Python is available
 python --version >nul 2>&1
 if %errorlevel% neq 0 (
-    echo Error: Python is not installed or not in PATH
-    echo Please install Python 3.6+ from python.org and try again
-    echo Make sure to check "Add Python to PATH" during installation
+    echo [✗] ERROR: Python is not installed or not in PATH
+    echo [i] Please install Python 3.6+ from python.org and try again
+    echo [i] Make sure to check "Add Python to PATH" during installation
+    echo.
     pause
     exit /b 1
 )
@@ -608,28 +666,40 @@ if %errorlevel% neq 0 (
 REM Check if pip is available
 python -m pip --version >nul 2>&1
 if %errorlevel% neq 0 (
-    echo Error: pip is not available
-    echo Please reinstall Python with pip included
+    echo [✗] ERROR: pip is not available
+    echo [i] Please reinstall Python with pip included
+    echo.
     pause
     exit /b 1
 )
 
 REM Install requirements if requirements.txt exists
 if exist "%SCRIPT_DIR%requirements.txt" (
-    echo Installing Python dependencies...
+    echo [→] Installing Python dependencies...
     python -m pip install -r "%SCRIPT_DIR%requirements.txt"
     if %errorlevel% neq 0 (
-        echo Error: Failed to install dependencies
-        echo You may need to run: pip install -r requirements.txt
-        echo Or use a virtual environment
+        echo [!] Warning: Failed to install some dependencies
+        echo [i] You may need to run: pip install -r requirements.txt
+        echo [i] Or use a virtual environment
+        echo.
         pause
     )
 )
 
 REM Run the main application
-echo Starting Jumperless Bridge...
+echo.
+echo ===============================================
+echo [→] Starting Jumperless Bridge...
+echo ===============================================
+echo.
 cd /d "%SCRIPT_DIR%"
 python JumperlessWokwiBridge.py %*
+
+REM Handle exit
+echo.
+echo ===============================================
+echo [i] Jumperless has exited
+echo ===============================================
 pause
 """
         
@@ -637,12 +707,159 @@ pause
             f.write(batch_launcher_content)
         print(f"✅ Created Windows launcher: jumperless_launcher.bat")
         
+        # Create executable copy without .bat extension for double-clicking
+        windows_launcher_executable = windows_folder / "jumperless_launcher"
+        
+        # For Windows, we need to create a .cmd file (which is executable) but without showing the extension
+        windows_launcher_cmd = windows_folder / "jumperless_launcher.cmd"
+        with open(windows_launcher_cmd, 'w') as f:
+            f.write(batch_launcher_content)
+        print(f"✅ Created Windows executable launcher: jumperless_launcher.cmd")
+        
+        # Also create a Python wrapper script for better cross-platform compatibility
+        python_wrapper_content = '''#!/usr/bin/env python3
+"""
+Jumperless Windows Python Launcher Wrapper
+Cross-platform launcher that can be executed directly
+"""
+import os
+import sys
+import subprocess
+import time
+import signal
+
+def kill_existing_instances():
+    """Kill existing Jumperless instances on Windows"""
+    print("Checking for existing Jumperless instances...")
+    
+    # List of process names to kill
+    process_names = [
+        "Jumperless.exe",
+        "JumperlessWokwiBridge.exe", 
+        "Jumperless_cli.exe",
+        "jumperless_cli.exe"
+    ]
+    
+    for process_name in process_names:
+        try:
+            subprocess.run(['taskkill', '/F', '/IM', process_name], 
+                          capture_output=True, check=False)
+        except:
+            pass
+    
+    # Kill Python processes running JumperlessWokwiBridge
+    try:
+        result = subprocess.run(['tasklist', '/fo', 'csv'], 
+                               capture_output=True, text=True, check=False)
+        if result.returncode == 0:
+            lines = result.stdout.strip().split('\\n')
+            for line in lines:
+                if 'python' in line.lower() and 'jumperlesswokwibridge' in line.lower():
+                    parts = line.split('","')
+                    if len(parts) > 1:
+                        try:
+                            pid = parts[1].strip('"')
+                            subprocess.run(['taskkill', '/F', '/PID', pid], 
+                                         capture_output=True, check=False)
+                        except:
+                            pass
+    except:
+        pass
+    
+    time.sleep(1)
+    print("Cleared existing instances.")
+
+def main():
+    """Main launcher function"""
+    # Get script directory
+    script_dir = os.path.dirname(os.path.abspath(__file__))
+    
+    # Kill existing instances
+    kill_existing_instances()
+    
+    print("\n" + "="*50)
+    
+    print("    Jumperless Windows Python Launcher")
+    print("="*50 + "\n")
+    
+    # Check for Python
+    try:
+        subprocess.run([sys.executable, '--version'], check=True, capture_output=True)
+        print(f"✅ Python found: {sys.executable}")
+    except:
+        print("❌ Python not working properly")
+        input("Press Enter to exit...")
+        return 1
+    
+    # Install requirements
+    requirements_file = os.path.join(script_dir, 'requirements.txt')
+    if os.path.exists(requirements_file):
+        print("📦 Installing Python dependencies...")
+        try:
+            subprocess.run([sys.executable, '-m', 'pip', 'install', '-r', requirements_file], 
+                          check=True)
+            print("✅ Dependencies installed")
+        except subprocess.CalledProcessError:
+            print("⚠️  Warning: Some dependencies may not have installed")
+    
+    # Run main application
+    print("\n🚀 Starting Jumperless Bridge...")
+    print("="*50)
+    
+    main_script = os.path.join(script_dir, 'JumperlessWokwiBridge.py')
+    if not os.path.exists(main_script):
+        print(f"❌ Main script not found: {main_script}")
+        input("Press Enter to exit...")
+        return 1
+    
+    try:
+        # Change to script directory and run
+        os.chdir(script_dir)
+        result = subprocess.run([sys.executable, 'JumperlessWokwiBridge.py'] + sys.argv[1:])
+        return result.returncode
+    except KeyboardInterrupt:
+        print("\n\n⚠️  Interrupted by user")
+        return 0
+    except Exception as e:
+        print(f"❌ Error running Jumperless: {e}")
+        input("Press Enter to exit...")
+        return 1
+
+if __name__ == "__main__":
+    sys.exit(main())
+'''
+        
+        python_wrapper_dest = windows_folder / "jumperless_launcher.py"
+        with open(python_wrapper_dest, 'w') as f:
+            f.write(python_wrapper_content)
+        print(f"✅ Created Python wrapper launcher: jumperless_launcher.py")
+        
         # Create a simple README
         readme_content = f"""# Jumperless Bridge for Windows (Python Source)
 
 ## Quick Start
 1. Extract this archive: Right-click {zip_name} -> Extract All
 2. Run the launcher: Double-click `jumperless_launcher.bat`
+
+## Launcher Options
+Multiple launcher options are provided for different use cases:
+
+### Option 1: Batch Launchers (Recommended for most users)
+- `jumperless_launcher.bat` - Full-featured batch launcher with process killing
+- `jumperless_launcher.cmd` - Alternative batch launcher (same functionality)
+
+### Option 2: Python Wrapper (For advanced users)
+- `jumperless_launcher.py` - Cross-platform Python launcher with process killing
+
+### Option 3: Manual Execution
+- Run `python JumperlessWokwiBridge.py` directly after installing requirements
+
+## Smart Process Management
+All launchers include comprehensive process killing functionality:
+- ✅ Automatically kills existing Jumperless instances before starting
+- ✅ Detects and handles running Python processes
+- ✅ Provides clear feedback about terminal environment
+- ✅ Graceful error handling and user-friendly messages
 
 ## Requirements
 - Python 3.6 or higher (from python.org)
@@ -665,7 +882,9 @@ If the launcher doesn't work, you can run manually:
 ## Files Included
 - `JumperlessWokwiBridge.py` - Main application
 - `requirements.txt` - Python dependencies
-- `jumperless_launcher.bat` - Windows launcher script
+- `jumperless_launcher.bat` - Windows batch launcher
+- `jumperless_launcher.cmd` - Alternative batch launcher
+- `jumperless_launcher.py` - Python wrapper launcher
 - `README.md` - This file
 
 ## Compatibility
@@ -673,14 +892,16 @@ This package works on all Windows versions that support Python 3.6+
 (Windows 7, 8, 10, 11 - both 32-bit and 64-bit)
 
 ## Notes
-- The launcher will automatically install Python dependencies
+- All launchers automatically install Python dependencies
 - You may want to use a Python virtual environment
 - Make sure Python is added to your PATH during installation
+- Process killing ensures clean startup without conflicts
 
 ## Troubleshooting
 - If "python is not recognized": Reinstall Python and check "Add to PATH"
 - If dependencies fail to install: Try running as administrator
 - For permission issues: Use `pip install --user -r requirements.txt`
+- If launchers don't work: Try the Python wrapper or manual execution
 
 ## Support
 Visit: https://github.com/Architeuthis-Flux/JumperlessV5
@@ -779,15 +1000,85 @@ def package_python_macos():
         else:
             print(f"⚠️  requirements.txt not found")
         
-        # Create macOS launcher script
+        # Create macOS launcher script with comprehensive process killing
         macos_launcher_dest = macos_folder / "jumperless_launcher.sh"
         
         macos_launcher_content = """#!/bin/bash
 # Jumperless macOS Launcher
-# Auto-generated launcher script
+# Auto-generated launcher script with comprehensive process killing
+
+# Function to kill existing instances
+kill_existing_instances() {
+    echo "Checking for existing Jumperless instances..."
+    
+    # Close Terminal.app windows running Jumperless on macOS
+    osascript -e 'tell application "Terminal"
+        repeat with w in windows
+            try
+                set tabProcesses to processes of tabs of w
+                repeat with tabProc in tabProcesses
+                    repeat with proc in tabProc
+                        if proc contains "Jumperless" or proc contains "jumperless" then
+                            close w
+                            exit repeat
+                        end if
+                    end repeat
+                end repeat
+            on error
+                -- Ignore errors (window might already be closed or no processes)
+            end try
+        end repeat
+    end tell' 2>/dev/null
+    
+    # Also try to close iTerm2 windows if it's being used
+    osascript -e 'tell application "iTerm2"
+        repeat with w in windows
+            try
+                repeat with t in tabs of w
+                    set sessionName to name of current session of t
+                    if sessionName contains "Jumperless" or sessionName contains "jumperless" then
+                        close w
+                        exit repeat
+                    end if
+                end repeat
+            on error
+                -- Ignore errors
+            end try
+        end repeat
+    end tell' 2>/dev/null
+    
+    # Give windows time to close
+    sleep 1
+    
+    # Kill any existing instances of jumperless_cli, Jumperless_cli, or related processes
+    pkill -f "Jumperless_cli" 2>/dev/null
+    pkill -f "jumperless_cli" 2>/dev/null
+    pkill -f "JumperlessWokwiBridge" 2>/dev/null
+    pkill -f "Jumperless.app" 2>/dev/null
+    
+    # Give processes time to terminate gracefully
+    sleep 1
+    
+    # Force kill if still running
+    pkill -9 -f "Jumperless_cli" 2>/dev/null
+    pkill -9 -f "jumperless_cli" 2>/dev/null
+    pkill -9 -f "JumperlessWokwiBridge" 2>/dev/null
+    pkill -9 -f "Jumperless.app" 2>/dev/null
+    
+    echo "Cleared existing instances and terminal windows."
+}
 
 # Get the directory where this script is located
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+
+# Kill existing instances first
+kill_existing_instances
+
+echo ""
+echo "==============================================="
+echo "       Jumperless macOS Launcher"
+echo "==============================================="
+echo ""
 
 # Check if Python 3 is available
 if command -v python3 &> /dev/null; then
@@ -795,7 +1086,7 @@ if command -v python3 &> /dev/null; then
 elif command -v python &> /dev/null; then
     PYTHON_CMD="python"
 else
-    echo "Error: Python 3 is not installed"
+    echo "❌ Error: Python 3 is not installed"
     echo ""
     echo "Please install Python 3:"
     echo "  • Download from python.org, or"
@@ -806,30 +1097,41 @@ else
     exit 1
 fi
 
+echo "✅ Python found: $PYTHON_CMD"
+
 # Check if pip is available
 if ! $PYTHON_CMD -m pip --version &> /dev/null; then
-    echo "Error: pip is not available"
+    echo "❌ Error: pip is not available"
     echo "Please install pip or reinstall Python with pip included"
+    echo ""
     read -p "Press Enter to exit..."
     exit 1
 fi
 
+echo "✅ pip is available"
+
 # Install requirements if requirements.txt exists
 if [ -f "$SCRIPT_DIR/requirements.txt" ]; then
-    echo "Installing Python dependencies..."
+    echo "📦 Installing Python dependencies..."
     $PYTHON_CMD -m pip install -r "$SCRIPT_DIR/requirements.txt"
     if [ $? -ne 0 ]; then
         echo ""
-        echo "Error: Failed to install dependencies"
-        echo "You may need to run: pip3 install -r requirements.txt"
+        echo "⚠️  Warning: Failed to install some dependencies"
+        echo "You may need to run: pip install -r requirements.txt"
         echo "Or use a virtual environment"
         echo ""
         read -p "Press Enter to continue anyway..."
+    else
+        echo "✅ Dependencies installed successfully"
     fi
 fi
 
 # Run the main application
-echo "Starting Jumperless Bridge..."
+echo ""
+echo "==============================================="
+echo "🚀 Starting Jumperless Bridge..."
+echo "==============================================="
+echo ""
 cd "$SCRIPT_DIR"
 exec $PYTHON_CMD JumperlessWokwiBridge.py "$@"
 """
@@ -839,12 +1141,169 @@ exec $PYTHON_CMD JumperlessWokwiBridge.py "$@"
         os.chmod(macos_launcher_dest, 0o755)  # Make executable
         print(f"✅ Created and made executable: jumperless_launcher.sh")
         
+        # Create executable copy without .sh extension for double-clicking
+        macos_launcher_executable = macos_folder / "jumperless_launcher"
+        with open(macos_launcher_executable, 'w') as f:
+            f.write(macos_launcher_content)
+        os.chmod(macos_launcher_executable, 0o755)  # Make executable
+        print(f"✅ Created executable launcher (no extension): jumperless_launcher")
+        
+        # Create a Python wrapper for better cross-platform compatibility
+        python_wrapper_content = '#!/usr/bin/env python3\n'
+        python_wrapper_content += '"""\n'
+        python_wrapper_content += 'Jumperless macOS Python Launcher Wrapper\n'
+        python_wrapper_content += 'Cross-platform launcher that can be executed directly\n'
+        python_wrapper_content += '"""\n'
+        python_wrapper_content += 'import os\n'
+        python_wrapper_content += 'import sys\n'
+        python_wrapper_content += 'import subprocess\n'
+        python_wrapper_content += 'import time\n'
+        python_wrapper_content += 'import signal\n\n'
+        python_wrapper_content += 'def kill_existing_instances():\n'
+        python_wrapper_content += '    """Kill existing Jumperless instances on macOS"""\n'
+        python_wrapper_content += '    print("Checking for existing Jumperless instances...")\n'
+        python_wrapper_content += '    \n'
+        python_wrapper_content += '    # Close Terminal.app windows running Jumperless\n'
+        python_wrapper_content += '    applescript_terminal = """\n'
+        python_wrapper_content += '    tell application "Terminal"\n'
+        python_wrapper_content += '        repeat with w in windows\n'
+        python_wrapper_content += '            try\n'
+        python_wrapper_content += '                set tabProcesses to processes of tabs of w\n'
+        python_wrapper_content += '                repeat with tabProc in tabProcesses\n'
+        python_wrapper_content += '                    repeat with proc in tabProc\n'
+        python_wrapper_content += '                        if proc contains "Jumperless" or proc contains "jumperless" then\n'
+        python_wrapper_content += '                            close w\n'
+        python_wrapper_content += '                            exit repeat\n'
+        python_wrapper_content += '                        end if\n'
+        python_wrapper_content += '                    end repeat\n'
+        python_wrapper_content += '                end repeat\n'
+        python_wrapper_content += '            on error\n'
+        python_wrapper_content += '                -- Ignore errors\n'
+        python_wrapper_content += '            end try\n'
+        python_wrapper_content += '        end repeat\n'
+        python_wrapper_content += '    end tell\n'
+        python_wrapper_content += '    """\n'
+        python_wrapper_content += '    \n'
+        python_wrapper_content += '    try:\n'
+        python_wrapper_content += '        subprocess.run([\'osascript\', \'-e\', applescript_terminal], \n'
+        python_wrapper_content += '                      capture_output=True, check=False)\n'
+        python_wrapper_content += '    except Exception:\n'
+        python_wrapper_content += '        pass\n'
+        python_wrapper_content += '    \n'
+        python_wrapper_content += '    # Kill processes\n'
+        python_wrapper_content += '    process_patterns = [\n'
+        python_wrapper_content += '        "Jumperless_cli",\n'
+        python_wrapper_content += '        "jumperless_cli", \n'
+        python_wrapper_content += '        "JumperlessWokwiBridge",\n'
+        python_wrapper_content += '        "Jumperless.app"\n'
+        python_wrapper_content += '    ]\n'
+        python_wrapper_content += '    \n'
+        python_wrapper_content += '    for pattern in process_patterns:\n'
+        python_wrapper_content += '        try:\n'
+        python_wrapper_content += '            subprocess.run([\'pkill\', \'-f\', pattern], \n'
+        python_wrapper_content += '                          capture_output=True, check=False)\n'
+        python_wrapper_content += '        except Exception:\n'
+        python_wrapper_content += '            pass\n'
+        python_wrapper_content += '    \n'
+        python_wrapper_content += '    time.sleep(1)\n'
+        python_wrapper_content += '    print("Cleared existing instances and terminal windows.")\n\n'
+        python_wrapper_content += 'def main():\n'
+        python_wrapper_content += '    """Main launcher function"""\n'
+        python_wrapper_content += '    # Get script directory\n'
+        python_wrapper_content += '    script_dir = os.path.dirname(os.path.abspath(__file__))\n'
+        python_wrapper_content += '    \n'
+        python_wrapper_content += '    # Kill existing instances\n'
+        python_wrapper_content += '    kill_existing_instances()\n'
+        python_wrapper_content += '    \n'
+        python_wrapper_content += '    print("\\\\n" + "="*50)\n'
+        python_wrapper_content += '    print("    Jumperless macOS Python Launcher")\n'
+        python_wrapper_content += '    print("="*50 + "\\\\n")\n'
+        python_wrapper_content += '    \n'
+        python_wrapper_content += '    # Find Python\n'
+        python_wrapper_content += '    python_cmd = None\n'
+        python_wrapper_content += '    for cmd in [\'python3\', \'python\']:\n'
+        python_wrapper_content += '        try:\n'
+        python_wrapper_content += '            result = subprocess.run([cmd, \'--version\'], \n'
+        python_wrapper_content += '                                  capture_output=True, check=True)\n'
+        python_wrapper_content += '            python_cmd = cmd\n'
+        python_wrapper_content += '            print(f"✅ Python found: {cmd}")\n'
+        python_wrapper_content += '            break\n'
+        python_wrapper_content += '        except Exception:\n'
+        python_wrapper_content += '            continue\n'
+        python_wrapper_content += '    \n'
+        python_wrapper_content += '    if not python_cmd:\n'
+        python_wrapper_content += '        print("❌ Python 3 not found")\n'
+        python_wrapper_content += '        input("\\\\nPress Enter to exit...")\n'
+        python_wrapper_content += '        return 1\n'
+        python_wrapper_content += '    \n'
+        python_wrapper_content += '    # Install requirements\n'
+        python_wrapper_content += '    requirements_file = os.path.join(script_dir, \'requirements.txt\')\n'
+        python_wrapper_content += '    if os.path.exists(requirements_file):\n'
+        python_wrapper_content += '        print("📦 Installing Python dependencies...")\n'
+        python_wrapper_content += '        try:\n'
+        python_wrapper_content += '            subprocess.run([python_cmd, \'-m\', \'pip\', \'install\', \'-r\', requirements_file], \n'
+        python_wrapper_content += '                          check=True)\n'
+        python_wrapper_content += '            print("✅ Dependencies installed successfully")\n'
+        python_wrapper_content += '        except subprocess.CalledProcessError:\n'
+        python_wrapper_content += '            print("⚠️  Warning: Some dependencies may not have installed")\n'
+        python_wrapper_content += '    \n'
+        python_wrapper_content += '    # Run main application\n'
+        python_wrapper_content += '    print("\\\\n🚀 Starting Jumperless Bridge...")\n'
+        python_wrapper_content += '    \n'
+        python_wrapper_content += '    main_script = os.path.join(script_dir, \'JumperlessWokwiBridge.py\')\n'
+        python_wrapper_content += '    if not os.path.exists(main_script):\n'
+        python_wrapper_content += '        print(f"❌ Main script not found: {main_script}")\n'
+        python_wrapper_content += '        input("Press Enter to exit...")\n'
+        python_wrapper_content += '        return 1\n'
+        python_wrapper_content += '    \n'
+        python_wrapper_content += '    try:\n'
+        python_wrapper_content += '        # Change to script directory and run\n'
+        python_wrapper_content += '        os.chdir(script_dir)\n'
+        python_wrapper_content += '        result = subprocess.run([python_cmd, \'JumperlessWokwiBridge.py\'] + sys.argv[1:])\n'
+        python_wrapper_content += '        return result.returncode\n'
+        python_wrapper_content += '    except KeyboardInterrupt:\n'
+        python_wrapper_content += '        print("\\\\n\\\\n⚠️  Interrupted by user")\n'
+        python_wrapper_content += '        return 0\n'
+        python_wrapper_content += '    except Exception as e:\n'
+        python_wrapper_content += '        print(f"❌ Error running Jumperless: {e}")\n'
+        python_wrapper_content += '        input("Press Enter to exit...")\n'
+        python_wrapper_content += '        return 1\n\n'
+        python_wrapper_content += 'if __name__ == "__main__":\n'
+        python_wrapper_content += '    sys.exit(main())\n'
+        
+        python_wrapper_dest = macos_folder / "jumperless_launcher.py"
+        with open(python_wrapper_dest, 'w') as f:
+            f.write(python_wrapper_content)
+        os.chmod(python_wrapper_dest, 0o755)  # Make executable
+        print(f"✅ Created Python wrapper launcher: jumperless_launcher.py")
+        
         # Create a simple README
         readme_content = f"""# Jumperless Bridge for macOS (Python Source)
 
 ## Quick Start
 1. Extract this archive: `tar -xzf {tar_name}`
 2. Run the launcher: `./jumperless_launcher.sh`
+
+## Launcher Options
+Multiple launcher options are provided for different use cases:
+
+### Option 1: Shell Script Launchers (Recommended for most users)
+- `jumperless_launcher.sh` - Full-featured shell launcher with comprehensive process killing
+- `jumperless_launcher` - Executable launcher (no extension) for double-clicking
+
+### Option 2: Python Wrapper (For advanced users)
+- `jumperless_launcher.py` - Cross-platform Python launcher with process killing
+
+### Option 3: Manual Execution
+- Run `python3 JumperlessWokwiBridge.py` directly after installing requirements
+
+## Smart Process Management
+All launchers include comprehensive process killing functionality:
+- ✅ Automatically kills existing Jumperless instances before starting
+- ✅ Closes Terminal.app and iTerm2 windows running Jumperless
+- ✅ Uses AppleScript for intelligent window management
+- ✅ Graceful process termination with force-kill fallback
+- ✅ User-friendly messages and error handling
 
 ## Requirements
 - Python 3.6 or higher
@@ -878,7 +1337,9 @@ If the launcher doesn't work, you can run manually:
 ## Files Included
 - `JumperlessWokwiBridge.py` - Main application
 - `requirements.txt` - Python dependencies
-- `jumperless_launcher.sh` - macOS launcher script
+- `jumperless_launcher.sh` - macOS shell launcher script
+- `jumperless_launcher` - Executable launcher (no extension)
+- `jumperless_launcher.py` - Python wrapper launcher
 - `README.md` - This file
 
 ## Compatibility
@@ -887,14 +1348,18 @@ This package works on:
 - Any macOS version with Python 3.6+
 
 ## Notes
-- The launcher will automatically install Python dependencies
+- All launchers automatically install Python dependencies
 - You may want to use a Python virtual environment
 - Compatible with both Intel and Apple Silicon Macs
+- Process killing ensures clean startup without conflicts
+- Launchers detect and close existing Terminal/iTerm2 windows
 
 ## Troubleshooting
 - If Python is not found: Install from python.org or use Homebrew
 - For permission issues: Try `pip3 install --user -r requirements.txt`
 - On older macOS: You may need to install Command Line Tools
+- If launchers don't work: Try the Python wrapper or manual execution
+- For double-click issues: Use the `jumperless_launcher` file (no extension)
 
 ## Support
 Visit: https://github.com/Architeuthis-Flux/JumperlessV5
@@ -988,7 +1453,7 @@ def package_linux():
         else:
             print(f"⚠️  requirements.txt not found")
         
-        # Copy and setup Linux launcher script
+        # Copy and setup Linux launcher script with comprehensive process killing
         linux_launcher_source = "jumperless_launcher.sh"
         linux_launcher_dest = linux_folder / "jumperless_launcher.sh"
         
@@ -997,14 +1462,74 @@ def package_linux():
             os.chmod(linux_launcher_dest, 0o755)  # Make executable
             print(f"✅ Copied and made executable: jumperless_launcher.sh")
         else:
-            print(f"⚠️  {linux_launcher_source} not found, creating basic launcher")
-            # Create a basic launcher script
-            basic_launcher_content = """#!/bin/bash
+            print(f"⚠️  {linux_launcher_source} not found, creating comprehensive launcher")
+            # Create a comprehensive launcher script with process killing
+            comprehensive_launcher_content = """#!/bin/bash
 # Jumperless Linux Launcher
-# Auto-generated basic launcher
+# Auto-generated comprehensive launcher with process killing
+
+# Function to kill existing instances
+kill_existing_instances() {
+    echo "Checking for existing Jumperless instances..."
+    
+    # Detect OS for platform-specific terminal window closing (this is Linux)
+    OS="Linux"
+    
+    # Close terminal windows on Linux by finding window IDs
+    if command -v xdotool >/dev/null 2>&1; then
+        # Use xdotool to find and close windows with Jumperless in title or command
+        xdotool search --name "Jumperless" windowclose 2>/dev/null || true
+        xdotool search --name "jumperless" windowclose 2>/dev/null || true
+    fi
+    
+    # Try to close specific terminal emulator windows
+    if command -v wmctrl >/dev/null 2>&1; then
+        wmctrl -c "Jumperless" 2>/dev/null || true
+        wmctrl -c "jumperless" 2>/dev/null || true
+    fi
+    
+    # For GNOME, try to close terminals by searching processes
+    if command -v gdbus >/dev/null 2>&1; then
+        # Get list of gnome-terminal windows and close ones running Jumperless
+        for pid in $(pgrep -f "gnome-terminal" 2>/dev/null); do
+            if ps -p $pid -o args= 2>/dev/null | grep -q -i jumperless; then
+                kill $pid 2>/dev/null || true
+            fi
+        done
+    fi
+    
+    # Give windows time to close
+    sleep 1
+    
+    # Kill any existing instances of jumperless_cli, Jumperless_cli, or related processes
+    pkill -f "Jumperless_cli" 2>/dev/null || true
+    pkill -f "jumperless_cli" 2>/dev/null || true
+    pkill -f "JumperlessWokwiBridge" 2>/dev/null || true
+    pkill -f "Jumperless.app" 2>/dev/null || true
+    
+    # Give processes time to terminate gracefully
+    sleep 1
+    
+    # Force kill if still running
+    pkill -9 -f "Jumperless_cli" 2>/dev/null || true
+    pkill -9 -f "jumperless_cli" 2>/dev/null || true
+    pkill -9 -f "JumperlessWokwiBridge" 2>/dev/null || true
+    pkill -9 -f "Jumperless.app" 2>/dev/null || true
+    
+    echo "Cleared existing instances and terminal windows."
+}
 
 # Get the directory where this script is located
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+
+# Kill existing instances first
+kill_existing_instances
+
+echo ""
+echo "==============================================="
+echo "       Jumperless Linux Launcher"
+echo "==============================================="
+echo ""
 
 # Check if Python 3 is available
 if command -v python3 &> /dev/null; then
@@ -1012,38 +1537,182 @@ if command -v python3 &> /dev/null; then
 elif command -v python &> /dev/null; then
     PYTHON_CMD="python"
 else
-    echo "Error: Python 3 is not installed or not in PATH"
+    echo "❌ Error: Python 3 is not installed or not in PATH"
     echo "Please install Python 3 and try again"
+    echo ""
+    read -p "Press Enter to exit..."
     exit 1
 fi
+
+echo "✅ Python found: $PYTHON_CMD"
 
 # Check if pip is available
 if ! $PYTHON_CMD -m pip --version &> /dev/null; then
-    echo "Error: pip is not available"
+    echo "❌ Error: pip is not available"
     echo "Please install pip and try again"
+    echo ""
+    read -p "Press Enter to exit..."
     exit 1
 fi
 
+echo "✅ pip is available"
+
 # Install requirements if requirements.txt exists
 if [ -f "$SCRIPT_DIR/requirements.txt" ]; then
-    echo "Installing Python dependencies..."
+    echo "📦 Installing Python dependencies..."
     $PYTHON_CMD -m pip install -r "$SCRIPT_DIR/requirements.txt"
     if [ $? -ne 0 ]; then
-        echo "Error: Failed to install dependencies"
+        echo ""
+        echo "⚠️  Warning: Failed to install some dependencies"
         echo "You may need to run: pip install -r requirements.txt"
         echo "Or use a virtual environment"
+        echo ""
+        read -p "Press Enter to continue anyway..."
+    else
+        echo "✅ Dependencies installed successfully"
     fi
 fi
 
 # Run the main application
-echo "Starting Jumperless Bridge..."
+echo ""
+echo "==============================================="
+echo "🚀 Starting Jumperless Bridge..."
+echo "==============================================="
+echo ""
 cd "$SCRIPT_DIR"
 exec $PYTHON_CMD JumperlessWokwiBridge.py "$@"
 """
             with open(linux_launcher_dest, 'w') as f:
-                f.write(basic_launcher_content)
+                f.write(comprehensive_launcher_content)
             os.chmod(linux_launcher_dest, 0o755)
-            print(f"✅ Created basic launcher script")
+            print(f"✅ Created comprehensive launcher script")
+        
+        # Create executable copy without .sh extension for double-clicking
+        linux_launcher_executable = linux_folder / "jumperless_launcher"
+        if os.path.exists(linux_launcher_dest):
+            shutil.copy2(linux_launcher_dest, linux_launcher_executable)
+            os.chmod(linux_launcher_executable, 0o755)  # Make executable
+            print(f"✅ Created executable launcher (no extension): jumperless_launcher")
+        
+        # Create a Python wrapper for better cross-platform compatibility
+        python_wrapper_content = '#!/usr/bin/env python3\n'
+        python_wrapper_content += '"""\n'
+        python_wrapper_content += 'Jumperless Linux Python Launcher Wrapper\n'
+        python_wrapper_content += 'Cross-platform launcher that can be executed directly\n'
+        python_wrapper_content += '"""\n'
+        python_wrapper_content += 'import os\n'
+        python_wrapper_content += 'import sys\n'
+        python_wrapper_content += 'import subprocess\n'
+        python_wrapper_content += 'import time\n'
+        python_wrapper_content += 'import signal\n\n'
+        python_wrapper_content += 'def kill_existing_instances():\n'
+        python_wrapper_content += '    """Kill existing Jumperless instances on Linux"""\n'
+        python_wrapper_content += '    print("Checking for existing Jumperless instances...")\n'
+        python_wrapper_content += '    \n'
+        python_wrapper_content += '    # Close terminal windows using xdotool if available\n'
+        python_wrapper_content += '    try:\n'
+        python_wrapper_content += '        subprocess.run([\'xdotool\', \'search\', \'--name\', \'Jumperless\', \'windowclose\'], \n'
+        python_wrapper_content += '                      capture_output=True, check=False)\n'
+        python_wrapper_content += '        subprocess.run([\'xdotool\', \'search\', \'--name\', \'jumperless\', \'windowclose\'], \n'
+        python_wrapper_content += '                      capture_output=True, check=False)\n'
+        python_wrapper_content += '    except Exception:\n'
+        python_wrapper_content += '        pass\n'
+        python_wrapper_content += '    \n'
+        python_wrapper_content += '    # Try wmctrl for window management\n'
+        python_wrapper_content += '    try:\n'
+        python_wrapper_content += '        subprocess.run([\'wmctrl\', \'-c\', \'Jumperless\'], \n'
+        python_wrapper_content += '                      capture_output=True, check=False)\n'
+        python_wrapper_content += '        subprocess.run([\'wmctrl\', \'-c\', \'jumperless\'], \n'
+        python_wrapper_content += '                      capture_output=True, check=False)\n'
+        python_wrapper_content += '    except Exception:\n'
+        python_wrapper_content += '        pass\n'
+        python_wrapper_content += '    \n'
+        python_wrapper_content += '    # Kill processes\n'
+        python_wrapper_content += '    process_patterns = [\n'
+        python_wrapper_content += '        "Jumperless_cli",\n'
+        python_wrapper_content += '        "jumperless_cli", \n'
+        python_wrapper_content += '        "JumperlessWokwiBridge",\n'
+        python_wrapper_content += '        "Jumperless.app"\n'
+        python_wrapper_content += '    ]\n'
+        python_wrapper_content += '    \n'
+        python_wrapper_content += '    for pattern in process_patterns:\n'
+        python_wrapper_content += '        try:\n'
+        python_wrapper_content += '            subprocess.run([\'pkill\', \'-f\', pattern], \n'
+        python_wrapper_content += '                          capture_output=True, check=False)\n'
+        python_wrapper_content += '        except Exception:\n'
+        python_wrapper_content += '            pass\n'
+        python_wrapper_content += '    \n'
+        python_wrapper_content += '    time.sleep(1)\n'
+        python_wrapper_content += '    print("Cleared existing instances and terminal windows.")\n\n'
+        python_wrapper_content += 'def main():\n'
+        python_wrapper_content += '    """Main launcher function"""\n'
+        python_wrapper_content += '    # Get script directory\n'
+        python_wrapper_content += '    script_dir = os.path.dirname(os.path.abspath(__file__))\n'
+        python_wrapper_content += '    \n'
+        python_wrapper_content += '    # Kill existing instances\n'
+        python_wrapper_content += '    kill_existing_instances()\n'
+        python_wrapper_content += '    \n'
+        python_wrapper_content += '    print("\\\\n" + "="*50)\n'
+        python_wrapper_content += '    print("    Jumperless Linux Python Launcher")\n'
+        python_wrapper_content += '    print("="*50 + "\\\\n")\n'
+        python_wrapper_content += '    \n'
+        python_wrapper_content += '    # Find Python\n'
+        python_wrapper_content += '    python_cmd = None\n'
+        python_wrapper_content += '    for cmd in [\'python3\', \'python\']:\n'
+        python_wrapper_content += '        try:\n'
+        python_wrapper_content += '            result = subprocess.run([cmd, \'--version\'], \n'
+        python_wrapper_content += '                                  capture_output=True, check=True)\n'
+        python_wrapper_content += '            python_cmd = cmd\n'
+        python_wrapper_content += '            print(f"✅ Python found: {cmd}")\n'
+        python_wrapper_content += '            break\n'
+        python_wrapper_content += '        except Exception:\n'
+        python_wrapper_content += '            continue\n'
+        python_wrapper_content += '    \n'
+        python_wrapper_content += '    if not python_cmd:\n'
+        python_wrapper_content += '        print("❌ Python 3 not found")\n'
+        python_wrapper_content += '        input("\\\\nPress Enter to exit...")\n'
+        python_wrapper_content += '        return 1\n'
+        python_wrapper_content += '    \n'
+        python_wrapper_content += '    # Install requirements\n'
+        python_wrapper_content += '    requirements_file = os.path.join(script_dir, \'requirements.txt\')\n'
+        python_wrapper_content += '    if os.path.exists(requirements_file):\n'
+        python_wrapper_content += '        print("📦 Installing Python dependencies...")\n'
+        python_wrapper_content += '        try:\n'
+        python_wrapper_content += '            subprocess.run([python_cmd, \'-m\', \'pip\', \'install\', \'-r\', requirements_file], \n'
+        python_wrapper_content += '                          check=True)\n'
+        python_wrapper_content += '            print("✅ Dependencies installed successfully")\n'
+        python_wrapper_content += '        except subprocess.CalledProcessError:\n'
+        python_wrapper_content += '            print("⚠️  Warning: Some dependencies may not have installed")\n'
+        python_wrapper_content += '    \n'
+        python_wrapper_content += '    # Run main application\n'
+        python_wrapper_content += '    print("\\\\n🚀 Starting Jumperless Bridge...")\n'
+        python_wrapper_content += '    \n'
+        python_wrapper_content += '    main_script = os.path.join(script_dir, \'JumperlessWokwiBridge.py\')\n'
+        python_wrapper_content += '    if not os.path.exists(main_script):\n'
+        python_wrapper_content += '        print(f"❌ Main script not found: {main_script}")\n'
+        python_wrapper_content += '        input("Press Enter to exit...")\n'
+        python_wrapper_content += '        return 1\n'
+        python_wrapper_content += '    \n'
+        python_wrapper_content += '    try:\n'
+        python_wrapper_content += '        # Change to script directory and run\n'
+        python_wrapper_content += '        os.chdir(script_dir)\n'
+        python_wrapper_content += '        result = subprocess.run([python_cmd, \'JumperlessWokwiBridge.py\'] + sys.argv[1:])\n'
+        python_wrapper_content += '        return result.returncode\n'
+        python_wrapper_content += '    except KeyboardInterrupt:\n'
+        python_wrapper_content += '        print("\\\\n\\\\n⚠️  Interrupted by user")\n'
+        python_wrapper_content += '        return 0\n'
+        python_wrapper_content += '    except Exception as e:\n'
+        python_wrapper_content += '        print(f"❌ Error running Jumperless: {e}")\n'
+        python_wrapper_content += '        input("Press Enter to exit...")\n'
+        python_wrapper_content += '        return 1\n\n'
+        python_wrapper_content += 'if __name__ == "__main__":\n'
+        python_wrapper_content += '    sys.exit(main())\n'
+        
+        python_wrapper_dest = linux_folder / "jumperless_launcher.py"
+        with open(python_wrapper_dest, 'w') as f:
+            f.write(python_wrapper_content)
+        os.chmod(python_wrapper_dest, 0o755)  # Make executable
+        print(f"✅ Created Python wrapper launcher: jumperless_launcher.py")
         
         # Create a simple README
         readme_content = f"""# Jumperless Bridge for Linux
@@ -1052,9 +1721,35 @@ exec $PYTHON_CMD JumperlessWokwiBridge.py "$@"
 1. Extract this archive: `tar -xzf {tar_name}`
 2. Run the launcher: `./jumperless_launcher.sh`
 
+## Launcher Options
+Multiple launcher options are provided for different use cases:
+
+### Option 1: Shell Script Launchers (Recommended for most users)
+- `jumperless_launcher.sh` - Full-featured shell launcher with comprehensive process killing
+- `jumperless_launcher` - Executable launcher (no extension) for double-clicking
+
+### Option 2: Python Wrapper (For advanced users)
+- `jumperless_launcher.py` - Cross-platform Python launcher with process killing
+
+### Option 3: Manual Execution
+- Run `python3 JumperlessWokwiBridge.py` directly after installing requirements
+
+## Smart Process Management
+All launchers include comprehensive process killing functionality:
+- ✅ Automatically kills existing Jumperless instances before starting
+- ✅ Closes terminal windows running Jumperless (uses xdotool/wmctrl)
+- ✅ Handles GNOME Terminal, Konsole, and other terminal emulators
+- ✅ Graceful process termination with force-kill fallback
+- ✅ User-friendly messages and error handling
+
 ## Requirements
 - Python 3.6 or higher
 - pip (Python package installer)
+
+## Optional Tools for Enhanced Terminal Management
+- `xdotool` - For X11 window management (recommended)
+- `wmctrl` - Alternative window management tool
+- Most Linux distributions include these or they can be installed via package manager
 
 ## Manual Installation
 If the launcher doesn't work, you can run manually:
@@ -1072,7 +1767,9 @@ If the launcher doesn't work, you can run manually:
 ## Files Included
 - `JumperlessWokwiBridge.py` - Main application
 - `requirements.txt` - Python dependencies
-- `jumperless_launcher.sh` - Launcher script
+- `jumperless_launcher.sh` - Linux shell launcher script
+- `jumperless_launcher` - Executable launcher (no extension)
+- `jumperless_launcher.py` - Python wrapper launcher
 - `README.md` - This file
 
 ## Compatibility
@@ -1080,9 +1777,19 @@ This package works on all Linux architectures (x86_64, ARM64, etc.)
 since it contains pure Python code.
 
 ## Notes
-- The launcher will automatically install Python dependencies
+- All launchers automatically install Python dependencies
 - You may want to use a Python virtual environment
 - For system-wide installation, you may need sudo for pip install
+- Process killing ensures clean startup without conflicts
+- Terminal window management works best with xdotool installed
+
+## Troubleshooting
+- If Python is not found: Install `python3` via your package manager
+- For permission issues: Try `pip install --user -r requirements.txt`
+- If terminal windows don't close: Install `xdotool` or `wmctrl`
+- If launchers don't work: Try the Python wrapper or manual execution
+- For double-click issues: Use the `jumperless_launcher` file (no extension)
+- On some distros: You may need to install `python3-pip` separately
 
 ## Support
 Visit: https://github.com/Architeuthis-Flux/JumperlessV5
