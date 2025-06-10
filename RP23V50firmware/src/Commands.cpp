@@ -84,6 +84,19 @@ void refreshConnections(int ledShowOption, int fillUnused, int clean) {
   //   lastSlot = netSlot;
   // }
 
+  // Serial.print("refreshConnections: ");
+  // Serial.println(ledShowOption);
+  // Serial.print("fillUnused: ");
+  // Serial.println(fillUnused);
+  // Serial.print("clean: ");
+  // Serial.println(clean);
+  // Serial.print("jumperlessConfig.routing.stack_paths: ");
+  // Serial.println(jumperlessConfig.routing.stack_paths);
+  // Serial.print("jumperlessConfig.routing.stack_rails: ");
+  // Serial.println(jumperlessConfig.routing.stack_rails);
+  // Serial.print("jumperlessConfig.routing.stack_dacs: ");
+  // Serial.println(jumperlessConfig.routing.stack_dacs);
+
 
   if (ledShowOption != 0) {
 

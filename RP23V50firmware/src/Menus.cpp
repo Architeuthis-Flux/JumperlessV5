@@ -2907,29 +2907,34 @@ int doMenuAction(int menuPosition, int selection) {
                       jumperlessConfig.routing.stack_rails = currentAction.from[0];
 
                       if (currentAction.fromAscii[0][0] == 'M' || currentAction.fromAscii[0][0] == 'm') {
+
                         jumperlessConfig.routing.rail_priority = 2;
                         jumperlessConfig.routing.stack_rails = 7;
 
                         } else {
                         jumperlessConfig.routing.rail_priority = 1;
                         }
-                      } else if (menuLines[currentAction.previousMenuPositions[2]].indexOf("Paths") !=
-                      -1) {
-                        pathDuplicates = currentAction.from[0];
+
+                      } else if (menuLines[currentAction.previousMenuPositions[2]].indexOf("Paths") !=-1) {
+
+                        jumperlessConfig.routing.stack_paths = currentAction.from[0];
+
                         if (currentAction.fromAscii[0][0] == 'M' || currentAction.fromAscii[0][0] == 'm') {
                           //pathPriority = 2;
-                          pathDuplicates = 5;
+                          //pathDuplicates = 5;
                           jumperlessConfig.routing.stack_paths = 5;
                           }
+
                         } else if (menuLines[currentAction.previousMenuPositions[2]].indexOf("DACs") != -1)
                           {
-                          dacDuplicates = currentAction.from[0];
+                          jumperlessConfig.routing.stack_dacs = currentAction.from[0];
+                          
                           if (currentAction.fromAscii[0][0] == 'M' || currentAction.fromAscii[0][0] == 'm') {
-                            dacPriority = 2;
-                            dacDuplicates = 4;
+                            //dacPriority = 2;
+                            //dacDuplicates = 4;
                             jumperlessConfig.routing.stack_dacs = 4;
                             } else {
-                            dacPriority = 1;
+                            //dacPriority = 1;
                             jumperlessConfig.routing.stack_dacs = 1;
                             }
                           }

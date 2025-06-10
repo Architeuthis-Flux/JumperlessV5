@@ -4,6 +4,7 @@ import os
 import platform
 import shutil
 import time
+import subprocess
 
 # macOS packaging paths
 generated_app_path = pathlib.Path("/Users/kevinsanto/Documents/GitHub/JumperlessV5/JumperlessWokwiBridge/dist/Jumperless.app/Contents/MacOS/Jumperless")
@@ -35,6 +36,187 @@ windows_zip_path = pathlib.Path("Jumperless-Windows-x64.zip")
 appdist_path = pathlib.Path("dist/Jumperless.app")
 dmg_folder = pathlib.Path("JumperlessDMG/Jumperless.app")
 python_folder = pathlib.Path("Jumperless Python/")
+
+def check_and_update_requirements():
+    """Generate new requirements.txt and update new_requirements flag if they differ"""
+    print("=== Checking Requirements ===")
+    
+    try:
+        # Define the packages actually used by JumperlessWokwiBridge.py
+        # Based on the imports in the file
+        core_packages = [
+            'requests',        # For HTTP requests to Wokwi API and GitHub
+            'pyserial',        # For serial communication (imported as 'serial')
+            'psutil',          # For system/process monitoring
+            'beautifulsoup4',  # For HTML parsing (imported as 'bs4')
+        ]
+        
+        # Optional but recommended packages
+        optional_packages = [
+            'packaging',       # For version comparison (optional but recommended)
+            'pyduinocli',      # For Arduino CLI support (optional but recommended)
+            'colorama',        # For cross-platform colored output (optional but recommended)
+        ]
+        
+        # Platform-specific requirements
+        platform_specific_requirements = [
+            'pywin32>=306; sys_platform == "win32"',  # Windows volume detection and APIs
+        ]
+        
+        print("Generating minimal requirements for JumperlessWokwiBridge.py...")
+        
+        # Get current pip freeze output
+        result = subprocess.run([
+            "python", "-m", "pip", "freeze"
+        ], capture_output=True, text=True, check=True)
+        
+        all_installed = result.stdout.strip().splitlines()
+        
+        # Create a dictionary of installed packages
+        installed_packages = {}
+        for line in all_installed:
+            if '==' in line:
+                name, version = line.split('==', 1)
+                installed_packages[name.lower()] = f"{name}=={version}"
+        
+        # Build minimal requirements list
+        minimal_requirements = []
+        missing_packages = []
+        
+        # Process core packages (required)
+        for package in core_packages:
+            lookup_name = package.lower()
+            
+            # Special case mappings
+            if lookup_name == 'pyserial':
+                # pyserial is installed as 'pyserial' but imported as 'serial'
+                lookup_name = 'pyserial'
+            elif lookup_name == 'beautifulsoup4':
+                # beautifulsoup4 is imported as 'bs4'
+                lookup_name = 'beautifulsoup4'
+            
+            if lookup_name in installed_packages:
+                minimal_requirements.append(installed_packages[lookup_name])
+                print(f"✅ Found core: {installed_packages[lookup_name]}")
+            else:
+                missing_packages.append(package)
+                print(f"❌ Missing core: {package}")
+        
+        # Process optional packages
+        for package in optional_packages:
+            lookup_name = package.lower()
+            
+            if lookup_name in installed_packages:
+                minimal_requirements.append(installed_packages[lookup_name])
+                print(f"✅ Found optional: {installed_packages[lookup_name]}")
+            else:
+                print(f"⚠️  Optional not installed: {package}")
+        
+        # Add platform-specific requirements
+        for req in platform_specific_requirements:
+            minimal_requirements.append(req)
+            print(f"🖥️  Added platform-specific: {req}")
+        
+        if missing_packages:
+            print(f"\n❌ Missing required core packages: {', '.join(missing_packages)}")
+            print("Please install them with: pip install " + ' '.join(missing_packages))
+            return False
+        
+        # Sort requirements for consistency (but keep platform-specific at the end)
+        regular_requirements = [req for req in minimal_requirements if ';' not in req]
+        platform_requirements = [req for req in minimal_requirements if ';' in req]
+        
+        regular_requirements.sort()
+        final_requirements = regular_requirements + platform_requirements
+        
+        new_requirements_content = '\n'.join(final_requirements)
+        
+        # Read existing requirements.txt if it exists
+        existing_requirements_path = pathlib.Path("requirements.txt")
+        existing_requirements_content = ""
+        
+        if existing_requirements_path.exists():
+            with open(existing_requirements_path, 'r', encoding='utf-8') as f:
+                existing_requirements_content = f.read().strip()
+        
+        # Compare requirements
+        requirements_changed = new_requirements_content != existing_requirements_content
+        
+        if requirements_changed:
+            print("📝 Requirements have changed!")
+            
+            # Write new minimal requirements.txt with header comment
+            requirements_header = "# JumperlessWokwiBridge.py Requirements\n# Auto-generated minimal dependencies\n\n"
+            
+            with open(existing_requirements_path, 'w', encoding='utf-8') as f:
+                f.write(requirements_header + new_requirements_content)
+            print(f"✅ Updated requirements.txt with minimal dependencies")
+            
+            # Update new_requirements flag in JumperlessWokwiBridge.py
+            bridge_file_path = pathlib.Path("JumperlessWokwiBridge.py")
+            
+            if bridge_file_path.exists():
+                with open(bridge_file_path, 'r', encoding='utf-8') as f:
+                    bridge_content = f.read()
+                
+                # Replace the new_requirements flag
+                updated_content = bridge_content.replace(
+                    "new_requirements = False",
+                    "new_requirements = True"
+                )
+                
+                if updated_content != bridge_content:
+                    with open(bridge_file_path, 'w', encoding='utf-8') as f:
+                        f.write(updated_content)
+                    print("✅ Updated new_requirements flag to True in JumperlessWokwiBridge.py")
+                else:
+                    print("⚠️  Could not find 'new_requirements = False' in JumperlessWokwiBridge.py")
+            else:
+                print("⚠️  JumperlessWokwiBridge.py not found")
+        else:
+            print("✅ Requirements unchanged")
+            
+            # Ensure new_requirements is False when requirements haven't changed
+            bridge_file_path = pathlib.Path("JumperlessWokwiBridge.py")
+            
+            if bridge_file_path.exists():
+                with open(bridge_file_path, 'r', encoding='utf-8') as f:
+                    bridge_content = f.read()
+                
+                # Make sure flag is False
+                updated_content = bridge_content.replace(
+                    "new_requirements = True",
+                    "new_requirements = False"
+                )
+                
+                if updated_content != bridge_content:
+                    with open(bridge_file_path, 'w', encoding='utf-8') as f:
+                        f.write(updated_content)
+                    print("✅ Ensured new_requirements flag is False in JumperlessWokwiBridge.py")
+        
+        # Show summary
+        print(f"📊 Total requirements: {len(final_requirements)} packages")
+        print("📦 Core packages:")
+        for req in regular_requirements:
+            if any(core in req.lower() for core in ['requests', 'pyserial', 'psutil', 'beautifulsoup4']):
+                print(f"   • {req} (required)")
+            else:
+                print(f"   • {req} (optional)")
+        
+        if platform_requirements:
+            print("🖥️  Platform-specific:")
+            for req in platform_requirements:
+                print(f"   • {req}")
+        
+        return requirements_changed
+        
+    except subprocess.CalledProcessError as e:
+        print(f"❌ Error generating requirements: {e}")
+        print("Make sure you're in the correct virtual environment")
+        return False
+    except Exception as e:
+        print(f"❌ Error checking requirements: {e}")
+        return False
 
 def package_macos():
     """Package for macOS"""
@@ -384,6 +566,14 @@ def package_windows():
 
 def main():
     """Main packaging function"""
+    # Check and update requirements first
+    requirements_changed = check_and_update_requirements()
+    
+    if requirements_changed:
+        print("\n🔄 Requirements updated - new dependencies will be included in app updates")
+    
+    print("\n" + "="*50)
+    
     current_os = platform.system()
     
     if current_os == "Darwin":  # macOS

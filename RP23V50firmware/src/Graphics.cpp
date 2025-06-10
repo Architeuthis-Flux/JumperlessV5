@@ -13,8 +13,8 @@
 
 #include <cstdarg>
 
-#include "Images.h"
 #include "ArduinoStuff.h"
+#include "Images.h"
 
 #ifdef DONOTUSE_SERIALWRAPPER
 #include "SerialWrapper.h"
@@ -2041,7 +2041,7 @@ void moveCursor(int posX, int posY, int absolute, Stream *stream, bool flush) {
   // Simple logo section - just use basic text for now
   snprintf(screenLines[currentLine++], LINE_WIDTH, "           ADC  ");
   snprintf(screenLines[currentLine++], LINE_WIDTH, "     ▗▄▖        ");
-  snprintf(screenLines[currentLine++], LINE_WIDTH, "    ▐█▔▚▋   DAC "); 
+  snprintf(screenLines[currentLine++], LINE_WIDTH, "    ▐█▔▚▋   DAC ");
   snprintf(screenLines[currentLine++], LINE_WIDTH, "    ▐▚▁█▋       ");
   snprintf(screenLines[currentLine++], LINE_WIDTH, "     ▝▀▘   GPIO ");
 
@@ -2053,14 +2053,14 @@ void moveCursor(int posX, int posY, int absolute, Stream *stream, bool flush) {
 
 */
 struct logoLedAssoc logoLedAssociations[20] = {
-    {LOGO_LED_START, "        ", 0, 0}, {ADC_LED_0, "AD", 1, 197, 0, ADC_0},
-    {ADC_LED_0, "C ", 2, 199, 1, ADC_1},       {LOGO_LED_START, " ▗▄▖ \n\r", 0},
-    {LOGO_LED_START + 1, "▐█", 0},      {LOGO_LED_START + 6, "▔", 0},
-    {LOGO_LED_START + 2, "▚", 0},       {LOGO_LED_START + 2, "▋   ", 0},
-    {DAC_LED_1, "DA", 1, 191, 2, DAC_0},       {DAC_LED_1, "C ", 2, 226, 3, DAC_1},
-    {LOGO_LED_START + 3, "▐▚", 0},      {LOGO_LED_START + 6, "▁", 0},
-    {LOGO_LED_START + 5, "█▋\n\r", 0},  {LOGO_LED_START + 4, " ▝▀▘   ", 0},
-    {GPIO_LED_0, "GP", 1, 39, 4, GPIO_0},       {GPIO_LED_0, "IO", 2, 87, 5, GPIO_1},
+    {LOGO_LED_START, "        ", 0, 0},   {ADC_LED_0, "AD", 1, 197, 0, ADC_0},
+    {ADC_LED_0, "C ", 2, 199, 1, ADC_1},  {LOGO_LED_START, " ▗▄▖ \n\r", 0},
+    {LOGO_LED_START + 1, "▐█", 0},        {LOGO_LED_START + 6, "▔", 0},
+    {LOGO_LED_START + 2, "▚", 0},         {LOGO_LED_START + 2, "▋   ", 0},
+    {DAC_LED_1, "DA", 1, 191, 2, DAC_0},  {DAC_LED_1, "C ", 2, 226, 3, DAC_1},
+    {LOGO_LED_START + 3, "▐▚", 0},        {LOGO_LED_START + 6, "▁", 0},
+    {LOGO_LED_START + 5, "█▋\n\r", 0},    {LOGO_LED_START + 4, " ▝▀▘   ", 0},
+    {GPIO_LED_0, "GP", 1, 39, 4, GPIO_0}, {GPIO_LED_0, "IO", 2, 87, 5, GPIO_1},
 
 };
 
@@ -2080,9 +2080,14 @@ unsigned long serial2ConnectTime = 0;
 int serial1ClearSent = 0;
 int serial2ClearSent = 0;
 
+// #define CSI "\033[
+
 void dumpLEDs(int posX, int posY, int pixelsOrRows, int header, int rgbOrRaw,
               int logo, Stream *stream) {
-  return;
+
+  // return;
+  bool mainSerial = false;
+  int xOffset = 40;
   // Rate limiting - prevent excessive calls
   if (millis() - lastDumpAttemptTime < minDumpInterval) {
     return;
@@ -2098,18 +2103,19 @@ void dumpLEDs(int posX, int posY, int pixelsOrRows, int header, int rgbOrRaw,
   unsigned long functionStartTime = millis();
   const unsigned long FUNCTION_TIMEOUT_MS = 60;
 
-    if (jumperlessConfig.serial_2.function == 5 ||
+  if (jumperlessConfig.serial_2.function == 5 ||
       jumperlessConfig.serial_2.function == 6) {
     stream = &USBSer2;
-    bool currentlyConnected = USBSer2.dtr() && (USBSer2.availableForWrite() >= 50);
-    
+    bool currentlyConnected =
+        USBSer2.dtr() && (USBSer2.availableForWrite() >= 50);
+
     if (!currentlyConnected) {
       serial2Connected = false;
       serial2ClearSent = 0;
       dumpingToSerial = false;
       return;
     }
-    
+
     // Record connection time when first connecting
     if (!serial2Connected && currentlyConnected) {
       serial2Connected = true;
@@ -2117,9 +2123,9 @@ void dumpLEDs(int posX, int posY, int pixelsOrRows, int header, int rgbOrRaw,
       serial2ClearSent = 0;
       Serial.println("Serial 2 DTR connected");
     }
-    
+
     // Send clear screen 1 second after connection is established
-    if (serial2Connected && serial2ClearSent < 2 && 
+    if (serial2Connected && serial2ClearSent < 2 &&
         (millis() - serial2ConnectTime >= 100)) {
       if (!safePrint(stream, "\033[2J\033[?25l\033[0;0H", 10)) {
         dumpingToSerial = false;
@@ -2130,15 +2136,16 @@ void dumpLEDs(int posX, int posY, int pixelsOrRows, int header, int rgbOrRaw,
   } else if (jumperlessConfig.serial_1.function == 5 ||
              jumperlessConfig.serial_1.function == 6) {
     stream = &USBSer1;
-    bool currentlyConnected = USBSer1.dtr() && (USBSer1.availableForWrite() >= 50);
-    
+    bool currentlyConnected =
+        USBSer1.dtr() && (USBSer1.availableForWrite() >= 50);
+
     if (!currentlyConnected) {
       serial1Connected = false;
       serial1ClearSent = 0;
       dumpingToSerial = false;
       return;
     }
-    
+
     // Record connection time when first connecting
     if (!serial1Connected && currentlyConnected) {
       serial1Connected = true;
@@ -2146,9 +2153,9 @@ void dumpLEDs(int posX, int posY, int pixelsOrRows, int header, int rgbOrRaw,
       serial1ClearSent = 0;
       Serial.println("Serial 1 DTR connected");
     }
-    
+
     // Send clear screen 1 second after connection is established
-    if (serial1Connected && serial1ClearSent < 2 && 
+    if (serial1Connected && serial1ClearSent < 2 &&
         (millis() - serial1ConnectTime >= 100)) {
       if (!safePrint(stream, "\033[2J\033[?25l\033[0;0H", 10)) {
         dumpingToSerial = false;
@@ -2157,9 +2164,13 @@ void dumpLEDs(int posX, int posY, int pixelsOrRows, int header, int rgbOrRaw,
       serial1ClearSent++;
     }
   } else {
-    dumpHeaderMain();
-    dumpingToSerial = false;
-    return;
+    // dumpHeaderMain();
+    // dumpingToSerial = false;
+    // return;
+    // posX += 28;
+    // posY += 1;
+    saveCursorPosition(stream);
+    mainSerial = true;
   }
 
   if (logoLedAccess == true) {
@@ -2167,20 +2178,17 @@ void dumpLEDs(int posX, int posY, int pixelsOrRows, int header, int rgbOrRaw,
     return;
   }
   logoLedAccess = true;
-  
-  // Build screen line by line - much simpler approach
-  #define MAX_LINES 30
-  #define LINE_WIDTH 700  // Much wider to accommodate ANSI escape sequences
+
+// Build screen line by line - much simpler approach
+#define MAX_LINES 30
+#define LINE_WIDTH 700 // Much wider to accommodate ANSI escape sequences
   static char screenLines[MAX_LINES][LINE_WIDTH];
   int currentLine = 0;
-  
+
   // Clear all lines
   for (int i = 0; i < MAX_LINES; i++) {
     memset(screenLines[i], 0, LINE_WIDTH);
   }
-  
-  // Start with cursor reset
-  snprintf(screenLines[currentLine++], LINE_WIDTH, "\033[0;0H\033[0m");
 
   int logoColor0 = colorToVT100(leds.getPixelColor(LOGO_LED_START), 256);
   int logoColor1 = colorToVT100(leds.getPixelColor(LOGO_LED_START + 1), 256);
@@ -2189,15 +2197,15 @@ void dumpLEDs(int posX, int posY, int pixelsOrRows, int header, int rgbOrRaw,
   int logoColor4 = colorToVT100(leds.getPixelColor(LOGO_LED_START + 4), 256);
   int logoColor5 = colorToVT100(leds.getPixelColor(LOGO_LED_START + 5), 256);
   int logoColor6 = colorToVT100(leds.getPixelColor(LOGO_LED_START + 6), 256);
-  
+
   // Get logo colors with override handling for all LED pairs
-  uint32_t adc0Color = leds.getPixelColor(ADC_LED_0)  | 0x00000f;
-  uint32_t adc1Color = leds.getPixelColor(ADC_LED_1)  | 0x0f0000;
-  uint32_t dac0Color = leds.getPixelColor(DAC_LED_0)  | 0x1f0300;
+  uint32_t adc0Color = leds.getPixelColor(ADC_LED_0) | 0x00000f;
+  uint32_t adc1Color = leds.getPixelColor(ADC_LED_1) | 0x0f0000;
+  uint32_t dac0Color = leds.getPixelColor(DAC_LED_0) | 0x1f0300;
   dac0Color &= 0xff20ff;
-  uint32_t dac1Color = leds.getPixelColor(DAC_LED_1)  | 0x050000;
-  uint32_t gpio0Color = leds.getPixelColor(GPIO_LED_0)| 0x054f00;
-  uint32_t gpio1Color = leds.getPixelColor(GPIO_LED_1)& 0xff40ff;
+  uint32_t dac1Color = leds.getPixelColor(DAC_LED_1) | 0x050000;
+  uint32_t gpio0Color = leds.getPixelColor(GPIO_LED_0) | 0x054f00;
+  uint32_t gpio1Color = leds.getPixelColor(GPIO_LED_1) & 0xff40ff;
 
   // Check for logo overrides
   if (logoOverriden == true) {
@@ -2208,46 +2216,31 @@ void dumpLEDs(int posX, int posY, int pixelsOrRows, int header, int rgbOrRaw,
     uint32_t dac1Override = getLogoOverride(DAC_1);
     uint32_t gpio0Override = getLogoOverride(GPIO_0);
     uint32_t gpio1Override = getLogoOverride(GPIO_1);
-    
+
     if (adc0Override != -1) {
-      
-        adc0Color = 0xFFbFFF; // Use white for -2 override
-    } 
-    
+      adc0Color = 0xFFbFFF; // Use white for -2 override
+    }
     if (adc1Override != -1) {
-
-        adc1Color = 0xFFbFFF;
-
-      
-
+      adc1Color = 0xFFbFFF;
     }
-    
+
     if (dac0Override != -1) {
-     
-        dac0Color = 0xFFFFbF;
-
-
+      dac0Color = 0xFFFFbF;
     }
-    
+
     if (dac1Override != -1) {
-
-        dac1Color = 0xFFFFbF;
-
+      dac1Color = 0xFFFFbF;
     }
-    
+
     if (gpio0Override != -1) {
-
-        gpio0Color = 0xBFFFFF;
-
+      gpio0Color = 0xBFFFFF;
     }
-    
+
     if (gpio1Override != -1) {
-
-        gpio1Color = 0xBFFFFF;
-
-      }
+      gpio1Color = 0xBFFFFF;
+    }
   }
-  
+
   // Convert to terminal colors
   int adc0TermColor = colorToVT100(adc0Color, 256);
   int adc1TermColor = colorToVT100(adc1Color, 256);
@@ -2255,83 +2248,116 @@ void dumpLEDs(int posX, int posY, int pixelsOrRows, int header, int rgbOrRaw,
   int dac1TermColor = colorToVT100(dac1Color, 256);
   int gpio0TermColor = colorToVT100(gpio0Color, 256);
   int gpio1TermColor = colorToVT100(gpio1Color, 256);
-  
-  if (adc0Color == 0x000000) adc0TermColor = 0;
-  if (adc1Color == 0x000000) adc1TermColor = 0;
-  if (dac0Color == 0x000000) dac0TermColor = 0;
-  if (dac1Color == 0x000000) dac1TermColor = 0;
-  if (gpio0Color == 0x000000) gpio0TermColor = 0;
-  if (gpio1Color == 0x000000) gpio1TermColor = 0;
-  
+
+  if (adc0Color == 0x000000)
+    adc0TermColor = 0;
+  if (adc1Color == 0x000000)
+    adc1TermColor = 0;
+  if (dac0Color == 0x000000)
+    dac0TermColor = 0;
+  if (dac1Color == 0x000000)
+    dac1TermColor = 0;
+  if (gpio0Color == 0x000000)
+    gpio0TermColor = 0;
+  if (gpio1Color == 0x000000)
+    gpio1TermColor = 0;
+
   // Header section with integrated logo
-  snprintf(screenLines[currentLine++], LINE_WIDTH, "       \033[38;5;%dm▐\033[48;5;%dmAD\033\033[0m\033[48;5;%dmC\033[0m\033[38;5;%dm▌\033[0m", adc0TermColor, adc0TermColor, adc1TermColor, adc1TermColor);
-  snprintf(screenLines[currentLine++], LINE_WIDTH, "   \033[38;5;%dm▗▄▖\033[0m         ╭─────────────────────────────────────────────╮", logoColor0);
-  
+  snprintf(screenLines[currentLine++], LINE_WIDTH,
+           "       "
+           "\033[38;5;%dm▐\033[38;5;0m\033[48;5;%dmAD\033[38;5;0m\033[48;5;%dmC\033[0m\033[38;5;"
+           "%dm▌\033[0m                                                   ",
+           adc0TermColor, adc0TermColor, adc1TermColor, adc1TermColor);//!ADC
+
+  snprintf(screenLines[currentLine++], LINE_WIDTH,
+           "   \033[38;5;%dm▗▄▖\033[0m         "
+           "╭─────────────────────────────────────────────╮ ",
+           logoColor0);
+
   // Build DAC line with first header row on same line
   char dacHeaderLine[LINE_WIDTH];
   int pos = 0;
-  pos += snprintf(dacHeaderLine + pos, LINE_WIDTH - pos, "  \033[38;5;%dm▐█\033[38;5;%dm▔\033[38;5;%dm▚▋\033[0m ", logoColor1, logoColor0, logoColor5);
-  pos += snprintf(dacHeaderLine + pos, LINE_WIDTH - pos, "\033[38;5;%dm▐\033[48;5;%dmDA\033[48;5;%dmC\033[0m\033[38;5;%dm▌\033[0m  │", dac0TermColor, dac0TermColor, dac1TermColor, dac1TermColor);
-  
+  pos += snprintf(dacHeaderLine + pos, LINE_WIDTH - pos,
+                  "  \033[38;5;%dm▐█\033[38;5;%dm▔\033[38;5;%dm▚▋\033[0m ",
+                  logoColor1, logoColor0, logoColor5);
+  pos += snprintf(dacHeaderLine + pos, LINE_WIDTH - pos,
+                  "\033[38;5;%dm▐\033[38;5;0m\033[48;5;%dmDA\033[38;5;0m\033[48;5;%dmC\033[0m\033[38;5;"
+                  "%dm▌\033[0m  │",
+                  dac0TermColor, dac0TermColor, dac1TermColor, dac1TermColor);//!DAC
+
   for (int i = 0; i < 15; i++) {
     int headerIndex = headerMapPrintOrder[i];
     uint32_t color = leds.getPixelColor(headerMap[headerIndex].pixel);
     int termColor = colorToVT100(color, 256);
-    
+
     if (color == 0x000000) {
       termColor = 0;
     }
-    
-    pos += snprintf(dacHeaderLine + pos, LINE_WIDTH - pos, "\033[48;5;%dm%3s\033[0m", termColor, headerMap[headerIndex].name);
-    //if (i < 14) { // Add space between pins except after the last one
-      //pos += snprintf(dacHeaderLine + pos, LINE_WIDTH - pos, " ");
+
+    pos += snprintf(dacHeaderLine + pos, LINE_WIDTH - pos,
+                    "\033[48;5;%dm%3s\033[0m", termColor,
+                    headerMap[headerIndex].name);
+    // if (i < 14) { // Add space between pins except after the last one
+    // pos += snprintf(dacHeaderLine + pos, LINE_WIDTH - pos, " ");
     //}
   }
   pos += snprintf(dacHeaderLine + pos, LINE_WIDTH - pos, "│");
   snprintf(screenLines[currentLine++], LINE_WIDTH, "%s", dacHeaderLine);
-  
+
   // Middle spacer with logo part
-  snprintf(screenLines[currentLine++], LINE_WIDTH, "  \033[38;5;%dm▐▚\033[38;5;%dm▁\033[38;5;%dm█▋\033[0m        │                                             │", logoColor2, logoColor3, logoColor4);
-  
+  snprintf(screenLines[currentLine++], LINE_WIDTH,
+           "  \033[38;5;%dm▐▚\033[38;5;%dm▁\033[38;5;%dm█▋\033[0m        │     "
+           "                                        │ ",
+           logoColor2, logoColor3, logoColor4);
+
   // Build GPIO line with second header row on same line
   char gpioHeaderLine[LINE_WIDTH];
   pos = 0;
-  pos += snprintf(gpioHeaderLine + pos, LINE_WIDTH - pos, "   \033[38;5;%dm▝▀▘  \033[38;5;%dm▐\033[48;5;%dmGP\033[48;5;%dmIO\033[0m\033[38;5;%dm▌\033[0m │", logoColor3, gpio0TermColor, gpio0TermColor, gpio1TermColor, gpio1TermColor);
-  
+  pos += snprintf(gpioHeaderLine + pos, LINE_WIDTH - pos,
+                  "   \033[38;5;%dm▝▀▘  "
+                  "\033[38;5;%dm▐\033[38;5;0m\033[48;5;%dmGP\033[38;5;0m\033[48;5;%dmIO\033[0m\033[38;"
+                  "5;%dm▌\033[0m │",
+                  logoColor3, gpio0TermColor, gpio0TermColor, gpio1TermColor,
+                  gpio1TermColor);//!GPIO
+
   for (int i = 15; i < 30; i++) {
     int headerIndex = headerMapPrintOrder[i];
     uint32_t color = leds.getPixelColor(headerMap[headerIndex].pixel);
     int termColor = colorToVT100(color, 256);
-    
+
     if (color == 0x000000) {
       termColor = 0;
     }
-    
-    pos += snprintf(gpioHeaderLine + pos, LINE_WIDTH - pos, "\033[48;5;%dm%3s\033[0m", termColor, headerMap[headerIndex].name);
+
+    pos += snprintf(gpioHeaderLine + pos, LINE_WIDTH - pos,
+                    "\033[48;5;%dm%3s\033[0m", termColor,
+                    headerMap[headerIndex].name);
     // if (i < 29) { // Add space between pins except after the last one
     //   pos += snprintf(gpioHeaderLine + pos, LINE_WIDTH - pos, " ");
     // }
   }
-  pos += snprintf(gpioHeaderLine + pos, LINE_WIDTH - pos, "│");
+  pos += snprintf(gpioHeaderLine + pos, LINE_WIDTH - pos, "│               ");
   snprintf(screenLines[currentLine++], LINE_WIDTH, "%s", gpioHeaderLine);
-  
+
   // Close header - aligned with the box
-  snprintf(screenLines[currentLine++], LINE_WIDTH, "               ╰─────────────────────────────────────────────╯");
-  
+  snprintf(screenLines[currentLine++], LINE_WIDTH,
+           "               ╰─────────────────────────────────────────────╯          ");
+
   // Empty line
-  snprintf(screenLines[currentLine++], LINE_WIDTH, "");
-  
+  snprintf(screenLines[currentLine++], LINE_WIDTH, "                                                                ");
+
   // Main LED grid
-  snprintf(screenLines[currentLine++], LINE_WIDTH, "╭─────────────────────────────────────────────────────────────╮");
-  
+  snprintf(screenLines[currentLine++], LINE_WIDTH,
+           "╭─────────────────────────────────────────────────────────────╮             ");
+
   // Process LED grid rows
   for (int row = 0; row < 14 && currentLine < MAX_LINES - 1; row++) {
     bool rail = (row == 0 || row == 1 || row == 12 || row == 13);
-    
+
     char ledLine[LINE_WIDTH];
     int pos = 0;
     pos += snprintf(ledLine + pos, LINE_WIDTH - pos, "│ ");
-    
+
     // Process columns for this row
     for (int col = 0; col < 30; col++) {
       if (rail && (col + 1) % 6 == 0) {
@@ -2343,260 +2369,301 @@ void dumpLEDs(int posX, int posY, int pixelsOrRows, int header, int rgbOrRaw,
       int ledIndex = screenMap[mapIndex];
       uint32_t color = leds.getPixelColor(ledIndex);
       int termColor = colorToVT100(color, 256);
-      
+
       if (color == 0x000000) {
         termColor = 0;
       }
 
-      const char* pattern = rail ? "▐█" : "█▏";
-      pos += snprintf(ledLine + pos, LINE_WIDTH - pos, "\033[38;5;%dm%s\033[0m", termColor, pattern);
+      const char *pattern = rail ? "▐█" : "█▏";
+      pos += snprintf(ledLine + pos, LINE_WIDTH - pos, "\033[38;5;%dm%s\033[0m",
+                      termColor, pattern);
     }
-    
-    pos += snprintf(ledLine + pos, LINE_WIDTH - pos, "│");
+
+    pos += snprintf(ledLine + pos, LINE_WIDTH - pos, "│          ");
     snprintf(screenLines[currentLine++], LINE_WIDTH, "%s", ledLine);
 
     // Add special spacing rows
     if (row == 1) {
-      snprintf(screenLines[currentLine++], LINE_WIDTH, "│ ₁       ₅         ₁₀        ₁₅        ₂₀        ₂₅        ₃₀│");
+      snprintf(
+          screenLines[currentLine++], LINE_WIDTH,
+          "│ ₁       ₅         ₁₀        ₁₅        ₂₀        ₂₅        ₃₀│         ");
     } else if (row == 6) {
-      snprintf(screenLines[currentLine++], LINE_WIDTH, "\033[0m│ \033[38;5;236m       J    U    M    P    E    R    L    E    S    S       \033[0m│");
+      snprintf(screenLines[currentLine++], LINE_WIDTH,
+               "\033[0m│ \033[38;5;236m       J    U    M    P    E    R    L  "
+               "  E    S    S       \033[0m│        ");
     } else if (row == 11) {
-      snprintf(screenLines[currentLine++], LINE_WIDTH, "│ ³¹      ³⁵        ⁴⁰        ⁴⁵        ⁵⁰        ⁵⁵        ⁶⁰│");
+      snprintf(
+          screenLines[currentLine++], LINE_WIDTH,
+          "│ ³¹      ³⁵        ⁴⁰        ⁴⁵        ⁵⁰        ⁵⁵        ⁶⁰│          ");
     }
   }
 
   // Close LED grid
-  snprintf(screenLines[currentLine++], LINE_WIDTH, "╰─────────────────────────────────────────────────────────────╯");
-  
+  snprintf(screenLines[currentLine++], LINE_WIDTH,
+           "╰─────────────────────────────────────────────────────────────╯");
+
   logoLedAccess = false;
 
-     // Send all lines
-   for (int i = 0; i < currentLine; i++) {
-     // Quick timeout check
-     if (millis() - functionStartTime > FUNCTION_TIMEOUT_MS) {
-       break;
-     }
-     
-     // Wait for buffer space if needed
-     int lineLen = strlen(screenLines[i]);
-     if (stream->availableForWrite() < lineLen + 3) { // +3 for \r\n\0
-       unsigned long waitStart = millis();
-       while (stream->availableForWrite() < lineLen + 3 && (millis() - waitStart) < 10) {
-         delayMicroseconds(100);
-       }
-     }
-     
-     // Send line with proper line ending
-     stream->print(screenLines[i]);
-     stream->print("\r\n");
-   }
+      // Start with cursor reset
+    if (mainSerial == true) {
+      // restoreCursorPosition();
+      int clearAbove = 6;
+      stream->printf("\033[%dA", 30);
+      stream->printf("\033[%dA", clearAbove);
+      // stream->printf("\033[%dC", xOffset);
+      for (int i = 0; i < clearAbove; i++) {
+        stream->printf("\033[%dC\033[0K\033[1B\033[0G", xOffset);
+      }
+      stream->print("\033[0G");
+      // stream->printf("\033[%dC", xOffset);
+
+    } else {
+      snprintf(screenLines[currentLine++], LINE_WIDTH, "\033[0;0H\033[0m");
+    }
+
+
+  // Send all lines
+  for (int i = 0; i < currentLine; i++) {
+    // Quick timeout check
+    if (millis() - functionStartTime > FUNCTION_TIMEOUT_MS) {
+      break;
+    }
+
+    // Wait for buffer space if needed
+    int lineLen = strlen(screenLines[i]);
+    if (stream->availableForWrite() < lineLen + 3) { // +3 for \r\n\0
+      unsigned long waitStart = millis();
+      while (stream->availableForWrite() < lineLen + 3 &&
+             (millis() - waitStart) < 10) {
+        delayMicroseconds(10);
+      }
+    }
+
+
+    // Send line with proper line ending
+    if (mainSerial == true) {
+
+      stream->printf("\033[%dC", xOffset);
+    }
+
+    stream->print(screenLines[i]);
+    stream->print("\r\n");
+  }
+
+  if (mainSerial == true) {
+    stream->printf("\033[%dB", 4);
+  }
+
+
+
+
 
   // Final flush
   safeFlush(stream, 10);
   dumpingToSerial = false;
 }
 
-void dumpHeaderMain(int posX, int posY, int absolute, int wide) {
-  //  int cursorX = getCursorPositionX();
-  //  int cursorY = getCursorPositionY();
-  //  Serial.printf("cursorX: %d, cursorY: %d\n", cursorX, cursorY);
-  Serial.flush();
-  Serial.print("\r");
-  Serial.flush();
-  saveCursorPosition();
-  // moveCursor(-1, -1, 0);
-  int line = 0;
-  moveCursor(posX, posY - 1, absolute);
-  Serial.print("\033[0K\033[1B");
+// void dumpHeaderMain(int posX, int posY, int absolute, int wide) {
+//   //  int cursorX = getCursorPositionX();
+//   //  int cursorY = getCursorPositionY();
+//   //  Serial.printf("cursorX: %d, cursorY: %d\n", cursorX, cursorY);
+//   Serial.flush();
+//   Serial.print("\r");
+//   Serial.flush();
+//   saveCursorPosition();
+//   // moveCursor(-1, -1, 0);
+//   int line = 0;
+//   moveCursor(posX, posY - 1, absolute);
+//   Serial.print("\033[0K\033[1B");
 
-  if (wide == 1) {
-    Serial.println(
-        "  ╭───────────────────────────────────────────────────────────╮");
-    Serial.print("  │");
-  } else {
-    // moveCursor(posX, -1, 0);
-    Serial.println("╭─────────────────────────────────────────────╮ ");
-    moveCursor(posX - 10, -1, 0);
-    Serial.print("          │");
-  }
-  Serial.flush();
-  // Print colored blocks for each pin
-  for (int i = 0; i < 30; i++) {
+//   if (wide == 1) {
+//     Serial.println(
+//         "  ╭───────────────────────────────────────────────────────────╮");
+//     Serial.print("  │");
+//   } else {
+//     // moveCursor(posX, -1, 0);
+//     Serial.println("╭─────────────────────────────────────────────╮ ");
+//     moveCursor(posX - 10, -1, 0);
+//     Serial.print("          │");
+//   }
+//   Serial.flush();
+//   // Print colored blocks for each pin
+//   for (int i = 0; i < 30; i++) {
 
-    int headerIndex = headerMapPrintOrder[i];
-    int nanoPin = headerMap[headerIndex].node;
-    uint32_t color = leds.getPixelColor(headerMap[headerIndex].pixel);
+//     int headerIndex = headerMapPrintOrder[i];
+//     int nanoPin = headerMap[headerIndex].node;
+//     uint32_t color = leds.getPixelColor(headerMap[headerIndex].pixel);
 
-    // Convert to terminal color and print
-    int termColor = colorToVT100(color, 256);
-    if (color == 0x000000) {
-      termColor = 0;
-    } else {
-      changeTerminalColor(0);
-    }
-    // Serial.flush();
-    Serial.printf("\033[48;5;%dm", termColor);
-    // Serial.flush();
-    Serial.printf("%3s", headerMap[headerIndex].name);
-    Serial.printf("\033[0m");
-    // Serial.flush();
-    // if (i != 14 && i != 29) {
-    //   Serial.print(" ");
-    // }
-    if (i == 14) {
+//     // Convert to terminal color and print
+//     int termColor = colorToVT100(color, 256);
+//     if (color == 0x000000) {
+//       termColor = 0;
+//     } else {
+//       changeTerminalColor(0);
+//     }
+//     // Serial.flush();
+//     Serial.printf("\033[48;5;%dm", termColor);
+//     // Serial.flush();
+//     Serial.printf("%3s", headerMap[headerIndex].name);
+//     Serial.printf("\033[0m");
+//     // Serial.flush();
+//     // if (i != 14 && i != 29) {
+//     //   Serial.print(" ");
+//     // }
+//     if (i == 14) {
 
-      if (wide == 1) {
-        Serial.print("│\n\r  │                                                 "
-                     "          │\n\r");
-        Serial.print("  │                                                      "
-                     "          │\n\r");
-        Serial.print("  │                                                      "
-                     "          │\n\r  │");
-      } else {
-        // moveCursor(posX, posY+(line++), absolute);
-        Serial.println("│                         ");
-        moveCursor(posX - 10, -1, 0);
-        Serial.println(
-            "          │                                             │ ");
-        moveCursor(posX - 10, -1, 0);
-        Serial.print("          │");
-      }
-    }
-    // Serial.print(" ");
+//       if (wide == 1) {
+//         Serial.print("│\n\r  │                                                 "
+//                      "          │\n\r");
+//         Serial.print("  │                                                      "
+//                      "          │\n\r");
+//         Serial.print("  │                                                      "
+//                      "          │\n\r  │");
+//       } else {
+//         // moveCursor(posX, posY+(line++), absolute);
+//         Serial.println("│                         ");
+//         moveCursor(posX - 10, -1, 0);
+//         Serial.println(
+//             "          │                                             │ ");
+//         moveCursor(posX - 10, -1, 0);
+//         Serial.print("          │");
+//       }
+//     }
+//     // Serial.print(" ");
 
-    //  changeTerminalColor(-1);
-  }
+//     //  changeTerminalColor(-1);
+//   }
 
-  Serial.println("│");
-  if (wide == 1) {
-    Serial.println(
-        "  ╰───────────────────────────────────────────────────────────╯");
-  } else {
-    moveCursor(posX, -1, 0);
-    Serial.println("╰─────────────────────────────────────────────╯ ");
-  }
-  Serial.flush();
-  // moveCursor(-1, -1, 0);
-  restoreCursorPosition();
-}
+//   Serial.println("│");
+//   if (wide == 1) {
+//     Serial.println(
+//         "  ╰───────────────────────────────────────────────────────────╯");
+//   } else {
+//     moveCursor(posX, -1, 0);
+//     Serial.println("╰─────────────────────────────────────────────╯ ");
+//   }
+//   Serial.flush();
+//   // moveCursor(-1, -1, 0);
+//   restoreCursorPosition();
+// }
 
-void dumpLEDsMain(int posX, int posY, int pixelsOrRows, int header,
-                  int rgbOrRaw, int logo) {
-  Serial.flush();
-  Serial.print("\r");
-  Serial.flush();
+// void dumpLEDsMain(int posX, int posY, int pixelsOrRows, int header,
+//                   int rgbOrRaw, int logo) {
+//   Serial.flush();
+//   Serial.print("\r");
+//   Serial.flush();
 
-  int line = 0;
-  // moveCursor(-1, -1, 0);
-  // saveCursorPosition();
+//   int line = 0;
+//   // moveCursor(-1, -1, 0);
+//   // saveCursorPosition();
 
-  dumpHeader(posX + 8, posY + 6, 0, 0);
-  moveCursor(-1, -1, 0);
-  // Serial.println();
-  moveCursor(posX, posY - 1, 0);
-  Serial.print("\033[0K\033[1B");
+//   dumpHeader(posX + 8, posY + 6, 0, 0);
+//   moveCursor(-1, -1, 0);
+//   // Serial.println();
+//   moveCursor(posX, posY - 1, 0);
+//   Serial.print("\033[0K\033[1B");
 
-  Serial.println(
-      "╭─────────────────────────────────────────────────────────────╮");
-  Serial.flush();
-  int rail = 0;
+//   Serial.println(
+//       "╭─────────────────────────────────────────────────────────────╮");
+//   Serial.flush();
+//   int rail = 0;
 
-  // Print the LED grid row by row
-  for (int row = 0; row < 14; row++) {
+//   // Print the LED grid row by row
+//   for (int row = 0; row < 14; row++) {
 
-    moveCursor(posX, -1, 0);
-    changeTerminalColor(15, false);
-    Serial.print("│ ");
+//     moveCursor(posX, -1, 0);
+//     changeTerminalColor(15, false);
+//     Serial.print("│ ");
 
-    if (row == 0 || row == 1 || row == 12 || row == 13) {
-      rail = 1;
-    } else {
-      rail = 0;
-    }
+//     if (row == 0 || row == 1 || row == 12 || row == 13) {
+//       rail = 1;
+//     } else {
+//       rail = 0;
+//     }
 
-    for (int col = 0; col < 30; col++) {
-      int mapIndex = row * 30 + col;
-      int ledIndex = screenMap[mapIndex];
+//     for (int col = 0; col < 30; col++) {
+//       int mapIndex = row * 30 + col;
+//       int ledIndex = screenMap[mapIndex];
 
-      // Get the color from the LED
-      uint32_t color = leds.getPixelColor(ledIndex);
+//       // Get the color from the LED
+//       uint32_t color = leds.getPixelColor(ledIndex);
 
-      if (rgbOrRaw == 1) {
-        // Print raw RGB values
-        // Serial.printf("%02X%02X%02X ", r, g, b);
-      } else {
-        // Convert to terminal color and print block character
+//       if (rgbOrRaw == 1) {
+//         // Print raw RGB values
+//         // Serial.printf("%02X%02X%02X ", r, g, b);
+//       } else {
+//         // Convert to terminal color and print block character
 
-        int termColor = colorToVT100(color, 256);
-        if (color == 0x000000) {
-          termColor = 0;
-        }
+//         int termColor = colorToVT100(color, 256);
+//         if (color == 0x000000) {
+//           termColor = 0;
+//         }
 
-        // Print individual pixels
+//         // Print individual pixels
 
-        if (rail == 1) {
-          if ((col + 1) % 6 == 0) {
-            Serial.print("  ");
-            continue;
-          }
-        }
-        changeTerminalColor(termColor, false);
-        if (rail == 1) {
-          Serial.print("▐█");
+//         if (rail == 1) {
+//           if ((col + 1) % 6 == 0) {
+//             Serial.print("  ");
+//             continue;
+//           }
+//         }
+//         changeTerminalColor(termColor, false);
+//         if (rail == 1) {
+//           Serial.print("▐█");
 
-        } else {
+//         } else {
 
-          Serial.print("█▏");
-        }
-        changeTerminalColor(0, false);
-      }
-    }
+//           Serial.print("█▏");
+//         }
+//         changeTerminalColor(0, false);
+//       }
+//     }
 
-    changeTerminalColor(15, false);
-    Serial.println("│ ");
-    // moveCursor(posX, -1);
+//     changeTerminalColor(15, false);
+//     Serial.println("│ ");
+//     // moveCursor(posX, -1);
 
-    // Add spacing between sections
-    if ((row == 1 || row == 6 || row == 11)) {
-      moveCursor(posX - 10, -1);
-      changeTerminalColor(15, false);
-      Serial.print("          ");
-      if (row == 1) {
-        Serial.println(
-            "│ ₁       ₅         ₁₀        ₁₅        ₂₀        ₂₅        ₃₀│ ");
-      } else if (row == 11) {
-        Serial.println(
-            "│ ³¹      ³⁵        ⁴⁰        ⁴⁵        ⁵⁰        ⁵⁵        ⁶⁰│ ");
+//     // Add spacing between sections
+//     if ((row == 1 || row == 6 || row == 11)) {
+//       moveCursor(posX - 10, -1);
+//       changeTerminalColor(15, false);
+//       Serial.print("          ");
+//       if (row == 1) {
+//         Serial.println(
+//             "│ ₁       ₅         ₁₀        ₁₅        ₂₀        ₂₅        ₃₀│ ");
+//       } else if (row == 11) {
+//         Serial.println(
+//             "│ ³¹      ³⁵        ⁴⁰        ⁴⁵        ⁵⁰        ⁵⁵        ⁶⁰│ ");
 
-      } else if (row == 6) {
-        Serial.print("│");
-        changeTerminalColor(236, false);
-        Serial.print(
-            "        J    U    M    P    E    R    L    E    S    S       ");
-        changeTerminalColor(15, false);
-        Serial.println("│ ");
-      }
-    }
-  }
+//       } else if (row == 6) {
+//         Serial.print("│");
+//         changeTerminalColor(236, false);
+//         Serial.print(
+//             "        J    U    M    P    E    R    L    E    S    S       ");
+//         changeTerminalColor(15, false);
+//         Serial.println("│ ");
+//       }
+//     }
+//   }
 
-  moveCursor(posX, -1);
-  changeTerminalColor(15, false);
-  Serial.println(
-      "╰─────────────────────────────────────────────────────────────╯ ");
+//   moveCursor(posX, -1);
+//   changeTerminalColor(15, false);
+//   Serial.println(
+//       "╰─────────────────────────────────────────────────────────────╯ ");
 
-  // Optional: Print legend or additional info
-  if (logo) {
-    Serial.println("\n\rLED Index Mapping:");
-    Serial.println("Top Rails: 300-399");
-    Serial.println("Breadboard: 0-299");
-    Serial.println("Bottom Rails: 350-399");
-  }
+//   // Optional: Print legend or additional info
+//   if (logo) {
+//     Serial.println("\n\rLED Index Mapping:");
+//     Serial.println("Top Rails: 300-399");
+//     Serial.println("Breadboard: 0-299");
+//     Serial.println("Bottom Rails: 350-399");
+//   }
 
-  Serial.flush();
-  moveCursor(-1, -1, 1);
-  delayMicroseconds(100);
-  Serial.flush();
-}
+//   Serial.flush();
+//   moveCursor(-1, -1, 1);
+//   delayMicroseconds(100);
+//   Serial.flush();
+// }
 
 int attractMode(void) {
 

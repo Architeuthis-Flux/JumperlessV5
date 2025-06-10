@@ -3,10 +3,9 @@
 # Jumperless Bridge App
 # KevinC@ppucc.io
 #
-# Enhanced Wokwi Integration:
-# - Improved sketch.ino extraction from Wokwi projects using multiple extraction methods
-# - Better error handling and fallback mechanisms for various Wokwi page formats
-# - Support for direct code extraction from visible page elements
+
+App_Version = "1.1.1.1"
+new_requirements = True
 
 import pathlib
 import requests
@@ -25,6 +24,16 @@ import platform
 from bs4 import BeautifulSoup
 import re
 import subprocess
+import tempfile
+
+
+# Try to import packaging for robust version comparison
+try:
+    from packaging import version
+    PACKAGING_AVAILABLE = True
+except ImportError:
+    PACKAGING_AVAILABLE = False
+    # Fallback version comparison will be used
 
 # Command history support
 try:
@@ -33,10 +42,10 @@ try:
     # Configure readline for better command history
     readline.set_history_length(100)  # Keep last 100 commands
     # Enable tab completion if available
-    try:
-        readline.parse_and_bind("tab: complete")
-    except:
-        pass
+    # try:
+    #     readline.parse_and_bind("")
+    # except:
+    #     pass
 except ImportError:
     READLINE_AVAILABLE = False
 
@@ -75,6 +84,9 @@ except ImportError:
         RESET_ALL = '\033[0m' if platform.system() != 'Windows' else ''
     
     COLORS_AVAILABLE = False
+
+# Interactive mode will use termios on Unix-like systems
+import shutil
 
 # Platform-specific imports
 if sys.platform == "win32":
@@ -333,64 +345,10 @@ arduino_flash_lock = threading.Lock()  # Prevent concurrent Arduino uploads
 active_processes = []
 active_threads = []
 
-def cleanup_on_exit():
-    """Clean up all active processes and threads on script exit"""
-    global active_processes, active_threads, ser, serialconnected
-    import subprocess
-    
-    safe_print("\nCleaning up processes and threads...", Fore.YELLOW)
-    
-    # Terminate active subprocesses
-    for process in active_processes[:]:  # Copy list to avoid modification during iteration
-        try:
-            if process.poll() is None:  # Process is still running
-                safe_print(f"Terminating subprocess PID {process.pid}...", Fore.CYAN)
-                process.terminate()
-                try:
-                    process.wait(timeout=2)
-                    safe_print(f"Subprocess PID {process.pid} terminated gracefully", Fore.GREEN)
-                except subprocess.TimeoutExpired:
-                    safe_print(f"Force killing subprocess PID {process.pid}...", Fore.RED)
-                    process.kill()
-                    try:
-                        process.wait(timeout=1)
-                    except subprocess.TimeoutExpired:
-                        safe_print(f"Subprocess PID {process.pid} is unresponsive", Fore.RED)
-            active_processes.remove(process)
-        except Exception as e:
-            safe_print(f"Error terminating subprocess: {e}", Fore.RED)
-    
-    # Signal threads to stop (daemon threads will be killed automatically)
-    # Non-daemon threads need to be handled if they don't respond to interrupts
-    non_daemon_threads = [t for t in active_threads if t.is_alive() and not t.daemon]
-    if non_daemon_threads:
-        safe_print(f"Waiting for {len(non_daemon_threads)} non-daemon threads to finish...", Fore.CYAN)
-        for thread in non_daemon_threads:
-            try:
-                thread.join(timeout=2)  # Wait up to 2 seconds for each thread
-                if thread.is_alive():
-                    safe_print(f"Thread {thread.name} is still running (will be force-terminated)", Fore.YELLOW)
-                else:
-                    safe_print(f"Thread {thread.name} finished cleanly", Fore.GREEN)
-            except Exception as e:
-                safe_print(f"Error waiting for thread {thread.name}: {e}", Fore.RED)
-    
-    # Close serial connections
-    try:
-        if ser and serialconnected:
-            ser.close()
-            safe_print("Closed Jumperless serial connection", Fore.GREEN)
-    except Exception as e:
-        safe_print(f"Error closing serial connection: {e}", Fore.RED)
-    
-    # Force clear Arduino port one final time
-    try:
-        if arduinoPort:
-            force_clear_arduino_port()
-    except Exception as e:
-        safe_print(f"Error in final Arduino port clear: {e}", Fore.RED)
-    
-    safe_print("Cleanup completed", Fore.GREEN)
+# Interactive mode settings
+interactive_mode = False
+original_settings = None
+
 
 # Debug and configuration flags
 debug = False
@@ -454,6 +412,15 @@ savedProjectsFile = "JumperlessFiles/savedProjects.txt"
 # Firmware URLs
 latestFirmwareAddress = "https://github.com/Architeuthis-Flux/Jumperless/releases/latest/download/firmware.uf2"
 latestFirmwareAddressV5 = "https://github.com/Architeuthis-Flux/JumperlessV5/releases/latest/download/firmware.uf2"
+
+# App Update URLs
+app_update_repo = "Architeuthis-Flux/JumperlessV5"  # Repository for app updates
+app_script_name = "JumperlessWokwiBridge.py"
+app_requirements_name = "requirements.txt"
+
+# Debug/Testing settings for app updates
+debug_app_update = False # Set to True to use local file for testing
+debug_test_file = "jumperlesswokwibridgecopyfortesting.py"  # Local test file
 
 # Arduino sketch defaults
 defaultWokwiSketchText = 'void setup() {'
@@ -677,7 +644,28 @@ def get_available_ports():
     """Get list of available serial ports with cross-platform handling"""
     try:
         ports = serial.tools.list_ports.comports()
-        return [(port.device, port.description, port.hwid) for port in ports]
+        port_list = []
+        
+        for port in ports:
+            # Get basic info
+            device = port.device
+            description = port.description
+            hwid = port.hwid
+            interface = getattr(port, 'interface', None)
+            
+            # Debug: Check for additional attributes that might contain function info
+            additional_attrs = {}
+            for attr_name in ['name', 'subsystem', 'serial_number', 'location', 'manufacturer', 'product', 'vid', 'pid']:
+                try:
+                    attr_value = getattr(port, attr_name, None)
+                    if attr_value:
+                        additional_attrs[attr_name] = attr_value
+                except:
+                    pass
+            
+            port_list.append((device, description, hwid, interface, additional_attrs))
+        
+        return port_list
     except Exception as e:
         safe_print(f"Error getting serial ports: {e}", Fore.RED)
         return []
@@ -705,123 +693,368 @@ def parse_hardware_id(hwid, des='unknown'):
         pass
     return None, None
 
-def is_jumperless_device(desc, pid):
+def is_jumperless_device(desc, pid, interface=None):
     """Check if device is a Jumperless device"""
     return (desc == "Jumperless" or 
             pid in ["ACAB", "1312"] or 
             "jumperless" in desc.lower())
 
-def choose_jumperless_port(sorted_ports):
-    """Choose the correct Jumperless port by testing firmware response"""
+def parse_firmware_version(response_str):
+    """Extract and parse firmware version from response string"""
     global jumperlessFirmwareString, jumperlessFirmwareNumber, jumperlessV5
     
-    jumperlessFirmwareString = ' '
-    
-    for try_port_idx, port_name in enumerate(sorted_ports):
-        try:
-            with serial.Serial(port_name, 115200, timeout=1) as temp_ser:
-                safe_print(f"Testing port {port_name}", Fore.CYAN)
-                temp_ser.write(b'?')
-                time.sleep(0.3)
+    try:
+        # Look for the firmware version line
+        lines = response_str.split('\n')
+        for line in lines:
+            # Clean up the line - remove carriage returns and extra whitespace
+            clean_line = line.replace('\r', '').strip()
+            
+            if "Jumperless firmware version:" in clean_line:
+                jumperlessFirmwareString = clean_line
                 
-                if temp_ser.in_waiting > 0:
-                    input_buffer = b''
+                # Extract version part after the colon
+                if ':' in clean_line:
+                    version_part = clean_line.split(':', 1)[1].strip()
+                    
+                    # Clean version string - remove any non-digit/dot characters
+                    import re
+                    version_clean = re.sub(r'[^\d\.]', '', version_part)
+                    
+                    if version_clean:
+                        version_numbers = version_clean.split('.')
+                        # Filter out empty strings
+                        version_numbers = [v for v in version_numbers if v]
+                        
+                        if len(version_numbers) >= 3:
+                            jumperlessFirmwareNumber = version_numbers[:3]
+                            try:
+                                if int(version_numbers[0]) >= 5:
+                                    jumperlessV5 = True
+                            except ValueError:
+                                pass
+                        elif len(version_numbers) >= 1:
+                            # Handle shorter version numbers
+                            jumperlessFirmwareNumber = version_numbers + ['0'] * (3 - len(version_numbers))
+                            try:
+                                if int(version_numbers[0]) >= 5:
+                                    jumperlessV5 = True
+                            except ValueError:
+                                pass
+                    
+                    if debugWokwi:
+                        safe_print(f"Parsed version: {version_clean} -> {jumperlessFirmwareNumber}", Fore.CYAN)
+                    
+                    return True
+    except Exception as e:
+        if debugWokwi:
+            safe_print(f"Error parsing firmware version: {e}", Fore.YELLOW)
+    
+    return False
+
+def find_main_port(jumperless_ports):
+    """Find the main Jumperless port using '?' query"""
+    
+    for port_name, desc, hwid, interface, additional_attrs in jumperless_ports:
+        try:
+            with serial.Serial(port_name, 115200, timeout=1) as test_port:
+                if debugWokwi:
+                    safe_print(f"Testing {port_name} for main port", Fore.CYAN)
+                
+                # Clear buffers thoroughly
+                test_port.reset_input_buffer()
+                test_port.reset_output_buffer()
+                time.sleep(0.1)
+                
+                # Send ? to check for firmware response
+                test_port.write(b'?')
+                test_port.flush()
+                time.sleep(0.5)  # Give more time for response
+                
+                if test_port.in_waiting > 0:
+                    response_buffer = b''
                     start_time = time.time()
                     
-                    # Read with timeout
-                    while time.time() - start_time < 0.5:
-                        if temp_ser.in_waiting > 0:
-                            input_buffer += temp_ser.read(temp_ser.in_waiting)
+                    # Read all available data with longer timeout
+                    while time.time() - start_time < 1.0:
+                        if test_port.in_waiting > 0:
+                            response_buffer += test_port.read(test_port.in_waiting)
+                            time.sleep(0.01)  # Small delay to catch additional data
                         else:
-                            time.sleep(0.1)
-                        
-                        if b'\n' in input_buffer or time.time() - start_time > 1:
-                            break
-                    # safe_print(f"response: {input_buffer.decode('utf-8', errors='ignore').strip()}", Fore.CYAN)
-                    try:
-                        input_str = input_buffer.decode('utf-8', errors='ignore').strip()
-                        lines = input_str.split('\n')
-                        
-                        for line in lines:
-                            if line.startswith("Jumperless firmware version:"):
-                                jumperlessFirmwareString = line
+                            time.sleep(0.05)
+                            # If no new data for 100ms, assume we have the complete response
+                            if test_port.in_waiting == 0:
+                                break
+                    
+                    if response_buffer:
+                        try:
+                            response_str = response_buffer.decode('utf-8', errors='ignore')
+                            
+                            if debugWokwi:
+                                safe_print(f"Raw response from {port_name}: {repr(response_str[:200])}", Fore.BLUE)
+                            
+                            # Check if this looks like a firmware response
+                            if "Jumperless firmware version:" in response_str or "firmware" in response_str.lower():
+                                # safe_print(f"Found main port: {port_name}", Fore.GREEN)
                                 
-                                # Parse version number
-                                version_part = line[29:].strip()
-                                version_numbers = version_part.split('.')
-                                
-                                if len(version_numbers) >= 3:
-                                    jumperlessFirmwareNumber = version_numbers[:3]
-                                    
-                                    if int(version_numbers[0]) >= 5:
-                                        jumperlessV5 = True
-                                
-                                return try_port_idx
-                    except Exception:
-                        continue
-        except Exception:
-            continue
+                                # Parse firmware info
+                                if parse_firmware_version(response_str):
+                                    test_port.write(b'\x10')
+                                    test_port.flush()
+                                    return port_name
+                                else:
+                                    # Even if parsing failed, this is still the main port
+                                    safe_print("Firmware version parsing failed, but this is the main port", Fore.YELLOW)
+                                    return port_name
+                        except Exception as e:
+                            if debugWokwi:
+                                safe_print(f"Error decoding response from {port_name}: {e}", Fore.YELLOW)
+                            
+        except Exception as e:
+            if debugWokwi:
+                safe_print(f"Error testing {port_name}: {e}", Fore.YELLOW)
     
-    return 0
+    return None
+
+def query_port_function(port_name):
+    """Query individual port with ENQ to get its function"""
+    try:
+        with serial.Serial(port_name, 115200, timeout=0.5) as port:
+            # Clear buffers
+            port.reset_input_buffer()
+            port.reset_output_buffer()
+            time.sleep(0.05)
+            
+            # Send ENQ (0x05)
+            port.write(b"\x05\n")
+            port.flush()
+            time.sleep(0.2)
+            
+            # Read response
+            response_buffer = b''
+            start_time = time.time()
+            
+            while time.time() - start_time < 0.8:
+                if port.in_waiting > 0:
+                    response_buffer += port.read(port.in_waiting)
+                    time.sleep(0.01)
+                else:
+                    time.sleep(0.01)
+                    if port.in_waiting == 0:
+                        break
+            
+            if response_buffer:
+                response = response_buffer.decode('utf-8', errors='ignore').strip()
+                if debugWokwi:
+                    safe_print(f"Port {port_name} ENQ response: {response}", Fore.CYAN)
+                
+                # Parse the response to find this port's function
+                lines = response.split('\n')
+                for line in lines:
+                    line = line.strip()
+                    if line.startswith('CDC') and ':' in line:
+                        try:
+                            cdc_part, function_part = line.split(':', 1)
+                            function_desc = function_part.strip()
+                            return function_desc
+                        except:
+                            continue
+            
+    except Exception as e:
+        if debugWokwi:
+            safe_print(f"Error querying {port_name}: {e}", Fore.YELLOW)
+    
+    return None
+
+def get_all_port_functions(main_port_name, all_jumperless_ports):
+    """Get functions for all ports by querying main port first, then individual ports"""
+    port_functions = {}
+    
+    # First, query the main port to get all CDC info
+    try:
+        with serial.Serial(main_port_name, 115200, timeout=1) as main_port:
+            safe_print(f"Querying main port {main_port_name} for all CDC functions", Fore.CYAN)
+            
+            # Clear buffers
+            main_port.reset_input_buffer()
+            main_port.reset_output_buffer()
+            time.sleep(0.1)
+            
+            # Send ENQ (0x05)
+            main_port.write(b"\x05\n")
+            main_port.flush()
+            time.sleep(0.3)
+            
+            # Read response
+            response_buffer = b''
+            start_time = time.time()
+            
+            while time.time() - start_time < 1.0:
+                if main_port.in_waiting > 0:
+                    response_buffer += main_port.read(main_port.in_waiting)
+                    time.sleep(0.01)
+                else:
+                    time.sleep(0.1)
+                    if main_port.in_waiting == 0:
+                        break
+            
+            if response_buffer:
+                response = response_buffer.decode('utf-8', errors='ignore').strip()
+                # Filter to only show CDC lines
+                cdc_lines = [line for line in response.split('\n') if line.strip().startswith('CDC')]
+                filtered_response = '\n'.join(cdc_lines)
+                safe_print(f"Main port ENQ response:\n{filtered_response}", Fore.YELLOW)
+                
+                # Parse CDC info: "CDC0: Jumperless Main", "CDC1: JL Passthrough", etc.
+                lines = response.split('\n')
+                for line in lines:
+                    line = line.strip()
+                    if line.startswith('CDC') and ':' in line:
+                        try:
+                            cdc_part, function_part = line.split(':', 1)
+                            cdc_num = int(cdc_part.replace('CDC', '').strip())
+                            function_desc = function_part.strip()
+                            port_functions[cdc_num] = function_desc
+                            
+                            if debugWokwi:
+                                safe_print(f"  CDC{cdc_num}: {function_desc}", Fore.GREEN)
+                        except (ValueError, IndexError) as e:
+                            if debugWokwi:
+                                safe_print(f"Error parsing line '{line}': {e}", Fore.YELLOW)
+                            continue
+    except Exception as e:
+        safe_print(f"Error querying main port: {e}", Fore.RED)
+    
+    # If we didn't get all the port info, try querying each port individually
+    num_detected_ports = len(all_jumperless_ports)
+    if len(port_functions) < num_detected_ports:
+        safe_print(f"Trying to query {num_detected_ports} individual ports for their functions", Fore.CYAN)
+        
+        for port_name, desc, hwid, interface, additional_attrs in all_jumperless_ports:
+            if port_name != main_port_name:  # Skip main port, we already know it
+                function = query_port_function(port_name)
+                if function:
+                    safe_print(f"Port {port_name}: {function}", Fore.GREEN)
+    
+    return port_functions
+
+def organize_jumperless_ports(main_port_name, all_jumperless_ports, port_functions):
+    """Organize ports by function with fallback to numerical order"""
+    organized_ports = {}
+    
+    # First, assign ports based on ENQ query results
+    for cdc_num, function_desc in port_functions.items():
+        # Try to find which physical port corresponds to this CDC number
+        port_assigned = False
+        
+        # Method 1: Try to find the port by querying it individually
+        for port_name, desc, hwid, interface, additional_attrs in all_jumperless_ports:
+            if port_name == main_port_name and 'main' in function_desc.lower():
+                organized_ports[port_name] = function_desc
+                port_assigned = True
+                break
+        
+        if not port_assigned:
+            # Method 2: Fallback to numerical order mapping
+            # Sort ports by name to get consistent ordering
+            sorted_ports = sorted([p[0] for p in all_jumperless_ports])
+            
+            if cdc_num < len(sorted_ports):
+                port_name = sorted_ports[cdc_num]
+                organized_ports[port_name] = function_desc
+                if debugWokwi:
+                    safe_print(f"Fallback: CDC{cdc_num} -> {port_name} ({function_desc})", Fore.YELLOW)
+    
+    # If we still don't have enough ports mapped, map remaining ports in order
+    unmapped_ports = [p[0] for p in all_jumperless_ports if p[0] not in organized_ports]
+    if unmapped_ports:
+        safe_print(f"Mapping {len(unmapped_ports)} remaining ports in numerical order", Fore.CYAN)
+        
+        for i, port_name in enumerate(sorted(unmapped_ports)):
+            if port_name == main_port_name:
+                organized_ports[port_name] = "Jumperless Main"
+            else:
+                organized_ports[port_name] = f"Jumperless Port {i + 1}"
+    
+    return organized_ports
+
+def choose_arduino_port(organized_ports, main_port_name):
+    """Choose the best port for Arduino programming"""
+    # Look for specific Arduino-friendly functions in order of preference
+    arduino_preferences = [
+        "passthrough", "jl passthrough", "arduino", "serial"
+    ]
+    
+    for port_name, function_desc in organized_ports.items():
+        if port_name != main_port_name:  # Don't use main port for Arduino
+            function_lower = function_desc.lower()
+            for pref in arduino_preferences:
+                if pref in function_lower:
+                    return port_name
+    
+    # Fallback: use any non-main port
+    for port_name in organized_ports:
+        if port_name != main_port_name:
+            return port_name
+    
+    return None
 
 def open_serial():
-    """Open serial connection with cross-platform port detection"""
+    """Open serial connection with simplified port detection"""
     global portName, ser, arduinoPort, serialconnected, portSelected, updateInProgress
     
     portSelected = False
-    found_ports = []
     
     safe_print("\nScanning for serial ports...\n", Fore.CYAN)
     
     while not portSelected and updateInProgress == 0:
         ports = get_available_ports()
-        found_ports = []
         
         if not ports:
             safe_print("No serial ports found. Please connect your Jumperless.", Fore.RED)
             time.sleep(2)
-            ports = get_available_ports()
-            while not ports:
-                # safe_print("No serial ports found. Please connect your Jumperless.", Fore.RED)
-                time.sleep(2)
-                ports = get_available_ports()
-
             continue
         
-        # safe_print("\nAvailable ports:")
-        for i, (port, desc, hwid) in enumerate(ports, 1):
+        # Find all Jumperless devices
+        jumperless_ports = []
+        other_ports = []
+        
+        for i, (port, desc, hwid, interface, additional_attrs) in enumerate(ports, 1):
             vid, pid = parse_hardware_id(hwid, desc)
             
-            
-            if is_jumperless_device(desc, pid):
-                found_ports.append(port)
+            if is_jumperless_device(desc, pid, interface):
+                jumperless_ports.append((port, desc, hwid, interface, additional_attrs))
                 safe_print(f"{i}: {port} [{desc}]", Fore.MAGENTA)
             else:
+                other_ports.append((port, desc, hwid, interface, additional_attrs))
                 safe_print(f"{i}: {port} [{desc}]", Fore.BLUE)
-
-
-
-        # safe_print(f"\nFound {len(found_ports)} Jumperless devices", Fore.CYAN)
-
-        if found_ports:
-            sorted_ports = sorted(found_ports, key=lambda x: x[-1] if x[-1].isdigit() else x)
-            jumperless_index = choose_jumperless_port(sorted_ports)
+        
+        if not jumperless_ports:
+            safe_print("No Jumperless devices found.", Fore.YELLOW)
+            selection = input("Enter port number manually or 'r' to rescan: ").strip()
+            if selection.lower() == 'r':
+                continue
             
-            if len(sorted_ports) > jumperless_index:
-                portName = sorted_ports[jumperless_index]
-                
-                # Try to find Arduino port (usually the next port)
-                if len(sorted_ports) > jumperless_index + 1:
-                    arduinoPort = sorted_ports[jumperless_index + 1]
-                else:
-                    arduinoPort = None
-                
-                portSelected = True
-                safe_print(f"\nAutodetected Jumperless at {portName}", Fore.CYAN)
-                if arduinoPort:
-                    safe_print(f"Autodetected USB-Serial at {arduinoPort}", Fore.CYAN)
-            else:
-                safe_print("Could not identify Jumperless port automatically.", Fore.YELLOW)
+            try:
+                port_idx = int(selection) - 1
+                if 0 <= port_idx < len(ports):
+                    portName = ports[port_idx][0]
+                    portSelected = True
+            except (ValueError, IndexError):
+                safe_print("Invalid selection.", Fore.RED)
+                continue
+        else:
+            # Step 1: Find the main port using '?' query
+            safe_print(f"\nFound {len(jumperless_ports)} Jumperless device(s). Finding main port...", Fore.CYAN)
+            
+            main_port_name = find_main_port(jumperless_ports)
+            
+            if not main_port_name:
+                time.sleep(0.5)
+                main_port_name = find_main_port(jumperless_ports)
+            
+            if not main_port_name:
+                safe_print("Could not find main port automatically.", Fore.YELLOW)
                 # Manual selection fallback
                 try:
                     selection = input("\nSelect port number ('r' to rescan): ").strip()
@@ -836,21 +1069,35 @@ def open_serial():
                 except (ValueError, IndexError):
                     safe_print("Invalid selection. Please try again.", Fore.RED)
                     continue
-        else:
-            
-            safe_print("No Jumperless devices found.", Fore.YELLOW)
-            selection = input("Enter port number manually or 'r' to rescan: ").strip()
-            if selection.lower() == 'r':
-                continue
-            
-            try:
-                port_idx = int(selection) - 1
-                if 0 <= port_idx < len(ports):
-                    portName = ports[port_idx][0]
-                    portSelected = True
-            except (ValueError, IndexError):
-                safe_print("Invalid selection.", Fore.RED)
-                continue
+            else:
+                # Step 2: Query for all port functions
+                safe_print(f"Main port found: {main_port_name}", Fore.GREEN)
+                
+                port_functions = get_all_port_functions(main_port_name, jumperless_ports)
+                
+                # Step 3: Organize ports by function
+                organized_ports = organize_jumperless_ports(main_port_name, jumperless_ports, port_functions)
+                
+                # Step 4: Set main communication port
+                portName = main_port_name
+                portSelected = True
+                
+                # Step 5: Choose Arduino port
+                arduinoPort = choose_arduino_port(organized_ports, main_port_name)
+                
+                # Display results
+                safe_print(f"\nPort assignments:", Fore.CYAN)
+                safe_print(f"Main communication: {portName} ({organized_ports.get(portName, 'Unknown')})", Fore.GREEN)
+                
+                if arduinoPort:
+                    safe_print(f"Arduino programming: {arduinoPort} ({organized_ports.get(arduinoPort, 'Unknown')})", Fore.GREEN)
+                else:
+                    safe_print("Arduino programming: Not available", Fore.YELLOW)
+                
+                if debugWokwi:
+                    safe_print(f"\nAll detected ports:", Fore.CYAN)
+                    for port_name, function_desc in organized_ports.items():
+                        safe_print(f"  {port_name}: {function_desc}", Fore.BLUE)
     
     # Attempt to open the selected port
     try:
@@ -879,20 +1126,50 @@ def check_if_fw_is_old():
         return False
     
     try:
-        split_index = jumperlessFirmwareString.rfind(':')
-        currentString = jumperlessFirmwareString[split_index + 2:].strip()
+        # Extract version using robust parsing
+        version_found = False
+        currentString = ""
+        
+        if ':' in jumperlessFirmwareString:
+            version_part = jumperlessFirmwareString.split(':', 1)[1].strip()
+            
+            # Clean version string - remove any non-digit/dot characters at the start/end
+            import re
+            version_clean = re.sub(r'^[^\d]*|[^\d\.]*$', '', version_part)
+            # Also remove any characters after the version (like spaces, newlines, etc.)
+            version_clean = re.split(r'[^\d\.]', version_clean)[0]
+            
+            if version_clean and '.' in version_clean:
+                currentString = version_clean
+                version_found = True
+            else:
+                # Fallback: try to find version pattern in the string
+                version_match = re.search(r'(\d+\.\d+\.\d+)', jumperlessFirmwareString)
+                if version_match:
+                    currentString = version_match.group(1)
+                    version_found = True
+        
+        if not version_found:
+            safe_print(f"Could not parse firmware version from: {jumperlessFirmwareString}", Fore.YELLOW)
+            return False
         
         current_list = currentString.split('.')
         if len(current_list) < 3:
-            return False
+            # Pad short version numbers with zeros
+            current_list = current_list + ['0'] * (3 - len(current_list))
         
-        # Pad version numbers
+        # Pad version numbers for comparison
         for i in range(len(current_list)):
             if len(current_list[i]) < 2:
                 current_list[i] = '0' + current_list[i]
         
-        if int(current_list[0]) >= 5:
-            jumperlessV5 = True
+        # Determine if this is V5
+        try:
+            if int(current_list[0]) >= 5:
+                jumperlessV5 = True
+        except ValueError:
+            safe_print(f"Invalid major version number: {current_list[0]}", Fore.YELLOW)
+            return False
         
         # Check latest version online
         repo_url = ("https://github.com/Architeuthis-Flux/JumperlessV5/releases/latest" 
@@ -904,22 +1181,25 @@ def check_if_fw_is_old():
         
         latest_list = version.split('.')
         if len(latest_list) < 3:
-            return False
+            # Pad short version numbers
+            latest_list = latest_list + ['0'] * (3 - len(latest_list))
         
-        # Pad latest version numbers
+        # Pad latest version numbers for comparison
         for i in range(len(latest_list)):
             if len(latest_list[i]) < 2:
-                latest_list[i] =  '0' + latest_list[i]
+                latest_list[i] = '0' + latest_list[i]
         
-        latest_int = int("".join(latest_list))
-        current_int = int("".join(current_list))
-        # safe_print(f"\nLatest firmware: {version}", Fore.CYAN)
-        # safe_print(f"Current version: {currentString}", Fore.CYAN)
+        try:
+            latest_int = int("".join(latest_list))
+            current_int = int("".join(current_list))
+        except ValueError as e:
+            safe_print(f"Version comparison failed: {e}", Fore.YELLOW)
+            return False
+        
         latestFirmware = version
         if latest_int > current_int:
             safe_print(f"\nLatest firmware: {version}", Fore.MAGENTA)
             safe_print(f"Current version: {currentString}", Fore.RED)
-
             update_jumperless_firmware(force=False)
             return True
         
@@ -927,6 +1207,8 @@ def check_if_fw_is_old():
         
     except Exception as e:
         safe_print(f"Could not check firmware version: {e}", Fore.YELLOW)
+        if debugWokwi:
+            safe_print(f"Firmware string was: {repr(jumperlessFirmwareString)}", Fore.BLUE)
         noWokwiStuff = True
         return False
 
@@ -1151,6 +1433,514 @@ def update_jumperless_firmware(force=False):
             safe_print(f"Failed to download firmware: {e}", Fore.RED)
         updateInProgress = 0
         menuEntered = 0
+
+# ============================================================================
+# APP UPDATE MANAGEMENT
+# ============================================================================
+
+def compare_versions(version1, version2):
+    """Compare two version strings using packaging.version for robust comparison"""
+    if PACKAGING_AVAILABLE:
+        try:
+            return version.parse(version1) < version.parse(version2)
+        except Exception as e:
+            safe_print(f"Error comparing versions with packaging: {e}", Fore.YELLOW)
+            # Fall through to simple comparison
+    
+    # Fallback: simple version comparison
+    try:
+        # Split versions into parts and compare numerically
+        v1_parts = [int(x) for x in version1.split('.')]
+        v2_parts = [int(x) for x in version2.split('.')]
+        
+        # Pad shorter version with zeros
+        max_len = max(len(v1_parts), len(v2_parts))
+        v1_parts.extend([0] * (max_len - len(v1_parts)))
+        v2_parts.extend([0] * (max_len - len(v2_parts)))
+        
+        return v1_parts < v2_parts
+    except Exception as e:
+        safe_print(f"Error in fallback version comparison: {e}", Fore.YELLOW)
+        # Last resort: string comparison
+        return version1 != version2
+
+def get_latest_app_version():
+    """Get the latest app version by downloading and reading the script file"""
+    try:
+        # Debug mode: read from local file
+        if debug_app_update:
+            safe_print(f"DEBUG MODE: Reading version from local file: {debug_test_file}", Fore.MAGENTA)
+            
+            if not os.path.exists(debug_test_file):
+                safe_print(f"Debug test file not found: {debug_test_file}", Fore.RED)
+                return None, None
+            
+            try:
+                with open(debug_test_file, 'r', encoding='utf-8') as f:
+                    lines = f.readlines()
+                
+                app_version = None
+                for line in lines[:20]:  # Check first 20 lines
+                    line = line.strip()
+                    if line.startswith('App_Version') and '=' in line:
+                        try:
+                            # Extract version from line like: App_Version = "1.1.1.1"
+                            version_part = line.split('=', 1)[1].strip()
+                            
+                            # Find the quoted string
+                            if '"' in version_part:
+                                # Extract content between first pair of double quotes
+                                start_quote = version_part.find('"')
+                                end_quote = version_part.find('"', start_quote + 1)
+                                if end_quote > start_quote:
+                                    app_version = version_part[start_quote + 1:end_quote]
+                                else:
+                                    app_version = version_part.strip('"\'').strip()
+                            elif "'" in version_part:
+                                # Extract content between first pair of single quotes
+                                start_quote = version_part.find("'")
+                                end_quote = version_part.find("'", start_quote + 1)
+                                if end_quote > start_quote:
+                                    app_version = version_part[start_quote + 1:end_quote]
+                                else:
+                                    app_version = version_part.strip('"\'').strip()
+                            else:
+                                # No quotes, take everything until comment or end of line
+                                app_version = version_part.split('#')[0].strip()
+                            break
+                        except Exception as e:
+                            safe_print(f"Error parsing version line '{line}': {e}", Fore.YELLOW)
+                            continue
+                
+                if app_version:
+                    safe_print(f"Found app version in test file: {app_version}", Fore.GREEN)
+                    return app_version, "debug://local-file"
+                else:
+                    safe_print("Could not find App_Version in test file", Fore.YELLOW)
+                    return None, None
+                    
+            except Exception as e:
+                safe_print(f"Error reading test file: {e}", Fore.RED)
+                return None, None
+        
+        # Production mode: download from GitHub
+        # First get the latest release info
+        response = requests.get(
+            f"https://api.github.com/repos/{app_update_repo}/releases/latest",
+            timeout=5
+        )
+        if response.status_code != 200:
+            safe_print("Could not fetch latest release info from GitHub", Fore.YELLOW)
+            return None, None
+        
+        release_data = response.json()
+        firmware_version = release_data.get('tag_name', '').lstrip('v')
+        release_url = release_data.get('html_url', '')
+        
+        if not firmware_version:
+            safe_print("Could not determine firmware version from release", Fore.YELLOW)
+            return None, None
+        
+        # Download the app script to read its version
+        script_url = f"https://github.com/{app_update_repo}/releases/download/{firmware_version}/{app_script_name}"
+        
+        safe_print(f"Downloading app script to check version: {script_url}", Fore.BLUE)
+        
+        script_response = requests.get(script_url, timeout=10)
+        if script_response.status_code != 200:
+            safe_print(f"Could not download app script (HTTP {script_response.status_code})", Fore.YELLOW)
+            return None, None
+        
+        # Read the first few lines to find App_Version
+        script_content = script_response.text
+        lines = script_content.split('\n')
+        
+        app_version = None
+        for line in lines[:20]:  # Check first 20 lines
+            line = line.strip()
+            if line.startswith('App_Version') and '=' in line:
+                try:
+                    # Extract version from line like: App_Version = "1.1.1.1"
+                    version_part = line.split('=', 1)[1].strip()
+                    
+                    # Find the quoted string
+                    if '"' in version_part:
+                        # Extract content between first pair of double quotes
+                        start_quote = version_part.find('"')
+                        end_quote = version_part.find('"', start_quote + 1)
+                        if end_quote > start_quote:
+                            app_version = version_part[start_quote + 1:end_quote]
+                        else:
+                            app_version = version_part.strip('"\'').strip()
+                    elif "'" in version_part:
+                        # Extract content between first pair of single quotes
+                        start_quote = version_part.find("'")
+                        end_quote = version_part.find("'", start_quote + 1)
+                        if end_quote > start_quote:
+                            app_version = version_part[start_quote + 1:end_quote]
+                        else:
+                            app_version = version_part.strip('"\'').strip()
+                    else:
+                        # No quotes, take everything until comment or end of line
+                        app_version = version_part.split('#')[0].strip()
+                    break
+                except Exception as e:
+                    if debugWokwi:
+                        safe_print(f"Error parsing version line '{line}': {e}", Fore.YELLOW)
+                    continue
+        
+        if app_version:
+            safe_print(f"Found app version in script: {app_version}", Fore.GREEN)
+            return app_version, release_url
+        else:
+            safe_print("Could not find App_Version in downloaded script", Fore.YELLOW)
+            return None, None
+        
+    except Exception as e:
+        safe_print(f"Error checking for app updates: {e}", Fore.YELLOW)
+        return None, None
+
+def check_for_app_updates():
+    """Check if there's a newer version of the app available"""
+    global App_Version
+    
+    safe_print("Checking for app updates...", Fore.CYAN)
+    
+    latest_version, release_url = get_latest_app_version()
+    if not latest_version:
+        return False
+    
+    try:
+        if compare_versions(App_Version, latest_version):
+            safe_print(f"\nNew app version available!", Fore.GREEN)
+            safe_print(f"Current version: {App_Version}", Fore.YELLOW)
+            safe_print(f"Latest version: {latest_version}", Fore.GREEN)
+            if release_url:
+                safe_print(f"Release notes: {release_url}", Fore.BLUE)
+            
+            return True
+        else:
+            safe_print(f"App is up to date (version {App_Version})", Fore.GREEN)
+            return False
+            
+    except Exception as e:
+        safe_print(f"Error during version comparison: {e}", Fore.RED)
+        return False
+
+def download_app_update():
+    """Download the latest version of the app script"""
+    try:
+        # Debug mode: copy from local file
+        if debug_app_update:
+            safe_print(f"DEBUG MODE: Copying from local file: {debug_test_file}", Fore.MAGENTA)
+            
+            if not os.path.exists(debug_test_file):
+                safe_print(f"Debug test file not found: {debug_test_file}", Fore.RED)
+                return None, None
+            
+            # Create a temporary file and copy the test file content
+            with tempfile.NamedTemporaryFile(mode='w+b', delete=False, suffix='.py') as temp_file:
+                temp_script_path = temp_file.name
+                
+                # Copy the test file to temp location
+                with open(debug_test_file, 'rb') as source_file:
+                    temp_file.write(source_file.read())
+            
+            safe_print("Test file copied successfully", Fore.GREEN)
+            
+            # No requirements in debug mode
+            requirements_path = None
+            
+            return temp_script_path, requirements_path
+        
+        # Production mode: download from GitHub
+        # Get the latest firmware version (release tag) for download URL
+        response = requests.get(
+            f"https://api.github.com/repos/{app_update_repo}/releases/latest",
+            timeout=3
+        )
+        if response.status_code != 200:
+            safe_print("Could not fetch latest release info", Fore.RED)
+            return None, None
+        
+        release_data = response.json()
+        firmware_version = release_data.get('tag_name', '').lstrip('v')
+        
+        if not firmware_version:
+            safe_print("Could not determine firmware version for download", Fore.RED)
+            return None, None
+        
+        # Download the main script using firmware version in URL
+        script_url = f"https://github.com/{app_update_repo}/releases/download/v{firmware_version}/{app_script_name}"
+        
+        safe_print(f"Downloading {app_script_name} (release {firmware_version})...", Fore.CYAN)
+        
+        # Create a temporary file for download
+        with tempfile.NamedTemporaryFile(mode='wb', delete=False, suffix='.py') as temp_file:
+            temp_script_path = temp_file.name
+            
+            # Download the script
+            response = requests.get(script_url, timeout=30)
+            response.raise_for_status()
+            
+            temp_file.write(response.content)
+        
+        safe_print("App script downloaded successfully", Fore.GREEN)
+        
+        # Check if requirements.txt should be downloaded
+        requirements_path = None
+        if new_requirements:
+            try:
+                safe_print("Downloading requirements.txt...", Fore.CYAN)
+                requirements_url = f"https://github.com/{app_update_repo}/releases/download/v{firmware_version}/{app_requirements_name}"
+                
+                with tempfile.NamedTemporaryFile(mode='wb', delete=False, suffix='.txt') as temp_req_file:
+                    requirements_path = temp_req_file.name
+                    
+                    req_response = requests.get(requirements_url, timeout=15)
+                    req_response.raise_for_status()
+                    
+                    temp_req_file.write(req_response.content)
+                
+                safe_print("Requirements.txt downloaded successfully", Fore.GREEN)
+                
+            except Exception as e:
+                safe_print(f"Could not download requirements.txt: {e}", Fore.YELLOW)
+                safe_print("Continuing with app update only...", Fore.CYAN)
+                requirements_path = None
+        
+        return temp_script_path, requirements_path
+        
+    except Exception as e:
+        safe_print(f"Error downloading app update: {e}", Fore.RED)
+        return None, None
+
+def backup_current_app():
+    """Create a backup of the current app script"""
+    current_script = sys.argv[0]
+    if not current_script.endswith('.py'):
+        current_script = __file__
+    
+    try:
+        # Create backup directory
+        backup_dir = "JumperlessFiles/appBackups"
+        pathlib.Path(backup_dir).mkdir(parents=True, exist_ok=True)
+        
+        # Create backup with timestamp
+        timestamp = time.strftime("%Y%m%d_%H%M%S")
+        script_name = os.path.basename(current_script)
+        backup_name = f"{script_name}.backup_{timestamp}"
+        backup_path = os.path.join(backup_dir, backup_name)
+        
+        shutil.copy2(current_script, backup_path)
+        safe_print(f"Current version backed up as: {backup_path}", Fore.CYAN)
+        return backup_path
+        
+    except Exception as e:
+        safe_print(f"Warning: Could not create backup: {e}", Fore.YELLOW)
+        return None
+
+def cleanup_old_backups():
+    """Clean up old backup files to prevent accumulation"""
+    try:
+        backup_dir = "JumperlessFiles/appBackups"
+        
+        # Check if backup directory exists
+        if not os.path.exists(backup_dir):
+            return
+        
+        backup_pattern = f"{app_script_name}.backup_"
+        
+        # Find all backup files
+        backup_files = []
+        for filename in os.listdir(backup_dir):
+            if filename.startswith(backup_pattern):
+                backup_path = os.path.join(backup_dir, filename)
+                backup_files.append((backup_path, os.path.getmtime(backup_path)))
+        
+        # Sort by modification time (newest first)
+        backup_files.sort(key=lambda x: x[1], reverse=True)
+        
+        # Keep only the 3 most recent backups
+        max_backups = 3
+        if len(backup_files) > max_backups:
+            safe_print(f"Cleaning up old backups (keeping {max_backups} most recent)...", Fore.CYAN)
+            
+            for backup_path, _ in backup_files[max_backups:]:
+                try:
+                    os.remove(backup_path)
+                    safe_print(f"Removed old backup: {os.path.basename(backup_path)}", Fore.BLUE)
+                except Exception as e:
+                    safe_print(f"Could not remove {backup_path}: {e}", Fore.YELLOW)
+                    
+    except Exception as e:
+        safe_print(f"Error during backup cleanup: {e}", Fore.YELLOW)
+
+def install_requirements(requirements_path):
+    """Install requirements from downloaded requirements.txt"""
+    try:
+        safe_print("Installing new requirements...", Fore.CYAN)
+        
+        # Run pip install
+        cmd = [sys.executable, '-m', 'pip', 'install', '-r', requirements_path]
+        
+        result = subprocess.run(cmd, capture_output=True, text=True, timeout=300)
+        
+        if result.returncode == 0:
+            safe_print("Requirements installed successfully", Fore.GREEN)
+            return True
+        else:
+            safe_print(f"Failed to install requirements:", Fore.RED)
+            safe_print(result.stderr, Fore.RED)
+            return False
+            
+    except Exception as e:
+        safe_print(f"Error installing requirements: {e}", Fore.RED)
+        return False
+
+def perform_app_update():
+    """Perform the complete app update process"""
+    global updateInProgress, serialconnected, ser
+    
+    updateInProgress = 1
+    
+    try:
+        # Close serial connection during update
+        if ser and serialconnected:
+            with serial_lock:
+                try:
+                    ser.close()
+                except:
+                    pass
+                ser = None
+                serialconnected = 0
+        
+        # Clean up old backups first
+        cleanup_old_backups()
+        
+        # Create backup of current version
+        backup_path = backup_current_app()
+        
+        # Download new version
+        new_script_path, requirements_path = download_app_update()
+        if not new_script_path:
+            safe_print("Update download failed", Fore.RED)
+            return False
+        
+        # Install requirements if needed
+        if requirements_path:
+            requirements_success = install_requirements(requirements_path)
+            if not requirements_success:
+                safe_print("Requirements installation failed, but continuing with app update...", Fore.YELLOW)
+        
+        # Get current script path
+        current_script = sys.argv[0]
+        if not current_script.endswith('.py'):
+            current_script = __file__
+        
+        # Replace current script with new version
+        safe_print("Installing new app version...", Fore.CYAN)
+        
+        try:
+            # On Windows, we might need to handle file locking differently
+            if sys.platform == "win32":
+                # Create a batch script to handle the replacement
+                batch_script = f"""
+@echo off
+timeout /t 2 /nobreak > nul
+move "{new_script_path}" "{current_script}"
+echo App update completed!
+pause
+"""
+                batch_path = "update_app.bat"
+                with open(batch_path, 'w') as f:
+                    f.write(batch_script)
+                
+                safe_print("App update prepared. Please run update_app.bat after this script exits.", Fore.YELLOW)
+                safe_print("The app will restart automatically after update.", Fore.CYAN)
+                
+            else:
+                # Unix-like systems: direct replacement
+                shutil.move(new_script_path, current_script)
+                safe_print("App updated successfully!", Fore.GREEN)
+        
+        except Exception as e:
+            safe_print(f"Error replacing app file: {e}", Fore.RED)
+            # Try to restore backup
+            if backup_path and os.path.exists(backup_path):
+                try:
+                    shutil.copy2(backup_path, current_script)
+                    safe_print("Restored backup version", Fore.YELLOW)
+                except Exception as restore_error:
+                    safe_print(f"Could not restore backup: {restore_error}", Fore.RED)
+            return False
+        
+        # Clean up temporary files
+        try:
+            if os.path.exists(new_script_path):
+                os.remove(new_script_path)
+            if requirements_path and os.path.exists(requirements_path):
+                os.remove(requirements_path)
+        except Exception as cleanup_error:
+            safe_print(f"Note: Could not clean up temporary files: {cleanup_error}", Fore.YELLOW)
+        
+        # safe_print("\n" + "="*60, Fore.GREEN)
+        safe_print("APP UPDATE COMPLETED SUCCESSFULLY!", Fore.GREEN)
+        # safe_print("="*60, Fore.GREEN)
+        safe_print("Please restart the application to use the new version.", Fore.CYAN)
+        # safe_print("Your backup is saved in case you need to revert.", Fore.BLUE)
+        
+        return True
+        
+    except Exception as e:
+        safe_print(f"Unexpected error during app update: {e}", Fore.RED)
+        return False
+    finally:
+        updateInProgress = 0
+
+def update_app_if_needed():
+    """Check for and optionally perform app update"""
+    try:
+        if check_for_app_updates():
+            safe_print("\nWould you like to update the app now?", Fore.CYAN)
+            
+            # Use simple input() instead of timeout input for better reliability
+            try:
+                user_response = input("Update now? (y/N): ").strip().lower()
+            except (EOFError, KeyboardInterrupt):
+                user_response = "n"
+            
+            if debugWokwi:
+                safe_print(f"User response: '{user_response}'", Fore.BLUE)
+            
+            if user_response in ['y', 'yes']:
+                safe_print("Starting app update...", Fore.GREEN)
+                success = perform_app_update()
+                
+                if success:
+                    # # Ask user if they want to restart immediately
+                    # try:
+                    #     restart_response = input("Restart the app now? (y/N): ").strip().lower()
+                    # except (EOFError, KeyboardInterrupt):
+                    #     restart_response = "n"
+                    
+                    # if restart_response in ['y', 'yes']:
+                    safe_print("Restarting app...", Fore.CYAN)
+                    # Restart the app
+                    try:
+                        cleanup_on_exit()
+                        os.execv(sys.executable, [sys.executable] + sys.argv)
+                    except Exception as restart_error:
+                        safe_print(f"Could not restart automatically: {restart_error}", Fore.YELLOW)
+                        safe_print("Please restart the app manually.", Fore.CYAN)
+                        sys.exit(0)
+                else:
+                    safe_print("App update failed. Continuing with current version.", Fore.YELLOW)
+            else:
+                safe_print("App update skipped.", Fore.BLUE)
+                
+    except Exception as e:
+        safe_print(f"Error during app update check: {e}", Fore.RED)
 
 # ============================================================================
 # PROJECT AND SLOT MANAGEMENT
@@ -1650,27 +2440,262 @@ def handle_flash_command():
     forceArduinoFlash = 0
     return False
 
+def upload_with_attempts_limit(sketch_dir, arduino_port, fqbn, build_dir, discovery_timeout="2s"):
+    """Custom upload function that calls arduino-cli directly with attempts limit"""
+    global ser, arduinoPort
+    notInSyncString = "avrdude: stk500_recv(): programmer is not responding"
+    arduino_serial = None
+    
+    try:
+        import subprocess
+        # Get the arduino-cli path
+        cli_path = None
+        cli_paths = [
+            resource_path("arduino-cli.exe" if sys.platform == "win32" else "arduino-cli"),
+            "./arduino-cli.exe" if sys.platform == "win32" else "./arduino-cli",
+            "arduino-cli"  # System PATH
+        ]
+        
+        for path in cli_paths:
+            if os.path.isfile(path) or (path == "arduino-cli" and shutil.which(path)):
+                cli_path = path
+                break
+        
+        if not cli_path:
+            raise Exception("arduino-cli not found")
+        
+        # Verify FQBN is valid by listing available boards
+        try:
+            list_cmd = [cli_path, "board", "listall", "--format", "text"]
+            list_result = subprocess.run(list_cmd, capture_output=True, text=True, timeout=10)
+            if list_result.returncode == 0:
+                available_boards = list_result.stdout
+                if "arduino:avr:nano" not in available_boards:
+                    safe_print("Warning: arduino:avr:nano not found in available boards", Fore.YELLOW)
+                    # Look for alternative nano boards
+                    nano_boards = [line for line in available_boards.split('\n') if 'nano' in line.lower()]
+                    if nano_boards:
+                        safe_print("Available Nano boards:", Fore.CYAN)
+                        for board in nano_boards[:3]:
+                            safe_print(f"  {board}", Fore.CYAN)
+                else:
+                    safe_print("Verified: arduino:avr:nano is available", Fore.GREEN)
+            else:
+                safe_print(f"Could not verify FQBN (command failed: {list_result.stderr})", Fore.YELLOW)
+        except Exception as verify_error:
+            safe_print(f"Could not verify FQBN: {verify_error}", Fore.YELLOW)
+        
+        # Force clear and verify Arduino port before upload
+        arduino_serial = None
+        
+        # Step 1: Ensure Arduino port is accessible
+        safe_print("Verifying Arduino port accessibility...", Fore.YELLOW)
+        
+        # Step 2: Quick port accessibility check
+        for attempt in range(3):
+            try:
+                # Test if the port is available
+                arduino_serial = serial.Serial(arduino_port, 115200, timeout=0.1)
+                arduino_serial.close()  # Close it immediately after testing
+                arduino_serial = None
+                if debugWokwi:
+                    safe_print(f"Arduino port {arduino_port} verified available (attempt {attempt + 1})", Fore.CYAN)
+                break
+            except Exception as port_error:
+                if arduino_serial:
+                    try:
+                        arduino_serial.close()
+                    except:
+                        pass
+                    arduino_serial = None
+                
+                if attempt < 2:  # Not the last attempt
+                    if debugWokwi:
+                        safe_print(f"Arduino port busy, waiting... (attempt {attempt + 1})", Fore.YELLOW)
+                    time.sleep(0.5)  # Wait between attempts
+                else:
+                    # Final attempt - just warn but continue
+                    safe_print(f"Warning: Arduino port may be busy: {port_error}", Fore.YELLOW)
+                    safe_print("Attempting upload anyway...", Fore.CYAN)
+        
+        # Step 3: Brief stabilization delay
+        time.sleep(0.1)
+        # Build the command using the configurable system
+        # Note: Arduino CLI will automatically find compiled files in the sketch directory
+        cmd = build_arduino_cli_command(
+            cli_path=cli_path,
+            arduino_port=arduino_port,
+            fqbn=fqbn,
+            build_path=build_dir,
+            discovery_timeout=discovery_timeout,
+            sketch_dir=sketch_dir
+        )
+        
+        if debugWokwi:
+            safe_print(f"Generated upload command: {' '.join(cmd)}", Fore.MAGENTA)
+        
+        # Always show the Arduino CLI command being executed
+        safe_print(f"Arduino CLI command: {' '.join(cmd)}", Fore.BLUE)
+        
+        # Run the command with real-time output streaming
+        process = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, 
+                                 text=True, bufsize=1)
+        
+        # Track this process for cleanup on exit
+        global active_processes
+        active_processes.append(process)
+        
+        output_lines = []
+        start_time = time.time()
+        timeout = 45  # 45 second timeout
+        flash_failed = False
+        retries = 0
+        
+        # Stream output in real-time
+        while True:
+            # Check for timeout
+            if time.time() - start_time > timeout:
+                safe_print("Upload timed out, terminating process...", Fore.YELLOW)
+                # Try to clean up on timeout
+                try:
+                    if arduino_serial and arduino_serial.is_open:
+                        arduino_serial.close()
+                except:
+                    pass
+                process.terminate()
+                try:
+                    process.wait(timeout=3)  # Give it 2 seconds to terminate gracefully
+                except subprocess.TimeoutExpired:
+                    safe_print("Process didn't terminate gracefully, force killing...", Fore.RED)
+                    process.kill()  # Force kill if it doesn't terminate
+                    try:
+                        process.wait(timeout=1)  # Wait for kill to complete
+                    except subprocess.TimeoutExpired:
+                        pass  # Process is really stuck, move on
+                raise Exception(f"Upload timed out after {timeout} seconds")
+            
+            output = process.stdout.readline()
+
+            if output == '' and process.poll() is not None:
+                break
+            if (notInSyncString in output):
+                # Arduino flash error detected - handle sync errors
+                safe_print(f"Arduino sync error detected (attempt {retries + 1}): {output.strip()}", Fore.YELLOW)
+                retries += 1
+                
+                # Try to send reset command to Arduino
+                # try:
+                #     if ser and ser.is_open:
+                #         ser.write(b"r")  # Send reset command
+                #         time.sleep(0.5)  # CRITICAL: Wait for reset to take effect
+                # except Exception as e:
+                #     safe_print(f"Error sending reset command: {e}", Fore.RED)
+                
+                if retries > 2:
+                    safe_print("Too many sync errors, terminating upload", Fore.RED)
+                    
+                    # Gracefully terminate the process
+                    try:
+                        if process.poll() is None:  # Only terminate if process is still running
+                            process.terminate()
+                            process.wait(timeout=2)  # Give it 2 seconds to terminate gracefully
+                    except subprocess.TimeoutExpired:
+                        safe_print("Process didn't terminate gracefully, force killing...", Fore.RED)
+                        try:
+                            process.kill()
+                            process.wait(timeout=1)  # Wait for kill to complete
+                        except subprocess.TimeoutExpired:
+                            safe_print("Process is unresponsive, continuing anyway...", Fore.RED)
+                    except Exception as term_error:
+                        safe_print(f"Error terminating process: {term_error}", Fore.RED)
+                    
+                    raise Exception(f"Upload failed after {retries} sync error attempts")
+            elif output:
+                output_lines.append(output.strip())
+                # Print output in real-time with a prefix to distinguish it
+                safe_print(f"{output.strip()}", Fore.CYAN)
+            else:
+                # No output, sleep briefly to prevent busy waiting
+                time.sleep(0.1)
+        
+        # Wait for process to complete and get return code
+        return_code = process.poll()
+        
+        # If we detected a flash failure, ensure we have a non-zero return code
+        if flash_failed and return_code == 0:
+            return_code = 1
+        
+        if return_code != 0:
+            full_output = '\n'.join(output_lines)
+            raise Exception(f"Upload failed with return code {return_code}: {full_output}")
+        
+        returnValue = {"success": True, "stdout": '\n'.join(output_lines), "stderr": ""}
+        # safe_print(returnValue, Fore.GREEN)
+        try:
+            if process.poll() is None:  # Only terminate if process is still running
+                process.terminate()
+                process.wait(timeout=2)  # Give it 2 seconds to terminate gracefully
+        except subprocess.TimeoutExpired:
+            safe_print("Process didn't terminate gracefully, force killing...", Fore.RED)
+            try:
+                process.kill()
+                process.wait(timeout=1)  # Wait for kill to complete
+            except subprocess.TimeoutExpired:
+                # safe_print("Process is unresponsive, continuing anyway...", Fore.RED)
+                pass
+        except Exception as term_error:
+            safe_print(f"Error terminating process: {term_error}", Fore.RED)
+        
+        return returnValue
+        
+    except Exception as e:
+        raise Exception(f"Custom upload failed: {e}")
+    finally:
+        # Remove process from tracking
+        try:
+            if process in active_processes:
+                active_processes.remove(process)
+        except:
+            pass
+        
+        # Ensure the Arduino port is closed in all cases (success, error, or timeout)
+        if arduino_serial is not None:
+            try:
+                if arduino_serial.is_open:
+                    arduino_serial.close()
+                    safe_print(f"Closed Arduino port {arduino_port} after upload", Fore.YELLOW)
+            except Exception as close_error:
+                safe_print(f"Note: Error closing Arduino port: {close_error}", Fore.YELLOW)
+        
+        # Give a small delay to ensure port is fully released
+        time.sleep(0.1)
+        
+        
 # ============================================================================
 # MENU SYSTEM
 # ============================================================================
 
 def bridge_menu():
     """Main bridge menu"""
-    global menuEntered, wokwiUpdateRate, numAssignedSlots, currentString, noWokwiStuff, disableArduinoFlashing, noArduinocli, arduinoPort, debugWokwi
+    global menuEntered, wokwiUpdateRate, numAssignedSlots, currentString, noWokwiStuff, disableArduinoFlashing, noArduinocli, arduinoPort, debugWokwi, interactive_mode, debug_app_update
 
     safe_print("\n\n         Jumperless App Menu\n", Fore.MAGENTA)
     
-    safe_print(" 'menu'    to open the app menu (this menu)", Fore.BLUE)  
-    safe_print(" 'wokwi'   to " + ("enable" if noWokwiStuff else "disable") + " Wokwi updates " + ("and just use as a terminal" if not noWokwiStuff else ""), Fore.CYAN)
-    safe_print(" 'rate'    to change the Wokwi update rate", Fore.GREEN)
-    safe_print(" 'slots'   to assign Wokwi projects to slots - " + str(numAssignedSlots) + " assigned", Fore.YELLOW)
-    safe_print(" 'flash'   to flash Arduino with assigned slot content (works outside menu too)", Fore.MAGENTA)
-    safe_print(" 'arduino' to " + ("enable" if disableArduinoFlashing else "disable") + " Arduino flashing from wokwi", Fore.RED)
-    safe_print(" 'debug'   to " + ("disable" if debugWokwi else "enable") + " Wokwi debug output - " + ("on" if debugWokwi else "off"), Fore.MAGENTA)
-    safe_print(" 'config'  to edit Arduino CLI upload configuration", Fore.YELLOW)
-    safe_print(" 'update'  to force firmware update - yours is up to date (" + currentString + ")", Fore.BLUE)
-    safe_print(" 'status'  to check the serial connection status", Fore.CYAN) 
-    safe_print(" 'exit'    to exit the menu", Fore.GREEN)
+    safe_print(" 'menu'        to open the app menu (this menu)", Fore.BLUE)  
+    safe_print(" 'interactive' to " + ("disable" if interactive_mode else "enable") + " real-time character mode - " + ("ON" if interactive_mode else "OFF") + " (device-controllable)", Fore.RED if interactive_mode else Fore.GREEN)
+    safe_print(" 'wokwi'       to " + ("enable" if noWokwiStuff else "disable") + " Wokwi updates " + ("and just use as a terminal" if not noWokwiStuff else ""), Fore.CYAN)
+    safe_print(" 'rate'        to change the Wokwi update rate", Fore.GREEN)
+    safe_print(" 'slots'       to assign Wokwi projects to slots - " + str(numAssignedSlots) + " assigned", Fore.YELLOW)
+    safe_print(" 'flash'       to flash Arduino with assigned slot content (works outside menu too)", Fore.MAGENTA)
+    safe_print(" 'arduino'     to " + ("enable" if disableArduinoFlashing else "disable") + " Arduino flashing from wokwi", Fore.RED)
+    safe_print(" 'debug'       to " + ("disable" if debugWokwi else "enable") + " Wokwi debug output - " + ("on" if debugWokwi else "off"), Fore.MAGENTA)
+    safe_print(" 'config'      to edit Arduino CLI upload configuration", Fore.YELLOW)
+    safe_print(" 'update'      to force firmware update - yours is up to date (" + currentString + ")", Fore.BLUE)
+    debug_status = " [DEBUG MODE]" if debug_app_update else ""
+    safe_print(" 'appupdate'   to check for app updates - current version " + App_Version + debug_status, Fore.MAGENTA)
+    safe_print(" 'debugupdate' to " + ("disable" if debug_app_update else "enable") + " app update debug mode", Fore.BLUE)
+    safe_print(" 'status'      to check the serial connection status", Fore.CYAN) 
+    safe_print(" 'exit'        to exit the menu", Fore.GREEN)
     
     while menuEntered:
         try:
@@ -1695,6 +2720,16 @@ def bridge_menu():
                     if not disableArduinoFlashing and not arduinoPort:
                         safe_print("Warning: No Arduino port configured. Use 'status' to check ports.", Fore.YELLOW)
                 continue
+            elif choice == 'interactive':
+                if interactive_mode:
+                    disable_interactive_mode()
+                else:
+                    if enable_interactive_mode():
+                        # Exit menu when entering interactive mode
+                        menuEntered = 0
+                        ser.write(b'm')
+                        return
+                continue
             elif choice == 'debug':
                 debugWokwi = not debugWokwi
                 safe_print(f"Wokwi debug output {'enabled' if debugWokwi else 'disabled'}", Fore.CYAN)
@@ -1707,6 +2742,19 @@ def bridge_menu():
                 menuEntered = 0
                 ser.write(b'm')
                 return
+            elif choice == 'appupdate':
+                safe_print("Checking for app updates...", Fore.CYAN)
+                update_app_if_needed()
+                continue
+            elif choice == 'debugupdate':
+                debug_app_update = not debug_app_update
+                mode_text = "enabled" if debug_app_update else "disabled"
+                safe_print(f"App update debug mode {mode_text}", Fore.CYAN)
+                if debug_app_update:
+                    safe_print(f"Will use local test file: {debug_test_file}", Fore.BLUE)
+                else:
+                    safe_print("Will use GitHub releases for updates", Fore.BLUE)
+                continue
             elif choice == 'slots':
                 changes_made, return_to_menu = assign_wokwi_slots()
                 if return_to_menu:
@@ -2464,9 +3512,9 @@ def flash_arduino_sketch(sketch_content, libraries_content="", slot_number=None)
         safe_print("Ensuring Arduino port is available...", Fore.CYAN)
         try:
             # Send disconnect command to ensure clean port state
-            if ser and ser.is_open:
-                ser.write(b"a")  # Disconnect UART briefly
-                time.sleep(0.2)
+            # if ser and ser.is_open:
+            #     ser.write(b"a")  # Disconnect UART briefly
+            #     time.sleep(0.2)
             
             # Test port accessibility
             test_serial = serial.Serial(arduinoPort, 115200, timeout=0.1)
@@ -2863,7 +3911,9 @@ def check_presence(correct_port, interval):
                             portNotFound = 0
                             justreconnected = 1
                         
-                        safe_print(f"Reconnected to {correct_port}", Fore.GREEN)
+                        safe_print(f"\rReconnected to {correct_port}", Fore.GREEN)
+                        safe_print(f"\r", Fore.GREEN)
+                        disable_interactive_mode()
                         
                     except Exception as e:
                         with serial_lock:
@@ -2897,11 +3947,12 @@ def check_presence(correct_port, interval):
             time.sleep(0.1)
 
 def serial_term_in():
-    """Handle incoming serial data with reliable byte-by-byte reading"""
-    global serialconnected, ser, menuEntered, portNotFound, justreconnected, updateInProgress
+    """Handle incoming serial data with reliable byte-by-byte reading and interactive mode control"""
+    global serialconnected, ser, menuEntered, portNotFound, justreconnected, updateInProgress, interactive_mode
     
     while True:
-        if menuEntered == 0 and updateInProgress == 0:
+        # Always check for interactive mode control characters, even during menu/updates
+        if updateInProgress == 0:
             try:
                 if ser and ser.is_open and ser.in_waiting > 0:
                     input_buffer = b''
@@ -2924,9 +3975,33 @@ def serial_term_in():
                     
                     if input_buffer:
                         try:
-                            # Decode the complete buffer
-                            decoded_string = input_buffer.decode('utf-8', errors='ignore')
-                            print(decoded_string, end='')
+                            # Always check for interactive mode control characters
+                            filtered_buffer = b''
+                            
+                            for byte in input_buffer:
+                                if byte == 0x0E:  # SO (Shift Out) - Enable interactive mode
+                                    if debugWokwi:
+                                        safe_print(f"\nReceived SO (0x0E) - Interactive mode request", end="\n\r", color=Fore.BLUE)
+                                    if not interactive_mode:
+                                        safe_print("\nInteractive mode enabled by device", end="\n\r", color=Fore.RED)
+                                        enable_interactive_mode()
+                                elif byte == 0x0F:  # SI (Shift In) - Disable interactive mode
+                                    if debugWokwi:
+                                        safe_print(f"\nReceived SI (0x0F) - Interactive mode disable", end="\n\r", color=Fore.BLUE)
+                                    if interactive_mode:
+                                        disable_interactive_mode()
+                                        safe_print("Interactive mode disabled by device",end="\n\r", color=Fore.GREEN)
+                                else:
+                                    # Keep all other bytes for normal processing
+                                    filtered_buffer += bytes([byte])
+                            
+                            # Only print output if not in menu mode and there's actual content
+                            if menuEntered == 0 and filtered_buffer:
+                                decoded_string = filtered_buffer.decode('utf-8', errors='ignore')
+                                if interactive_mode:
+                                    print(decoded_string, end='')
+                                else:
+                                    print(decoded_string, end='')
                             
                             with serial_lock:
                                 portNotFound = 0
@@ -2956,12 +4031,18 @@ def serial_term_in():
         time.sleep(0.001)  # Very short sleep to prevent excessive CPU usage
 
 def serial_term_out():
-    """Handle outgoing serial commands with command history support"""
-    global serialconnected, ser, menuEntered, forceWokwiUpdate, noWokwiStuff, justreconnected, portNotFound, updateInProgress
+    """Handle outgoing serial commands with command history support and interactive mode"""
+    global serialconnected, ser, menuEntered, forceWokwiUpdate, noWokwiStuff, justreconnected, portNotFound, updateInProgress, interactive_mode, output_buffer
     
     while True:
         if menuEntered == 0 and updateInProgress == 0:
             try:
+                # Check if we should enter interactive mode
+                if interactive_mode and not menuEntered:
+                    # safe_print("Interactive mode is active, starting handler", Fore.CYAN)
+                    handle_interactive_input()
+                    continue
+                
                 # Clear any pending input buffer before reading
                 if hasattr(sys.stdin, 'flush'):
                     sys.stdin.flush()
@@ -2969,7 +4050,7 @@ def serial_term_out():
                 # Use readline for command history if available, otherwise fallback to input()
                 if READLINE_AVAILABLE:
                     try:
-                        output_buffer = input().strip()  # readline automatically handles history
+                        output_buffer = input() # readline automatically handles history
                     except (EOFError, KeyboardInterrupt):
                         # Handle Ctrl+D or Ctrl+C gracefully
                         if menuEntered == 0:
@@ -2977,11 +4058,20 @@ def serial_term_out():
                         else:
                             break
                 else:
-                    output_buffer = input().strip()  # Strip whitespace
+                    output_buffer = input() 
                 
-                # Skip empty commands
-                if not output_buffer:
-                    time.sleep(0.01)
+                # Handle empty input (just pressing enter)
+                if not output_buffer:  # This catches empty string when user just presses enter
+                    # Send newline to serial port
+                    # safe_print("sending newline\n\r", end="")
+                    with serial_lock:
+                        if serialconnected and ser and ser.is_open:
+                            try:
+                                ser.write(b'\n')
+                                # if debugWokwi:
+                                safe_print("\n\r", end="")
+                            except Exception:
+                                pass
                     continue
                 
                 # Add command to history if readline is available and it's not a duplicate
@@ -2993,12 +4083,22 @@ def serial_term_out():
                         readline.add_history(output_buffer)
                 
                 # Handle special commands - check if it's a menu command
-                menu_commands = ['menu', 'slots', 'wokwi', 'update', 'status', 'rate', 'exit', 'arduino', 'debug', 'config']
+                menu_commands = ['menu', 'slots', 'wokwi', 'update', 'appupdate', 'debugupdate', 'status', 'rate', 'exit', 'arduino', 'debug', 'config']
                 
                 if output_buffer.lower() in menu_commands:
                     # print("*", output_buffer, "*")
                     menuEntered = 1
                     bridge_menu()
+                    continue
+                elif output_buffer.lower() == 'interactive':
+                    # Toggle interactive mode
+                    if enable_interactive_mode():
+                        continue
+                elif output_buffer.lower() == 'status':
+                    # Quick status check
+                    safe_print(f"Interactive mode: {interactive_mode}", Fore.CYAN)
+                    safe_print(f"Menu entered: {menuEntered}", Fore.CYAN)
+                    safe_print(f"Update in progress: {updateInProgress}", Fore.CYAN)
                     continue
                 elif output_buffer.lower() == 'flash':
                     # Handle flash command directly without entering menu
@@ -3008,6 +4108,26 @@ def serial_term_out():
                     # Force clear Arduino port
                     force_clear_arduino_port()
                     continue
+                elif output_buffer.lower() == 'newline' or output_buffer.lower() == '\n':
+                    # Send just a newline
+                    # safe_print("\n\rNewline", end="")
+                    with serial_lock:
+                        if serialconnected and ser and ser.is_open:
+                            try:
+                                ser.write(b'\n')
+                                # safe_print("\n\r", end="")
+                            except Exception:
+                                pass
+                    continue
+                elif output_buffer.lower() == '\t':
+                    # Send a tab character
+                    with serial_lock:
+                        if serialconnected and ser and ser.is_open:
+                            try:
+                                ser.write(b'\t')
+                            except Exception:
+                                pass
+                    continue
                 
                 # Send to serial port (only non-empty commands)
                 with serial_lock:
@@ -3015,8 +4135,8 @@ def serial_term_out():
                         try:
                             ser.write(output_buffer.encode('ascii'))
                             # Check for reset command
-                            if output_buffer.lower() == 'r':
-                                justreconnected = 1
+                            # if output_buffer.lower() == 'r':
+                            #     justreconnected = 1
                         except Exception:
                             # Only mark as disconnected if not updating firmware
                             if updateInProgress == 0:
@@ -3027,6 +4147,9 @@ def serial_term_out():
                             safe_print("Serial not connected", Fore.YELLOW)
                         
             except KeyboardInterrupt:
+                # Make sure to disable interactive mode on Ctrl+C
+                if interactive_mode:
+                    disable_interactive_mode()
                 break
             except EOFError:
                 # Handle end of file (Ctrl+D on Unix, Ctrl+Z on Windows)
@@ -3111,6 +4234,7 @@ def main():
     # Initialize command history
     setup_command_history()
     
+    
     # Initialize
     # safe_print("Jumperless Bridge App", Fore.MAGENTA)
 
@@ -3163,6 +4287,9 @@ def main():
 
 """, Fore.MAGENTA)
     create_directories()
+        # Check for app updates
+    update_app_if_needed()
+    
     
     # Open serial connection
     open_serial()
@@ -3173,6 +4300,8 @@ def main():
     
     # Check firmware
     check_if_fw_is_old()
+    
+
     
     # Setup Arduino CLI
     setup_arduino_cli()
@@ -3199,7 +4328,14 @@ def main():
     active_threads.append(serial_out)
     
     time.sleep(0.1)
-    safe_print("Type 'menu' for App Menu, 'flash' to flash Arduino, or 'clearport' to clear Arduino port", Fore.CYAN)
+    safe_print("Type 'menu' for App Menu, 'flash' to flash Arduino, 'interactive' for real-time mode", Fore.CYAN)
+    safe_print("Device can auto-enable interactive mode with SO (0x0E) and disable with SI (0x0F)", Fore.BLUE)
+    
+    if sys.platform == "win32":
+        safe_print("NOTE: Interactive mode not supported on Windows", Fore.YELLOW)
+    else:
+        safe_print("Interactive mode available", Fore.GREEN)
+    
     if READLINE_AVAILABLE:
         safe_print("Use ↑/↓ arrow keys for command history, Tab for completion", Fore.BLUE)
     # Send initial menu command
@@ -3224,6 +4360,10 @@ def main():
         
         # Wokwi main loop
         while True:
+            # Give precedence to serial_term_out thread for user input responsiveness
+            # Small sleep to yield CPU time to other threads, especially when processing lots of serial data
+            time.sleep(0.01)
+            
             if noWokwiStuff: # if Wokwi is disabled, just chill
                 time.sleep(0.1)
                 continue
@@ -3417,7 +4557,7 @@ def setup_tab_completion():
     readline.set_completer(completer)
     
     # Configure tab completion behavior
-    readline.parse_and_bind("tab: complete")
+    # readline.parse_and_bind("tab: complete")
     
     # Set completion display options
     try:
@@ -3430,246 +4570,221 @@ def setup_tab_completion():
     except:
         pass  # Some systems might not support these options
 
+def enable_interactive_mode():
+    """Enable character-by-character input mode"""
+    global interactive_mode, original_settings
+    
+    if interactive_mode:
+        return True
+    
+    # Check platform support first
+    if sys.platform == "win32":
+        safe_print("WARNING: Interactive mode not supported on Windows", Fore.YELLOW)
+        return False
+    
+    try:
+        # Disable readline completion and history during interactive mode
+        if READLINE_AVAILABLE:
+            # Save current completer and disable it
+            original_settings = {
+                'completer': readline.get_completer(),
+                'delims': readline.get_completer_delims()
+            }
+            readline.set_completer(None)  # Disable tab completion
+            readline.parse_and_bind("tab: self-insert")  # Make tab insert literal tab
+        
+        interactive_mode = True
+        safe_print("\nInteractive mode ON - (ESC to force off)", Fore.BLUE)
+        # safe_print("Using termios for raw terminal input", Fore.BLUE)
+        return True
+        
+    except Exception as e:
+        safe_print(f"Could not enable interactive mode: {e}", Fore.RED)
+        interactive_mode = False
+        return False
+
+def disable_interactive_mode():
+    """Disable interactive mode and restore normal input"""
+    global interactive_mode, original_settings
+    
+    if not interactive_mode:
+        return
+    
+    try:
+        # Restore readline completion and history
+        if READLINE_AVAILABLE and original_settings:
+            try:
+                readline.set_completer(original_settings.get('completer'))
+                readline.parse_and_bind("tab: complete")  # Restore tab completion
+                original_settings = None
+            except Exception as e:
+                safe_print(f"Error restoring readline settings: {e}", Fore.YELLOW)
+        
+        interactive_mode = False
+        safe_print("\nInteractive mode OFF - normal line input restored\r", Fore.GREEN)
+        
+    except Exception as e:
+        safe_print(f"Error disabling interactive mode: {e}", Fore.RED)
+
+def handle_interactive_input_simple():
+    """Simple approach using sys.stdin with raw mode"""
+    global interactive_mode, serialconnected, ser
+    
+    # safe_print("Using simple character-by-character input", Fore.GREEN)
+    
+    try:
+        import termios
+        import tty
+        import select
+        
+        # Save original terminal settings (separate from readline settings)
+        original_terminal_settings = termios.tcgetattr(sys.stdin.fileno())
+        
+        try:
+            # Set terminal to raw mode
+            tty.setraw(sys.stdin.fileno())
+            
+            while interactive_mode:
+                # Check if input is available with a short timeout
+                if select.select([sys.stdin], [], [], 0.1)[0]:
+                    char = sys.stdin.read(1)
+                    
+                    # Handle special characters
+                    # if char == '\x1b':  # ESC key
+                        # break  # Exit the loop, disable_interactive_mode will be called below
+                    if char == '\x03':  # Ctrl+C
+                        raise KeyboardInterrupt
+                    elif char == '\r':
+                        char = '\n'  # Convert to newline for MicroPython compatibility
+                    
+                    # Send character to serial port
+                    with serial_lock:
+                        if serialconnected and ser and ser.is_open:
+                            try:
+                                ser.write(char.encode('utf-8', errors='ignore'))
+                            except Exception as e:
+                                safe_print(f"Error sending character: {e}", Fore.RED)
+                                
+        finally:
+            # Always restore original terminal settings
+            try:
+                termios.tcsetattr(sys.stdin.fileno(), termios.TCSADRAIN, original_terminal_settings)
+            except:
+                pass
+            
+            # Disable interactive mode if we exited the loop
+            if interactive_mode:
+                disable_interactive_mode()
+                
+    except ImportError:
+        safe_print("WARNING: termios not available - cannot use interactive mode", Fore.YELLOW)
+        disable_interactive_mode()
+    except KeyboardInterrupt:
+        disable_interactive_mode()
+        safe_print("\nInteractive mode interrupted", Fore.YELLOW)
+    except Exception as e:
+        safe_print(f"Interactive mode error: {e}", Fore.RED)
+        disable_interactive_mode()
+        
+
+
+
+
+
+
+def handle_interactive_input():
+    """Handle character-by-character input in interactive mode"""
+    global interactive_mode, serialconnected, ser
+    
+    # Use simple termios approach on Unix/Linux/macOS
+    if sys.platform != "win32":
+        return handle_interactive_input_simple()
+    
+    # Windows not supported - disable interactive mode
+    safe_print("WARNING: Interactive mode not supported on Windows", Fore.YELLOW)
+    safe_print("Requires Unix/Linux/macOS with termios support", Fore.CYAN)
+    safe_print("Disabling interactive mode - using normal line input instead", Fore.BLUE)
+    
+    disable_interactive_mode()
+    return
+
 def get_command_suggestions():
     """Get list of common commands for tab completion"""
     # This function is now only used for reference/documentation
     # Tab completion uses actual command history instead
     return [
         # App commands
-        'menu', 'slots', 'wokwi', 'flash', 'clearport', 'skip', 'rate', 'update', 'status', 'exit', 'help',
+        'menu', 'slots', 'wokwi', 'flash', 'clearport', 'skip', 'rate', 'update', 'status', 'exit', 'help', 'interactive',
         # Jumperless device commands
         'r', 'm', 'f', 'n', 'l', 'b', 'c', 'x', 'clear', 'o', '?',
     ]
 
-def upload_with_attempts_limit(sketch_dir, arduino_port, fqbn, build_dir, discovery_timeout="2s"):
-    """Custom upload function that calls arduino-cli directly with attempts limit"""
-    global ser, arduinoPort
-    notInSyncString = "avrdude: stk500_recv(): programmer is not responding"
-    arduino_serial = None
-    
-    try:
-        import subprocess
-        # Get the arduino-cli path
-        cli_path = None
-        cli_paths = [
-            resource_path("arduino-cli.exe" if sys.platform == "win32" else "arduino-cli"),
-            "./arduino-cli.exe" if sys.platform == "win32" else "./arduino-cli",
-            "arduino-cli"  # System PATH
-        ]
         
-        for path in cli_paths:
-            if os.path.isfile(path) or (path == "arduino-cli" and shutil.which(path)):
-                cli_path = path
-                break
         
-        if not cli_path:
-            raise Exception("arduino-cli not found")
-        
-        # Verify FQBN is valid by listing available boards
-        try:
-            list_cmd = [cli_path, "board", "listall", "--format", "text"]
-            list_result = subprocess.run(list_cmd, capture_output=True, text=True, timeout=10)
-            if list_result.returncode == 0:
-                available_boards = list_result.stdout
-                if "arduino:avr:nano" not in available_boards:
-                    safe_print("Warning: arduino:avr:nano not found in available boards", Fore.YELLOW)
-                    # Look for alternative nano boards
-                    nano_boards = [line for line in available_boards.split('\n') if 'nano' in line.lower()]
-                    if nano_boards:
-                        safe_print("Available Nano boards:", Fore.CYAN)
-                        for board in nano_boards[:3]:
-                            safe_print(f"  {board}", Fore.CYAN)
-                else:
-                    safe_print("Verified: arduino:avr:nano is available", Fore.GREEN)
-            else:
-                safe_print(f"Could not verify FQBN (command failed: {list_result.stderr})", Fore.YELLOW)
-        except Exception as verify_error:
-            safe_print(f"Could not verify FQBN: {verify_error}", Fore.YELLOW)
-        
-        # Force clear and verify Arduino port before upload
-        arduino_serial = None
-        
-        # Step 1: Ensure Arduino port is accessible
-        safe_print("Verifying Arduino port accessibility...", Fore.YELLOW)
-        
-        # Step 2: Quick port accessibility check
-        for attempt in range(3):
-            try:
-                # Test if the port is available
-                arduino_serial = serial.Serial(arduino_port, 115200, timeout=0.1)
-                arduino_serial.close()  # Close it immediately after testing
-                arduino_serial = None
-                if debugWokwi:
-                    safe_print(f"Arduino port {arduino_port} verified available (attempt {attempt + 1})", Fore.CYAN)
-                break
-            except Exception as port_error:
-                if arduino_serial:
-                    try:
-                        arduino_serial.close()
-                    except:
-                        pass
-                    arduino_serial = None
-                
-                if attempt < 2:  # Not the last attempt
-                    if debugWokwi:
-                        safe_print(f"Arduino port busy, waiting... (attempt {attempt + 1})", Fore.YELLOW)
-                    time.sleep(0.5)  # Wait between attempts
-                else:
-                    # Final attempt - just warn but continue
-                    safe_print(f"Warning: Arduino port may be busy: {port_error}", Fore.YELLOW)
-                    safe_print("Attempting upload anyway...", Fore.CYAN)
-        
-        # Step 3: Brief stabilization delay
-        time.sleep(0.1)
-        # Build the command using the configurable system
-        # Note: Arduino CLI will automatically find compiled files in the sketch directory
-        cmd = build_arduino_cli_command(
-            cli_path=cli_path,
-            arduino_port=arduino_port,
-            fqbn=fqbn,
-            build_path=build_dir,
-            discovery_timeout=discovery_timeout,
-            sketch_dir=sketch_dir
-        )
-        
-        if debugWokwi:
-            safe_print(f"Generated upload command: {' '.join(cmd)}", Fore.MAGENTA)
-        
-        # Always show the Arduino CLI command being executed
-        safe_print(f"Arduino CLI command: {' '.join(cmd)}", Fore.BLUE)
-        
-        # Run the command with real-time output streaming
-        process = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, 
-                                 text=True, bufsize=1)
-        
-        # Track this process for cleanup on exit
-        global active_processes
-        active_processes.append(process)
-        
-        output_lines = []
-        start_time = time.time()
-        timeout = 45  # 45 second timeout
-        flash_failed = False
-        retries = 0
-        
-        # Stream output in real-time
-        while True:
-            # Check for timeout
-            if time.time() - start_time > timeout:
-                safe_print("Upload timed out, terminating process...", Fore.YELLOW)
-                # Try to clean up on timeout
-                try:
-                    if arduino_serial and arduino_serial.is_open:
-                        arduino_serial.close()
-                except:
-                    pass
-                process.terminate()
-                try:
-                    process.wait(timeout=3)  # Give it 2 seconds to terminate gracefully
-                except subprocess.TimeoutExpired:
-                    safe_print("Process didn't terminate gracefully, force killing...", Fore.RED)
-                    process.kill()  # Force kill if it doesn't terminate
-                    try:
-                        process.wait(timeout=1)  # Wait for kill to complete
-                    except subprocess.TimeoutExpired:
-                        pass  # Process is really stuck, move on
-                raise Exception(f"Upload timed out after {timeout} seconds")
-            
-            output = process.stdout.readline()
 
-            if output == '' and process.poll() is not None:
-                break
-            if (notInSyncString in output):
-                # Arduino flash error detected - handle sync errors
-                safe_print(f"Arduino sync error detected (attempt {retries + 1}): {output.strip()}", Fore.YELLOW)
-                retries += 1
-                
-                # Try to send reset command to Arduino
-                # try:
-                #     if ser and ser.is_open:
-                #         ser.write(b"r")  # Send reset command
-                #         time.sleep(0.5)  # CRITICAL: Wait for reset to take effect
-                # except Exception as e:
-                #     safe_print(f"Error sending reset command: {e}", Fore.RED)
-                
-                if retries > 2:
-                    safe_print("Too many sync errors, terminating upload", Fore.RED)
-                    
-                    # Gracefully terminate the process
-                    try:
-                        if process.poll() is None:  # Only terminate if process is still running
-                            process.terminate()
-                            process.wait(timeout=2)  # Give it 2 seconds to terminate gracefully
-                    except subprocess.TimeoutExpired:
-                        safe_print("Process didn't terminate gracefully, force killing...", Fore.RED)
-                        try:
-                            process.kill()
-                            process.wait(timeout=1)  # Wait for kill to complete
-                        except subprocess.TimeoutExpired:
-                            safe_print("Process is unresponsive, continuing anyway...", Fore.RED)
-                    except Exception as term_error:
-                        safe_print(f"Error terminating process: {term_error}", Fore.RED)
-                    
-                    raise Exception(f"Upload failed after {retries} sync error attempts")
-            elif output:
-                output_lines.append(output.strip())
-                # Print output in real-time with a prefix to distinguish it
-                safe_print(f"{output.strip()}", Fore.CYAN)
-            else:
-                # No output, sleep briefly to prevent busy waiting
-                time.sleep(0.1)
-        
-        # Wait for process to complete and get return code
-        return_code = process.poll()
-        
-        # If we detected a flash failure, ensure we have a non-zero return code
-        if flash_failed and return_code == 0:
-            return_code = 1
-        
-        if return_code != 0:
-            full_output = '\n'.join(output_lines)
-            raise Exception(f"Upload failed with return code {return_code}: {full_output}")
-        
-        returnValue = {"success": True, "stdout": '\n'.join(output_lines), "stderr": ""}
-        # safe_print(returnValue, Fore.GREEN)
+def cleanup_on_exit():
+    """Clean up all active processes and threads on script exit"""
+    global active_processes, active_threads, ser, serialconnected, interactive_mode
+    import subprocess
+    
+    # Disable interactive mode first
+    if interactive_mode:
+        disable_interactive_mode()
+    
+    # safe_print("\nCleaning up processes and threads...", Fore.YELLOW)
+    
+    # Terminate active subprocesses
+    for process in active_processes[:]:  # Copy list to avoid modification during iteration
         try:
-            if process.poll() is None:  # Only terminate if process is still running
+            if process.poll() is None:  # Process is still running
+                # safe_print(f"Terminating subprocess PID {process.pid}...", Fore.CYAN)
                 process.terminate()
-                process.wait(timeout=2)  # Give it 2 seconds to terminate gracefully
-        except subprocess.TimeoutExpired:
-            safe_print("Process didn't terminate gracefully, force killing...", Fore.RED)
+                try:
+                    process.wait(timeout=2)
+                    safe_print(f"Subprocess PID {process.pid} terminated gracefully", Fore.GREEN)
+                except subprocess.TimeoutExpired:
+                    safe_print(f"Force killing subprocess PID {process.pid}...", Fore.RED)
+                    process.kill()
+                    try:
+                        process.wait(timeout=1)
+                    except subprocess.TimeoutExpired:
+                        safe_print(f"Subprocess PID {process.pid} is unresponsive", Fore.RED)
+            active_processes.remove(process)
+        except Exception as e:
+            safe_print(f"Error terminating subprocess: {e}", Fore.RED)
+    
+    # Signal threads to stop (daemon threads will be killed automatically)
+    # Non-daemon threads need to be handled if they don't respond to interrupts
+    non_daemon_threads = [t for t in active_threads if t.is_alive() and not t.daemon]
+    if non_daemon_threads:
+        safe_print(f"Waiting for {len(non_daemon_threads)} non-daemon threads to finish...", Fore.CYAN)
+        for thread in non_daemon_threads:
             try:
-                process.kill()
-                process.wait(timeout=1)  # Wait for kill to complete
-            except subprocess.TimeoutExpired:
-                # safe_print("Process is unresponsive, continuing anyway...", Fore.RED)
-                pass
-        except Exception as term_error:
-            safe_print(f"Error terminating process: {term_error}", Fore.RED)
-        
-        return returnValue
-        
+                thread.join(timeout=2)  # Wait up to 2 seconds for each thread
+                if thread.is_alive():
+                    safe_print(f"Thread {thread.name} is still running (will be force-terminated)", Fore.YELLOW)
+                else:
+                    safe_print(f"Thread {thread.name} finished cleanly", Fore.GREEN)
+            except Exception as e:
+                safe_print(f"Error waiting for thread {thread.name}: {e}", Fore.RED)
+    
+    # Close serial connections
+    try:
+        if ser and serialconnected:
+            ser.close()
+            safe_print("Closed Jumperless serial connection", Fore.GREEN)
     except Exception as e:
-        raise Exception(f"Custom upload failed: {e}")
-    finally:
-        # Remove process from tracking
-        try:
-            if process in active_processes:
-                active_processes.remove(process)
-        except:
-            pass
-        
-        # Ensure the Arduino port is closed in all cases (success, error, or timeout)
-        if arduino_serial is not None:
-            try:
-                if arduino_serial.is_open:
-                    arduino_serial.close()
-                    safe_print(f"Closed Arduino port {arduino_port} after upload", Fore.YELLOW)
-            except Exception as close_error:
-                safe_print(f"Note: Error closing Arduino port: {close_error}", Fore.YELLOW)
-        
-        # Give a small delay to ensure port is fully released
-        time.sleep(0.1)
+        safe_print(f"Error closing serial connection: {e}", Fore.RED)
+    
+    # Force clear Arduino port one final time
+    try:
+        if arduinoPort:
+            force_clear_arduino_port()
+    except Exception as e:
+        safe_print(f"Error in final Arduino port clear: {e}", Fore.RED)
+    
+    safe_print("Cleanup completed", Fore.GREEN)
+    
 
 if __name__ == "__main__":
     # Register cleanup function for normal exit

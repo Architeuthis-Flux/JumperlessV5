@@ -1,0 +1,33 @@
+# Jumperless Wokwi Bridge Dependencies
+# Core dependencies for Jumperless Bridge functionality
+
+# HTTP requests for Wokwi API and firmware downloads
+requests>=2.32.0
+
+# HTML parsing for Wokwi project extraction
+beautifulsoup4>=4.12.0
+
+# Serial communication with Jumperless hardware
+pyserial>=3.5
+
+# Process monitoring and system utilities
+psutil>=5.9.0
+
+# Arduino CLI interface (optional but recommended)
+pyduinocli>=0.35.0
+
+# Cross-platform colored terminal output
+colorama>=0.4.6
+
+# PyInstaller for creating executables
+pyinstaller>=6.8.0
+pyinstaller-hooks-contrib>=2024.6
+
+# Platform-specific dependencies
+# Windows-specific for win32api functionality
+pywin32>=306; sys_platform == "win32"
+
+# Development and optional dependencies
+# Command line history support (usually built-in on Unix systems)
+# readline; sys_platform == "win32" and python_version >= "3.0"
+

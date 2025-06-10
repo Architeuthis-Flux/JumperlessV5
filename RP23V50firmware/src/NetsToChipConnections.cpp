@@ -1612,13 +1612,17 @@ void fillUnusedPaths(int duplicatePathsOverride, int duplicatePathsPower,
     }
   }
 
-  for (int n = 0; n < numberOfNets; n++) {
-    // Serial.print("numberOfNets: ");
+    //   Serial.print("numberOfNets: ");
     // Serial.println(numberOfNets);
     // Serial.print("net[");
+
+
+  for (int n = 0; n < numberOfNets; n++) {
+
     // Serial.print(n);
     // Serial.print("] \n\rnumber: ");
     // Serial.println(net[n].number);
+
     for (int i = 0; i < MAX_NODES; i++) {
       if (net[n].nodes[i] == 0) {
         break;
@@ -1652,11 +1656,24 @@ void fillUnusedPaths(int duplicatePathsOverride, int duplicatePathsPower,
       netProcessed[path[i].net] = true;
       if (path[i].net <= 3) {
         net[path[i].net].numberOfDuplicates = duplicatePathsPower;
+
       } else if (path[i].net == 4 || path[i].net == 5) {
         net[path[i].net].numberOfDuplicates = duplicatePathsDac;
+
       } else {
-        net[path[i].net].numberOfDuplicates =
-            jumperlessConfig.routing.stack_paths;
+        int isGpioNet = 0;
+        for (int g = 0; g < 10; g++) {//dont duplicate gpio nets
+          if (gpioNet[g] == path[i].net) {
+            isGpioNet = 1;
+            break;
+          }
+        }
+        if (isGpioNet == 0) {
+          net[path[i].net].numberOfDuplicates =
+              jumperlessConfig.routing.stack_paths;
+        } else {
+          net[path[i].net].numberOfDuplicates = 0;
+        }
       }
     }
 
@@ -1716,7 +1733,7 @@ void fillUnusedPaths(int duplicatePathsOverride, int duplicatePathsPower,
     int bridge0 = 0;
     int bridge1 = 1;
 
-    for (int j = 0; j <= targetBridgeCount; j++) {
+    for (int j = 0; j < targetBridgeCount; j++) {
       if (nodeCount[i] >= 3) {
         for (int l = 0; l < MAX_DUPLICATE; l++) {
           if (unique == -1) {

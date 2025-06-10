@@ -15,7 +15,7 @@
                                       // 3 = Main+Arduino+Routable, 4 = All
 
 // Mass Storage Interface
-#define USB_MSC_ENABLE           1    // 0 = Disabled, 1 = Enabled
+#define USB_MSC_ENABLE           0    // 0 = Disabled, 1 = Enabled
 
 // HID Interfaces (Human Interface Device)  
 #define USB_HID_ENABLE_COUNT     0    // 0-2: Number of HID interfaces to enable

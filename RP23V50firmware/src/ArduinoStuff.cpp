@@ -102,7 +102,7 @@ void initSecondSerial(void) {
   if (jumperlessConfig.serial_1.function != 0) {
   Serial1.setFIFOSize(256);
   USBSer1.begin(baudRateUSBSer1);
-  Serial.println("  USBSer1 (Arduino) initialized");
+  //  Serial.println("  USBSer1 (Arduino) initialized");
   Serial1.begin(baudRateUSBSer1, makeSerialConfig(8, 0, 0));
   }
 #endif
@@ -111,7 +111,7 @@ void initSecondSerial(void) {
   // USBSer2 maps to CDC interface 2 (Routable Serial) - conditionally
   if (jumperlessConfig.serial_2.function != 0) {
     USBSer2.begin(baudRateUSBSer2, makeSerialConfig(8, 0, 0));
-    Serial.println("  USBSer2 (Routable) initialized");
+    // Serial.println("  USBSer2 (Routable) initialized");
     Serial2.begin(baudRateUSBSer2, makeSerialConfig(8, 0, 0));
   } else {
    // Serial.println("  USBSer2 disabled by config");
@@ -121,7 +121,7 @@ void initSecondSerial(void) {
 #if USB_CDC_ENABLE_COUNT >= 4
   // USBSer3 maps to CDC interface 3 (Debug Serial)
   USBSer3.begin(115200);
-  Serial.println("  USBSer3 (Debug) initialized");
+  // Serial.println("  USBSer3 (Debug) initialized");
 #endif
   
   // Give time for USB enumeration
@@ -129,7 +129,7 @@ void initSecondSerial(void) {
   
   // Serial.println("Enabled USB interfaces with dynamic naming:");
   // Serial.println("  Interface 0: Jumperless Main (this Serial)");
-  #define PRINT_SERIAL_INFO_AT_STARTUP 1
+  #define PRINT_SERIAL_INFO_AT_STARTUP 0
   #if PRINT_SERIAL_INFO_AT_STARTUP
 #if USB_CDC_ENABLE_COUNT >= 2
   Serial.print("  Interface 1: ");
@@ -143,9 +143,9 @@ void initSecondSerial(void) {
     for (int i = 1; func1_name[i]; i++) {
       Serial.print(func1_name[i] == '_' ? ' ' : func1_name[i]);
     }
-    Serial.println(" (USBSer1)");
+    // Serial.println(" (USBSer1)");
   } else {
-    Serial.println("Jumperless Serial 1 (USBSer1)");
+    // Serial.println("Jumperless Serial 1 (USBSer1)");
   }
 #endif
 #if USB_CDC_ENABLE_COUNT >= 3
@@ -161,14 +161,14 @@ void initSecondSerial(void) {
       for (int i = 1; func2_name[i]; i++) {
         Serial.print(func2_name[i] == '_' ? ' ' : func2_name[i]);
       }
-      Serial.println(" (USBSer2)");
+      // Serial.println(" (USBSer2)");
     } else {
-      Serial.println("Jumperless Serial 2 (USBSer2)");
+      // Serial.println("Jumperless Serial 2 (USBSer2)");
     }
   }
 #endif
 #if USB_CDC_ENABLE_COUNT >= 4
-  Serial.println("  Interface 3: Jumperless Debug (USBSer3)");
+  // Serial.println("  Interface 3: Jumperless Debug (USBSer3)");
 #endif
 
 #if USB_MSC_ENABLE
@@ -186,15 +186,15 @@ void initSecondSerial(void) {
   Serial.println("  Vendor: Custom Interface");
 #endif
 
-  Serial.println("\nNote: Interface names are generated dynamically based on your serial function configuration.");
-  Serial.println("serial_1.function = " + String(jumperlessConfig.serial_1.function) + 
-                 ", serial_2.function = " + String(jumperlessConfig.serial_2.function));
+  // Serial.println("\nNote: Interface names are generated dynamically based on your serial function configuration.");
+  // Serial.println("serial_1.function = " + String(jumperlessConfig.serial_1.function) + 
+  //                ", serial_2.function = " + String(jumperlessConfig.serial_2.function));
   #endif
 }
 
 // Function to print current USB interface naming (can be called anytime)
 void printUSBInterfaceNames(void) {
-  Serial.println("\n=== Current USB Interface Names ===");
+      // Serial.println("\n=== Current USB Interface Names ===");
   Serial.println("Interface 0: Jumperless Main");
   
 #if USB_CDC_ENABLE_COUNT >= 2
@@ -245,7 +245,7 @@ void printUSBInterfaceNames(void) {
   Serial.println("MSC: JL Mass Storage");
 #endif
 
-  Serial.println("=====================================\n");
+  // Serial.println("=====================================\n");
 }
 
 
