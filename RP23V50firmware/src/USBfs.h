@@ -1,4 +1,4 @@
-// #ifdef USE_FATFS
+ #ifdef USE_FATFS
 
 #ifndef USBFS_H
 #define USBFS_H
@@ -28,4 +28,4 @@ void USBdisconnect(void);
 
 
 #endif
-// #endif
+ #endif

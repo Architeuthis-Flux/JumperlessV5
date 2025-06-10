@@ -1,10 +1,8 @@
-// #ifdef USE_FATFS
+ #if 0
 
-
-#include "USBfs.h" 
-
-#include <FatFS.h>
-#include <FatFSUSB.h>
+//#include "USBfs.h" 
+//#include <FatFS.h>
+//#include <FatFSUSB.h>
 #include "FileParsing.h"
 
 volatile bool updated = false;
@@ -123,4 +121,4 @@ void printDirectory(String dirName, int numTabs) {
 }
 
 
-// #endif
+ #endif

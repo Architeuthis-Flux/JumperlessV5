@@ -58,6 +58,7 @@ KevinC@ppucc.io
 #include "RotaryEncoder.h"
 #include "configManager.h"
 #include "oled.h"
+#include "Python.h"
 // #define USE_FATFS 1
 #ifdef USE_FATFS
 #include "FatFS.h"
@@ -833,7 +834,9 @@ skipinput:
     break;
   }
   case 'P': { //!  p
-    printAllConnectableNodes();
+  testPythonExecution();
+  // testPythonParser();
+  //  printAllConnectableNodes();
     break;
   }
   case 'p': { //!  p

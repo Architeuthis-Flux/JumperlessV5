@@ -27,8 +27,7 @@ void bounceStartup(void);
 
 void customApp(void);
 void xlsxGui(void);
-void micropython(void);
-void micropythonREPL(void);
+
 
 void displayImage(void);
 const char* addressToHexString(uint8_t address);

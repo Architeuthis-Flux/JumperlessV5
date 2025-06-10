@@ -1106,11 +1106,13 @@ def open_serial():
                 ser = serial.Serial(portName, 115200, timeout=1)
                 serialconnected = 1
             safe_print(f"\nConnected to Jumperless at {portName}", Fore.GREEN)
+            return ser
     except Exception as e:
         safe_print(f"Failed to open serial port {portName}: {e}", Fore.RED)
         with serial_lock:
             ser = None
             serialconnected = 0
+        return None
 
 # ============================================================================
 # FIRMWARE MANAGEMENT
