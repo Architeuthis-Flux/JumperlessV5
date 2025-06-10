@@ -655,7 +655,7 @@ echo Running in: %TERMINAL_INFO%
 REM Check if Python is available
 python --version >nul 2>&1
 if %errorlevel% neq 0 (
-    echo [✗] ERROR: Python is not installed or not in PATH
+    echo [x] ERROR: Python is not installed or not in PATH
     echo [i] Please install Python 3.6+ from python.org and try again
     echo [i] Make sure to check "Add Python to PATH" during installation
     echo.
@@ -666,7 +666,7 @@ if %errorlevel% neq 0 (
 REM Check if pip is available
 python -m pip --version >nul 2>&1
 if %errorlevel% neq 0 (
-    echo [✗] ERROR: pip is not available
+    echo [x] ERROR: pip is not available
     echo [i] Please reinstall Python with pip included
     echo.
     pause
