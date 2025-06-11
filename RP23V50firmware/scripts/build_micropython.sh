@@ -5,7 +5,7 @@ set -e
 
 # Configuration
 MICROPYTHON_REPO_PATH="${HOME}/src/micropython/micropython"
-MICROPYTHON_LOCAL_PATH="$(dirname "$0")/../src/micropython"
+MICROPYTHON_LOCAL_PATH="$(dirname "$0")/../lib/micropython"
 PROJECT_ROOT="$(dirname "$0")/.."
 
 # Colors for output

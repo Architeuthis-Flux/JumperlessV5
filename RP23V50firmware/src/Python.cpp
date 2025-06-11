@@ -17,7 +17,7 @@
 #include "oled.h"
 
 extern "C" {
-#include "micropython/micropython_embed/port/micropython_embed.h"
+#include <port/micropython_embed.h>
 
 // Global command buffer for MicroPython integration
 static char mp_command_buffer[1024];
