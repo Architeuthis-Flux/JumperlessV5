@@ -4,18 +4,6 @@ This guide explains how to properly set up MicroPython embedding in the Jumperle
 
 ## 🚨 Important: Previous Integration Issues Fixed
 
-**What was wrong before:**
-- Manual QSTR symbol additions ❌
-- Missing QSTR generation process ❌  
-- Incorrect ROM level causing missing symbols ❌
-- Direct MicroPython compilation without proper build system ❌
-
-**What's fixed now:**
-- Automated QSTR generation ✅
-- Proper MicroPython embed port build process ✅
-- Floating-point support for RP2350 FPU ✅
-- Correct integration with PlatformIO ✅
-
 ## 🛠️ Setup Instructions
 
 ### Step 1: Install MicroPython Repository
@@ -52,14 +40,6 @@ The build will automatically happen when you compile with PlatformIO, but you ca
 ```bash
 # From src/micropython directory
 make -f micropython_embed.mk MICROPYTHON_TOP=$HOME/src/micropython/micropython
-```
-
-### Step 3: Compile with PlatformIO
-
-Now you can build normally - the MicroPython integration will automatically run:
-
-```bash
-pio run -e pico
 ```
 
 ## 🎯 Features Enabled
@@ -110,12 +90,6 @@ print(f"sin(45°) = {sin_val}")
 - Provides floating-point support with proper QSTR generation
 - Includes essential modules without bloat
 - Optimized for embedded systems with FPU
-
-### Build Process
-1. **Pre-build**: PlatformIO calls `scripts/pre_build_micropython.py`
-2. **QSTR Generation**: Scans all source files and generates symbol definitions
-3. **Embed Build**: Creates `micropython_embed/` with all necessary files
-4. **Main Build**: PlatformIO compiles everything together
 
 ### Memory Configuration
 - **Heap Size**: Configured for RP2350 RAM constraints
