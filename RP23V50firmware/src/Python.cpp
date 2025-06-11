@@ -49,11 +49,11 @@ extern "C" int execute_hardware_direct(const char* command);
 
 // C function that can be called from MicroPython to execute Jumperless commands
 // This will be made available through a Python wrapper function
-void jumperless_execute_command_c(const char* command) {
-    strncpy(mp_command_buffer, command, sizeof(mp_command_buffer) - 1);
-    mp_command_buffer[sizeof(mp_command_buffer) - 1] = '\0';
-    mp_command_pending = true;
-}
+// void jumperless_execute_command_c(const char* command) {
+//     strncpy(mp_command_buffer, command, sizeof(mp_command_buffer) - 1);
+//     mp_command_buffer[sizeof(mp_command_buffer) - 1] = '\0';
+//     mp_command_pending = true;
+// }
 
 // Synchronous execution function that returns results immediately
 // This is for when Python code needs to get actual return values
@@ -369,7 +369,7 @@ bool processCommand(const char* command, char* response) {
         int result = parseAndExecutePythonCommand((char*)command, response);
         return (result == 0);
     } else {
-        // Route to regular command system
+        //! Route to regular command system
         // You'll need to call your existing command processor here
         // For now, just indicate it's not a Python command
         snprintf(response, 1024, "INFO: Not a Python command, routing to main command processor");
@@ -399,6 +399,7 @@ static const functionMapping functionMap[] = {
     {"arduino", action_arduino},
     {"uart", action_uart},
     {"probe", action_probe},
+    {"clickwheel", action_clickwheel},
     {"oled", action_oled},
     {"display", action_display},
     {"slot", action_slot},
@@ -647,6 +648,7 @@ enum actionResult parsePythonCommandString(const char* command, pythonCommand* p
                 strcmp(functionMap[i].functionName, "arduino") == 0 ||
                 strcmp(functionMap[i].functionName, "uart") == 0 ||
                 strcmp(functionMap[i].functionName, "probe") == 0 ||
+                strcmp(functionMap[i].functionName, "clickwheel") == 0 ||
                 strcmp(functionMap[i].functionName, "oled") == 0 ||
                 strcmp(functionMap[i].functionName, "display") == 0 ||
                 strcmp(functionMap[i].functionName, "slot") == 0 ||
@@ -797,7 +799,7 @@ int parseAndExecutePythonCommand(char* command, char* response) {
                         
                         int channel = parsedCmd.args[0].value.intValue;
                         float voltage = parsedCmd.args[1].value.floatValue;
-                        bool save = false;
+                        bool save = true;
                         
                         // Check for save parameter
                         for (int i = 2; i < parsedCmd.argCount; i++) {
@@ -1017,7 +1019,7 @@ int parseAndExecutePythonCommand(char* command, char* response) {
                         
                         int node1 = parsedCmd.args[0].value.intValue;
                         int node2 = parsedCmd.args[1].value.intValue;
-                        bool save = false;
+                        bool save = true;
                         
                         // Check for save parameter
                         for (int i = 2; i < parsedCmd.argCount; i++) {
@@ -1029,7 +1031,7 @@ int parseAndExecutePythonCommand(char* command, char* response) {
                         }
                         
                         // Call actual Jumperless function
-                        if (save) { // TODO: for now, always save
+                        if (save ) { // TODO: for now, always save
                             addBridgeToNodeFile(node1, node2, netSlot,  0);
                             refreshConnections();
                         } else {
@@ -1094,7 +1096,138 @@ int parseAndExecutePythonCommand(char* command, char* response) {
             }
             break;
         }
-        
+        case action_clickwheel: {
+            if (parsedCmd.subAction == clickwheel_sub_up) {
+                // Example: clickwheel(up, 1) or clickwheel(up, 3)
+                int clicks = 1; // default
+                if (parsedCmd.argCount >= 1 && parsedCmd.args[0].type == ARG_TYPE_INT) {
+                    clicks = parsedCmd.args[0].value.intValue;
+                }
+                
+                // // Simulate multiple encoder clicks
+                // //for (int i = 0; i < clicks; i++) {
+
+                // Serial.print("lastButtonEncoderState: ");
+                // Serial.println(lastButtonEncoderState);
+                // Serial.print("encoderButtonState: ");
+                // Serial.println(encoderButtonState);
+                // Serial.print("encoderDirectionState: ");
+                // Serial.println(encoderDirectionState);
+
+                // Serial.print("lastDirectionState: ");
+                // Serial.println(lastDirectionState);
+                // Serial.print("encoderOverride: ");
+                // Serial.println(encoderOverride);
+                // Serial.println("Setting encoderOverride to 10");
+                 encoderOverride = 10;
+                // //lastDirectionState = NONE;
+                // encoderButtonState = IDLE;
+                // lastButtonEncoderState = IDLE;
+                lastDirectionState = NONE;
+                encoderDirectionState = UP;
+                    //delay(50); // Small delay between clicks
+               // }
+                
+                
+
+                snprintf(response, 1024, "SUCCESS: clickwheel(up, %d) - simulated %d up clicks", clicks, clicks);
+                return 0;
+                
+            } else if (parsedCmd.subAction == clickwheel_sub_down) {
+                // Example: clickwheel(down, 1) or clickwheel(down, 3)
+                int clicks = 1; // default
+                if (parsedCmd.argCount >= 1 && parsedCmd.args[0].type == ARG_TYPE_INT) {
+                    clicks = parsedCmd.args[0].value.intValue;
+                }
+
+                // Serial.print("encoderPositionOffset: ");
+                // Serial.println(encoderPositionOffset);
+                // Serial.print("encoderPosition: ");
+                // Serial.println(encoderPosition);
+                
+                // resetEncoderPosition = true;
+                // encoderPositionOffset -= clicks * 100;
+                // Serial.print("encoderPositionOffset: ");
+                // Serial.println(encoderPositionOffset);
+                
+                // Simulate multiple encoder clicks
+                //for (int i = 0; i < clicks; i++) {
+                encoderOverride = 10;
+                lastDirectionState = NONE;
+                encoderDirectionState = DOWN;
+                    //delay(50); // Small delay between clicks
+               // }
+                
+                snprintf(response, 1024, "SUCCESS: clickwheel(down, %d) - simulated %d down clicks", clicks, clicks);
+                return 0;
+                
+            } else if (parsedCmd.subAction == clickwheel_sub_press) {
+                // Example: clickwheel(press)
+
+                // Serial.print("lastButtonEncoderState: ");
+                // Serial.println(lastButtonEncoderState);
+                // Serial.print("encoderButtonState: ");
+                // Serial.println(encoderButtonState);
+                // Serial.print("encoderDirectionState: ");
+                // Serial.println(encoderDirectionState);
+
+                // Serial.print("lastDirectionState: ");
+                // Serial.println(lastDirectionState);
+                // Serial.print("encoderOverride: ");
+                // Serial.println(encoderOverride);
+                // Serial.println("Setting encoderOverride to 10");
+                encoderOverride = 10;
+
+                lastButtonEncoderState = PRESSED;
+                encoderButtonState = RELEASED;
+                
+                snprintf(response, 1024, "SUCCESS: clickwheel(press) - simulated button press");
+                return 0;
+                
+            } else if (parsedCmd.subAction == clickwheel_sub_hold) {
+                // Example: clickwheel(hold, time=0.5) or clickwheel(hold, 1.0)
+                float holdTime = 0.5; // default 500ms
+                
+                // Check for time parameter (named or positional)
+                for (int i = 0; i < parsedCmd.argCount; i++) {
+                    if (parsedCmd.args[i].type == ARG_TYPE_FLOAT || parsedCmd.args[i].type == ARG_TYPE_INT) {
+                        if (strlen(parsedCmd.args[i].name) == 0 || strcmp(parsedCmd.args[i].name, "time") == 0) {
+                            if (parsedCmd.args[i].type == ARG_TYPE_FLOAT) {
+                                holdTime = parsedCmd.args[i].value.floatValue;
+                            } else {
+                                holdTime = (float)parsedCmd.args[i].value.intValue;
+                            }
+                            break;
+                        }
+                    }
+                }
+                
+                // Simulate button hold
+                lastButtonEncoderState = PRESSED;
+                encoderButtonState = HELD;
+                
+                // Convert to milliseconds and delay
+                int holdTimeMs = (int)(holdTime * 1000);
+                delay(holdTimeMs);
+                
+                // Release after hold
+                //encoderButtonState = RELEASED;
+                
+                snprintf(response, 1024, "SUCCESS: clickwheel(hold, %.2f) - held button for %.2f seconds", holdTime, holdTime);
+                return 0;
+                
+            } else if (parsedCmd.subAction == clickwheel_sub_get_press) {
+                // Example: clickwheel(get_press)
+                bool isPressed = (encoderButtonState == PRESSED);
+                snprintf(response, 1024, "SUCCESS: clickwheel(get_press) = %s", isPressed ? "true" : "false");
+                return 0;
+            }
+            
+            snprintf(response, 1024, "ERROR: clickwheel(%s) - sub-action not implemented", 
+                    subActionToString(parsedCmd.action, parsedCmd.subAction));
+            return -1;
+        }
+
         case action_arduino: {
             if (parsedCmd.subAction == arduino_sub_reset) {
                 // Example: arduino(reset) or resetArduino()
@@ -1162,6 +1295,7 @@ int parseAndExecutePythonCommand(char* command, char* response) {
                     // Use clearPrintShow as requested
                     oled.clearPrintShow(text, textSize, true, true, true);
                     snprintf(response, 1024, "SUCCESS: oled(print, \"%s\", textSize=%d)", text, textSize);
+
                     return 0;
                 }
                 snprintf(response, 1024, "ERROR: Invalid arguments for oled(print) - need text string");
@@ -1505,6 +1639,23 @@ class Probe:
         cmd = 'probe(' + str(action) + ')'
         return _execute_command(cmd)
 
+class Clickwheel:
+    def up(self, clicks=1):
+        cmd = 'clickwheel(up, ' + str(clicks) + ')'
+        return _execute_command(cmd)
+    def down(self, clicks=1):
+        cmd = 'clickwheel(down, ' + str(clicks) + ')'
+        return _execute_command(cmd)
+    def press(self):
+        cmd = 'clickwheel(press)'
+        return _execute_command(cmd)
+    def hold(self, time=0.5):
+        cmd = 'clickwheel(hold, time=' + str(time) + ')'
+        return _execute_command(cmd)
+    def get_press(self):
+        cmd = 'clickwheel(get_press)'
+        return _execute_command(cmd)
+
 # Create module instances
 dac = DAC()
 adc = ADC()
@@ -1515,6 +1666,7 @@ oled = OLED()
 arduino = Arduino()
 uart = UART()
 probe = Probe()
+clickwheel = Clickwheel()
 
 class JL:
     def __init__(self):
@@ -1527,6 +1679,7 @@ class JL:
         self.arduino = arduino
         self.uart = uart
         self.probe = probe
+        self.clickwheel = clickwheel
     
     def read_voltage(self, channel):
         return self.adc.get(channel)
@@ -1544,9 +1697,9 @@ class JL:
         return self.arduino.reset()
     
     def help(self):
-        print('Jumperless MicroPython Module (Full Embedded)\\n\\r')
-        print('Main Namespace: jl.*\\n\\r')
-        print('Hardware Modules:\\n\\r')
+        print('Jumperless MicroPython Module (Full Embedded)\n\r')
+        print('Main Namespace: jl.*\n\r')
+        print('Hardware Modules:\n\r')
         print('  jl.dac.set(0, 2.5)      # Set DAC voltage')
         print('  jl.adc.get(0)           # Read ADC')
         print('  jl.ina.get_current(0)   # Read INA current')
@@ -1555,17 +1708,21 @@ class JL:
         print('  jl.oled.print("Hi")     # Display text')
         print('  jl.arduino.reset()      # Reset Arduino')
         print('  jl.uart.connect()       # Connect UART')
-        print('\\n\\rConvenience methods:\\n\\r')
+        print('  jl.clickwheel.up(1)     # Scroll up')
+        print('  jl.clickwheel.down(3)   # Scroll down 3 clicks')
+        print('  jl.clickwheel.press()   # Press clickwheel')
+        print('  jl.clickwheel.hold(0.5) # Hold for 0.5 seconds')
+        print('\n\rConvenience methods:\n\r')
         print('  jl.read_voltage(0)      # Quick ADC read')
         print('  jl.set_voltage(0, 2.5)  # Quick DAC set')
         print('  jl.display("Hello!")    # Quick OLED print')
         print('  jl.connect_nodes(1, 5)  # Quick node connect')
-        print('\\n\\rNew: Return Values & Variables:\\n\\r')
-        print('  voltage = jl.adc.get(0)        # Get actual voltage')
-        print('  current = jl.ina.get_current(0) # Get actual current')
-        print('  pin_state = jl.gpio.get(5)     # Get actual state')
-        print('  if jl.gpio.get(1): print("Pin 1 is HIGH")')
-        print('  if voltage > 3.0: jl.oled.print("High voltage!")')
+        print('\n\rNew: Return Values & Variables:\n\r')
+        print('voltage = jl.adc.get(0)        # Get actual voltage')
+        print('current = jl.ina.get_current(0) # Get actual current')
+        print('pin_state = jl.gpio.get(5)     # Get actual state')
+        print('if jl.gpio.get(1):\n\r\tprint("Pin 1 is HIGH")')
+        print('if voltage > 3.0:\n\r\tjl.oled.print("High voltage!")')
         print('')
         return 'Help displayed'
 
@@ -1983,10 +2140,12 @@ const char* actionTypeToString(enum actionType action) {
         case action_nodes: return "nodes";
         case action_dac: return "dac";
         case action_adc: return "adc";
+        case action_ina: return "ina";
         case action_config: return "config";
         case action_arduino: return "arduino";
         case action_uart: return "uart";
         case action_probe: return "probe";
+        case action_clickwheel: return "clickwheel";
         case action_oled: return "oled";
         case action_display: return "display";
         case action_slot: return "slot";
@@ -2118,6 +2277,11 @@ void testPythonParser() {
         "display(startup)",
         "arduino(reset)",
         "uart(connect)",
+        "clickwheel(up, 1)",
+        "clickwheel(down, 3)",
+        "clickwheel(press)",
+        "clickwheel(hold, time=0.5)",
+        "clickwheel(get_press)",
         
         // Error cases
         "invalidFunction(1, 2, 3)",
@@ -2282,6 +2446,15 @@ int parseProbeSubAction(const char* subActionStr) {
     return -1;
 }
 
+int parseClickwheelSubAction(const char* subActionStr) {
+    if (strcmp(subActionStr, "up") == 0) return clickwheel_sub_up;
+    if (strcmp(subActionStr, "down") == 0) return clickwheel_sub_down;
+    if (strcmp(subActionStr, "press") == 0) return clickwheel_sub_press;
+    if (strcmp(subActionStr, "hold") == 0) return clickwheel_sub_hold;
+    if (strcmp(subActionStr, "get_press") == 0) return clickwheel_sub_get_press;
+    return -1;
+}
+
 int parseOledSubAction(const char* subActionStr) {
     if (strcmp(subActionStr, "connect") == 0) return oled_sub_connect;
     if (strcmp(subActionStr, "disconnect") == 0) return oled_sub_disconnect;
@@ -2329,6 +2502,7 @@ int parseSubAction(enum actionType action, const char* subActionStr) {
         case action_arduino: return parseArduinoSubAction(subActionStr);
         case action_uart: return parseUartSubAction(subActionStr);
         case action_probe: return parseProbeSubAction(subActionStr);
+        case action_clickwheel: return parseClickwheelSubAction(subActionStr);
         case action_oled: return parseOledSubAction(subActionStr);
         case action_display: return parseDisplaySubAction(subActionStr);
         case action_slot: return parseSlotSubAction(subActionStr);
@@ -2469,6 +2643,15 @@ const char* subActionToString(enum actionType action, int subAction) {
                 case probe_sub_release: return "release";
                 default: return "unknown_probe";
             }
+        case action_clickwheel:
+            switch (subAction) {
+                case clickwheel_sub_up: return "up";
+                case clickwheel_sub_down: return "down";
+                case clickwheel_sub_press: return "press";
+                case clickwheel_sub_hold: return "hold";
+                case clickwheel_sub_get_press: return "get_press";
+                default: return "unknown_clickwheel";
+            }
         case action_oled:
             switch (subAction) {
                 case oled_sub_connect: return "connect";
@@ -2545,29 +2728,29 @@ extern "C" int jumperless_execute_sync_c(const char* command) {
         return -1;
     }
     
-    Serial.print("[SYNC_C] Starting execution of: ");
-    Serial.println(command);
-    Serial.flush();
+    //Serial.print("[SYNC_C] Starting execution of: ");
+    //Serial.println(command);
+    //Serial.flush();
     
     // REAL HARDWARE: Use direct hardware execution instead of complex parser
-    Serial.println("[SYNC_C] Using direct hardware execution...");
-    Serial.flush();
+    //Serial.println("[SYNC_C] Using direct hardware execution...");
+    //Serial.flush();
     
     sync_execution_result = execute_hardware_direct(command);
     
-    Serial.print("[SYNC_C] Hardware execution completed with result: ");
-    Serial.println(sync_execution_result);
+    //Serial.print("[SYNC_C] Hardware execution completed with result: ");
+    //Serial.println(sync_execution_result);
     
     // Skip the complex parsing for now
-    // int result = jumperless_execute_command_sync(command, sync_command_response);
-    // sync_execution_result = parse_response_for_python(sync_command_response, sync_value_result, sync_type_result);
+    int result = jumperless_execute_command_sync(command, sync_command_response);
+    sync_execution_result = parse_response_for_python(sync_command_response, sync_value_result, sync_type_result);
     
-    Serial.print("[SYNC_C] Final result: ");
+    //Serial.print("[SYNC_C] Final result: ");
     Serial.print(sync_execution_result);
-    Serial.print(", Value: ");
-    Serial.print(sync_value_result);
-    Serial.print(", Type: ");
-    Serial.println(sync_type_result);
+    //Serial.print(", Value: ");
+    //Serial.print(sync_value_result);
+    //Serial.print(", Type: ");
+    //Serial.println(sync_type_result);
     Serial.flush();
     
     return sync_execution_result;
@@ -2649,44 +2832,50 @@ void testJumperlessModule(void) {
 
 // Read a Python command from serial input
 void readPythonCommand() {
-    Serial.print(">>> ");
-    Serial.flush();
+    // Serial.print(">>> ");
+    // Serial.flush();
     
     String command = "";
     char c;
     
     // Read until newline
-    while (true) {
-        if (Serial.available() > 0) {
+    while (Serial.available() > 0) {
+
+        
             c = Serial.read();
             if (c == '\n' || c == '\r') {
-                if (command.length() > 0) {
+                //if (command.length() > 1) {
                     break;
-                }
+                //}
                 // Ignore empty lines
-                continue;
+                //continue;
             } else if (c == '\b' || c == 0x7F) {
                 // Backspace
                 if (command.length() > 0) {
                     command.remove(command.length() - 1);
                     Serial.print("\b \b");
+                    Serial.flush();
                 }
-            } else if (c >= 32 && c <= 126) {
+            } else if (c >= 32 && c <= 255) {
                 // Printable character
                 command += c;
-                Serial.print(c);
+                //Serial.print(c);
+                //Serial.print(" ");
+                //Serial.flush();
             }
-        }
+        
     }
     
-    Serial.println(); // Echo newline
+    //Serial.println(); // Echo newline
     
     if (command.length() > 0) {
         char response[1024];
         if (processCommand(command.c_str(), response)) {
             Serial.println(response);
+            Serial.flush();
         } else {
             Serial.println("ERROR: Invalid Python command");
+            Serial.flush();
         }
     }
 }
@@ -2997,8 +3186,12 @@ extern "C" int execute_hardware_direct(const char* command) {
         strcpy(sync_type_result, "str");
         return 0;
     }
-    
-    // Unknown command
+
+
+
+
+
+            // Unknown command
     strcpy(sync_value_result, "Unknown command");
     strcpy(sync_type_result, "error");
     Serial.print("[HARDWARE] Unknown command: ");

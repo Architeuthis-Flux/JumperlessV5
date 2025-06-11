@@ -17,6 +17,8 @@ extern int encoderRaw;
 extern volatile int numberOfSteps;
 extern volatile bool resetPosition;
 
+extern volatile int encoderOverride;
+
 extern volatile long encoderPosition;
 extern long encoderPositionOffset;
 extern bool resetEncoderPosition;

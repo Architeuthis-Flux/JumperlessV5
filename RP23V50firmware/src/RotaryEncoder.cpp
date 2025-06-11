@@ -134,6 +134,8 @@ int lastRotaryDivider = 8;
 ///number of steps to trigger a encoderDirectionState change
 int rotaryDivider = 8;
 
+volatile int encoderOverride = 0;
+
 bool resetEncoderPosition = false;
 long encoderPositionOffset = 0;
 volatile long encoderPosition = 0;
@@ -148,6 +150,16 @@ volatile encoderButtonStates lastButtonEncoderState = IDLE;
 volatile encoderDirectionStates lastDirectionState = NONE;
 
 void rotaryEncoderStuff(void) {
+
+
+
+
+  if (encoderOverride > 0) {
+    encoderOverride--;
+    // Serial.print("encoderOverride: ");
+    // Serial.println(encoderOverride);
+    return;
+  }
 
   lastButtonEncoderState = encoderButtonState;
 
@@ -164,6 +176,8 @@ void rotaryEncoderStuff(void) {
     // Serial.print("pressed: ");
     // Serial.println(encoderIsPressed);
   }
+
+
 
   if (encoderIsPressed == 0 && encoderWasPressed == 0) {
     encoderButtonState = IDLE;

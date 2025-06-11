@@ -163,6 +163,23 @@ class Probe:
         cmd = 'probe(' + str(action) + ')'
         return _execute_command(cmd)
 
+class Clickwheel:
+    def up(self, clicks=1):
+        cmd = 'clickwheel(up, ' + str(clicks) + ')'
+        return _execute_command(cmd)
+    def down(self, clicks=1):
+        cmd = 'clickwheel(down, ' + str(clicks) + ')'
+        return _execute_command(cmd)
+    def press(self):
+        cmd = 'clickwheel(press)'
+        return _execute_command(cmd)
+    def hold(self, time=0.5):
+        cmd = 'clickwheel(hold, time=' + str(time) + ')'
+        return _execute_command(cmd)
+    def get_press(self):
+        cmd = 'clickwheel(get_press)'
+        return _execute_command(cmd)
+
 # Create module instances
 dac = DAC()
 adc = ADC()
@@ -173,6 +190,7 @@ oled = OLED()
 arduino = Arduino()
 uart = UART()
 probe = Probe()
+clickwheel = Clickwheel()
 
 class JL:
     def __init__(self):
@@ -185,6 +203,7 @@ class JL:
         self.arduino = arduino
         self.uart = uart
         self.probe = probe
+        self.clickwheel = clickwheel
     
     def read_voltage(self, channel):
         return self.adc.get(channel)
@@ -213,6 +232,10 @@ class JL:
         print('  jl.oled.print("Hi")     # Display text')
         print('  jl.arduino.reset()      # Reset Arduino')
         print('  jl.uart.connect()       # Connect UART')
+        print('  jl.clickwheel.up(1)     # Scroll up')
+        print('  jl.clickwheel.down(3)   # Scroll down 3 clicks')
+        print('  jl.clickwheel.press()   # Press clickwheel')
+        print('  jl.clickwheel.hold(0.5) # Hold for 0.5 seconds')
         print('\\n\\rConvenience methods:\\n\\r')
         print('  jl.read_voltage(0)      # Quick ADC read')
         print('  jl.set_voltage(0, 2.5)  # Quick DAC set')

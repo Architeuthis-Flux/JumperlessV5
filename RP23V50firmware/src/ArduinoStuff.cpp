@@ -1428,9 +1428,9 @@ void checkForConfigChangesUSBSer2(int print) {
 void replyWithSerialInfo(void) {
 
 
-  if (flashingArduino == true) {
-    return;
-  }
+  // if (flashingArduino == true) {
+  //   return;
+  // }
 
   // Check main Serial (CDC 0) for ENQ character - responds for ALL ports
   if (Serial.available() > 0) {

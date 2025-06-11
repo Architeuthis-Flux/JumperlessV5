@@ -43,6 +43,9 @@ enum actionType {
     
     // Probe category
     action_probe,
+
+    // Clickwheel category
+    action_clickwheel,
     
     // OLED category
     action_oled,
@@ -103,6 +106,14 @@ enum probeSubAction {
     probe_sub_click,
     probe_sub_short_click,  // alias for click
     probe_sub_release
+};
+
+enum clickwheelSubAction {
+    clickwheel_sub_up,
+    clickwheel_sub_down,
+    clickwheel_sub_press,
+    clickwheel_sub_hold,
+    clickwheel_sub_get_press
 };
 
 enum oledSubAction {

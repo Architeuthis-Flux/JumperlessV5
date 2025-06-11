@@ -67,6 +67,7 @@ KevinC@ppucc.io
 #include "UserCode.h"
 // #include "SerialWrapper.h"
 #include "Highlighting.h"
+#include "HelpDocs.h"
 
 // #define Serial SerialWrap
 // #define USBSer1 SerialWrap
@@ -423,7 +424,8 @@ menu:
   if (dontShowMenu == 0) {
 
   forceprintmenu:
-    Serial.print("\n\n\r\t\tMenu\n\r");
+    Serial.print("\n\n\r\t\tMenu\n\r\n\r");
+    Serial.print("Type 'help' for all commands or [command]? for specific help (like 'f?' or 'n?')\n\r");
 
     Serial.print("\n\r");
     Serial.print("\tm = show this menu\n\r");
@@ -436,7 +438,7 @@ menu:
     // Serial.print("\t! = print node file\n\r");
     Serial.print("\ts = show all slot files\n\r");
 
-    Serial.print("\t\b\b</> = cycle slots\n\r");
+    Serial.print("\t< = cycle slots\n\r");
 
     Serial.println();
 
@@ -446,6 +448,7 @@ menu:
     Serial.print("\tl = LED brightness / test\n\r");
     Serial.print("\t\b\b`/~ = edit / print config\n\r");
     Serial.print("\tp = microPython REPL\n\r");
+    
     Serial.print("\te = show extra options\n\r");
     if (showExtraMenu == 1) {
       Serial.println();
@@ -459,7 +462,7 @@ menu:
       Serial.print("\t= = dump oled frame buffer\n\r");
       Serial.print("\tk = show oled in terminal\n\r");
       Serial.print("\tR = show board LEDs\n\r");
-      Serial.print("\tE = don't show menu\n\r");
+      Serial.print("\tE = don't show this menu\n\r");
 
       // Serial.print("\n\r");
     }
@@ -480,8 +483,12 @@ menu:
     // Serial.print("\t\b\b\b\b[0-9] = run app by index\n\r");
     Serial.print("\t. = connect oled\n\r");
     Serial.print("\tr = reset Arduino (rt/rb)\n\r");
+    
 
     Serial.print("\t\b\ba/A = dis/connect UART to D0/D1\n\r");
+    Serial.print("\t> = send Python formatted command\n\r");
+
+
 
     // Serial.print("\t    print passthrough");
     // if (printSerial1Passthrough == 1) {
@@ -770,6 +777,51 @@ dontshowmenu:
   // Serial.println(input);
   // Serial.flush();
 
+  // Handle multi-character help commands
+  if (input == 'h') {
+    // Check if next character is available (for "help" command)
+    unsigned long helpTimer = millis();
+    while (Serial.available() == 0 && millis() - helpTimer < 100) {
+      // Small timeout for typing "help"
+    }
+    if (Serial.available() > 0) {
+      String helpString = "h";
+      while (Serial.available() > 0 && helpString.length() < 50) {
+        char c = Serial.read();
+        if (c == '\n' || c == '\r') break;
+        helpString += c;
+      }
+      if (helpString == "help") {
+        showGeneralHelp();
+        goto dontshowmenu;
+      } else if (helpString.startsWith("help ")) {
+        String category = helpString.substring(5);
+        category.trim();
+        showCategoryHelp(category.c_str());
+        goto dontshowmenu;
+      }
+    } else {
+      // Just 'h' alone, let it fall through to normal processing
+    }
+  }
+  
+  // Handle command? help requests
+  if (input != '\n' && input != '\r' && input != ' ') {
+    // Check if next character is '?' for command-specific help
+    unsigned long helpTimer = millis();
+    while (Serial.available() == 0 && millis() - helpTimer < 100) {
+      // Small timeout for typing command?
+    }
+    if (Serial.available() > 0) {
+      char nextChar = Serial.peek();
+      if (nextChar == '?') {
+        Serial.read(); // consume the '?'
+        showCommandHelp(input);
+        goto dontshowmenu;
+      }
+    }
+  }
+
   if (input == ' ' || input == '\n' || input == '\r') {
   
       // Serial.print(input);
@@ -837,6 +889,7 @@ skipinput:
   // Add this case for single Python command
 case '>': { //! > - Execute single Python command
     readPythonCommand();
+    Serial.flush();
     goto dontshowmenu;
     break;
 }
