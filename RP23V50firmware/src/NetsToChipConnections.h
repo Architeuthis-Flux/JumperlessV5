@@ -14,11 +14,11 @@ extern bool debugNTCC;
 extern bool debugNTCC2;
 extern bool debugNTCC4;
 
-extern int powerPriority;
-extern int dacPriority;
-extern int powerDuplicates;
-extern int dacDuplicates;
-extern int pathDuplicates;
+// extern int powerPriority;
+// extern int dacPriority;
+// extern int powerDuplicates;
+// extern int dacDuplicates;
+// extern int pathDuplicates;
 
 extern int numberOfUnconnectablePaths;
 extern int unconnectablePaths[10][2];

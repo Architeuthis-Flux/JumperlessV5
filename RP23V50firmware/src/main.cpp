@@ -335,7 +335,7 @@ int input = '\0';
 int serSource = 0;
 int readInNodesArduino = 0;
 
-const char firmwareVersion[] = "5.1.5.1"; // remember to update this
+const char firmwareVersion[] = "5.1.5.2"; // remember to update this
 const bool newConfigOptions =
     true; // set to true when config options are added/changed
 
@@ -1698,8 +1698,7 @@ void loop1() {
 
   // if (millis() - serialInfoTimer > 10) {
   //   serialInfoTimer = millis();
-  replyWithSerialInfo();
-  // }
+ 
 
   if (core1passthrough == 0 || inClickMenu == 1 || inPadMenu == 1 ||
       probeActive == 1) {

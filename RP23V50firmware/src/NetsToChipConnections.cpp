@@ -646,11 +646,11 @@ bool setPathY(int pathIndex, int yIndex, int yValue) {
 
 int pathIndex = 0;
 
-int powerDuplicates = 2;
-int dacDuplicates = 0;
-int pathDuplicates = 2;
-int powerPriority = 1;
-int dacPriority = 1;
+// int powerDuplicates = 2;
+// int dacDuplicates = 0;
+// int pathDuplicates = 2;
+// int powerPriority = 1;
+// int dacPriority = 1;
 
 // Y position limits to prevent high-priority nets from using all positions
 int yPositionLimits[MAX_NETS] = {0}; // 0 = no limit
@@ -3937,7 +3937,6 @@ void resolveUncommittedHops(int allowStacking, int powerOnly,
     Serial.println("\nresolveUncommittedHops()");
   }
 
-
   for (int i = 0; i < numberOfPaths; i++) {
     // Filter paths based on powerOnly and duplicates flags
     if (powerOnly == 1 && (path[i].net > 5 || path[i].duplicate == 1)) {
@@ -4093,8 +4092,77 @@ void resolveUncommittedHops(int allowStacking, int powerOnly,
 
     // Handle Y position assignments
     if (allAssignmentsSucceeded && hasUnresolvedY) {
-      // Check if this is an ijkl inter-chip path
-      bool isIjklPath = false;
+      // For same-chip connections, find one Y position that works for both nodes
+      if (path[i].sameChip && path[i].chip[0] == path[i].chip[1] && 
+          path[i].y[0] == -2 && path[i].y[1] == -2) {
+        
+        int targetChip = path[i].chip[0];
+        int sharedY = -1;
+        
+        // Find a free Y position that can be used for both nodes on the same chip
+        for (int testY = 0; testY < 8; testY++) {
+          // For breadboard chips, only allow Y=0
+          if (targetChip < 8 && testY != 0) {
+            continue;
+          }
+          
+          if (freeOrSameNetY(targetChip, testY, path[i].net, allowStacking)) {
+            // For special function chips, check breadboard chip X connection
+            if (targetChip >= 8) {
+              int bbChipX = xMapForChipLane0(testY, targetChip);
+              if (bbChipX != -1) {
+                if (!freeOrSameNetX(testY, bbChipX, path[i].net, allowStacking)) {
+                  continue;
+                }
+              }
+            }
+            sharedY = testY;
+            break;
+          }
+        }
+        
+        if (sharedY != -1) {
+          // Assign the same Y position to both positions for same-chip connection
+          bool success = setPathY(i, 0, sharedY) && setPathY(i, 1, sharedY);
+          bool chipSuccess = false;
+          if (success) {
+            chipSuccess = setChipYStatusSafe(targetChip, sharedY, path[i].net, "resolveUncommittedHops same-chip Y");
+          }
+          
+          // Update breadboard chip X status for special function chips
+          if (success && chipSuccess && targetChip >= 8) {
+            int bbChipX = xMapForChipLane0(sharedY, targetChip);
+            if (bbChipX != -1) {
+              bool xSuccess = setChipXStatus(sharedY, bbChipX, path[i].net, "resolveUncommittedHops same-chip BB X");
+              if (!xSuccess) {
+                allAssignmentsSucceeded = false;
+              }
+            }
+          }
+          
+          if (!success || !chipSuccess) {
+            allAssignmentsSucceeded = false;
+          } else {
+            if (debugNTCC2) {
+              Serial.print("  Assigned shared Y=");
+              Serial.print(sharedY);
+              Serial.print(" to same-chip path[");
+              Serial.print(i);
+              Serial.print("] on chip ");
+              Serial.println(chipNumToChar(targetChip));
+            }
+          }
+        } else {
+          allAssignmentsSucceeded = false;
+          if (debugNTCC2) {
+            Serial.print("ERROR: No free shared Y found for same-chip path[");
+            Serial.print(i);
+            Serial.println("]");
+          }
+        }
+      } else {
+        // Check if this is an ijkl inter-chip path
+        bool isIjklPath = false;
       if (path[i].chip[0] != path[i].chip[1] && path[i].chip[2] != -1 && path[i].chip[3] != -1) {
         // Check if positions 0&2 are same chip and positions 1&3 are same chip
         if (path[i].chip[0] == path[i].chip[2] && path[i].chip[1] == path[i].chip[3]) {
@@ -4283,6 +4351,7 @@ void resolveUncommittedHops(int allowStacking, int powerOnly,
             }
           }
         }
+      }
       }
     }
 

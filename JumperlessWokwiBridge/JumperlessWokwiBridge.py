@@ -3618,7 +3618,7 @@ def flash_arduino_sketch(sketch_content, libraries_content="", slot_number=None)
                     safe_print(f"Note: Error closing Arduino port in cleanup: {close_error}", Fore.YELLOW)
             
             # Restore UART state if we changed it
-            if uart_mode_changed and ser and serialconnected:
+            if uart_mode_changed and ser and serialconnected and not uart_was_connected:
                 try:
                     time.sleep(0.1)
                     ser.write(b"a")  # Disconnect UART
