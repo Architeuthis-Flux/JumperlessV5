@@ -5,3 +5,4 @@
 .vscode/ipch
 .DS_Store
 
+src_micropython*.o
