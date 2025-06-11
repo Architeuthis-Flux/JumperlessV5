@@ -108,7 +108,7 @@ If it's a rail, those are animated and should be a continuous slow pulsing towar
 
 # Idle mode interactions
 
-#### The main thing it there'a a lot more interaction that can be done outside of any particular mode (like not probing and the logo is rainbowy, I'm gonna call this idle mode here until I think of a good name)
+#### The main thing is that there'a a lot more interaction that can be done outside of any particular mode (like not probing and the logo is rainbowy, I'm gonna call this idle mode here until I think of a good name)
 ![idle](https://github.com/user-attachments/assets/304d787a-c5f5-4da0-bd95-1a82bcdf83c1)
 
 Here's what's new (all of this is in idle mode):

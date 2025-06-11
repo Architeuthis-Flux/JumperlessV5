@@ -156,7 +156,7 @@ When you buy a Jumperless, you're also buying the right so have a *working* Jump
 
 
 ## Open Sourciness
-This thing infinitely open source and hackable. I'm kind of a zealot about that stuff. Want to make 10 of these with a USB Mini port for you and your friends? Let me know and I'll double check everything when you're putting in the PCB order to make sure all the parts are placed correctly and stuff (and I'd totally buy one, I love USB Mini). I'll even send you the custom spring clips.
+This thing is infinitely open source and hackable. I'm kind of a zealot about that stuff. Want to make 10 of these with a USB Mini port for you and your friends? Let me know and I'll double check everything when you're putting in the PCB order to make sure all the parts are placed correctly and stuff (and I'd totally buy one, I love USB Mini). I'll even send you the custom spring clips.
 
 If you have some feature you want to add, I'm happy to help. Either by just adding it myself or walking you through the relevant bits of code to make it happen.
 ![JumperlessV5hw](https://github.com/Architeuthis-Flux/JumperlessV5/assets/20519442/ce409b68-03f8-4ee0-b19b-1aba168de07f)

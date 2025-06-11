@@ -15,7 +15,7 @@ I'm using PlatformIO in VSCode. And it *should* just work to open the RP23V50fir
 
 You should just open the `RP23V50firmware` folder, not the entire `JumperlessV5` repo, in VSCode.
 
-You should probably try to just load the firmware just ot make sure everything works.
+You should probably try to just load the firmware just to make sure everything works.
 
 ## To write an App
 
@@ -56,5 +56,5 @@ in the big main menu `switch` statement in `main.cpp`.
 
 ## To actually write the app
 
-[The code](https://github.com/Architeuthis-Flux/JumperlessV5/blob/6fd4fcba572c4b524435ec36c8901adcedbf52c6/RP23V50firmware/src/Apps.cpp#L141) for `Custom App` is an example of the calls available with comments telling you what's going on. There are tons more, but what's show there are the higher-level helper functions that should roughly do what they say they're doing.
+[The code](https://github.com/Architeuthis-Flux/JumperlessV5/blob/6fd4fcba572c4b524435ec36c8901adcedbf52c6/RP23V50firmware/src/Apps.cpp#L141) for `Custom App` is an example of the calls available with comments telling you what's going on. There are tons more, but what's shown there are the higher-level helper functions that should roughly do what they say they're doing.
 
