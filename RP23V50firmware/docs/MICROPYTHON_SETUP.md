@@ -6,25 +6,7 @@ This guide explains how to properly set up MicroPython embedding in the Jumperle
 
 ## 🛠️ Setup Instructions
 
-### Step 1: Install MicroPython Repository
-
-The build system needs access to the official MicroPython repository:
-
-```bash
-# Create directory structure
-mkdir -p ~/src/micropython
-cd ~/src/micropython
-
-# Clone MicroPython repository
-git clone https://github.com/micropython/micropython.git
-cd micropython
-
-# Build the mpy-cross compiler (required for embed port)
-cd mpy-cross
-make
-```
-
-### Step 2: Build MicroPython Embed Port
+### Step 1: Build MicroPython Embed Port
 
 You can either run the automated build or manual build:
 
@@ -34,12 +16,6 @@ The build will automatically happen when you compile with PlatformIO, but you ca
 ```bash
 # From the project root
 ./scripts/build_micropython.sh
-```
-
-#### Option B: Manual Build
-```bash
-# From src/micropython directory
-make -f micropython_embed.mk MICROPYTHON_TOP=$HOME/src/micropython/micropython
 ```
 
 ## 🎯 Features Enabled

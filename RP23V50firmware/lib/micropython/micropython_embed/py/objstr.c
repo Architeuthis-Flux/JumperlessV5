@@ -33,14 +33,13 @@
 #include "py/objlist.h"
 #include "py/runtime.h"
 #include "py/cstack.h"
-#include "py/objtuple.h"
 
 #if MICROPY_PY_BUILTINS_STR_OP_MODULO
 static mp_obj_t str_modulo_format(mp_obj_t pattern, size_t n_args, const mp_obj_t *args, mp_obj_t dict);
 #endif
 
 static mp_obj_t mp_obj_new_bytes_iterator(mp_obj_t str, mp_obj_iter_buf_t *iter_buf);
-static MP_NORETURN void bad_implicit_conversion(mp_obj_t self_in);
+static NORETURN void bad_implicit_conversion(mp_obj_t self_in);
 
 static mp_obj_t mp_obj_new_str_type_from_vstr(const mp_obj_type_t *type, vstr_t *vstr);
 
@@ -358,7 +357,8 @@ mp_obj_t mp_obj_str_binary_op(mp_binary_op_t op, mp_obj_t lhs_in, mp_obj_t rhs_i
         mp_obj_t *args = &rhs_in;
         size_t n_args = 1;
         mp_obj_t dict = MP_OBJ_NULL;
-        if (mp_obj_is_tuple_compatible(rhs_in)) {
+        if (mp_obj_is_type(rhs_in, &mp_type_tuple)) {
+            // TODO: Support tuple subclasses?
             mp_obj_tuple_get(rhs_in, &n_args, &args);
         } else if (mp_obj_is_type(rhs_in, &mp_type_dict)) {
             dict = rhs_in;
@@ -1001,7 +1001,7 @@ static mp_obj_t arg_as_int(mp_obj_t arg) {
 #endif
 
 #if MICROPY_ERROR_REPORTING <= MICROPY_ERROR_REPORTING_TERSE
-static MP_NORETURN void terse_str_format_value_error(void) {
+static NORETURN void terse_str_format_value_error(void) {
     mp_raise_ValueError(MP_ERROR_TEXT("bad format string"));
 }
 #else
@@ -1184,7 +1184,7 @@ static vstr_t mp_obj_str_format_helper(const char *str, const char *top, int *ar
         int width = -1;
         int precision = -1;
         char type = '\0';
-        unsigned int flags = 0;
+        int flags = 0;
 
         if (format_spec) {
             // The format specifier (from http://docs.python.org/2/library/string.html#formatspec)
@@ -1229,9 +1229,8 @@ static vstr_t mp_obj_str_format_helper(const char *str, const char *top, int *ar
                 }
             }
             s = str_to_int(s, stop, &width);
-            if (*s == ',' || *s == '_') {
-                MP_STATIC_ASSERT((unsigned)'_' << PF_FLAG_SEP_POS >> PF_FLAG_SEP_POS == '_');
-                flags |= (unsigned)*s << PF_FLAG_SEP_POS;
+            if (*s == ',') {
+                flags |= PF_FLAG_SHOW_COMMA;
                 s++;
             }
             if (*s == '.') {
@@ -2358,7 +2357,7 @@ bool mp_obj_str_equal(mp_obj_t s1, mp_obj_t s2) {
     }
 }
 
-static MP_NORETURN void bad_implicit_conversion(mp_obj_t self_in) {
+static NORETURN void bad_implicit_conversion(mp_obj_t self_in) {
     #if MICROPY_ERROR_REPORTING <= MICROPY_ERROR_REPORTING_TERSE
     mp_raise_TypeError(MP_ERROR_TEXT("can't convert to str implicitly"));
     #else
