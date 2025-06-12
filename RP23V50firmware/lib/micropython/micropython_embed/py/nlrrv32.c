@@ -50,7 +50,7 @@ __attribute__((naked)) unsigned int nlr_push(nlr_buf_t *nlr) {
         );
 }
 
-MP_NORETURN void nlr_jump(void *val) {
+NORETURN void nlr_jump(void *val) {
     MP_NLR_JUMP_HEAD(val, top)
     __asm volatile (
         "add  x10, x0, %0  \n" // Load nlr_buf address.

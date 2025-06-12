@@ -4,7 +4,8 @@
 set -e
 
 # Configuration
-MICROPYTHON_REPO_PATH="${HOME}/src/micropython/micropython"
+MICROPYTHON_VERSION="v1.25.0"
+MICROPYTHON_REPO_PATH=$(realpath "$(dirname "$0")/../.micropython/micropython")
 MICROPYTHON_LOCAL_PATH="$(dirname "$0")/../lib/micropython"
 PROJECT_ROOT="$(dirname "$0")/.."
 
@@ -18,33 +19,23 @@ echo -e "${GREEN}Building MicroPython embed port for Jumperless...${NC}"
 
 # Check if MicroPython repo exists
 if [ ! -d "$MICROPYTHON_REPO_PATH" ]; then
-    echo -e "${RED}Error: MicroPython repository not found at $MICROPYTHON_REPO_PATH${NC}"
-    echo -e "${YELLOW}Please clone MicroPython repository:${NC}"
-    echo "  mkdir -p $HOME/src/micropython"
-    echo "  cd $HOME/src/micropython"
-    echo "  git clone https://github.com/micropython/micropython.git"
-    echo "  cd micropython/mpy-cross"
-    echo "  make"
-    exit 1
+    git clone "https://github.com/micropython/micropython.git" "${MICROPYTHON_REPO_PATH}"
 fi
 
-# Check if mpy-cross is built
-if [ ! -f "$MICROPYTHON_REPO_PATH/mpy-cross/build/mpy-cross" ]; then
-    echo -e "${YELLOW}Building mpy-cross compiler...${NC}"
-    cd "$MICROPYTHON_REPO_PATH/mpy-cross"
-    make
-fi
+pushd "${MICROPYTHON_REPO_PATH}"
+git checkout "${MICROPYTHON_VERSION}"
+popd
 
 # Clean previous build
 cd "$MICROPYTHON_LOCAL_PATH"
-if [ -d "micropython_embed" ]; then
+if [ -d "build-embed" ]; then
     echo -e "${YELLOW}Cleaning previous MicroPython build...${NC}"
-    rm -rf micropython_embed
+    rm -rf build-embed
 fi
 
-# Remove the manually edited qstrdefs file that was causing issues
-if [ -f "micropython_embed/genhdr/qstrdefs.generated.h" ]; then
-    rm -f "micropython_embed/genhdr/qstrdefs.generated.h"
+if [ -d "micropython_embed" ]; then
+    echo -e "${YELLOW}Cleaning previous micropython_embed...${NC}"
+    rm -rf micropython_embed
 fi
 
 # Build the embed port with proper QSTR generation

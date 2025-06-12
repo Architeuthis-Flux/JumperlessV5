@@ -20,7 +20,8 @@
 
 // Enable commonly needed features for embedded use
 #define MICROPY_PY_IO                           (1)
-#define MICROPY_PY_SYS                          (0)
+#define MICROPY_PY_IO_BASE                      (1)
+#define MICROPY_PY_SYS                          (1)
 #define MICROPY_BANNER_MACHINE                  "Jumperless embedded"
 
 // Optimize for embedded system constraints

@@ -1672,8 +1672,6 @@ size_t mpz_as_str_inpl(const mpz_t *i, unsigned int base, const char *prefix, ch
 
     size_t ilen = i->len;
 
-    int n_comma = (base == 10) ? 3 : 4;
-
     char *s = str;
     if (ilen == 0) {
         if (prefix) {
@@ -1719,7 +1717,7 @@ size_t mpz_as_str_inpl(const mpz_t *i, unsigned int base, const char *prefix, ch
                 break;
             }
         }
-        if (!done && comma && (s - last_comma) == n_comma) {
+        if (!done && comma && (s - last_comma) == 3) {
             *s++ = comma;
             last_comma = s;
         }

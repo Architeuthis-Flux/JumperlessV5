@@ -37,7 +37,7 @@
 #define MP_PI_4 MICROPY_FLOAT_CONST(0.78539816339744830962)
 #define MP_3_PI_4 MICROPY_FLOAT_CONST(2.35619449019234492885)
 
-static MP_NORETURN void math_error(void) {
+static NORETURN void math_error(void) {
     mp_raise_ValueError(MP_ERROR_TEXT("math domain error"));
 }
 
