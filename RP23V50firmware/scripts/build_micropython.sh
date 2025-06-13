@@ -54,4 +54,7 @@ else
     exit 1
 fi
 
+# Hack around micropython embed port including stdout def already
+rm micropython_embed/port/mphalport.[ch]
+
 echo -e "${GREEN}✅ MicroPython is ready for use with floating point support enabled!${NC}" 
