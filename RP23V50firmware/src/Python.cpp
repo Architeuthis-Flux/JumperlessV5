@@ -17,7 +17,7 @@
 #include "oled.h"
 
 extern "C" {
-#include <port/micropython_embed.h>
+#include <micropython_embed.h>
 
 // Global command buffer for MicroPython integration
 static char mp_command_buffer[1024];
@@ -190,6 +190,7 @@ int parse_response_for_python(const char* response, char* value_out, char* type_
 }
 
 // Override MicroPython output to redirect to Arduino Serial
+// This function overrides the default MicroPython output handler
 void mp_hal_stdout_tx_strn_cooked(const char *str, size_t len) {
     // Check if this is a synchronous command execution request
     if (len > 10 && strncmp(str, "SYNC_EXEC:", 10) == 0) {
@@ -3187,7 +3188,54 @@ extern "C" int execute_hardware_direct(const char* command) {
         return 0;
     }
 
-
+    else if (strncmp(command, "nodes(connect,", 14) == 0) {
+        // Extract node1 and node2: nodes(connect, 2, 5) -> node1=2, node2=5
+        const char* comma1 = strchr(command + 14, ',');
+        if (comma1) {
+            int node1 = atoi(command + 14);
+            const char* comma2 = strchr(comma1 + 1, ',');
+            if (comma2) {
+                int node2 = atoi(comma1 + 1);
+                
+                // Call the connectNodes function directly
+                connectNodes(node1, node2);
+                strcpy(sync_value_result, "Nodes connected");
+                strcpy(sync_type_result, "str");
+                Serial.print("[HARDWARE] Connected nodes ");
+                Serial.print(node1);
+                Serial.print(" to ");
+                Serial.println(node2);
+                return 0;
+            }
+        }
+        strcpy(sync_value_result, "Invalid nodes connect command");
+        strcpy(sync_type_result, "error");
+        return -1;
+    }
+    else if (strncmp(command, "nodes(remove,", 13) == 0 || strncmp(command, "nodes(disconnect,", 17) == 0) {
+        // Extract node1 and node2 for disconnect
+        const char* start_pos = strstr(command, ",") + 1;
+        if (start_pos) {
+            int node1 = atoi(start_pos);
+            const char* comma2 = strchr(start_pos, ',');
+            if (comma2) {
+                int node2 = atoi(comma2 + 1);
+                
+                // Call the disconnectNodes function directly
+                disconnectNodes(node1, node2);
+                strcpy(sync_value_result, "Nodes disconnected");
+                strcpy(sync_type_result, "str");
+                Serial.print("[HARDWARE] Disconnected nodes ");
+                Serial.print(node1);
+                Serial.print(" from ");
+                Serial.println(node2);
+                return 0;
+            }
+        }
+        strcpy(sync_value_result, "Invalid nodes disconnect command");
+        strcpy(sync_type_result, "error");
+        return -1;
+    }
 
 
 

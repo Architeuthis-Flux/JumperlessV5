@@ -4,7 +4,7 @@
  */
 
 // Include common MicroPython embed configuration.
-#include <port/mpconfigport_common.h>
+#include "micropython_embed/port/mpconfigport_common.h"
 
 // Use BASIC features level to get floating point support with proper QSTR generation
 #define MICROPY_CONFIG_ROM_LEVEL                (MICROPY_CONFIG_ROM_LEVEL_BASIC_FEATURES)

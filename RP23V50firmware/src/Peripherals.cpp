@@ -835,36 +835,7 @@ void readGPIO(void) {
     }
 
 
-  // for (int i = 0; i < 8; i++) {
 
-  //   if (gpioNet[i] != -1) {
-  //     if (gpioReading[i] == 0) {
-  //       // lightUpNet(gpioNet[i], -1, 1, 5, 0, 0, 0x000f05);
-  //       //         net[gpioNet[i]].color = {0x00, 0x0f, 0x05};
-  //       //         netColors[gpioNet[i]] = {0x00, 0x0f, 0x05};
-  //       // lightUpNet(gpioNet[i], -1, 1, 22, 0, 0, 0x000f05);
-
-  //       gpioReadingColors[i] = 0x000f05;
-  //     } else if (gpioReading[i] == 1) {
-  //       // lightUpNet(gpioNet[i], -1, 1, 22, 0, 0, 0x220005);
-  //       //         net[gpioNet[i]].color = {0x22, 0x00, 0x05};
-  //       //         netColors[gpioNet[i]] = {0x22, 0x00, 0x05};
-  //       // lightUpNet(gpioNet[i], -1, 1, 22, 0, 0, 0x220005);
-  //       gpioReadingColors[i] = 0x220005;
-
-  //     } else {
-  //       // lightUpNet(gpioNet[i], -1, 1, 5, 0, 0, 0x000005);
-  //       //  net[gpioNet[i]].color = {0x00, 0x00, 0x05};
-  //       //  netColors[gpioNet[i]] = {0x00, 0x00, 0x05};
-  //       //  lightUpNet(gpioNet[i]);
-  //       gpioReadingColors[i] = 0x000005;
-  //     }
-  //   }
-  //   Serial.print(gpioReading[i]);
-  //   Serial.print(" ");
-  // }
-  //showLEDsCore2 = 2;
-  // Serial.println();
   }
 
 void setRailsAndDACs(int saveEEPROM) {
@@ -890,9 +861,9 @@ void setTopRail(float value, int save, int saveEEPROM) {
     digitalWrite(LDAC, HIGH);
     mcp.setChannelValue(MCP4728_CHANNEL_C, dacValue);
     digitalWrite(LDAC, LOW);
-    if (save) {
+    //if (save) {
       railVoltage[0] = value;
-      }
+      //}
     if (saveEEPROM) {
 
       saveVoltages(railVoltage[0], railVoltage[1], dacOutput[0], dacOutput[1]);
@@ -912,9 +883,9 @@ void setBotRail(float value, int save, int saveEEPROM) {
     digitalWrite(LDAC, HIGH);
     mcp.setChannelValue(MCP4728_CHANNEL_D, dacValue);
     digitalWrite(LDAC, LOW);
-    if (save) {
+    //if (save) {
       railVoltage[1] = value;
-      }
+      //}
     if (saveEEPROM) {
 
       saveVoltages(railVoltage[0], railVoltage[1], dacOutput[0], dacOutput[1]);
@@ -967,15 +938,7 @@ void setDac0voltage(float voltage, int save, int saveEEPROM, bool checkProbePowe
     routableBufferPower(1, 0);
 
     }
-  // Serial.print(dacSpread[0]);
-  // Serial.print(" ");
-  // Serial.print(dacZero[0]);
-  // Serial.print(" ");
 
-  // Serial.print(voltage);
-  // Serial.print(" ");
-  // Serial.print(dacValue);
-  // Serial.println(" ");
   if (dacValue > 4095) {
     dacValue = 4095;
     }
@@ -991,10 +954,10 @@ void setDac0voltage(float voltage, int save, int saveEEPROM, bool checkProbePowe
     }
   // delay(10);
   digitalWrite(LDAC, LOW);
-  if (save) {
+  //if (save) {
 
     dacOutput[0] = voltage;
-    }
+   // }
 
   if (saveEEPROM) {
 
@@ -1035,10 +998,10 @@ void setDac1voltage(float voltage, int save, int saveEEPROM, bool checkProbePowe
   digitalWrite(LDAC, HIGH);
   mcp.setChannelValue(MCP4728_CHANNEL_B, dacValue);
   digitalWrite(LDAC, LOW);
-  if (save) {
+  //if (save) {
 
     dacOutput[1] = voltage;
-    }
+  //  }
 
   if (saveEEPROM) {
 
