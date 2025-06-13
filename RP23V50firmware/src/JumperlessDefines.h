@@ -5,7 +5,6 @@
 // #include "SerialWrapper.h"
 // #define Serial SerialWrap
 
-
 #define TERM_SUPPORTS_RGB 0
 #define TERM_SUPPORTS_ANSI_COLORS 1
 
@@ -21,19 +20,15 @@ extern volatile int sendAllPathsCore2;
 
 #define PROTOTYPE_VERSION 3 //1 is the hw without the rearranged probe connections
 
-
-
 #define REV 5
 #define PROBE_REV 5
 
 extern int rev;
 extern int probeRev;
 
-
 #define PIOSTUFF 1 // comment these out to remove them for debugging
 #define EEPROMSTUFF 1
 #define FSSTUFF 1
-
 
 #define QUADRATURE_A_PIN 12
 #define QUADRATURE_B_PIN 13
@@ -43,8 +38,6 @@ extern int probeRev;
 #define BUTTON_PIN 9
 
 #define LDAC 8
-
-
 
 #define REVISIONADDRESS 25
 #define SHOW_PROBE_CURRENT_ADDRESS 26
@@ -84,8 +77,6 @@ extern int probeRev;
 #define DAC0_ADDRESS0 94
 #define DAC1_ADDRESS0 102
 
-
-
 #define DAC0_SPREAD_ADDRESS 110
 #define DAC1_SPREAD_ADDRESS 118
 #define TOP_RAIL_SPREAD_ADDRESS 126
@@ -103,7 +94,6 @@ extern int probeRev;
 #define DAC_DUPLICATE_ADDRESS 162
 #define POWER_PRIORITY_ADDRESS 163
 #define DAC_PRIORITY_ADDRESS 164
-
 
 #define MAX_NETS 60
 #define MAX_BRIDGES 255
@@ -137,33 +127,6 @@ extern int probeRev;
 #define CHIP_J 9
 #define CHIP_K 10
 #define CHIP_L 11
-
-// #define CS_A 6
-// #define CS_B 7
-// #define CS_C 8
-// #define CS_D 9
-// #define CS_E 10
-// #define CS_F 11
-// #define CS_G 12
-// #define CS_H 13
-
-// #define CS_I 20
-// #define CS_J 21
-// #define CS_K 22
-// #define CS_L 23
-
-// #define CS_A_EX 0b0000000010000000
-// #define CS_B_EX 0b0000000001000000
-// #define CS_C_EX 0b0000000000100000
-// #define CS_D_EX 0b0000000000010000
-// #define CS_E_EX 0b0000000000001000
-// #define CS_F_EX 0b0000000000000100
-// #define CS_G_EX 0b0000000000000010
-// #define CS_H_EX 0b0000000000000001
-// #define CS_I_EX 0b1000000000000000
-// #define CS_J_EX 0b0100000000000000
-// #define CS_K_EX 0b0010000000000000
-// #define CS_L_EX 0b0001000000000000
 
 // #define DATAPIN 14
 #define RESETPIN 16
@@ -299,15 +262,6 @@ extern int probeRev;
 #define BUILDING_PAD_TOP 147
 #define BUILDING_PAD_BOTTOM 148
 
-// #define LOGO_PAD_TOP 122
-// #define LOGO_PAD_BOTTOM 129
-// #define GPIO_PAD 130
-// #define DAC_PAD 131
-// #define ADC_PAD 132
-// #define BUILDING_PAD_TOP 133
-// #define BUILDING_PAD_BOTTOM 134
-
-
 #define GND 100
 #define TOP_RAIL 101
 #define BOTTOM_RAIL 102
@@ -341,7 +295,6 @@ extern int probeRev;
 #define ARDUINO_RESET_0_PIN 18
 #define ARDUINO_RESET_1_PIN 19
 
-
 #define RP_GPIO_18 118 // these are the reset lines for the arduino
 #define RP_GPIO_19 119 // 
 
@@ -368,7 +321,6 @@ extern int probeRev;
 #define RP_GPIO_26 137
 #define RP_GPIO_27 138
 
-
 #define RP_GPIO_1 131
 #define RP_GPIO_2 132
 #define RP_GPIO_3 133
@@ -388,50 +340,8 @@ extern int probeRev;
 #define GPIO_7_PIN 26
 #define GPIO_8_PIN 27
 
-
-
-
-
-
-
 #define ROUTABLE_BUFFER_IN 139
 #define ROUTABLE_BUFFER_OUT 140
-/*
-
-#define GND  100
-#define 3V3  103
-#define 5V  105
-
-#define 8V  120
-
-#define DAC0 106
-#define DAC1  107
-
-#define I_P  108
-#define I_N  109
-
-#define ADC0 110
-#define ADC1 111
-#define ADC2 112
-#define ADC3 113
-
-#define GPIO_0 114
-
-#define UART_TX 116
-#define GPIO_16 116  //these are the same as the UART pins
-
-#define UART_RX 117
-#define GPIO_17 117  //but if we want to use them as GPIO we should use these names
-
-
-#define GPIO_18 118  //these aren't actually connected to anything
-#define GPIO_19 119  //but we might as well define names for them
-
-
-
-
-
-*/
 
 #define EMPTY_NET 127
 
