@@ -29,3 +29,8 @@
 #define MICROPY_ENABLE_EXTERNAL_IMPORT          (1)
 #define MICROPY_READER_VFS                      (0)
 #define MICROPY_VFS                             (0)
+
+#ifdef MICROPY_MPHALPORT_H
+#undef MICROPY_MPHALPORT_H
+#define MICROPY_MPHALPORT_H "mphalport.h"
+#endif
