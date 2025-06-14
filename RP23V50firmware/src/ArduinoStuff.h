@@ -42,7 +42,12 @@ extern Adafruit_USBD_CDC USBSer3;
 #endif
 
 #endif
+
+
+
+
 extern volatile int arduinoInReset;
+
 
 extern char arduinoCommandStrings[10][50];
 extern char serialCommandBuffer[512];

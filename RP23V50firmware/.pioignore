@@ -1,0 +1,4 @@
+# PlatformIO ignore file
+# Exclude the micropython_repo folder from compilation
+micropython_repo/
+modules/ 

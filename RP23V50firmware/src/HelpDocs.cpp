@@ -5,10 +5,10 @@
 // Color definitions for help text formatting
 const int HELP_TITLE_COLOR = 51;      // Cyan
 const int HELP_COMMAND_COLOR = 221;   // Yellow
-const int HELP_DESC_COLOR = 155;      // Light gray
+const int HELP_DESC_COLOR = 207;      // 
 const int HELP_USAGE_COLOR = 69;      // Blue
 const int HELP_NOTE_COLOR = 202;      // Orange/Red
-const int HELP_NORMAL_COLOR = 38;     // White
+const int HELP_NORMAL_COLOR = 38;     // 
 
 bool isHelpRequest(const char* input) {
     if (!input) return false;
@@ -66,67 +66,70 @@ void showGeneralHelp() {
     changeTerminalColor(HELP_DESC_COLOR, true);
     Serial.println("Type any command followed by ? for detailed help (like 'f?' or 'n?')");
     Serial.println("Type 'help <category>' for section-specific help\n");
+    changeTerminalColor(HELP_NOTE_COLOR, true);
+    Serial.println("\nThis help system is AI generated, so it may be inaccurate");
+    Serial.println("When I make sure everything is accurate, I'll remove this message");
     
-    // ASCII art probe
-    changeTerminalColor(HELP_COMMAND_COLOR, true);
-    Serial.println("                    ╭─────────────╮");
-    Serial.println("                    │  THE PROBE  │  ← Your magic wand!");
-    Serial.println("                    ╰─────────────╯");
-    changeTerminalColor(HELP_DESC_COLOR, true);
-    Serial.println("              ●──────────────────────────○ Touch & Click");
-    Serial.println("           Connect               Remove\n");
+    // // ASCII art probe
+    // changeTerminalColor(HELP_COMMAND_COLOR, true);
+    // Serial.println("                    ╭─────────────╮");
+    // Serial.println("                    │  THE PROBE  │  ← Your magic wand!");
+    // Serial.println("                    ╰─────────────╯");
+    // changeTerminalColor(HELP_DESC_COLOR, true);
+    // Serial.println("              ●──────────────────────────○ Touch & Click");
+    // Serial.println("           Connect               Remove\n");
     
     changeTerminalColor(HELP_TITLE_COLOR, true);
-    Serial.println("📁 HELP CATEGORIES - Type 'help <category>' for details:");
+    Serial.println(" HELP CATEGORIES - Type 'help <category>' for details:");
     Serial.println();
     
     changeTerminalColor(HELP_COMMAND_COLOR, false);
-    Serial.print("📂 basics");
+    Serial.print(" basics");
     changeTerminalColor(HELP_DESC_COLOR, false);
     Serial.println("     - Essential commands you'll use every day");
     
     changeTerminalColor(HELP_COMMAND_COLOR, false);
-    Serial.print("📂 probe");
+    Serial.print(" probe");
     changeTerminalColor(HELP_DESC_COLOR, false);
     Serial.println("      - How to use the probe for connecting/removing");
     
     changeTerminalColor(HELP_COMMAND_COLOR, false);
-    Serial.print("📂 voltage");
+    Serial.print(" voltage");
     changeTerminalColor(HELP_DESC_COLOR, false);
     Serial.println("    - Power, measurement, and analog signals");
     
     changeTerminalColor(HELP_COMMAND_COLOR, false);
-    Serial.print("📂 arduino");
+    Serial.print(" arduino");
     changeTerminalColor(HELP_DESC_COLOR, false);
     Serial.println("    - Arduino integration and UART connections");
     
     changeTerminalColor(HELP_COMMAND_COLOR, false);
-    Serial.print("📂 python");
+    Serial.print(" python");
     changeTerminalColor(HELP_DESC_COLOR, false);
     Serial.println("     - MicroPython REPL and hardware control");
     
     changeTerminalColor(HELP_COMMAND_COLOR, false);
-    Serial.print("📂 display");
+    Serial.print(" display");
     changeTerminalColor(HELP_DESC_COLOR, false);
     Serial.println("    - OLED display and LED control");
     
     changeTerminalColor(HELP_COMMAND_COLOR, false);
-    Serial.print("📂 slots");
+    Serial.print(" slots");
     changeTerminalColor(HELP_DESC_COLOR, false);
     Serial.println("      - Save and load different circuit configurations");
     
     changeTerminalColor(HELP_COMMAND_COLOR, false);
-    Serial.print("📂 debug");
+    Serial.print(" debug");
     changeTerminalColor(HELP_DESC_COLOR, false);
     Serial.println("     - Troubleshooting and technical internals");
     
     changeTerminalColor(HELP_COMMAND_COLOR, false);
-    Serial.print("📂 config");
+    Serial.print(" config");
     changeTerminalColor(HELP_DESC_COLOR, false);
     Serial.println("     - Configuration file and persistent settings");
     
     changeTerminalColor(HELP_COMMAND_COLOR, false);
-    Serial.print("📂 glossary");
+    Serial.print(" glossary");
     changeTerminalColor(HELP_DESC_COLOR, false);
     Serial.println("   - Definitions of nets, nodes, bridges, and more");
     
@@ -138,11 +141,11 @@ void showGeneralHelp() {
     Serial.println("  2. Touch two points to connect them");
     Serial.println("  3. Type 'f' to load a full connection file");
     Serial.println("  4. Type 'n' to see what's connected");
-    Serial.println("  5. Type 'help probe' for probe mastery!");
+
     
-    changeTerminalColor(HELP_NOTE_COLOR, true);
-    Serial.println("\n💡 Pro tip: The probe is your best friend - it makes wiring intuitive!");
-    Serial.println("   Keep the switch on 'Select' mode for best results.");
+    // changeTerminalColor(HELP_NOTE_COLOR, true);
+    // Serial.println("\n💡 Pro tip: The probe is your best friend - it makes wiring intuitive!");
+    // Serial.println("   Keep the switch on 'Select' mode for best results.");
     
     changeTerminalColor(HELP_NORMAL_COLOR, true);
     Serial.println();
@@ -647,7 +650,7 @@ void showCategoryHelp(const char* category) {
         Serial.println("- Show main menu again");
         
         changeTerminalColor(HELP_NOTE_COLOR, true);
-        Serial.println("\n💡 Connection format examples:");
+        Serial.println("\n Connection format examples:");
         changeTerminalColor(HELP_DESC_COLOR, true);
         Serial.println("  1-5          (breadboard holes)");
         Serial.println("  D2-A3        (Arduino pins)");
@@ -656,20 +659,41 @@ void showCategoryHelp(const char* category) {
         
     } else if (strcmp(category, "probe") == 0) {
         changeTerminalColor(HELP_DESC_COLOR, true);
-        Serial.println("Master the probe - your circuit's best friend!\n");
+       // Serial.println("Master the probe - your circuit's best friend!\n");
         
         // ASCII art probe diagram
         changeTerminalColor(HELP_COMMAND_COLOR, true);
-        Serial.println("    ╭──────────╮     ╭──────────╮");
-        Serial.println("    │ CONNECT  │     │ REMOVE   │");
-        Serial.println("    │   (●)    │     │   (●)    │");
-        Serial.println("    ╰────┬─────╯     ╰────┬─────╯");
-        Serial.println("         │                │");
-        Serial.println("      ●══════════════════○ PROBE TIP");
-        Serial.println("    Blue Mode         Red Mode\n");
+
+
+char probe_art[] = R"""(
+                     Select        Measure                     
+                 .━━━━━━━━━.▁█▁▁▁▁▁.━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━.
+           ▁▁.━━' Connect   ╭────────────────        ───────────────╮   \
+  ───╼━━━━{       Remove    │Connect                      Remove    │    ┃
+           ▔▔`━━. Measure   ╰────────────────        ───────────────╯   /
+                 `━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━'
+                                               
+)""";
+Serial.println(probe_art);
+
+
+
+
+        // Serial.println("    ╭──────────╮     ╭──────────╮");
+
+
+
+
+
+        // Serial.println("    │ CONNECT  │     │ REMOVE   │");
+        // Serial.println("    │   (●)    │     │   (●)    │");
+        // Serial.println("    ╰────┬─────╯     ╰────┬─────╯");
+        // Serial.println("         │                │");
+        // Serial.println("      ●══════════════════○ PROBE TIP");
+        // Serial.println("    Blue Mode         Red Mode\n");
         
         changeTerminalColor(HELP_USAGE_COLOR, true);
-        Serial.println("🔵 CONNECT MODE (Blue):");
+        Serial.println(" CONNECT MODE (Blue):");
         changeTerminalColor(HELP_DESC_COLOR, true);
         Serial.println("  1. Press Connect button (turns blue)");
         Serial.println("  2. Touch first point - probe 'holds' it");
@@ -678,7 +702,7 @@ void showCategoryHelp(const char* category) {
         Serial.println("  5. Press Connect again to exit");
         
         changeTerminalColor(HELP_USAGE_COLOR, true);
-        Serial.println("\n🔴 REMOVE MODE (Red):");
+        Serial.println("\n REMOVE MODE (Red):");
         changeTerminalColor(HELP_DESC_COLOR, true);
         Serial.println("  1. Press Remove button (turns red)");
         Serial.println("  2. Touch any connected point");
@@ -686,19 +710,19 @@ void showCategoryHelp(const char* category) {
         Serial.println("  4. Press Remove again to exit");
         
         changeTerminalColor(HELP_NOTE_COLOR, true);
-        Serial.println("\n⚠️  IMPORTANT - Switch Position:");
+        Serial.println("\n IMPORTANT - Switch Position:");
         changeTerminalColor(HELP_DESC_COLOR, true);
         Serial.println("  Keep switch on 'SELECT' mode for best results");
         Serial.println("  'MEASURE' mode is experimental and flaky");
         
         changeTerminalColor(HELP_USAGE_COLOR, true);
-        Serial.println("\n🎯 Special Functions:");
+        Serial.println("\n Special Functions:");
         changeTerminalColor(HELP_DESC_COLOR, true);
         Serial.println("  Tap the pads near the logo for:");
         Serial.println("  - GPIO pins (programmable digital I/O)");
-        Serial.println("  - ADC inputs (read voltages 0-5V)");
+        Serial.println("  - ADC inputs (read voltages)");
         Serial.println("  - DAC outputs (generate voltages)");
-        Serial.println("  - Power rails (3.3V, 5V, GND)");
+     
         
     } else if (strcmp(category, "voltage") == 0) {
         changeTerminalColor(HELP_DESC_COLOR, true);
@@ -720,7 +744,7 @@ void showCategoryHelp(const char* category) {
         Serial.println("- Calibrate DACs (run this occasionally)");
         
         changeTerminalColor(HELP_USAGE_COLOR, true);
-        Serial.println("\n⚡ Voltage Reading Options:");
+        Serial.println("\n Voltage Reading Options:");
         changeTerminalColor(HELP_DESC_COLOR, true);
         Serial.println("  v     - All ADC readings");
         Serial.println("  v0-v4 - Specific ADC channel");
@@ -728,7 +752,7 @@ void showCategoryHelp(const char* category) {
         Serial.println("  vl    - Toggle live readings");
         
         changeTerminalColor(HELP_NOTE_COLOR, true);
-        Serial.println("\n💡 Animated Voltage Display:");
+        Serial.println("\n Animated Voltage Display:");
         changeTerminalColor(HELP_DESC_COLOR, true);
         Serial.println("  Green (0V) → Red (5V) → Pink (8V+)");
         Serial.println("  Blue/icy colors for negative voltages");
@@ -754,7 +778,7 @@ void showCategoryHelp(const char* category) {
         Serial.println("- Reset Arduino (rt=top, rb=bottom)");
         
         changeTerminalColor(HELP_USAGE_COLOR, true);
-        Serial.println("\n🔌 UART Passthrough:");
+        Serial.println("\n UART Passthrough:");
         changeTerminalColor(HELP_DESC_COLOR, true);
         Serial.println("  When UART is connected:");
         Serial.println("  - Second serial port appears");
@@ -763,7 +787,7 @@ void showCategoryHelp(const char* category) {
         Serial.println("  - Auto-detects upload attempts");
         
         changeTerminalColor(HELP_NOTE_COLOR, true);
-        Serial.println("\n⚡ Auto-flashing Magic:");
+        Serial.println("\n Auto-flashing Magic:");
         changeTerminalColor(HELP_DESC_COLOR, true);
         Serial.println("  Jumperless detects when Arduino IDE uploads");
         Serial.println("  Automatically handles reset timing");
@@ -789,7 +813,7 @@ void showCategoryHelp(const char* category) {
         Serial.println("- Python command mode / show all nodes");
         
         changeTerminalColor(HELP_USAGE_COLOR, true);
-        Serial.println("\n🐍 Python Hardware Control:");
+        Serial.println("\n Python Hardware Control:");
         changeTerminalColor(HELP_DESC_COLOR, true);
         Serial.println("  nodes.connect(1, 5)     - Make connections");
         Serial.println("  nodes.remove(1, 5)      - Remove connections");
@@ -798,7 +822,7 @@ void showCategoryHelp(const char* category) {
         Serial.println("  dac.set(0, 3.3)         - Set voltage");
         
         changeTerminalColor(HELP_NOTE_COLOR, true);
-        Serial.println("\n💻 REPL Commands:");
+        Serial.println("\n REPL Commands:");
         changeTerminalColor(HELP_DESC_COLOR, true);
         Serial.println("  run   - Execute code buffer");
         Serial.println("  clear - Clear input buffer");
@@ -840,7 +864,7 @@ void showCategoryHelp(const char* category) {
         Serial.println("- Show board LEDs in terminal");
         
         changeTerminalColor(HELP_USAGE_COLOR, true);
-        Serial.println("\n📺 OLED Setup:");
+        Serial.println("\n OLED Setup:");
         changeTerminalColor(HELP_DESC_COLOR, true);
         Serial.println("  1. Get 128x32 SSD1306 OLED display");
         Serial.println("  2. Friction fit into SBC board");
@@ -848,7 +872,7 @@ void showCategoryHelp(const char* category) {
         Serial.println("  4. Auto-disconnects if not found");
         
         changeTerminalColor(HELP_NOTE_COLOR, true);
-        Serial.println("\n🌈 LED Features:");
+        Serial.println("\n LED Features:");
         changeTerminalColor(HELP_DESC_COLOR, true);
         Serial.println("  - Connections show as colored lines");
         Serial.println("  - Voltages animate with color coding");
@@ -875,7 +899,7 @@ void showCategoryHelp(const char* category) {
         Serial.println("- Show all saved slot files");
         
         changeTerminalColor(HELP_USAGE_COLOR, true);
-        Serial.println("\n💾 Slot System:");
+        Serial.println("\n Slot System:");
         changeTerminalColor(HELP_DESC_COLOR, true);
         Serial.println("  - 8 slots by default (0-7)");
         Serial.println("  - Each slot saves connections");
@@ -883,7 +907,7 @@ void showCategoryHelp(const char* category) {
         Serial.println("  - Switch projects instantly");
         
         changeTerminalColor(HELP_NOTE_COLOR, true);
-        Serial.println("\n🎯 Pro Tips:");
+        Serial.println("\n Pro Tips:");
         changeTerminalColor(HELP_DESC_COLOR, true);
         Serial.println("  - Use different slots for different projects");
         Serial.println("  - Slot files are just text (copy/paste friendly)");
@@ -913,10 +937,10 @@ void showCategoryHelp(const char* category) {
         changeTerminalColor(HELP_DESC_COLOR, false);
         Serial.println("- Show firmware version");
         
-        changeTerminalColor(HELP_COMMAND_COLOR, false);
-        Serial.print("@  ");
-        changeTerminalColor(HELP_DESC_COLOR, false);
-        Serial.println("- Scan I2C devices");
+        // changeTerminalColor(HELP_COMMAND_COLOR, false);
+        // Serial.print("@  ");
+        // changeTerminalColor(HELP_DESC_COLOR, false);
+        // Serial.println("- Scan I2C devices");
         
         changeTerminalColor(HELP_COMMAND_COLOR, false);
         Serial.print("g  ");
@@ -924,13 +948,11 @@ void showCategoryHelp(const char* category) {
         Serial.println("- Print GPIO states");
         
         changeTerminalColor(HELP_USAGE_COLOR, true);
-        Serial.println("\n🔧 When Things Go Wrong:");
+        Serial.println("\n When Things Go Wrong:");
         changeTerminalColor(HELP_DESC_COLOR, true);
         Serial.println("  1. Check 'n' (netlist) for connections");
         Serial.println("  2. Use 'b' to see routing internals");
-        Serial.println("  3. Enable debug flags with 'd'");
-        Serial.println("  4. Check voltages with 'v'");
-        Serial.println("  5. Try DAC calibration '$'");
+        Serial.println("  3. Message me on Discord or wherever");
         
     } else if (strcmp(category, "config") == 0) {
         changeTerminalColor(HELP_DESC_COLOR, true);
@@ -947,18 +969,18 @@ void showCategoryHelp(const char* category) {
         Serial.println("- Edit configuration settings");
         
         changeTerminalColor(HELP_USAGE_COLOR, true);
-        Serial.println("\n⚙️  Configuration Format:");
+        Serial.println("\n  Configuration Format:");
         changeTerminalColor(HELP_DESC_COLOR, true);
         Serial.println("  `[section] setting = value;");
         Serial.println("  Example: `[dacs] dac_0 = 3.3;");
         
         changeTerminalColor(HELP_NOTE_COLOR, true);
-        Serial.println("\n📝 Common Settings:");
+        Serial.println("\n Common Settings:");
         changeTerminalColor(HELP_DESC_COLOR, true);
-        Serial.println("  [top_oled] enabled = true;");
-        Serial.println("  [top_oled] connect_on_boot = true;");
-        Serial.println("  [display] led_brightness = 20;");
-        Serial.println("  [serial_1] print_passthrough = true;");
+        Serial.println("  `[dacs] top_rail = 5.00;");
+        Serial.println("  `[top_oled] connect_on_boot = true;");
+        Serial.println("  `[display] lines_wires = wires;");
+        Serial.println("  `[routing] stack_paths = 0;");
         
     } else if (strcmp(category, "glossary") == 0) {
         changeTerminalColor(HELP_DESC_COLOR, true);
@@ -977,7 +999,7 @@ void showCategoryHelp(const char* category) {
         changeTerminalColor(HELP_COMMAND_COLOR, false);
         Serial.print("row      ");
         changeTerminalColor(HELP_DESC_COLOR, false);
-        Serial.println("- Breadboard hole or connection point");
+        Serial.println("- Breadboard column (I know it's wrong) or nano header pin");
         
         changeTerminalColor(HELP_COMMAND_COLOR, false);
         Serial.print("rail     ");
@@ -1005,12 +1027,12 @@ void showCategoryHelp(const char* category) {
         Serial.println("- CH446Q crossbar switch (A-L)");
         
         changeTerminalColor(HELP_NOTE_COLOR, true);
-        Serial.println("\n🎯 Key Concepts:");
+        Serial.println("\n Key Concepts:");
         changeTerminalColor(HELP_DESC_COLOR, true);
         Serial.println("  - Nodes are connected into nets");
-        Serial.println("  - Bridges connect pairs of nodes");
+        Serial.println("  - Bridges connect pairs of exactly two nodes");
         Serial.println("  - Paths route bridges through chips");
-        Serial.println("  - Slots save complete configurations");
+        Serial.println("  - Slots save complete netlists");
         
     } else {
         changeTerminalColor(HELP_NOTE_COLOR, true);

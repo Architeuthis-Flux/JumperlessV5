@@ -8,3 +8,4 @@
 .micropython
 src_micropython*.o
 lib/micropython/build-embed
+micropython_repo

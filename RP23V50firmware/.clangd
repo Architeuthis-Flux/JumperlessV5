@@ -15,6 +15,7 @@ CompileFlags:
     - "-Iinclude"
     - "-Isrc"
     - "-Iboards/jumperless_v5"
+    - "-Ilib"
     
     # Library dependencies
     - "-I.pio/libdeps/pico/INA219/src"
@@ -28,6 +29,15 @@ CompileFlags:
     - "-I.pio/libdeps/pico/SafeString/src"
     - "-I.pio/libdeps/pico/ArduinoJson/src"
     - "-I.pio/libdeps/pico/Arduino_JSON/src"
+    
+    # MicroPython includes
+    - "-Ilib/micropython"
+    - "-Ilib/micropython/micropython_embed"
+    - "-Ilib/micropython/micropython_embed/py"
+    - "-Ilib/micropython/micropython_embed/extmod"
+    - "-Ilib/micropython/micropython_embed/shared"
+    - "-Ilib/micropython/micropython_embed/port"
+    - "-Ilib/micropython/micropython_embed/genhdr"
     
     # Arduino Core includes (framework-specific)
     - "-I/Users/kevinsanto/.platformio/packages/framework-arduinopico/cores/rp2040"
@@ -43,11 +53,32 @@ CompileFlags:
     - "-DUSE_TINYUSB"
     - "-DCFG_TUSB_CONFIG_FILE=\"custom_tusb_config.h\""
     
+    # MicroPython preprocessor defines
+    - "-DMICROPY_ENABLE_COMPILER=1"
+    - "-DMICROPY_ENABLE_GC=1"
+    - "-DMICROPY_PY_GC=1"
+    - "-DMICROPY_CONFIG_ROM_LEVEL=2"
+    - "-DMICROPY_FLOAT_IMPL=1"
+    - "-DMICROPY_PY_IO=1"
+    - "-DMICROPY_PY_SYS=1"
+    
+    # Suppress specific warnings
+    - "-Wno-backslash-newline-escape"
+    - "-Wno-macro-redefined"
+    
     # C++ standard and settings
     - "-std=c++11"
     - "-fno-rtti"
     - "-fno-exceptions"
 
+---
+If:
+  PathMatch: .*\.c$
+CompileFlags:
+  Add:
+    - "-std=c99"
+
+---
 Diagnostics:
   ClangTidy:
     Remove: 

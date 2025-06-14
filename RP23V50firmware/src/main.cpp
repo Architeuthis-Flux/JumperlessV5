@@ -68,6 +68,7 @@ KevinC@ppucc.io
 // #include "SerialWrapper.h"
 #include "Highlighting.h"
 #include "HelpDocs.h"
+#include "Python_Proper.h"
 
 // #define Serial SerialWrap
 // #define USBSer1 SerialWrap
@@ -902,7 +903,8 @@ case 'P': { //! P - Enter Python command mode
 }
 
   case 'p': { //!  p
-    micropythonREPL();
+    //micropythonREPL();
+    enterMicroPythonREPL();
     break;
   }
   case '.': { //!  .

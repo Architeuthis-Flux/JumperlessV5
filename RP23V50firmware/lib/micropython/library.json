@@ -6,13 +6,29 @@
   "frameworks": "*",
   "platforms": "*",
   "headers": [
-    "port/micropython_embed.h"
+    "micropython_embed/port/micropython_embed.h"
   ],
   "build": {
     "libArchive": false,
-    "includeDir": ".",
+    "includeDir": "micropython_embed",
+    "srcDir": "micropython_embed",
+    "srcFilter": [
+      "+<py/*.c>",
+      "+<port/*.c>",
+      "+<shared/runtime/*.c>",
+      "-<modjumperless.c>",
+      "-<mphalport.c>",
+      "-<py/mkrules.mk>",
+      "-<py/*.mk>",
+      "-<py/*.cmake>",
+      "-<py/*.py>"
+    ],
     "flags": [
-      "-I micropython_embed"
+      "-I micropython_embed",
+      "-I micropython_embed/py",
+      "-I micropython_embed/port",
+      "-I micropython_embed/genhdr",
+      "-I micropython_embed/shared/runtime"
     ]
   }
 }
