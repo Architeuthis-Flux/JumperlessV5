@@ -72,6 +72,7 @@ struct REPLEditor {
   void redrawCurrentLine(Stream *stream);
   void navigateToLine(Stream *stream, int target_line);
   void backspaceOverNewline(Stream *stream);
+  void navigateOverNewline(Stream *stream);
   void loadFromHistory(Stream *stream, const String &historical_input);
   void exitHistoryMode(Stream *stream);
   void redrawFullInput(Stream *stream);

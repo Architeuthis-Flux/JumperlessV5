@@ -67,8 +67,8 @@ void showGeneralHelp() {
     Serial.println("Type any command followed by ? for detailed help (like 'f?' or 'n?')");
     Serial.println("Type 'help <category>' for section-specific help\n");
     changeTerminalColor(HELP_NOTE_COLOR, true);
-    Serial.println("\nThis help system is AI generated, so it may be inaccurate");
-    Serial.println("When I make sure everything is accurate, I'll remove this message\n\r");
+    Serial.println("  This help system is partially AI generated, so it may contain bullshit");
+    Serial.println("  When I make absolutely sure everything is accurate, I'll remove this message\n\r");
     
     // // ASCII art probe
     // changeTerminalColor(HELP_COMMAND_COLOR, true);
@@ -131,7 +131,7 @@ void showGeneralHelp() {
     changeTerminalColor(HELP_COMMAND_COLOR, false);
     Serial.print(" debug");
     changeTerminalColor(HELP_DESC_COLOR, false);
-    Serial.println("     - Troubleshooting and technical internals");
+    Serial.println("      - Troubleshooting and technical internals");
     
     changeTerminalColor(HELP_COMMAND_COLOR, false);
     Serial.print(" config");

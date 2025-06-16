@@ -481,9 +481,23 @@ void processMicroPythonInput(Stream *stream) {
 
         case 68: // Left arrow
           if (editor.cursor_pos > 0) {
-            editor.cursor_pos--;
-            global_mp_stream->print("\033[D"); // Move cursor left
-            global_mp_stream->flush();
+            // Exit history mode when user starts navigating
+            if (editor.in_history_mode) {
+              editor.in_history_mode = false;
+              history.resetHistoryNavigation();
+            }
+            
+            char char_to_left = editor.current_input.charAt(editor.cursor_pos - 1);
+            
+            if (char_to_left == '\n') {
+              // Navigate to previous line
+              editor.navigateOverNewline(global_mp_stream);
+            } else {
+              // Normal left movement
+              editor.cursor_pos--;
+              global_mp_stream->print("\033[D"); // Move cursor left
+              global_mp_stream->flush();
+            }
           }
           return;
 
@@ -1852,6 +1866,25 @@ void REPLEditor::backspaceOverNewline(Stream *stream) {
     }
 
     // Move cursor up one line
+    moveCursorUp(stream);
+
+    // Find the end of the previous line
+    String current_line;
+    int line_start, cursor_in_line;
+    getCurrentLine(current_line, line_start, cursor_in_line);
+
+    // Move to end of previous line
+    int prompt_length = in_multiline_mode ? 4 : 4;
+    moveCursorToColumn(stream, prompt_length + current_line.length());
+  }
+}
+
+void REPLEditor::navigateOverNewline(Stream *stream) {
+  if (cursor_pos > 0 && current_input.charAt(cursor_pos - 1) == '\n') {
+    // Move cursor position to before the newline
+    cursor_pos--;
+
+    // Move cursor up one line visually
     moveCursorUp(stream);
 
     // Find the end of the previous line
