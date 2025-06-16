@@ -1,16 +1,19 @@
 #include "Python_Proper.h"
 #include <Arduino.h>
+#include <FatFS.h>
 
 extern "C" {
-#include <micropython_embed.h>
-#include "py/runtime.h"
-#include "py/repl.h"
 #include "py/gc.h"
+
+#include "py/runtime.h"
 #include "py/stackctrl.h"
+#include "py/mpstate.h"
+#include "py/repl.h"
+#include <micropython_embed.h>
 }
 
 // Global state for proper MicroPython integration
-static char mp_heap[32 * 1024];  // 32KB heap for MicroPython
+static char mp_heap[32 * 1024]; // 32KB heap for MicroPython (reduced for RP2350B)
 static bool mp_initialized = false;
 static bool mp_repl_active = false;
 
@@ -20,924 +23,1136 @@ static bool mp_command_ready = false;
 static char mp_response_buffer[1024];
 
 // Terminal colors for different REPL states
-// 0 = menu, 1 = prompt, 2 = output, 3 = input, 4 = error, 5 = prompt alt 1, 6 = prompt alt 2, 7 = prompt alt 3
-static int replColors[8] = {
-    38,  // menu
-    69,  // prompt
-    155, // output
-    221, // input
-    202, // error
-    62,  // prompt alt 1
-    56,  // prompt alt 2
-    51,  // prompt alt 3
+/// 0 = menu (cyan) 1 = prompt (light blue) 2 = output (chartreuse) 3 = input
+/// (orange-yellow) 4 = error (orange-red) 5 = purple 6 = dark purple 7 = light
+/// cyan 8 = magenta 9 = pink 10 = green 11 = grey 12 = dark grey 13 = light
+/// grey
+static int replColors[15] = {
+    38,  // menu (cyan)
+    69,  // prompt (light blue)
+    155, // output (chartreuse)
+    221, // input (orange-yellow)
+    202, // error (orange-red)
+    92,  // purple
+    56,  // dark purple
+    51,  // light cyan
+    199, // magenta
+    207, // pink
+    40,  //  green
+    8,   // grey
+    235, // dark grey
+    248, // light grey
+
 };
 
-// Forward declaration for color function
-void changeTerminalColor(int color, bool bold);
+Stream *global_mp_stream = &Serial;
+
+// C-compatible pointer for HAL functions
+extern "C" {
+    void *global_mp_stream_ptr = (void *)&Serial;
+}
+
+// Forward declaration for color function (from Graphics.cpp)
+void changeTerminalColor(int termColor, bool flush, Stream *stream);
 
 // Forward declarations
 extern "C" {
-    void mp_hal_stdout_tx_strn_cooked(const char *str, size_t len);
-    int mp_hal_stdin_rx_chr(void);
-    void mp_hal_stdout_tx_strn(const char *str, mp_uint_t len);
-    void mp_hal_delay_ms(mp_uint_t ms);
-    mp_uint_t mp_hal_ticks_ms(void);
-    
-    // Arduino wrapper functions for HAL
-    int arduino_serial_available(void);
-    int arduino_serial_read(void);
-    void arduino_serial_write(const char *str, int len);
-    void arduino_delay_ms(unsigned int ms);
-    unsigned int arduino_millis(void);
+void mp_hal_stdout_tx_strn_cooked(const char *str, size_t len);
+int mp_hal_stdin_rx_chr(void);
+mp_uint_t mp_hal_stdout_tx_strn(const char *str, size_t len);
+void mp_hal_delay_ms(mp_uint_t ms);
+mp_uint_t mp_hal_ticks_ms(void);
+
+// Arduino wrapper functions for HAL
+int arduino_serial_available(Stream *stream = global_mp_stream);
+int arduino_serial_read(Stream *stream = global_mp_stream);
+void arduino_serial_write(const char *str, int len, void *stream);
+void arduino_delay_ms(unsigned int ms);
+unsigned int arduino_millis(void);
+
+// Export global_mp_stream for C code
+extern void *global_mp_stream_ptr;
 }
 
 // Arduino timing functions for MicroPython
-extern "C" void mp_hal_delay_ms(mp_uint_t ms) {
-    delay(ms);
-}
+extern "C" void mp_hal_delay_ms(mp_uint_t ms) { delay(ms); }
 
-extern "C" mp_uint_t mp_hal_ticks_ms(void) {
-    return millis();
-}
+extern "C" mp_uint_t mp_hal_ticks_ms(void) { return millis(); }
 
 // Arduino wrapper functions for the HAL layer
-extern "C" int arduino_serial_available(void) {
-    return Serial.available();
+extern "C" int arduino_serial_available(Stream *stream) {
+  return global_mp_stream->available();
 }
 
-extern "C" int arduino_serial_read(void) {
-    return Serial.read();
+extern "C" int arduino_serial_read(Stream *stream) {
+  return global_mp_stream->read();
 }
 
-extern "C" void arduino_serial_write(const char *str, int len) {
-    Serial.write(str, len);
-    Serial.flush();
-}
+extern "C" void arduino_serial_write(const char *str, int len, void *stream) {
+  Stream *s = (Stream *)stream;
+  if (s) {
+    // Convert \n to \r\n for proper terminal display
+    for (int i = 0; i < len; i++) {
 
-extern "C" void arduino_delay_ms(unsigned int ms) {
-    delay(ms);
-}
+      s->write(str[i]);
 
-extern "C" unsigned int arduino_millis(void) {
-    return millis();
-}
-
-// Terminal color control function
-void changeTerminalColor(int color, bool bold) {
-    Serial.print("\033[");
-    if (bold) {
-        Serial.print("1;");
+      if (str[i] == '\n') {
+        s->write('\r');
+      }
     }
-    Serial.print("38;5;");
-    Serial.print(color);
-    Serial.print("m");
-    Serial.flush();
+    s->flush();
+  }
 }
 
-// Character input from Arduino Serial - non-blocking
-extern "C" int mp_hal_stdin_rx_chr(void) {
-    if (Serial.available()) {
-        return Serial.read();
-    }
-    return -1; // No character available
+extern "C" void arduino_delay_ms(unsigned int ms) { delay(ms); }
+
+extern "C" unsigned int arduino_millis() { return millis(); }
+
+void setGlobalStream(Stream *stream) {
+  global_mp_stream = stream;
+  global_mp_stream_ptr = (void *)stream;
 }
 
-// Character output to Arduino Serial
-extern "C" void mp_hal_stdout_tx_strn(const char *str, mp_uint_t len) {
-    Serial.write(str, len);
-    Serial.flush();
-}
+// Terminal color control function is now in Graphics.cpp
 
-// Cooked output (handles newlines, etc.)
+// MicroPython HAL stdout function with Jumperless-specific functionality
 extern "C" void mp_hal_stdout_tx_strn_cooked(const char *str, size_t len) {
-    // Check for synchronous command execution requests
-    if (len > 10 && strncmp(str, "SYNC_EXEC:", 10) == 0) {
-        // Extract command for immediate synchronous execution
-        String command = String(str + 10).substring(0, len - 10);
-        command.trim();
-        
-        Serial.print("[SYNC] Executing: ");
-        Serial.println(command);
-        
-        // Execute the hardware command immediately
-        char response[512] = {0};
-        int result = parseAndExecutePythonCommand((char*)command.c_str(), response);
-        
-        Serial.print("[HARDWARE] Result: ");
-        Serial.println(response);
-        
-        // Set the Python sync variables immediately
-        String python_code = "";
-        if (result == 0) {
-            // Success - set the result value and type
-            python_code = "_sync_result_ready = True; ";
-            python_code += "_sync_value = '";
-            python_code += String(response);
-            python_code += "'; ";
-            python_code += "_sync_type = 'str'";
-        } else {
-            // Error - set error result
-            python_code = "_sync_result_ready = True; ";
-            python_code += "_sync_value = 'Command failed: ";
-            python_code += String(response);
-            python_code += "'; ";
-            python_code += "_sync_type = 'error'";
-        }
-        
-        // Execute the Python code to set sync variables
-        mp_embed_exec_str(python_code.c_str());
-        
-        return; // Don't print SYNC_EXEC commands to terminal
-    }
-    
-    // Check for regular command execution requests (legacy)
-    if (len > 5 && strncmp(str, "EXEC:", 5) == 0) {
-        // Extract command for later execution
-        size_t cmd_len = len - 5;
-        if (cmd_len < sizeof(mp_command_buffer)) {
-            strncpy(mp_command_buffer, str + 5, cmd_len);
-            mp_command_buffer[cmd_len] = '\0';
-            
-            // Remove newlines
-            for (int i = 0; mp_command_buffer[i]; i++) {
-                if (mp_command_buffer[i] == '\n' || mp_command_buffer[i] == '\r') {
-                    mp_command_buffer[i] = '\0';
-                    break;
-                }
+    // Basic output to global stream (regular MicroPython output)
+    if (global_mp_stream) {
+        for (size_t i = 0; i < len; i++) {
+            if (str[i] == '\n') {
+                global_mp_stream->write('\r');
             }
-            mp_command_ready = true;
-            return; // Don't print EXEC commands
+            global_mp_stream->write(str[i]);
         }
+        global_mp_stream->flush();
     }
-    
-    // Regular output - convert \n to \r\n for proper terminal display
-    for (size_t i = 0; i < len; i++) {
-        if (str[i] == '\n') {
-            Serial.write('\r');
-        }
-        Serial.write(str[i]);
-    }
-    Serial.flush();
 }
 
-bool initMicroPythonProper(void) {
-    if (mp_initialized) {
-        return true;
-    }
-    
-    Serial.println("[MP] Initializing MicroPython with proper porting...");
-    
-    // Initialize MicroPython
-    mp_embed_init(mp_heap, sizeof(mp_heap), &mp_heap[sizeof(mp_heap)]);
-    
-    // Set up Python path and basic modules (with error handling)
-    mp_embed_exec_str(
-        "try:\n"
-        "    import sys\n"
-        "    sys.path.append('/lib')\n"
-        "    print('MicroPython', sys.version)\n"
-        "except ImportError as e:\n"
-        "    print('MicroPython initialized (sys module unavailable)')\n"
-        "print('\\nJumperless hardware control available')\n"
-    );
-    changeTerminalColor(replColors[5], true);
-    // Test if native jumperless module is available
-    mp_embed_exec_str(
-        "try:\n"
-        "    import jumperless\n"
-        "    print('Native jumperless module imported successfully')\n"
-        "    print('Available functions:')\n"
-        "    for func in dir(jumperless):\n"
-        "        if not func.startswith('_'):\n"
-        "            print('  jumperless.' + func + '()')\n"
-        "    print()  # Empty line\n"
-        "except ImportError as e:\n"
-        "    print('❌ Native jumperless module not available:', str(e))\n"
-        "    print('Loading Python wrapper functions instead...')\n"
-        "    print()  # Empty line\n"
-    );
-    
-    mp_initialized = true;
-    mp_repl_active = false;
-    
-    Serial.println("[MP] MicroPython initialized successfully");
+// HAL functions are now implemented in lib/micropython/port/mphalport.c
+
+
+
+
+bool initMicroPythonProper(Stream *stream) {
+  // global_mp_stream = stream;
+
+  if (mp_initialized) {
     return true;
+  }
+
+  global_mp_stream->println(
+      "[MP] Initializing MicroPython with proper porting...");
+
+  // Get proper stack pointer
+  char stack_dummy;
+  char *stack_top = &stack_dummy;
+    // Set up Python path and basic modules (with error handling)
+  // mp_embed_exec_str(
+  //     "try:\n"
+  //     "    print('MicroPython initializing...')\n"
+  //     "    import sys\n"
+  //     "    sys.path.append('/lib')\n"
+  //     "    print('MicroPython', sys.version)\n"
+  //     "except ImportError as e:\n"
+  //     "    print('MicroPython initialized (sys module unavailable)')\n"
+  //     "print('\\nJumperless hardware control available')\n");
+  // changeTerminalColor(replColors[5], true, global_mp_stream);
+  // // Test if native jumperless module is available
+  // mp_embed_exec_str(
+  //     "try:\n"
+  //     "    import jumperless\n"
+  //     // "    import time\n"
+  //     "    print('Native jumperless module imported successfully')\n"
+  //     "    print('Available functions:')\n"
+  //     "    for func in dir(jumperless):\n"
+  //     "        if not func.startswith('_'):\n"
+  //     "            print('  jumperless.' + func + '()')\n"
+  //     "    print()  # Empty line\n"
+  //     "except ImportError as e:\n"
+  //     "    print('❌ Native jumperless module not available:', str(e))\n"
+  //     "    print('Loading Python wrapper functions instead...')\n"
+  //     "    print()  # Empty line\n");
+  // Initialize MicroPython
+  mp_embed_init(mp_heap, sizeof(mp_heap), stack_top);
+
+  // Simple initialization - don't load complex modules during startup
+  mp_embed_exec_str("print('MicroPython ready for Jumperless')");
+  
+  // Manually set up basic path since sys.path is disabled to avoid build errors
+  // This allows importing from /python directory when using FatFS
+    mp_initialized = true;
+  mp_repl_active = false;
+  mp_embed_exec_str(
+      "try:\n"
+      "    import sys\n"
+      "    # Note: sys.path is disabled in build, but sys module works\n"
+      "    print('Python path: /python (FatFS)')\n"
+      "except ImportError:\n"
+      "    print('sys module not available')\n");
+
+  addJumperlessPythonFunctions();
+  addMicroPythonModules();
+
+
+  global_mp_stream->println("[MP] MicroPython initialized successfully");
+  return true;
 }
 
 void deinitMicroPythonProper(void) {
-    if (mp_initialized) {
-        Serial.println("[MP] Deinitializing MicroPython...");
-        mp_embed_deinit();
-        mp_initialized = false;
-        mp_repl_active = false;
-    }
+  if (mp_initialized) {
+    global_mp_stream->println("[MP] Deinitializing MicroPython...");
+    mp_embed_deinit();
+    mp_initialized = false;
+    mp_repl_active = false;
+  }
 }
 
-bool executePythonCodeProper(const char* code) {
-    if (!mp_initialized) {
-        Serial.println("[MP] Error: MicroPython not initialized");
-        return false;
-    }
-    
-    if (!code || strlen(code) == 0) {
-        return false;
-    }
-    
-    // Clear response buffer
-    memset(mp_response_buffer, 0, sizeof(mp_response_buffer));
-    
-    // Execute the code with proper error handling
-    // MicroPython handles errors internally and prints them
-    mp_embed_exec_str(code);
-    return true;
+bool executePythonCodeProper(const char *code) {
+  if (!mp_initialized) {
+    global_mp_stream->println("[MP] Error: MicroPython not initialized");
+    return false;
+  }
+
+  if (!code || strlen(code) == 0) {
+    return false;
+  }
+
+  // Clear response buffer
+  memset(mp_response_buffer, 0, sizeof(mp_response_buffer));
+
+  // Execute the code with proper error handling
+  // MicroPython handles errors internally and prints them
+  mp_embed_exec_str(code);
+  return true;
 }
 
 void startMicroPythonREPL(void) {
-    if (!mp_initialized) {
-        changeTerminalColor(replColors[4], true);
-        Serial.println("[MP] Error: MicroPython not initialized");
-        return;
-    }
-    
-    if (mp_repl_active) {
-        changeTerminalColor(replColors[4], true);
-        Serial.println("[MP] REPL already active");
-        return;
-    }
-    
-    // Print Python prompt with color
-    changeTerminalColor(replColors[1], true);
-    Serial.print(">>> "); // Simple prompt - the processMicroPythonInput handles everything
-    Serial.flush();
-    
-    mp_repl_active = true;
+  if (!mp_initialized) {
+    changeTerminalColor(replColors[4], true, global_mp_stream);
+    global_mp_stream->println("[MP] Error: MicroPython not initialized");
+    return;
+  }
+
+  if (mp_repl_active) {
+    changeTerminalColor(replColors[4], true, global_mp_stream);
+    global_mp_stream->println("[MP] REPL already active");
+    return;
+  }
+
+  // Print Python prompt with color
+  changeTerminalColor(replColors[1], true, global_mp_stream);
+  global_mp_stream->print(
+      ">>> "); // Simple prompt - the processMicroPythonInput handles everything
+  global_mp_stream->flush();
+
+  mp_repl_active = true;
 }
 
 void stopMicroPythonREPL(void) {
-    if (mp_repl_active) {
-        changeTerminalColor(0, false);
-        Serial.println("\n[MP] Exiting REPL...");
-        mp_repl_active = false;
+  if (mp_repl_active) {
+    changeTerminalColor(0, false, global_mp_stream);
+    global_mp_stream->println("\n[MP] Exiting REPL...");
+    mp_repl_active = false;
+  }
+}
+
+bool isMicroPythonREPLActive(void) { return mp_repl_active; }
+
+void enterMicroPythonREPL(Stream *stream) {
+  // Colorful initialization like original implementation
+  changeTerminalColor(replColors[6], true, global_mp_stream);
+
+  // Initialize MicroPython if not already done
+  if (!mp_initialized) {
+    if (!initMicroPythonProper()) {
+      changeTerminalColor(replColors[4], true, global_mp_stream); // error color
+      global_mp_stream->println("Failed to initialize MicroPython!");
+      return;
     }
+    // Note: Jumperless native module is now automatically available via
+    // MP_REGISTER_MODULE
+    // No need to manually add Python functions - the native 'jumperless' module
+    // is built-in
+  }
+
+  // Check if REPL is already active
+  if (mp_repl_active) {
+    changeTerminalColor(replColors[4], true, global_mp_stream);
+    global_mp_stream->println("[MP] REPL already active");
+    return;
+  }
+
+  // Show colorful welcome messages
+  // changeTerminalColor(replColors[7], true,global_mp_stream);
+  // global_mp_stream->println("MicroPython REPL with embedded Jumperless
+  // hardware control!"); global_mp_stream->println("Type normal Python code,
+  // then press Enter to execute"); global_mp_stream->println("Use TAB for
+  // indentation (or exactly 4 spaces)"); global_mp_stream->println("Use ↑/↓
+  // arrows for command history, ←/→ arrows for cursor movement");
+  // global_mp_stream->println("Navigate multiline code with ← to beginning of
+  // lines"); global_mp_stream->println("Type help_jumperless() for hardware
+  // control commands");
+
+  changeTerminalColor(replColors[0], true, global_mp_stream);
+  global_mp_stream->println("MicroPython initialized successfully");
+  global_mp_stream->flush();
+  delay(200);
+
+  changeTerminalColor(replColors[0], true, global_mp_stream);
+  global_mp_stream->println();
+  changeTerminalColor(replColors[2], true, global_mp_stream);
+  global_mp_stream->println("    MicroPython REPL");
+
+  // Show commands menu
+  changeTerminalColor(replColors[5], true, global_mp_stream);
+  global_mp_stream->println("\n Commands:");
+  changeTerminalColor(replColors[3], false, global_mp_stream);
+  global_mp_stream->print("  quit ");
+  changeTerminalColor(replColors[0], false, global_mp_stream);
+  global_mp_stream->println("       -   Exit REPL");
+  changeTerminalColor(replColors[3], false, global_mp_stream);
+  global_mp_stream->print("  help ");
+  changeTerminalColor(replColors[0], false, global_mp_stream);
+  global_mp_stream->println("       -   Show help");
+  changeTerminalColor(replColors[3], false, global_mp_stream);
+  global_mp_stream->print("  history ");
+  changeTerminalColor(replColors[0], false, global_mp_stream);
+  global_mp_stream->println("    -   Show command history");
+  changeTerminalColor(replColors[3], false, global_mp_stream);
+  global_mp_stream->print("  save ");
+  changeTerminalColor(replColors[0], false, global_mp_stream);
+  global_mp_stream->println("       -   Save last script");
+  changeTerminalColor(replColors[3], false, global_mp_stream);
+  global_mp_stream->print("  load ");
+  changeTerminalColor(replColors[0], false, global_mp_stream);
+  global_mp_stream->println("       -   Load saved script");
+  changeTerminalColor(replColors[3], false, global_mp_stream);
+  global_mp_stream->print("  delete ");
+  changeTerminalColor(replColors[0], false, global_mp_stream);
+  global_mp_stream->println("     -   Delete saved script");
+  changeTerminalColor(replColors[3], false, global_mp_stream);
+  global_mp_stream->print("  paste ");
+  changeTerminalColor(replColors[0], false, global_mp_stream);
+  global_mp_stream->println("      -   Enter paste mode");
+  changeTerminalColor(replColors[3], false, global_mp_stream);
+  global_mp_stream->print("  multiline ");
+  changeTerminalColor(replColors[0], false, global_mp_stream);
+  global_mp_stream->println("  -   Toggle multiline mode");
+  changeTerminalColor(replColors[3], false, global_mp_stream);
+  global_mp_stream->print("  run ");
+  changeTerminalColor(replColors[0], false, global_mp_stream);
+  global_mp_stream->println("        -   Execute script (multiline mode)");
+  changeTerminalColor(replColors[3], false, global_mp_stream);
+  global_mp_stream->print("  jumperless.help() ");
+  changeTerminalColor(replColors[0], false, global_mp_stream);
+  global_mp_stream->println("- Show hardware commands");
+  // changeTerminalColor(replColors[7], false);
+  // stream->println("\nPress Enter to start REPL");
+
+  if (global_mp_stream == &Serial) {
+    global_mp_stream->write(0x0E); // turn on interactive mode
+    global_mp_stream->flush();
+  }
+
+  // Wait for user to press enter
+  changeTerminalColor(replColors[4], true, global_mp_stream);
+  global_mp_stream->print("\n\rPress enter to start REPL");
+  global_mp_stream->println();
+  global_mp_stream->flush();
+  while (global_mp_stream->available() == 0) {
+    delay(1);
+  }
+  global_mp_stream->read(); // consume the enter keypress
+
+  // Start the REPL with colors
+  changeTerminalColor(replColors[1], true, global_mp_stream);
+  startMicroPythonREPL();
+
+  // Blocking loop - stay in REPL until user exits
+  while (mp_repl_active) {
+    processMicroPythonInput(global_mp_stream);
+    delayMicroseconds(10); // Small delay to prevent overwhelming
+  }
+
+  // Cleanup with colors
+  changeTerminalColor(replColors[0], true, global_mp_stream);
+  global_mp_stream->println("\\nExiting REPL...");
+  if (global_mp_stream == &Serial) {
+    global_mp_stream->write(0x0F); // turn off interactive mode
+    global_mp_stream->flush();
+  }
+  global_mp_stream->print("\033[0m");
+  // stream->println("Returned to Arduino mode");
 }
 
-bool isMicroPythonREPLActive(void) {
-    return mp_repl_active;
-}
+void processMicroPythonInput(Stream *stream) {
+  if (!mp_initialized) {
+    return;
+  }
 
-void enterMicroPythonREPL(void) {
-    // Colorful initialization like original implementation
-    changeTerminalColor(replColors[6], true);
-    
-    // Initialize MicroPython if not already done
-    if (!mp_initialized) {
-        if (!initMicroPythonProper()) {
-            changeTerminalColor(replColors[4], true); // error color
-            Serial.println("Failed to initialize MicroPython!");
+  // // Process any queued hardware commands
+  // if (mp_command_ready) {
+  //     global_mp_stream->printf("[MP] Processing hardware command: %s\n",
+  //     mp_command_buffer);
+
+  //     // Execute the hardware command through your existing system
+  //     char response[512];
+  //     int result = parseAndExecutePythonCommand(mp_command_buffer, response);
+
+  //     // Make result available to Python
+  //     if (result == 0) {
+  //         String python_result = "globals()['_last_result'] = '";
+  //         python_result += response;
+  //         python_result += "'";
+  //         mp_embed_exec_str(python_result.c_str());
+  //     }
+
+  //     mp_command_ready = false;
+  // }
+
+  // Handle REPL input with proper text editor functionality and history
+  if (mp_repl_active) {
+    static REPLEditor editor;
+    static ScriptHistory history;
+    static bool history_initialized = false;
+
+    if (editor.first_run) {
+      // Initialize history first, before any input processing
+      if (!history_initialized) {
+        history.initFilesystem();
+        history_initialized = true;
+      }
+
+      // Start with a fresh prompt
+      changeTerminalColor(replColors[1], true, global_mp_stream);
+      global_mp_stream->flush();
+      editor.first_run = false;
+    }
+
+    // Check for available input
+    if (global_mp_stream->available()) {
+      int c = global_mp_stream->read();
+
+      // Character processing for escape sequences
+
+      // Handle escape sequences for arrow keys
+      if (editor.escape_state == 0 && c == 27) { // ESC
+        editor.escape_state = 1;
+        return;
+      } else if (editor.escape_state == 1 && c == 91) { // [
+        editor.escape_state = 2;
+        return;
+      } else if (editor.escape_state == 2) {
+        editor.escape_state = 0; // Reset escape state
+
+        switch (c) {
+        case 65: // Up arrow - history previous
+        {
+          String prev_cmd = history.getPreviousCommand();
+          if (prev_cmd.length() > 0) {
+            editor.loadFromHistory(global_mp_stream, prev_cmd);
+            global_mp_stream->flush();
+          }
+        }
+          return;
+
+        case 66: // Down arrow - history next
+        {
+          String next_cmd = history.getNextCommand();
+          if (next_cmd.length() > 0) {
+            editor.loadFromHistory(global_mp_stream, next_cmd);
+            global_mp_stream->flush();
+            } else {
+            // Return to original input
+            editor.exitHistoryMode(global_mp_stream);
+            global_mp_stream->flush();
+          }
+        }
+          return;
+
+        case 67: // Right arrow
+          if (editor.cursor_pos < editor.current_input.length()) {
+            editor.cursor_pos++;
+            global_mp_stream->print("\033[C"); // Move cursor right
+            global_mp_stream->flush();
+          }
+          return;
+
+        case 68: // Left arrow
+          if (editor.cursor_pos > 0) {
+            editor.cursor_pos--;
+            global_mp_stream->print("\033[D"); // Move cursor left
+            global_mp_stream->flush();
+          }
+          return;
+
+        default:
+          // Unknown escape sequence - just ignore it
+          return;
+        }
+      } else if (editor.escape_state > 0) {
+        // We're in the middle of an escape sequence but got an unexpected
+        // character
+        editor.escape_state = 0; // Reset escape state
+        // Don't process this character as regular input
+        return;
+      }
+
+      // Handle Ctrl+C (ASCII 3) - cancel current input and reset
+      if (c == 3) {
+        global_mp_stream->println("^C");
+        global_mp_stream->println("KeyboardInterrupt");
+        editor.reset();
+        changeTerminalColor(replColors[1], true, global_mp_stream);
+        global_mp_stream->print(">>> ");
+        global_mp_stream->flush();
+        return;
+      }
+
+      // Handle Enter key - check for multiline or execute
+      if (c == '\r' || c == '\n') {
+        global_mp_stream->println(); // Echo newline
+
+        // Check for special commands first
+        String trimmed_input = editor.current_input;
+        trimmed_input.trim();
+
+        //! Exit commands
+        if (trimmed_input == "exit()" || trimmed_input == "quit()" ||
+            trimmed_input == "exit" || trimmed_input == "quit") {
+          stopMicroPythonREPL();
+          editor.reset();
+          return;
+        }
+
+        //! History commands
+        if (trimmed_input == "history" || trimmed_input == "history()") {
+          history.listScripts();
+          editor.reset();
+          changeTerminalColor(replColors[1], true, global_mp_stream);
+          global_mp_stream->print(">>> ");
+          global_mp_stream->flush();
+          return;
+        }
+
+        //! Multiline mode commands
+        if (trimmed_input == "multiline" || trimmed_input == "multiline()") {
+          global_mp_stream->println("Multiline mode status:");
+          if (editor.multiline_forced_on) {
+            global_mp_stream->println("  Currently: FORCED ON");
+          } else if (editor.multiline_forced_off) {
+            global_mp_stream->println("  Currently: FORCED OFF");
+          } else {
+            global_mp_stream->println("  Currently: AUTO (default)");
+          }
+          global_mp_stream->println("Commands:");
+          global_mp_stream->println("  multiline on   - Force multiline mode "
+                                    "ON (use 'run' to execute)");
+          global_mp_stream->println(
+              "  multiline off  - Force multiline mode OFF");
+          global_mp_stream->println(
+              "  multiline auto - Return to automatic detection");
+          editor.reset();
+          changeTerminalColor(replColors[1], true, global_mp_stream);
+          global_mp_stream->print(">>> ");
+          global_mp_stream->flush();
+          return;
+        }
+
+        if (trimmed_input == "multiline on") {
+          editor.multiline_forced_on = true;
+          editor.multiline_forced_off = false;
+          editor.multiline_override = true;
+          global_mp_stream->println("Multiline mode: FORCED ON");
+          changeTerminalColor(replColors[7], false, global_mp_stream);
+          global_mp_stream->println("Enter will add new lines. Type 'run' to "
+                                    "execute accumulated script.");
+          editor.reset();
+          changeTerminalColor(replColors[1], true, global_mp_stream);
+          global_mp_stream->print(">>> ");
+          global_mp_stream->flush();
+          return;
+        }
+
+        if (trimmed_input == "multiline off") {
+          editor.multiline_forced_on = false;
+          editor.multiline_forced_off = true;
+          editor.multiline_override = true;
+          global_mp_stream->println("Multiline mode: FORCED OFF");
+          editor.reset();
+          changeTerminalColor(replColors[1], true, global_mp_stream);
+          global_mp_stream->print(">>> ");
+          global_mp_stream->flush();
+          return;
+        }
+
+        if (trimmed_input == "multiline auto") {
+          editor.multiline_forced_on = false;
+          editor.multiline_forced_off = false;
+          editor.multiline_override = false;
+          global_mp_stream->println("Multiline mode: AUTO (default)");
+          editor.reset();
+          changeTerminalColor(replColors[1], true, global_mp_stream);
+          global_mp_stream->print(">>> ");
+          global_mp_stream->flush();
+          return;
+        }
+
+        //! Paste command - enter paste mode
+        if (trimmed_input == "paste" || trimmed_input == "paste()") {
+          editor.enterPasteMode(global_mp_stream);
+          return;
+        }
+
+        //! Edit command - for pasted content
+        if (trimmed_input == "edit" || trimmed_input == "edit()") {
+          if (editor.current_input.length() > 0) {
+            global_mp_stream->println("Entering edit mode. Use arrow keys to "
+                                      "navigate, Enter to execute.");
+            editor.redrawFullInput(global_mp_stream);
+            return; // Stay in edit mode
+          } else {
+            global_mp_stream->println("No code to edit");
+            editor.reset();
+            changeTerminalColor(replColors[1], true, global_mp_stream);
+            global_mp_stream->print(">>> ");
+            global_mp_stream->flush();
             return;
+          }
         }
-        // Note: Jumperless native module is now automatically available via MP_REGISTER_MODULE
-    // No need to manually add Python functions - the native 'jumperless' module is built-in
-    }
-    
-    // Check if REPL is already active
-    if (mp_repl_active) {
-        changeTerminalColor(replColors[4], true);
-        Serial.println("[MP] REPL already active");
-        return;
-    }
-    
-    // Show colorful welcome messages
-    changeTerminalColor(replColors[7], true);
-    Serial.println("MicroPython REPL with embedded Jumperless hardware control!");
-    Serial.println("Type normal Python code, then press Enter to execute");
-    Serial.println("Use TAB for indentation (or exactly 4 spaces)");
-    Serial.println("Type help_jumperless() for hardware control commands");
 
-    changeTerminalColor(replColors[0], true);
-    Serial.println("MicroPython initialized successfully");
-    Serial.flush();
-    delay(200);
+        //! Help commands
+        if (trimmed_input == "help" || trimmed_input == "help()") {
+          // Show REPL help
+          changeTerminalColor(replColors[7], true, global_mp_stream);
+          global_mp_stream->println("\n   MicroPython REPL Help");
+          changeTerminalColor(replColors[5], true, global_mp_stream);
+          global_mp_stream->println("\nCommands:");
+          changeTerminalColor(replColors[3], false, global_mp_stream);
+          global_mp_stream->print("  quit/exit ");
+          changeTerminalColor(replColors[0], false, global_mp_stream);
+          global_mp_stream->println("    -   Exit REPL");
+          changeTerminalColor(replColors[3], false, global_mp_stream);
+          global_mp_stream->print("  history ");
+          changeTerminalColor(replColors[0], false, global_mp_stream);
+          global_mp_stream->println(
+              "      -   Show command history & saved scripts");
+          changeTerminalColor(replColors[3], false, global_mp_stream);
+          global_mp_stream->print("  save [name] ");
+          changeTerminalColor(replColors[0], false, global_mp_stream);
+          global_mp_stream->println(
+              "  -   Save last script (auto: script_N.py)");
+          changeTerminalColor(replColors[3], false, global_mp_stream);
+          global_mp_stream->print("  load <name> ");
+          changeTerminalColor(replColors[0], false, global_mp_stream);
+          global_mp_stream->println("  -   Load script by name");
+          changeTerminalColor(replColors[3], false, global_mp_stream);
+          global_mp_stream->print("  delete <name>");
+          changeTerminalColor(replColors[0], false, global_mp_stream);
+          global_mp_stream->println(" -   Delete saved script");
+          changeTerminalColor(replColors[3], false, global_mp_stream);
+          global_mp_stream->print("  multiline ");
+          changeTerminalColor(replColors[0], false, global_mp_stream);
+          global_mp_stream->println(
+              "    -   Toggle multiline mode (on/off/auto)");
+          changeTerminalColor(replColors[3], false, global_mp_stream);
+          global_mp_stream->print("  edit ");
+          changeTerminalColor(replColors[0], false, global_mp_stream);
+          global_mp_stream->println("         -   Edit current/pasted code");
+          changeTerminalColor(replColors[3], false, global_mp_stream);
+          global_mp_stream->print("  paste ");
+          changeTerminalColor(replColors[0], false, global_mp_stream);
+          global_mp_stream->println(
+              "        -   Enter paste mode for multi-line scripts");
+          changeTerminalColor(replColors[3], false, global_mp_stream);
+          global_mp_stream->print("  run ");
+          changeTerminalColor(replColors[0], false, global_mp_stream);
+          global_mp_stream->println(
+              "          -   Execute script (when multiline forced ON)");
 
-    changeTerminalColor(replColors[0], true);
-    Serial.println();
-    changeTerminalColor(replColors[2], true);
-    Serial.println("    MicroPython REPL");
-    
-    // Show commands menu
-    changeTerminalColor(replColors[5], true);
-    Serial.println("\n Commands:");
-    changeTerminalColor(replColors[3], false);
-    Serial.print("  'quit' ");
-    changeTerminalColor(replColors[0], false);
-    Serial.println(" -   Exit REPL");
-    changeTerminalColor(replColors[3], false);
-    Serial.print("  'help' ");
-    changeTerminalColor(replColors[0], false);
-    Serial.println(" -   Show help");
-    changeTerminalColor(replColors[3], false);
-    Serial.print("  'jl.help()' ");
-    changeTerminalColor(replColors[0], false);
-    Serial.println(" - Show hardware commands");
-    //changeTerminalColor(replColors[7], false);
-    //Serial.println("\nPress Enter to start REPL");
+          changeTerminalColor(replColors[5], true, global_mp_stream);
+          global_mp_stream->println("\nNavigation:");
+          changeTerminalColor(replColors[8], false, global_mp_stream);
+          global_mp_stream->println("  ↑/↓ arrows - Browse command history");
+          global_mp_stream->println("  ←/→ arrows - Move cursor, edit text");
+          global_mp_stream->println("  TAB        - Add 4-space indentation");
+          global_mp_stream->println(
+              "  Enter      - Execute (empty line in multiline to finish)");
+          global_mp_stream->println(
+              "  paste      - Enter paste mode (type 'END' to finish)");
+          global_mp_stream->println("  run        - Execute accumulated script "
+                                    "(multiline forced ON)");
 
-    Serial.write(0x0E); // turn on interactive mode
-    Serial.flush();
-    
-    // Wait for user to press enter
-    changeTerminalColor(replColors[4], true);
-    Serial.print("Press enter to start REPL");
-    Serial.println();
-    Serial.flush();
-    while (Serial.available() == 0) {
-        delay(1);
-    }
-    Serial.read(); // consume the enter keypress
-    
-    // Start the REPL with colors
-    changeTerminalColor(replColors[1], true);
-    startMicroPythonREPL();
-    
-    // Blocking loop - stay in REPL until user exits
-    while (mp_repl_active) {
-        processMicroPythonInput();
-        delayMicroseconds(10); // Small delay to prevent overwhelming
-    }
-    
-    // Cleanup with colors
-    changeTerminalColor(replColors[0], true);
-    Serial.println("\\nExiting REPL...");
-    Serial.write(0x0F); // turn off interactive mode
-    Serial.flush();
-    changeTerminalColor(replColors[2], true);
-    Serial.println("Returned to Arduino mode");
-}
+          changeTerminalColor(replColors[5], true, global_mp_stream);
+          global_mp_stream->println("\nHardware:");
+          changeTerminalColor(replColors[7], false, global_mp_stream);
+          global_mp_stream->println(
+              "  jumperless.help()  - Show Jumperless hardware commands");
+          global_mp_stream->println(
+              "  Use jumperless. module for hardware control");
+          global_mp_stream->println();
 
-
-void processMicroPythonInput(void) {
-    if (!mp_initialized) {
-        return;
-    }
-    
-    // Process any queued hardware commands
-    if (mp_command_ready) {
-        Serial.printf("[MP] Processing hardware command: %s\n", mp_command_buffer);
-        
-        // Execute the hardware command through your existing system
-        char response[512];
-        int result = parseAndExecutePythonCommand(mp_command_buffer, response);
-        
-        // Make result available to Python
-        if (result == 0) {
-            String python_result = "globals()['_last_result'] = '";
-            python_result += response;
-            python_result += "'";
-            mp_embed_exec_str(python_result.c_str());
+          editor.reset();
+          changeTerminalColor(replColors[1], true, global_mp_stream);
+          global_mp_stream->print(">>> ");
+          global_mp_stream->flush();
+          return;
         }
-        
-        mp_command_ready = false;
-    }
-    
-    // Handle REPL input if active - let MicroPython do all the work
-    if (mp_repl_active) {
-        // Simple approach: let MicroPython handle everything
-        // Just execute a minimal REPL loop that processes input character by character
-        static String current_input = "";
-        static bool first_run = true;
-        static bool in_multiline_mode = false;
-        
-        if (first_run) {
-            // Start with a fresh prompt
-            changeTerminalColor(replColors[1], true);
-            
-            Serial.flush();
-            first_run = false;
-        }
-        // Check for available input
-        if (Serial.available()) {
-            int c = Serial.read();
-            
-            // Handle Ctrl+C (ASCII 3) - cancel current input and reset
-            if (c == 3) {
-                Serial.println("^C");
-                Serial.println("KeyboardInterrupt");
-                current_input = "";
-                first_run = true;
-                in_multiline_mode = false;
-                changeTerminalColor(replColors[1], true);
-                Serial.print(">>> ");
-                Serial.flush();
-                return;
+
+        //! Save command - save the last executed script from history
+        if (trimmed_input.startsWith("save ") || trimmed_input == "save" ||
+            trimmed_input == "save()") {
+          // Get the most recent executed script from history
+          String last_script = history.getLastExecutedCommand();
+          if (last_script.length() > 0) {
+            String filename = "";
+            if (trimmed_input.startsWith("save ")) {
+              filename = trimmed_input.substring(5);
+              filename.trim();
             }
-            
-            // Handle Enter key - check for multiline or execute
-            if (c == '\r' || c == '\n') {
-                Serial.println(); // Echo newline
-                
-                // Check for exit commands
-                String trimmed_input = current_input;
-                trimmed_input.trim();
-                if (trimmed_input == "exit()" || trimmed_input == "quit()" || 
-                    trimmed_input == "exit" || trimmed_input == "quit") {
-                    stopMicroPythonREPL();
-                    current_input = "";
-                    first_run = true;
-                    in_multiline_mode = false;
-                    return;
+            if (history.saveScript(last_script, filename)) {
+              global_mp_stream->println("Script saved to filesystem");
+            } else {
+              global_mp_stream->println("Failed to save script");
+            }
+          } else {
+            global_mp_stream->println("No previous script to save");
+          }
+          editor.reset();
+          changeTerminalColor(replColors[1], true, global_mp_stream);
+          global_mp_stream->print(">>> ");
+          global_mp_stream->flush();
+          return;
+        }
+
+        //! Load command - load a script from filesystem
+        if (trimmed_input.startsWith("load ") || trimmed_input == "load") {
+          if (trimmed_input == "load") {
+            // Show available scripts when no filename provided
+            global_mp_stream->println("Available scripts:");
+            history.listScripts();
+            String recent_script = history.getLastSavedScript();
+            if (recent_script.length() > 0) {
+              global_mp_stream->println("Most recent: " + recent_script);
+              global_mp_stream->println("Try: load " + recent_script);
+            }
+            global_mp_stream->println(
+                "Usage: load <number> or load <filename>");
+          } else {
+            String arg = trimmed_input.substring(5);
+            arg.trim();
+            if (arg.length() > 0) {
+              String filename = "";
+
+              // Check if argument is a number
+              bool is_number = true;
+              for (int i = 0; i < arg.length(); i++) {
+                if (!isdigit(arg.charAt(i))) {
+                  is_number = false;
+                  break;
                 }
-                
-                // Check if this is an empty line in multiline mode (escape mechanism)
-                bool force_execution = false;
-                if (in_multiline_mode && current_input.endsWith("\n")) {
-                    // If we're in multiline and just pressed enter on what might be an empty line
-                    String lines = current_input;
-                    int last_newline = lines.lastIndexOf('\n', lines.length() - 2);
-                    String last_line = "";
-                    if (last_newline >= 0) {
-                        last_line = lines.substring(last_newline + 1, lines.length() - 1);
-                    } else {
-                        last_line = lines.substring(0, lines.length() - 1);
-                    }
-                    last_line.trim();
-                    if (last_line.length() == 0) {
-                        force_execution = true; // Empty line in multiline mode
-                    }
-                }
-                
-                // Check if MicroPython needs more input (multiline detection)
-                bool needs_more_input = false;
-                if (current_input.length() > 0 && !force_execution) {
-                    needs_more_input = mp_repl_continue_with_input(current_input.c_str());
-                }
-                
-                if (needs_more_input && !force_execution) {
-                    in_multiline_mode = true;
-                    // Add newline to continue building multiline statement
-                    current_input += "\n";
-                    
-                    // Smart auto-indent: maintain or increase indentation level
-                    String lines = current_input;
-                    int last_newline = lines.lastIndexOf('\n', lines.length() - 2); // -2 to skip the newline we just added
-                    String last_line = "";
-                    if (last_newline >= 0) {
-                        last_line = lines.substring(last_newline + 1, lines.length() - 1); // exclude the newline we just added
-                    } else {
-                        last_line = lines.substring(0, lines.length() - 1); // first line, exclude newline
-                    }
-                    
-                    // Calculate current indentation level of the previous line
-                    int current_indent = 0;
-                    for (int i = 0; i < last_line.length(); i++) {
-                        if (last_line.charAt(i) == ' ') {
-                            current_indent++;
-                        } else {
-                            break;
-                        }
-                    }
-                    
-                    String trimmed_last_line = last_line;
-                    trimmed_last_line.trim();
-                    
-                    String indent_spaces = "";
-                    if (trimmed_last_line.endsWith(":")) {
-                        // Increase indentation level by 4 spaces
-                        for (int i = 0; i < current_indent + 4; i++) {
-                            indent_spaces += " ";
-                        }
-                    } else if (current_indent > 0) {
-                        // Maintain current indentation level
-                        for (int i = 0; i < current_indent; i++) {
-                            indent_spaces += " ";
-                        }
-                    }
-                    
-                    // Add the indentation to the input
-                    current_input += indent_spaces;
-                    
-                    // Show the prompt and indentation
-                    changeTerminalColor(replColors[1], true);
-                    Serial.print("... ");
-                    if (indent_spaces.length() > 0) {
-                        changeTerminalColor(replColors[3], false);
-                        Serial.print(indent_spaces); // Show the indentation
-                    }
-                    Serial.flush();
+              }
+
+              if (is_number) {
+                // Handle numeric input
+                int script_number = arg.toInt();
+                if (script_number >= 1 &&
+                    script_number <= history.getNumberedScriptsCount()) {
+                  filename = history.getNumberedScript(
+                      script_number - 1); // Convert 1-based to 0-based
+                  global_mp_stream->println("Loading script " +
+                                            String(script_number) + ": " +
+                                            filename);
                 } else {
-                    // Execute the complete statement (or force execution)
-                    if (current_input.length() > 0) {
-                        changeTerminalColor(replColors[2], true);
-                        
-                        // Clean up the input (remove trailing newlines)
-                        String clean_input = current_input;
-                        while (clean_input.endsWith("\n")) {
-                            clean_input = clean_input.substring(0, clean_input.length() - 1);
-                        }
-                        
-                        if (clean_input.length() > 0) {
-                            // Let MicroPython handle the complete statement
-                            mp_embed_exec_str(clean_input.c_str());
-                        }
-                        
-                        changeTerminalColor(replColors[1], true);
-                    }
-                    
-                    // Reset and show new prompt
-                    current_input = "";
-                    in_multiline_mode = false;
-                    Serial.print(">>> ");
-                    Serial.flush();
+                  global_mp_stream->println(
+                      "Invalid script number. Use 'history' to see available "
+                      "scripts.");
+                  editor.reset();
+                  changeTerminalColor(replColors[1], true, global_mp_stream);
+                  global_mp_stream->print(">>> ");
+                  global_mp_stream->flush();
+                  return;
                 }
-                
-            } else if (c == '\b' || c == 127) { // Backspace
-                if (current_input.length() > 0) {
-                    char last_char = current_input.charAt(current_input.length() - 1);
-                    current_input.remove(current_input.length() - 1);
-                    
-                    if (last_char == '\n') {
-                        // Backspacing over a newline
-                        // Check if we're going back to single line mode
-                        if (current_input.indexOf('\n') == -1) {
-                            // No more newlines, back to single line mode
-                            in_multiline_mode = false;
-                        }
-                        
-                        // Find the last newline to get the current line content
-                        int last_newline = current_input.lastIndexOf('\n');
-                        String current_line = "";
-                        if (last_newline >= 0) {
-                            current_line = current_input.substring(last_newline + 1);
-                        } else {
-                            current_line = current_input;
-                            in_multiline_mode = false; // Back to single line
-                        }
-                        
-                        // Clear current line and redraw with appropriate prompt
-                        Serial.print("\r"); // Go to start of line
-                        if (in_multiline_mode) {
-                            Serial.print("... "); // Continuation prompt
-                        } else {
-                            Serial.print(">>> "); // Primary prompt
-                        }
-                        changeTerminalColor(replColors[3], false);
-                        Serial.print(current_line); // Current line content
-                        Serial.flush();
-                    } else {
-                        // Normal character backspace
-                        // Check if we're backspacing over indentation (4 spaces)
-                        if (current_input.length() >= 4 && 
-                            current_input.endsWith("    ")) {
-                            // Remove 4 spaces at once (like a TAB)
-                            current_input = current_input.substring(0, current_input.length() - 3); // Remove 3 more spaces (we already removed 1)
-                            Serial.print("\b \b\b \b\b \b\b \b"); // Erase 4 characters visually
-                            Serial.flush();
-                        } else {
-                            Serial.print("\b \b"); // Erase character visually
-                            Serial.flush();
-                        }
-                    }
+              } else {
+                // Handle filename input
+                filename = arg;
+              }
+
+              if (filename.length() > 0) {
+                String loaded_script = history.loadScript(filename);
+                if (loaded_script.length() > 0) {
+                  // Load the script into the editor
+                  editor.current_input = loaded_script;
+                  editor.cursor_pos = loaded_script.length();
+                  editor.in_multiline_mode = (loaded_script.indexOf('\n') >= 0);
+                  editor.redrawFullInput(global_mp_stream);
+                  return; // Stay in editing mode
                 }
-            } else if (c == '\t') { // TAB character
-                // Convert TAB to 4 spaces for Python indentation
-                current_input += "    ";
-                changeTerminalColor(replColors[3], false);
-                Serial.print("    "); // Show 4 spaces
-                Serial.flush();
-            } else if (c >= 32 && c <= 126) { // Printable characters
-                current_input += (char)c;
-                // Echo the character with input color
-                changeTerminalColor(replColors[3], false);
-                Serial.write(c);
-                Serial.flush();
+              }
+            } else {
+              global_mp_stream->println(
+                  "Usage: load <number> or load <filename>");
             }
-            // All other characters are ignored
+          }
+          editor.reset();
+          changeTerminalColor(replColors[1], true, global_mp_stream);
+          global_mp_stream->print(">>> ");
+          global_mp_stream->flush();
+          return;
         }
+
+        //! Delete command - delete a script from filesystem
+        if (trimmed_input.startsWith("delete ") ||
+            trimmed_input.startsWith("del ")) {
+          int start_pos = trimmed_input.startsWith("delete ") ? 7 : 4;
+          String filename = trimmed_input.substring(start_pos);
+          filename.trim();
+          if (filename.length() > 0) {
+            history.deleteScript(filename);
+          } else {
+            global_mp_stream->println("Usage: delete filename");
+          }
+          editor.reset();
+          changeTerminalColor(replColors[1], true, global_mp_stream);
+          global_mp_stream->print(">>> ");
+          global_mp_stream->flush();
+          return;
+        }
+
+        //! Special handling for forced multiline mode
+        if (editor.multiline_forced_on) {
+          // Check if the user typed 'run' (as the only content or last line)
+          if (trimmed_input == "run") {
+            // Only "run" was typed - no script to execute
+            global_mp_stream->println("No script to execute.");
+            editor.reset();
+            changeTerminalColor(replColors[1], true, global_mp_stream);
+            global_mp_stream->print(">>> ");
+            global_mp_stream->flush();
+            return;
+          } else if (trimmed_input.endsWith("\nrun") &&
+                     trimmed_input.length() > 4) {
+            // Script followed by 'run' command
+            String script_to_execute =
+                trimmed_input.substring(0, trimmed_input.length() - 4);
+            script_to_execute.trim();
+
+            if (script_to_execute.length() > 0) {
+              changeTerminalColor(replColors[2], true, global_mp_stream);
+              global_mp_stream->println("Executing accumulated script:");
+
+              // Execute the user's current input (edited or original)
+              // No longer override with history command - user edits should be respected
+
+              // Add to history before execution
+              history.addToHistory(script_to_execute);
+
+              // Reset history navigation now that we're executing
+              history.resetHistoryNavigation();
+
+              // Execute the complete script
+              mp_embed_exec_str(script_to_execute.c_str());
+            }
+
+            // Reset and show new prompt
+            editor.reset();
+            changeTerminalColor(replColors[1], true, global_mp_stream);
+            global_mp_stream->print(">>> ");
+            global_mp_stream->flush();
+            return;
+          }
+          // If not 'run', force multiline continuation (never execute
+          // individual lines)
+        }
+
+        // Check if this is an empty line in multiline mode (escape mechanism)
+        bool force_execution = false;
+        if (editor.in_multiline_mode && !editor.multiline_forced_on) {
+          // Only allow empty line escape in AUTO mode, not when forced ON
+          int line_start =
+              editor.current_input.lastIndexOf('\n', editor.cursor_pos - 1);
+          line_start = (line_start >= 0) ? line_start + 1 : 0;
+          String current_line =
+              editor.current_input.substring(line_start, editor.cursor_pos);
+          current_line.trim();
+          if (current_line.length() == 0) {
+            force_execution = true; // Empty line in multiline mode
+          }
+        }
+
+        // Check if MicroPython needs more input (multiline detection)
+        // Use current input WITHOUT adding newline first
+        bool needs_more_input = false;
+        if (editor.multiline_forced_on) {
+          // In forced ON mode, ALWAYS continue - never execute until 'run' is
+          // typed
+          needs_more_input = true;
+        } else if (editor.current_input.length() > 0 && !force_execution) {
+          if (editor.multiline_forced_off) {
+            // In forced OFF mode, NEVER continue (always execute on Enter)
+            needs_more_input = false;
+          } else {
+            // Use automatic detection (default behavior)
+            String input_for_check = editor.current_input;
+            needs_more_input =
+                mp_repl_continue_with_input(input_for_check.c_str());
+          }
+        }
+
+        if (needs_more_input && !force_execution) {
+          editor.in_multiline_mode = true;
+
+          // Add newline at cursor position since we need more input
+          editor.current_input =
+              editor.current_input.substring(0, editor.cursor_pos) + "\n" +
+              editor.current_input.substring(editor.cursor_pos);
+          editor.cursor_pos++;
+
+          // Smart auto-indent: maintain or increase indentation level
+          // Get the line we just finished (before the newline we just added)
+          String lines = editor.current_input;
+          int last_newline = lines.lastIndexOf(
+              '\n',
+              editor.cursor_pos - 2); // -2 to skip the newline we just added
+          String last_line = "";
+          if (last_newline >= 0) {
+            last_line = lines.substring(
+                last_newline + 1,
+                editor.cursor_pos - 1); // exclude the newline we just added
+          } else {
+            last_line = lines.substring(
+                0, editor.cursor_pos - 1); // first line, exclude newline
+          }
+
+          // Calculate current indentation level of the previous line
+          int current_indent = 0;
+          for (int i = 0; i < last_line.length(); i++) {
+            if (last_line.charAt(i) == ' ') {
+              current_indent++;
+            } else {
+              break;
+            }
+          }
+
+          String trimmed_last_line = last_line;
+          trimmed_last_line.trim();
+
+          String indent_spaces = "";
+          if (trimmed_last_line.endsWith(":")) {
+            // Increase indentation level by 4 spaces
+            for (int i = 0; i < current_indent + 4; i++) {
+              indent_spaces += " ";
+            }
+          } else if (current_indent > 0) {
+            // Maintain current indentation level
+            for (int i = 0; i < current_indent; i++) {
+              indent_spaces += " ";
+            }
+          }
+
+          // Insert the indentation at cursor position
+          editor.current_input =
+              editor.current_input.substring(0, editor.cursor_pos) +
+              indent_spaces + editor.current_input.substring(editor.cursor_pos);
+          editor.cursor_pos += indent_spaces.length();
+
+          // Show the appropriate prompt
+          changeTerminalColor(replColors[1], true, global_mp_stream);
+          if (editor.multiline_forced_on) {
+            global_mp_stream->print("... "); // Standard multiline prompt
+            // Show reminder on first few lines
+            static int line_count = 0;
+            line_count++;
+            if (line_count < 1) { // Show on first multiline prompt
+              changeTerminalColor(replColors[12], false, global_mp_stream);
+              global_mp_stream->print(" (type 'run' to execute)");
+              global_mp_stream->println();
+              changeTerminalColor(replColors[1], true, global_mp_stream);
+              global_mp_stream->print("... ");
+            }
+          } else {
+            global_mp_stream->print("... ");
+          }
+
+          if (indent_spaces.length() > 0) {
+            changeTerminalColor(replColors[3], false, global_mp_stream);
+            global_mp_stream->print(indent_spaces); // Show the indentation
+          }
+          global_mp_stream->flush();
+        } else {
+          // Execute the complete statement (or force execution)
+          if (editor.current_input.length() > 0) {
+            changeTerminalColor(replColors[2], true, global_mp_stream);
+
+            // Clean up the input (remove trailing newlines)
+            String clean_input = editor.current_input;
+            while (clean_input.endsWith("\n")) {
+              clean_input = clean_input.substring(0, clean_input.length() - 1);
+            }
+
+            if (clean_input.length() > 0) {
+              // Execute the user's current input (edited or original)
+              // No longer override with history command - user edits should be respected
+
+              // Add to history before execution
+              history.addToHistory(clean_input);
+
+              // Reset history navigation now that we're executing
+              history.resetHistoryNavigation();
+
+              // Let MicroPython handle the complete statement
+              mp_embed_exec_str(clean_input.c_str());
+            }
+
+            changeTerminalColor(replColors[1], true, global_mp_stream);
+          }
+
+          // Reset and show new prompt
+          editor.reset();
+          changeTerminalColor(replColors[1], true, global_mp_stream);
+          global_mp_stream->print(">>> ");
+          global_mp_stream->flush();
+        }
+
+      } else if (c == '\b' || c == 127) { // Backspace
+        if (editor.cursor_pos > 0) {
+          // Exit history mode when user starts editing
+          if (editor.in_history_mode) {
+            editor.in_history_mode = false;
+            history.resetHistoryNavigation();
+          }
+          char char_to_delete =
+              editor.current_input.charAt(editor.cursor_pos - 1);
+
+          if (char_to_delete == '\n') {
+            // Use the proper backspace over newline function
+            editor.backspaceOverNewline(global_mp_stream);
+          } else {
+            // Check if we're backspacing over a complete tab (4 spaces)
+            bool is_tab_backspace = false;
+            if (editor.cursor_pos >= 4) {
+              String potential_tab = editor.current_input.substring(
+                  editor.cursor_pos - 4, editor.cursor_pos);
+              if (potential_tab == "    ") {
+                // Check if these 4 spaces are at the start of a line or after
+                // other whitespace
+                int line_start = editor.current_input.lastIndexOf(
+                    '\n', editor.cursor_pos - 1);
+                line_start = (line_start >= 0) ? line_start + 1 : 0;
+                String line_before_cursor = editor.current_input.substring(
+                    line_start, editor.cursor_pos - 4);
+
+                // If line before cursor is all whitespace, treat as tab
+                bool all_whitespace = true;
+                for (int i = 0; i < line_before_cursor.length(); i++) {
+                  if (line_before_cursor.charAt(i) != ' ') {
+                    all_whitespace = false;
+                    break;
+                  }
+                }
+
+                if (all_whitespace) {
+                  is_tab_backspace = true;
+                  // Remove 4 spaces at once
+                  editor.current_input.remove(editor.cursor_pos - 4, 4);
+                  editor.cursor_pos -= 4;
+                  editor.redrawCurrentLine(global_mp_stream);
+                }
+              }
+            }
+
+            if (!is_tab_backspace) {
+              // Normal single character backspace
+              editor.current_input.remove(editor.cursor_pos - 1, 1);
+              editor.cursor_pos--;
+              editor.redrawCurrentLine(global_mp_stream);
+            }
+          }
+        }
+      } else if (c == '\t') { // TAB character
+        // Convert TAB to 4 spaces at cursor position
+        String spaces = "   ";
+        editor.current_input =
+            editor.current_input.substring(0, editor.cursor_pos) + spaces +
+            editor.current_input.substring(editor.cursor_pos);
+        editor.cursor_pos += 4;
+        changeTerminalColor(replColors[3], false, global_mp_stream);
+        global_mp_stream->print(spaces); // Show 4 spaces
+        global_mp_stream->flush();
+      } else if (c >= 32 && c <= 126) { // Printable characters
+        // Exit history mode when user starts editing
+        if (editor.in_history_mode) {
+          editor.in_history_mode = false;
+          history.resetHistoryNavigation();
+        }
+
+        // Insert character at cursor position
+        editor.current_input =
+            editor.current_input.substring(0, editor.cursor_pos) + (char)c +
+            editor.current_input.substring(editor.cursor_pos);
+        editor.cursor_pos++;
+
+        // Redraw from cursor position if we're in the middle of text
+        if (editor.cursor_pos < editor.current_input.length()) {
+          editor.redrawCurrentLine(global_mp_stream);
+        } else {
+          // Just echo the character if at end
+          changeTerminalColor(replColors[3], false, global_mp_stream);
+          global_mp_stream->write(c);
+          global_mp_stream->flush();
+        }
+      } else {
+        mp_repl_continue_with_input(editor.current_input.c_str());
+      }
+      // All other characters are ignored
     }
+  }
 }
 
 // Helper function to add complete Jumperless hardware module
 void addJumperlessPythonFunctions(void) {
-    if (!mp_initialized) {
-        return;
-    }
-    
-    // Execute the complete embedded JythonModule from your original implementation
-    const char* full_module = R"""(
-_on_hardware = True
+  if (!mp_initialized) {
+    return;
+  }
 
-# Check if native jumperless module is available
-try:
-    import jumperless
-    _native_available = True
-    print('✅ Native jumperless module available')
-except ImportError:
-    _native_available = False
-    print('⚠️  Native jumperless module not available - using software fallback')
-
-# Global variables for synchronous execution
-_sync_result_ready = False
-_sync_value = ''
-_sync_type = ''
-_sync_result = 0
-
-def _execute_sync(cmd):
-    """Execute a command synchronously and return the actual result"""
-    global _sync_result_ready, _sync_value, _sync_type, _sync_result
-    _sync_result_ready = False
-    print('SYNC_EXEC:' + cmd)
-    # Wait briefly for C code to process
-    try:
-        import time
-        time.sleep_ms(1)
-    except:
-        # Fallback: simple busy wait
-        for i in range(1000):
-            pass
-    
-    # Check multiple times with small delays
-    for attempt in range(10):
-        if _sync_result_ready:
-            if _sync_type == 'bool':
-                return _sync_value == 'True'
-            elif _sync_type == 'float':
-                return float(_sync_value)
-            elif _sync_type == 'int':
-                return int(_sync_value)
-            elif _sync_type == 'error':
-                raise RuntimeError(_sync_value)
-            else:
-                return _sync_value
-        # Small delay between checks
-        try:
-            import time
-            time.sleep_ms(1)
-        except:
-            for i in range(100):
-                pass
-    
-    # If we get here, sync failed
-    raise RuntimeError('Sync execution failed - timeout after 10 attempts')
-
-def _execute_command(cmd):
-    if _on_hardware:
-        return _execute_sync(cmd)
-    else:
-        print('>COMMAND: ' + cmd)
-        return '<SUCCESS: Command sent (external mode)'
-
-class DAC:
-    def set(self, channel, voltage, save=False):
-        cmd = 'dac(set, ' + str(channel) + ', ' + str(voltage) + ', save=' + str(save) + ')'
-        return _execute_command(cmd)
-    def get(self, channel):
-        cmd = 'dac(get, ' + str(channel) + ')'
-        return _execute_command(cmd)
-
-class ADC:
-    def get(self, channel):
-        cmd = 'adc(get, ' + str(channel) + ')'
-        return _execute_command(cmd)
-    def read(self, channel):
-        return self.get(channel)
-
-class GPIO:
-    def __init__(self):
-        self.HIGH = 'HIGH'
-        self.LOW = 'LOW'
-        self.OUTPUT = 'OUTPUT'
-        self.INPUT = 'INPUT'
-    def set(self, pin, value):
-        if isinstance(value, bool):
-            value = 'HIGH' if value else 'LOW'
-        elif isinstance(value, int):
-            value = 'HIGH' if value else 'LOW'
-        cmd = 'gpio(set, ' + str(pin) + ', ' + str(value) + ')'
-        return _execute_command(cmd)
-    def get(self, pin):
-        cmd = 'gpio(get, ' + str(pin) + ')'
-        return _execute_command(cmd)
-    def direction(self, pin, direction):
-        cmd = 'gpio(direction, ' + str(pin) + ', ' + str(direction) + ')'
-        return _execute_command(cmd)
-
-class Nodes:
-    def connect(self, node1, node2, save=False):
-        cmd = 'nodes(connect, ' + str(node1) + ', ' + str(node2) + ', save=' + str(save) + ')'
-        return _execute_command(cmd)
-    def disconnect(self, node1, node2):
-        cmd = 'nodes(remove, ' + str(node1) + ', ' + str(node2) + ')'
-        return _execute_command(cmd)
-    def remove(self, node1, node2):
-        return self.disconnect(node1, node2)
-    def clear(self):
-        cmd = 'nodes(clear)'
-        return _execute_command(cmd)
-
-class OLED:
-    def connect(self):
-        cmd = 'oled(connect)'
-        return _execute_command(cmd)
-    def disconnect(self):
-        cmd = 'oled(disconnect)'
-        return _execute_command(cmd)
-    def print(self, text, size=2):
-        cmd = 'oled(print, "' + str(text) + '", ' + str(size) + ')'
-        return _execute_command(cmd)
-    def clear(self):
-        cmd = 'oled(clear)'
-        return _execute_command(cmd)
-    def show(self):
-        cmd = 'oled(show)'
-        return _execute_command(cmd)
-
-class Arduino:
-    def reset(self):
-        cmd = 'arduino(reset)'
-        return _execute_command(cmd)
-    def flash(self):
-        cmd = 'arduino(flash)'
-        return _execute_command(cmd)
-
-class INA:
-    def get_current(self, sensor):
-        cmd = 'ina(getCurrent, ' + str(sensor) + ')'
-        return _execute_command(cmd)
-    def get_voltage(self, sensor):
-        cmd = 'ina(getVoltage, ' + str(sensor) + ')'
-        return _execute_command(cmd)
-    def get_power(self, sensor):
-        cmd = 'ina(getPower, ' + str(sensor) + ')'
-        return _execute_command(cmd)
-
-class Probe:
-    def tap(self, node):
-        cmd = 'probe(tap, ' + str(node) + ')'
-        return _execute_command(cmd)
-    def click(self, action='click'):
-        cmd = 'probe(' + str(action) + ')'
-        return _execute_command(cmd)
-
-class Clickwheel:
-    def up(self, clicks=1):
-        cmd = 'clickwheel(up, ' + str(clicks) + ')'
-        return _execute_command(cmd)
-    def down(self, clicks=1):
-        cmd = 'clickwheel(down, ' + str(clicks) + ')'
-        return _execute_command(cmd)
-    def press(self):
-        cmd = 'clickwheel(press)'
-        return _execute_command(cmd)
-
-# Create module instances
-dac = DAC()
-adc = ADC()
-ina = INA()
-gpio = GPIO()
-nodes = Nodes()
-oled = OLED()
-arduino = Arduino()
-probe = Probe()
-clickwheel = Clickwheel()
-
-class JL:
-    def __init__(self):
-        self.dac = dac
-        self.adc = adc
-        self.ina = ina
-        self.gpio = gpio
-        self.nodes = nodes
-        self.oled = oled
-        self.arduino = arduino
-        self.probe = probe
-        self.clickwheel = clickwheel
-    
-    def read_voltage(self, channel):
-        return self.adc.get(channel)
-    
-    def set_voltage(self, channel, voltage, save=False):
-        return self.dac.set(channel, voltage, save)
-    
-    def connect_nodes(self, node1, node2, save=False):
-        return self.nodes.connect(node1, node2, save)
-    
-    def display(self, text, size=2):
-        return self.oled.print(text, size)
-    
-    def help(self):
-        print('Jumperless MicroPython Module')
-        print('Main Namespace: jl.*')
-        print('Hardware Modules:')
-        print('  jl.dac.set(0, 2.5)      # Set DAC voltage')
-        print('  jl.adc.get(0)           # Read ADC')
-        print('  jl.ina.get_current(0)   # Read INA current')
-        print('  jl.gpio.set(5, "HIGH")  # Set GPIO')
-        print('  jl.nodes.connect(1, 5)  # Connect nodes')
-        print('  jl.oled.print("Hi")     # Display text')
-        print('  jl.arduino.reset()      # Reset Arduino')
-        print('  jl.clickwheel.up(1)     # Scroll up')
-        print('  jl.probe.tap(5)         # Tap probe on node 5')
-        print('')
-        print('Convenience methods:')
-        print('  jl.read_voltage(0)      # Quick ADC read')
-        print('  jl.set_voltage(0, 2.5)  # Quick DAC set')
-        print('  jl.connect_nodes(1, 5)  # Quick node connect')
-        print('')
-        return 'Help displayed'
-
-jl = JL()
-
-def help_jumperless():
-    return jl.help()
-
-def connect_nodes(node1, node2, save=False):
-    return nodes.connect(node1, node2, save)
-
-def set_voltage(channel, voltage, save=False):
-    return dac.set(channel, voltage, save)
-
-def read_voltage(channel):
-    return adc.get(channel)
-
-def display(text, size=2):
-    return oled.print(text, size)
-
-def reset_arduino():
-    return arduino.reset()
-
-// Simple helper functions
-def connect(node1, node2):
-    return nodes.connect(node1, node2)
-
-def disconnect(node1, node2):
-    return nodes.disconnect(node1, node2)
-
-def voltage(channel, volts):
-    return dac.set(channel, volts)
-
-def measure(channel):
-    return adc.get(channel)
-)""";
-
-    Serial.println("[MP] Loading complete Jumperless hardware module...");
-    mp_embed_exec_str(full_module);
-    Serial.println("[MP] Jumperless hardware module loaded successfully");
+  // Simple test - don't load the massive module during startup to avoid memory issues
+  mp_embed_exec_str(
+      "try:\n"
+      "    import jumperless\n"
+      "    print('✅ Native jumperless module available')\n"
+      "except ImportError:\n"
+      "    print('⚠️ Native jumperless module not available')\n");
 }
 
-// Simple execution function for one-off commands
-bool executePythonSimple(const char* code, char* response, size_t response_size) {
-    if (!mp_initialized) {
-        if (response) strncpy(response, "ERROR: MicroPython not initialized", response_size - 1);
-        return false;
-    }
-    
-    // Clear response buffer
-    memset(mp_response_buffer, 0, sizeof(mp_response_buffer));
-    
-    // Execute and capture any output
-    bool success = executePythonCodeProper(code);
-    
-    // Copy response if buffer provided
-    if (response && response_size > 0) {
-        if (success) {
-            strncpy(response, "SUCCESS", response_size - 1);
-        } else {
-            strncpy(response, "ERROR: Execution failed", response_size - 1);
-        }
-        response[response_size - 1] = '\0';
-    }
-    
-    return success;
+void addMicroPythonModules(bool time, bool machine, bool os, bool math, bool gc) {
+  if (!mp_initialized) {
+    return;
+  }
+  
+  if (time) {
+    mp_embed_exec_str("import time\n");
+    mp_embed_exec_str("print('✅ Time module imported successfully')\n");
+  }
+  if (machine) {
+    mp_embed_exec_str("import machine\n");
+    mp_embed_exec_str("print('✅ Machine module imported successfully')\n");
+  }
+  if (os) {
+    mp_embed_exec_str("import os\n");
+    mp_embed_exec_str("print('✅ OS module imported successfully')\n");
+  }
+  if (math) {
+    mp_embed_exec_str("import math\n");
+    mp_embed_exec_str("print('✅ Math module imported successfully')\n");
+  }
+  if (gc) {
+    mp_embed_exec_str("import gc\n");
+    mp_embed_exec_str("print('✅ GC module imported successfully')\n");
+  }
 }
 
-// Status functions
-bool isMicroPythonInitialized(void) {
-    return mp_initialized;
-}
-
-void printMicroPythonStatus(void) {
-    Serial.println("\n=== MicroPython Status ===");
-    Serial.printf("Initialized: %s\n", mp_initialized ? "Yes" : "No");
-    Serial.printf("REPL Active: %s\n", mp_repl_active ? "Yes" : "No");
-    Serial.printf("Heap Size: %d bytes\n", sizeof(mp_heap));
-    
-    if (mp_initialized) {
-        // Get memory info
-        mp_embed_exec_str("import gc; print(f'Free: {gc.mem_free()}, Used: {gc.mem_alloc()}')");
-    }
-    Serial.println("=========================\n");
-}
-
-// Test function to verify the native Jumperless module is working
-void testJumperlessNativeModule(void) {
-    if (!mp_initialized) {
-        Serial.println("[MP] Error: MicroPython not initialized for module test");
-        return;
-    }
-    
-    Serial.println("[MP] Testing native Jumperless module...");
-    
-    // Simple test to verify the module can be imported and functions are accessible
-    const char* test_code = R"""(
+const char *test_code = R"""(
 try:
     import jumperless
     print("✅ Native jumperless module imported successfully")
@@ -965,8 +1180,1451 @@ except ImportError as e:
 except Exception as e:
     print("❌ Error testing native jumperless module:", str(e))
 )""";
+// Simple execution function for one-off commands
+bool executePythonSimple(const char *code, char *response,
+                         size_t response_size) {
+  if (!mp_initialized) {
+    if (response)
+      strncpy(response, "ERROR: MicroPython not initialized",
+              response_size - 1);
+    return false;
+  }
 
-    Serial.println("[MP] Executing native module test...");
-    mp_embed_exec_str(test_code);
-    Serial.println("[MP] Native module test complete");
-} 
+  // Clear response buffer
+  memset(mp_response_buffer, 0, sizeof(mp_response_buffer));
+
+  // Execute and capture any output
+  bool success = executePythonCodeProper(code);
+
+  // Copy response if buffer provided
+  if (response && response_size > 0) {
+    if (success) {
+      global_mp_stream->println("[MP] Executing native module test...");
+      mp_embed_exec_str(test_code);
+      global_mp_stream->println("[MP] Native module test complete");
+    }
+  }
+
+  return success;
+}
+
+// Status functions
+bool isMicroPythonInitialized(void) { return mp_initialized; }
+
+void printMicroPythonStatus(void) {
+  global_mp_stream->println("\n=== MicroPython Status ===");
+  global_mp_stream->printf("Initialized: %s\n", mp_initialized ? "Yes" : "No");
+  global_mp_stream->printf("REPL Active: %s\n", mp_repl_active ? "Yes" : "No");
+  global_mp_stream->printf("Heap Size: %d bytes\n", sizeof(mp_heap));
+
+  if (mp_initialized) {
+    // Get memory info
+    mp_embed_exec_str(
+        "import gc; print(f'Free: {gc.mem_free()}, Used: {gc.mem_alloc()}')");
+  }
+  global_mp_stream->println("=========================\n");
+}
+
+// Test function to verify the native Jumperless module is working
+void testJumperlessNativeModule(void) {
+  if (!mp_initialized) {
+    global_mp_stream->println(
+        "[MP] Error: MicroPython not initialized for module test");
+    return;
+  }
+
+  global_mp_stream->println("[MP] Testing native Jumperless module...");
+
+  // Simple test to verify the module can be imported and functions are
+  // accessible
+
+  global_mp_stream->println("[MP] Executing native module test...");
+  mp_embed_exec_str(test_code);
+  global_mp_stream->println("[MP] Native module test complete");
+}
+
+// Test function to verify stream redirection is working
+void testStreamRedirection(Stream *newStream) {
+  if (!mp_initialized) {
+    global_mp_stream->println(
+        "[MP] Error: MicroPython not initialized for stream test");
+    return;
+  }
+
+  Stream *oldStream = global_mp_stream;
+
+  // Test output to original stream
+  global_mp_stream->println("[MP] Testing stream redirection...");
+  global_mp_stream->println("[MP] This should appear on the original stream");
+  mp_embed_exec_str("print('Python output to original stream')");
+
+  // Change to new stream using proper setter
+  setGlobalStream(newStream);
+  newStream->println(
+      "[MP] Stream changed - this should appear on the new stream");
+  mp_embed_exec_str("print('Python output to new stream')");
+
+  // Change back to original stream using proper setter
+  setGlobalStream(oldStream);
+  oldStream->println("[MP] Stream changed back - this should appear on the "
+                     "original stream again");
+  mp_embed_exec_str("print('Python output back to original stream')");
+
+  global_mp_stream->println("[MP] Stream redirection test complete");
+}
+
+// ScriptHistory method implementations
+void ScriptHistory::initFilesystem() {
+  // Note: FatFS should already be initialized by main application
+  // Do not call FatFS.begin() here as it can interfere with config loading
+  
+  // Create scripts directory if it doesn't exist
+  if (!FatFS.exists(scripts_dir)) {
+    if (!FatFS.mkdir(scripts_dir)) {
+      global_mp_stream->println("Failed to create scripts directory");
+      return;
+    }
+  }
+
+  // Load existing history from file
+  loadHistoryFromFile();
+
+  // Find the next available script number
+  findNextScriptNumber();
+}
+
+void ScriptHistory::addToHistory(const String &script) {
+  if (script.length() == 0)
+    return;
+
+  // Check if this command already exists anywhere in history
+  for (int i = 0; i < history_count; i++) {
+    if (history[i] == script) {
+      // Move this command to the end (most recent)
+      String temp = history[i];
+      for (int j = i; j < history_count - 1; j++) {
+        history[j] = history[j + 1];
+      }
+      history[history_count - 1] = temp;
+      current_history_index = -1; // Reset navigation
+      return;
+    }
+  }
+
+  // Shift history if full
+  if (history_count >= MAX_HISTORY) {
+    for (int i = 0; i < MAX_HISTORY - 1; i++) {
+      history[i] = history[i + 1];
+    }
+    history_count = MAX_HISTORY - 1;
+  }
+
+  history[history_count++] = script;
+  current_history_index = -1; // Reset navigation
+  saveHistoryToFile();
+}
+
+String ScriptHistory::getPreviousCommand() {
+  if (history_count == 0)
+    return "";
+
+  if (current_history_index == -1) {
+    current_history_index = history_count - 1;
+  } else if (current_history_index > 0) {
+    current_history_index--;
+  }
+  // If already at the oldest command, stay there
+
+  return history[current_history_index];
+}
+
+String ScriptHistory::getNextCommand() {
+  if (history_count == 0 || current_history_index == -1)
+    return "";
+
+  if (current_history_index < history_count - 1) {
+    current_history_index++;
+    return history[current_history_index];
+  } else {
+    // Moving forward past the newest command returns to original input
+    current_history_index = -1;
+    return ""; // Return to current input
+  }
+}
+
+String ScriptHistory::getCurrentHistoryCommand() {
+  if (current_history_index >= 0 && current_history_index < history_count) {
+    return history[current_history_index];
+  }
+  return "";
+}
+
+void ScriptHistory::resetHistoryNavigation() { 
+  current_history_index = -1; 
+}
+
+void ScriptHistory::clearHistory() {
+  history_count = 0;
+  current_history_index = -1;
+  saveHistoryToFile();
+}
+
+String ScriptHistory::getLastExecutedCommand() {
+  if (history_count == 0)
+    return "";
+  return history[history_count - 1]; // Return most recent without affecting navigation
+}
+
+String ScriptHistory::getLastSavedScript() { 
+  return last_saved_script; 
+}
+
+int ScriptHistory::getNextScriptNumber() { 
+  return next_script_number; 
+}
+
+int ScriptHistory::getNumberedScriptsCount() { 
+  return numbered_scripts_count; 
+}
+
+String ScriptHistory::getNumberedScript(int index) {
+  if (index >= 0 && index < numbered_scripts_count) {
+    return numbered_scripts[index];
+  }
+  return "";
+}
+
+bool ScriptHistory::saveScript(const String &script, const String &filename) {
+  String fname = filename;
+  if (fname.length() == 0) {
+    // Generate sequential filename
+    fname = "script_" + String(next_script_number);
+
+    // Make sure this filename doesn't already exist, increment if needed
+    String fullPath = scripts_dir + "/" + fname + ".py";
+    while (FatFS.exists(fullPath)) {
+      next_script_number++;
+      fname = "script_" + String(next_script_number);
+      fullPath = scripts_dir + "/" + fname + ".py";
+    }
+    next_script_number++; // Increment for next time
+  }
+  if (!fname.endsWith(".py")) {
+    fname += ".py";
+  }
+
+  String fullPath = scripts_dir + "/" + fname;
+  File file = FatFS.open(fullPath, "w");
+  if (!file) {
+    global_mp_stream->println("Failed to create script file: " + fullPath);
+    return false;
+  }
+
+  file.print(script);
+  file.close();
+
+  last_saved_script = fname; // Store for easy reference
+
+  // Add to saved scripts list (avoid duplicates)
+  bool already_exists = false;
+  for (int i = 0; i < saved_scripts_count; i++) {
+    if (saved_scripts[i] == fname) {
+      already_exists = true;
+      break;
+    }
+  }
+
+  if (!already_exists && saved_scripts_count < 10) {
+    saved_scripts[saved_scripts_count++] = fname;
+  }
+
+  global_mp_stream->println("Script saved as: " + fullPath);
+  addToHistory(script); // Also add to memory history
+  return true;
+}
+
+String ScriptHistory::loadScript(const String &filename) {
+  String fullPath = scripts_dir + "/" + filename;
+  if (!filename.endsWith(".py")) {
+    fullPath += ".py";
+  }
+
+  if (!FatFS.exists(fullPath)) {
+    global_mp_stream->println("Script not found: " + fullPath);
+    return "";
+  }
+
+  File file = FatFS.open(fullPath, "r");
+  if (!file) {
+    global_mp_stream->println("Failed to open script file: " + fullPath);
+    return "";
+  }
+
+  String content = file.readString();
+  file.close();
+
+  global_mp_stream->println("Script loaded: " + fullPath);
+  return content;
+}
+
+bool ScriptHistory::deleteScript(const String &filename) {
+  String fullPath = scripts_dir + "/" + filename;
+
+  if (filename.startsWith("history")) {
+    fullPath = scripts_dir + "/history.txt";
+    global_mp_stream->println("Deleting history file: " + fullPath);
+    clearHistory();
+    return true;
+  }
+
+
+  if (!filename.endsWith(".py")) {
+    //fullPath += ".py";
+  }
+
+  if (!FatFS.exists(fullPath)) {
+    global_mp_stream->println("Script not found: " + fullPath);
+    return false;
+  }
+
+  if (FatFS.remove(fullPath)) {
+    // Remove from saved scripts tracking
+    for (int i = 0; i < saved_scripts_count; i++) {
+      String saved_name = saved_scripts[i];
+      if (!saved_name.endsWith(".py")) {
+        //saved_name += ".py";
+      }
+      String check_name = filename;
+      if (!check_name.endsWith(".py")) {
+       // check_name += ".py";
+      }
+
+      if (saved_name == check_name) {
+        // Shift remaining scripts down
+        for (int j = i; j < saved_scripts_count - 1; j++) {
+          saved_scripts[j] = saved_scripts[j + 1];
+        }
+        saved_scripts_count--;
+        break;
+      }
+    }
+
+    global_mp_stream->println("Script deleted: " + fullPath);
+    return true;
+  } else {
+    global_mp_stream->println("Failed to delete script: " + fullPath);
+    return false;
+  }
+}
+
+void ScriptHistory::listScripts() {
+  changeTerminalColor(replColors[9], false, global_mp_stream);
+
+  // Reset numbered scripts mapping
+  numbered_scripts_count = 0;
+
+  // Show recent command history (without numbers)
+  changeTerminalColor(replColors[6], false, global_mp_stream);
+  global_mp_stream->println("\n\rRecent Commands:");
+  changeTerminalColor(replColors[9], false, global_mp_stream);
+  for (int i = history_count - 1; i >= 0 && i >= history_count - 5;
+       i--) { // Show last 5
+    String history_line = history[i].substring(0, 60);
+    history_line.replace("\n", "\n\r");
+    if (history_line.length() > 60)
+      history_line += "...";
+    global_mp_stream->printf("   %s\n\r", history_line.c_str());
+    if (history[i].length() > 60)
+      global_mp_stream->println("...");
+  }
+  if (history_count == 0) {
+    global_mp_stream->println("   No commands in history");
+  }
+
+  // Show saved script files with numbers
+  changeTerminalColor(replColors[6], false, global_mp_stream);
+  global_mp_stream->println("\n\rSaved Scripts:");
+  changeTerminalColor(replColors[8], false, global_mp_stream);
+  if (!FatFS.exists(scripts_dir)) {
+    global_mp_stream->println("   No scripts directory");
+    return;
+  }
+
+  int script_count = 0;
+
+  // First, show scripts we know we saved in this session
+  for (int i = 0; i < saved_scripts_count; i++) {
+    String fullPath = scripts_dir + "/" + saved_scripts[i];
+    if (!saved_scripts[i].endsWith(".py")) {
+      fullPath += ".py";
+    }
+
+    if (FatFS.exists(fullPath)) {
+      File file = FatFS.open(fullPath, "r");
+      if (file) {
+        if (numbered_scripts_count < 20) {
+          numbered_scripts[numbered_scripts_count] = saved_scripts[i];
+          String display_name = saved_scripts[i];
+          if (!display_name.endsWith(".py")) {
+            display_name += ".py";
+          }
+          global_mp_stream->printf("   %d. %s (%d bytes) [recent]\n\r",
+                                   numbered_scripts_count + 1,
+                                   display_name.c_str(), file.size());
+          numbered_scripts_count++;
+          script_count++;
+        }
+        file.close();
+      }
+    }
+  }
+
+  // Check for sequential numbered scripts that aren't tracked in memory
+  for (int i = 1; i <= 50; i++) { // Check script_1.py through script_50.py
+    String script_name = "script_" + String(i);
+    String test_script = scripts_dir + "/" + script_name + ".py";
+
+    if (FatFS.exists(test_script)) {
+      // Check if we already listed this one
+      bool already_listed = false;
+      for (int j = 0; j < saved_scripts_count; j++) {
+        if (saved_scripts[j] == script_name ||
+            (saved_scripts[j] + ".py") == (script_name + ".py")) {
+          already_listed = true;
+          break;
+        }
+      }
+
+      if (!already_listed && numbered_scripts_count < 20) {
+        File file = FatFS.open(test_script, "r");
+        if (file) {
+          numbered_scripts[numbered_scripts_count] = script_name;
+          global_mp_stream->printf("   %d. %s.py (%d bytes)\n\r",
+                                   numbered_scripts_count + 1,
+                                   script_name.c_str(), file.size());
+          numbered_scripts_count++;
+          script_count++;
+          file.close();
+        }
+      }
+    }
+  }
+
+  // Also check for some common named scripts that might exist
+  String common_names[] = {"test",  "demo", "main",
+                           "setup", "loop", "example"};
+  int num_common = sizeof(common_names) / sizeof(common_names[0]);
+
+  for (int i = 0; i < num_common; i++) {
+    String test_script = scripts_dir + "/" + common_names[i] + ".py";
+    if (FatFS.exists(test_script)) {
+      // Check if we already listed this one
+      bool already_listed = false;
+      for (int j = 0; j < saved_scripts_count; j++) {
+        if (saved_scripts[j] == common_names[i] ||
+            (saved_scripts[j] + ".py") == (common_names[i] + ".py")) {
+          already_listed = true;
+          break;
+        }
+      }
+
+      if (!already_listed && numbered_scripts_count < 20) {
+        File file = FatFS.open(test_script, "r");
+        if (file) {
+          numbered_scripts[numbered_scripts_count] = common_names[i];
+          global_mp_stream->printf("   %d. %s.py (%d bytes)\n\r",
+                                   numbered_scripts_count + 1,
+                                   common_names[i].c_str(), file.size());
+          numbered_scripts_count++;
+          script_count++;
+          file.close();
+        }
+      }
+    }
+  }
+
+  if (script_count == 0) {
+    global_mp_stream->println("   No saved scripts found");
+    global_mp_stream->println(
+        "   Use 'save' or 'save scriptname' to save scripts");
+  } else {
+    global_mp_stream->printf(
+        "\n   Type 'load <number>' or 'load <name>' to load a script\n\r");
+  }
+
+  global_mp_stream->println();
+}
+
+void ScriptHistory::findNextScriptNumber() {
+  // Scan for existing script_X.py files to find the next available number
+  next_script_number = 1;
+  for (int i = 1; i <= 100; i++) { // Check up to script_100.py
+    String test_script = scripts_dir + "/script_" + String(i) + ".py";
+    if (FatFS.exists(test_script)) {
+      next_script_number = i + 1; // Set to next available number
+    } else {
+      break; // Found first gap, use it
+    }
+  }
+}
+
+void ScriptHistory::saveHistoryToFile() {
+  String historyPath = scripts_dir + "/history.txt";
+  File file = FatFS.open(historyPath, "w");
+  if (!file) {
+    return; // Fail silently to avoid spam
+  }
+
+  for (int i = 0; i < history_count; i++) {
+    file.println("===SCRIPT_START===");
+    file.print(history[i]);
+    file.println("\n===SCRIPT_END===");
+  }
+  file.close();
+}
+
+void ScriptHistory::loadHistoryFromFile() {
+  String historyPath = scripts_dir + "/history.txt";
+  if (!FatFS.exists(historyPath)) {
+    return; // No history file exists yet
+  }
+
+  File file = FatFS.open(historyPath, "r");
+  if (!file) {
+    return; // Fail silently
+  }
+
+  String content = file.readString();
+  file.close();
+
+  // Parse saved history
+  int start = 0;
+  while (start < content.length()) {
+    int script_start = content.indexOf("===SCRIPT_START===", start);
+    if (script_start == -1)
+      break;
+
+    int script_end = content.indexOf("===SCRIPT_END===", script_start);
+    if (script_end == -1)
+      break;
+
+    script_start += 18; // Length of "===SCRIPT_START==="
+    if (content.charAt(script_start) == '\n')
+      script_start++;
+
+    String script = content.substring(script_start, script_end);
+    script.trim();
+
+    if (script.length() > 0 && history_count < MAX_HISTORY) {
+      history[history_count++] = script;
+    }
+
+    start = script_end + 16; // Length of "===SCRIPT_END==="
+  }
+}
+
+// REPLEditor method implementations
+void REPLEditor::getCurrentLine(String &line, int &line_start, int &cursor_in_line) {
+  int last_newline = current_input.lastIndexOf('\n');
+  if (last_newline >= 0) {
+    line = current_input.substring(last_newline + 1);
+    line_start = last_newline + 1;
+  } else {
+    line = current_input;
+    line_start = 0;
+  }
+  cursor_in_line = cursor_pos - line_start;
+}
+
+void REPLEditor::moveCursorToColumn(Stream *stream, int column) {
+  stream->print("\033[");
+  stream->print(column + 1); // Terminal columns are 1-based
+  stream->print("G");
+  stream->flush();
+}
+
+void REPLEditor::clearToEndOfLine(Stream *stream) {
+  stream->print("\033[K"); // CSI K - Erase to Right
+  stream->flush();
+}
+
+void REPLEditor::clearEntireLine(Stream *stream) {
+  stream->print("\033[2K"); // CSI 2 K - Erase All
+  stream->flush();
+}
+
+void REPLEditor::clearScreen(Stream *stream) {
+  stream->print("\033[2J"); // CSI 2 J - Erase All
+  stream->print("\033[H");  // CSI H - Home cursor
+  stream->flush();
+}
+
+void REPLEditor::clearBelow(Stream *stream) {
+  stream->print("\033[J"); // CSI J - Erase Below
+  stream->flush();
+}
+
+void REPLEditor::moveCursorUp(Stream *stream, int lines) {
+  if (lines > 1) {
+    stream->print("\033[");
+    stream->print(lines);
+    stream->print("A");
+  } else {
+    stream->print("\033[A");
+  }
+  stream->flush();
+}
+
+void REPLEditor::moveCursorDown(Stream *stream, int lines) {
+  if (lines > 1) {
+    stream->print("\033[");
+    stream->print(lines);
+    stream->print("B");
+  } else {
+    stream->print("\033[B");
+  }
+  stream->flush();
+}
+
+void REPLEditor::redrawCurrentLine(Stream *stream) {
+  String current_line;
+  int line_start, cursor_in_line;
+  getCurrentLine(current_line, line_start, cursor_in_line);
+
+  // Clear entire current line and start fresh
+  stream->print("\r");
+  clearEntireLine(stream);
+
+  // Draw prompt
+  if (in_multiline_mode) {
+    changeTerminalColor(replColors[1], true, stream);
+    stream->print("... ");
+  } else {
+    changeTerminalColor(replColors[1], true, stream);
+    stream->print(">>> ");
+  }
+
+  // Draw line content
+  changeTerminalColor(replColors[3], false, stream);
+  stream->print(current_line);
+
+  // Position cursor correctly
+  int prompt_length = 4; // ">>> " or "... " both are 4 chars
+  moveCursorToColumn(stream, prompt_length + cursor_in_line);
+}
+
+void REPLEditor::navigateToLine(Stream *stream, int target_line) {
+  // Split input into lines
+  String lines = current_input;
+  int line_count = 1;
+  for (int i = 0; i < lines.length(); i++) {
+    if (lines.charAt(i) == '\n')
+      line_count++;
+  }
+
+  // Find current line number
+  int current_line_num = 1;
+  for (int i = 0; i < cursor_pos; i++) {
+    if (current_input.charAt(i) == '\n')
+      current_line_num++;
+  }
+
+  if (target_line < 1 || target_line > line_count)
+    return;
+
+  int line_diff = target_line - current_line_num;
+  if (line_diff > 0) {
+    moveCursorDown(stream, line_diff);
+  } else if (line_diff < 0) {
+    moveCursorUp(stream, -line_diff);
+  }
+}
+
+void REPLEditor::backspaceOverNewline(Stream *stream) {
+  if (cursor_pos > 0 && current_input.charAt(cursor_pos - 1) == '\n') {
+    // Remove the newline
+    current_input.remove(cursor_pos - 1, 1);
+    cursor_pos--;
+
+    // Check if we're leaving multiline mode
+    if (current_input.indexOf('\n') == -1) {
+      in_multiline_mode = false;
+    }
+
+    // Move cursor up one line
+    moveCursorUp(stream);
+
+    // Find the end of the previous line
+    String current_line;
+    int line_start, cursor_in_line;
+    getCurrentLine(current_line, line_start, cursor_in_line);
+
+    // Move to end of previous line
+    int prompt_length = in_multiline_mode ? 4 : 4;
+    moveCursorToColumn(stream, prompt_length + current_line.length());
+  }
+}
+
+void REPLEditor::loadFromHistory(Stream *stream, const String &historical_input) {
+  if (!in_history_mode) {
+    original_input = current_input; // Save current input
+    in_history_mode = true;
+  }
+
+  current_input = historical_input;
+  cursor_pos = current_input.length();
+  in_multiline_mode = (current_input.indexOf('\n') >= 0);
+  escape_state = 0; // Reset escape state when loading new input
+
+  // Redraw the entire input
+  redrawFullInput(stream);
+
+  // Small delay to prevent input processing issues
+  delayMicroseconds(100);
+}
+
+void REPLEditor::exitHistoryMode(Stream *stream) {
+  if (in_history_mode) {
+    current_input = original_input;
+    cursor_pos = current_input.length();
+    in_multiline_mode = (current_input.indexOf('\n') >= 0);
+    in_history_mode = false;
+    escape_state = 0; // Reset escape state
+    redrawFullInput(stream);
+  }
+}
+
+void REPLEditor::redrawFullInput(Stream *stream) {
+  // Clear any previously displayed lines by moving up and clearing
+  if (last_displayed_lines > 0) {
+    // Move cursor up to the beginning of the first displayed line
+    moveCursorUp(stream, last_displayed_lines);
+  }
+
+  // Move to beginning of current line and clear everything below
+  stream->print("\r"); // Go to start of current line
+  clearBelow(stream);  // Clear everything below cursor
+
+  // If we have no input, just show prompt
+  if (current_input.length() == 0) {
+    changeTerminalColor(replColors[1], true, stream);
+    stream->print(">>> ");
+    stream->flush();
+    last_displayed_lines = 0;
+    return;
+  }
+
+  // Count total lines in new input
+  int new_line_count = 0;
+  for (int i = 0; i < current_input.length(); i++) {
+    if (current_input.charAt(i) == '\n') {
+      new_line_count++;
+    }
+  }
+
+  // Split input into lines for display
+  String lines = current_input;
+  int line_start = 0;
+  int current_line_num = 0;
+  int lines_printed = 0;
+
+  // Display each line with proper prompt
+  for (int i = 0; i <= lines.length(); i++) {
+    if (i == lines.length() || lines.charAt(i) == '\n') {
+      String line = lines.substring(line_start, i);
+
+      // Show appropriate prompt
+      if (current_line_num == 0) {
+        changeTerminalColor(replColors[1], true, stream);
+        stream->print(">>> ");
+      } else {
+        changeTerminalColor(replColors[1], true, stream);
+        stream->print("... ");
+      }
+
+      // Show line content
+      changeTerminalColor(replColors[3], false, stream);
+      stream->print(line);
+      clearToEndOfLine(stream); // Clear any trailing characters
+
+      // Add newline if not the last line
+      if (i < lines.length()) {
+        stream->println();
+        lines_printed++;
+      }
+
+      line_start = i + 1;
+      current_line_num++;
+    }
+  }
+
+  // Update tracking for next redraw
+  last_displayed_lines = new_line_count;
+
+  // Position cursor at the end of input
+  cursor_pos = current_input.length();
+  stream->flush();
+}
+
+void REPLEditor::reset() {
+  current_input = "";
+  cursor_pos = 0;
+  in_multiline_mode = false;
+  first_run = true;
+  escape_state = 0;
+  original_input = "";
+  in_history_mode = false;
+  // Don't reset multiline mode settings - preserve user's choice
+  // multiline_override, multiline_forced_on, multiline_forced_off should persist
+  last_displayed_lines = 0;
+}
+
+void REPLEditor::fullReset() {
+  current_input = "";
+  cursor_pos = 0;
+  in_multiline_mode = false;
+  first_run = true;
+  escape_state = 0;
+  original_input = "";
+  in_history_mode = false;
+  multiline_override = false;
+  multiline_forced_on = false;
+  multiline_forced_off = false;
+  last_displayed_lines = 0;
+}
+
+void REPLEditor::enterPasteMode(Stream *stream) {
+  changeTerminalColor(replColors[5], true, stream);
+  stream->println("Paste Mode - Enter your code, then type 'END' "
+                            "on a new line to finish:");
+  changeTerminalColor(replColors[12], false, stream);
+  stream->println("(Ctrl+C to cancel)");
+
+  String pasted_content = "";
+  String current_line = "";
+  bool paste_complete = false;
+
+  changeTerminalColor(replColors[3], false, stream);
+
+  while (!paste_complete) {
+    if (stream->available()) {
+      int c = stream->read();
+
+      // Handle Ctrl+C (cancel paste)
+      if (c == 3) {
+        stream->println("^C");
+        stream->println("Paste cancelled.");
+        return;
+      }
+
+      // Handle Enter/newline
+      if (c == '\r' || c == '\n') {
+        stream->println(); // Echo newline
+
+        // Check if user typed END to finish
+        String trimmed_line = current_line;
+        trimmed_line.trim();
+        if (trimmed_line == "END") {
+          paste_complete = true;
+        } else {
+          // Add line to pasted content
+          if (pasted_content.length() > 0) {
+            pasted_content += "\n";
+          }
+          pasted_content += current_line;
+          current_line = "";
+        }
+      } else if (c == '\b' || c == 127) { // Backspace
+        if (current_line.length() > 0) {
+          current_line.remove(current_line.length() - 1);
+          stream->print("\b \b"); // Erase character
+        }
+      } else if ((c >= 32 && c <= 126) || c == '\t') { // Printable characters
+        current_line += (char)c;
+        stream->write(c); // Echo character
+      }
+      stream->flush();
+    }
+    delayMicroseconds(100);
+  }
+
+  if (pasted_content.length() > 0) {
+    // Clean up the pasted content
+    pasted_content.replace("\r\n", "\n"); // Windows line endings
+    pasted_content.replace("\r", "\n");   // Mac line endings
+    pasted_content.replace("\t", "    "); // Convert tabs to spaces
+
+    // Replace current input with pasted content
+    current_input = pasted_content;
+    cursor_pos = current_input.length();
+    in_multiline_mode = (current_input.indexOf('\n') >= 0);
+
+    // Show completion message and options
+    changeTerminalColor(replColors[5], true, stream);
+    stream->println("Paste complete (" +
+                              String(pasted_content.length()) +
+                              " characters)");
+
+    changeTerminalColor(replColors[7], false, stream);
+    stream->println("Options:");
+    stream->println("  [Enter] - Execute pasted code");
+    stream->println("  save    - Save pasted code as script");
+    stream->println("  edit    - Edit pasted code");
+    stream->println();
+
+    // Redraw the content
+    redrawFullInput(stream);
+  } else {
+    changeTerminalColor(replColors[4], true, stream);
+    stream->println("No content pasted.");
+    changeTerminalColor(replColors[1], true, stream);
+    stream->print(">>> ");
+    stream->flush();
+  }
+}
+
+// New functions for single command execution from main.cpp
+
+
+char result_buffer[64];
+
+void getMicroPythonCommandFromStream(Stream *stream) {
+  String command = "";
+  while (stream->available()) {
+    command += (char)stream->read();
+  }
+  command.trim();
+  
+  if (command.length() > 0) {
+    bool success = executeSinglePythonCommandFormatted(command.c_str(), result_buffer, sizeof(result_buffer));
+    stream->printf(result_buffer);
+  }
+}
+
+/**
+ * Initialize MicroPython quietly without any output
+ * Returns true if successful, false if failed
+ */
+bool initMicroPythonQuiet(void) {
+  if (mp_initialized) {
+    return true;
+  }
+
+  // Store original stream and redirect to null
+  Stream *original_stream = global_mp_stream;
+  global_mp_stream = nullptr;
+  global_mp_stream_ptr = nullptr;
+
+  // Get proper stack pointer
+  char stack_dummy;
+  char *stack_top = &stack_dummy;
+
+  // Initialize MicroPython silently
+  mp_embed_init(mp_heap, sizeof(mp_heap), stack_top);
+  mp_initialized = true;
+  mp_repl_active = false;
+
+  // Restore original stream
+  global_mp_stream = original_stream;
+  global_mp_stream_ptr = (void *)original_stream;
+  
+  // Import the jumperless module silently
+  // This ensures jumperless functions are available for single commands
+  mp_embed_exec_str("import jumperless");
+  
+  return true;
+}
+
+// Function output type enumeration
+enum FunctionOutputType {
+  OUTPUT_NONE,           // No output formatting
+  OUTPUT_VOLTAGE,        // Format as voltage with V unit
+  OUTPUT_CURRENT,        // Format as current with mA unit  
+  OUTPUT_POWER,          // Format as power with mW unit
+  OUTPUT_GPIO_STATE,     // Format as HIGH/LOW
+  OUTPUT_GPIO_DIR,       // Format as INPUT/OUTPUT
+  OUTPUT_GPIO_PULL,      // Format as PULLUP/NONE/PULLDOWN
+  OUTPUT_BOOL_CONNECTED, // Format as CONNECTED/DISCONNECTED
+  OUTPUT_BOOL_YESNO,     // Format as YES/NO
+  OUTPUT_COUNT,          // Format as simple number
+  OUTPUT_FLOAT           // Format as float with precision
+};
+
+// Function type mapping structure
+struct FunctionTypeMap {
+  const char* function_name;
+  FunctionOutputType output_type;
+};
+
+/**
+ * Global mapping of function names to their output types for formatted printing
+ */
+static const FunctionTypeMap function_type_map[] = {
+  // DAC functions
+  {"dac_set", OUTPUT_NONE},
+  {"dac_get", OUTPUT_VOLTAGE},
+  
+  // ADC functions  
+  {"adc_get", OUTPUT_VOLTAGE},
+  
+  // INA functions
+  {"ina_get_current", OUTPUT_CURRENT},
+  {"ina_get_voltage", OUTPUT_VOLTAGE},
+  {"ina_get_bus_voltage", OUTPUT_VOLTAGE},
+  {"ina_get_power", OUTPUT_POWER},
+  
+  // GPIO functions
+  {"gpio_set", OUTPUT_NONE},
+  {"gpio_get", OUTPUT_GPIO_STATE},
+  {"gpio_set_dir", OUTPUT_NONE},
+  {"gpio_get_dir", OUTPUT_GPIO_DIR},
+  {"gpio_set_pull", OUTPUT_NONE},
+  {"gpio_get_pull", OUTPUT_GPIO_PULL},
+  
+  // Node functions
+  {"connect", OUTPUT_BOOL_CONNECTED},
+  {"disconnect", OUTPUT_NONE},
+  {"nodes_clear", OUTPUT_NONE},
+  {"is_connected", OUTPUT_BOOL_CONNECTED},
+  
+  // OLED functions
+  {"oled_print", OUTPUT_NONE},
+  {"oled_clear", OUTPUT_NONE},
+  {"oled_show", OUTPUT_NONE},
+  {"oled_connect", OUTPUT_BOOL_YESNO},
+  {"oled_disconnect", OUTPUT_NONE},
+  
+  // Other functions
+  {"arduino_reset", OUTPUT_NONE},
+  {"probe_tap", OUTPUT_NONE},
+  {"clickwheel_up", OUTPUT_NONE},
+  {"clickwheel_down", OUTPUT_NONE},
+  {"clickwheel_press", OUTPUT_NONE},
+  {"run_app", OUTPUT_NONE},
+  {"help", OUTPUT_NONE},
+  
+  {nullptr, OUTPUT_NONE} // End marker
+};
+
+/**
+ * List of jumperless module function names for automatic prefix detection
+ */
+static const char* jumperless_functions[] = {
+  // DAC functions
+  "dac_set", "dac_get",
+  // ADC functions  
+  "adc_get",
+  // INA functions
+  "ina_get_current", "ina_get_voltage", "ina_get_bus_voltage", "ina_get_power",
+  // GPIO functions
+  "gpio_set", "gpio_get", "gpio_set_dir", "gpio_get_dir", "gpio_set_pull", "gpio_get_pull",
+  // Node functions
+  "connect", "disconnect", "nodes_clear", "is_connected",
+  // OLED functions
+  "oled_print", "oled_clear", "oled_show", "oled_connect", "oled_disconnect",
+  // Other functions
+  "arduino_reset", "probe_tap", "clickwheel_up", "clickwheel_down", "clickwheel_press", "run_app", "help",
+  nullptr // End marker
+};
+
+/**
+ * Check if a function name is a jumperless module function
+ */
+bool isJumperlessFunction(const char* function_name) {
+  for (int i = 0; jumperless_functions[i] != nullptr; i++) {
+    if (strcmp(function_name, jumperless_functions[i]) == 0) {
+      return true;
+    }
+  }
+  return false;
+}
+
+/**
+ * Get the output type for a function name
+ */
+FunctionOutputType getFunctionOutputType(const char* function_name) {
+  for (int i = 0; function_type_map[i].function_name != nullptr; i++) {
+    if (strcmp(function_type_map[i].function_name, function_name) == 0) {
+      return function_type_map[i].output_type;
+    }
+  }
+  return OUTPUT_NONE;
+}
+
+/**
+ * Extract function name from a command string
+ * e.g., "gpio_get(2)" -> "gpio_get"
+ */
+String extractFunctionName(const String& command) {
+  int paren_pos = command.indexOf('(');
+  if (paren_pos == -1) {
+    return command; // No parentheses found
+  }
+  
+  String func_name = command.substring(0, paren_pos);
+  func_name.trim();
+  
+  // Remove jumperless. prefix if present
+  if (func_name.startsWith("jumperless.")) {
+    func_name = func_name.substring(11); // Remove "jumperless."
+  }
+  
+  return func_name;
+}
+
+/**
+ * Format a result value based on the function output type
+ */
+String formatResult(float value, FunctionOutputType output_type) {
+  switch (output_type) {
+    case OUTPUT_VOLTAGE:
+      return String(value, 3) + "V";
+      
+    case OUTPUT_CURRENT:
+      if (value >= 1000.0f) {
+        return String(value / 1000.0f, 3) + "A";
+      } else {
+        return String(value, 1) + "mA";
+      }
+      
+    case OUTPUT_POWER:
+      if (value >= 1000.0f) {
+        return String(value / 1000.0f, 3) + "W";
+      } else {
+        return String(value, 1) + "mW";
+      }
+      
+    case OUTPUT_GPIO_STATE:
+      return (value != 0.0f) ? "HIGH" : "LOW";
+      
+    case OUTPUT_GPIO_DIR:
+      return (value != 0.0f) ? "OUTPUT" : "INPUT";
+      
+    case OUTPUT_GPIO_PULL:
+      if (value > 0.5f) return "PULLUP";
+      else if (value < -0.5f) return "PULLDOWN";
+      else return "NONE";
+      
+    case OUTPUT_BOOL_CONNECTED:
+      return (value != 0.0f) ? "CONNECTED" : "DISCONNECTED";
+      
+    case OUTPUT_BOOL_YESNO:
+      return (value != 0.0f) ? "YES" : "NO";
+      
+    case OUTPUT_COUNT:
+      return String((int)value);
+      
+    case OUTPUT_FLOAT:
+      return String(value, 3);
+      
+    case OUTPUT_NONE:
+    default:
+      return "OK";
+  }
+}
+
+/**
+ * Parse a command and add jumperless. prefix if needed
+ * Returns a new String with the parsed command
+ */
+String parseCommandWithPrefix(const char* command) {
+  String cmd = String(command);
+  cmd.trim();
+  
+  // Skip if command is empty
+  if (cmd.length() == 0) {
+    return cmd;
+  }
+  
+  // Skip if command already has jumperless. prefix
+  if (cmd.startsWith("jumperless.")) {
+    return cmd;
+  }
+  
+  // Skip if command starts with known Python keywords or constructs
+  if (cmd.startsWith("import ") || cmd.startsWith("from ") || 
+      cmd.startsWith("print") || cmd.startsWith("if ") ||
+      cmd.startsWith("for ") || cmd.startsWith("while ") ||
+      cmd.startsWith("def ") || cmd.startsWith("class ") ||
+      cmd.startsWith("try:") || cmd.startsWith("except") ||
+      cmd.startsWith("#") || cmd.startsWith("\"") ||
+      cmd.startsWith("'")) {
+    return cmd;
+  }
+  
+  // Find the function name (everything before the first '(')
+  int paren_pos = cmd.indexOf('(');
+  if (paren_pos == -1) {
+    // No parentheses - might be a simple function call or variable
+    // Check if it's a jumperless function
+    if (isJumperlessFunction(cmd.c_str())) {
+      return "jumperless." + cmd;
+    }
+    return cmd;
+  }
+  
+  // Extract function name
+  String function_name = cmd.substring(0, paren_pos);
+  function_name.trim();
+  
+  // Check if it's a jumperless function
+  if (isJumperlessFunction(function_name.c_str())) {
+    return "jumperless." + cmd;
+  }
+  
+  return cmd;
+}
+
+/**
+ * Execute a single MicroPython command with automatic initialization and prefix handling
+ * This function can be called from main.cpp
+ * 
+ * @param command The command to execute (e.g., "gpio_get(2)" or "dac_set(0, 3.3)")
+ * @param result_buffer Optional buffer to store string result (can be nullptr)
+ * @param buffer_size Size of result buffer
+ * @return true if command executed successfully, false otherwise
+ */
+bool executeSinglePythonCommand(const char* command, char* result_buffer, size_t buffer_size) {
+  // Initialize quietly if needed
+  if (!mp_initialized) {
+    if (!initMicroPythonQuiet()) {
+      if (result_buffer && buffer_size > 0) {
+        strncpy(result_buffer, "ERROR: Failed to initialize MicroPython", buffer_size - 1);
+        result_buffer[buffer_size - 1] = '\0';
+      }
+      return false;
+    }
+  }
+  
+  // Parse command and add prefix if needed
+  String parsed_command = parseCommandWithPrefix(command);
+  
+  // Clear result buffer
+  if (result_buffer && buffer_size > 0) {
+    memset(result_buffer, 0, buffer_size);
+  }
+  
+  bool success = true;
+  
+  // Execute the command directly - MicroPython will handle errors internally
+  mp_embed_exec_str(parsed_command.c_str());
+  
+
+  if (result_buffer && buffer_size > 0) {
+    strncpy(result_buffer, "OK", buffer_size - 1);
+    result_buffer[buffer_size - 1] = '\0';
+  }
+  
+  return success;
+}
+
+/**
+ * Enhanced command execution with formatted output
+ * This version captures the return value and formats it according to function type
+ */
+bool executeSinglePythonCommandFormatted(const char* command, char* result_buffer, size_t buffer_size) {
+  // Initialize quietly if needed
+  if (!mp_initialized) {
+    if (!initMicroPythonQuiet()) {
+      if (result_buffer && buffer_size > 0) {
+        strncpy(result_buffer, "ERROR: Failed to initialize MicroPython", buffer_size - 1);
+        result_buffer[buffer_size - 1] = '\0';
+      }
+      return false;
+    }
+  }
+  
+  // Parse command and add prefix if needed
+  String parsed_command = parseCommandWithPrefix(command);
+  
+  // Clear result buffer
+  if (result_buffer && buffer_size > 0) {
+    memset(result_buffer, 0, buffer_size);
+  }
+  
+  // Note: Formatted output is now handled natively by the jumperless C module
+  // Functions automatically return formatted strings like "HIGH", "3.300V", "123.4mA"
+  
+  // Simply execute the command - formatting is now handled by the native C module
+  mp_embed_exec_str(parsed_command.c_str());
+  
+  // if (result_buffer && buffer_size > 0) {
+  //   strncpy(result_buffer, "Formatted by native module", buffer_size - 1);
+  //   result_buffer[buffer_size - 1] = '\0';
+  // }
+  
+  return true;
+}
+
+/**
+ * Execute a single MicroPython command and return float result
+ * Useful for functions that return numeric values like adc_get(), gpio_get(), etc.
+ * 
+ * @param command The command to execute (e.g., "gpio_get(2)")
+ * @param result Pointer to store the numeric result
+ * @return true if command executed successfully and result is valid, false otherwise
+ */
+bool executeSinglePythonCommandFloat(const char* command, float* result) {
+  if (!result) return false;
+  
+  // Initialize quietly if needed
+  if (!mp_initialized) {
+    if (!initMicroPythonQuiet()) {
+      return false;
+    }
+  }
+  
+  // Parse command and add prefix if needed
+  String parsed_command = parseCommandWithPrefix(command);
+  
+  bool success = true;
+  *result = 0.0f;
+  
+  // For now, just execute the command directly
+  // TODO: Implement proper result capture to get the actual return value
+  mp_embed_exec_str(parsed_command.c_str());
+  
+  return success;
+}
+
+/**
+ * Simple convenience function for common commands
+ * Returns the result as a float (useful for sensor readings)
+ */
+float quickPythonCommand(const char* command) {
+  float result = 0.0f;
+  executeSinglePythonCommandFloat(command, &result);
+  return result;
+}
+
+/**
+ * Test function to demonstrate single command execution
+ * Can be called from main.cpp to test the functionality
+ */
+void testSingleCommandExecution(void) {
+  if (!global_mp_stream) return;
+  
+  global_mp_stream->println("\n=== Testing Single Command Execution ===");
+  
+  // Ensure MicroPython is initialized with jumperless module
+  if (!mp_initialized) {
+    global_mp_stream->println("Initializing MicroPython quietly...");
+    if (!initMicroPythonQuiet()) {
+      global_mp_stream->println("ERROR: Failed to initialize MicroPython!");
+      return;
+    }
+    global_mp_stream->println("MicroPython initialized successfully");
+  }
+  
+  // Test 1: Simple command with automatic prefix
+  global_mp_stream->println("Test 1: GPIO read with automatic prefix");
+  char result_buffer[64];
+  bool success = executeSinglePythonCommand("gpio_get(2)", result_buffer, sizeof(result_buffer));
+  global_mp_stream->printf("Command: gpio_get(2) -> %s (success: %s)\n", 
+                           result_buffer, success ? "true" : "false");
+  
+  // Test 2: Command that already has prefix (should not add another)
+  global_mp_stream->println("\nTest 2: Command with existing prefix");
+  success = executeSinglePythonCommand("jumperless.dac_set(0, 2.5)", result_buffer, sizeof(result_buffer));
+  global_mp_stream->printf("Command: jumperless.dac_set(0, 2.5) -> %s (success: %s)\n", 
+                           result_buffer, success ? "true" : "false");
+  
+  // Test 3: Python command that should not get prefix
+  global_mp_stream->println("\nTest 3: Python command (no prefix)");
+  success = executeSinglePythonCommand("print('Hello from Python!')", result_buffer, sizeof(result_buffer));
+  global_mp_stream->printf("Command: print('Hello from Python!') -> %s (success: %s)\n", 
+                           result_buffer, success ? "true" : "false");
+  
+  // Test 4: Float result function
+  global_mp_stream->println("\nTest 4: Float result function");
+  float float_result = 0.0f;
+  success = executeSinglePythonCommandFloat("adc_get(0)", &float_result);
+  global_mp_stream->printf("Command: adc_get(0) -> %.3f (success: %s)\n", 
+                           float_result, success ? "true" : "false");
+  
+  // Test 5: Quick command function
+  global_mp_stream->println("\nTest 5: Quick command function");
+  float quick_result = quickPythonCommand("gpio_get(1)");
+  global_mp_stream->printf("quickPythonCommand('gpio_get(1)') -> %.3f\n", quick_result);
+  
+  // Test 6: Command parsing demonstration
+  global_mp_stream->println("\nTest 6: Command parsing examples");
+  String parsed;
+  
+  parsed = parseCommandWithPrefix("gpio_get(2)");
+  global_mp_stream->println("gpio_get(2) -> " + parsed);
+  
+  parsed = parseCommandWithPrefix("jumperless.dac_set(0, 3.3)");
+  global_mp_stream->println("jumperless.dac_set(0, 3.3) -> " + parsed);
+  
+  parsed = parseCommandWithPrefix("print('test')");
+  global_mp_stream->println("print('test') -> " + parsed);
+  
+  parsed = parseCommandWithPrefix("connect(1, 5)");
+  global_mp_stream->println("connect(1, 5) -> " + parsed);
+  
+  global_mp_stream->println("\n=== Single Command Test Complete ===\n");
+}
+
+/**
+ * Test function to demonstrate formatted output
+ */
+void testFormattedOutput(void) {
+  if (!global_mp_stream) return;
+  
+  global_mp_stream->println("\n=== Testing Formatted Output ===");
+  
+  // Ensure MicroPython is initialized
+  if (!mp_initialized) {
+    if (!initMicroPythonQuiet()) {
+      global_mp_stream->println("ERROR: Failed to initialize MicroPython!");
+      return;
+    }
+  }
+  
+  char result_buffer[64];
+  bool success;
+  
+  // Test GPIO state formatting
+  global_mp_stream->println("\nGPIO State Formatting:");
+  success = executeSinglePythonCommandFormatted("gpio_get(2)", result_buffer, sizeof(result_buffer));
+  global_mp_stream->printf("  gpio_get(2) -> %s\n", result_buffer);
+  
+  // Test voltage formatting
+  global_mp_stream->println("\nVoltage Formatting:");
+  success = executeSinglePythonCommandFormatted("dac_get(0)", result_buffer, sizeof(result_buffer));
+  global_mp_stream->printf("  dac_get(0) -> %s\n", result_buffer);
+  
+  success = executeSinglePythonCommandFormatted("adc_get(1)", result_buffer, sizeof(result_buffer));
+  global_mp_stream->printf("  adc_get(1) -> %s\n", result_buffer);
+  
+  // Test current formatting
+  global_mp_stream->println("\nCurrent/Power Formatting:");
+  success = executeSinglePythonCommandFormatted("ina_get_current(0)", result_buffer, sizeof(result_buffer));
+  global_mp_stream->printf("  ina_get_current(0) -> %s\n", result_buffer);
+  
+  success = executeSinglePythonCommandFormatted("ina_get_power(0)", result_buffer, sizeof(result_buffer));
+  global_mp_stream->printf("  ina_get_power(0) -> %s\n", result_buffer);
+  
+  // Test GPIO direction formatting
+  global_mp_stream->println("\nGPIO Direction Formatting:");
+  success = executeSinglePythonCommandFormatted("gpio_get_dir(3)", result_buffer, sizeof(result_buffer));
+  global_mp_stream->printf("  gpio_get_dir(3) -> %s\n", result_buffer);
+  
+  // Test GPIO pull formatting
+  global_mp_stream->println("\nGPIO Pull Formatting:");
+  success = executeSinglePythonCommandFormatted("gpio_get_pull(4)", result_buffer, sizeof(result_buffer));
+  global_mp_stream->printf("  gpio_get_pull(4) -> %s\n", result_buffer);
+  
+  // Test connection formatting
+  global_mp_stream->println("\nConnection Status Formatting:");
+  success = executeSinglePythonCommandFormatted("is_connected(1, 5)", result_buffer, sizeof(result_buffer));
+  global_mp_stream->printf("  is_connected(1, 5) -> %s\n", result_buffer);
+  
+  global_mp_stream->println("\n=== Formatted Output Test Complete ===\n");
+}
+
+
+
+
+

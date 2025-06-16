@@ -1,9 +1,10 @@
 # Create an INTERFACE library for the Jumperless C module
 add_library(usermod_jumperless INTERFACE)
 
-# Add the Jumperless module source file
+# Add the Jumperless module source files
 target_sources(usermod_jumperless INTERFACE
     ${CMAKE_CURRENT_LIST_DIR}/modjumperless.c
+   
 )
 
 # Add the current directory as an include directory

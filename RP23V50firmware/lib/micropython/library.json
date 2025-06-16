@@ -16,19 +16,37 @@
       "+<py/*.c>",
       "+<port/*.c>",
       "+<shared/runtime/*.c>",
-      "-<modjumperless.c>",
-      "-<mphalport.c>",
+      "+<extmod/*.c>",
       "-<py/mkrules.mk>",
       "-<py/*.mk>",
       "-<py/*.cmake>",
-      "-<py/*.py>"
+      "-<py/*.py>",
+      "-<port/embed_util.c>",
+      "-<shared/runtime/semihosting_rv32.c>",
+      "-<shared/runtime/semihosting_arm.c>",
+      "-<shared/runtime/pyexec.c>",
+      "-<extmod/modlwip.c>",
+      "-<extmod/modnetwork.c>",
+      "-<extmod/modwebsocket.c>",
+      "-<extmod/modwebrepl.c>",
+      "-<extmod/modbluetooth.c>",
+      "-<extmod/modusocket.c>",
+      "-<extmod/modmachine.c>",
+      "-<extmod/machine_*.c>",
+      "-<extmod/jumperless_hal.c>",
+      "-<*cyw43*>",
+      "-<*bluetooth*>",
+      "-<*network*>"
     ],
     "flags": [
       "-I micropython_embed",
       "-I micropython_embed/py",
       "-I micropython_embed/port",
       "-I micropython_embed/genhdr",
-      "-I micropython_embed/shared/runtime"
+      "-I micropython_embed/shared/runtime",
+      "-I micropython_embed/extmod",
+      "-I ../port",
+      "-I ../../lib/micropython/port"
     ]
   }
 }

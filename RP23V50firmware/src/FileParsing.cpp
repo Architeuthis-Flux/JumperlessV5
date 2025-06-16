@@ -139,7 +139,7 @@ void writeMenuTree(void) {
     // Serial.println("waiting for core2 to finish");
     }
   core1busy = true;
-  FatFS.begin();
+  //FatFS.begin();
   //   delay(100);
   //   FatFS.remove("/MenuTree.txt");
   //  delay(100);
@@ -811,7 +811,7 @@ void printNodeFile(int slot, int printOrString, int flashOrLocal, int definesInt
 void parseWokwiFileToNodeFile(void) {
 
   // delay(3000);
-  FatFS.begin();
+ // FatFS.begin();
   timeToFP = millis();
 
   wokwiFile = FatFS.open("wokwi.txt", "w+");

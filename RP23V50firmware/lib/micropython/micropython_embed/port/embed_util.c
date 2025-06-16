@@ -24,12 +24,7 @@
  * THE SOFTWARE.
  */
 
-#include <stdint.h>
-#include <stdio.h>
 #include <string.h>
-
-#include "py/builtin.h"
-#include "py/lexer.h"
 #include "py/compile.h"
 #include "py/gc.h"
 #include "py/persistentcode.h"
@@ -111,4 +106,3 @@ void __assert_func(const char *file, int line, const char *func, const char *exp
     }
 }
 #endif
-

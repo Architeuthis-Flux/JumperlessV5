@@ -5,10 +5,10 @@
 // Color definitions for help text formatting
 const int HELP_TITLE_COLOR = 51;      // Cyan
 const int HELP_COMMAND_COLOR = 221;   // Yellow
-const int HELP_DESC_COLOR = 207;      // 
+const int HELP_DESC_COLOR = 207;      // Magenta
 const int HELP_USAGE_COLOR = 69;      // Blue
 const int HELP_NOTE_COLOR = 202;      // Orange/Red
-const int HELP_NORMAL_COLOR = 38;     // 
+const int HELP_NORMAL_COLOR = 38;     // Green
 
 bool isHelpRequest(const char* input) {
     if (!input) return false;
@@ -60,15 +60,15 @@ bool handleHelpRequest(const char* input) {
 void showGeneralHelp() {
     changeTerminalColor(HELP_TITLE_COLOR, true);
     Serial.println("\n╔═══════════════════════════════════════════════════════════════════════════╗");
-      Serial.println("║                          JUMPERLESS HELP SYSTEM                           ║");
-      Serial.println("╚═══════════════════════════════════════════════════════════════════════════╝");
+    Serial.println("║                          JUMPERLESS HELP SYSTEM                           ║");
+    Serial.println("╚═══════════════════════════════════════════════════════════════════════════╝");
     
     changeTerminalColor(HELP_DESC_COLOR, true);
     Serial.println("Type any command followed by ? for detailed help (like 'f?' or 'n?')");
     Serial.println("Type 'help <category>' for section-specific help\n");
     changeTerminalColor(HELP_NOTE_COLOR, true);
     Serial.println("\nThis help system is AI generated, so it may be inaccurate");
-    Serial.println("When I make sure everything is accurate, I'll remove this message");
+    Serial.println("When I make sure everything is accurate, I'll remove this message\n\r");
     
     // // ASCII art probe
     // changeTerminalColor(HELP_COMMAND_COLOR, true);
@@ -106,7 +106,12 @@ void showGeneralHelp() {
     changeTerminalColor(HELP_COMMAND_COLOR, false);
     Serial.print(" python");
     changeTerminalColor(HELP_DESC_COLOR, false);
-    Serial.println("     - MicroPython REPL and hardware control");
+    Serial.println("     - MicroPython REPL, scripts, and hardware control");
+    
+    changeTerminalColor(HELP_COMMAND_COLOR, false);
+    Serial.print(" apps");
+    changeTerminalColor(HELP_DESC_COLOR, false);
+    Serial.println("       - Built-in applications and utilities");
     
     changeTerminalColor(HELP_COMMAND_COLOR, false);
     Serial.print(" display");
@@ -117,6 +122,11 @@ void showGeneralHelp() {
     Serial.print(" slots");
     changeTerminalColor(HELP_DESC_COLOR, false);
     Serial.println("      - Save and load different circuit configurations");
+    
+    changeTerminalColor(HELP_COMMAND_COLOR, false);
+    Serial.print(" scripts");
+    changeTerminalColor(HELP_DESC_COLOR, false);
+    Serial.println("    - Python script management and examples");
     
     changeTerminalColor(HELP_COMMAND_COLOR, false);
     Serial.print(" debug");
@@ -136,16 +146,11 @@ void showGeneralHelp() {
     Serial.println();
     changeTerminalColor(HELP_USAGE_COLOR, true);
     Serial.println(" QUICK START:");
-    changeTerminalColor(HELP_DESC_COLOR, true);
     Serial.println("  1. Press probe Connect button (turns blue)");
     Serial.println("  2. Touch two points to connect them");
     Serial.println("  3. Type 'f' to load a full connection file");
     Serial.println("  4. Type 'n' to see what's connected");
-
-    
-    // changeTerminalColor(HELP_NOTE_COLOR, true);
-    // Serial.println("\n💡 Pro tip: The probe is your best friend - it makes wiring intuitive!");
-    // Serial.println("   Keep the switch on 'Select' mode for best results.");
+    Serial.println("  5. Type 'p' to enter MicroPython REPL");
     
     changeTerminalColor(HELP_NORMAL_COLOR, true);
     Serial.println();
@@ -219,15 +224,18 @@ void showCommandHelp(char command) {
             changeTerminalColor(HELP_USAGE_COLOR, true);
             Serial.println("Usage: ^3.3  (sets voltage to 3.3V)");
             changeTerminalColor(HELP_DESC_COLOR, true);
-            Serial.println("The voltage gets output to the current DAC pin.");
-            Serial.println("Range is typically 0V to 5V depending on your setup.");
+            Serial.println("DAC features:");
+            Serial.println("  - High precision 12-bit output");
+            Serial.println("  - Multiple DAC channels available");
+            Serial.println("  - Range: -8V to +8V");
+            Serial.println("  - Also available via Python: jumperless.set_dac(0, 3.3)");
             changeTerminalColor(HELP_NOTE_COLOR, true);
-            Serial.println("Super useful for testing circuits with known voltages!");
+            Serial.println("Perfect for testing circuits with precise known voltages!");
             break;
             
         case 'v':
             changeTerminalColor(HELP_DESC_COLOR, true);
-            Serial.println("Read voltages and currents from ADCs and current sensors");
+            Serial.println("Read voltages and currents with high precision");
             changeTerminalColor(HELP_USAGE_COLOR, true);
             Serial.println("Usage:");
             Serial.println("  v       - show all ADC readings");
@@ -236,7 +244,12 @@ void showCommandHelp(char command) {
             Serial.println("  vi1     - show current sensor 1");
             Serial.println("  vl      - toggle live readings display");
             changeTerminalColor(HELP_DESC_COLOR, true);
-            Serial.println("Perfect for debugging your circuit's power consumption.");
+            Serial.println("Features:");
+            Serial.println("  - High resolution 12-bit ADC readings");
+            Serial.println("  - Real-time monitoring capabilities");
+            Serial.println("  - Python access: jumperless.get_adc(0)");
+            changeTerminalColor(HELP_NOTE_COLOR, true);
+            Serial.println("Perfect for precision circuit debugging and monitoring!");
             break;
             
         case 'A':
@@ -272,16 +285,23 @@ void showCommandHelp(char command) {
             
         case 'p':
             changeTerminalColor(HELP_DESC_COLOR, true);
-            Serial.println("Start MicroPython REPL - code directly with the breadboard!");
+            Serial.println("Start MicroPython REPL with full scripting support!");
             changeTerminalColor(HELP_USAGE_COLOR, true);
             Serial.println("Usage: p");
             changeTerminalColor(HELP_DESC_COLOR, true);
-            Serial.println("Opens a Python environment where you can:");
-            Serial.println("  - Control GPIOs: gpio.set(2, HIGH)");
-            Serial.println("  - Make connections: nodes.connect(1, 5)");
-            Serial.println("  - Read sensors: adc.get(0)");
+            Serial.println("REPL features:");
+            Serial.println("  - Command history (up/down arrows)");
+            Serial.println("  - Multi-line input with smart indentation");
+            Serial.println("  - Script save/load functionality");
+            Serial.println("  - Tab completion and paste mode");
+            Serial.println("\nHardware control functions:");
+            Serial.println("  - jumperless.connect(1, 5)   - Make connections");
+            Serial.println("  - jumperless.remove(1, 5)    - Remove connections");
+            Serial.println("  - jumperless.set_gpio(2, 1)  - Digital I/O");
+            Serial.println("  - jumperless.get_adc(0)      - Read voltages");
+            Serial.println("  - jumperless.run_app('i2c')  - Run built-in apps");
             changeTerminalColor(HELP_NOTE_COLOR, true);
-            Serial.println("This is where the magic happens - program your hardware!");
+            Serial.println("This is where the real magic happens - full Python control!");
             break;
             
         case '>':
@@ -291,19 +311,28 @@ void showCommandHelp(char command) {
             Serial.println("Usage: >");
             changeTerminalColor(HELP_DESC_COLOR, true);
             Serial.println("Then type a Python command like:");
-            Serial.println("  nodes.connect(1, 5)");
-            Serial.println("  gpio.set(2, HIGH)");
-            Serial.println("Quick way to run one command without entering full REPL.");
+            Serial.println("  jumperless.connect(1, 5)");
+            Serial.println("  jumperless.set_gpio(2, 1)");
+            Serial.println("  jumperless.run_app('i2c')");
+            Serial.println("  print(jumperless.get_adc(0))");
+            changeTerminalColor(HELP_NOTE_COLOR, true);
+            Serial.println("Quick way to run commands without entering full REPL.");
             break;
             
         case 'P':
             changeTerminalColor(HELP_DESC_COLOR, true);
-            Serial.println("Enter Python command mode OR print all connectable nodes");
+            Serial.println("Show all connectable nodes and Python capabilities");
             changeTerminalColor(HELP_USAGE_COLOR, true);
             Serial.println("Usage: P");
             changeTerminalColor(HELP_DESC_COLOR, true);
-            Serial.println("Shows every pin, rail, and connection point you can use.");
-            Serial.println("Super handy reference when you forget pin names.");
+            Serial.println("Displays comprehensive node reference including:");
+            Serial.println("  - All breadboard holes (1-60)");
+            Serial.println("  - Arduino pins (D0-D13, A0-A5)");
+            Serial.println("  - Power rails (GND, +5V, +3.3V)");
+            Serial.println("  - GPIO pins and special functions");
+            Serial.println("  - Available jumperless Python commands");
+            changeTerminalColor(HELP_NOTE_COLOR, true);
+            Serial.println("Essential reference for Python scripting and connections!");
             break;
             
         case '.':
@@ -423,12 +452,22 @@ void showCommandHelp(char command) {
             
         case '@':
             changeTerminalColor(HELP_DESC_COLOR, true);
-            Serial.println("Scan for I2C devices");
+            Serial.println("I2C device scanner with flexible row targeting");
             changeTerminalColor(HELP_USAGE_COLOR, true);
-            Serial.println("Usage: @");
+            Serial.println("Usage:");
+            Serial.println("  @           - Interactive mode (prompts for SDA/SCL rows)");
+            Serial.println("  @5,10       - Scan with SDA on row 5, SCL on row 10");
+            Serial.println("  @5          - Auto-try 4 combinations around row 5:");
+            Serial.println("                SDA=5 SCL=6, SDA=6 SCL=5, SDA=5 SCL=4, SDA=4 SCL=5");
             changeTerminalColor(HELP_DESC_COLOR, true);
-            Serial.println("Scans the I2C bus and shows what devices are connected.");
-            Serial.println("Useful for debugging I2C sensor connections.");
+            Serial.println("I2C scanning features:");
+            Serial.println("  - Comprehensive device detection");
+            Serial.println("  - Flexible pin assignment");
+            Serial.println("  - Auto-discovery mode for unknown wiring");
+            Serial.println("  - Detailed device information with addresses");
+            Serial.println("  - Also available as app: jumperless.run_app('i2c')");
+            changeTerminalColor(HELP_NOTE_COLOR, true);
+            Serial.println("Perfect for finding I2C devices when you're not sure of the wiring!");
             break;
             
         case '$':
@@ -480,7 +519,7 @@ void showCommandHelp(char command) {
             changeTerminalColor(HELP_DESC_COLOR, true);
             Serial.println("Lets you send new configuration data to update settings.");
             changeTerminalColor(HELP_NOTE_COLOR, true);
-            Serial.println("Advanced feature - be careful not to break things!");
+            Serial.println("Technical feature - be careful not to break things!");
             break;
             
         case 'E':
@@ -490,7 +529,7 @@ void showCommandHelp(char command) {
             Serial.println("Usage: E");
             changeTerminalColor(HELP_DESC_COLOR, true);
             Serial.println("Hides/shows the extra commands in the main menu.");
-            Serial.println("Makes the menu less cluttered if you don't need advanced stuff.");
+            Serial.println("Makes the menu less cluttered if you don't need technical stuff.");
             break;
             
         case 'e':
@@ -499,7 +538,7 @@ void showCommandHelp(char command) {
             changeTerminalColor(HELP_USAGE_COLOR, true);
             Serial.println("Usage: e");
             changeTerminalColor(HELP_DESC_COLOR, true);
-            Serial.println("Toggles display of advanced commands in the menu.");
+            Serial.println("Toggles display of technical commands in the menu.");
             break;
             
         case 'F':
@@ -610,7 +649,7 @@ void showCommandHelp(char command) {
 void showCategoryHelp(const char* category) {
     changeTerminalColor(HELP_TITLE_COLOR, true);
     Serial.print("\n╔═══════════════════════════════════════════════════════════════════════════╗\n");
-    Serial.print("║                         📁 ");
+    Serial.print("║                         ");
     Serial.print(category);
     Serial.print(" HELP                         ║\n");
     Serial.print("╚═══════════════════════════════════════════════════════════════════════════╝\n");
@@ -795,12 +834,12 @@ Serial.println(probe_art);
         
     } else if (strcmp(category, "python") == 0) {
         changeTerminalColor(HELP_DESC_COLOR, true);
-        Serial.println("MicroPython REPL and hardware control:\n");
+        Serial.println("MicroPython REPL, scripting, and hardware control:\n");
         
         changeTerminalColor(HELP_COMMAND_COLOR, false);
         Serial.print("p  ");
         changeTerminalColor(HELP_DESC_COLOR, false);
-        Serial.println("- Start MicroPython REPL (full environment)");
+        Serial.println("- Start full MicroPython REPL with history");
         
         changeTerminalColor(HELP_COMMAND_COLOR, false);
         Serial.print(">  ");
@@ -813,21 +852,148 @@ Serial.println(probe_art);
         Serial.println("- Python command mode / show all nodes");
         
         changeTerminalColor(HELP_USAGE_COLOR, true);
-        Serial.println("\n Python Hardware Control:");
+        Serial.println("\n Hardware Control:");
         changeTerminalColor(HELP_DESC_COLOR, true);
-        Serial.println("  nodes.connect(1, 5)     - Make connections");
-        Serial.println("  nodes.remove(1, 5)      - Remove connections");
-        Serial.println("  gpio.set(2, HIGH)       - Digital output");
-        Serial.println("  adc.get(0)              - Read voltage");
-        Serial.println("  dac.set(0, 3.3)         - Set voltage");
+        Serial.println("  jumperless.connect(1, 5)    - Make connections");
+        Serial.println("  jumperless.remove(1, 5)     - Remove connections");
+        Serial.println("  jumperless.netlist()        - Show connections");
+        Serial.println("  jumperless.clear_all()      - Clear all connections");
+        Serial.println("  jumperless.set_gpio(2, 1)   - Digital output");
+        Serial.println("  jumperless.get_adc(0)       - Read voltage");
+        Serial.println("  jumperless.set_dac(0, 3.3)  - Set voltage");
+        Serial.println("  jumperless.run_app('i2c')   - Run built-in apps");
         
         changeTerminalColor(HELP_NOTE_COLOR, true);
+        Serial.println("\n REPL Features:");
+        changeTerminalColor(HELP_DESC_COLOR, true);
+        Serial.println("  - Command history (up/down arrows)");
+        Serial.println("  - Multi-line input support");
+        Serial.println("  - Smart indentation");
+        Serial.println("  - Script save/load functionality");
+        Serial.println("  - Tab completion for functions");
+        Serial.println("  - Paste mode for multi-line scripts");
+        
+        changeTerminalColor(HELP_USAGE_COLOR, true);
         Serial.println("\n REPL Commands:");
         changeTerminalColor(HELP_DESC_COLOR, true);
-        Serial.println("  run   - Execute code buffer");
-        Serial.println("  clear - Clear input buffer");
-        Serial.println("  quit  - Exit REPL");
-        Serial.println("  help  - Show REPL help");
+        Serial.println("  run     - Execute code buffer");
+        Serial.println("  clear   - Clear input buffer");
+        Serial.println("  quit    - Exit REPL");
+        Serial.println("  help    - Show REPL help");
+        Serial.println("  save    - Save current session as script");
+        Serial.println("  load    - Load and run a saved script");
+        Serial.println("  paste   - Enter paste mode for multi-line code");
+        
+        changeTerminalColor(HELP_NOTE_COLOR, true);
+        Serial.println("\n Python Features:");
+        changeTerminalColor(HELP_DESC_COLOR, true);
+        Serial.println("  - Full MicroPython standard library");
+        Serial.println("  - Filesystem access for script storage");
+        Serial.println("  - Real-time hardware interaction");
+        Serial.println("  - Complete Jumperless module with all functions");
+        
+    } else if (strcmp(category, "apps") == 0) {
+        changeTerminalColor(HELP_DESC_COLOR, true);
+        Serial.println("Built-in applications and utilities:\n");
+        
+        changeTerminalColor(HELP_USAGE_COLOR, true);
+        Serial.println(" Access Apps:");
+        changeTerminalColor(HELP_DESC_COLOR, true);
+        Serial.println("  - Navigate to Apps menu");
+        changeTerminalColor(HELP_COMMAND_COLOR, false);
+        Serial.print("  - Or run from Python: ");
+        changeTerminalColor(HELP_DESC_COLOR, false);
+        Serial.println("jumperless.run_app('appname')");
+        
+        changeTerminalColor(HELP_COMMAND_COLOR, true);
+        Serial.println("\n Available Apps:");
+        changeTerminalColor(HELP_DESC_COLOR, true);
+        
+        changeTerminalColor(HELP_COMMAND_COLOR, false);
+        Serial.print("  i2c        ");
+        changeTerminalColor(HELP_DESC_COLOR, false);
+        Serial.println("- I2C device scanner");
+        
+        changeTerminalColor(HELP_COMMAND_COLOR, false);
+        Serial.print("  scope      ");
+        changeTerminalColor(HELP_DESC_COLOR, false);
+        Serial.println("- Simple oscilloscope functionality");
+        
+        changeTerminalColor(HELP_COMMAND_COLOR, false);
+        Serial.print("  calibrate  ");
+        changeTerminalColor(HELP_DESC_COLOR, false);
+        Serial.println("- DAC/ADC calibration utility");
+        
+        changeTerminalColor(HELP_COMMAND_COLOR, false);
+        Serial.print("  custom     ");
+        changeTerminalColor(HELP_DESC_COLOR, false);
+        Serial.println("- Custom user application");
+        
+        changeTerminalColor(HELP_COMMAND_COLOR, false);
+        Serial.print("  python     ");
+        changeTerminalColor(HELP_DESC_COLOR, false);
+        Serial.println("- MicroPython REPL (same as 'p' command)");
+        
+        changeTerminalColor(HELP_NOTE_COLOR, true);
+        Serial.println("\n App Examples:");
+        changeTerminalColor(HELP_DESC_COLOR, true);
+        Serial.println("  Connect I2C device, run i2c app to find address");
+        Serial.println("  Use scope app to visualize signals on ADC pins");
+        Serial.println("  Run calibrate app if voltages seem off");
+        
+    } else if (strcmp(category, "scripts") == 0) {
+        changeTerminalColor(HELP_DESC_COLOR, true);
+        Serial.println("Python script management and examples:\n");
+        
+        changeTerminalColor(HELP_USAGE_COLOR, true);
+        Serial.println(" Script Management in REPL:");
+        changeTerminalColor(HELP_DESC_COLOR, true);
+        Serial.println("  save                    - Save current session");
+        Serial.println("  save 'filename'         - Save with specific name");
+        Serial.println("  load 'filename'         - Load and run script");
+        Serial.println("  list                    - Show saved scripts");
+        Serial.println("  delete 'filename'       - Remove script");
+        
+        changeTerminalColor(HELP_COMMAND_COLOR, true);
+        Serial.println("\n Examples Available:");
+        changeTerminalColor(HELP_DESC_COLOR, true);
+        
+        changeTerminalColor(HELP_COMMAND_COLOR, false);
+        Serial.print("  jumperless_demo.py        ");
+        changeTerminalColor(HELP_DESC_COLOR, false);
+        Serial.println("- Basic hardware demo");
+        
+        changeTerminalColor(HELP_COMMAND_COLOR, false);
+        Serial.print("  external_python_control.py ");
+        changeTerminalColor(HELP_DESC_COLOR, false);
+        Serial.println("- External control examples");
+        
+        changeTerminalColor(HELP_COMMAND_COLOR, false);
+        Serial.print("  sync_demo.py             ");
+        changeTerminalColor(HELP_DESC_COLOR, false);
+        Serial.println("- Synchronization examples");
+        
+        changeTerminalColor(HELP_COMMAND_COLOR, false);
+        Serial.print("  custom_boolean_types.py  ");
+        changeTerminalColor(HELP_DESC_COLOR, false);
+        Serial.println("- Custom data types");
+        
+        changeTerminalColor(HELP_USAGE_COLOR, true);
+        Serial.println("\n Script Features:");
+        changeTerminalColor(HELP_DESC_COLOR, true);
+        Serial.println("  - Automatic numbering for easy loading");
+        Serial.println("  - History persistence across reboots");
+        Serial.println("  - Full filesystem access");
+        Serial.println("  - Error handling and debugging");
+        
+        changeTerminalColor(HELP_NOTE_COLOR, true);
+        Serial.println("\n Getting Started:");
+        changeTerminalColor(HELP_DESC_COLOR, true);
+        Serial.println("  1. Enter REPL with 'p'");
+        Serial.println("  2. Write some code");
+        Serial.println("  3. Type 'save' to store it");
+        Serial.println("  4. Type 'load 1' to run script #1");
+        Serial.println("  5. Check examples/ directory for inspiration");
         
     } else if (strcmp(category, "display") == 0) {
         changeTerminalColor(HELP_DESC_COLOR, true);
@@ -1040,8 +1206,8 @@ Serial.println(probe_art);
         Serial.println(category);
         changeTerminalColor(HELP_DESC_COLOR, true);
         Serial.println("\nAvailable categories:");
-        Serial.println("  basics, probe, voltage, arduino, python");
-        Serial.println("  display, slots, debug, config, glossary");
+        Serial.println("  basics, probe, voltage, arduino, python, apps");
+        Serial.println("  display, slots, scripts, debug, config, glossary");
     }
     
     changeTerminalColor(HELP_NORMAL_COLOR, true);

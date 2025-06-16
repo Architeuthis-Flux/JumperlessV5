@@ -371,39 +371,60 @@ void updateConfigFromFile(const char* filename) {
     // Check if config needs to be reset due to version differences
     if (!foundConfigVersion) {
         // Old config without version tracking - reset to be safe
-        Serial.println("Config file missing version info. Resetting to defaults (preserving hardware/calibration)...");
+       // Serial.println("Config file missing version info. Resetting to defaults (preserving hardware/calibration)...");
         needsReset = true;
     } else {
         // Parse version numbers to compare
-        int configMajor = 0, configMinor = 0, configPatch = 0, configBuild = 0;
-        int currentMajor = 0, currentMinor = 0, currentPatch = 0, currentBuild = 0;
+        int configGen = 5, configMajor = 0, configMinor = 0, configPatch = 0;
+        int currentGen = 5, currentMajor = 0, currentMinor = 0, currentPatch = 0;
         
-        sscanf(configFirmwareVersion, "%d.%d.%d.%d", &configMajor, &configMinor, &configPatch, &configBuild);
-        sscanf(currentFirmwareVersion, "%d.%d.%d.%d", &currentMajor, &currentMinor, &currentPatch, &currentBuild);
+        sscanf(configFirmwareVersion, "%d.%d.%d.%d", &configGen, &configMajor, &configMinor, &configPatch);
+        sscanf(currentFirmwareVersion, "%d.%d.%d.%d", &currentGen, &currentMajor, &currentMinor, &currentPatch);
         
         // Check if firmware is more than one version behind
         bool majorVersionDiff = (currentMajor > configMajor);
         bool minorVersionDiff = (currentMajor == configMajor && currentMinor > configMinor + 1);
+        bool patchVersionDiff = (currentMajor == configMajor && currentMinor == configMinor && currentPatch > configPatch + 1);
         
-        if (majorVersionDiff || minorVersionDiff) {
-            Serial.print("Config from firmware ");
-            Serial.print(configFirmwareVersion);
-            Serial.print(" is too old for current firmware ");
-            Serial.print(currentFirmwareVersion);
-            Serial.println(". Resetting to defaults (preserving hardware/calibration)...");
+        if (majorVersionDiff || minorVersionDiff ) {
+            // Serial.print("Config from firmware ");
+            // Serial.print(configFirmwareVersion);
+            // Serial.print(" is too old for current firmware ");
+            // Serial.print(currentFirmwareVersion);
+            // Serial.println(". Resetting to defaults (preserving hardware/calibration)...");
             needsReset = true;
         } else if (newConfigOptions && strcmp(configFirmwareVersion, currentFirmwareVersion) != 0) {
-            Serial.print("Config from firmware ");
-            Serial.print(configFirmwareVersion);
-            Serial.print(" has new options in firmware ");
-            Serial.print(currentFirmwareVersion);
-            Serial.println(". Resetting to defaults (preserving hardware/calibration)...");
+            // Serial.print("Config from firmware ");
+            // Serial.print(configFirmwareVersion);
+            // Serial.print(" has new options in firmware ");
+            // Serial.print(currentFirmwareVersion);
+            // Serial.println(". Resetting to defaults (preserving hardware/calibration)...");
             needsReset = true;
         }
     }
     
     if (needsReset) {
-        resetConfigToDefaults(0, 0);  // Keep calibration and hardware
+        // Save ALL current config values before reset
+        struct config savedConfig = jumperlessConfig;
+        
+        // Reset to defaults to get any new options
+        resetConfigToDefaults(1, 1);  // Clear calibration and hardware too, we'll restore them
+        
+        // Restore all saved values (this preserves user settings while adding any new defaults)
+        jumperlessConfig.hardware = savedConfig.hardware;
+        jumperlessConfig.dacs = savedConfig.dacs;
+        jumperlessConfig.debug = savedConfig.debug;
+        jumperlessConfig.routing = savedConfig.routing;
+        jumperlessConfig.calibration = savedConfig.calibration;
+        jumperlessConfig.logo_pads = savedConfig.logo_pads;
+        jumperlessConfig.display = savedConfig.display;
+        jumperlessConfig.gpio = savedConfig.gpio;
+        jumperlessConfig.serial_1 = savedConfig.serial_1;
+        jumperlessConfig.serial_2 = savedConfig.serial_2;
+        jumperlessConfig.top_oled = savedConfig.top_oled;
+        
+        // Save the updated config with preserved user settings + any new defaults
+        saveConfig();
         return;
     }
     
@@ -580,6 +601,14 @@ void saveConfig(void) {
 }
 
 void loadConfig(void) {
+
+
+   // delay(1000);
+
+
+
+
+
     updateConfigFromFile("/config.txt");
 
     if (jumperlessConfig.calibration.probe_min == 0 || jumperlessConfig.calibration.probe_max == 0) {

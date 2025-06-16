@@ -911,7 +911,7 @@ void animateBrightenedRow(int row) {}
 
 //! do a hightlighted row animation
 
-// todo make led colors a layer thing with blending options
+
 
 void showRowAnimation(int index, int net) {
 

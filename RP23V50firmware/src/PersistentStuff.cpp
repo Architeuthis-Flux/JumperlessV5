@@ -18,6 +18,10 @@ void debugFlagInit(int forceDefaults) {
   EEPROM.begin(512);
 
   if (EEPROM.read(FIRSTSTARTUPADDRESS) != 0xAA || forceDefaults == 1) {
+
+    delay(1000);
+    Serial.println("First startup");
+    delay(1000);
     firstStart = true;
     EEPROM.write(FIRSTSTARTUPADDRESS, 0xAA);
 
@@ -539,13 +543,13 @@ void debugFlagSet(int flag) {
 
 void saveVoltages(float top, float bot, float dac0, float dac1) {
   //#ifdef EEPROMSTUFF
-  EEPROM.put(TOP_RAIL_ADDRESS0, top);
-  EEPROM.put(BOTTOM_RAIL_ADDRESS0, bot);
-  EEPROM.put(DAC0_ADDRESS0, dac0);
-  EEPROM.put(DAC1_ADDRESS0, dac1);
-  EEPROM.commit();
-  delayMicroseconds(100);
-  //#endif
+  // EEPROM.put(TOP_RAIL_ADDRESS0, top);
+  // EEPROM.put(BOTTOM_RAIL_ADDRESS0, bot);
+  // EEPROM.put(DAC0_ADDRESS0, dac0);
+  // EEPROM.put(DAC1_ADDRESS0, dac1);
+  // EEPROM.commit();
+  // delayMicroseconds(100);
+  // //#endif
 
       // Save to config file
   jumperlessConfig.dacs.top_rail = top;
@@ -593,54 +597,79 @@ void saveDuplicateSettings(int forceDefaults) {
 void readVoltages(void) {
 
 
-  //delay(1000);
-  //#ifdef EEPROMSTUFF
-  delayMicroseconds(200);
-  EEPROM.get(TOP_RAIL_ADDRESS0, railVoltage[0]);
+  // delay(1000);
+
+  // Serial.println("readVoltages");
+  // Serial.println(jumperlessConfig.dacs.top_rail);
+  // Serial.println(jumperlessConfig.dacs.bottom_rail);
+  // Serial.println(jumperlessConfig.dacs.dac_0);
+  // Serial.println(jumperlessConfig.dacs.dac_1);
+
+  // delay(1000);
+  // #ifdef EEPROMSTUFF
+  // delayMicroseconds(200);
+  // EEPROM.get(TOP_RAIL_ADDRESS0, railVoltage[0]);
 
 
-  EEPROM.get(BOTTOM_RAIL_ADDRESS0, railVoltage[1]);
-  EEPROM.get(DAC0_ADDRESS0, dacOutput[0]);
-  EEPROM.get(DAC1_ADDRESS0, dacOutput[1]);
-  delayMicroseconds(200);
+  // EEPROM.get(BOTTOM_RAIL_ADDRESS0, railVoltage[1]);
+  // EEPROM.get(DAC0_ADDRESS0, dacOutput[0]);
+  // EEPROM.get(DAC1_ADDRESS0, dacOutput[1]);
+  // delayMicroseconds(200);
 
-  ///#endif
+  // #endif
 
   // jumperlessConfig.dac_settings.top_rail = railVoltage[0];
   // jumperlessConfig.dac_settings.bottom_rail = railVoltage[1];
   // jumperlessConfig.dac_settings.dac_0 = dacOutput[0];
   // jumperlessConfig.dac_settings.dac_1 = dacOutput[1];
 
-  int needsInit = 0;
-  if (railVoltage[0] > 8.0f || railVoltage[0] < -8.0f) {//|| (uint32_t)railVoltage[0] == 0x00000000 || (uint32_t)railVoltage[0] == 0xFFFFFFFF) {
-    Serial.println(railVoltage[0]);
+  // int needsInit = 0;
+  // if (railVoltage[0] > 8.0f || railVoltage[0] < -8.0f) {//|| (uint32_t)railVoltage[0] == 0x00000000 || (uint32_t)railVoltage[0] == 0xFFFFFFFF) {
+  //   Serial.println(railVoltage[0]);
 
-    railVoltage[0] = 0.0f;
-    needsInit = 1;
+  //   railVoltage[0] = 0.0f;
+  //   needsInit = 1;
 
-    //Serial.println("rail voltage 0 out of range");
-    }
-  if (railVoltage[1] > 8.0f || railVoltage[1] < -8.0f) {// || (uint32_t)railVoltage[1] == 0x00000000 || (uint32_t)railVoltage[1] == 0xFFFFFFFF) {
-    railVoltage[1] = 0.0f;
-    needsInit = 1;
-    //Serial.println("rail voltage 1 out of range");
-    }
-  if (dacOutput[0] > 5.0f || dacOutput[0] < 0.0f) {// || (uint32_t)dacOutput[0] == 0x00000000 || (uint32_t)dacOutput[0] == 0xFFFFFFFF) {
-    dacOutput[0] = 0.0f;
-    needsInit = 1;
-    //Serial.println("dac 0 out of range");
-    }
-  if (dacOutput[1] > 8.0f || dacOutput[1] < -8.0f) {// || (uint32_t)dacOutput[1] == 0x00000000 || (uint32_t)dacOutput[1] == 0xFFFFFFFF) {
-    dacOutput[1] = 0.0f;
-    needsInit = 1;
-    //Serial.println("dac 1 out of range");
-    }
+  //   //Serial.println("rail voltage 0 out of range");
+  //   }
+  // if (railVoltage[1] > 8.0f || railVoltage[1] < -8.0f) {// || (uint32_t)railVoltage[1] == 0x00000000 || (uint32_t)railVoltage[1] == 0xFFFFFFFF) {
+  //   railVoltage[1] = 0.0f;
+  //   needsInit = 1;
+  //   //Serial.println("rail voltage 1 out of range");
+  //   }
+  // if (dacOutput[0] > 5.0f || dacOutput[0] < 0.0f) {// || (uint32_t)dacOutput[0] == 0x00000000 || (uint32_t)dacOutput[0] == 0xFFFFFFFF) {
+  //   dacOutput[0] = 0.0f;
+  //   needsInit = 1;
+  //   //Serial.println("dac 0 out of range");
+  //   }
+  // if (dacOutput[1] > 8.0f || dacOutput[1] < -8.0f) {// || (uint32_t)dacOutput[1] == 0x00000000 || (uint32_t)dacOutput[1] == 0xFFFFFFFF) {
+  //   dacOutput[1] = 0.0f;
+  //   needsInit = 1;
+  //   //Serial.println("dac 1 out of range");
+  //   }
 
-  // if (needsInit == 1)
-  // {
-    //Serial.println("needs init");
-  saveVoltages(railVoltage[0], railVoltage[1], dacOutput[0], dacOutput[1]);
-  //}
+  // // Only update config values if they are invalid or zero (fallback to EEPROM)
+  // // Otherwise, preserve the config file values
+  // if (jumperlessConfig.dacs.top_rail == 0.0f && railVoltage[0] != 0.0f) {
+  //   jumperlessConfig.dacs.top_rail = railVoltage[0];
+  //   configChanged = true;
+  // }
+  // if (jumperlessConfig.dacs.bottom_rail == 0.0f && railVoltage[1] != 0.0f) {
+  //   jumperlessConfig.dacs.bottom_rail = railVoltage[1];
+  //   configChanged = true;
+  // }
+  // if (jumperlessConfig.dacs.dac_0 == 0.0f && dacOutput[0] != 0.0f) {
+  //   jumperlessConfig.dacs.dac_0 = dacOutput[0];
+  //   configChanged = true;
+  // }
+  // if (jumperlessConfig.dacs.dac_1 == 0.0f && dacOutput[1] != 0.0f) {
+  //   jumperlessConfig.dacs.dac_1 = dacOutput[1];
+  //   configChanged = true;
+  // }
+
+  // Don't call saveVoltages() here anymore - it would overwrite config values
+  // The config values will be copied to legacy variables in readSettingsFromConfig()
+
 //Serial.println(sizeof(float));
 
   // Serial.print("top rail: ");
@@ -935,6 +964,16 @@ void readSettingsFromConfig() {
   railVoltage[1] = jumperlessConfig.dacs.bottom_rail;
   dacOutput[0] = jumperlessConfig.dacs.dac_0;
   dacOutput[1] = jumperlessConfig.dacs.dac_1;
+
+  // Serial.print("railVoltage[0]: ");
+  // Serial.println(railVoltage[0]);
+  // Serial.print("railVoltage[1]: ");
+  // Serial.println(railVoltage[1]);
+  // Serial.print("dacOutput[0]: ");
+  // Serial.println(dacOutput[0]);
+  // Serial.print("dacOutput[1]: ");
+  // Serial.println(dacOutput[1]);
+
   probePowerDAC = jumperlessConfig.dacs.probe_power_dac;
 
   //GPIO settings

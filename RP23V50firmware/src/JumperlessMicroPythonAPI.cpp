@@ -9,25 +9,50 @@
 #include "Commands.h"
 
 #include "Graphics.h"
+#include "NetsToChipConnections.h"
 #include "Oled.h"
 #include "RotaryEncoder.h"
 #include "Peripherals.h"
 #include "FileParsing.h"
 
 #include "JumperlessDefines.h"
+#include "hardware/gpio.h"
 
+#include "CH446Q.h"
+#include "NetManager.h"
+#include "Apps.h"
 
 // C-compatible wrapper functions for MicroPython
 extern "C" {
 
 // DAC Functions
 void jl_dac_set(int channel, float voltage, int save) {
+    if (channel == 0) {
+        channel = 2;
+    } else if (channel == 1) {
+        channel = 3;
+    } else if (channel == 2) {
+        channel = 0;
+    } else if (channel == 3) {
+        channel = 1;
+    }
     setDacByNumber(channel, voltage, save);
 }
 
 float jl_dac_get(int channel) {
-    // TODO: Implement DAC read function if available
-    return 0.0f; // Placeholder - implement actual DAC read
+    float voltage = 0.0f;
+
+    if (channel == 0) {
+        voltage = dacOutput[0];
+    } else if (channel == 1) {
+        voltage = dacOutput[1];
+    } else if (channel == 2) {
+        voltage = railVoltage[0];
+    } else if (channel == 3) {
+        voltage = railVoltage[1];
+    }
+
+    return voltage;
 }
 
 // ADC Functions  
@@ -38,18 +63,18 @@ float jl_adc_get(int channel) {
 // INA Functions
 float jl_ina_get_current(int sensor) {
     if (sensor == 0) {
-        return INA0.getCurrent_mA();
+        return INA0.getCurrent();
     } else if (sensor == 1) {
-        return INA1.getCurrent_mA();
+        return INA1.getCurrent();
     }
     return 0.0f;
 }
 
 float jl_ina_get_voltage(int sensor) {
     if (sensor == 0) {
-        return INA0.getShuntVoltage_mV();
+        return INA0.getBusVoltage();
     } else if (sensor == 1) {
-        return INA1.getShuntVoltage_mV();
+        return INA1.getBusVoltage();
     }
     return 0.0f;
 }
@@ -65,9 +90,9 @@ float jl_ina_get_bus_voltage(int sensor) {
 
 float jl_ina_get_power(int sensor) {
     if (sensor == 0) {
-        return INA0.getPower_mW();
+        return INA0.getPower();
     } else if (sensor == 1) {
-        return INA1.getPower_mW();
+        return INA1.getPower();
     }
     return 0.0f;
 }
@@ -75,25 +100,80 @@ float jl_ina_get_power(int sensor) {
 // GPIO Functions
 void jl_gpio_set(int pin, int value) {
     if (pin >= 1 && pin <= 10) {
-        digitalWrite(gpioDef[pin][0], value);
+        digitalWrite(gpioDef[pin - 1][0], value);
     }
 }
 
 int jl_gpio_get(int pin) {
     if (pin >= 1 && pin <= 10) {
-        return digitalRead(gpioDef[pin][0]);
+        return gpio_get(gpioDef[pin - 1][0]);
     }
     return 0;
 }
 
 void jl_gpio_set_direction(int pin, int direction) {
     if (pin >= 1 && pin <= 10) {
-        pinMode(gpioDef[pin][0], direction ? OUTPUT : INPUT);
+        pinMode(gpioDef[pin - 1][0], direction ? OUTPUT : INPUT);
+    }
+}
+
+int jl_gpio_get_dir(int pin) {
+    if (pin >= 1 && pin <= 10) {
+        return gpio_get_dir(gpioDef[pin - 1][0]);
+    }
+    return 0;
+}
+
+void jl_gpio_set_dir(int pin, int direction) {
+    if (pin >= 1 && pin <= 10) {
+        gpio_set_dir(gpioDef[pin - 1][0], direction);
+    }
+}
+
+int jl_gpio_get_pull(int pin) {
+    
+    if (pin >= 1 && pin <= 10) {
+        pin = gpioDef[pin - 1][0];
+        bool pull_up = gpio_is_pulled_up(pin);
+        bool pull_down = gpio_is_pulled_down(pin);
+        if (pull_up) {
+            return 1;
+        } else if (pull_down) {
+            return -1;
+        } else {
+            return 0;
+        }
+    }
+    return 0;
+}
+
+void jl_gpio_set_pull(int pin, int pull) {
+
+    // Serial.print("jl_gpio_set_pull: ");
+    // Serial.println(pull);
+    
+    bool pull_up = false;
+    bool pull_down = false;
+    if (pull == 0) {
+        pull_up = false;
+        pull_down = false;
+    } else if (pull == 1) {
+        pull_up = true;
+        pull_down = false;
+    } else if (pull == -1) {
+        pull_up = false;
+        pull_down = true;
+    }
+
+
+    if (pin >= 1 && pin <= 10) {
+        pin = gpioDef[pin - 1][0];
+        gpio_set_pulls(pin, pull_up, pull_down);
     }
 }
 
 // Node Functions
-void jl_nodes_connect(int node1, int node2, int save) {
+int jl_nodes_connect(int node1, int node2, int save) {
     if (save) {
         addBridgeToNodeFile(node1, node2, netSlot, 0);
         refreshConnections();
@@ -101,42 +181,86 @@ void jl_nodes_connect(int node1, int node2, int save) {
         addBridgeToNodeFile(node1, node2, netSlot, 1);
         refreshLocalConnections();
     }
+    return 1;
 }
 
-void jl_nodes_disconnect(int node1, int node2) {
+int jl_nodes_disconnect(int node1, int node2) {
     removeBridgeFromNodeFile(node1, node2, netSlot, 0);
     refreshConnections();
+    return 1;
 }
 
-void jl_nodes_clear(void) {
-    clearNodeFile();//!
+int jl_nodes_clear(void) {
+    clearNodeFile();  //!
     refreshConnections();
+    return 1;
 }
+
+int jl_nodes_is_connected(int node1, int node2) {
+    return checkIfBridgeExists(node1, node2, netSlot, 0 );
+}
+
+
 
 // OLED Functions
-void jl_oled_print(const char* text, int size) {
+int jl_oled_print(const char* text, int size) {
     oled.clearPrintShow(text, size, true, true, true);
+    return 1;
 }
 
-void jl_oled_clear(void) {
+int jl_oled_clear(void) {
     oled.clear();
+    return 1;
 }
 
-void jl_oled_show(void) {
+int jl_oled_show(void) {
     oled.show();
+    return 1;
 }
 
 int jl_oled_connect(void) {
     return oled.init();
 }
 
-void jl_oled_disconnect(void) {
+int jl_oled_disconnect(void) {
     oled.disconnect();
+    return 1;
 }
 
 // Arduino Functions
 void jl_arduino_reset(void) {
     resetArduino();
+}
+
+// Status Functions
+int jl_nodes_print_bridges(void) {
+    printPathsCompact();
+    return 1;
+}
+
+int jl_nodes_print_paths(void) {
+    printPathsCompact();
+    return 1;
+}
+
+int jl_nodes_print_crossbars(void) {
+    printChipStateArray();
+    return 1;
+}
+
+int jl_nodes_print_nets(void) {
+    listNets(0);
+    return 1;
+}
+
+int jl_nodes_print_chip_status(void) {
+    printChipStatus();
+    return 1;
+}
+
+int jl_run_app(char* appName) {
+    runApp(-1,appName);
+    return 1;
 }
 
 // Probe Functions

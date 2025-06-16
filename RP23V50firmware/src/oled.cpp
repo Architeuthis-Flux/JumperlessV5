@@ -1050,10 +1050,10 @@ int oled::connect(void) {
         return 0;
     }
     int found = -1;
-    gpioNet[jumperlessConfig.top_oled.sda_pin - 20] = -2;
-    gpioNet[jumperlessConfig.top_oled.scl_pin - 20] = -2;
-    removeBridgeFromNodeFile(jumperlessConfig.top_oled.gpio_sda, -1, netSlot, 0);
-    removeBridgeFromNodeFile(jumperlessConfig.top_oled.gpio_scl, -1, netSlot, 0);
+    // gpioNet[jumperlessConfig.top_oled.sda_pin - 20] = -2;
+    // gpioNet[jumperlessConfig.top_oled.scl_pin - 20] = -2;
+    // removeBridgeFromNodeFile(jumperlessConfig.top_oled.gpio_sda, -1, netSlot, 0);
+    // removeBridgeFromNodeFile(jumperlessConfig.top_oled.gpio_scl, -1, netSlot, 0);
     addBridgeToNodeFile(jumperlessConfig.top_oled.gpio_sda, jumperlessConfig.top_oled.sda_row, netSlot, 0, 0);
     addBridgeToNodeFile(jumperlessConfig.top_oled.gpio_scl, jumperlessConfig.top_oled.scl_row, netSlot, 0, 0);
     refreshConnections(-1, 0, 0);

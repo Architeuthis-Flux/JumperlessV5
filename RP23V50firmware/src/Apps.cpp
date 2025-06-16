@@ -14,11 +14,12 @@
 #include "Peripherals.h"
 #include "PersistentStuff.h"
 #include "Probing.h"
+#include "Python_Proper.h"
 #include "RotaryEncoder.h"
 #include "UserCode.h"
 #include "configManager.h"
 #include "oled.h"
-#include "Python.h"
+#include "Python_Proper.h"
 
 
 
@@ -30,6 +31,29 @@
 
 #include "SerialWrapper.h"
 #define OLED_CONNECTED 0
+
+// Helper function to normalize spaces in a string (strip leading/trailing and reduce multiple spaces to single)
+String normalizeSpaces(const char* str) {
+  String normalized = String(str);
+  normalized.trim(); // Remove leading and trailing spaces
+  
+  // Replace multiple consecutive spaces with single space
+  String result = "";
+  bool lastWasSpace = false;
+  for (unsigned int i = 0; i < normalized.length(); i++) {
+    if (normalized[i] == ' ') {
+      if (!lastWasSpace) {
+        result += ' ';
+        lastWasSpace = true;
+      }
+    } else {
+      result += normalized[i];
+      lastWasSpace = false;
+    }
+  }
+  
+  return result;
+}
 
 // Wrapper function for i2cScan to match void(*)(void) signature
 void i2cScanWrapper(void) {
@@ -44,8 +68,8 @@ struct app apps[30] = {
     {"PNG Image", 4, 1, displayImage},
     {"Scan", 5, 1, scanBoard},
     {"XLSX   GUI", 6, 1, xlsxGui},
-    {"Micropython", 7, 1, micropython},
-    {"uPythonREPL", 8, 1, micropythonREPL},
+    {"Micropython", 7, 1, microPythonREPLapp},
+    {"uPythonREPL", 8, 1, microPythonREPLapp},
 
     {"DOOM", 16, 1, playDoom},
 
@@ -63,16 +87,18 @@ void runApp(int index, char *name) {
   //   Serial.println(index);
   //   Serial.println(name);
   if (index != -1) {
-    Serial.println(apps[index].name);
+    Serial.println(normalizeSpaces(apps[index].name));
 
   } else if (name != nullptr) {
-    Serial.println(name);
+    Serial.println(normalizeSpaces(name));
   }
   Serial.println();
   // Find matching app if only one parameter is given
   if (index == -1) {
+    String normalizedSearchName = normalizeSpaces(name);
     for (int i = 0; i < sizeof(apps) / sizeof(apps[0]); i++) {
-      if (strcmp(apps[i].name, name) == 0) {
+      String normalizedAppName = normalizeSpaces(apps[i].name);
+      if (normalizedAppName.equalsIgnoreCase(normalizedSearchName)) {
         index = i;
         break;
       }
@@ -83,7 +109,7 @@ void runApp(int index, char *name) {
   }
 
   // Run the app based on index
-  Serial.println("Running app: " + String(name));
+  Serial.println("Running app: " + normalizeSpaces(name));
   Serial.println("Index: " + String(index));
 
   switch (index) {
@@ -111,10 +137,11 @@ void runApp(int index, char *name) {
     xlsxGui();
     break;
   case 7:
-    micropython();
+    //micropython();
+    microPythonREPLapp();
     break;
   case 8:
-    micropythonREPL();
+    microPythonREPLapp();
     break;
     // case 2: logicAnalyzer(); break;
     // case 3: oscilloscope(); break;
@@ -141,6 +168,12 @@ void runApp(int index, char *name) {
   default:
     break;
   }
+}
+
+
+
+void microPythonREPLapp(void) {
+  enterMicroPythonREPL(global_mp_stream);
 }
 
 void leaveApp(int lastNetSlot) {
@@ -1507,7 +1540,7 @@ void printSerial1stuff(void) {
   }
 }
 
-void writeImage(PNGDRAW *pDraw) { return; }
+// void writeImage(PNGDRAW *pDraw) { return; }
 
 void displayImage(void) { return; }
 

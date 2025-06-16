@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# Build script for MicroPython embedding
+# Build script for MicroPython embed port with built-in modules and Jumperless integration
 set -e
 
 # Configuration
@@ -15,47 +15,66 @@ GREEN='\033[0;32m'
 YELLOW='\033[1;33m'
 NC='\033[0m' # No Color
 
-echo -e "${GREEN}Building MicroPython embed port for Jumperless...${NC}"
-
-
+echo -e "${GREEN}Building MicroPython embed port with built-in modules...${NC}"
 
 # Check if we already have a working micropython_embed with Jumperless integration
 cd "$MICROPYTHON_LOCAL_PATH"
 if [ -f "micropython_embed/genhdr/qstrdefs.generated.h" ] && grep -q "jumperless" micropython_embed/genhdr/qstrdefs.generated.h; then
     echo -e "${GREEN}✅ MicroPython embed port with Jumperless integration already exists!${NC}"
-    echo -e "${GREEN}   Skipping build - using existing setup${NC}"
     
     # Verify the existing build
     QSTR_COUNT=$(grep -c "^QDEF" micropython_embed/genhdr/qstrdefs.generated.h || true)
     JUMPERLESS_QSTRS=$(grep -c "jumperless\|dac_set\|adc_get\|nodes_connect" micropython_embed/genhdr/qstrdefs.generated.h || true)
-    echo -e "${GREEN}   Found $QSTR_COUNT QSTR definitions${NC}"
+    TIME_QSTRS=$(grep -c "time\|sleep\|ticks" micropython_embed/genhdr/qstrdefs.generated.h || true)
+    echo -e "${GREEN}   Found $QSTR_COUNT total QSTR definitions${NC}"
     echo -e "${GREEN}   Jumperless module QSTRs found: $JUMPERLESS_QSTRS${NC}"
-    echo -e "${GREEN}✅ MicroPython is ready for use with Jumperless native module enabled!${NC}"
-    exit 0
+    echo -e "${GREEN}   Time module QSTRs found: $TIME_QSTRS${NC}"
+    echo -e "${GREEN}✅ MicroPython embed port is ready with built-in modules!${NC}"
+    # exit 0
 fi
 
-echo -e "${YELLOW}Building MicroPython embed port with Jumperless module...${NC}"
+echo -e "${YELLOW}Building MicroPython embed port with Jumperless module and built-in modules...${NC}"
 
 # Check if MicroPython repo exists
 if [ ! -d "$MICROPYTHON_REPO_PATH" ]; then
+    echo -e "${YELLOW}Cloning MicroPython repository (read-only)...${NC}"
     git clone "https://github.com/micropython/micropython.git" "${MICROPYTHON_REPO_PATH}"
+    
+    # Configure the repository to prevent accidental pushes to GitHub
+    pushd "${MICROPYTHON_REPO_PATH}"
+    echo -e "${YELLOW}Configuring repository to prevent GitHub commits...${NC}"
+    # Remove the origin remote to prevent accidental pushes
+    git remote remove origin 2>/dev/null || true
+    # Set a dummy remote URL to prevent accidental remote operations
+    git remote add origin "file:///dev/null"
+    popd
 fi
 
 pushd "${MICROPYTHON_REPO_PATH}"
-# Fetch all tags to ensure we have the release tags
-git fetch --tags
-# git checkout main
+# Ensure no remote operations can happen
+if git remote get-url origin 2>/dev/null | grep -q "github.com"; then
+    echo -e "${YELLOW}WARNING: Removing GitHub remote to prevent accidental commits...${NC}"
+    git remote remove origin
+    git remote add origin "file:///dev/null"
+fi
+
 git checkout "${MICROPYTHON_VERSION}"
 # Initialize submodules needed for the build
+echo -e "${YELLOW}Initializing required submodules...${NC}"
 git submodule update --init --recursive lib/uzlib lib/libm lib/libm_dbl
 popd
 
+# Build mpy-cross first
+echo -e "${YELLOW}Building mpy-cross compiler...${NC}"
+cd "$MICROPYTHON_REPO_PATH"
+make -C mpy-cross V=1
+
 # Clean previous build
-echo -e "${YELLOW}Cleaning previous MicroPython build...${NC}"
+echo -e "${YELLOW}Cleaning previous MicroPython embed build...${NC}"
 cd "$MICROPYTHON_REPO_PATH/ports/embed"
-if [ -d "build-embed" ]; then
-    rm -rf build-embed
-fi
+# Set environment variables for the build
+export MICROPYTHON_TOP="$MICROPYTHON_REPO_PATH"
+make -f embed.mk clean-micropython-embed-package V=1
 
 cd "$MICROPYTHON_LOCAL_PATH"
 if [ -d "micropython_embed" ]; then
@@ -63,31 +82,169 @@ if [ -d "micropython_embed" ]; then
     rm -rf micropython_embed
 fi
 
-# Build the embed port with proper QSTR generation and Jumperless module
-echo -e "${YELLOW}Building MicroPython embed port with Jumperless module...${NC}"
-cd "$MICROPYTHON_REPO_PATH/ports/embed"
-make -f embed.mk MICROPYTHON_TOP="$MICROPYTHON_REPO_PATH" USER_C_MODULES="$PROJECT_ROOT/modules" V=1
+# Copy our custom mpconfigport.h to the embed port
+echo -e "${YELLOW}Setting up custom configuration for embed port...${NC}"
+cp "$MICROPYTHON_LOCAL_PATH/port/mpconfigport.h" "$MICROPYTHON_REPO_PATH/ports/embed/"
 
-# Copy the built files to our micropython_embed directory
-echo -e "${YELLOW}Copying built files to micropython_embed directory...${NC}"
-cd "$MICROPYTHON_LOCAL_PATH"
-if [ -d "micropython_embed" ]; then
-    rm -rf micropython_embed
+
+
+# Modify the embed.mk to include extmod modules
+echo -e "${YELLOW}Modifying embed port to include extmod modules...${NC}"
+cd "$MICROPYTHON_REPO_PATH/ports/embed"
+
+# Create a backup of the original embed.mk
+if [ ! -f "embed.mk.backup" ]; then
+    cp embed.mk embed.mk.backup
 fi
-cp -r "$MICROPYTHON_REPO_PATH/ports/embed/build-embed" micropython_embed
+
+# Modify embed.mk to include extmod modules
+cat > embed_with_extmod.mk << 'EOF'
+# This file is part of the MicroPython project, http://micropython.org/
+# Modified to include specific extmod modules for time, os
+
+# Set the build output directory for the generated files.
+BUILD = build-embed
+
+# Include the core environment definitions; this will set $(TOP).
+include $(MICROPYTHON_TOP)/py/mkenv.mk
+
+# Include py core make definitions.
+include $(TOP)/py/py.mk
+
+# Define extmod source files we specifically want  
+SRC_EXTMOD_C = \
+	extmod/modtime.c \
+	extmod/modos.c \
+	extmod/modplatform.c \
+	extmod/vfs.c \
+
+
+# Process extmod sources like regular sources
+PY_O += $(addprefix $(BUILD)/, $(SRC_EXTMOD_C:.c=.o))
+SRC_QSTR += $(SRC_EXTMOD_C)
+
+# Set the location of the MicroPython embed port.
+MICROPYTHON_EMBED_PORT = $(MICROPYTHON_TOP)/ports/embed
+
+# Set default makefile-level MicroPython feature configurations.
+MICROPY_ROM_TEXT_COMPRESSION ?= 0
+
+# Set CFLAGS for the MicroPython build.
+CFLAGS += -I. -I$(TOP) -I$(BUILD) -I$(MICROPYTHON_EMBED_PORT)
+CFLAGS += -Wall -Werror -std=c99
+
+# Define the required generated header files.
+GENHDR_OUTPUT = $(addprefix $(BUILD)/genhdr/, \
+	moduledefs.h \
+	mpversion.h \
+	qstrdefs.generated.h \
+	root_pointers.h \
+	)
+
+# Define the top-level target, the generated output files.
+.PHONY: all
+all: micropython-embed-package
+
+clean: clean-micropython-embed-package
+
+.PHONY: clean-micropython-embed-package
+clean-micropython-embed-package:
+	$(RM) -rf $(PACKAGE_DIR)
+
+PACKAGE_DIR ?= micropython_embed
+PACKAGE_DIR_LIST = $(addprefix $(PACKAGE_DIR)/,py extmod shared/runtime shared/timeutils genhdr port)
+
+.PHONY: micropython-embed-package
+micropython-embed-package: $(GENHDR_OUTPUT)
+	$(ECHO) "Generate micropython_embed output:"
+	$(Q)$(RM) -rf $(PACKAGE_DIR_LIST)
+	$(Q)$(MKDIR) -p $(PACKAGE_DIR_LIST)
+	$(ECHO) "- py"
+	$(Q)$(CP) $(TOP)/py/*.[ch] $(PACKAGE_DIR)/py
+	$(ECHO) "- extmod (specific modules only)"
+	$(Q)$(CP) $(TOP)/extmod/modtime.c $(PACKAGE_DIR)/extmod
+	$(Q)$(CP) $(TOP)/extmod/modtime.h $(PACKAGE_DIR)/extmod
+	$(Q)$(CP) $(TOP)/extmod/modos.c $(PACKAGE_DIR)/extmod
+	$(Q)$(CP) $(TOP)/extmod/modplatform.c $(PACKAGE_DIR)/extmod
+	$(Q)$(CP) $(TOP)/extmod/modplatform.h $(PACKAGE_DIR)/extmod
+	$(Q)$(CP) $(TOP)/extmod/misc.h $(PACKAGE_DIR)/extmod
+	$(Q)$(CP) $(TOP)/extmod/vfs.c $(PACKAGE_DIR)/extmod
+	$(Q)$(CP) $(TOP)/extmod/vfs.h $(PACKAGE_DIR)/extmod
+	$(ECHO) "- shared"
+	$(Q)$(CP) $(TOP)/shared/runtime/gchelper.h $(PACKAGE_DIR)/shared/runtime
+	$(Q)$(CP) $(TOP)/shared/runtime/gchelper_generic.c $(PACKAGE_DIR)/shared/runtime
+	$(Q)$(CP) $(TOP)/shared/runtime/pyexec.h $(PACKAGE_DIR)/shared/runtime
+	$(Q)$(CP) $(TOP)/shared/runtime/pyexec.c $(PACKAGE_DIR)/shared/runtime
+	$(Q)$(MKDIR) -p $(PACKAGE_DIR)/shared/timeutils || true
+	$(Q)$(CP) $(TOP)/shared/timeutils/*.h $(PACKAGE_DIR)/shared/timeutils || true
+	$(Q)$(CP) $(TOP)/shared/timeutils/*.c $(PACKAGE_DIR)/shared/timeutils || true
+	$(ECHO) "- genhdr"
+	$(Q)$(CP) $(GENHDR_OUTPUT) $(PACKAGE_DIR)/genhdr
+	$(ECHO) "- port"
+	$(Q)$(CP) $(MICROPYTHON_EMBED_PORT)/port/*.[ch] $(PACKAGE_DIR)/port
+
+# Include remaining core make rules.
+include $(TOP)/py/mkrules.mk
+EOF
+
+# Build the embed port with Jumperless module
+echo -e "${YELLOW}Building MicroPython embed port with Jumperless module...${NC}"
+echo -e "${YELLOW}This includes built-in modules: time, machine, os, math, etc.${NC}"
+cd "$MICROPYTHON_REPO_PATH/ports/embed"
+
+# Set environment variables for the build
+export MICROPYTHON_TOP="$MICROPYTHON_REPO_PATH"
+export USER_C_MODULES="$PROJECT_ROOT/modules"
+
+# Build the embed port using the modified makefile that includes extmod
+make -f embed_with_extmod.mk PACKAGE_DIR="$MICROPYTHON_LOCAL_PATH/micropython_embed" \
+    CFLAGS="-I$MICROPYTHON_LOCAL_PATH/port -I$MICROPYTHON_REPO_PATH -I$MICROPYTHON_REPO_PATH/py -Ibuild-embed" \
+    V=1
+
+# Copy mpconfigport.h to the micropython_embed directory so it can be found during PlatformIO compilation
+echo -e "${YELLOW}Copying mpconfigport.h to micropython_embed directory...${NC}"
+
+cp "$MICROPYTHON_LOCAL_PATH/port/mpconfigport.h" "$MICROPYTHON_LOCAL_PATH/micropython_embed/"
+
+# Remove machine module from moduledefs.h to prevent undefined reference errors
+echo -e "${YELLOW}Removing machine module from moduledefs.h...${NC}"
+if [ -f "$MICROPYTHON_LOCAL_PATH/micropython_embed/genhdr/moduledefs.h" ]; then
+    # Remove machine module extern declaration and definition
+    sed -i.bak '/extern const struct _mp_obj_module_t mp_module_machine;/d' "$MICROPYTHON_LOCAL_PATH/micropython_embed/genhdr/moduledefs.h"
+    sed -i.bak '/#undef MODULE_DEF_MACHINE/d' "$MICROPYTHON_LOCAL_PATH/micropython_embed/genhdr/moduledefs.h"
+    sed -i.bak '/#define MODULE_DEF_MACHINE/d' "$MICROPYTHON_LOCAL_PATH/micropython_embed/genhdr/moduledefs.h"
+    # Remove machine module from the extensible modules list
+    sed -i.bak '/MODULE_DEF_MACHINE \\/d' "$MICROPYTHON_LOCAL_PATH/micropython_embed/genhdr/moduledefs.h"
+    # Clean up backup file
+    rm -f "$MICROPYTHON_LOCAL_PATH/micropython_embed/genhdr/moduledefs.h.bak"
+    echo -e "${GREEN}   ✅ Machine module removed from moduledefs.h${NC}"
+fi
+
+# echo -e "${RED}$MICROPYTHON_LOCAL_PATH/micropython_embed/port/mphalport.h${NC}"
+if [  -f "$MICROPYTHON_LOCAL_PATH/micropython_embed/port/mphalport.h" ]; then
+    echo -e "${YELLOW}Removing embed port's mphalport files...${NC}"
+    rm "$MICROPYTHON_LOCAL_PATH/micropython_embed/port/mphalport.h"
+    rm "$MICROPYTHON_LOCAL_PATH/micropython_embed/port/mphalport.c"
+fi
 
 # Verify the build
-if [ -f "micropython_embed/genhdr/qstrdefs.generated.h" ]; then
-    QSTR_COUNT=$(grep -c "^QDEF" micropython_embed/genhdr/qstrdefs.generated.h || true)
-    JUMPERLESS_QSTRS=$(grep -c "jumperless\|dac_set\|adc_get\|nodes_connect" micropython_embed/genhdr/qstrdefs.generated.h || true)
+if [ -f "$MICROPYTHON_LOCAL_PATH/micropython_embed/genhdr/qstrdefs.generated.h" ]; then
+    QSTR_COUNT=$(grep -c "^QDEF" "$MICROPYTHON_LOCAL_PATH/micropython_embed/genhdr/qstrdefs.generated.h" || true)
+    JUMPERLESS_QSTRS=$(grep -c "jumperless\|dac_set\|adc_get\|nodes_connect" "$MICROPYTHON_LOCAL_PATH/micropython_embed/genhdr/qstrdefs.generated.h" || true)
+    TIME_QSTRS=$(grep -c "time\|sleep\|ticks" "$MICROPYTHON_LOCAL_PATH/micropython_embed/genhdr/qstrdefs.generated.h" || true)
+    MACHINE_QSTRS=$(grep -c "machine\|Pin\|ADC\|PWM" "$MICROPYTHON_LOCAL_PATH/micropython_embed/genhdr/qstrdefs.generated.h" || true)
+    
     echo -e "${GREEN}✅ MicroPython embed build successful!${NC}"
-    echo -e "${GREEN}   Generated $QSTR_COUNT QSTR definitions${NC}"
+    echo -e "${GREEN}   Generated $QSTR_COUNT total QSTR definitions${NC}"
     if [ "$JUMPERLESS_QSTRS" -gt 0 ]; then
         echo -e "${GREEN}   Jumperless module QSTRs found: $JUMPERLESS_QSTRS${NC}"
     else
         echo -e "${YELLOW}   Warning: No Jumperless module QSTRs detected${NC}"
     fi
-    echo -e "${GREEN}   Files ready for PlatformIO integration${NC}"
+    echo -e "${GREEN}   Time module QSTRs found: $TIME_QSTRS${NC}"
+    echo -e "${GREEN}   Machine module QSTRs found: $MACHINE_QSTRS${NC}"
+    echo -e "${GREEN}   Files ready for PlatformIO integration with embed API${NC}"
+    echo -e "${GREEN}   Available modules: time, machine, os, math, gc, array, etc.${NC}"
 else
     echo -e "${RED}❌ MicroPython embed build failed!${NC}"
     echo -e "${RED}   qstrdefs.generated.h not found${NC}"
@@ -108,4 +265,6 @@ else
     echo -e "${RED}   ❌ Jumperless API wrapper missing${NC}"
 fi
 
-echo -e "${GREEN}✅ MicroPython is ready for use with Jumperless native module enabled!${NC}" 
+echo -e "${GREEN}✅ MicroPython embed port is ready with built-in modules!${NC}"
+echo -e "${GREEN}   You can now use: mp_embed_init(), mp_embed_exec_str(), mp_embed_deinit()${NC}"
+echo -e "${GREEN}   Available modules: import time, import machine, import os, etc.${NC}" 

@@ -16,9 +16,15 @@
  * all copies or substantial portions of the Software.
  */
 
-#include "py/obj.h"
-#include "py/runtime.h"
-#include "py/builtin.h"
+#include "../micropython_embed/py/obj.h"
+#include "../micropython_embed/py/runtime.h"
+#include "../micropython_embed/py/builtin.h"
+#include "../micropython_embed/py/misc.h"
+
+// Define missing types if not already defined
+// #ifndef mp_uint_t
+// typedef unsigned int mp_uint_t;
+// #endif
 
 // Forward declarations for C functions - these will be implemented in the main Jumperless code
 void jl_dac_set(int channel, float voltage, int save);
@@ -45,17 +51,17 @@ void jl_clickwheel_up(int clicks);
 void jl_clickwheel_down(int clicks);
 void jl_clickwheel_press(void);
 
-// DAC Functions (simplified for initial build)
+// DAC Functions
 static mp_obj_t jl_dac_set_func(size_t n_args, const mp_obj_t *args) {
     int channel = mp_obj_get_int(args[0]);
-    int voltage_int = mp_obj_get_int(args[1]); // Use int for now (millivolts)
+    float voltage = mp_obj_get_float(args[1]); // Accept float voltage values
+
     int save = (n_args > 2) ? mp_obj_is_true(args[2]) ? 1 : 0 : 1; // Default save=True
     
     if (channel < 0 || channel > 3) {
         mp_raise_ValueError(MP_ERROR_TEXT("DAC channel must be 0-3"));
     }
     
-    float voltage = voltage_int / 1000.0f; // Convert millivolts to volts
     jl_dac_set(channel, voltage, save);
     return mp_const_none;
 }
@@ -69,12 +75,11 @@ static mp_obj_t jl_dac_get_func(mp_obj_t channel_obj) {
     }
     
     float voltage = jl_dac_get(channel);
-    int voltage_mv = (int)(voltage * 1000); // Convert to millivolts
-    return mp_obj_new_int(voltage_mv);
+    return mp_obj_new_float(voltage); // Return float voltage
 }
 static MP_DEFINE_CONST_FUN_OBJ_1(jl_dac_get_obj, jl_dac_get_func);
 
-// ADC Functions (simplified for initial build)
+// ADC Functions
 static mp_obj_t jl_adc_get_func(mp_obj_t channel_obj) {
     int channel = mp_obj_get_int(channel_obj);
     
@@ -83,12 +88,11 @@ static mp_obj_t jl_adc_get_func(mp_obj_t channel_obj) {
     }
     
     float voltage = jl_adc_get(channel);
-    int voltage_mv = (int)(voltage * 1000); // Convert to millivolts
-    return mp_obj_new_int(voltage_mv);
+    return mp_obj_new_float(voltage); // Return float voltage
 }
 static MP_DEFINE_CONST_FUN_OBJ_1(jl_adc_get_obj, jl_adc_get_func);
 
-// INA Functions (simplified for initial build)
+// INA Functions
 static mp_obj_t jl_ina_get_current_func(mp_obj_t sensor_obj) {
     int sensor = mp_obj_get_int(sensor_obj);
     
@@ -97,8 +101,7 @@ static mp_obj_t jl_ina_get_current_func(mp_obj_t sensor_obj) {
     }
     
     float current = jl_ina_get_current(sensor);
-    int current_ma = (int)(current * 1000); // Convert to milliamps
-    return mp_obj_new_int(current_ma);
+    return mp_obj_new_float(current); // Return float current in amps
 }
 static MP_DEFINE_CONST_FUN_OBJ_1(jl_ina_get_current_obj, jl_ina_get_current_func);
 
@@ -110,8 +113,7 @@ static mp_obj_t jl_ina_get_voltage_func(mp_obj_t sensor_obj) {
     }
     
     float voltage = jl_ina_get_voltage(sensor);
-    int voltage_mv = (int)(voltage * 1000); // Convert to millivolts
-    return mp_obj_new_int(voltage_mv);
+    return mp_obj_new_float(voltage); // Return float voltage
 }
 static MP_DEFINE_CONST_FUN_OBJ_1(jl_ina_get_voltage_obj, jl_ina_get_voltage_func);
 
@@ -123,8 +125,7 @@ static mp_obj_t jl_ina_get_bus_voltage_func(mp_obj_t sensor_obj) {
     }
     
     float voltage = jl_ina_get_bus_voltage(sensor);
-    int voltage_mv = (int)(voltage * 1000); // Convert to millivolts
-    return mp_obj_new_int(voltage_mv);
+    return mp_obj_new_float(voltage); // Return float voltage
 }
 static MP_DEFINE_CONST_FUN_OBJ_1(jl_ina_get_bus_voltage_obj, jl_ina_get_bus_voltage_func);
 
@@ -136,8 +137,7 @@ static mp_obj_t jl_ina_get_power_func(mp_obj_t sensor_obj) {
     }
     
     float power = jl_ina_get_power(sensor);
-    int power_mw = (int)(power * 1000); // Convert to milliwatts
-    return mp_obj_new_int(power_mw);
+    return mp_obj_new_float(power); // Return float power in watts
 }
 static MP_DEFINE_CONST_FUN_OBJ_1(jl_ina_get_power_obj, jl_ina_get_power_func);
 

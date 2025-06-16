@@ -32,6 +32,7 @@ CompileFlags:
     
     # MicroPython includes
     - "-Ilib/micropython"
+    - "-Ilib/micropython/port"
     - "-Ilib/micropython/micropython_embed"
     - "-Ilib/micropython/micropython_embed/py"
     - "-Ilib/micropython/micropython_embed/extmod"
@@ -59,15 +60,25 @@ CompileFlags:
     - "-DMICROPY_PY_GC=1"
     - "-DMICROPY_CONFIG_ROM_LEVEL=2"
     - "-DMICROPY_FLOAT_IMPL=1"
+    - "-DMICROPY_PY_BUILTINS_FLOAT=1"
     - "-DMICROPY_PY_IO=1"
     - "-DMICROPY_PY_SYS=1"
+    - "-DMICROPY_HELPER_REPL=1"
+    - "-DMICROPY_REPL_AUTO_INDENT=1"
+    - "-DMICROPY_PY_BUILTINS_COMPILE=1"
+    - "-DMICROPY_PY_BUILTINS_EVAL_EXEC=1"
+    - "-DMICROPY_PY_ARRAY=1"
+    - "-DMICROPY_PY_COLLECTIONS=1"
+    - "-DMICROPY_PY_STRUCT=1"
+    - "-DMICROPY_PY_MATH=1"
+    - "-DMICROPY_ERROR_REPORTING=2"
+    - "-DMICROPY_ENABLE_SOURCE_LINE=1"
     
     # Suppress specific warnings
     - "-Wno-backslash-newline-escape"
     - "-Wno-macro-redefined"
     
-    # C++ standard and settings
-    - "-std=c++11"
+    # C++ standard and settings (only for C++ files)
     - "-fno-rtti"
     - "-fno-exceptions"
 
@@ -77,6 +88,15 @@ If:
 CompileFlags:
   Add:
     - "-std=c99"
+  Remove:
+    - "-std=c++11"
+
+---
+If:
+  PathMatch: .*\.(cpp|cc|cxx|c\+\+)$
+CompileFlags:
+  Add:
+    - "-std=c++11"
 
 ---
 Diagnostics:

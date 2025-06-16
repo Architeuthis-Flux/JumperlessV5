@@ -861,7 +861,7 @@ int getMenuSelection(void) {
                   break;
                   }
               }
-            // Serial.println("Fuck");
+        
             }
           // }
           //         Serial.print("   \t\t");
@@ -1142,7 +1142,7 @@ uint32_t nodeSelectionColorsHeader[10] = {
     0x180d00, 0x0000af, 0x1a004f, 0x061f29,
   };
 
-//!todo highlight the rails as you select them
+
 
 int selectSubmenuOption(int menuPosition, int menuLevel) {
 
@@ -2680,6 +2680,8 @@ int doMenuAction(int menuPosition, int selection) {
         }
         }
 
+        configChanged = true;
+
       } else if (currentCategory == SLOTSACTION) { //!Slots
 
         Serial.print("Slots Action\n\r");
@@ -3135,9 +3137,7 @@ int doMenuAction(int menuPosition, int selection) {
                                     jumperlessConfig.top_oled.show_in_terminal = 1;
                                     }
                                 configChanged = true;
-                                //oled.testCentering();
-                               // oledExample();
-                                //oled.test();
+
                                 }
 
 

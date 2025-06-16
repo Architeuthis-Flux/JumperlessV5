@@ -4,8 +4,8 @@
 # KevinC@ppucc.io
 #
 
-App_Version = "1.1.1.1"
-new_requirements = True
+App_Version = "1.1.1.3"
+new_requirements = False
 
 import pathlib
 import requests
@@ -752,7 +752,7 @@ def parse_firmware_version(response_str):
     
     return False
 
-def find_main_port(jumperless_ports):
+def find_main_port(jumperless_ports, force_quit_python=False):
     """Find the main Jumperless port using '?' query"""
     
     for port_name, desc, hwid, interface, additional_attrs in jumperless_ports:
@@ -765,6 +765,13 @@ def find_main_port(jumperless_ports):
                 test_port.reset_input_buffer()
                 test_port.reset_output_buffer()
                 time.sleep(0.1)
+                
+                # Send ? to check for firmware response
+                if force_quit_python:
+                    quit_command = "\n\rquit\n\r"
+                    test_port.write(quit_command.encode('utf-8', errors='ignore'))
+                    test_port.flush()
+                    time.sleep(0.5)
                 
                 # Send ? to check for firmware response
                 test_port.write(b'?')
@@ -1050,8 +1057,12 @@ def open_serial():
             main_port_name = find_main_port(jumperless_ports)
             
             if not main_port_name:
-                time.sleep(0.5)
-                main_port_name = find_main_port(jumperless_ports)
+                
+                # time.sleep(0.5)
+                safe_print("Trying to find main port with force_quit_python=True", Fore.YELLOW)
+                main_port_name = find_main_port(jumperless_ports, force_quit_python=True)
+                
+                    
             
             if not main_port_name:
                 safe_print("Could not find main port automatically.", Fore.YELLOW)
@@ -4658,14 +4669,23 @@ def handle_interactive_input_simple():
                         raise KeyboardInterrupt
                     elif char == '\r':
                         char = '\n'  # Convert to newline for MicroPython compatibility
-                    
+                    if char == '\x1b':  # ESC key
+                        esc_sequence = char + sys.stdin.read(2)
+                        with serial_lock:
+                            if serialconnected and ser and ser.is_open:
+                                try:
+                                    ser.write(esc_sequence.encode('utf-8', errors='ignore'))
+                                except Exception as e:
+                                    safe_print(f"Error sending character: {e}", Fore.RED)
+                        continue
+                    else:
                     # Send character to serial port
-                    with serial_lock:
-                        if serialconnected and ser and ser.is_open:
-                            try:
-                                ser.write(char.encode('utf-8', errors='ignore'))
-                            except Exception as e:
-                                safe_print(f"Error sending character: {e}", Fore.RED)
+                        with serial_lock:
+                            if serialconnected and ser and ser.is_open:
+                                try:
+                                    ser.write(char.encode('utf-8', errors='ignore'))
+                                except Exception as e:
+                                    safe_print(f"Error sending character: {e}", Fore.RED)
                                 
         finally:
             # Always restore original terminal settings

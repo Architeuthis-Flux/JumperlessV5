@@ -839,13 +839,13 @@ void readGPIO(void) {
   }
 
 void setRailsAndDACs(int saveEEPROM) {
-  setTopRail(railVoltage[0], 1, 0);
+  setTopRail(jumperlessConfig.dacs.top_rail, 1, 0);
   // delay(10);
-  setBotRail(railVoltage[1], 1, 0);
+  setBotRail(jumperlessConfig.dacs.bottom_rail, 1, 0);
   // delay(10);
-  setDac0voltage(dacOutput[0], 1, 0);
+  setDac0voltage(jumperlessConfig.dacs.dac_0, 1, 0);
   // delay(10);
-  setDac1voltage(dacOutput[1], 1, saveEEPROM);
+  setDac1voltage(jumperlessConfig.dacs.dac_1, 1, saveEEPROM);
   // delay(10);
   }
 void setTopRail(float value, int save, int saveEEPROM) {
@@ -861,12 +861,14 @@ void setTopRail(float value, int save, int saveEEPROM) {
     digitalWrite(LDAC, HIGH);
     mcp.setChannelValue(MCP4728_CHANNEL_C, dacValue);
     digitalWrite(LDAC, LOW);
-    //if (save) {
-      railVoltage[0] = value;
-      //}
+    if (save) {
+      jumperlessConfig.dacs.top_rail = value;
+      railVoltage[0] = value;  // Keep legacy variable in sync
+      configChanged = true;
+      }
     if (saveEEPROM) {
 
-      saveVoltages(railVoltage[0], railVoltage[1], dacOutput[0], dacOutput[1]);
+      saveVoltages(jumperlessConfig.dacs.top_rail, jumperlessConfig.dacs.bottom_rail, jumperlessConfig.dacs.dac_0, jumperlessConfig.dacs.dac_1);
       }
   }
 
@@ -883,12 +885,14 @@ void setBotRail(float value, int save, int saveEEPROM) {
     digitalWrite(LDAC, HIGH);
     mcp.setChannelValue(MCP4728_CHANNEL_D, dacValue);
     digitalWrite(LDAC, LOW);
-    //if (save) {
-      railVoltage[1] = value;
-      //}
+    if (save) {
+      jumperlessConfig.dacs.bottom_rail = value;
+      railVoltage[1] = value;  // Keep legacy variable in sync
+      configChanged = true;
+      }
     if (saveEEPROM) {
 
-      saveVoltages(railVoltage[0], railVoltage[1], dacOutput[0], dacOutput[1]);
+      saveVoltages(jumperlessConfig.dacs.top_rail, jumperlessConfig.dacs.bottom_rail, jumperlessConfig.dacs.dac_0, jumperlessConfig.dacs.dac_1);
       }
   }
 
@@ -915,13 +919,13 @@ void setBotRail(float value, int save, int saveEEPROM) {
 
 float getDacVoltage(int dac) {
   if (dac == 0) {
-    return dacOutput[0];
+    return jumperlessConfig.dacs.dac_0;
     } else if (dac == 1) {
-      return dacOutput[1];
+      return jumperlessConfig.dacs.dac_1;
       } else if (dac == 2) {
-        return railVoltage[0];
+        return jumperlessConfig.dacs.top_rail;
         } else if (dac == 3) {
-          return railVoltage[1];
+          return jumperlessConfig.dacs.bottom_rail;
           }
         return 0;
   }

@@ -25,24 +25,49 @@
  */
 
 #include <stdio.h>
-// #include "py/mphal.h"
+#include "py/mphal.h"
 
 #include "py/runtime.h"
 #include "py/lexer.h"
 #include "py/builtin.h"
 #include "py/mperrno.h"
+
+// Import the global stream from our main Arduino code
+extern void* global_mp_stream_ptr;
+extern void arduino_serial_write(const char *str, int len, void *stream);
+extern int arduino_serial_read(void *stream);
+
 // Send string of given length to stdout, converting \n to \r\n.
+// Note: Implementation moved to Python.cpp for Jumperless-specific functionality
 // void mp_hal_stdout_tx_strn_cooked(const char *str, size_t len) {
-//     printf("%.*s", (int)len, str);
+//     if (global_mp_stream_ptr) {
+//         arduino_serial_write(str, len, global_mp_stream_ptr);
+//     }
 // }
 
-
-
-// Import stat function - return "not found" for all imports
-mp_import_stat_t mp_import_stat(const char *path) {
-    (void)path;
-    return MP_IMPORT_STAT_NO_EXIST;
+// Send string of given length to stdout (raw).
+mp_uint_t mp_hal_stdout_tx_strn(const char *str, size_t len) {
+    if (global_mp_stream_ptr) {
+        arduino_serial_write(str, len, global_mp_stream_ptr);
+    }
+    return len;
 }
+
+mp_uint_t mp_hal_set_interrupt_char(int c) {
+    (void)c;
+    return 0;
+}
+
+// Receive single character from stdin, non-blocking.
+int mp_hal_stdin_rx_chr(void) {
+    if (global_mp_stream_ptr) {
+        return arduino_serial_read(global_mp_stream_ptr);
+    }
+    // For embedded use, we don't support stdin input
+    return -1; // No character available
+}
+
+// Import stat function implementation removed - using inline version from builtin.h
 
 // Lexer function - return NULL since we don't support file-based lexing
 mp_lexer_t *mp_lexer_new_from_file(qstr filename) {
@@ -51,10 +76,23 @@ mp_lexer_t *mp_lexer_new_from_file(qstr filename) {
     return NULL;
 }
 
-// Stub implementation for embedded use
-static mp_obj_t mp_builtin_open_stub(size_t n_args, const mp_obj_t *args, mp_map_t *kwargs) {
-    // For embedded use, we don't support file operations
-    mp_raise_msg(&mp_type_OSError, MP_ERROR_TEXT("File operations not supported in embedded mode"));
+// Open function implementation removed - VFS provides this when MICROPY_VFS is enabled
+
+// HAL timing functions - basic implementations for embedded use
+// Note: mp_hal_delay_ms and mp_hal_ticks_ms are defined in Python_Proper.cpp
+#include <Arduino.h>
+
+void mp_hal_delay_us(mp_uint_t us) {
+    delayMicroseconds(us);
 }
-MP_DEFINE_CONST_FUN_OBJ_KW(mp_builtin_open_obj, 1, mp_builtin_open_stub);
+
+mp_uint_t mp_hal_ticks_us(void) {
+    return micros();
+}
+
+mp_uint_t mp_hal_ticks_cpu(void) {
+    // For RP2040/RP2350, we can use the same as ticks_us
+    // In a real implementation, this might use a higher resolution counter
+    return micros();
+}
 

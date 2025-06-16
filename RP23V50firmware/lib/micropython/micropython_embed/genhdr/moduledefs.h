@@ -8,13 +8,30 @@ extern const struct _mp_obj_module_t mp_module_collections;
 #undef MODULE_DEF_COLLECTIONS
 #define MODULE_DEF_COLLECTIONS { MP_ROM_QSTR(MP_QSTR_collections), MP_ROM_PTR(&mp_module_collections) },
 
+extern const struct _mp_obj_module_t mp_module_errno;
+#undef MODULE_DEF_ERRNO
+#define MODULE_DEF_ERRNO { MP_ROM_QSTR(MP_QSTR_errno), MP_ROM_PTR(&mp_module_errno) },
+
 extern const struct _mp_obj_module_t mp_module_io;
 #undef MODULE_DEF_IO
 #define MODULE_DEF_IO { MP_ROM_QSTR(MP_QSTR_io), MP_ROM_PTR(&mp_module_io) },
 
+
+extern const struct _mp_obj_module_t mp_module_os;
+#undef MODULE_DEF_OS
+#define MODULE_DEF_OS { MP_ROM_QSTR(MP_QSTR_os), MP_ROM_PTR(&mp_module_os) },
+
+extern const struct _mp_obj_module_t mp_module_platform;
+#undef MODULE_DEF_PLATFORM
+#define MODULE_DEF_PLATFORM { MP_ROM_QSTR(MP_QSTR_platform), MP_ROM_PTR(&mp_module_platform) },
+
 extern const struct _mp_obj_module_t mp_module_struct;
 #undef MODULE_DEF_STRUCT
 #define MODULE_DEF_STRUCT { MP_ROM_QSTR(MP_QSTR_struct), MP_ROM_PTR(&mp_module_struct) },
+
+extern const struct _mp_obj_module_t mp_module_time;
+#undef MODULE_DEF_TIME
+#define MODULE_DEF_TIME { MP_ROM_QSTR(MP_QSTR_time), MP_ROM_PTR(&mp_module_time) },
 
 extern const struct _mp_obj_module_t mp_module___main__;
 #undef MODULE_DEF___MAIN__
@@ -32,6 +49,10 @@ extern const struct _mp_obj_module_t jumperless_user_cmodule;
 #undef MODULE_DEF_JUMPERLESS
 #define MODULE_DEF_JUMPERLESS { MP_ROM_QSTR(MP_QSTR_jumperless), MP_ROM_PTR(&jumperless_user_cmodule) },
 
+extern const struct _mp_obj_module_t mp_module_math;
+#undef MODULE_DEF_MATH
+#define MODULE_DEF_MATH { MP_ROM_QSTR(MP_QSTR_math), MP_ROM_PTR(&mp_module_math) },
+
 extern const struct _mp_obj_module_t mp_module_micropython;
 #undef MODULE_DEF_MICROPYTHON
 #define MODULE_DEF_MICROPYTHON { MP_ROM_QSTR(MP_QSTR_micropython), MP_ROM_PTR(&mp_module_micropython) },
@@ -45,6 +66,7 @@ extern const struct _mp_obj_module_t mp_module_sys;
     MODULE_DEF_BUILTINS \
     MODULE_DEF_GC \
     MODULE_DEF_JUMPERLESS \
+    MODULE_DEF_MATH \
     MODULE_DEF_MICROPYTHON \
     MODULE_DEF_SYS \
     MODULE_DEF___MAIN__ \
@@ -53,8 +75,12 @@ extern const struct _mp_obj_module_t mp_module_sys;
 #define MICROPY_REGISTERED_EXTENSIBLE_MODULES \
     MODULE_DEF_ARRAY \
     MODULE_DEF_COLLECTIONS \
+    MODULE_DEF_ERRNO \
     MODULE_DEF_IO \
+    MODULE_DEF_OS \
+    MODULE_DEF_PLATFORM \
     MODULE_DEF_STRUCT \
+    MODULE_DEF_TIME \
 // MICROPY_REGISTERED_EXTENSIBLE_MODULES
 
 extern void mp_module_sys_attr(mp_obj_t self_in, qstr attr, mp_obj_t *dest);
