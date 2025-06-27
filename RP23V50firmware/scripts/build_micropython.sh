@@ -20,7 +20,7 @@ echo -e "${GREEN}Building MicroPython embed port with built-in modules...${NC}"
 # Check if we already have a working micropython_embed with Jumperless integration
 cd "$MICROPYTHON_LOCAL_PATH"
 if [ -f "micropython_embed/genhdr/qstrdefs.generated.h" ] && grep -q "jumperless" micropython_embed/genhdr/qstrdefs.generated.h; then
-    echo -e "${GREEN}✅ MicroPython embed port with Jumperless integration already exists!${NC}"
+    echo -e "${GREEN}◆ MicroPython embed port with Jumperless integration already exists!${NC}"
     
     # Verify the existing build
     QSTR_COUNT=$(grep -c "^QDEF" micropython_embed/genhdr/qstrdefs.generated.h || true)
@@ -29,7 +29,7 @@ if [ -f "micropython_embed/genhdr/qstrdefs.generated.h" ] && grep -q "jumperless
     echo -e "${GREEN}   Found $QSTR_COUNT total QSTR definitions${NC}"
     echo -e "${GREEN}   Jumperless module QSTRs found: $JUMPERLESS_QSTRS${NC}"
     echo -e "${GREEN}   Time module QSTRs found: $TIME_QSTRS${NC}"
-    echo -e "${GREEN}✅ MicroPython embed port is ready with built-in modules!${NC}"
+    echo -e "${GREEN}◆ MicroPython embed port is ready with built-in modules!${NC}"
     # exit 0
 fi
 
@@ -217,7 +217,7 @@ if [ -f "$MICROPYTHON_LOCAL_PATH/micropython_embed/genhdr/moduledefs.h" ]; then
     sed -i.bak '/MODULE_DEF_MACHINE \\/d' "$MICROPYTHON_LOCAL_PATH/micropython_embed/genhdr/moduledefs.h"
     # Clean up backup file
     rm -f "$MICROPYTHON_LOCAL_PATH/micropython_embed/genhdr/moduledefs.h.bak"
-    echo -e "${GREEN}   ✅ Machine module removed from moduledefs.h${NC}"
+    echo -e "${GREEN}   ◆ Machine module removed from moduledefs.h${NC}"
 fi
 
 # echo -e "${RED}$MICROPYTHON_LOCAL_PATH/micropython_embed/port/mphalport.h${NC}"
@@ -234,7 +234,7 @@ if [ -f "$MICROPYTHON_LOCAL_PATH/micropython_embed/genhdr/qstrdefs.generated.h" 
     TIME_QSTRS=$(grep -c "time\|sleep\|ticks" "$MICROPYTHON_LOCAL_PATH/micropython_embed/genhdr/qstrdefs.generated.h" || true)
     MACHINE_QSTRS=$(grep -c "machine\|Pin\|ADC\|PWM" "$MICROPYTHON_LOCAL_PATH/micropython_embed/genhdr/qstrdefs.generated.h" || true)
     
-    echo -e "${GREEN}✅ MicroPython embed build successful!${NC}"
+    echo -e "${GREEN}◆ MicroPython embed build successful!${NC}"
     echo -e "${GREEN}   Generated $QSTR_COUNT total QSTR definitions${NC}"
     if [ "$JUMPERLESS_QSTRS" -gt 0 ]; then
         echo -e "${GREEN}   Jumperless module QSTRs found: $JUMPERLESS_QSTRS${NC}"
@@ -246,7 +246,7 @@ if [ -f "$MICROPYTHON_LOCAL_PATH/micropython_embed/genhdr/qstrdefs.generated.h" 
     echo -e "${GREEN}   Files ready for PlatformIO integration with embed API${NC}"
     echo -e "${GREEN}   Available modules: time, machine, os, math, gc, array, etc.${NC}"
 else
-    echo -e "${RED}❌ MicroPython embed build failed!${NC}"
+    echo -e "${RED}◇ MicroPython embed build failed!${NC}"
     echo -e "${RED}   qstrdefs.generated.h not found${NC}"
     exit 1
 fi
@@ -254,17 +254,17 @@ fi
 # Verify Jumperless module files are present
 echo -e "${YELLOW}Verifying Jumperless module integration...${NC}"
 if [ -f "$PROJECT_ROOT/modules/jumperless/modjumperless.c" ]; then
-    echo -e "${GREEN}   ✅ Jumperless MicroPython module found${NC}"
+    echo -e "${GREEN}   ◆ Jumperless MicroPython module found${NC}"
 else
-    echo -e "${RED}   ❌ Jumperless MicroPython module missing${NC}"
+    echo -e "${RED}   ◇ Jumperless MicroPython module missing${NC}"
 fi
 
 if [ -f "$PROJECT_ROOT/src/JumperlessMicroPythonAPI.cpp" ]; then
-    echo -e "${GREEN}   ✅ Jumperless API wrapper found${NC}"
+    echo -e "${GREEN}   ◆ Jumperless API wrapper found${NC}"
 else
-    echo -e "${RED}   ❌ Jumperless API wrapper missing${NC}"
+    echo -e "${RED}   ◇ Jumperless API wrapper missing${NC}"
 fi
 
-echo -e "${GREEN}✅ MicroPython embed port is ready with built-in modules!${NC}"
+echo -e "${GREEN}◆ MicroPython embed port is ready with built-in modules!${NC}"
 echo -e "${GREEN}   You can now use: mp_embed_init(), mp_embed_exec_str(), mp_embed_deinit()${NC}"
 echo -e "${GREEN}   Available modules: import time, import machine, import os, etc.${NC}" 

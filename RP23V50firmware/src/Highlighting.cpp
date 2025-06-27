@@ -457,6 +457,7 @@ int warnNet(int node) {
 unsigned long lastWarningTimer = 0;
 unsigned long lastHighlightTimer = 0;
 unsigned long highlightTimeout = 3000; // 3 seconds timeout for highlighted nets
+unsigned long dacHighlightTimeout = 6000; // 8 seconds timeout for DAC nets
 unsigned long highlightTimer = 0;
 
 unsigned long lastFirstConnectionTimer = 0;
@@ -499,7 +500,19 @@ void warnNetTimeout(int clearAll) {
     }
 
   // Check for highlighted net timeout
-  if (highlightTimer > 0 && millis() - highlightTimer > highlightTimeout) {
+  // Skip timeout if highlighting a GPIO output, use longer timeout for DACs
+  bool skipTimeout = false;
+  unsigned long currentTimeout = highlightTimeout;
+  
+  if (highlightedNet == 4 || highlightedNet == 5) {
+    // DAC nets use longer timeout (8 seconds)
+    currentTimeout = dacHighlightTimeout;
+  } else if (highlightedNet > 0 && anyGpioOutputConnected(highlightedNet) != -1) {
+    // GPIO output nets should never timeout
+    skipTimeout = true;
+  }
+  
+  if (!skipTimeout && highlightTimer > 0 && millis() - highlightTimer > currentTimeout) {
     clearHighlighting(); // Clear all highlighting when timeout expires
     highlightTimer = 0;
     lastHighlightTimer = millis();

@@ -4,8 +4,8 @@
 # KevinC@ppucc.io
 #
 
-App_Version = "1.1.1.3"
-new_requirements = False
+App_Version = "1.1.1.5"
+new_requirements = True
 
 import pathlib
 import requests
@@ -1311,12 +1311,12 @@ def update_jumperless_firmware(force=False):
                                         volume_info = win32api.GetVolumeInformation(p.mountpoint)
                                         volume_name = volume_info[0]
                                         if jumperlessV5:
-                                            if volume_name == "RP2350":
+                                            if volume_name.contains("RP2350"):
                                                 foundVolume = p.mountpoint
                                                 safe_print(f"Found Jumperless V5 at {foundVolume}", Fore.CYAN)
                                                 break
                                         else:
-                                            if volume_name == "RPI-RP2":
+                                            if volume_name.contains("RPI-RP2"):
                                                 foundVolume = p.mountpoint
                                                 safe_print(f"Found Jumperless at {foundVolume}", Fore.CYAN)
                                                 break
@@ -1373,17 +1373,17 @@ def update_jumperless_firmware(force=False):
                                         safe_print(f"Error in fallback Windows detection: {e}", Fore.RED)
                                         continue
                                 else:
-                                    # Unix-like systems
-                                    if jumperlessV5:
-                                        if p.mountpoint.endswith("RP2350") or "RP2350" in p.mountpoint:
-                                            foundVolume = p.mountpoint
-                                            safe_print(f"Found Jumperless V5 at {foundVolume}", Fore.RED)
-                                            break
-                                    else:
-                                        if p.mountpoint.endswith("RPI-RP2") or "RPI-RP2" in p.mountpoint:
-                                            foundVolume = p.mountpoint
-                                            safe_print(f"Found Jumperless at {foundVolume}", Fore.RED)
-                                            break
+                                # Unix-like systems
+                                # if jumperlessV5:
+                                    if p.mountpoint.endswith("RP2350") or "RP2350" in p.mountpoint:
+                                        foundVolume = p.mountpoint
+                                        safe_print(f"Found Jumperless V5 at {foundVolume}", Fore.RED)
+                                        break
+                                # else:
+                                    if p.mountpoint.endswith("RPI-RP2") or "RPI-RP2" in p.mountpoint:
+                                        foundVolume = p.mountpoint
+                                        safe_print(f"Found Jumperless at {foundVolume}", Fore.RED)
+                                        break
                             except Exception:
                                 continue
                     except Exception as partition_error:
@@ -1684,7 +1684,7 @@ def download_app_update():
             return None, None
         
         # Download the main script using firmware version in URL
-        script_url = f"https://github.com/{app_update_repo}/releases/download/v{firmware_version}/{app_script_name}"
+        script_url = f"https://github.com/{app_update_repo}/releases/download/{firmware_version}/{app_script_name}"
         
         safe_print(f"Downloading {app_script_name} (release {firmware_version})...", Fore.CYAN)
         
@@ -1705,7 +1705,7 @@ def download_app_update():
         if new_requirements:
             try:
                 safe_print("Downloading requirements.txt...", Fore.CYAN)
-                requirements_url = f"https://github.com/{app_update_repo}/releases/download/v{firmware_version}/{app_requirements_name}"
+                requirements_url = f"https://github.com/{app_update_repo}/releases/download/{firmware_version}/{app_requirements_name}"
                 
                 with tempfile.NamedTemporaryFile(mode='wb', delete=False, suffix='.txt') as temp_req_file:
                     requirements_path = temp_req_file.name
@@ -2695,7 +2695,7 @@ def bridge_menu():
     safe_print("\n\n         Jumperless App Menu\n", Fore.MAGENTA)
     
     safe_print(" 'menu'        to open the app menu (this menu)", Fore.BLUE)  
-    safe_print(" 'interactive' to " + ("disable" if interactive_mode else "enable") + " real-time character mode - " + ("ON" if interactive_mode else "OFF") + " (device-controllable)", Fore.RED if interactive_mode else Fore.GREEN)
+    safe_print(" 'interactive' to " + ("disable" if interactive_mode else "enable") + " real-time character mode - " + ("ON" if interactive_mode else "OFF")  , Fore.RED if interactive_mode else Fore.GREEN)
     safe_print(" 'wokwi'       to " + ("enable" if noWokwiStuff else "disable") + " Wokwi updates " + ("and just use as a terminal" if not noWokwiStuff else ""), Fore.CYAN)
     safe_print(" 'rate'        to change the Wokwi update rate", Fore.GREEN)
     safe_print(" 'slots'       to assign Wokwi projects to slots - " + str(numAssignedSlots) + " assigned", Fore.YELLOW)
@@ -2708,7 +2708,7 @@ def bridge_menu():
     safe_print(" 'appupdate'   to check for app updates - current version " + App_Version + debug_status, Fore.MAGENTA)
     safe_print(" 'debugupdate' to " + ("disable" if debug_app_update else "enable") + " app update debug mode", Fore.BLUE)
     safe_print(" 'status'      to check the serial connection status", Fore.CYAN) 
-    safe_print(" 'exit'        to exit the menu", Fore.GREEN)
+    safe_print(" [enter]       to exit the menu and return to Jumperless", Fore.GREEN)
     
     while menuEntered:
         try:

@@ -376,7 +376,7 @@ char* colorNameBuffer = (char*)malloc(10);
 ///@param hueEnd End of hue range (0-255)
 ///@param termColor256 Terminal color for 256-color mode
 ///@param termColor16 Terminal color for 16-color mode
-static const NamedColor colorNames[] = {
+const NamedColor namedColors[] = {
     {0xFF0000, 0x400000, "red       ", 253, 12, 196, 31},  // Red wraps around 0
     {0xFFA500, 0x401000, "orange    ", 13, 28, 208, 91},
     {0xFFBF00, 0x403000, "amber     ", 29, 35, 214, 33},
@@ -403,21 +403,21 @@ static const NamedColor colorNames[] = {
 // Helper: get the index of the closest palette color for a given hue
 int closestPaletteHueIdx(int hue) {
   // First, try to find a direct match using the hue ranges
-  for (int i = 0; i < sizeof(colorNames) / sizeof(colorNames[0]); i++) {
+  for (int i = 0; i < sizeof(namedColors) / sizeof(namedColors[0]); i++) {
     // Skip special cases (white, black, grey)
-    if (colorNames[i].hueStart == 0 && colorNames[i].hueEnd == 0) {
+    if (namedColors[i].hueStart == 0 && namedColors[i].hueEnd == 0) {
       continue;
       }
 
     // Handle normal range
-    if (colorNames[i].hueStart < colorNames[i].hueEnd) {
-      if (hue >= colorNames[i].hueStart && hue <= colorNames[i].hueEnd) {
+    if (namedColors[i].hueStart < namedColors[i].hueEnd) {
+      if (hue >= namedColors[i].hueStart && hue <= namedColors[i].hueEnd) {
         return i;
         }
       }
     // Handle wrapping range (e.g., red spans 250-10)
-    else if (colorNames[i].hueStart > colorNames[i].hueEnd) {
-      if (hue >= colorNames[i].hueStart || hue <= colorNames[i].hueEnd) {
+    else if (namedColors[i].hueStart > namedColors[i].hueEnd) {
+      if (hue >= namedColors[i].hueStart || hue <= namedColors[i].hueEnd) {
         return i;
         }
       }
@@ -430,11 +430,11 @@ int closestPaletteHueIdx(int hue) {
   for (int i = 0; i < 14; i++) {
     // Find the center of the hue range for this color
     int centerHue;
-    if (colorNames[i].hueStart < colorNames[i].hueEnd) {
-      centerHue = (colorNames[i].hueStart + colorNames[i].hueEnd) / 2;
+    if (namedColors[i].hueStart < namedColors[i].hueEnd) {
+      centerHue = (namedColors[i].hueStart + namedColors[i].hueEnd) / 2;
       } else {
       // Handle wrapping range (e.g., red spans 250-10)
-      centerHue = (colorNames[i].hueStart + colorNames[i].hueEnd + 255) / 2;
+      centerHue = (namedColors[i].hueStart + namedColors[i].hueEnd + 255) / 2;
       if (centerHue > 255) centerHue -= 255;
       }
 
@@ -476,7 +476,7 @@ return colorToAnsi(color);
   int hue = inputHsv.h;
   int hueIdx = closestPaletteHueIdx(hue);
  
-    return colorNames[hueIdx].termColor256;
+    return namedColors[hueIdx].termColor256;
 
   }
 
@@ -591,7 +591,7 @@ return colorToAnsi(color);
 ///@return char* Name of the color
 char* colorToName(uint32_t color, int length)
   {
-  int numColors = sizeof(colorNames) / sizeof(colorNames[0]);
+  int numColors = sizeof(namedColors) / sizeof(namedColors[0]);
   rgbColor input = unpackRgb(color);
 
 
@@ -633,21 +633,21 @@ char* colorToName(uint32_t color, int length)
   bool foundRange = false;
   for (int i = 0; i < numColors; i++) {
     // Skip special cases (white, black, grey) if we have color information
-    if (colorNames[i].hueStart == 0 && colorNames[i].hueEnd == 0) {
+    if (namedColors[i].hueStart == 0 && namedColors[i].hueEnd == 0) {
       if (inputHsv.s > 40 && inputHsv.v > 30) continue;
       }
 
     // Handle normal range
-    if (colorNames[i].hueStart < colorNames[i].hueEnd) {
-      if (inputHsv.h >= colorNames[i].hueStart && inputHsv.h <= colorNames[i].hueEnd) {
+    if (namedColors[i].hueStart < namedColors[i].hueEnd) {
+      if (inputHsv.h >= namedColors[i].hueStart && inputHsv.h <= namedColors[i].hueEnd) {
         minIdx = i;
         foundRange = true;
         break;
         }
       }
     // Handle wrapping range (e.g., red spans 253-12)
-    else if (colorNames[i].hueStart > colorNames[i].hueEnd) {
-      if (inputHsv.h >= colorNames[i].hueStart || inputHsv.h <= colorNames[i].hueEnd) {
+    else if (namedColors[i].hueStart > namedColors[i].hueEnd) {
+      if (inputHsv.h >= namedColors[i].hueStart || inputHsv.h <= namedColors[i].hueEnd) {
         minIdx = i;
         foundRange = true;
         break;
@@ -661,10 +661,10 @@ char* colorToName(uint32_t color, int length)
       uint32_t refColor;
       if (isDim) {
         // Use dim reference colors for matching dim input colors
-        refColor = colorNames[i].dimColor;
+        refColor = namedColors[i].dimColor;
         } else {
         // For brighter colors, compare with standard palette
-        refColor = colorNames[i].color;
+        refColor = namedColors[i].color;
         }
 
       // For very dim colors, we'll compare RGB directly 
@@ -703,7 +703,7 @@ char* colorToName(uint32_t color, int length)
       }
     }
 
-  const char* src = colorNames[minIdx].name;
+  const char* src = namedColors[minIdx].name;
   // Serial.print("\n\r");
   // Serial.print(src);
   // Serial.print("\n\r");
@@ -745,16 +745,16 @@ char* colorToName(int hue, int length) {
   if (hue < 0) return colorToName(0x000000, length); // fallback
 
   // Find the color for this hue using direct range matching
-  for (int i = 0; i < sizeof(colorNames) / sizeof(colorNames[0]); i++) {
+  for (int i = 0; i < sizeof(namedColors) / sizeof(namedColors[0]); i++) {
     // Skip special cases (white, black, grey)
-    if (colorNames[i].hueStart == 0 && colorNames[i].hueEnd == 0) {
+    if (namedColors[i].hueStart == 0 && namedColors[i].hueEnd == 0) {
       continue;
       }
 
     // Handle normal range
-    if (colorNames[i].hueStart < colorNames[i].hueEnd) {
-      if (hue >= colorNames[i].hueStart && hue <= colorNames[i].hueEnd) {
-        const char* src = colorNames[i].name;
+    if (namedColors[i].hueStart < namedColors[i].hueEnd) {
+      if (hue >= namedColors[i].hueStart && hue <= namedColors[i].hueEnd) {
+        const char* src = namedColors[i].name;
         int len = strlen(src);
         if (length == -1) {
           // Trim trailing spaces only
@@ -774,9 +774,9 @@ char* colorToName(int hue, int length) {
         }
       }
     // Handle wrapping range (e.g., red spans 250-10)
-    else if (colorNames[i].hueStart > colorNames[i].hueEnd) {
-      if (hue >= colorNames[i].hueStart || hue <= colorNames[i].hueEnd) {
-        const char* src = colorNames[i].name;
+    else if (namedColors[i].hueStart > namedColors[i].hueEnd) {
+      if (hue >= namedColors[i].hueStart || hue <= namedColors[i].hueEnd) {
+        const char* src = namedColors[i].name;
         int len = strlen(src);
         if (length == -1) {
           // Trim trailing spaces only
@@ -799,7 +799,7 @@ char* colorToName(int hue, int length) {
 
   // If we get here, use the closest match
   int idx = closestPaletteHueIdx(hue);
-  const char* src = colorNames[idx].name;
+  const char* src = namedColors[idx].name;
   int len = strlen(src);
   if (length == -1) {
     int end = len - 1;

@@ -111,6 +111,8 @@ void enterMicroPythonREPL(Stream *stream = global_mp_stream);
 
 // Helper functions
 void addJumperlessPythonFunctions(void);
+void addNodeConstantsToGlobalNamespace(void);
+void testGlobalImports(void);
 void addMicroPythonModules(bool time = true, bool machine = false, bool os = true, bool math = true, bool gc = true);
 void testJumperlessNativeModule(void);
 void testStreamRedirection(Stream *newStream);

@@ -21,6 +21,7 @@
 #include "py/builtin.h"
 #include <string.h>
 #include <stdio.h>
+#include <stdlib.h>
 
 // Note: GPIO functions now always return formatted strings like HIGH/LOW, INPUT/OUTPUT, etc.
 // Voltage/current functions still return floats for backward compatibility
@@ -70,6 +71,7 @@ const mp_obj_type_t gpio_state_type;
 const mp_obj_type_t gpio_direction_type;
 const mp_obj_type_t gpio_pull_type;
 const mp_obj_type_t connection_state_type;
+const mp_obj_type_t node_type;
 
 // Forward declarations for functions
 static void gpio_state_print(const mp_print_t *print, mp_obj_t self_in, mp_print_kind_t kind);
@@ -84,6 +86,169 @@ static mp_obj_t gpio_pull_make_new(const mp_obj_type_t *type, size_t n_args, siz
 static void connection_state_print(const mp_print_t *print, mp_obj_t self_in, mp_print_kind_t kind);
 static mp_obj_t connection_state_unary_op(mp_unary_op_t op, mp_obj_t self_in);
 static mp_obj_t connection_state_make_new(const mp_obj_type_t *type, size_t n_args, size_t n_kw, const mp_obj_t *args);
+static void node_print(const mp_print_t *print, mp_obj_t self_in, mp_print_kind_t kind);
+static mp_obj_t node_unary_op(mp_unary_op_t op, mp_obj_t self_in);
+static mp_obj_t node_make_new(const mp_obj_type_t *type, size_t n_args, size_t n_kw, const mp_obj_t *args);
+
+//=============================================================================
+// Node Name Mapping - Comprehensive table of all node names and aliases
+//=============================================================================
+
+typedef struct {
+    const char* name;
+    int value;
+} NodeMapping;
+
+// All possible node name mappings including aliases
+static const NodeMapping node_mappings[] = {
+    // Special functions with all aliases
+    {"GND", 100}, {"GROUND", 100},
+    {"TOP_RAIL", 101}, {"TOPRAIL", 101}, {"T_R", 101}, {"TOP_R", 101},
+    {"BOTTOM_RAIL", 102}, {"BOT_RAIL", 102}, {"BOTTOMRAIL", 102}, {"BOTRAIL", 102}, {"B_R", 102}, {"BOT_R", 102},
+    {"SUPPLY_3V3", 103}, {"3V3", 103}, {"3.3V", 103},
+    {"TOP_RAIL_GND", 104}, {"TOP_GND", 104},
+    {"SUPPLY_5V", 105}, {"5V", 105}, {"+5V", 105},
+    
+    // DACs
+    {"DAC0", 106}, {"DAC_0", 106}, {"DAC0_5V", 106},
+    {"DAC1", 107}, {"DAC_1", 107}, {"DAC1_8V", 107},
+    
+    // Current sense
+    {"ISENSE_PLUS", 108}, {"ISENSE_POS", 108}, {"ISENSE_P", 108}, {"INA_P", 108}, {"I_P", 108},
+    {"CURRENT_SENSE_PLUS", 108}, {"ISENSE_POSITIVE", 108}, {"I_POS", 108},
+    {"ISENSE_MINUS", 109}, {"ISENSE_NEG", 109}, {"ISENSE_N", 109}, {"INA_N", 109}, {"I_N", 109},
+    {"CURRENT_SENSE_MINUS", 109}, {"ISENSE_NEGATIVE", 109}, {"I_NEG", 109},
+    
+    // ADCs
+    {"ADC0", 110}, {"ADC_0", 110}, {"ADC0_8V", 110},
+    {"ADC1", 111}, {"ADC_1", 111}, {"ADC1_8V", 111},
+    {"ADC2", 112}, {"ADC_2", 112}, {"ADC2_8V", 112},
+    {"ADC3", 113}, {"ADC_3", 113}, {"ADC3_8V", 113},
+    {"ADC4", 114}, {"ADC_4", 114}, {"ADC4_5V", 114},
+    {"ADC7", 115}, {"ADC_7", 115}, {"ADC7_PROBE", 115}, {"PROBE", 115},
+    
+    // UART
+    {"RP_UART_TX", 116}, {"UART_TX", 116}, {"TX", 116}, {"RP_GPIO_16", 116},
+    {"RP_UART_RX", 117}, {"UART_RX", 117}, {"RX", 117}, {"RP_GPIO_17", 117},
+    
+    // Other RP GPIOs
+    {"RP_GPIO_18", 118}, {"GP_18", 118},
+    {"RP_GPIO_19", 119}, {"GP_19", 119},
+    
+    // Power supplies
+    {"SUPPLY_8V_P", 120}, {"8V_P", 120}, {"8V_POS", 120},
+    {"SUPPLY_8V_N", 121}, {"8V_N", 121}, {"8V_NEG", 121},
+    
+    // Ground rails
+    {"BOTTOM_RAIL_GND", 126}, {"BOT_GND", 126}, {"BOTTOM_GND", 126},
+    {"EMPTY_NET", 127}, {"EMPTY", 127},
+    
+    // User GPIO pins (with all common aliases)
+    {"RP_GPIO_1", 131}, {"GPIO_1", 131}, {"GPIO1", 131}, {"GP_1", 131}, {"GP1", 131},
+    {"RP_GPIO_2", 132}, {"GPIO_2", 132}, {"GPIO2", 132}, {"GP_2", 132}, {"GP2", 132},
+    {"RP_GPIO_3", 133}, {"GPIO_3", 133}, {"GPIO3", 133}, {"GP_3", 133}, {"GP3", 133},
+    {"RP_GPIO_4", 134}, {"GPIO_4", 134}, {"GPIO4", 134}, {"GP_4", 134}, {"GP4", 134},
+    {"RP_GPIO_5", 135}, {"GPIO_5", 135}, {"GPIO5", 135}, {"GP_5", 135}, {"GP5", 135},
+    {"RP_GPIO_6", 136}, {"GPIO_6", 136}, {"GPIO6", 136}, {"GP_6", 136}, {"GP6", 136},
+    {"RP_GPIO_7", 137}, {"GPIO_7", 137}, {"GPIO7", 137}, {"GP_7", 137}, {"GP7", 137},
+    {"RP_GPIO_8", 138}, {"GPIO_8", 138}, {"GPIO8", 138}, {"GP_8", 138}, {"GP8", 138},
+    
+    // Buffer
+    {"ROUTABLE_BUFFER_IN", 139}, {"BUFFER_IN", 139}, {"BUF_IN", 139}, {"BUFF_IN", 139}, {"BUFFIN", 139},
+    {"ROUTABLE_BUFFER_OUT", 140}, {"BUFFER_OUT", 140}, {"BUF_OUT", 140}, {"BUFF_OUT", 140}, {"BUFFOUT", 140},
+    
+    // Arduino Nano pins
+    {"NANO_VIN", 69}, {"VIN", 69},
+    {"NANO_D0", 70}, {"D0", 70},
+    {"NANO_D1", 71}, {"D1", 71},
+    {"NANO_D2", 72}, {"D2", 72},
+    {"NANO_D3", 73}, {"D3", 73},
+    {"NANO_D4", 74}, {"D4", 74},
+    {"NANO_D5", 75}, {"D5", 75},
+    {"NANO_D6", 76}, {"D6", 76},
+    {"NANO_D7", 77}, {"D7", 77},
+    {"NANO_D8", 78}, {"D8", 78},
+    {"NANO_D9", 79}, {"D9", 79},
+    {"NANO_D10", 80}, {"D10", 80},
+    {"NANO_D11", 81}, {"D11", 81},
+    {"NANO_D12", 82}, {"D12", 82},
+    {"NANO_D13", 83}, {"D13", 83},
+    {"NANO_RESET", 84}, {"RESET", 84},
+    {"NANO_AREF", 85}, {"AREF", 85},
+    {"NANO_A0", 86}, {"A0", 86},
+    {"NANO_A1", 87}, {"A1", 87},
+    {"NANO_A2", 88}, {"A2", 88},
+    {"NANO_A3", 89}, {"A3", 89},
+    {"NANO_A4", 90}, {"A4", 90},
+    {"NANO_A5", 91}, {"A5", 91},
+    {"NANO_A6", 92}, {"A6", 92},
+    {"NANO_A7", 93}, {"A7", 93},
+    {"NANO_RESET_0", 94}, {"RST0", 94},
+    {"NANO_RESET_1", 95}, {"RST1", 95},
+    {"NANO_GND_1", 96}, {"N_GND1", 96},
+    {"NANO_GND_0", 97}, {"N_GND0", 97},
+    {"NANO_3V3", 98},
+    {"NANO_5V", 99},
+};
+
+static const size_t node_mappings_count = sizeof(node_mappings) / sizeof(NodeMapping);
+
+// Forward declaration of function to get node name from value
+const char* jl_get_node_name(int node_value);
+
+// Implementation of function to get node name from value
+const char* jl_get_node_name(int node_value) {
+
+
+        // For numbered nodes (1-60), just return the number as string
+    static char num_str[8];
+    if (node_value >= 1 && node_value <= 60) {
+        snprintf(num_str, sizeof(num_str), "%d", node_value);
+        return num_str;
+    }
+    
+    // Search in mappings for a name
+    for (size_t i = 0; i < node_mappings_count; i++) {
+        if (node_mappings[i].value == node_value) {
+            return node_mappings[i].name;
+        }
+    }
+    
+
+    
+    return ""; // Unknown node
+}
+
+// Function to find node value from string name (case-insensitive)
+static int find_node_value(const char* name) {
+    // Convert to uppercase for comparison
+    char upper_name[32];
+    size_t name_len = strlen(name);
+    if (name_len >= sizeof(upper_name)) {
+        return -1; // Name too long
+    }
+    
+    for (size_t i = 0; i < name_len; i++) {
+        upper_name[i] = (name[i] >= 'a' && name[i] <= 'z') ? (name[i] - 'a' + 'A') : name[i];
+    }
+    upper_name[name_len] = '\0';
+    
+    // Check direct integer first
+    char* endptr;
+    long int_val = strtol(upper_name, &endptr, 10);
+    if (*endptr == '\0' && int_val >= 1 && int_val <= 200) {
+        return (int)int_val;
+    }
+    
+    // Search in mappings
+    for (size_t i = 0; i < node_mappings_count; i++) {
+        if (strcmp(upper_name, node_mappings[i].name) == 0) {
+            return node_mappings[i].value;
+        }
+    }
+    
+    return -1; // Not found
+}
 
 // GPIO State Type (HIGH/LOW) that behaves like bool in conditionals
 typedef struct _gpio_state_obj_t {
@@ -275,6 +440,124 @@ static mp_obj_t connection_state_new(bool value) {
 }
 
 //=============================================================================
+// Node Type - Handles string names and aliases for node numbers
+//=============================================================================
+
+typedef struct _node_obj_t {
+    mp_obj_base_t base;
+    int value;  // the actual node number
+} node_obj_t;
+
+static void node_print(const mp_print_t *print, mp_obj_t self_in, mp_print_kind_t kind) {
+    node_obj_t *self = MP_OBJ_TO_PTR(self_in);
+    
+    // Get the human-readable name for this node
+    const char* name = jl_get_node_name(self->value);
+    if (name && strlen(name) > 0) {
+        mp_printf(print, "%s", name);
+    } else {
+        mp_printf(print, "%d", self->value);
+    }
+}
+
+static mp_obj_t node_unary_op(mp_unary_op_t op, mp_obj_t self_in) {
+    node_obj_t *self = MP_OBJ_TO_PTR(self_in);
+    switch (op) {
+        case MP_UNARY_OP_BOOL:
+            return mp_obj_new_bool(self->value != 0);
+        default:
+            return MP_OBJ_NULL;
+    }
+}
+
+// Binary operations to allow nodes to work with integers
+static mp_obj_t node_binary_op(mp_binary_op_t op, mp_obj_t lhs_in, mp_obj_t rhs_in) {
+    if (mp_obj_get_type(lhs_in) == &node_type) {
+        node_obj_t *lhs = MP_OBJ_TO_PTR(lhs_in);
+        if (op == MP_BINARY_OP_EQUAL) {
+            if (mp_obj_get_type(rhs_in) == &node_type) {
+                node_obj_t *rhs = MP_OBJ_TO_PTR(rhs_in);
+                return mp_obj_new_bool(lhs->value == rhs->value);
+            } else if (mp_obj_is_int(rhs_in)) {
+                return mp_obj_new_bool(lhs->value == mp_obj_get_int(rhs_in));
+            }
+        } else if (op == MP_BINARY_OP_NOT_EQUAL) {
+            if (mp_obj_get_type(rhs_in) == &node_type) {
+                node_obj_t *rhs = MP_OBJ_TO_PTR(rhs_in);
+                return mp_obj_new_bool(lhs->value != rhs->value);
+            } else if (mp_obj_is_int(rhs_in)) {
+                return mp_obj_new_bool(lhs->value != mp_obj_get_int(rhs_in));
+            }
+        }
+    }
+    return MP_OBJ_NULL;
+}
+
+MP_DEFINE_CONST_OBJ_TYPE(
+    node_type,
+    MP_QSTR_node,
+    MP_TYPE_FLAG_NONE,
+    make_new, node_make_new,
+    print, node_print,
+    unary_op, node_unary_op,
+    binary_op, node_binary_op
+);
+
+static mp_obj_t node_make_new(const mp_obj_type_t *type, size_t n_args, size_t n_kw, const mp_obj_t *args) {
+    mp_arg_check_num(n_args, n_kw, 1, 1, false);
+    
+    node_obj_t *o = m_new_obj(node_obj_t);
+    o->base.type = &node_type;
+    
+    if (mp_obj_is_str(args[0])) {
+        // Handle string input
+        const char* name = mp_obj_str_get_str(args[0]);
+        int value = find_node_value(name);
+        if (value == -1) {
+            mp_raise_ValueError(MP_ERROR_TEXT("Unknown node name"));
+        }
+        o->value = value;
+    } else if (mp_obj_is_int(args[0])) {
+        // Handle integer input
+        o->value = mp_obj_get_int(args[0]);
+    } else if (mp_obj_get_type(args[0]) == &node_type) {
+        // Handle copying another node
+        node_obj_t *other = MP_OBJ_TO_PTR(args[0]);
+        o->value = other->value;
+    } else {
+        mp_raise_TypeError(MP_ERROR_TEXT("Node must be created from string, int, or another node"));
+    }
+    
+    return MP_OBJ_FROM_PTR(o);
+}
+
+static mp_obj_t node_new(int value) {
+    node_obj_t *o = m_new_obj(node_obj_t);
+    o->base.type = &node_type;
+    o->value = value;
+    return MP_OBJ_FROM_PTR(o);
+}
+
+// Helper function to extract integer from node or int argument
+static int get_node_value(mp_obj_t obj) {
+    if (mp_obj_get_type(obj) == &node_type) {
+        node_obj_t *node = MP_OBJ_TO_PTR(obj);
+        return node->value;
+    } else if (mp_obj_is_int(obj)) {
+        return mp_obj_get_int(obj);
+    } else if (mp_obj_is_str(obj)) {
+        // Allow direct string to int conversion in functions
+        const char* name = mp_obj_str_get_str(obj);
+        int value = find_node_value(name);
+        if (value == -1) {
+            mp_raise_ValueError(MP_ERROR_TEXT("Unknown node name"));
+        }
+        return value;
+    }
+    mp_raise_TypeError(MP_ERROR_TEXT("Expected node, int, or string"));
+}
+
+//=============================================================================
 // Function Implementations
 //=============================================================================
 
@@ -287,7 +570,7 @@ static mp_obj_t jl_dac_set_func(size_t n_args, const mp_obj_t *args) {
     if (channel < 0 || channel > 3) {
         mp_raise_ValueError(MP_ERROR_TEXT("DAC channel must be 0-3"));
     }
-    
+    printf("jl_dac_set: channel: %d, voltage: %f, save: %d\n", channel, voltage, save);
     jl_dac_set(channel, voltage, save);
     return mp_const_none;
 }
@@ -461,8 +744,8 @@ static MP_DEFINE_CONST_FUN_OBJ_1(jl_gpio_get_pull_obj, jl_gpio_get_pull_func);
 
 // Node Functions
 static mp_obj_t jl_nodes_connect_func(size_t n_args, const mp_obj_t *args) {
-    int node1 = mp_obj_get_int(args[0]);
-    int node2 = mp_obj_get_int(args[1]);
+    int node1 = get_node_value(args[0]);
+    int node2 = get_node_value(args[1]);
     int save = (n_args > 2) ? mp_obj_is_true(args[2]) ? 1 : 0 : 1; // Default save=True
     
     jl_nodes_connect(node1, node2, save);
@@ -471,8 +754,8 @@ static mp_obj_t jl_nodes_connect_func(size_t n_args, const mp_obj_t *args) {
 static MP_DEFINE_CONST_FUN_OBJ_VAR_BETWEEN(jl_nodes_connect_obj, 2, 3, jl_nodes_connect_func);
 
 static mp_obj_t jl_nodes_disconnect_func(mp_obj_t node1_obj, mp_obj_t node2_obj) {
-    int node1 = mp_obj_get_int(node1_obj);
-    int node2 = mp_obj_get_int(node2_obj);
+    int node1 = get_node_value(node1_obj);
+    int node2 = get_node_value(node2_obj);
     
     jl_nodes_disconnect(node1, node2);
     return mp_const_none;
@@ -487,8 +770,8 @@ static MP_DEFINE_CONST_FUN_OBJ_0(jl_nodes_clear_obj, jl_nodes_clear_func);
 
 
 static mp_obj_t jl_nodes_is_connected_func(mp_obj_t node1_obj, mp_obj_t node2_obj) {
-    int node1 = mp_obj_get_int(node1_obj);
-    int node2 = mp_obj_get_int(node2_obj);
+    int node1 = get_node_value(node1_obj);
+    int node2 = get_node_value(node2_obj);
     int connected = jl_nodes_is_connected(node1, node2);
     
     // Return custom connection state object that displays as CONNECTED/DISCONNECTED but behaves as boolean
@@ -500,7 +783,65 @@ static MP_DEFINE_CONST_FUN_OBJ_2(jl_nodes_is_connected_obj, jl_nodes_is_connecte
 
 // OLED Functions
 static mp_obj_t jl_oled_print_func(size_t n_args, const mp_obj_t *args) {
-    const char* text = mp_obj_str_get_str(args[0]);
+    const char* text;
+    char buffer[64]; // Buffer for converting non-string types
+    
+    // Handle different input types
+    if (mp_obj_is_str(args[0])) {
+        // String - use directly
+        text = mp_obj_str_get_str(args[0]);
+    } else if (mp_obj_is_int(args[0])) {
+        // Integer - convert to string
+        int value = mp_obj_get_int(args[0]);
+        snprintf(buffer, sizeof(buffer), "%d", value);
+        text = buffer;
+    } else if (mp_obj_get_type(args[0]) == &node_type) {
+        // Node type - get its string representation
+        node_obj_t *node = MP_OBJ_TO_PTR(args[0]);
+        const char* name = jl_get_node_name(node->value);
+        if (name && strlen(name) > 0) {
+            strncpy(buffer, name, sizeof(buffer) - 1);
+            buffer[sizeof(buffer) - 1] = '\0';
+        } else {
+            snprintf(buffer, sizeof(buffer), "%d", node->value);
+        }
+        text = buffer;
+    } else if (mp_obj_get_type(args[0]) == &gpio_state_type) {
+        // GPIO State - HIGH/LOW
+        gpio_state_obj_t *state = MP_OBJ_TO_PTR(args[0]);
+        text = state->value ? "HIGH" : "LOW";
+    } else if (mp_obj_get_type(args[0]) == &gpio_direction_type) {
+        // GPIO Direction - INPUT/OUTPUT
+        gpio_direction_obj_t *dir = MP_OBJ_TO_PTR(args[0]);
+        text = dir->value ? "OUTPUT" : "INPUT";
+    } else if (mp_obj_get_type(args[0]) == &gpio_pull_type) {
+        // GPIO Pull - PULLUP/PULLDOWN/NONE
+        gpio_pull_obj_t *pull = MP_OBJ_TO_PTR(args[0]);
+        if (pull->value == 1) {
+            text = "PULLUP";
+        } else if (pull->value == -1) {
+            text = "PULLDOWN";
+        } else {
+            text = "NONE";
+        }
+    } else if (mp_obj_get_type(args[0]) == &connection_state_type) {
+        // Connection State - CONNECTED/DISCONNECTED
+        connection_state_obj_t *conn = MP_OBJ_TO_PTR(args[0]);
+        text = conn->value ? "CONNECTED" : "DISCONNECTED";
+    } else if (mp_obj_is_float(args[0])) {
+        // Float - convert to string with 3 decimal places
+        float value = mp_obj_get_float(args[0]);
+        snprintf(buffer, sizeof(buffer), "%.3f", value);
+        text = buffer;
+    } else if (mp_obj_is_bool(args[0])) {
+        // Boolean - True/False
+        text = mp_obj_is_true(args[0]) ? "True" : "False";
+    } else {
+        // Fallback - try to convert to string representation
+        mp_obj_print_helper(&mp_plat_print, args[0], PRINT_STR);
+        text = "???"; // This is a fallback if we can't convert
+    }
+    
     int size = (n_args > 1) ? mp_obj_get_int(args[1]) : 2; // Default size=2
     
     jl_oled_print(text, size);
@@ -586,7 +927,7 @@ static MP_DEFINE_CONST_FUN_OBJ_1(jl_run_app_obj, jl_run_app_func);
 
 // Probe Functions
 static mp_obj_t jl_probe_tap_func(mp_obj_t node_obj) {
-    int node = mp_obj_get_int(node_obj);
+    int node = get_node_value(node_obj);
     jl_probe_tap(node);
     return mp_const_none;
 }
@@ -615,6 +956,139 @@ static MP_DEFINE_CONST_FUN_OBJ_0(jl_clickwheel_press_obj, jl_clickwheel_press_fu
 
 // Note: Formatted output is enabled by default
 // Functions return formatted strings like "HIGH", "3.300V", "123.4mA", etc.
+
+// Node creation function
+static mp_obj_t jl_node_func(mp_obj_t name_obj) {
+    if (mp_obj_is_str(name_obj)) {
+        const char* name = mp_obj_str_get_str(name_obj);
+        int value = find_node_value(name);
+        if (value == -1) {
+            mp_raise_ValueError(MP_ERROR_TEXT("Unknown node name"));
+        }
+        return node_new(value);
+    } else if (mp_obj_is_int(name_obj)) {
+        return node_new(mp_obj_get_int(name_obj));
+    } else if (mp_obj_get_type(name_obj) == &node_type) {
+        // Return copy of existing node
+        return name_obj;
+    }
+    mp_raise_TypeError(MP_ERROR_TEXT("Node must be created from string, int, or another node"));
+}
+static MP_DEFINE_CONST_FUN_OBJ_1(jl_node_obj, jl_node_func);
+
+// Pre-defined node constants
+static const node_obj_t node_top_rail_obj = { .base = { &node_type }, .value = 101 };
+static const node_obj_t node_bottom_rail_obj = { .base = { &node_type }, .value = 102 };
+static const node_obj_t node_gnd_obj = { .base = { &node_type }, .value = 100 };
+static const node_obj_t node_dac0_obj = { .base = { &node_type }, .value = 106 };
+static const node_obj_t node_dac1_obj = { .base = { &node_type }, .value = 107 };
+
+// Arduino Nano pin constants
+static const node_obj_t node_d0_obj = { .base = { &node_type }, .value = 70 };
+static const node_obj_t node_d1_obj = { .base = { &node_type }, .value = 71 };
+static const node_obj_t node_d2_obj = { .base = { &node_type }, .value = 72 };
+static const node_obj_t node_d3_obj = { .base = { &node_type }, .value = 73 };
+static const node_obj_t node_d4_obj = { .base = { &node_type }, .value = 74 };
+static const node_obj_t node_d5_obj = { .base = { &node_type }, .value = 75 };
+static const node_obj_t node_d6_obj = { .base = { &node_type }, .value = 76 };
+static const node_obj_t node_d7_obj = { .base = { &node_type }, .value = 77 };
+static const node_obj_t node_d8_obj = { .base = { &node_type }, .value = 78 };
+static const node_obj_t node_d9_obj = { .base = { &node_type }, .value = 79 };
+static const node_obj_t node_d10_obj = { .base = { &node_type }, .value = 80 };
+static const node_obj_t node_d11_obj = { .base = { &node_type }, .value = 81 };
+static const node_obj_t node_d12_obj = { .base = { &node_type }, .value = 82 };
+static const node_obj_t node_d13_obj = { .base = { &node_type }, .value = 83 };
+static const node_obj_t node_a0_obj = { .base = { &node_type }, .value = 86 };
+static const node_obj_t node_a1_obj = { .base = { &node_type }, .value = 87 };
+static const node_obj_t node_a2_obj = { .base = { &node_type }, .value = 88 };
+static const node_obj_t node_a3_obj = { .base = { &node_type }, .value = 89 };
+static const node_obj_t node_a4_obj = { .base = { &node_type }, .value = 90 };
+static const node_obj_t node_a5_obj = { .base = { &node_type }, .value = 91 };
+static const node_obj_t node_a6_obj = { .base = { &node_type }, .value = 92 };
+static const node_obj_t node_a7_obj = { .base = { &node_type }, .value = 93 };
+
+// GPIO pin constants
+static const node_obj_t node_gpio1_obj = { .base = { &node_type }, .value = 131 };
+static const node_obj_t node_gpio2_obj = { .base = { &node_type }, .value = 132 };
+static const node_obj_t node_gpio3_obj = { .base = { &node_type }, .value = 133 };
+static const node_obj_t node_gpio4_obj = { .base = { &node_type }, .value = 134 };
+static const node_obj_t node_gpio5_obj = { .base = { &node_type }, .value = 135 };
+static const node_obj_t node_gpio6_obj = { .base = { &node_type }, .value = 136 };
+static const node_obj_t node_gpio7_obj = { .base = { &node_type }, .value = 137 };
+static const node_obj_t node_gpio8_obj = { .base = { &node_type }, .value = 138 };
+// UART pins
+static const node_obj_t node_uart_tx_obj = { .base = { &node_type }, .value = 116 };
+static const node_obj_t node_uart_rx_obj = { .base = { &node_type }, .value = 117 };
+
+// ADC pins  
+static const node_obj_t node_adc0_obj = { .base = { &node_type }, .value = 110 };
+static const node_obj_t node_adc1_obj = { .base = { &node_type }, .value = 111 };
+static const node_obj_t node_adc2_obj = { .base = { &node_type }, .value = 112 };
+static const node_obj_t node_adc3_obj = { .base = { &node_type }, .value = 113 };
+static const node_obj_t node_adc4_obj = { .base = { &node_type }, .value = 114 };
+static const node_obj_t node_adc7_obj = { .base = { &node_type }, .value = 115 };
+
+// Current sense pins
+static const node_obj_t node_isense_plus_obj = { .base = { &node_type }, .value = 108 };
+static const node_obj_t node_isense_minus_obj = { .base = { &node_type }, .value = 109 };
+
+// Buffer pins
+static const node_obj_t node_buffer_in_obj = { .base = { &node_type }, .value = 139 };
+static const node_obj_t node_buffer_out_obj = { .base = { &node_type }, .value = 140 };
+
+
+// Nodes Help Function
+static mp_obj_t jl_help_nodes_func(void) {
+    mp_printf(&mp_plat_print, "Jumperless Node Reference\n");
+    mp_printf(&mp_plat_print, "========================\n\n");
+    
+    mp_printf(&mp_plat_print, "NODE TYPES:\n");
+    mp_printf(&mp_plat_print, "  Numbered:     1-60 (breadboard)\n");
+    mp_printf(&mp_plat_print, "  Arduino:      D0-D13, A0-A7 (nano header)\n");
+    mp_printf(&mp_plat_print, "  GPIO:         GPIO_1-GPIO_8 (routable GPIO)\n");
+    mp_printf(&mp_plat_print, "  Power:        TOP_RAIL, BOTTOM_RAIL, GND\n");
+    mp_printf(&mp_plat_print, "  DAC:          DAC0, DAC1 (analog outputs)\n");
+    mp_printf(&mp_plat_print, "  ADC:          ADC0-ADC4, PROBE (analog inputs)\n");
+    mp_printf(&mp_plat_print, "  Current:      ISENSE_PLUS, ISENSE_MINUS\n");
+    mp_printf(&mp_plat_print, "  UART:         UART_TX, UART_RX\n");
+    mp_printf(&mp_plat_print, "  Buffer:       BUFFER_IN, BUFFER_OUT\n\n");
+    
+    mp_printf(&mp_plat_print, "THREE WAYS TO USE NODES:\n\n");
+    
+    mp_printf(&mp_plat_print, "1. NUMBERS (direct breadboard holes):\n");
+    mp_printf(&mp_plat_print, "   connect(1, 30)                     # Connect holes 1 and 30\n");
+    mp_printf(&mp_plat_print, "   connect(15, 42)                    # Any number 1-60\n\n");
+    
+    mp_printf(&mp_plat_print, "2. STRINGS (case-insensitive names):\n");
+    mp_printf(&mp_plat_print, "   connect(\"D13\", \"TOP_RAIL\")         # Arduino pin to power rail\n");
+    mp_printf(&mp_plat_print, "   connect(\"gpio_1\", \"adc0\")          # GPIO to ADC (case-insensitive)\n");
+    mp_printf(&mp_plat_print, "   connect(\"15\", \"dac1\")              # Mix numbers and names\n\n");
+    
+    mp_printf(&mp_plat_print, "3. CONSTANTS (pre-defined objects):\n");
+    mp_printf(&mp_plat_print, "   connect(TOP_RAIL, D13)            # Using imported constants\n");
+    mp_printf(&mp_plat_print, "   connect(GPIO_1, A0)               # No quotes needed\n");
+    mp_printf(&mp_plat_print, "   connect(DAC0, 25)                 # Mix constants and numbers\n\n");
+    
+    mp_printf(&mp_plat_print, "MIXED USAGE:\n");
+    mp_printf(&mp_plat_print, "   my_pin = node(\"D13\")              # Create node object from string\n");
+    mp_printf(&mp_plat_print, "   connect(my_pin, TOP_RAIL)         # Use node object with constant\n");
+    mp_printf(&mp_plat_print, "   oled_print(my_pin)                # Display shows 'D13'\n\n");
+    
+    mp_printf(&mp_plat_print, "COMMON ALIASES (many names work for same node):\n");
+    mp_printf(&mp_plat_print, "   \"TOP_RAIL\" = \"T_R\"\n");
+    mp_printf(&mp_plat_print, "   \"GPIO_1\" = \"GPIO1\" = \"GP1\"\n");
+    mp_printf(&mp_plat_print, "   \"DAC0\" = \"DAC_0\"\n");
+    mp_printf(&mp_plat_print, "   \"UART_TX\" = \"TX\"\n\n");
+    
+    mp_printf(&mp_plat_print, "NOTES:\n");
+    mp_printf(&mp_plat_print, "  - String names are case-insensitive: \"d13\" = \"D13\" = \"nAnO_d13\"\n");
+    mp_printf(&mp_plat_print, "  - Constants are case-sensitive: use D13, not d13\n");
+    mp_printf(&mp_plat_print, "  - All three methods work in any function\n");
+    // mp_printf(&mp_plat_print, "  - Use 'from jumperless_nodes import *' for global constants\n\n");
+    
+    return mp_const_none;
+}
+static MP_DEFINE_CONST_FUN_OBJ_0(jl_help_nodes_obj, jl_help_nodes_func);
 
 // Help Function
 static mp_obj_t jl_help_func(void) {
@@ -685,12 +1159,25 @@ static mp_obj_t jl_help_func(void) {
     mp_printf(&mp_plat_print, "  jumperless.format_output(True/False)        - Enable/disable formatted output\n\n");
     mp_printf(&mp_plat_print, "Help:\n");
     mp_printf(&mp_plat_print, "  jumperless.help()                           - Display this help\n\n");
-    mp_printf(&mp_plat_print, "Examples:\n");
-    mp_printf(&mp_plat_print, "  jumperless.dac_set(3, 3.3)                  # Set Top Rail to 3.3V\n");
-    mp_printf(&mp_plat_print, "  voltage = jumperless.adc_get(1)             # Read ADC1\n");
-    mp_printf(&mp_plat_print, "  jumperless.nodes_connect(4, 20)             # Connect node 4 to 20\n");
-    mp_printf(&mp_plat_print, "  jumperless.oled_print(\"Fuck you!\")          # Display text\n");
-    mp_printf(&mp_plat_print, "  current = jumperless.ina_get_current(0)     # Read current\n\n");
+    mp_printf(&mp_plat_print, "Node Names:\n");
+    mp_printf(&mp_plat_print, "  jumperless.node(\"TOP_RAIL\")                  - Create node from string name\n");
+    mp_printf(&mp_plat_print, "  jumperless.TOP_RAIL                        - Pre-defined node constant\n");
+    mp_printf(&mp_plat_print, "  jumperless.D2, jumperless.A0, etc.         - Arduino pin constants\n");
+    mp_printf(&mp_plat_print, "  For global access: from jumperless_nodes import *\n");
+    mp_printf(&mp_plat_print, "  Node names: All standard names like \"D13\", \"A0\", \"GPIO_1\", etc.\n\n");
+    mp_printf(&mp_plat_print, "Examples (all functions available globally):\n");
+    mp_printf(&mp_plat_print, "  dac_set(3, 3.3)                            # Set Top Rail to 3.3V\n");
+    mp_printf(&mp_plat_print, "  voltage = adc_get(1)                       # Read ADC1\n");
+    mp_printf(&mp_plat_print, "  connect(TOP_RAIL, D13)                     # Connect using constants\n");
+    mp_printf(&mp_plat_print, "  connect(\"TOP_RAIL\", 5)                      # Connect using strings\n");
+    mp_printf(&mp_plat_print, "  connect(4, 20)                             # Connect using numbers\n");
+    mp_printf(&mp_plat_print, "  top_rail = node(\"TOP_RAIL\")                 # Create node object\n");
+    mp_printf(&mp_plat_print, "  connect(top_rail, D13)                     # Mix objects and constants\n");
+    mp_printf(&mp_plat_print, "  oled_print(\"Fuck you!\")                    # Display text\n");
+    mp_printf(&mp_plat_print, "  current = ina_get_current(0)               # Read current\n");
+    mp_printf(&mp_plat_print, "  gpio_set(1, True)                          # Set GPIO pin high\n\n");
+    mp_printf(&mp_plat_print, "Note: All functions and constants are available globally!\n");
+    mp_printf(&mp_plat_print, "No need for 'jumperless.' prefix in REPL or single commands.\n\n");
     return mp_const_none;
 }
 static MP_DEFINE_CONST_FUN_OBJ_0(jl_help_obj, jl_help_func);
@@ -698,6 +1185,131 @@ static MP_DEFINE_CONST_FUN_OBJ_0(jl_help_obj, jl_help_func);
 // Module globals table
 static const mp_rom_map_elem_t jumperless_module_globals_table[] = {
     { MP_ROM_QSTR(MP_QSTR___name__), MP_ROM_QSTR(MP_QSTR_jumperless) },
+    
+    // Node creation function
+    { MP_ROM_QSTR(MP_QSTR_node), MP_ROM_PTR(&jl_node_obj) },
+    
+    // Common node constants
+    { MP_ROM_QSTR(MP_QSTR_TOP_RAIL), MP_ROM_PTR(&node_top_rail_obj) },
+    { MP_ROM_QSTR(MP_QSTR_T_RAIL), MP_ROM_PTR(&node_top_rail_obj) },
+    { MP_ROM_QSTR(MP_QSTR_BOTTOM_RAIL), MP_ROM_PTR(&node_bottom_rail_obj) },
+    { MP_ROM_QSTR(MP_QSTR_BOT_RAIL), MP_ROM_PTR(&node_bottom_rail_obj) },
+    { MP_ROM_QSTR(MP_QSTR_B_RAIL), MP_ROM_PTR(&node_bottom_rail_obj) },
+    { MP_ROM_QSTR(MP_QSTR_GND), MP_ROM_PTR(&node_gnd_obj) },
+    { MP_ROM_QSTR(MP_QSTR_DAC0), MP_ROM_PTR(&node_dac0_obj) },
+    { MP_ROM_QSTR(MP_QSTR_DAC_0), MP_ROM_PTR(&node_dac0_obj) },
+    { MP_ROM_QSTR(MP_QSTR_DAC1), MP_ROM_PTR(&node_dac1_obj) },
+    { MP_ROM_QSTR(MP_QSTR_DAC_1), MP_ROM_PTR(&node_dac1_obj) },
+    
+    // Current sense pins
+    { MP_ROM_QSTR(MP_QSTR_ISENSE_PLUS), MP_ROM_PTR(&node_isense_plus_obj) },
+    { MP_ROM_QSTR(MP_QSTR_ISENSE_P), MP_ROM_PTR(&node_isense_plus_obj) },
+    { MP_ROM_QSTR(MP_QSTR_I_P), MP_ROM_PTR(&node_isense_plus_obj) },
+    { MP_ROM_QSTR(MP_QSTR_CURRENT_SENSE_P), MP_ROM_PTR(&node_isense_plus_obj) },
+    { MP_ROM_QSTR(MP_QSTR_CURRENT_SENSE_PLUS), MP_ROM_PTR(&node_isense_plus_obj) },
+    { MP_ROM_QSTR(MP_QSTR_ISENSE_MINUS), MP_ROM_PTR(&node_isense_minus_obj) },
+    { MP_ROM_QSTR(MP_QSTR_ISENSE_N), MP_ROM_PTR(&node_isense_minus_obj) },
+    { MP_ROM_QSTR(MP_QSTR_I_N), MP_ROM_PTR(&node_isense_minus_obj) },
+    { MP_ROM_QSTR(MP_QSTR_CURRENT_SENSE_N), MP_ROM_PTR(&node_isense_minus_obj) },
+    { MP_ROM_QSTR(MP_QSTR_CURRENT_SENSE_MINUS), MP_ROM_PTR(&node_isense_minus_obj) },
+    
+    // Buffer pins
+    { MP_ROM_QSTR(MP_QSTR_BUFFER_IN), MP_ROM_PTR(&node_buffer_in_obj) },
+    { MP_ROM_QSTR(MP_QSTR_BUF_IN), MP_ROM_PTR(&node_buffer_in_obj) },
+    { MP_ROM_QSTR(MP_QSTR_BUFFER_OUT), MP_ROM_PTR(&node_buffer_out_obj) },
+    { MP_ROM_QSTR(MP_QSTR_BUF_OUT), MP_ROM_PTR(&node_buffer_out_obj) },
+    
+    // ADC pins
+    { MP_ROM_QSTR(MP_QSTR_ADC0), MP_ROM_PTR(&node_adc0_obj) },
+    { MP_ROM_QSTR(MP_QSTR_ADC1), MP_ROM_PTR(&node_adc1_obj) },
+    { MP_ROM_QSTR(MP_QSTR_ADC2), MP_ROM_PTR(&node_adc2_obj) },
+    { MP_ROM_QSTR(MP_QSTR_ADC3), MP_ROM_PTR(&node_adc3_obj) },
+    { MP_ROM_QSTR(MP_QSTR_ADC4), MP_ROM_PTR(&node_adc4_obj) },
+    { MP_ROM_QSTR(MP_QSTR_ADC7), MP_ROM_PTR(&node_adc7_obj) },
+    
+    // UART pins
+    { MP_ROM_QSTR(MP_QSTR_UART_TX), MP_ROM_PTR(&node_uart_tx_obj) },
+    { MP_ROM_QSTR(MP_QSTR_TX), MP_ROM_PTR(&node_uart_tx_obj) },
+    { MP_ROM_QSTR(MP_QSTR_UART_RX), MP_ROM_PTR(&node_uart_rx_obj) },
+    { MP_ROM_QSTR(MP_QSTR_RX), MP_ROM_PTR(&node_uart_rx_obj) },
+    
+    // Arduino Nano pins
+    { MP_ROM_QSTR(MP_QSTR_D0), MP_ROM_PTR(&node_d0_obj) },
+    { MP_ROM_QSTR(MP_QSTR_D1), MP_ROM_PTR(&node_d1_obj) },
+    { MP_ROM_QSTR(MP_QSTR_D2), MP_ROM_PTR(&node_d2_obj) },
+    { MP_ROM_QSTR(MP_QSTR_D3), MP_ROM_PTR(&node_d3_obj) },
+    { MP_ROM_QSTR(MP_QSTR_D4), MP_ROM_PTR(&node_d4_obj) },
+    { MP_ROM_QSTR(MP_QSTR_D5), MP_ROM_PTR(&node_d5_obj) },
+    { MP_ROM_QSTR(MP_QSTR_D6), MP_ROM_PTR(&node_d6_obj) },
+    { MP_ROM_QSTR(MP_QSTR_D7), MP_ROM_PTR(&node_d7_obj) },
+    { MP_ROM_QSTR(MP_QSTR_D8), MP_ROM_PTR(&node_d8_obj) },
+    { MP_ROM_QSTR(MP_QSTR_D9), MP_ROM_PTR(&node_d9_obj) },
+    { MP_ROM_QSTR(MP_QSTR_D10), MP_ROM_PTR(&node_d10_obj) },
+    { MP_ROM_QSTR(MP_QSTR_D11), MP_ROM_PTR(&node_d11_obj) },
+    { MP_ROM_QSTR(MP_QSTR_D12), MP_ROM_PTR(&node_d12_obj) },
+    { MP_ROM_QSTR(MP_QSTR_D13), MP_ROM_PTR(&node_d13_obj) },
+    
+    // NANO prefixed digital pins
+    { MP_ROM_QSTR(MP_QSTR_NANO_D0), MP_ROM_PTR(&node_d0_obj) },
+    { MP_ROM_QSTR(MP_QSTR_NANO_D1), MP_ROM_PTR(&node_d1_obj) },
+    { MP_ROM_QSTR(MP_QSTR_NANO_D2), MP_ROM_PTR(&node_d2_obj) },
+    { MP_ROM_QSTR(MP_QSTR_NANO_D3), MP_ROM_PTR(&node_d3_obj) },
+    { MP_ROM_QSTR(MP_QSTR_NANO_D4), MP_ROM_PTR(&node_d4_obj) },
+    { MP_ROM_QSTR(MP_QSTR_NANO_D5), MP_ROM_PTR(&node_d5_obj) },
+    { MP_ROM_QSTR(MP_QSTR_NANO_D6), MP_ROM_PTR(&node_d6_obj) },
+    { MP_ROM_QSTR(MP_QSTR_NANO_D7), MP_ROM_PTR(&node_d7_obj) },
+    { MP_ROM_QSTR(MP_QSTR_NANO_D8), MP_ROM_PTR(&node_d8_obj) },
+    { MP_ROM_QSTR(MP_QSTR_NANO_D9), MP_ROM_PTR(&node_d9_obj) },
+    { MP_ROM_QSTR(MP_QSTR_NANO_D10), MP_ROM_PTR(&node_d10_obj) },
+    { MP_ROM_QSTR(MP_QSTR_NANO_D11), MP_ROM_PTR(&node_d11_obj) },
+    { MP_ROM_QSTR(MP_QSTR_NANO_D12), MP_ROM_PTR(&node_d12_obj) },
+    { MP_ROM_QSTR(MP_QSTR_NANO_D13), MP_ROM_PTR(&node_d13_obj) },
+    
+    // Arduino analog pins
+    { MP_ROM_QSTR(MP_QSTR_A0), MP_ROM_PTR(&node_a0_obj) },
+    { MP_ROM_QSTR(MP_QSTR_A1), MP_ROM_PTR(&node_a1_obj) },
+    { MP_ROM_QSTR(MP_QSTR_A2), MP_ROM_PTR(&node_a2_obj) },
+    { MP_ROM_QSTR(MP_QSTR_A3), MP_ROM_PTR(&node_a3_obj) },
+    { MP_ROM_QSTR(MP_QSTR_A4), MP_ROM_PTR(&node_a4_obj) },
+    { MP_ROM_QSTR(MP_QSTR_A5), MP_ROM_PTR(&node_a5_obj) },
+    { MP_ROM_QSTR(MP_QSTR_A6), MP_ROM_PTR(&node_a6_obj) },
+    { MP_ROM_QSTR(MP_QSTR_A7), MP_ROM_PTR(&node_a7_obj) },
+    
+    // NANO prefixed analog pins
+    { MP_ROM_QSTR(MP_QSTR_NANO_A0), MP_ROM_PTR(&node_a0_obj) },
+    { MP_ROM_QSTR(MP_QSTR_NANO_A1), MP_ROM_PTR(&node_a1_obj) },
+    { MP_ROM_QSTR(MP_QSTR_NANO_A2), MP_ROM_PTR(&node_a2_obj) },
+    { MP_ROM_QSTR(MP_QSTR_NANO_A3), MP_ROM_PTR(&node_a3_obj) },
+    { MP_ROM_QSTR(MP_QSTR_NANO_A4), MP_ROM_PTR(&node_a4_obj) },
+    { MP_ROM_QSTR(MP_QSTR_NANO_A5), MP_ROM_PTR(&node_a5_obj) },
+    { MP_ROM_QSTR(MP_QSTR_NANO_A6), MP_ROM_PTR(&node_a6_obj) },
+    { MP_ROM_QSTR(MP_QSTR_NANO_A7), MP_ROM_PTR(&node_a7_obj) },
+    
+    // GPIO pins with multiple aliases
+    { MP_ROM_QSTR(MP_QSTR_GPIO_1), MP_ROM_PTR(&node_gpio1_obj) },
+    { MP_ROM_QSTR(MP_QSTR_GPIO_2), MP_ROM_PTR(&node_gpio2_obj) },
+    { MP_ROM_QSTR(MP_QSTR_GPIO_3), MP_ROM_PTR(&node_gpio3_obj) },
+    { MP_ROM_QSTR(MP_QSTR_GPIO_4), MP_ROM_PTR(&node_gpio4_obj) },
+    { MP_ROM_QSTR(MP_QSTR_GPIO_5), MP_ROM_PTR(&node_gpio5_obj) },
+    { MP_ROM_QSTR(MP_QSTR_GPIO_6), MP_ROM_PTR(&node_gpio6_obj) },
+    { MP_ROM_QSTR(MP_QSTR_GPIO_7), MP_ROM_PTR(&node_gpio7_obj) },
+    { MP_ROM_QSTR(MP_QSTR_GPIO_8), MP_ROM_PTR(&node_gpio8_obj) },
+    { MP_ROM_QSTR(MP_QSTR_GP1), MP_ROM_PTR(&node_gpio1_obj) },
+    { MP_ROM_QSTR(MP_QSTR_GP2), MP_ROM_PTR(&node_gpio2_obj) },
+    { MP_ROM_QSTR(MP_QSTR_GP3), MP_ROM_PTR(&node_gpio3_obj) },
+    { MP_ROM_QSTR(MP_QSTR_GP4), MP_ROM_PTR(&node_gpio4_obj) },
+    { MP_ROM_QSTR(MP_QSTR_GP5), MP_ROM_PTR(&node_gpio5_obj) },
+    { MP_ROM_QSTR(MP_QSTR_GP6), MP_ROM_PTR(&node_gpio6_obj) },
+    { MP_ROM_QSTR(MP_QSTR_GP7), MP_ROM_PTR(&node_gpio7_obj) },
+    { MP_ROM_QSTR(MP_QSTR_GP8), MP_ROM_PTR(&node_gpio8_obj) },
+    { MP_ROM_QSTR(MP_QSTR_GPIO_20), MP_ROM_PTR(&node_gpio1_obj) },
+    { MP_ROM_QSTR(MP_QSTR_GPIO_21), MP_ROM_PTR(&node_gpio2_obj) },
+    { MP_ROM_QSTR(MP_QSTR_GPIO_22), MP_ROM_PTR(&node_gpio3_obj) },
+    { MP_ROM_QSTR(MP_QSTR_GPIO_23), MP_ROM_PTR(&node_gpio4_obj) },
+    { MP_ROM_QSTR(MP_QSTR_GPIO_24), MP_ROM_PTR(&node_gpio5_obj) },
+    { MP_ROM_QSTR(MP_QSTR_GPIO_25), MP_ROM_PTR(&node_gpio6_obj) },
+    { MP_ROM_QSTR(MP_QSTR_GPIO_26), MP_ROM_PTR(&node_gpio7_obj) },
+    { MP_ROM_QSTR(MP_QSTR_GPIO_27), MP_ROM_PTR(&node_gpio8_obj) },
     
     // DAC functions
     { MP_ROM_QSTR(MP_QSTR_dac_set), MP_ROM_PTR(&jl_dac_set_obj) },
@@ -754,8 +1366,9 @@ static const mp_rom_map_elem_t jumperless_module_globals_table[] = {
     { MP_ROM_QSTR(MP_QSTR_clickwheel_down), MP_ROM_PTR(&jl_clickwheel_down_obj) },
     { MP_ROM_QSTR(MP_QSTR_clickwheel_press), MP_ROM_PTR(&jl_clickwheel_press_obj) },
 
-    // Help function
+    // Help functions
     { MP_ROM_QSTR(MP_QSTR_help), MP_ROM_PTR(&jl_help_obj) },
+    { MP_ROM_QSTR(MP_QSTR_nodes_help), MP_ROM_PTR(&jl_help_nodes_obj) },
 };
 
 static MP_DEFINE_CONST_DICT(jumperless_module_globals, jumperless_module_globals_table);

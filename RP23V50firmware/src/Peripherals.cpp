@@ -1325,7 +1325,7 @@ int handleHighlights(int probeReading) {
 
   }
 
-unsigned long gpioToggleFrequency = 500; //ms
+unsigned long gpioToggleFrequency = 250; //ms
 
 int highlightInteractable[10] = {
   RP_GPIO_0, RP_GPIO_1, RP_GPIO_2, RP_GPIO_3, RP_GPIO_4, RP_GPIO_5, RP_GPIO_6, RP_GPIO_7, RP_GPIO_8 };
@@ -1338,7 +1338,44 @@ int probeToggle(void) {
     return -1; //no button pressed
     }
 
-
+  // Handle DAC voltage control for nets 4 and 5
+  if (brightenedNet == 4 || brightenedNet == 5) {
+    float currentVoltage = getDacVoltage(brightenedNet == 4 ? 0 : 1);
+    float dacStep = 0.25; // Default step size
+    float newVoltage = currentVoltage;
+    
+    if (buttonState == 2) { // Connect button - increase voltage
+      newVoltage = currentVoltage + dacStep;
+      if (newVoltage > 8.0) newVoltage = 8.0; // Clamp to max
+    } else if (buttonState == 1) { // Disconnect button - decrease voltage  
+      newVoltage = currentVoltage - dacStep;
+      if (newVoltage < -8.0) newVoltage = -8.0; // Clamp to min
+    }
+    
+    // Set the new voltage
+    if (brightenedNet == 4) {
+      setDac0voltage(newVoltage, 1, 0, true);
+      jumperlessConfig.dacs.dac_0 = newVoltage;
+    } else {
+      setDac1voltage(newVoltage, 1, 0, true);
+      jumperlessConfig.dacs.dac_1 = newVoltage;
+    }
+    
+    // Reset the highlight timer to keep DAC highlighted during adjustment
+    highlightTimer = millis();
+    
+    // Update display - show only current voltage
+    Serial.print("\r                                 \r");
+    Serial.printf("DAC %d   %0.2f V", 
+                  brightenedNet == 4 ? 0 : 1, newVoltage);
+    Serial.flush();
+    
+    char oledString[30];
+    sprintf(oledString, "DAC %d\n%0.2f V", brightenedNet == 4 ? 0 : 1, newVoltage);
+    oled.clearPrintShow(oledString, 2, true, true, true);
+    
+    return brightenedNet; // Return the DAC net number
+  }
 
   if (buttonState == 2) { //connect button
     int toggleResult = toggleGPIO(2, -1);
@@ -1418,18 +1455,20 @@ int toggleGPIO(int lowHigh, int gpio, int onlyCheck) {
     if (lowHigh == 0) {
       gpio_put(gpio, 0);
       gpioState[gpioDef[gpioOutputFound][2]] = 0;
+      Serial.print("\r                      \r");
       Serial.print(" gpio ");
       Serial.print(gpioDef[gpioOutputFound][2] + 1);
       // printNodeOrName(gpioDef[gpioOutputFound][1], 1);
       Serial.print("\t");
       Serial.print(gpio_get_out_level(gpio) ? "high" : "low");
       Serial.print(" > ");
-      Serial.println("low");
+      Serial.print("low");
       Serial.flush();
       return 0;
       } else if (lowHigh == 1) {
         gpio_put(gpio, 1);
         gpioState[gpioDef[gpioOutputFound][2]] = 1;
+        Serial.print("\r                      \r");
         Serial.print(" gpio ");
         // Serial.print(gpioDef[gpioOutputFound][0]);
         Serial.print(gpioDef[gpioOutputFound][2] + 1);
@@ -1437,7 +1476,7 @@ int toggleGPIO(int lowHigh, int gpio, int onlyCheck) {
         Serial.print(gpio_get_out_level(gpio) ? "high" : "low");
         Serial.print(" > ");
         Serial.print("high");
-        Serial.println();
+        //Serial.print();
         Serial.flush();
         return 1;
         } else {
@@ -1458,14 +1497,14 @@ int toggleGPIO(int lowHigh, int gpio, int onlyCheck) {
         Serial.print(!currentState ? "high" : "low");
         Serial.println();
         Serial.flush();
-        oled.clear();
-        oled.print("gpio ");
-        oled.print(gpioDef[gpioOutputFound][2] + 1);
-        oled.print("    ");
-        oled.print(currentState ? "high" : "low");
-        oled.print(" > ");
-        oled.print(!currentState ? "high" : "low");
-        oled.show();
+        // oled.clear();
+        // oled.print("gpio ");
+        // oled.print(gpioDef[gpioOutputFound][2] + 1);
+        // oled.print("    ");
+        // oled.print(currentState ? "high" : "low");
+        // oled.print(" > ");
+        // oled.print(!currentState ? "high" : "low");
+        // oled.show();
         return !currentState;
         }
 

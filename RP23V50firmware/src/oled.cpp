@@ -36,7 +36,7 @@ bool oledConnected = false;
 Adafruit_SSD1306 display(SCREEN_WIDTH, SCREEN_HEIGHT, &Wire1, OLED_RESET);
 
 int oledAddress = -1;
-int numFonts = 12;
+int numFonts = 19;
 
 // Global instance
 class oled oled;
@@ -66,6 +66,17 @@ struct font fontList[] = {
   { &new_science_medium12pt7b, "Science", "New Science", 0, FONT_NEW_SCIENCE_MEDIUM },        // Index 9 - Size 2
   { &new_science_medium_extended8pt7b, "SciExt", "New Science Ext", 0, FONT_NEW_SCIENCE_MEDIUM_EXTENDED },  // Index 10 - Size 1
   { &new_science_medium_extended12pt7b, "SciExt", "New Science Ext", 0, FONT_NEW_SCIENCE_MEDIUM_EXTENDED }, // Index 11 - Size 2
+  
+  // Monospaced fonts for text highlighting
+  { &ANDALEMO5pt7b, "AndlMno5", "Andale Mono", 0, FONT_ANDALE_MONO },                        // Index 12 - Size 1
+  { &ANDALEMO6pt7b, "AndlMno6", "Andale Mono", 0, FONT_ANDALE_MONO },                        // Index 13 - Size 2
+  { &FreeMono4pt7b, "FreMno4", "Free Mono", 0, FONT_FREE_MONO },                             // Index 14 - Size 1
+  { &FreeMono5pt7b, "FreMno5", "Free Mono", 0, FONT_FREE_MONO },                             // Index 15 - Size 2
+
+  // Small fonts for file manager (4-5pt for better readability)
+  { &ubuntu5pt7b, "Ubuntu5", "Ubuntu 5pt", 0, FONT_EUROSTILE },                              // Index 16 - Small font
+  { &DotGothic16_Regular4pt7b, "DotGoth4", "DotGothic 4pt", 0, FONT_EUROSTILE },             // Index 17 - Small font
+  { &Jokerman4pt7b, "Joker4", "Jokerman 4pt", 0, FONT_JOKERMAN },                           // Index 18 - Small font
 };
 
 // Font family mappings: {size1_index, size2_index}
@@ -82,6 +93,8 @@ FontSizeMapping fontFamilyMap[] = {
     {6, 7},   // FONT_COURIER_NEW: 8pt for size 1, 12pt for size 2
     {8, 9},   // FONT_NEW_SCIENCE_MEDIUM: 8pt for size 1, 12pt for size 2
     {10, 11}, // FONT_NEW_SCIENCE_MEDIUM_EXTENDED: 8pt for size 1, 12pt for size 2
+    {12, 13}, // FONT_ANDALE_MONO: 5pt for size 1, 6pt for size 2
+    {14, 15}, // FONT_FREE_MONO: 4pt for size 1, 5pt for size 2
 };
 
 // SIMPLIFIED POSITIONING SYSTEM
@@ -159,7 +172,7 @@ bool oled::checkConnection(void) {
 
 int oled::cycleFont(void) {
     currentFontFamily = (FontFamily)(currentFontFamily + 1);
-    if (currentFontFamily >= FONT_NEW_SCIENCE_MEDIUM_EXTENDED) {
+    if (currentFontFamily > FONT_FREE_MONO) {
         currentFontFamily = FONT_EUROSTILE;
     }
     setFontForSize(currentFontFamily, currentTextSize);
@@ -230,7 +243,7 @@ void oled::setFont(int fontIndex) {
 
 // Smart font selection based on family and text size
 void oled::setFontForSize(FontFamily family, int textSize) {
-    if (family < 0 || family >= 6) {
+    if (family < 0 || family > FONT_FREE_MONO) {
         family = FONT_EUROSTILE; // Default to Eurostile
     }
     currentFontFamily = family;
@@ -265,6 +278,27 @@ String oled::getFontName(FontFamily fontFamily) {
 
 // CORE POSITIONING FUNCTIONS
 // ==========================
+
+// Get character width for current font (useful for monospaced fonts)
+int oled::getCharacterWidth() {
+    if (!currentFont) {
+        return 6; // Default monospace width
+    }
+    
+    // For GFX fonts, get the advance width of a typical character (space)
+    if (currentFont->first <= 0x20 && 0x20 <= currentFont->last) {
+        GFXglyph *glyph = (GFXglyph *)&currentFont->glyph[0x20 - currentFont->first]; // space character
+        return glyph->xAdvance * currentTextSize;
+    }
+    
+    // Fallback: get advance of first available character
+    if (currentFont->glyph) {
+        GFXglyph *glyph = (GFXglyph *)&currentFont->glyph[0];
+        return glyph->xAdvance * currentTextSize;
+    }
+    
+    return 6; // Default fallback
+}
 
 // Get font metrics with proper text size scaling
 FontMetrics oled::getFontMetrics() {
@@ -784,6 +818,166 @@ void oled::invertDisplay(bool inv) {
     display.invertDisplay(inv);
 }
 
+// Small text functions for file browser and detailed display
+void oled::printSmallText(const char* text, int16_t x, int16_t y, bool clear) {
+  if (!oledConnected) return;
+  
+  if (clear) {
+    display.clearDisplay();
+  }
+  
+  // Use small font for better readability
+  setSmallFont(SMALL_FONT_UBUNTU);
+  setCursor(x, y + 8); // Adjust Y for 4-5pt font baseline
+  display.print(text);
+  
+  if (clear) {
+    display.display();
+  }
+}
+
+void oled::printSmallTextLine(const char* text, int line, bool clear) {
+  if (!oledConnected) return;
+  
+  if (clear) {
+    display.clearDisplay();
+  }
+  
+  // Use small font for better readability
+  setSmallFont(SMALL_FONT_UBUNTU);
+  setCursor(0, (line * 8) + 8); // Adjust Y for 4-5pt font baseline
+  display.print(text);
+  
+  if (clear) {
+    display.display();
+  }
+}
+
+void oled::clearLine(int line) {
+  if (!oledConnected) return;
+  
+  // Clear a specific line by drawing a black rectangle
+  display.fillRect(0, line * 8, SCREEN_WIDTH, 8, SSD1306_BLACK);
+}
+
+void oled::showFileStatus(const char* currentPath, int fileCount, const char* selectedFile) {
+  if (!oledConnected) return;
+  
+  display.clearDisplay();
+  
+  // Use small font for file manager display
+  setSmallFont(SMALL_FONT_UBUNTU);
+  
+  // Path display without truncation
+  display.setTextWrap(false);
+  setCursor(0, 8);
+  String path = String(currentPath);
+  display.print(path.c_str());
+  display.print("/");
+    
+  // Selected file (if provided) with cursor indicator
+  if (selectedFile && strlen(selectedFile) > 0) {
+    String selected = String(selectedFile);
+    display.print(selected.c_str());
+    
+    // Add cursor indicator - draw underline under the selected file
+    TextBounds bounds = getTextBounds(selected.c_str());
+    int16_t pathWidth = getTextBounds((path + "/").c_str()).width;
+    
+    // Draw underline to show cursor position
+    display.drawLine(pathWidth, 8 + 2, pathWidth + bounds.width - 1, 8 + 2, SSD1306_WHITE);
+  }
+  
+  display.setTextWrap(true);
+  display.display();
+}
+
+void oled::showFileStatusScrolled(const char* visibleText, int fileCount, int cursorPosition) {
+  if (!oledConnected) return;
+  
+  // Clear display
+  clearFramebuffer();
+  
+  // Use small font for file manager display
+  setSmallFont(SMALL_FONT_ANDALE_MONO);
+  display.setTextWrap(false);
+  
+  String text = String(visibleText);
+  int newlinePos = text.indexOf('\n');
+  
+  if (newlinePos != -1) {
+    // Multi-line display: path on first line, filename on second line
+    String pathLine = text.substring(0, newlinePos);
+    String filenameLine = text.substring(newlinePos + 1);
+    
+    // Draw path on first line
+    drawText(0, 8, pathLine.c_str());
+    
+    // Draw filename on second line
+    drawText(0, 20, filenameLine.c_str());
+    
+    // Highlight cursor character
+    if (cursorPosition >= 0 && cursorPosition < text.length()) {
+      int charWidth = getCharacterWidth();
+      
+      if (cursorPosition <= newlinePos) {
+        // Cursor is on the path line
+        char cursorChar = (cursorPosition < pathLine.length()) ? pathLine[cursorPosition] : ' ';
+        int cursorX = cursorPosition * charWidth;
+        int cursorY = 8;
+        drawHighlightedChar(cursorX, cursorY, cursorChar);
+      } else {
+        // Cursor is on the filename line
+        int filenameCursorPos = cursorPosition - newlinePos - 1;
+        char cursorChar = (filenameCursorPos < filenameLine.length()) ? filenameLine[filenameCursorPos] : ' ';
+        int cursorX = filenameCursorPos * charWidth;
+        int cursorY = 20;
+        drawHighlightedChar(cursorX, cursorY, cursorChar);
+      }
+    }
+  } else {
+    // Single line display (root directory case)
+    drawText(0, 8, visibleText);
+    
+    // Highlight cursor character
+    if (cursorPosition >= 0 && cursorPosition < strlen(visibleText)) {
+      char cursorChar = visibleText[cursorPosition];
+      if (cursorChar == '\0') {
+        cursorChar = ' '; // Show space for end of text
+      }
+      
+      int charWidth = getCharacterWidth();
+      int cursorX = cursorPosition * charWidth;
+      int cursorY = 8;
+      
+      drawHighlightedChar(cursorX, cursorY, cursorChar);
+    }
+  }
+  
+  // Flush to display
+  flushFramebuffer();
+}
+
+void oled::showMultiLineSmallText(const char* text, bool clear) {
+  if (!oledConnected) return;
+  
+  if (clear) {
+    display.clearDisplay();
+  }
+  
+  // Use small font for better text density
+  setSmallFont(SMALL_FONT_ANDALE_MONO);
+  display.setTextWrap(false); // Disable text wrapping - let text fall off the edge
+  
+  // Simply print the text without wrapping
+  setCursor(0, 8); // Start at top with proper baseline
+  display.print(text);
+  
+  if (clear) {
+    display.display();
+  }
+}
+
 // Connection status
 bool oled::isConnected() const {
     return oledConnected;
@@ -837,6 +1031,39 @@ void oled::testMenuPositioning() {
     delay(2000);
     clearPrintShow("Test", 2, true, true, true, -1, -1);
     delay(2000);
+}
+
+void oled::testSmallFonts() {
+    if (!oledConnected) return;
+    
+    // Test each small font
+    const char* testTexts[] = {"Ubuntu 5pt", "DotGothic 4pt", "Jokerman 4pt"};
+    SmallFont fonts[] = {SMALL_FONT_UBUNTU, SMALL_FONT_DOTGOTHIC, SMALL_FONT_JOKERMAN};
+    
+    for (int i = 0; i < 3; i++) {
+        clear();
+        
+        // Test single line
+        useSmallFontAndRestore(fonts[i], testTexts[i], 0, 0, false, false);
+        
+        // Test multiple lines
+        String multiText = String(testTexts[i]) + "\nLine 2\nLine 3\nLine 4";
+        showMultiLineSmallText(multiText.c_str(), false);
+        
+        show();
+        delay(3000);
+        
+        restoreNormalFont(); // Make sure font is restored
+    }
+    
+    // Test file status display
+    clear();
+    showFileStatus("/test/path", 15, "example_file.py");
+    delay(3000);
+    restoreNormalFont();
+    
+    // Return to logo
+    showJogo32h();
 }
 
 // Debug frame buffer dump function (simplified)
@@ -1042,6 +1269,161 @@ void oled::dumpFrameBuffer() {
 }
 
 
+// SMALL FONT FUNCTIONS
+// ===================
+
+void oled::setSmallFont(SmallFont smallFont) {
+    if (!oledConnected) return;
+    
+    // Store current font for restoration
+    if (!usingSmallFont) {
+        previousFont = currentFont;
+    }
+    
+    currentSmallFont = smallFont;
+    usingSmallFont = true;
+    
+    // Map small font enum to font index
+    int fontIndex;
+    switch (smallFont) {
+        case SMALL_FONT_UBUNTU:
+            fontIndex = 16; // ubuntu5pt7b
+            break;
+        case SMALL_FONT_DOTGOTHIC:
+            fontIndex = 17; // DotGothic16_Regular4pt7b
+            break;
+        case SMALL_FONT_JOKERMAN:
+            fontIndex = 18; // Jokerman4pt7b
+            break;
+        case SMALL_FONT_ANDALE_MONO:
+            fontIndex = 12; // ANDALEMO5pt7b - monospaced for text highlighting
+            break;
+        default:
+            fontIndex = 12; // Default to Andale Mono
+            break;
+    }
+    
+    setFont(fontIndex);
+    setTextSize(1); // Always use size 1 with small fonts
+}
+
+void oled::useSmallFont(SmallFont smallFont, const char* text, int16_t x, int16_t y, bool clear) {
+    if (!oledConnected || !text) return;
+    
+    if (clear) {
+        display.clearDisplay();
+    }
+    
+    setSmallFont(smallFont);
+    setCursor(x, y);
+    display.print(text);
+}
+
+void oled::useSmallFontAndRestore(SmallFont smallFont, const char* text, int16_t x, int16_t y, bool clear, bool show) {
+    if (!oledConnected || !text) return;
+    
+    if (clear) {
+        display.clearDisplay();
+    }
+    
+    setSmallFont(smallFont);
+    
+    // Auto-adjust Y position for small fonts (add baseline offset if y is too small)
+    int16_t adjustedY = y;
+    if (y < 8) {
+        adjustedY = y + 8; // Add baseline offset for 4-5pt fonts
+    }
+    
+    setCursor(x, adjustedY);
+    display.print(text);
+    
+    if (show) {
+        display.display();
+    }
+    
+    restoreNormalFont();
+}
+
+void oled::restoreNormalFont() {
+    if (!oledConnected) return;
+    
+    if (usingSmallFont && previousFont) {
+        currentFont = previousFont;
+        display.setFont(currentFont);
+        usingSmallFont = false;
+        previousFont = nullptr;
+    }
+}
+
+// Drawing primitives
+void oled::drawLine(int16_t x0, int16_t y0, int16_t x1, int16_t y1, uint16_t color) {
+    if (!oledConnected) return;
+    display.drawLine(x0, y0, x1, y1, color);
+}
+
+void oled::fillRect(int16_t x, int16_t y, int16_t w, int16_t h, uint16_t color) {
+    if (!oledConnected) return;
+    display.fillRect(x, y, w, h, color);
+}
+
+// Simple framebuffer management
+void oled::clearFramebuffer() {
+    if (!oledConnected) return;
+    display.clearDisplay();
+}
+
+void oled::setPixel(int16_t x, int16_t y, uint16_t color) {
+    if (!oledConnected) return;
+    display.drawPixel(x, y, color);
+}
+
+void oled::drawChar(int16_t x, int16_t y, char c) {
+    if (!oledConnected) return;
+    int16_t savedX = display.getCursorX();
+    int16_t savedY = display.getCursorY();
+    display.setCursor(x, y);
+    display.print(c);
+    display.setCursor(savedX, savedY);
+}
+
+void oled::drawText(int16_t x, int16_t y, const char* text) {
+    if (!oledConnected) return;
+    int16_t savedX = display.getCursorX();
+    int16_t savedY = display.getCursorY();
+    display.setCursor(x, y);
+    display.print(text);
+    display.setCursor(savedX, savedY);
+}
+
+void oled::drawHighlightedChar(int16_t x, int16_t y, char c) {
+    if (!oledConnected) return;
+    
+    // Get character bounds for background rectangle
+    int16_t x1, y1;
+    uint16_t w, h;
+    char charStr[2] = {c, '\0'};
+    display.getTextBounds(charStr, x, y, &x1, &y1, &w, &h);
+    
+    // Draw larger white background for border effect (1 pixel larger on all sides)
+    display.fillRect(x1 - 1, y1 - 1, w + 2, h + 2, SSD1306_WHITE);
+    
+    // Draw character with black text on white background (inverted)
+    int16_t savedX = display.getCursorX();
+    int16_t savedY = display.getCursorY();
+    display.setCursor(x, y);
+    display.setTextColor(SSD1306_BLACK, SSD1306_WHITE); // Black text on white background
+    display.print(c);
+    
+    // Restore default colors and cursor
+    display.setTextColor(SSD1306_WHITE, SSD1306_BLACK); // Default colors
+    display.setCursor(savedX, savedY);
+}
+
+void oled::flushFramebuffer() {
+    if (!oledConnected) return;
+    display.display();
+}
+
 // CONNECTION MANAGEMENT
 // ====================
 
@@ -1142,6 +1524,10 @@ int oledTest(int sdaRow, int sclRow, int sdaPin, int sclPin, int leaveConnection
     
     oled.show();
     return 0;
+}
+
+void testOLEDSmallFonts(void) {
+    oled.testSmallFonts();
 }
 
 // BITMAP DATA

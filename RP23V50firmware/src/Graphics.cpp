@@ -21,6 +21,8 @@
 #define Serial SerialWrap
 #endif
 
+bool disableTerminalColors = false;
+
 /* clang-format off */
 
 // Non-blocking flush function with timeout
@@ -286,9 +288,43 @@ char defconString[16] = "Jumper less V5 ";
 int colorCycle = 0;
 int defNudge = 0;
 
-int filledPaths[MAX_BRIDGES][4] = {-1}; // node1 node2 rowfilled
+
+const int highSaturationSpectrumColors[54] = {
+  // Red hues (0-30°)
+  160, 196, 202, 166,
+  // Orange hues (30-60°)
+  208, 172, 214, 178, 220,
+  // Yellow hues (60-90°)
+  184, 226, 190, 148, 154, 112, 118,
+  // Yellow-Green hues (90-120°)
+  76, 82,
+  // Green hues (120-150°)
+  40, 46, 47, 41,
+  // Green-Cyan hues (150-180°)
+  48, 42, 49, 43, 50,
+  // Cyan hues (180-210°)
+  44, 51, 45, 38, 39, 32, 33,
+  // Cyan-Blue hues (210-240°)
+  26, 27,
+  // Blue hues (240-270°)
+  20, 21, 57, 56,
+  // Blue-Magenta hues (270-300°)
+  93, 92, 129, 128, 165,
+  // Magenta hues (300-330°)
+  164, 201, 200, 163, 199, 162, 198,
+  // Red-Magenta hues (330-360°)
+  161, 197
+};
+
+const int highSaturationSpectrumColorsCount = 54;
+
+
 
 void changeTerminalColor(int termColor, bool flush, Stream *stream) {
+
+  if (disableTerminalColors) {
+    return;
+  }
 
   if (termColor != -1) {
     if (flush) {
@@ -302,12 +338,125 @@ void changeTerminalColor(int termColor, bool flush, Stream *stream) {
     if (flush) {
       stream->flush();
     }
-    stream->printf("\033[38;5;%dm", 15);
+    stream->print("\033[0m"); // Reset all colors and formatting
     if (flush) {
       stream->flush();
     }
   }
 }
+
+
+// void cycleTerminalColor(bool reset, bool reverse, int step, bool flush, Stream *stream) {
+//   if (disableTerminalColors) {
+//     return;
+//   }
+//   static float stepDistance = 5.0f;
+//   static float colorAccumulator = 0.0f;
+//   if (step != -1) {
+//     stepDistance = (float)step;
+//   }
+//   static int currentColor = 0;
+//   if (reset) {
+//     currentColor = 0;
+//     colorAccumulator = 0.0f;
+//   } else {
+//     if (reverse) {
+//       colorAccumulator -= stepDistance;
+//     } else {
+//       colorAccumulator += stepDistance;
+//     }
+    
+//     // Only update currentColor when we've accumulated enough for a full step
+//     while (colorAccumulator >= 1.0f) {
+//       currentColor++;
+//       colorAccumulator -= 1.0f;
+//       if (currentColor >= highSaturationSpectrumColorsCount) {
+//         currentColor = 0;
+//       }
+//     }
+//     while (colorAccumulator <= -1.0f) {
+//       currentColor--;
+//       colorAccumulator += 1.0f;
+//       if (currentColor < 0) {
+//         currentColor = highSaturationSpectrumColorsCount - 1;
+//       }
+//     }
+//   }
+//   int color = highSaturationSpectrumColors[currentColor];
+
+
+//   stream->printf("\033[38;5;%dm", color);
+//   if (flush) {
+//     stream->flush();
+//   }
+// }
+
+void cycleTerminalColor(bool reset,  float step, bool flush, Stream *stream) {
+  if (disableTerminalColors) {
+    return;
+  }
+  static float stepDistance = 5.0f;
+  static float colorAccumulator = 0.0f;
+
+  if (step < 80.0f) {
+    stepDistance = step;
+  } else {
+    //stepDistance = 1.0f;
+  }
+  static int currentColor = 0;
+  if (reset) {
+    currentColor = 0;
+    colorAccumulator = 0.0f;
+  } else {
+    // if (reverse) {
+    //   colorAccumulator -= stepDistance;
+    // } else {
+      colorAccumulator += stepDistance;
+    //}
+    
+    // Only update currentColor when we've accumulated enough for a full step
+    while (colorAccumulator >= 1.0f) {
+      currentColor++;
+      colorAccumulator -= 1.0f;
+      if (currentColor >= highSaturationSpectrumColorsCount) {
+        currentColor = 0;
+      }
+    }
+    while (colorAccumulator <= -1.0f) {
+      currentColor--;
+      colorAccumulator += 1.0f;
+      if (currentColor < 0) {
+        currentColor = highSaturationSpectrumColorsCount - 1;
+      }
+    }
+  }
+  int color = highSaturationSpectrumColors[currentColor];
+
+  stream->printf("\033[38;5;%dm", color);
+  if (flush) {
+    stream->flush();
+  }
+}
+
+
+
+void printSpectrumOrderedColorCube(void) {
+  for (int i = 0; i < highSaturationSpectrumColorsCount; i++) {
+    changeTerminalColor(highSaturationSpectrumColors[i], true, &Serial);
+    Serial.print("\t");
+    Serial.print(highSaturationSpectrumColors[i]);
+    
+    if (i % 12 == 0 && i != 0) {
+      Serial.println();
+    }
+  }
+  Serial.println();
+}
+
+
+
+int filledPaths[MAX_BRIDGES][4] = {-1}; // node1 node2 rowfilled
+
 
 void drawWires(int net) {
   // int fillSequence[6] = {0,2,4,1,3,};
@@ -1935,13 +2084,13 @@ int getCursorPositionY() {
 }
 int cursorSaved = 0;
 void saveCursorPosition(Stream *stream) {
-  stream->printf("\0337");
+  stream->print("\033[s");
   stream->flush();
   cursorSaved = 1;
 }
 
 void restoreCursorPosition(Stream *stream) {
-  stream->printf("\0338");
+  stream->print("\033[u");
   stream->flush();
   cursorSaved = 0;
 }
@@ -2010,8 +2159,8 @@ void moveCursor(int posX, int posY, int absolute, Stream *stream, bool flush) {
 ┪	┫	┬	┭	┮	┯ ┰	┱	┲	┳	┴
 ┵	┶	┷	┸	┹	┺	┻	┼	┽	┾
 ┿ ╀	╁	╂	╃	╄	╅	╆	╇	╈	╉
-╊	╋	╌	╍	╎	╏ ═	║	╒	╓	╔
-╕	╖	╗	╘	╙	╚	╛	╜	╝	╞
+╊	╋	╌	╍	╎	╏ ─	│	╒	╓	╭
+╕	╖	╮	╘	╙	╰	╛	╜	╯	╞
 ╟ ╠	╡	╢	╣	╤	╥	╦	╧	╨	╩
 ╪	╫	╬	╭	╮	╯ ╰	╱	╲	╳	╴
 ╵	╶	╷	╸	╹	╺	╻	╼	╽	╾
@@ -2026,10 +2175,10 @@ void moveCursor(int posX, int posY, int absolute, Stream *stream, bool flush) {
     á      í      ó      ú      ñ      Ñ      ª
     º      ¿      ⌐      ¬      ½      ¼      ¡
     «      »      ░      ▒      ▓      │      ┤
-    ╡      ╢      ╖      ╕      ╣      ║      ╗
-    ╝      ╜      ╛      ┐
+    ╡      ╢      ╖      ╕      ╣      │      ╮
+╯      ╜      ╛      ┐
     └      ┴      ┬      ├      ─      ┼      ╞
-    ╟      ╚      ╔      ╩      ╦      ╠      ═
+    ╟      ╰      ╭      ╩      ╦      ╠      ─
     ╬      ╧      ╨      ╤      ╥      ╙      ╘
     ╒      ╓      ╫      ╪      ┘      ┌      █
     ▄      ▌      ▐      ▀      α      ß      Γ
@@ -3353,4 +3502,17 @@ void printRLEimageData(int imageIndex) {
   Serial.println("};");
   Serial.println();
   Serial.flush();
+}
+
+// Screen state functions for clean transitions
+void saveScreenState(Stream *stream) {
+  // Clear screen for file manager interface
+  stream->print("\033[2J\033[H");
+  stream->flush();
+}
+
+void restoreScreenState(Stream *stream) {
+  // Clear screen for clean return to REPL
+  stream->print("\033[2J\033[H");
+  stream->flush();
 }

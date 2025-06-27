@@ -814,8 +814,8 @@ void updateStateFromGPIOConfig(void) {
   }
 
 void updateGPIOConfigFromState(void) {
-  Serial.println("updateGPIOConfigFromState");
-  Serial.flush();
+  // Serial.println("updateGPIOConfigFromState");
+  // Serial.flush();
   // return;
   int changed = 0;
   for (int i = 0; i < 10; i++) {  // Changed from 8 to 10 to include UART pins

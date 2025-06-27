@@ -27,16 +27,16 @@ extern "C" {
 
 // DAC Functions
 void jl_dac_set(int channel, float voltage, int save) {
-    if (channel == 0) {
-        channel = 2;
-    } else if (channel == 1) {
-        channel = 3;
-    } else if (channel == 2) {
-        channel = 0;
-    } else if (channel == 3) {
-        channel = 1;
-    }
-    setDacByNumber(channel, voltage, save);
+    // if (channel == 0) {
+    //     channel = 2;
+    // } else if (channel == 1) {
+    //     channel = 3;
+    // } else if (channel == 2) {
+    //     channel = 0;
+    // } else if (channel == 3) {
+    //     channel = 1;
+    // }
+    setDacByNumber(channel, voltage, save, 0, false);
 }
 
 float jl_dac_get(int channel) {

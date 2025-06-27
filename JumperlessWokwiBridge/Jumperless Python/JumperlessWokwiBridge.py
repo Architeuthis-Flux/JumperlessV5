@@ -4,7 +4,7 @@
 # KevinC@ppucc.io
 #
 
-App_Version = "1.1.1.1"
+App_Version = "1.1.1.5"
 new_requirements = True
 
 import pathlib
@@ -752,7 +752,7 @@ def parse_firmware_version(response_str):
     
     return False
 
-def find_main_port(jumperless_ports):
+def find_main_port(jumperless_ports, force_quit_python=False):
     """Find the main Jumperless port using '?' query"""
     
     for port_name, desc, hwid, interface, additional_attrs in jumperless_ports:
@@ -765,6 +765,13 @@ def find_main_port(jumperless_ports):
                 test_port.reset_input_buffer()
                 test_port.reset_output_buffer()
                 time.sleep(0.1)
+                
+                # Send ? to check for firmware response
+                if force_quit_python:
+                    quit_command = "\n\rquit\n\r"
+                    test_port.write(quit_command.encode('utf-8', errors='ignore'))
+                    test_port.flush()
+                    time.sleep(0.5)
                 
                 # Send ? to check for firmware response
                 test_port.write(b'?')
@@ -1050,8 +1057,12 @@ def open_serial():
             main_port_name = find_main_port(jumperless_ports)
             
             if not main_port_name:
-                time.sleep(0.5)
-                main_port_name = find_main_port(jumperless_ports)
+                
+                # time.sleep(0.5)
+                safe_print("Trying to find main port with force_quit_python=True", Fore.YELLOW)
+                main_port_name = find_main_port(jumperless_ports, force_quit_python=True)
+                
+                    
             
             if not main_port_name:
                 safe_print("Could not find main port automatically.", Fore.YELLOW)
@@ -1106,11 +1117,13 @@ def open_serial():
                 ser = serial.Serial(portName, 115200, timeout=1)
                 serialconnected = 1
             safe_print(f"\nConnected to Jumperless at {portName}", Fore.GREEN)
+            return ser
     except Exception as e:
         safe_print(f"Failed to open serial port {portName}: {e}", Fore.RED)
         with serial_lock:
             ser = None
             serialconnected = 0
+        return None
 
 # ============================================================================
 # FIRMWARE MANAGEMENT
@@ -1298,12 +1311,12 @@ def update_jumperless_firmware(force=False):
                                         volume_info = win32api.GetVolumeInformation(p.mountpoint)
                                         volume_name = volume_info[0]
                                         if jumperlessV5:
-                                            if volume_name == "RP2350":
+                                            if volume_name.contains("RP2350"):
                                                 foundVolume = p.mountpoint
                                                 safe_print(f"Found Jumperless V5 at {foundVolume}", Fore.CYAN)
                                                 break
                                         else:
-                                            if volume_name == "RPI-RP2":
+                                            if volume_name.contains("RPI-RP2"):
                                                 foundVolume = p.mountpoint
                                                 safe_print(f"Found Jumperless at {foundVolume}", Fore.CYAN)
                                                 break
@@ -1360,17 +1373,17 @@ def update_jumperless_firmware(force=False):
                                         safe_print(f"Error in fallback Windows detection: {e}", Fore.RED)
                                         continue
                                 else:
-                                    # Unix-like systems
-                                    if jumperlessV5:
-                                        if p.mountpoint.endswith("RP2350") or "RP2350" in p.mountpoint:
-                                            foundVolume = p.mountpoint
-                                            safe_print(f"Found Jumperless V5 at {foundVolume}", Fore.RED)
-                                            break
-                                    else:
-                                        if p.mountpoint.endswith("RPI-RP2") or "RPI-RP2" in p.mountpoint:
-                                            foundVolume = p.mountpoint
-                                            safe_print(f"Found Jumperless at {foundVolume}", Fore.RED)
-                                            break
+                                # Unix-like systems
+                                # if jumperlessV5:
+                                    if p.mountpoint.endswith("RP2350") or "RP2350" in p.mountpoint:
+                                        foundVolume = p.mountpoint
+                                        safe_print(f"Found Jumperless V5 at {foundVolume}", Fore.RED)
+                                        break
+                                # else:
+                                    if p.mountpoint.endswith("RPI-RP2") or "RPI-RP2" in p.mountpoint:
+                                        foundVolume = p.mountpoint
+                                        safe_print(f"Found Jumperless at {foundVolume}", Fore.RED)
+                                        break
                             except Exception:
                                 continue
                     except Exception as partition_error:
@@ -1671,7 +1684,7 @@ def download_app_update():
             return None, None
         
         # Download the main script using firmware version in URL
-        script_url = f"https://github.com/{app_update_repo}/releases/download/v{firmware_version}/{app_script_name}"
+        script_url = f"https://github.com/{app_update_repo}/releases/download/{firmware_version}/{app_script_name}"
         
         safe_print(f"Downloading {app_script_name} (release {firmware_version})...", Fore.CYAN)
         
@@ -1692,7 +1705,7 @@ def download_app_update():
         if new_requirements:
             try:
                 safe_print("Downloading requirements.txt...", Fore.CYAN)
-                requirements_url = f"https://github.com/{app_update_repo}/releases/download/v{firmware_version}/{app_requirements_name}"
+                requirements_url = f"https://github.com/{app_update_repo}/releases/download/{firmware_version}/{app_requirements_name}"
                 
                 with tempfile.NamedTemporaryFile(mode='wb', delete=False, suffix='.txt') as temp_req_file:
                     requirements_path = temp_req_file.name
@@ -2682,7 +2695,7 @@ def bridge_menu():
     safe_print("\n\n         Jumperless App Menu\n", Fore.MAGENTA)
     
     safe_print(" 'menu'        to open the app menu (this menu)", Fore.BLUE)  
-    safe_print(" 'interactive' to " + ("disable" if interactive_mode else "enable") + " real-time character mode - " + ("ON" if interactive_mode else "OFF") + " (device-controllable)", Fore.RED if interactive_mode else Fore.GREEN)
+    safe_print(" 'interactive' to " + ("disable" if interactive_mode else "enable") + " real-time character mode - " + ("ON" if interactive_mode else "OFF")  , Fore.RED if interactive_mode else Fore.GREEN)
     safe_print(" 'wokwi'       to " + ("enable" if noWokwiStuff else "disable") + " Wokwi updates " + ("and just use as a terminal" if not noWokwiStuff else ""), Fore.CYAN)
     safe_print(" 'rate'        to change the Wokwi update rate", Fore.GREEN)
     safe_print(" 'slots'       to assign Wokwi projects to slots - " + str(numAssignedSlots) + " assigned", Fore.YELLOW)
@@ -2695,7 +2708,7 @@ def bridge_menu():
     safe_print(" 'appupdate'   to check for app updates - current version " + App_Version + debug_status, Fore.MAGENTA)
     safe_print(" 'debugupdate' to " + ("disable" if debug_app_update else "enable") + " app update debug mode", Fore.BLUE)
     safe_print(" 'status'      to check the serial connection status", Fore.CYAN) 
-    safe_print(" 'exit'        to exit the menu", Fore.GREEN)
+    safe_print(" [enter]       to exit the menu and return to Jumperless", Fore.GREEN)
     
     while menuEntered:
         try:
@@ -3616,7 +3629,7 @@ def flash_arduino_sketch(sketch_content, libraries_content="", slot_number=None)
                     safe_print(f"Note: Error closing Arduino port in cleanup: {close_error}", Fore.YELLOW)
             
             # Restore UART state if we changed it
-            if uart_mode_changed and ser and serialconnected:
+            if uart_mode_changed and ser and serialconnected and not uart_was_connected:
                 try:
                     time.sleep(0.1)
                     ser.write(b"a")  # Disconnect UART
@@ -4656,14 +4669,23 @@ def handle_interactive_input_simple():
                         raise KeyboardInterrupt
                     elif char == '\r':
                         char = '\n'  # Convert to newline for MicroPython compatibility
-                    
+                    if char == '\x1b':  # ESC key
+                        esc_sequence = char + sys.stdin.read(2)
+                        with serial_lock:
+                            if serialconnected and ser and ser.is_open:
+                                try:
+                                    ser.write(esc_sequence.encode('utf-8', errors='ignore'))
+                                except Exception as e:
+                                    safe_print(f"Error sending character: {e}", Fore.RED)
+                        continue
+                    else:
                     # Send character to serial port
-                    with serial_lock:
-                        if serialconnected and ser and ser.is_open:
-                            try:
-                                ser.write(char.encode('utf-8', errors='ignore'))
-                            except Exception as e:
-                                safe_print(f"Error sending character: {e}", Fore.RED)
+                        with serial_lock:
+                            if serialconnected and ser and ser.is_open:
+                                try:
+                                    ser.write(char.encode('utf-8', errors='ignore'))
+                                except Exception as e:
+                                    safe_print(f"Error sending character: {e}", Fore.RED)
                                 
         finally:
             # Always restore original terminal settings

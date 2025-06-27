@@ -59,9 +59,9 @@ bool handleHelpRequest(const char* input) {
 
 void showGeneralHelp() {
     changeTerminalColor(HELP_TITLE_COLOR, true);
-    Serial.println("\n╔═══════════════════════════════════════════════════════════════════════════╗");
-    Serial.println("║                          JUMPERLESS HELP SYSTEM                           ║");
-    Serial.println("╚═══════════════════════════════════════════════════════════════════════════╝");
+    Serial.println("\n╭───────────────────────────────────────────────────────────────────────────╮");
+    Serial.println("│                          JUMPERLESS HELP SYSTEM                           │");
+    Serial.println("╰───────────────────────────────────────────────────────────────────────────╯");
     
     changeTerminalColor(HELP_DESC_COLOR, true);
     Serial.println("Type any command followed by ? for detailed help (like 'f?' or 'n?')");
@@ -293,7 +293,7 @@ void showCommandHelp(char command) {
             Serial.println("  - Command history (up/down arrows)");
             Serial.println("  - Multi-line input with smart indentation");
             Serial.println("  - Script save/load functionality");
-            Serial.println("  - Tab completion and paste mode");
+            Serial.println("  - File management and eKilo editor integration");
             Serial.println("\nHardware control functions:");
             Serial.println("  - jumperless.connect(1, 5)   - Make connections");
             Serial.println("  - jumperless.remove(1, 5)    - Remove connections");
@@ -648,11 +648,25 @@ void showCommandHelp(char command) {
 
 void showCategoryHelp(const char* category) {
     changeTerminalColor(HELP_TITLE_COLOR, true);
-    Serial.print("\n╔═══════════════════════════════════════════════════════════════════════════╗\n");
-    Serial.print("║                         ");
-    Serial.print(category);
-    Serial.print(" HELP                         ║\n");
-    Serial.print("╚═══════════════════════════════════════════════════════════════════════════╝\n");
+    Serial.print("\n╭───────────────────────────────────────────────────────────────────────────╮\n");
+    
+    // Center the category text in the header
+    String headerText = String(category) + " HELP";
+    int totalWidth = 74; // Available space between │ characters
+    int textLen = headerText.length();
+    int leftPadding = (totalWidth - textLen) / 2;
+    int rightPadding = totalWidth - textLen - leftPadding;
+    
+    Serial.print("│");
+    for (int i = 0; i < leftPadding; i++) {
+        Serial.print(" ");
+    }
+    Serial.print(headerText);
+    for (int i = 0; i < rightPadding; i++) {
+        Serial.print(" ");
+    }
+    Serial.print("│\n");
+    Serial.print("╰───────────────────────────────────────────────────────────────────────────╯\n");
     
     if (strcmp(category, "basics") == 0) {
         changeTerminalColor(HELP_DESC_COLOR, true);
@@ -718,18 +732,7 @@ Serial.println(probe_art);
 
 
 
-        // Serial.println("    ╭──────────╮     ╭──────────╮");
-
-
-
-
-
-        // Serial.println("    │ CONNECT  │     │ REMOVE   │");
-        // Serial.println("    │   (●)    │     │   (●)    │");
-        // Serial.println("    ╰────┬─────╯     ╰────┬─────╯");
-        // Serial.println("         │                │");
-        // Serial.println("      ●══════════════════○ PROBE TIP");
-        // Serial.println("    Blue Mode         Red Mode\n");
+        // Old ASCII art replaced with modern probe diagram above
         
         changeTerminalColor(HELP_USAGE_COLOR, true);
         Serial.println(" CONNECT MODE (Blue):");
@@ -871,7 +874,7 @@ Serial.println(probe_art);
         Serial.println("  - Smart indentation");
         Serial.println("  - Script save/load functionality");
         Serial.println("  - Tab completion for functions");
-        Serial.println("  - Paste mode for multi-line scripts");
+        Serial.println("  - File manager and eKilo editor integration");
         
         changeTerminalColor(HELP_USAGE_COLOR, true);
         Serial.println("\n REPL Commands:");
@@ -882,7 +885,7 @@ Serial.println(probe_art);
         Serial.println("  help    - Show REPL help");
         Serial.println("  save    - Save current session as script");
         Serial.println("  load    - Load and run a saved script");
-        Serial.println("  paste   - Enter paste mode for multi-line code");
+        Serial.println("  new     - Create new script with eKilo editor");
         
         changeTerminalColor(HELP_NOTE_COLOR, true);
         Serial.println("\n Python Features:");

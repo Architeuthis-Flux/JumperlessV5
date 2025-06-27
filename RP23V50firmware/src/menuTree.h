@@ -17,6 +17,7 @@ String menuLines[] = {
   "-XLSX   GUI",
   "-Micropython",
   "-uPythonREPL",
+  "-File   Manager",
 
   //"-Show   Image",
  
@@ -115,7 +116,7 @@ String menuLines[] = {
 
        "DisplayOptions",
        "-$Demo$",
-       "--*On**Off**Fuck*",
+       "--*On**Off*",
        "-$Colors$",
        "--*Rainbow**Shuffle*",
        "-$Jumpers$",
@@ -146,6 +147,8 @@ String menuLines[] = {
        "--Courier^",
        "--Science^",
        "--SciExt^",
+       "--AndlMno^",
+       "--FreMno^",
        "-Show in Term",
       //  "-Demo",
 

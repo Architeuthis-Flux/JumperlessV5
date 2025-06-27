@@ -9,6 +9,8 @@ extern const int screenMapNoRails[445];
 
 extern volatile bool dumpingToSerial;
 
+extern bool disableTerminalColors;
+
 class bread {
 public:
   bread();
@@ -107,6 +109,11 @@ extern uint8_t gpioAnimationBaseHues[10];
 extern int menuBrightnessSetting;
 extern bread b;
 
+extern const int highSaturationSpectrumColors[54];
+extern const int highSaturationSpectrumColorsCount;
+
+void printSpectrumOrderedColorCube(void);
+
 void playDoom(void);
 void showArray(uint8_t *array, int size);
 void initRowAnimations(void);
@@ -139,6 +146,9 @@ int attractMode(void);
 void changeTerminalColor(int termColor = -1, bool flush = true,
                          Stream *stream = &Serial);
 
+// void cycleTerminalColor(bool reset = false, bool reverse = false, int step = -1, bool flush = true, Stream *stream = &Serial);
+void cycleTerminalColor(bool reset = false, float step = 100.0, bool flush = true, Stream *stream = &Serial);
+
 void drawImage(int imageIndex = 0);
 void drawAnimatedImage(int imageIndex = 0, int speed = 2000);
 void printRLEimageData(int imageIndex);
@@ -154,6 +164,11 @@ void moveCursor(int posX = -1, int posY = -1, int absolute = 1,
                 Stream *stream = &Serial, bool flush = false);
 void saveCursorPosition(Stream *stream = &Serial);
 void restoreCursorPosition(Stream *stream = &Serial);
+
+// Alternate screen buffer functions for saving/restoring entire screen state
+void saveScreenState(Stream *stream = &Serial);
+void restoreScreenState(Stream *stream = &Serial);
+
 void dumpHeaderMain(int posX = 50, int posY = 20, int absolute = 1,
                     int wide = 0);
 void dumpLEDsMain(int posX = 50, int posY = 27, int pixelsOrRows = 0,

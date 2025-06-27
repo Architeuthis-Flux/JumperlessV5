@@ -362,6 +362,8 @@ struct NamedColor {
 
 extern const NamedColor namedColors[20];
 
+
+
 //extern uint32_t changedNetColors[MAX_NETS];
 extern rgbColor netColors[MAX_NETS];
 extern uint32_t savedLEDcolors[NUM_SLOTS][LED_COUNT + 1];

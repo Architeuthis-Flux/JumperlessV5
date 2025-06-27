@@ -1730,11 +1730,11 @@ int chooseGPIO(int skipInputOutput) {
   Serial.println("  tap pads near numbers to choose");
   Serial.println("       ⁱ = input, ⁰ = output\n\r");
   Serial.println("      ┌─┬─┐ ┌─┬─┐ ┌─┬─┐ ┌─┬─┐");
-  Serial.println("     ┌═══════════════════════┐");
+  Serial.println("     ╭───────────────────────╮");
   Serial.println("     │ ⁱ1⁰   ⁱ2⁰   ⁱ3⁰   ⁱ4⁰ │");
   Serial.println("     ├───────────────────────┤");
   Serial.println("     │ ᵢ5₀   ᵢ6₀   ᵢ7₀   ᵢ8₀ │");
-  Serial.println("     └═══════════════════════┘");
+  Serial.println("     ╰───────────────────────╯");
   Serial.println("      └─┴─┘ └─┴─┘ └─┴─┘ └─┴─┘");
 
 
@@ -2201,9 +2201,15 @@ int checkSwitchPosition() { // 0 = measure, 1 = select
   // while(showProbeLEDs == 8) {
   //  // delay(10);
   // }
+
+  float current = checkProbeCurrent();
+  // Serial.print("current = ");
+  // Serial.println(current);
+  // Serial.flush();
+
   if (checkProbeCurrent() > 0.08) {
     // showProbeLEDs = 0;
-    //  Serial.print("probe current: ");
+      //Serial.print("probe current: ");
     //  Serial.println(micros() - timer);
     //  if (probeActive == 0) {
     //    showProbeLEDs = 4;
@@ -2277,7 +2283,7 @@ float checkProbeCurrent(void) {
   // 0) {
 
   // addBridgeToNodeFile(ROUTABLE_BUFFER_IN, DAC0, netSlot, 1, 0);
-  refreshBlind(1, 0);
+  //refreshBlind(1, 0);
   //  }
   // addBridgeToNodeFile(ROUTABLE_BUFFER_IN, DAC0, netSlot, 1, 0);
   // timer[1] = micros();
@@ -2290,8 +2296,8 @@ float checkProbeCurrent(void) {
   //    printPathsCompact();
   //  printChipStatus();
   //  pinMode(23, INPUT);
-  digitalWrite(10, LOW);
-  delayMicroseconds(10);
+ // digitalWrite(10, LOW);
+  delayMicroseconds(1000);
   // refreshLocalConnections();
   // showProbeLEDs = 8;
   // while(showProbeLEDs == 8) {
@@ -2300,11 +2306,11 @@ float checkProbeCurrent(void) {
 
   float current = INA1.getCurrent_mA();
 
-  if (showProbeCurrent == 1) {
-    Serial.print("current: ");
-    Serial.print(current);
-    Serial.println(" mA\n\r");
-    }
+  //if (showProbeCurrent == 1) {
+    // Serial.print("current: ");
+    // Serial.print(current);
+    // Serial.println(" mA\n\r");
+   // }
 
   // for (int i = 1; i < 4; i++) {
   //   Serial.print("timer[");
@@ -2315,7 +2321,7 @@ float checkProbeCurrent(void) {
   //     //Serial.print("\t");
   //   }
 
-  digitalWrite(10, HIGH);
+  //digitalWrite(10, HIGH);
 
   return current;
   }

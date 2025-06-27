@@ -121,6 +121,6 @@ system_profiler SPUSBDataType | grep -A 10 "Jumperless"
 
 ## Current Status
 
-✅ **Working**: 2 CDC interfaces with linker wrapping approach
-🔧 **In Progress**: Dynamic configuration system
-⚠️ **Known Issue**: Code needs conditional compilation fixes for USBSer2/USBSer3 references 
+◆ **Working**: 2 CDC interfaces with linker wrapping approach
+⟐ **In Progress**: Dynamic configuration system
+△ **Known Issue**: Code needs conditional compilation fixes for USBSer2/USBSer3 references 

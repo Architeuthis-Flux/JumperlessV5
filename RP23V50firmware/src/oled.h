@@ -24,6 +24,16 @@
 #include "fonts/new_science_medium_extended8pt7b.h"
 #include "fonts/new_science_medium_extended12pt7b.h"
 
+// Monospaced fonts for text highlighting
+#include "fonts/ANDALEMO5pt7b.h"
+#include "fonts/ANDALEMO6pt7b.h"
+#include "fonts/FreeMono4pt7b.h"
+#include "fonts/FreeMono5pt7b.h"
+
+// Small fonts for file manager and detailed displays (4-5pt for better readability)
+#include "fonts/ubuntu5pt7b.h"
+#include "fonts/DotGothic16_Regular4pt7b.h"
+#include "fonts/Jokerman4pt7b.h"
 
 //#include "fonts/JumperlessLowerc12pt7b.h"
 
@@ -47,7 +57,17 @@ enum FontFamily {
     FONT_COMIC_SANS = 2,
     FONT_COURIER_NEW = 3,
     FONT_NEW_SCIENCE_MEDIUM = 4,
-    FONT_NEW_SCIENCE_MEDIUM_EXTENDED = 5
+    FONT_NEW_SCIENCE_MEDIUM_EXTENDED = 5,
+    FONT_ANDALE_MONO = 6,
+    FONT_FREE_MONO = 7
+};
+
+// Small font enumeration for file manager and detailed displays
+enum SmallFont {
+    SMALL_FONT_UBUNTU = 0,
+    SMALL_FONT_DOTGOTHIC = 1,
+    SMALL_FONT_JOKERMAN = 2,
+    SMALL_FONT_ANDALE_MONO = 3
 };
 
 // Positioning mode enum for simplified positioning system
@@ -74,6 +94,7 @@ public:
     int init();
     void test();
     void testMenuPositioning();
+    void testSmallFonts();
     
     // Basic print functions
     void print(const char* s);
@@ -140,11 +161,40 @@ public:
     void getCenteredPosition(const char* str, int16_t* x, int16_t* y, PositionMode mode);
     void getCenteredPosition(const char* str, int16_t* x, int16_t* y);  // Auto mode
     
+    // Font metrics helpers
+    int getCharacterWidth();
+    
     // Font bounds and measurement functions
     FontMetrics getFontMetrics();
     TextBounds getTextBounds(const char* str);
     TextBounds getTextBounds(const String& str);
     bool textFits(const char* str);
+    
+    // Small text and file system display functions
+    void printSmallText(const char* text, int16_t x, int16_t y, bool clear = false);
+    void printSmallTextLine(const char* text, int line, bool clear = false);
+    void clearLine(int line);
+    void showFileStatus(const char* currentPath, int fileCount, const char* selectedFile);
+    void showFileStatusScrolled(const char* visibleText, int fileCount, int cursorPosition);
+    void showMultiLineSmallText(const char* text, bool clear = true);
+    
+    // Small font functions
+    void setSmallFont(SmallFont smallFont);
+    void useSmallFont(SmallFont smallFont, const char* text, int16_t x = 0, int16_t y = 0, bool clear = false);
+    void useSmallFontAndRestore(SmallFont smallFont, const char* text, int16_t x = 0, int16_t y = 0, bool clear = false, bool show = false);
+    void restoreNormalFont();
+    
+    // Drawing primitives
+    void drawLine(int16_t x0, int16_t y0, int16_t x1, int16_t y1, uint16_t color = 1);
+    void fillRect(int16_t x, int16_t y, int16_t w, int16_t h, uint16_t color = 1);
+    
+    // Simple framebuffer management
+    void clearFramebuffer();
+    void setPixel(int16_t x, int16_t y, uint16_t color = 1);
+    void drawChar(int16_t x, int16_t y, char c);
+    void drawText(int16_t x, int16_t y, const char* text);
+    void drawHighlightedChar(int16_t x, int16_t y, char c); // Highlight a single character
+    void flushFramebuffer();
     
     // Store config
     int address = -1;
@@ -166,6 +216,11 @@ public:
 
     FontFamily currentFontFamily = FONT_EUROSTILE;
     
+    // Small font state tracking
+    const GFXfont* previousFont = nullptr;
+    SmallFont currentSmallFont = SMALL_FONT_UBUNTU;
+    bool usingSmallFont = false;
+    
     bool oledConnected = false;
     
     int connectionRetries = 0;
@@ -180,6 +235,7 @@ public:
 void oledExample(void);
 int initOLED(void);
 int oledTest(int sdaRow = NANO_D2, int sclRow = NANO_D3, int sdaPin = 26, int sclPin = 27, int leaveConnections = 1);
+void testOLEDSmallFonts(void);
 
 // Bitmap data
 extern const unsigned char jogo255[];

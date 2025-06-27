@@ -4,7 +4,7 @@ This guide explains how to properly set up MicroPython embedding in the Jumperle
 
 ## 🚨 Important: Previous Integration Issues Fixed
 
-## 🛠️ Setup Instructions
+## ⟐ Setup Instructions
 
 ### Step 1: Build MicroPython Embed Port
 
@@ -18,17 +18,17 @@ The build will automatically happen when you compile with PlatformIO, but you ca
 ./scripts/build_micropython.sh
 ```
 
-## 🎯 Features Enabled
+## ○ Features Enabled
 
 With the corrected integration, you now have:
 
-### ✅ **Floating Point Support**
+### ◆ **Floating Point Support**
 - Full `float` type support using RP2350 FPU
 - Mathematical operations: `+`, `-`, `*`, `/`, `**`
 - Built-in functions: `abs()`, `round()`, `min()`, `max()`
 - Math module with trigonometric functions
 
-### ✅ **Core MicroPython Features**
+### ◆ **Core MicroPython Features**
 - Variables and basic data types
 - Control flow (if/else, loops)  
 - Functions and classes
@@ -36,13 +36,13 @@ With the corrected integration, you now have:
 - Import system
 - Garbage collection
 
-### ✅ **Built-in Modules**
+### ◆ **Built-in Modules**
 - `gc` - Garbage collection control
 - `sys` - System-specific parameters  
 - `io` - Core I/O functionality
 - `builtins` - Built-in functions
 
-## 🧪 Testing MicroPython Integration
+## ○ Testing MicroPython Integration
 
 You can test the integration with floating-point support:
 
@@ -60,7 +60,7 @@ sin_val = math.sin(math.radians(angle))
 print(f"sin(45°) = {sin_val}")
 ```
 
-## 🔧 Configuration Details
+## ⟐ Configuration Details
 
 ### ROM Level: BASIC_FEATURES
 - Provides floating-point support with proper QSTR generation
@@ -98,7 +98,7 @@ rm -rf src/micropython/micropython_embed
 ### "Multiple Definition" Linker Errors
 These should be resolved with the correct build flags in `platformio.ini`. If you still see them, ensure you're not manually including MicroPython source files in your main code.
 
-## 📁 Directory Structure
+## ⌘ Directory Structure
 
 After successful build:
 ```
@@ -115,7 +115,7 @@ src/micropython/
 └── README.md                  # Basic usage info
 ```
 
-## 🚀 Next Steps
+## ↑ Next Steps
 
 With proper MicroPython integration now working:
 

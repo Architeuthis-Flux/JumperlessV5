@@ -59,13 +59,13 @@ The build script will verify:
 ### Expected Output
 
 ```
-✅ MicroPython embed build successful!
+◆ MicroPython embed build successful!
    Generated 1234 QSTR definitions
    Jumperless module QSTRs found: 25
-   ✅ Jumperless MicroPython module found
-   ✅ Jumperless API wrapper found
-   ✅ Jumperless module enabled in configuration
-✅ MicroPython is ready for use with Jumperless native module enabled!
+   ◆ Jumperless MicroPython module found
+   ◆ Jumperless API wrapper found
+   ◆ Jumperless module enabled in configuration
+◆ MicroPython is ready for use with Jumperless native module enabled!
 ```
 
 ## Troubleshooting
@@ -74,14 +74,14 @@ The build script will verify:
 
 1. **Module Not Found**
    ```
-   ❌ Jumperless MicroPython module missing
+   ◇ Jumperless MicroPython module missing
    ```
    - Check that `lib/micropython/modjumperless.cpp` exists
    - Verify the USER_C_MODULES path is correct
 
 2. **API Wrapper Missing**
    ```
-   ❌ Jumperless API wrapper missing
+   ◇ Jumperless API wrapper missing
    ```
    - Check that `src/JumperlessMicroPythonAPI.cpp` exists
    - Verify include paths in the source file

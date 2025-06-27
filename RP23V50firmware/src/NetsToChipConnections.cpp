@@ -169,13 +169,23 @@ unsigned long timeToSort = 0;
 
 bool debugNTCC = 0; // EEPROM.read(DEBUG_NETTOCHIPCONNECTIONSADDRESS);
 
-bool debugNTCC2 = 0; // EEPROM.read(DEBUG_NETTOCHIPCONNECTIONSALTADDRESS);
+bool debugNTCC2 = 1; // EEPROM.read(DEBUG_NETTOCHIPCONNECTIONSALTADDRESS);
 
 bool debugNTCC3 = false;
 
 bool debugNTCC4 = true; // Debug for forcing path updates
 
 bool debugNTCC6 = false; // Debug for ijkl paths and direct connections
+
+// Helper function to enable overlap debugging
+void enableOverlapDebugging(bool enable) {
+  debugNTCC3 = enable;
+  if (enable) {
+    Serial.println("Overlap debugging enabled - will show detailed conflict information");
+  } else {
+    Serial.println("Overlap debugging disabled");
+  }
+}
 
 // State backup structures for transactional assignment
 struct ChipStateBackup {
@@ -2712,6 +2722,9 @@ void resolveAltPaths(int allowStacking, int powerOnly, int noOrOnlyDuplicates) {
     if (noOrOnlyDuplicates == 0 && path[i].duplicate == 1) {
       continue;
     }
+    
+    // Debug output removed for production
+    
     if (path[i].altPathNeeded == true) {
       //   Serial.print("\n\n\rPATH: ");
       //   Serial.println(i);
@@ -3176,6 +3189,287 @@ void resolveAltPaths(int allowStacking, int powerOnly, int noOrOnlyDuplicates) {
             //}
           }
           // continue;
+          break;
+        }
+
+        case BBtoNANO: {
+          if (debugNTCC2) {
+            Serial.println("   BBtoNANO");
+          }
+          
+          // Debug output removed for production
+          
+                     // Add detailed debug for failed BBtoNANO paths
+          if (debugNTCC2 && (path[i].node1 == 5 || path[i].node1 == 6 || path[i].node1 == 33)) {
+            Serial.print("   Debugging BBtoNANO path[");
+            Serial.print(i);
+            Serial.print("]: ");
+            printNodeOrName(path[i].node1);
+            Serial.print(" (chip ");
+            Serial.print(chipNumToChar(path[i].chip[0]));
+            Serial.print(") -> ");
+            printNodeOrName(path[i].node2);
+            Serial.print(" (chip ");
+            Serial.print(chipNumToChar(path[i].chip[1]));
+            Serial.print(") - altPath=");
+            Serial.println(path[i].altPathNeeded);
+          }
+          
+          int foundHop = 0;
+          
+          // For BB to NANO connections, we need to route through an intermediate breadboard chip
+          // We have: breadboard pin -> intermediate BB chip -> nano pin
+          
+                     // Try breadboard chips first (0-7), then special function chips (8-11)
+           for (int intermediateChip = 0; intermediateChip < 12; intermediateChip++) {
+             // Skip if this is the same as our source or target chip
+             if (intermediateChip == path[i].chip[0] || intermediateChip == path[i].chip[1]) {
+               continue;
+             }
+             
+             // Debug output removed for production
+             
+             int xMapSourceToIntermediate = -1;
+             int xMapIntermediateToSource = -1;
+             int xMapIntermediateToNano = -1;
+             int xMapSourceFromIntermediate = -1;  // Return connection from intermediate back to source
+             int intermediateY = -1;  // Y position for SF intermediate chips
+             
+             if (intermediateChip < 8) {
+               // Breadboard chip as intermediate
+               // Check if this intermediate chip has free Y0 and connections to both endpoints
+               if (!freeOrSameNetY(intermediateChip, 0, path[i].net, currentAllowStacking)) {
+                 // Debug output removed for production
+                 continue;
+               }
+               
+               // Check connection from source breadboard chip to intermediate chip
+               xMapSourceToIntermediate = xMapForChipLane0(path[i].chip[0], intermediateChip);
+               if (xMapSourceToIntermediate == -1 || !freeOrSameNetX(path[i].chip[0], xMapSourceToIntermediate, path[i].net, currentAllowStacking)) {
+                 // Debug output removed for production
+                 continue;
+               }
+               
+               // Check connection from intermediate chip back to source
+               xMapIntermediateToSource = xMapForChipLane0(intermediateChip, path[i].chip[0]);
+               if (xMapIntermediateToSource == -1 || !freeOrSameNetX(intermediateChip, xMapIntermediateToSource, path[i].net, currentAllowStacking)) {
+                 // Debug output removed for production
+                 continue;
+               }
+               
+               // CRITICAL: Also check if source chip has free X position for return connection
+               if (intermediateChip < 8) {
+                 // For breadboard intermediate chips, this is direct connection
+                 xMapSourceFromIntermediate = xMapForChipLane0(path[i].chip[0], intermediateChip);
+               } else {
+                 // For SF intermediate chips, need to find the connection from source BB chip to the intermediate Y position
+                 xMapSourceFromIntermediate = xMapForChipLane0(path[i].chip[0], intermediateY);
+               }
+               
+               if (xMapSourceFromIntermediate == -1 || !freeOrSameNetX(path[i].chip[0], xMapSourceFromIntermediate, path[i].net, currentAllowStacking)) {
+                 // Debug output removed for production
+                 continue;
+               }
+               
+               // Check connection from intermediate chip to nano chip
+               xMapIntermediateToNano = xMapForNode(path[i].chip[1], intermediateChip);
+               if (xMapIntermediateToNano == -1 || !freeOrSameNetX(intermediateChip, xMapIntermediateToNano, path[i].net, currentAllowStacking)) {
+                 // Debug output removed for production
+                 continue;
+               }
+             } else {
+               // Special function chip as intermediate (chips I, J, K, L)
+               // Find Y position for intermediate SF chip
+               intermediateY = -1;
+               for (int testY = 0; testY < 8; testY++) {
+                 if (freeOrSameNetY(intermediateChip, testY, path[i].net, currentAllowStacking)) {
+                   // For SF chips, also check if the corresponding BB chip X is free
+                   int bbChipX = xMapForChipLane0(testY, intermediateChip);
+                   if (bbChipX != -1 && freeOrSameNetX(testY, bbChipX, path[i].net, currentAllowStacking)) {
+                     intermediateY = testY;
+                     break;
+                   }
+                 }
+               }
+               
+               if (intermediateY == -1) {
+                 continue; // No free Y position on intermediate SF chip
+               }
+               
+               // Check connection from source breadboard chip to intermediate SF chip
+               xMapSourceToIntermediate = xMapForChipLane0(path[i].chip[0], intermediateY);
+               if (xMapSourceToIntermediate == -1 || !freeOrSameNetX(path[i].chip[0], xMapSourceToIntermediate, path[i].net, currentAllowStacking)) {
+                 continue;
+               }
+               
+               // For SF chips, the return connection goes back to the BB chip at intermediateY position
+               // Find the X position on the SF chip that connects to that BB chip
+               xMapIntermediateToSource = xMapForChipLane0(intermediateChip, intermediateY);
+               if (xMapIntermediateToSource == -1 || !freeOrSameNetX(intermediateChip, xMapIntermediateToSource, path[i].net, currentAllowStacking)) {
+                 // Debug output removed for production
+                 continue;
+               }
+               
+               // Check ijkl connection from intermediate SF chip to target nano chip
+               for (int ijklX = 12; ijklX <= 14; ijklX++) {
+                 if (ch[intermediateChip].xMap[ijklX] == path[i].chip[1]) {
+                   xMapIntermediateToNano = ijklX;
+                   break;
+                 }
+               }
+               
+               if (xMapIntermediateToNano == -1 || !freeOrSameNetX(intermediateChip, xMapIntermediateToNano, path[i].net, currentAllowStacking)) {
+                 continue;
+               }
+               
+               // Check the corresponding ijkl connection on the target nano chip
+               int targetIjklX = -1;
+               for (int ijklX = 12; ijklX <= 14; ijklX++) {
+                 if (ch[path[i].chip[1]].xMap[ijklX] == intermediateChip) {
+                   targetIjklX = ijklX;
+                   break;
+                 }
+               }
+               
+               if (targetIjklX == -1 || !freeOrSameNetX(path[i].chip[1], targetIjklX, path[i].net, currentAllowStacking)) {
+                 continue;
+               }
+               
+               // Store the intermediate Y for later use - don't reuse xMapIntermediateToSource
+               // intermediateY is already stored in the variable above
+             }
+            
+                         // For BBtoNANO routing, the nano Y position must correspond to the intermediate chip
+             int nanoY = -1;
+             if (intermediateChip < 8) {
+               // For breadboard intermediate chips, nano Y must be the intermediate chip number
+               nanoY = intermediateChip;
+               if (!freeOrSameNetY(path[i].chip[1], nanoY, path[i].net, currentAllowStacking)) {
+                 // Debug output removed for production
+                 continue; // Required Y position not available
+               }
+             } else {
+               // For SF intermediate chips, nano Y corresponds to the BB chip at intermediateY
+               nanoY = intermediateY;
+               if (!freeOrSameNetY(path[i].chip[1], nanoY, path[i].net, currentAllowStacking)) {
+                 // Debug output removed for production
+                 continue; // Required Y position not available
+               }
+             }
+             
+             // We found a valid intermediate chip - set up the routing
+             // Debug output removed for production
+             if (debugNTCC2) {
+               Serial.print("Found BB to NANO hop through chip ");
+               Serial.print(chipNumToChar(intermediateChip));
+               Serial.print(" for path ");
+               Serial.print(i);
+               Serial.print(" using correct nano Y=");
+               Serial.print(nanoY);
+               Serial.print(" (corresponds to chip ");
+               Serial.print(chipNumToChar(intermediateChip < 8 ? intermediateChip : intermediateY));
+               Serial.println(")");
+             }
+             
+             // Save state before making any assignments
+             saveRoutingState(i);
+             
+             // Set up the 4-segment path: source BB -> intermediate chip -> intermediate chip -> nano
+             path[i].chip[2] = intermediateChip;
+             path[i].chip[3] = intermediateChip;
+             
+             // X coordinates
+             bool pathX0Success = setPathX(i, 0, xMapSourceToIntermediate);
+             bool pathX1Success = setPathX(i, 1, xMapForNode(path[i].node2, path[i].chip[1]));
+             bool pathX2Success = setPathX(i, 2, xMapIntermediateToSource);
+             bool pathX3Success = setPathX(i, 3, xMapIntermediateToNano);
+             
+             // Y coordinates - different for BB vs SF intermediate chips
+             bool pathY0Success = setPathY(i, 0, yMapForNode(path[i].node1, path[i].chip[0]));
+             bool pathY1Success = setPathY(i, 1, nanoY);  // Use the found free Y position
+             bool pathY2Success = false;
+             bool pathY3Success = false;
+             if (intermediateChip < 8) {
+               // Breadboard intermediate chip
+               pathY2Success = setPathY(i, 2, 0);   // Intermediate BB chip Y=0
+               pathY3Success = setPathY(i, 3, 0);   // Intermediate BB chip Y=0
+             } else {
+               // Special function intermediate chip
+               pathY2Success = setPathY(i, 2, intermediateY);  // SF chip Y position
+               pathY3Success = setPathY(i, 3, intermediateY);  // SF chip Y position
+             }
+             
+             // Update chip status - validate all assignments first
+             bool chipX0Success = setChipXStatus(path[i].chip[0], xMapSourceToIntermediate, path[i].net, "BBtoNANO alt source->intermediate");
+             bool chipX1Success = setChipXStatus(path[i].chip[1], path[i].x[1], path[i].net, "BBtoNANO alt nano x");
+             bool chipX2Success = setChipXStatus(intermediateChip, xMapIntermediateToSource, path[i].net, "BBtoNANO alt intermediate->source");
+             bool chipX3Success = setChipXStatus(intermediateChip, xMapIntermediateToNano, path[i].net, "BBtoNANO alt intermediate->nano");
+             
+             // CRITICAL: Also assign the return connection on source chip
+             bool chipX0ReturnSuccess = setChipXStatus(path[i].chip[0], xMapSourceFromIntermediate, path[i].net, "BBtoNANO alt source return X");
+             
+             bool chipY0Success = setChipYStatusSafe(path[i].chip[0], path[i].y[0], path[i].net, "BBtoNANO alt source y");
+             bool chipY1Success = setChipYStatusSafe(path[i].chip[1], nanoY, path[i].net, "BBtoNANO alt nano y");
+             bool chipY2Success = false;
+             bool chipBBXSuccess = true;  // For SF intermediate chips
+             
+             if (intermediateChip < 8) {
+               chipY2Success = setChipYStatusSafe(intermediateChip, 0, path[i].net, "BBtoNANO alt hop y");
+             } else {
+               chipY2Success = setChipYStatusSafe(intermediateChip, intermediateY, path[i].net, "BBtoNANO alt SF hop y");
+               // Also update the corresponding breadboard chip X status for SF chips
+               int bbChipX = xMapForChipLane0(intermediateY, intermediateChip);
+               if (bbChipX != -1) {
+                 chipBBXSuccess = setChipXStatus(intermediateY, bbChipX, path[i].net, "BBtoNANO alt SF BB connection");
+               }
+             }
+             
+             // Check if ALL assignments succeeded
+             bool allAssignmentsSuccessful = pathX0Success && pathX1Success && pathX2Success && pathX3Success &&
+                                           pathY0Success && pathY1Success && pathY2Success && pathY3Success &&
+                                           chipX0Success && chipX1Success && chipX2Success && chipX3Success &&
+                                           chipX0ReturnSuccess && chipY0Success && chipY1Success && chipY2Success && chipBBXSuccess;
+             
+             if (allAssignmentsSuccessful) {
+               commitRoutingState();
+               path[i].altPathNeeded = false;
+               altPathResolved = true;
+               foundHop = 1;
+               if (debugNTCC6) {
+                 Serial.print("BBtoNANO alt path[");
+                 Serial.print(i);
+                 Serial.println("] assignments committed successfully");
+               }
+             } else {
+               restoreRoutingState(i);
+               // Debug output removed for production
+               if (debugNTCC6) {
+                 Serial.print("BBtoNANO alt assignment failed for path[");
+                 Serial.print(i);
+                 Serial.println("], state restored, trying next intermediate chip");
+               }
+               continue;  // Try next intermediate chip
+             }
+            
+                         if (debugNTCC2) {
+               Serial.print("BBtoNANO alt path resolved: ");
+               printNodeOrName(path[i].node1);
+               Serial.print(" -> chip ");
+               Serial.print(chipNumToChar(intermediateChip));
+               Serial.print(" -> ");
+               printNodeOrName(path[i].node2);
+               Serial.print(" (nano Y=");
+               Serial.print(nanoY);
+               Serial.print(" CORRECTED for chip ");
+               Serial.print(chipNumToChar(intermediateChip < 8 ? intermediateChip : intermediateY));
+               Serial.println(")");
+             }
+            
+            break;
+          }
+          
+          // If we get here, no intermediate chip worked
+          // Debug output removed for production
           break;
         }
 
@@ -4430,6 +4724,10 @@ void resolveUncommittedHops(int allowStacking, int powerOnly,
 int checkForOverlappingPaths() {
   int found = 0;
 
+  if (debugNTCC3) {
+    Serial.println("\n=== CHECKING FOR OVERLAPPING PATHS ===");
+  }
+
   // printPathsCompact(2);
   // printChipStatus();
 
@@ -4529,19 +4827,41 @@ int checkForOverlappingPaths() {
               continue;
               }
 
-              Serial.print("Path ");
+              Serial.print("OVERLAP DETECTED: Path ");
               Serial.print(i);
-              Serial.print(" and ");
+              Serial.print(" (");
+              printNodeOrName(path[i].node1);
+              Serial.print("-");
+              printNodeOrName(path[i].node2);
+              Serial.print(") and Path ");
               Serial.print(j);
-              Serial.print(" overlap at x ");
+              Serial.print(" (");
+              printNodeOrName(path[j].node1);
+              Serial.print("-");
+              printNodeOrName(path[j].node2);
+              Serial.print(") overlap at X=");
               Serial.print(path[i].x[f]);
               Serial.print(" on chip ");
               Serial.print(chipNumToChar(fchip[f]));
-              Serial.print("   nets ");
+              Serial.print(", nets ");
               Serial.print(path[i].net);
               Serial.print(" and ");
               Serial.println(path[j].net);
-              path[i].skip = 1;
+              path[i].skip = true;
+
+              // Add to unconnectable paths for LED animation
+              if (numberOfUnconnectablePaths < 10) {
+                unconnectablePaths[numberOfUnconnectablePaths][0] = path[i].node1;
+                unconnectablePaths[numberOfUnconnectablePaths][1] = path[i].node2;
+                numberOfUnconnectablePaths++;
+                if (debugNTCC3) {
+                  Serial.print("Added to unconnectable paths: ");
+                  printNodeOrName(path[i].node1);
+                  Serial.print("-");
+                  printNodeOrName(path[i].node2);
+                  Serial.println();
+                }
+              }
 
               // printPathsCompact();
               // printChipStatus();
@@ -4619,19 +4939,42 @@ int checkForOverlappingPaths() {
               continue;
               }
 
-              Serial.print("Path ");
+              Serial.print("OVERLAP DETECTED: Path ");
               Serial.print(i);
-              Serial.print(" and ");
+              Serial.print(" (");
+              printNodeOrName(path[i].node1);
+              Serial.print("-");
+              printNodeOrName(path[i].node2);
+              Serial.print(") and Path ");
               Serial.print(j);
-              Serial.print(" overlap at y ");
+              Serial.print(" (");
+              printNodeOrName(path[j].node1);
+              Serial.print("-");
+              printNodeOrName(path[j].node2);
+              Serial.print(") overlap at Y=");
               Serial.print(path[i].y[f]);
               Serial.print(" on chip ");
               Serial.print(chipNumToChar(fchip[f]));
-              Serial.print("   nets ");
+              Serial.print(", nets ");
               Serial.print(path[i].net);
               Serial.print(" and ");
               Serial.println(path[j].net);
-              path[i].skip = 1;
+              path[i].skip = true;
+              
+              // Add to unconnectable paths for LED animation
+              if (numberOfUnconnectablePaths < 10) {
+                unconnectablePaths[numberOfUnconnectablePaths][0] = path[i].node1;
+                unconnectablePaths[numberOfUnconnectablePaths][1] = path[i].node2;
+                numberOfUnconnectablePaths++;
+                if (debugNTCC3) {
+                  Serial.print("Added to unconnectable paths: ");
+                  printNodeOrName(path[i].node1);
+                  Serial.print("-");
+                  printNodeOrName(path[i].node2);
+                  Serial.println();
+                }
+              }
+              
               // printPathsCompact();
               // printChipStatus();
               // }
@@ -4643,6 +4986,15 @@ int checkForOverlappingPaths() {
       }
     }
   }
+  
+  if (debugNTCC3 || found > 0) {
+    Serial.print("=== OVERLAP CHECK COMPLETE: ");
+    Serial.print(found);
+    Serial.print(" overlaps found, ");
+    Serial.print(numberOfUnconnectablePaths);
+    Serial.println(" total unconnectable paths ===");
+  }
+  
   return found;
 }
 

@@ -55,10 +55,10 @@ KevinC@ppucc.io
 #include "Peripherals.h"
 #include "PersistentStuff.h"
 #include "Probing.h"
+#include "Python.h"
 #include "RotaryEncoder.h"
 #include "configManager.h"
 #include "oled.h"
-#include "Python.h"
 // #define USE_FATFS 1
 #ifdef USE_FATFS
 #include "FatFS.h"
@@ -66,8 +66,8 @@ KevinC@ppucc.io
 #endif
 #include "UserCode.h"
 // #include "SerialWrapper.h"
-#include "Highlighting.h"
 #include "HelpDocs.h"
+#include "Highlighting.h"
 #include "Python_Proper.h"
 
 // #define Serial SerialWrap
@@ -85,7 +85,7 @@ volatile bool core2busy = false;
 // void lastNetConfirm(int forceLastNet = 0);
 void rotaryEncoderStuff(void);
 void initRotaryEncoder(void);
-void printDirectoryContents(const char* dirname, int level);
+void printDirectoryContents(const char *dirname, int level);
 
 void core2stuff(void);
 
@@ -116,14 +116,10 @@ void setup() {
 
   digitalWrite(RESETPIN, HIGH);
 
-
-
-  //FatFS.begin();
+  // FatFS.begin();
   if (!FatFS.begin()) {
     Serial.println("Failed to initialize FatFS");
   }
-
-
 
   // delayMicroseconds(800);
   //  Serial.setTimeout(8000);
@@ -239,7 +235,7 @@ void setup() {
   // Serial.setSerialTarget(serialTarget);
 
   // Serial.println("Hello! This automatically goes to all enabled ports!");
-  //printDirectoryContents("/", 0);
+  // printDirectoryContents("/", 0);
   initDAC();
   pinMode(PROBE_PIN, OUTPUT_8MA);
   pinMode(BUTTON_PIN, INPUT_PULLDOWN);
@@ -291,53 +287,53 @@ void setup() {
   startupTimers[8] = millis();
   createSlots(-1, 0);
   startupTimers[9] = millis();
-
-
 }
 
-void printDirectoryContents(const char* dirname, int level) {
+void printDirectoryContents(const char *dirname, int level) {
   // Add indentation based on directory level
   for (int i = 0; i < level; i++) {
     Serial.print("  ");
   }
-  
+
   if (level == 0) {
     Serial.println("/ (root)");
   } else {
     Serial.print(dirname);
     Serial.println("/");
   }
-  
+
   // Try to open as directory first
   if (FatFS.exists(dirname)) {
-    // List files in directory - FatFS doesn't have opendir, so we'll try a different approach
-    // We'll check for common file patterns and known files
-    
+    // List files in directory - FatFS doesn't have opendir, so we'll try a
+    // different approach We'll check for common file patterns and known files
+
     // Check for config file
     String configPath = String(dirname) + "/config.txt";
     if (FatFS.exists(configPath.c_str())) {
       File configFile = FatFS.open(configPath.c_str(), "r");
       if (configFile) {
-        for (int i = 0; i <= level; i++) Serial.print("  ");
+        for (int i = 0; i <= level; i++)
+          Serial.print("  ");
         Serial.print("config.txt (");
         Serial.print(configFile.size());
         Serial.println(" bytes)");
         configFile.close();
       }
     }
-    
+
     // Check for scripts directory
     String scriptsPath = String(dirname) + "/scripts";
     if (FatFS.exists(scriptsPath.c_str())) {
       printDirectoryContents(scriptsPath.c_str(), level + 1);
-      
+
       // Check for common script files in scripts directory
       for (int i = 1; i <= 20; i++) {
         String scriptPath = scriptsPath + "/script_" + String(i) + ".py";
         if (FatFS.exists(scriptPath.c_str())) {
           File scriptFile = FatFS.open(scriptPath.c_str(), "r");
           if (scriptFile) {
-            for (int j = 0; j <= level + 1; j++) Serial.print("  ");
+            for (int j = 0; j <= level + 1; j++)
+              Serial.print("  ");
             Serial.print("script_");
             Serial.print(i);
             Serial.print(".py (");
@@ -347,28 +343,31 @@ void printDirectoryContents(const char* dirname, int level) {
           }
         }
       }
-      
+
       // Check for history file
       String historyPath = scriptsPath + "/history.txt";
       if (FatFS.exists(historyPath.c_str())) {
         File historyFile = FatFS.open(historyPath.c_str(), "r");
         if (historyFile) {
-          for (int j = 0; j <= level + 1; j++) Serial.print("  ");
+          for (int j = 0; j <= level + 1; j++)
+            Serial.print("  ");
           Serial.print("history.txt (");
           Serial.print(historyFile.size());
           Serial.println(" bytes)");
           historyFile.close();
         }
       }
-      
+
       // Check for common named scripts
-      String commonNames[] = {"test.py", "demo.py", "main.py", "setup.py", "loop.py", "example.py"};
+      String commonNames[] = {"test.py",  "demo.py", "main.py",
+                              "setup.py", "loop.py", "example.py"};
       for (int i = 0; i < 6; i++) {
         String scriptPath = scriptsPath + "/" + commonNames[i];
         if (FatFS.exists(scriptPath.c_str())) {
           File scriptFile = FatFS.open(scriptPath.c_str(), "r");
           if (scriptFile) {
-            for (int j = 0; j <= level + 1; j++) Serial.print("  ");
+            for (int j = 0; j <= level + 1; j++)
+              Serial.print("  ");
             Serial.print(commonNames[i]);
             Serial.print(" (");
             Serial.print(scriptFile.size());
@@ -378,14 +377,15 @@ void printDirectoryContents(const char* dirname, int level) {
         }
       }
     }
-    
+
     // Check for common slot files
     for (int i = 0; i <= 10; i++) {
       String slotPath = String(dirname) + "/slot" + String(i) + ".txt";
       if (FatFS.exists(slotPath.c_str())) {
         File slotFile = FatFS.open(slotPath.c_str(), "r");
         if (slotFile) {
-          for (int j = 0; j <= level; j++) Serial.print("  ");
+          for (int j = 0; j <= level; j++)
+            Serial.print("  ");
           Serial.print("slot");
           Serial.print(i);
           Serial.print(".txt (");
@@ -395,15 +395,17 @@ void printDirectoryContents(const char* dirname, int level) {
         }
       }
     }
-    
+
     // Check for other common files
-    String commonFiles[] = {"bootLoader.txt", "nodeFile.txt", "nets.txt", "bridges.txt", "netColors.txt"};
+    String commonFiles[] = {"bootLoader.txt", "nodeFile.txt", "nets.txt",
+                            "bridges.txt", "netColors.txt"};
     for (int i = 0; i < 5; i++) {
       String filePath = String(dirname) + "/" + commonFiles[i];
       if (FatFS.exists(filePath.c_str())) {
         File file = FatFS.open(filePath.c_str(), "r");
         if (file) {
-          for (int j = 0; j <= level; j++) Serial.print("  ");
+          for (int j = 0; j <= level; j++)
+            Serial.print("  ");
           Serial.print(commonFiles[i]);
           Serial.print(" (");
           Serial.print(file.size());
@@ -467,8 +469,9 @@ int input = '\0';
 int serSource = 0;
 int readInNodesArduino = 0;
 
-const char firmwareVersion[] = "5.2.0.2"; // remember to update this
-const bool newConfigOptions = true; // set to true with new config options
+const char firmwareVersion[] = "5.2.0.5"; // remember to update this
+const bool newConfigOptions = false; // set to true with new config options //!
+                                     // fix the saving every boot thing
 int firstLoop = 1;
 
 volatile int probeActive = 0;
@@ -487,6 +490,11 @@ unsigned long waitTimer = 0;
 unsigned long switchTimer = 0;
 extern volatile bool flashingArduino; // Defined in ArduinoStuff.cpp
 int attract = 0;
+
+unsigned long switchPositionCheckTimer = 0;
+//int switchPosition = 0;
+unsigned long switchPositionCheckInterval = 500;
+
 
 volatile int core1passthrough = 1;
 
@@ -551,74 +559,121 @@ menu:
   clearHighlighting();
 
   if (dontShowMenu == 0) {
-
   forceprintmenu:
+
+    int numberOfMenuItems = 29 + (showExtraMenu == 1 ? 12 : 0) ;
+    float steps = 54.0 / (float)numberOfMenuItems;
+    // Serial.print("steps = ");
+    // Serial.println(steps);
+
+   // printSpectrumOrderedColorCube();
+    cycleTerminalColor(true,  steps, true, &Serial);
     Serial.print("\n\n\r\t\tMenu\n\r\n\r");
-    Serial.print("Type 'help' for all commands or [command]? for specific help (like 'f?' or 'n?')\n\r");
-
+    cycleTerminalColor();
+    Serial.print("\t'help' for docs or [command]?\n\r");
+    cycleTerminalColor();
     Serial.print("\n\r");
+    cycleTerminalColor();
     Serial.print("\tm = show this menu\n\r");
-
+    cycleTerminalColor();
     // Serial.println();
 
     Serial.print("\tn = show net list\n\r");
+    cycleTerminalColor();
     Serial.print("\tb = show bridge array\n\r");
+    cycleTerminalColor();
     Serial.print("\tc = show crossbar status\n\r");
+    cycleTerminalColor();
     // Serial.print("\t! = print node file\n\r");
     Serial.print("\ts = show all slot files\n\r");
+    cycleTerminalColor();
 
     Serial.print("\t< = cycle slots\n\r");
-
+    cycleTerminalColor();
     Serial.println();
 
     Serial.print("\t? = show firmware version\n\r");
+    cycleTerminalColor();
     Serial.print("\t' = show startup animation\n\r");
+    cycleTerminalColor();
     Serial.print("\td = set debug flags\n\r");
+    cycleTerminalColor();
     Serial.print("\tl = LED brightness / test\n\r");
+    cycleTerminalColor();
     Serial.print("\t\b\b`/~ = edit / print config\n\r");
+    cycleTerminalColor();
     Serial.print("\tp = microPython REPL\n\r");
-    
+    cycleTerminalColor();
+    Serial.print("\t/ = show filesystem\n\r");
+    cycleTerminalColor();
+     if (showExtraMenu == 0) {
     Serial.print("\te = show extra options\n\r");
+     } else {
+      Serial.print("\te = hide extra options\n\r");
+     }
+     
     if (showExtraMenu == 1) {
       Serial.println();
 
       Serial.print("\to = load node file by slot\n\r");
+      cycleTerminalColor();
       Serial.print("\tP = print all connectable nodes\n\r");
+      cycleTerminalColor();
       Serial.print("\tF = cycle font\n\r");
+      cycleTerminalColor();
       Serial.print("\t_ = print micros per byte\n\r");
+      cycleTerminalColor();
       Serial.print("\t@ = scan I2C (@[sda],[scl] or @[row])\n\r");
+      cycleTerminalColor();
       Serial.print("\t$ = calibrate DACs\n\r");
+      cycleTerminalColor();
       Serial.print("\t= = dump oled frame buffer\n\r");
+      cycleTerminalColor();
       Serial.print("\tk = show oled in terminal\n\r");
+      cycleTerminalColor();
       Serial.print("\tR = show board LEDs\n\r");
+      cycleTerminalColor();
       Serial.print("\t% = list all filesystem contents\n\r");
+      cycleTerminalColor();
       Serial.print("\tE = don't show this menu\n\r");
+      cycleTerminalColor();
+      Serial.print("\tC = disable terminal colors\n\r");
+      cycleTerminalColor();
 
       // Serial.print("\n\r");
     }
+    cycleTerminalColor();
     Serial.println();
 
     // Serial.print("\t$ = calibrate DACs\n\r");
     if (probePowerDAC == 0) {
+      cycleTerminalColor();
       Serial.print("\t^ = set DAC 1 voltage\n\r");
+      cycleTerminalColor();
     } else if (probePowerDAC == 1) {
+      cycleTerminalColor();
       Serial.print("\t^ = set DAC 0 voltage\n\r");
+      cycleTerminalColor();
     }
+    cycleTerminalColor();
     Serial.print("\tv = get ADC reading\n\r");
+    cycleTerminalColor();
 
     // Serial.println();
 
     Serial.print("\t# = print text from menu\n\r");
+    cycleTerminalColor();
     Serial.print("\tg = print gpio state\n\r");
     // Serial.print("\t\b\b\b\b[0-9] = run app by index\n\r");
     Serial.print("\t. = connect oled\n\r");
+    cycleTerminalColor();
     Serial.print("\tr = reset Arduino (rt/rb)\n\r");
-    
+    cycleTerminalColor();
 
+    cycleTerminalColor();
     Serial.print("\t\b\ba/A = dis/connect UART to D0/D1\n\r");
+    cycleTerminalColor();
     Serial.print("\t> = send Python formatted command\n\r");
-
-
 
     // Serial.print("\t    print passthrough");
     // if (printSerial1Passthrough == 1) {
@@ -632,12 +687,15 @@ menu:
     //       }
 
     Serial.println();
-
+    cycleTerminalColor();
     Serial.print("\tf = load node file\n\r");
+    cycleTerminalColor();
     Serial.print("\tx = clear all connections\n\r");
+    cycleTerminalColor();
     Serial.print("\t+ = add connections\n\r");
+    cycleTerminalColor();
     Serial.print("\t- = remove connections\n\r");
-
+    cycleTerminalColor();
     // Serial.print("\te = extra menu options\n\r");
     Serial.println();
 
@@ -645,7 +703,7 @@ menu:
 
     Serial.flush();
   }
-  if (configChanged == true) {
+  if (configChanged == true && millis() > 2000) {
     Serial.print("config changed, saving...");
     saveConfig();
     Serial.println("\r                             \rconfig saved!\n\r");
@@ -713,7 +771,6 @@ dontshowmenu:
 
         firstConnection = probeReading;
       }
-
     }
 
     if (brightenedNet > 0) {
@@ -872,6 +929,8 @@ dontshowmenu:
       showMeasurements(16, 0, 0);
     }
 
+
+
     // if (millis() - oled.lastConnectionCheck > oled.connectionCheckInterval &&
     // jumperlessConfig.top_oled.enabled == 1) {
     //   ///Serial.println("oled connection lost");
@@ -891,7 +950,16 @@ dontshowmenu:
     //       }
     //     }
     //   }
+  
+
+  if (millis() - switchPositionCheckTimer > switchPositionCheckInterval) {
+    switchPositionCheckTimer = millis();
+    switchPosition = checkSwitchPosition();
+    // Serial.print("switchPosition = ");
+    // Serial.println(switchPosition);
+    // Serial.flush();
   }
+         }
 
   if (slotChanged == 1) {
     // Serial.println("slotChanged");
@@ -918,7 +986,8 @@ dontshowmenu:
       String helpString = "h";
       while (Serial.available() > 0 && helpString.length() < 50) {
         char c = Serial.read();
-        if (c == '\n' || c == '\r') break;
+        if (c == '\n' || c == '\r')
+          break;
         helpString += c;
       }
       if (helpString == "help") {
@@ -934,7 +1003,7 @@ dontshowmenu:
       // Just 'h' alone, let it fall through to normal processing
     }
   }
-  
+
   // Handle command? help requests
   if (input != '\n' && input != '\r' && input != ' ') {
     // Check if next character is '?' for command-specific help
@@ -953,11 +1022,10 @@ dontshowmenu:
   }
 
   if (input == ' ' || input == '\n' || input == '\r') {
-  
-      // Serial.print(input);
-      // Serial.flush();
-      goto dontshowmenu;
-    
+
+    // Serial.print(input);
+    // Serial.flush();
+    goto dontshowmenu;
   }
 skipinput:
 
@@ -967,6 +1035,24 @@ skipinput:
   //   }
 
   switch (input) {
+  case '/': { //!  /
+
+    runApp(-1, (char*)"File Manager");
+    
+    break;
+  }
+
+  case 'C': { //!  C
+    disableTerminalColors = !disableTerminalColors;
+    if (disableTerminalColors) {
+      Serial.println("Terminal colors disabled");
+    } else {
+      Serial.println("Terminal colors enabled");
+    }
+    Serial.flush();
+    goto dontshowmenu;
+    break;
+  }
   case 'E': { //!  E
     if (dontShowMenu == 0) {
       dontShowMenu = 1;
@@ -995,10 +1081,10 @@ skipinput:
     break;
   }
 
-  case 0x10: { //!DLE
-  input = '\0';
-  dumpLED = 0;
-  goto dontshowmenu;
+  case 0x10: { //! DLE
+    input = '\0';
+    dumpLED = 0;
+    goto dontshowmenu;
   }
   case 'R': { //!  R
               // printWireStatus();
@@ -1016,32 +1102,32 @@ skipinput:
     break;
   }
 
-  // Add this case for single Python command
-case '>': { //! > - Execute single Python command
-    //readPythonCommand();
+    // Add this case for single Python command
+  case '>': { //! > - Execute single Python command
+    // readPythonCommand();
     getMicroPythonCommandFromStream();
     Serial.flush();
     goto dontshowmenu;
     break;
-}
+  }
 
-// Modify the existing P case for Python command mode  
-case 'P': { //! P - Enter Python command mode
-    //pythonCommandMode();
-   // enterMicroPythonREPL();
-   printAllConnectableNodes();
+  // Modify the existing P case for Python command mode
+  case 'P': { //! P - Enter Python command mode
+              // pythonCommandMode();
+    // enterMicroPythonREPL();
+    printAllConnectableNodes();
     goto dontshowmenu;
     break;
-}
+  }
 
   case 'p': { //!  p
-    //micropythonREPL();
-    // Serial.println("Entering MicroPython REPL");
-    // Serial.println("choose a stream: ");
-    // Serial.println("1 = Port 1 (this)");
-    // Serial.println("2 = Port 2");
-    // Serial.println("3 = Port 3");
-    // Serial.println("4 = Port 4");
+    // micropythonREPL();
+    //  Serial.println("Entering MicroPython REPL");
+    //  Serial.println("choose a stream: ");
+    //  Serial.println("1 = Port 1 (this)");
+    //  Serial.println("2 = Port 2");
+    //  Serial.println("3 = Port 3");
+    //  Serial.println("4 = Port 4");
 
     // // testStreamRedirection(&USBSer1);
     // int streamChoice = 1;
@@ -1058,11 +1144,11 @@ case 'P': { //! P - Enter Python command mode
     //     #ifdef USBSer3
     //     setGlobalStream(&USBSer3);
     //     #endif
-    //   } 
+    //   }
     // }
     // Serial.println("Using stream: " + String(streamChoice));
     enterMicroPythonREPL();
-    //printAllConnectableNodes();
+    // printAllConnectableNodes();
     break;
   }
   case '.': { //!  .
@@ -1138,6 +1224,7 @@ case 'P': { //! P - Enter Python command mode
     delay(1);
     refreshPaths();
     clearAllNTCC();
+    oled.oledConnected = false;
 
     clearNodeFile(netSlot, 0);
     refreshConnections(-1);
@@ -1225,23 +1312,23 @@ case 'P': { //! P - Enter Python command mode
   case '@': { //!  @
     Serial.flush();
 
-    if(Serial.available() > 0) {
+    if (Serial.available() > 0) {
       String input = Serial.readString();
       input.trim(); // Remove whitespace
-      
+
       if (input.indexOf(',') != -1) {
         // Format: @5,10 - SDA at row 5, SCL at row 10
         int commaIndex = input.indexOf(',');
         int sdaRow = input.substring(0, commaIndex).toInt();
         int sclRow = input.substring(commaIndex + 1).toInt();
-        
+
         changeTerminalColor(69, true);
         Serial.print("I2C scan with SDA=");
         Serial.print(sdaRow);
         Serial.print(", SCL=");
         Serial.println(sclRow);
         changeTerminalColor(38, true);
-        
+
         if (i2cScan(sdaRow, sclRow, 26, 27, 1) > 0) {
           Serial.println("Found devices");
           return;
@@ -1253,29 +1340,30 @@ case 'P': { //! P - Enter Python command mode
       } else if (input.length() > 0 && isdigit(input[0])) {
         // Format: @5 - try all 4 combinations around row 5
         int baseRow = input.toInt();
-        
+
         changeTerminalColor(69, true);
         Serial.print("I2C scan trying all combinations around row ");
         Serial.println(baseRow);
         changeTerminalColor(38, true);
-        
-        // Try all 4 combinations: SDA=base SCL=base+1, SDA=base+1 SCL=base, SDA=base SCL=base-1, SDA=base-1 SCL=base
+
+        // Try all 4 combinations: SDA=base SCL=base+1, SDA=base+1 SCL=base,
+        // SDA=base SCL=base-1, SDA=base-1 SCL=base
         int combinations[4][2] = {
-          {baseRow, baseRow + 1},  // SDA=base, SCL=base+1
-          {baseRow + 1, baseRow},  // SDA=base+1, SCL=base
-          {baseRow, baseRow - 1},  // SDA=base, SCL=base-1
-          {baseRow - 1, baseRow}   // SDA=base-1, SCL=base
+            {baseRow, baseRow + 1}, // SDA=base, SCL=base+1
+            {baseRow + 1, baseRow}, // SDA=base+1, SCL=base
+            {baseRow, baseRow - 1}, // SDA=base, SCL=base-1
+            {baseRow - 1, baseRow}  // SDA=base-1, SCL=base
         };
-        
+
         for (int i = 0; i < 4; i++) {
           int sdaRow = combinations[i][0];
           int sclRow = combinations[i][1];
-          
+
           // // Skip invalid row numbers (must be 1-60)
           // if (sdaRow < 1 || sdaRow > 60 || sclRow < 1 || sclRow > 60) {
           //   continue;
           // }
-          
+
           changeTerminalColor(202, true);
           Serial.print("\nTrying SDA=");
           Serial.print(sdaRow);
@@ -1283,14 +1371,16 @@ case 'P': { //! P - Enter Python command mode
           Serial.print(sclRow);
           Serial.println(":");
           changeTerminalColor(38, true);
-          int devicesFound = i2cScan(sdaRow, sclRow, 26, 27, 0);  
+          int devicesFound = i2cScan(sdaRow, sclRow, 26, 27, 0);
           if (devicesFound > 0) {
             changeTerminalColor(199, true);
-            Serial.printf("\n\rfound %d devices: SDA at row %d, SCL at row %d\n\r", devicesFound, sdaRow, sclRow);
+            Serial.printf(
+                "\n\rfound %d devices: SDA at row %d, SCL at row %d\n\r",
+                devicesFound, sdaRow, sclRow);
             changeTerminalColor(-1);
             return;
           }
-            //Serial.println("Found devices");
+          // Serial.println("Found devices");
           // } else {
           //   removeBridgeFromNodeFile(sdaRow, -1, netSlot, 0);
           //   removeBridgeFromNodeFile(sclRow, -1, netSlot, 0);
@@ -1306,39 +1396,39 @@ case 'P': { //! P - Enter Python command mode
         //   i2cScan(1, 2, 26, 27, 0);
         // } else {
         //   changeTerminalColor(202, true);
-        //   Serial.println("Invalid format. Use @5,10 for specific pins or @5 for auto-try");
-        //   changeTerminalColor(38, true);
+        //   Serial.println("Invalid format. Use @5,10 for specific pins or @5
+        //   for auto-try"); changeTerminalColor(38, true);
         // }
       }
     } else {
       // Interactive mode - prompt for SDA and SCL
       Serial.print("Enter SDA row: ");
       Serial.flush();
-      while(Serial.available() == 0) {
+      while (Serial.available() == 0) {
       }
       int rowSDA = Serial.parseInt();
       Serial.print("Enter SCL row: ");
       Serial.flush();
-      while(Serial.available() == 0) {
+      while (Serial.available() == 0) {
       }
       int rowSCL = Serial.parseInt();
-      
+
       changeTerminalColor(69, true);
       Serial.print("I2C scan with SDA=");
       Serial.print(rowSDA);
       Serial.print(", SCL=");
       Serial.println(rowSCL);
       changeTerminalColor(38, true);
-      
+
       if (i2cScan(rowSDA, rowSCL, 26, 27, 1) > 0) {
-       // Serial.println("Found devices");
+        // Serial.println("Found devices");
       } else {
         removeBridgeFromNodeFile(RP_GPIO_26, rowSDA, netSlot, 0);
         removeBridgeFromNodeFile(RP_GPIO_27, rowSCL, netSlot, 0);
         refreshConnections(-1, 1);
       }
     }
-    
+
     goto dontshowmenu;
     break;
   }
@@ -2036,7 +2126,6 @@ void loop1() {
 
   // if (millis() - serialInfoTimer > 10) {
   //   serialInfoTimer = millis();
- 
 
   if (core1passthrough == 0 || inClickMenu == 1 || inPadMenu == 1 ||
       probeActive == 1) {
@@ -2301,5 +2390,3 @@ void core2stuff() // core 2 handles the LEDs and the CH446Q8
     // readGPIO();
   }
 }
-
-

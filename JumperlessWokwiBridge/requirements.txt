@@ -2,7 +2,6 @@
 # Auto-generated minimal dependencies
 
 beautifulsoup4==4.13.4
-colorama==0.4.6
 packaging==24.1
 psutil==5.9.8
 pyduinocli==0.35.0

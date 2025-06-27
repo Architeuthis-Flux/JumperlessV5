@@ -71,7 +71,11 @@ const StringIntEntry fontTable[] = {
     {"comicsans", 2},
     {"courier", 3},
     {"science", 4},
-    {"scienceext", 5}
+    {"scienceext", 5},
+    {"andale", 6},
+    {"andalemono", 6},
+    {"freemono", 7},
+    {"mono", 6}
 };
 const int fontTableSize = sizeof(fontTable) / sizeof(fontTable[0]);
 // Table for parseBool

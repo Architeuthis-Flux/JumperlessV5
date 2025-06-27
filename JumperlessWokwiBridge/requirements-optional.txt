@@ -1,0 +1,11 @@
+# Optional dependencies for JumperlessWokwiBridge
+# These enhance functionality but are not strictly required
+
+# Cross-platform colored terminal output
+colorama>=0.4.4
+
+# Arduino CLI integration for sketch compilation and uploading
+pyduinocli>=0.33.0
+
+# Windows-specific dependencies (Windows only)
+pywin32>=227; sys_platform == "win32" 

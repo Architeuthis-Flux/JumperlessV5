@@ -1,7 +1,8 @@
 #include "Python_Proper.h"
 #include <Arduino.h>
 #include <FatFS.h>
-
+#include "config.h"
+#include "FilesystemStuff.h"
 extern "C" {
 #include "py/gc.h"
 
@@ -16,6 +17,7 @@ extern "C" {
 static char mp_heap[32 * 1024]; // 32KB heap for MicroPython (reduced for RP2350B)
 static bool mp_initialized = false;
 static bool mp_repl_active = false;
+static bool jumperless_globals_loaded = false;
 
 // Command execution state
 static char mp_command_buffer[512];
@@ -142,7 +144,7 @@ bool initMicroPythonProper(Stream *stream) {
   }
 
   global_mp_stream->println(
-      "[MP] Initializing MicroPython with proper porting...");
+      "[MP] Initializing MicroPython...");
 
   // Get proper stack pointer
   char stack_dummy;
@@ -203,8 +205,9 @@ void deinitMicroPythonProper(void) {
   if (mp_initialized) {
     global_mp_stream->println("[MP] Deinitializing MicroPython...");
     mp_embed_deinit();
-    mp_initialized = false;
-    mp_repl_active = false;
+      mp_initialized = false;
+  mp_repl_active = false;
+  jumperless_globals_loaded = false;  // Reset globals flag
   }
 }
 
@@ -270,11 +273,11 @@ void enterMicroPythonREPL(Stream *stream) {
       global_mp_stream->println("Failed to initialize MicroPython!");
       return;
     }
-    // Note: Jumperless native module is now automatically available via
-    // MP_REGISTER_MODULE
-    // No need to manually add Python functions - the native 'jumperless' module
-    // is built-in
   }
+  
+  // Always add jumperless functions to global namespace when entering REPL
+  // This makes all functions available without the jumperless. prefix
+  addJumperlessPythonFunctions();
 
   // Check if REPL is already active
   if (mp_repl_active) {
@@ -312,9 +315,9 @@ void enterMicroPythonREPL(Stream *stream) {
   changeTerminalColor(replColors[0], false, global_mp_stream);
   global_mp_stream->println("       -   Exit REPL");
   changeTerminalColor(replColors[3], false, global_mp_stream);
-  global_mp_stream->print("  help ");
+  global_mp_stream->print("  helpl");
   changeTerminalColor(replColors[0], false, global_mp_stream);
-  global_mp_stream->println("       -   Show help");
+  global_mp_stream->println("       -   Show REPLhelp");
   changeTerminalColor(replColors[3], false, global_mp_stream);
   global_mp_stream->print("  history ");
   changeTerminalColor(replColors[0], false, global_mp_stream);
@@ -327,14 +330,18 @@ void enterMicroPythonREPL(Stream *stream) {
   global_mp_stream->print("  load ");
   changeTerminalColor(replColors[0], false, global_mp_stream);
   global_mp_stream->println("       -   Load saved script");
+  // changeTerminalColor(replColors[3], false, global_mp_stream);
+  // global_mp_stream->print("  delete ");
+  // changeTerminalColor(replColors[0], false, global_mp_stream);
+  // global_mp_stream->println("     -   Delete saved script");
   changeTerminalColor(replColors[3], false, global_mp_stream);
-  global_mp_stream->print("  delete ");
+  global_mp_stream->print("  files ");
   changeTerminalColor(replColors[0], false, global_mp_stream);
-  global_mp_stream->println("     -   Delete saved script");
+  global_mp_stream->println("      -   Open file manager (python_scripts)");
   changeTerminalColor(replColors[3], false, global_mp_stream);
-  global_mp_stream->print("  paste ");
+  global_mp_stream->print("  new ");
   changeTerminalColor(replColors[0], false, global_mp_stream);
-  global_mp_stream->println("      -   Enter paste mode");
+  global_mp_stream->println("        -   Create new script with eKilo editor");
   changeTerminalColor(replColors[3], false, global_mp_stream);
   global_mp_stream->print("  multiline ");
   changeTerminalColor(replColors[0], false, global_mp_stream);
@@ -344,11 +351,31 @@ void enterMicroPythonREPL(Stream *stream) {
   changeTerminalColor(replColors[0], false, global_mp_stream);
   global_mp_stream->println("        -   Execute script (multiline mode)");
   changeTerminalColor(replColors[3], false, global_mp_stream);
-  global_mp_stream->print("  jumperless.help() ");
+  global_mp_stream->print("  help() ");
   changeTerminalColor(replColors[0], false, global_mp_stream);
-  global_mp_stream->println("- Show hardware commands");
-  // changeTerminalColor(replColors[7], false);
-  // stream->println("\nPress Enter to start REPL");
+  global_mp_stream->println("     - Show hardware commands");
+
+  changeTerminalColor(replColors[5], true, global_mp_stream);
+  global_mp_stream->println("\nNavigation:");
+  changeTerminalColor(replColors[8], false, global_mp_stream);
+  global_mp_stream->println("  ↑/↓ arrows - Browse command history");
+  global_mp_stream->println("  ←/→ arrows - Move cursor, edit text");
+  global_mp_stream->println("  TAB        - Add 4-space indentation");
+  global_mp_stream->println(
+      "  Enter      - Execute (empty line in multiline to finish)");
+  // global_mp_stream->println("  files      - Browse and manage Python scripts");
+  // global_mp_stream->println("  new        - Create new scripts with eKilo editor");
+  // global_mp_stream->println("  run        - Execute accumulated script "
+  //                           "(multiline forced ON)");
+
+  changeTerminalColor(replColors[5], true, global_mp_stream);
+  global_mp_stream->println("\nHardware:");
+  changeTerminalColor(replColors[7], false, global_mp_stream);
+  global_mp_stream->println(
+      "  help()  - Show Jumperless hardware commands");
+  global_mp_stream->println(
+      "  ");
+  global_mp_stream->println();
 
   if (global_mp_stream == &Serial) {
     global_mp_stream->write(0x0E); // turn on interactive mode
@@ -377,7 +404,7 @@ void enterMicroPythonREPL(Stream *stream) {
 
   // Cleanup with colors
   changeTerminalColor(replColors[0], true, global_mp_stream);
-  global_mp_stream->println("\\nExiting REPL...");
+  global_mp_stream->println("\nExiting REPL...");
   if (global_mp_stream == &Serial) {
     global_mp_stream->write(0x0F); // turn off interactive mode
     global_mp_stream->flush();
@@ -613,21 +640,37 @@ void processMicroPythonInput(Stream *stream) {
           return;
         }
 
-        //! Paste command - enter paste mode
-        if (trimmed_input == "paste" || trimmed_input == "paste()") {
-          editor.enterPasteMode(global_mp_stream);
-          return;
-        }
 
-        //! Edit command - for pasted content
-        if (trimmed_input == "edit" || trimmed_input == "edit()") {
-          if (editor.current_input.length() > 0) {
-            global_mp_stream->println("Entering edit mode. Use arrow keys to "
-                                      "navigate, Enter to execute.");
+
+        //! New command - create new script with eKilo editor
+        if (trimmed_input == "new" || trimmed_input == "new()") {
+          changeTerminalColor(replColors[5], true, global_mp_stream);
+          global_mp_stream->println("Opening eKilo editor...");
+          changeTerminalColor(replColors[0], false, global_mp_stream);
+          
+          // Launch eKilo editor in REPL mode
+          String savedContent = launchEkiloREPL(nullptr);
+          
+          // Restore interactive mode after returning from eKilo
+          if (global_mp_stream == &Serial) {
+            global_mp_stream->write(0x0E); // turn on interactive mode
+            global_mp_stream->flush();
+          }
+          
+          // If content was saved, load it into the editor
+          if (savedContent.length() > 0) {
+            editor.current_input = savedContent;
+            editor.cursor_pos = savedContent.length();
+            editor.in_multiline_mode = (savedContent.indexOf('\n') >= 0);
+            changeTerminalColor(replColors[5], true, global_mp_stream);
+            global_mp_stream->println("Script content loaded into REPL");
+            // Don't reset - show the loaded content
             editor.redrawFullInput(global_mp_stream);
-            return; // Stay in edit mode
+            return;
           } else {
-            global_mp_stream->println("No code to edit");
+            changeTerminalColor(replColors[5], true, global_mp_stream);
+            global_mp_stream->println("Returned from eKilo editor");
+            
             editor.reset();
             changeTerminalColor(replColors[1], true, global_mp_stream);
             global_mp_stream->print(">>> ");
@@ -637,7 +680,7 @@ void processMicroPythonInput(Stream *stream) {
         }
 
         //! Help commands
-        if (trimmed_input == "help" || trimmed_input == "help()") {
+        if (trimmed_input == "helpl" || trimmed_input == "helpl()") {
           // Show REPL help
           changeTerminalColor(replColors[7], true, global_mp_stream);
           global_mp_stream->println("\n   MicroPython REPL Help");
@@ -666,19 +709,18 @@ void processMicroPythonInput(Stream *stream) {
           changeTerminalColor(replColors[0], false, global_mp_stream);
           global_mp_stream->println(" -   Delete saved script");
           changeTerminalColor(replColors[3], false, global_mp_stream);
+          global_mp_stream->print("  files ");
+          changeTerminalColor(replColors[0], false, global_mp_stream);
+          global_mp_stream->println("       -   Open file manager (python_scripts)");
+          changeTerminalColor(replColors[3], false, global_mp_stream);
+          global_mp_stream->print("  new ");
+          changeTerminalColor(replColors[0], false, global_mp_stream);
+          global_mp_stream->println("         -   Create new script with eKilo editor");
+          changeTerminalColor(replColors[3], false, global_mp_stream);
           global_mp_stream->print("  multiline ");
           changeTerminalColor(replColors[0], false, global_mp_stream);
           global_mp_stream->println(
               "    -   Toggle multiline mode (on/off/auto)");
-          changeTerminalColor(replColors[3], false, global_mp_stream);
-          global_mp_stream->print("  edit ");
-          changeTerminalColor(replColors[0], false, global_mp_stream);
-          global_mp_stream->println("         -   Edit current/pasted code");
-          changeTerminalColor(replColors[3], false, global_mp_stream);
-          global_mp_stream->print("  paste ");
-          changeTerminalColor(replColors[0], false, global_mp_stream);
-          global_mp_stream->println(
-              "        -   Enter paste mode for multi-line scripts");
           changeTerminalColor(replColors[3], false, global_mp_stream);
           global_mp_stream->print("  run ");
           changeTerminalColor(replColors[0], false, global_mp_stream);
@@ -693,8 +735,8 @@ void processMicroPythonInput(Stream *stream) {
           global_mp_stream->println("  TAB        - Add 4-space indentation");
           global_mp_stream->println(
               "  Enter      - Execute (empty line in multiline to finish)");
-          global_mp_stream->println(
-              "  paste      - Enter paste mode (type 'END' to finish)");
+          global_mp_stream->println("  files      - Browse and manage Python scripts");
+          global_mp_stream->println("  new        - Create new scripts with eKilo editor");
           global_mp_stream->println("  run        - Execute accumulated script "
                                     "(multiline forced ON)");
 
@@ -702,9 +744,9 @@ void processMicroPythonInput(Stream *stream) {
           global_mp_stream->println("\nHardware:");
           changeTerminalColor(replColors[7], false, global_mp_stream);
           global_mp_stream->println(
-              "  jumperless.help()  - Show Jumperless hardware commands");
+              "  help()  - Show Jumperless hardware commands");
           global_mp_stream->println(
-              "  Use jumperless. module for hardware control");
+              "  ");
           global_mp_stream->println();
 
           editor.reset();
@@ -832,6 +874,43 @@ void processMicroPythonInput(Stream *stream) {
           global_mp_stream->print(">>> ");
           global_mp_stream->flush();
           return;
+        }
+
+        //! Files command - launch file manager in python_scripts directory
+        if (trimmed_input == "files" || trimmed_input == "files()" ||
+            trimmed_input == "filemanager" || trimmed_input == "filemanager()") {
+          changeTerminalColor(replColors[5], true, global_mp_stream);
+          global_mp_stream->println("Opening file manager...");
+          changeTerminalColor(replColors[0], false, global_mp_stream);
+          
+          // Launch file manager in REPL mode
+          String savedContent = filesystemAppPythonScriptsREPL();
+          
+          // Restore interactive mode after returning from file manager
+          if (global_mp_stream == &Serial) {
+            global_mp_stream->write(0x0E); // turn on interactive mode
+            global_mp_stream->flush();
+          }
+          
+          // If content was saved, load it into the editor
+          if (savedContent.length() > 0) {
+            editor.current_input = savedContent;
+            editor.cursor_pos = savedContent.length();
+            editor.in_multiline_mode = (savedContent.indexOf('\n') >= 0);
+            changeTerminalColor(replColors[5], true, global_mp_stream);
+            global_mp_stream->println("File content loaded into REPL");
+            // Don't reset - show the loaded content
+            editor.redrawFullInput(global_mp_stream);
+            return;
+          } else {
+            changeTerminalColor(replColors[5], true, global_mp_stream);
+            global_mp_stream->println("Returned from file manager");
+            editor.reset();
+            changeTerminalColor(replColors[1], true, global_mp_stream);
+            global_mp_stream->print(">>> ");
+            global_mp_stream->flush();
+            return;
+          }
         }
 
         //! Special handling for forced multiline mode
@@ -1125,18 +1204,86 @@ void processMicroPythonInput(Stream *stream) {
 }
 
 // Helper function to add complete Jumperless hardware module
+void addNodeConstantsToGlobalNamespace(void) {
+  if (!mp_initialized) {
+    return;
+  }
+  
+  // This function is now redundant since addJumperlessPythonFunctions() 
+  // does 'from jumperless import *' which imports everything.
+  // Keeping this for backward compatibility, but just calls the main function.
+  addJumperlessPythonFunctions();
+}
+
+void testGlobalImports(void) {
+  if (!mp_initialized) {
+    return;
+  }
+  
+  mp_embed_exec_str(
+      "print('Testing global imports...')\n"
+      "print('oled_connect available:', 'oled_connect' in globals())\n"
+      "print('connect available:', 'connect' in globals())\n"
+      "print('TOP_RAIL available:', 'TOP_RAIL' in globals())\n"
+      "print('D13 available:', 'D13' in globals())\n"
+      "print('jumperless module available:', 'jumperless' in globals())\n");
+}
+
 void addJumperlessPythonFunctions(void) {
   if (!mp_initialized) {
     return;
   }
+  
+  // Only load once to avoid redundant imports
+  if (jumperless_globals_loaded) {
+    if (global_mp_stream) {
+      global_mp_stream->println("[DEBUG] Jumperless globals already loaded, skipping");
+    }
+    return;
+  }
+  
+  // Debug: print that this function is being called
+  if (global_mp_stream) {
+    global_mp_stream->println("[DEBUG] Loading jumperless globals for first time");
+  }
 
-  // Simple test - don't load the massive module during startup to avoid memory issues
+  // Import jumperless module and add ALL functions and constants to global namespace
   mp_embed_exec_str(
       "try:\n"
+      "    print('Attempting to import jumperless module...')\n"
       "    import jumperless\n"
-      "    print('✅ Native jumperless module available')\n"
-      "except ImportError:\n"
-      "    print('⚠️ Native jumperless module not available')\n");
+      "    print('Native jumperless module available')\n"
+      "    funcs = [attr for attr in dir(jumperless) if not attr.startswith('_')]\n"
+      "    #print('Available functions: ' + str(funcs))\n"
+      "    \n"
+      "    # Import all jumperless functions into global namespace\n"
+      "    # This eliminates the need for jumperless. prefix\n"
+      "    #print('Importing all functions globally...')\n"
+      "    from jumperless import *\n"
+      "    \n"
+      "    # Also keep jumperless module available for explicit access if needed\n"
+      "    globals()['jumperless'] = jumperless\n"
+      "    \n"
+      "    # Test that functions are actually available\n"
+      "    #available_functions = [name for name in globals() if not name.startswith('_') and callable(globals()[name])]\n"
+      "    #print(' Available global functions: ' + str(len(available_functions)))\n"
+      "    #if 'oled_connect' in globals():\n"
+      "    #    print(' oled_connect() is available globally')\n"
+      "    #else:\n"
+      "    #    print(' oled_connect() not found in globals')\n"
+      "    \n"
+      "    #print('All jumperless functions and constants available globally')\n"
+      "    #print('You can now use: connect(), dac_set(), TOP_RAIL, D13, etc.')\n"
+      "    \n"
+      "except ImportError as e:\n"
+      "    print('△ Native jumperless module not available: ' + str(e))\n"
+      "except Exception as e:\n"
+      "    print('△ Error setting up globals: ' + str(e))\n"
+      "    import traceback\n"
+      "    traceback.print_exc()\n");
+  
+  // Mark as successfully loaded
+  jumperless_globals_loaded = true;
 }
 
 void addMicroPythonModules(bool time, bool machine, bool os, bool math, bool gc) {
@@ -1146,53 +1293,53 @@ void addMicroPythonModules(bool time, bool machine, bool os, bool math, bool gc)
   
   if (time) {
     mp_embed_exec_str("import time\n");
-    mp_embed_exec_str("print('✅ Time module imported successfully')\n");
+    mp_embed_exec_str("print('Time module imported successfully')\n");
   }
-  if (machine) {
-    mp_embed_exec_str("import machine\n");
-    mp_embed_exec_str("print('✅ Machine module imported successfully')\n");
-  }
+  // if (machine) {
+  //   mp_embed_exec_str("import machine\n");
+  //   mp_embed_exec_str("print('Machine module imported successfully')\n");
+  // }
   if (os) {
     mp_embed_exec_str("import os\n");
-    mp_embed_exec_str("print('✅ OS module imported successfully')\n");
+    mp_embed_exec_str("print('OS module imported successfully')\n");
   }
   if (math) {
     mp_embed_exec_str("import math\n");
-    mp_embed_exec_str("print('✅ Math module imported successfully')\n");
+    mp_embed_exec_str("print('Math module imported successfully')\n");
   }
   if (gc) {
     mp_embed_exec_str("import gc\n");
-    mp_embed_exec_str("print('✅ GC module imported successfully')\n");
+    mp_embed_exec_str("print('GC module imported successfully')\n");
   }
 }
 
 const char *test_code = R"""(
 try:
     import jumperless
-    print("✅ Native jumperless module imported successfully")
+            print("☺ Native jumperless module imported successfully")
     
     # Test that functions exist
     if hasattr(jumperless, 'dac_set') and hasattr(jumperless, 'adc_get'):
-        print("✅ Core DAC/ADC functions found")
+        print("☺ Core DAC/ADC functions found")
     else:
-        print("❌ Core DAC/ADC functions missing")
+        print("☹ Core DAC/ADC functions missing")
         
     if hasattr(jumperless, 'nodes_connect') and hasattr(jumperless, 'gpio_set'):
-        print("✅ Node and GPIO functions found")
+        print("☺ Node and GPIO functions found")
     else:
-        print("❌ Node and GPIO functions missing")
+        print("☹ Node and GPIO functions missing")
         
     if hasattr(jumperless, 'oled_print') and hasattr(jumperless, 'ina_get_current'):
-        print("✅ OLED and INA functions found")
+                print("☺ OLED and INA functions found")
     else:
-        print("❌ OLED and INA functions missing")
-        
-    print("✅ Native Jumperless module test completed successfully")
+        print("☹ OLED and INA functions missing")
+    
+    print("☺ Native Jumperless module test completed successfully")
     
 except ImportError as e:
-    print("❌ Failed to import native jumperless module:", str(e))
+    print("☹ Failed to import native jumperless module:", str(e))
 except Exception as e:
-    print("❌ Error testing native jumperless module:", str(e))
+    print("☹ Error testing native jumperless module:", str(e))
 )""";
 // Simple execution function for one-off commands
 bool executePythonSimple(const char *code, char *response,
@@ -2026,95 +2173,8 @@ void REPLEditor::fullReset() {
   last_displayed_lines = 0;
 }
 
-void REPLEditor::enterPasteMode(Stream *stream) {
-  changeTerminalColor(replColors[5], true, stream);
-  stream->println("Paste Mode - Enter your code, then type 'END' "
-                            "on a new line to finish:");
-  changeTerminalColor(replColors[12], false, stream);
-  stream->println("(Ctrl+C to cancel)");
-
-  String pasted_content = "";
-  String current_line = "";
-  bool paste_complete = false;
-
-  changeTerminalColor(replColors[3], false, stream);
-
-  while (!paste_complete) {
-    if (stream->available()) {
-      int c = stream->read();
-
-      // Handle Ctrl+C (cancel paste)
-      if (c == 3) {
-        stream->println("^C");
-        stream->println("Paste cancelled.");
-        return;
-      }
-
-      // Handle Enter/newline
-      if (c == '\r' || c == '\n') {
-        stream->println(); // Echo newline
-
-        // Check if user typed END to finish
-        String trimmed_line = current_line;
-        trimmed_line.trim();
-        if (trimmed_line == "END") {
-          paste_complete = true;
-        } else {
-          // Add line to pasted content
-          if (pasted_content.length() > 0) {
-            pasted_content += "\n";
-          }
-          pasted_content += current_line;
-          current_line = "";
-        }
-      } else if (c == '\b' || c == 127) { // Backspace
-        if (current_line.length() > 0) {
-          current_line.remove(current_line.length() - 1);
-          stream->print("\b \b"); // Erase character
-        }
-      } else if ((c >= 32 && c <= 126) || c == '\t') { // Printable characters
-        current_line += (char)c;
-        stream->write(c); // Echo character
-      }
-      stream->flush();
-    }
-    delayMicroseconds(100);
-  }
-
-  if (pasted_content.length() > 0) {
-    // Clean up the pasted content
-    pasted_content.replace("\r\n", "\n"); // Windows line endings
-    pasted_content.replace("\r", "\n");   // Mac line endings
-    pasted_content.replace("\t", "    "); // Convert tabs to spaces
-
-    // Replace current input with pasted content
-    current_input = pasted_content;
-    cursor_pos = current_input.length();
-    in_multiline_mode = (current_input.indexOf('\n') >= 0);
-
-    // Show completion message and options
-    changeTerminalColor(replColors[5], true, stream);
-    stream->println("Paste complete (" +
-                              String(pasted_content.length()) +
-                              " characters)");
-
-    changeTerminalColor(replColors[7], false, stream);
-    stream->println("Options:");
-    stream->println("  [Enter] - Execute pasted code");
-    stream->println("  save    - Save pasted code as script");
-    stream->println("  edit    - Edit pasted code");
-    stream->println();
-
-    // Redraw the content
-    redrawFullInput(stream);
-  } else {
-    changeTerminalColor(replColors[4], true, stream);
-    stream->println("No content pasted.");
-    changeTerminalColor(replColors[1], true, stream);
-    stream->print(">>> ");
-    stream->flush();
-  }
-}
+// Note: enterPasteMode function removed - replaced with "new" command that opens eKilo editor
+// for creating new scripts. This provides a better user experience than paste mode.
 
 // New functions for single command execution from main.cpp
 
@@ -2161,9 +2221,14 @@ bool initMicroPythonQuiet(void) {
   global_mp_stream = original_stream;
   global_mp_stream_ptr = (void *)original_stream;
   
-  // Import the jumperless module silently
-  // This ensures jumperless functions are available for single commands
-  mp_embed_exec_str("import jumperless");
+  // Import all jumperless functions and constants globally (silently)
+  // This ensures everything is available for single commands without prefix
+  mp_embed_exec_str(
+      "try:\n"
+      "    import jumperless\n"
+      "    from jumperless import *\n"
+      "    globals()['jumperless'] = jumperless\n"
+      "except: pass\n");
   
   return true;
 }
@@ -2297,11 +2362,7 @@ String extractFunctionName(const String& command) {
   String func_name = command.substring(0, paren_pos);
   func_name.trim();
   
-  // Remove jumperless. prefix if present
-  if (func_name.startsWith("jumperless.")) {
-    func_name = func_name.substring(11); // Remove "jumperless."
-  }
-  
+  // Since functions are now globally imported, no prefix handling needed
   return func_name;
 }
 
@@ -2361,50 +2422,10 @@ String formatResult(float value, FunctionOutputType output_type) {
  * Returns a new String with the parsed command
  */
 String parseCommandWithPrefix(const char* command) {
+  // Since all jumperless functions are now globally imported,
+  // we no longer need to add prefixes - just return the command as-is
   String cmd = String(command);
   cmd.trim();
-  
-  // Skip if command is empty
-  if (cmd.length() == 0) {
-    return cmd;
-  }
-  
-  // Skip if command already has jumperless. prefix
-  if (cmd.startsWith("jumperless.")) {
-    return cmd;
-  }
-  
-  // Skip if command starts with known Python keywords or constructs
-  if (cmd.startsWith("import ") || cmd.startsWith("from ") || 
-      cmd.startsWith("print") || cmd.startsWith("if ") ||
-      cmd.startsWith("for ") || cmd.startsWith("while ") ||
-      cmd.startsWith("def ") || cmd.startsWith("class ") ||
-      cmd.startsWith("try:") || cmd.startsWith("except") ||
-      cmd.startsWith("#") || cmd.startsWith("\"") ||
-      cmd.startsWith("'")) {
-    return cmd;
-  }
-  
-  // Find the function name (everything before the first '(')
-  int paren_pos = cmd.indexOf('(');
-  if (paren_pos == -1) {
-    // No parentheses - might be a simple function call or variable
-    // Check if it's a jumperless function
-    if (isJumperlessFunction(cmd.c_str())) {
-      return "jumperless." + cmd;
-    }
-    return cmd;
-  }
-  
-  // Extract function name
-  String function_name = cmd.substring(0, paren_pos);
-  function_name.trim();
-  
-  // Check if it's a jumperless function
-  if (isJumperlessFunction(function_name.c_str())) {
-    return "jumperless." + cmd;
-  }
-  
   return cmd;
 }
 

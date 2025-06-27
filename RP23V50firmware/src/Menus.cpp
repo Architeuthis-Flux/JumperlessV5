@@ -3028,8 +3028,10 @@ int doMenuAction(int menuPosition, int selection) {
                       if (menuLines[currentAction.previousMenuPositions[1]].indexOf("ConnectOn Boot") != -1) {
                         if (currentAction.from[0] == 0) {
                           jumperlessConfig.top_oled.connect_on_boot = 1;
+                          oled.init();
                           } else if (currentAction.from[0] == 1) {
                             jumperlessConfig.top_oled.connect_on_boot = 0;
+                            oled.disconnect();
                             }
                           //oled.init();
                           oled.clear();
@@ -3112,7 +3114,13 @@ int doMenuAction(int menuPosition, int selection) {
                                         } else if (menuLines[currentAction.previousMenuPositions[2]].indexOf("SciExt") != -1) {
                                           selectedFamily = FONT_NEW_SCIENCE_MEDIUM_EXTENDED;
                                           configFontValue = 5;
-                                          }
+                                          } else if (menuLines[currentAction.previousMenuPositions[2]].indexOf("AndlMno") != -1) {
+                                            selectedFamily = FONT_ANDALE_MONO;
+                                            configFontValue = 6;
+                                            } else if (menuLines[currentAction.previousMenuPositions[2]].indexOf("FreMno") != -1) {
+                                              selectedFamily = FONT_FREE_MONO;
+                                              configFontValue = 7;
+                                              }
 
                                         // Set the font family (smart selection will choose appropriate size)
                                         //oled.setFontForSize(selectedFamily, 1);
@@ -3170,38 +3178,38 @@ actionCategories getActionCategory(int menuPosition) {
   return NOCATEGORY;
   }
 
-char printMainMenu(int extraOptions) {
+// char printMainMenu(int extraOptions) {
 
-  Serial.print("\n\n\r\t\tMenu\n\r");
-  // Serial.print("Slot ");
-  // Serial.print(netSlot);
-  Serial.print("\n\r");
-  Serial.print("\tm = show this menu\n\r");
-  Serial.print("\tn = show netlist\n\r");
-  Serial.print("\ts = show node files by slot\n\r");
-  Serial.print("\to = load node files by slot\n\r");
-  Serial.print("\tf = load node file to current slot\n\r");
-  // Serial.print("\tr = rotary encoder mode -");
-  //   rotaryEncoderMode == 1 ? Serial.print(" ON (z/x to cycle)\n\r")
-  //                          : Serial.print(" off\n\r");
-  // Serial.print("\t\b\bz/x = cycle slots - current slot ");
-  // Serial.print(netSlot);
-  Serial.print("\n\r");
-  Serial.print("\te = show extra menu options\n\r");
+//   Serial.print("\n\n\r\t\tMenu\n\r");
+//   // Serial.print("Slot ");
+//   // Serial.print(netSlot);
+//   Serial.print("\n\r");
+//   Serial.print("\tm = show this menu\n\r");
+//   Serial.print("\tn = show netlist\n\r");
+//   Serial.print("\ts = show node files by slot\n\r");
+//   Serial.print("\to = load node files by slot\n\r");
+//   Serial.print("\tf = load node file to current slot\n\r");
+//   // Serial.print("\tr = rotary encoder mode -");
+//   //   rotaryEncoderMode == 1 ? Serial.print(" ON (z/x to cycle)\n\r")
+//   //                          : Serial.print(" off\n\r");
+//   // Serial.print("\t\b\bz/x = cycle slots - current slot ");
+//   // Serial.print(netSlot);
+//   Serial.print("\n\r");
+//   Serial.print("\te = show extra menu options\n\r");
 
-  if (extraOptions == 1) {
-    Serial.print("\tb = show bridge array\n\r");
-    Serial.print("\tp = probe connections\n\r");
-    Serial.print("\tw = waveGen\n\r");
-    Serial.print("\tv = toggle show current/voltage\n\r");
-    // Serial.print("\tu = set baud rate for USB-Serial\n\r");
-    Serial.print("\tl = LED brightness / test\n\r");
-    Serial.print("\td = toggle debug flags\n\r");
-    }
-  // Serial.print("\tc = clear nodes with probe\n\r");
-  Serial.print("\n\n\r");
-  return ' ';
-  }
+//   if (extraOptions == 1) {
+//     Serial.print("\tb = show bridge array\n\r");
+//     Serial.print("\tp = probe connections\n\r");
+//     Serial.print("\tw = waveGen\n\r");
+//     Serial.print("\tv = toggle show current/voltage\n\r");
+//     // Serial.print("\tu = set baud rate for USB-Serial\n\r");
+//     Serial.print("\tl = LED brightness / test\n\r");
+//     Serial.print("\td = toggle debug flags\n\r");
+//     }
+//   // Serial.print("\tc = clear nodes with probe\n\r");
+//   Serial.print("\n\n\r");
+//   return ' ';
+//   }
 
 
 

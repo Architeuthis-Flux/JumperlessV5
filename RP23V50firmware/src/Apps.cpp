@@ -3,6 +3,7 @@
 #include "CH446Q.h"
 #include "Commands.h"
 #include "FileParsing.h"
+#include "FilesystemStuff.h"
 #include "Graphics.h"
 #include "JumperlessDefines.h"
 #include "LEDs.h"
@@ -70,6 +71,8 @@ struct app apps[30] = {
     {"XLSX   GUI", 6, 1, xlsxGui},
     {"Micropython", 7, 1, microPythonREPLapp},
     {"uPythonREPL", 8, 1, microPythonREPLapp},
+    {"File   Manager", 9, 1, filesystemApp},
+    {"eKilo Editor", 10, 1, eKiloApp},
 
     {"DOOM", 16, 1, playDoom},
 
@@ -142,6 +145,12 @@ void runApp(int index, char *name) {
     break;
   case 8:
     microPythonREPLapp();
+    break;
+  case 9:
+    filesystemApp();
+    break;
+  case 10:
+    eKiloApp();
     break;
     // case 2: logicAnalyzer(); break;
     // case 3: oscilloscope(); break;
@@ -1124,7 +1133,7 @@ void calibrateDacs(void) {
 
       refreshConnections(0, 0, 1);
       if (firstStart == 1) {
-        delay(10);
+        delay(5);
       } else {
         delay(18);
       }
@@ -1144,7 +1153,7 @@ void calibrateDacs(void) {
         setVoltage = 0.0;
         setDacByNumber(d, setVoltage, 0);
         if (firstStart == 1) {
-          delay(18);
+          delay(10);
         } else {
           delay(38);
         }
@@ -1403,7 +1412,7 @@ void calibrateDacs(void) {
         Serial.print(setVoltage);
         Serial.print(" V\t");
         if (firstStart == 1) {
-          delay(30);
+          delay(20);
         } else {
           delay(150);
         }
