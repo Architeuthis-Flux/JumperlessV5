@@ -221,6 +221,34 @@ void createSlots(int slot, int overwrite) {
 
   // FatFS.open("nodeFileSlot0.txt", "r");
   if (slot == -1) {
+    // Create python_scripts directory if it doesn't exist
+    if (!FatFS.exists("/python_scripts")) {
+      if (FatFS.mkdir("/python_scripts")) {
+        if (debugFP) {
+          Serial.println("Created /python_scripts/ directory");
+        }
+      } else {
+        if (debugFP) {
+          Serial.println("Failed to create /python_scripts/ directory");
+        }
+      }
+    }
+    
+    // Create empty history.txt file if it doesn't exist
+    if (!FatFS.exists("/python_scripts/history.txt")) {
+      File historyFile = FatFS.open("/python_scripts/history.txt", "w");
+      if (historyFile) {
+        historyFile.close();
+        if (debugFP) {
+          Serial.println("Created empty /history.txt file");
+        }
+      } else {
+        if (debugFP) {
+          Serial.println("Failed to create /history.txt file");
+        }
+      }
+    }
+    
     for (int i = 0; i < NUM_SLOTS; i++) {
       int index = 0;
       // while (core2busy == true) {
@@ -355,6 +383,17 @@ void inputNodeFileList(int addRotaryConnections) {
   if (nodeFileString.endsWith("}") == 0) {
     nodeFileString.concat(" } \n\r");
     }
+  // Validate the input first
+  int validation_result = validateNodeFile(nodeFileString.c_str(), true);
+  if (validation_result != 0) {
+    Serial.println("◇ Input validation failed: " + String(getNodeFileValidationError(validation_result)));
+    Serial.println("◇ Correct format:");
+    Serial.println("\n\rSlot [slot number] \n\n\rf "
+                   "{ \n\r[node]-[node],\n\r[node]-[node],\n\r}\n\n\r");
+    core1busy = false;
+    return;
+  }
+
   int openBraceIdx = nodeFileString.indexOf("{");
 
   if (openBraceIdx == -1) {
@@ -486,6 +525,17 @@ void inputNodeFileList(int addRotaryConnections) {
     //refreshSavedColors(i);
     core1busy = false;
     }
+
+  // Validate all saved slots
+  Serial.println("◆ Validating saved slot files...");
+  for (int i = firstSlotNumber; i <= lastSlotNumber; i++) {
+    int validation_result = validateNodeFileSlot(i, false);
+    if (validation_result == 0) {
+      Serial.println("◆ Slot " + String(i) + " validated successfully");
+    } else {
+      Serial.println("◇ Slot " + String(i) + " validation failed: " + String(getNodeFileValidationError(validation_result)));
+    }
+  }
 
   }
 
@@ -669,7 +719,7 @@ int getSlotLength(int slot, int flashOrLocal) {
   return slotLength;
   }
 
-void printNodeFile(int slot, int printOrString, int flashOrLocal, int definesInts) {
+void printNodeFile(int slot, int printOrString, int flashOrLocal, int definesInts, bool printEmpty) {
 
   if (flashOrLocal == 0) {
     while (core2busy == true) {
@@ -698,6 +748,11 @@ void printNodeFile(int slot, int printOrString, int flashOrLocal, int definesInt
     nodeFileString.printTo(specialFunctionsString);
     //specialFunctionsString.read(nodeFileString);
     }
+
+  // Check if slot is empty and we don't want to print empty slots
+  if (!printEmpty && isSlotFileEmpty(specialFunctionsString.c_str())) {
+    return; // Don't print empty slots when printEmpty is false
+  }
 
   //     int newLines = 0;
   // Serial.println(specialFunctionsString.indexOf(","));
@@ -1720,7 +1775,7 @@ void readStringFromSerial(int source, int addRemove) {
             }
 
       } while (finished == 0);
-    printNodeFile(netSlot, 0, 0, 0);
+    printNodeFile(netSlot, 0, 0, 0, true);
 
   }
 
@@ -1737,14 +1792,214 @@ int isNodeValid(int node) {
         return 1;
         } else if (node >= 100 && node <= 117) {
           return 1;
-          } else if (node >= 122 && node <= 125) {
-            return 1;
-            } else if (node >= 135 && node <= 140) {
+            } else if (node >= RP_GPIO_1 && node <= ROUTABLE_BUFFER_OUT) {  // Extended range to include 126-134
               return 1;
               } else {
               return 0;
               }
   }
+
+int validateNodeFile(const String& content, bool verbose) {
+  // Return codes:
+  // 0 = Valid
+  // 1 = Empty content
+  // 2 = Missing opening brace
+  // 3 = Missing closing brace
+  // 4 = Invalid node number found
+  // 5 = Malformed connection (missing dash)
+  // 6 = Invalid connection format
+  // 7 = Empty slot file (valid)
+  
+  if (content.length() < 4) {
+    if (verbose) Serial.println("◇ NodeFile validation failed: Content too short");
+    return 1;
+  }
+  
+  // Check for opening and closing braces
+  int openBraceIdx = content.indexOf("{");
+  int closeBraceIdx = content.indexOf("}");
+  
+  if (openBraceIdx == -1) {
+    if (verbose) Serial.println("◇ NodeFile validation failed: Missing opening brace '{'");
+    return 2;
+  }
+  
+  if (closeBraceIdx == -1) {
+    if (verbose) Serial.println("◇ NodeFile validation failed: Missing closing brace '}'");
+    return 3;
+  }
+  
+  if (closeBraceIdx <= openBraceIdx) {
+    if (verbose) Serial.println("◇ NodeFile validation failed: Closing brace appears before opening brace");
+    return 3;
+  }
+  
+  // Extract content between braces
+  String connections = content.substring(openBraceIdx + 1, closeBraceIdx);
+  connections.trim();
+  
+  // Empty content between braces is valid (empty slot)
+  if (connections.length() == 0) {
+    if (verbose) Serial.println("◆ NodeFile validation: Empty slot file (valid)");
+    return 0; // Valid empty slot
+  }
+  
+  // Parse individual connections
+  int connectionCount = 0;
+  int invalidNodes = 0;
+  int malformedConnections = 0;
+  
+  // Split by commas and validate each connection
+  int startIdx = 0;
+  int commaIdx = connections.indexOf(',', startIdx);
+  
+  while (startIdx < connections.length()) {
+    String connection;
+    
+    if (commaIdx == -1) {
+      // Last connection (or only one)
+      connection = connections.substring(startIdx);
+    } else {
+      connection = connections.substring(startIdx, commaIdx);
+      startIdx = commaIdx + 1;
+      commaIdx = connections.indexOf(',', startIdx);
+    }
+    
+    connection.trim();
+    
+    // Skip empty connections
+    if (connection.length() == 0) {
+      if (commaIdx == -1) break;
+      continue;
+    }
+    
+    connectionCount++;
+    
+    // Find the dash separator
+    int dashIdx = connection.indexOf('-');
+    if (dashIdx == -1) {
+      malformedConnections++;
+      if (verbose) Serial.println("◇ Malformed connection (no dash): '" + connection + "'");
+      if (commaIdx == -1) break;
+      continue;
+    }
+    
+    // Extract node numbers
+    String node1Str = connection.substring(0, dashIdx);
+    String node2Str = connection.substring(dashIdx + 1);
+    
+    node1Str.trim();
+    node2Str.trim();
+    
+    // Validate node numbers are integers
+    int node1 = node1Str.toInt();
+    int node2 = node2Str.toInt();
+    
+    // Check if toInt() failed (returns 0 for non-numeric strings)
+    if ((node1 == 0 && node1Str != "0") || (node2 == 0 && node2Str != "0")) {
+      malformedConnections++;
+      if (verbose) Serial.println("◇ Non-numeric node in connection: '" + connection + "'");
+      if (commaIdx == -1) break;
+      continue;
+    }
+    
+    // Validate node numbers using existing function
+    if (isNodeValid(node1) != 1) {
+      invalidNodes++;
+      if (verbose) Serial.println("◇ Invalid node number: " + String(node1) + " in connection '" + connection + "'");
+    }
+    
+    if (isNodeValid(node2) != 1) {
+      invalidNodes++;
+      if (verbose) Serial.println("◇ Invalid node number: " + String(node2) + " in connection '" + connection + "'");
+    }
+    
+    // Check for self-connection (generally not useful)
+    if (node1 == node2 && verbose) {
+      Serial.println("◇ Warning: Self-connection detected: " + String(node1) + "-" + String(node2));
+    }
+    
+    if (commaIdx == -1) break;
+  }
+  
+  // Report validation results
+  if (verbose) {
+    Serial.println("◆ NodeFile validation summary:");
+    Serial.println("  - Connections found: " + String(connectionCount));
+    Serial.println("  - Invalid nodes: " + String(invalidNodes));
+    Serial.println("  - Malformed connections: " + String(malformedConnections));
+  }
+  
+  // Return error codes based on findings
+  if (malformedConnections > 0) {
+    return 5; // Malformed connections found
+  }
+  
+  if (invalidNodes > 0) {
+    return 4; // Invalid node numbers found
+  }
+  
+  if (verbose) {
+    Serial.println("◆ NodeFile validation: PASSED (" + String(connectionCount) + " connections)");
+  }
+  
+  return 0; // Valid
+}
+
+int validateNodeFileSlot(int slot, bool verbose) {
+  // Validate a specific slot file
+  String filename = "nodeFileSlot" + String(slot) + ".txt";
+  
+  if (verbose) {
+    Serial.println("◆ Validating " + filename + "...");
+  }
+  
+  if (!FatFS.exists(filename)) {
+    if (verbose) Serial.println("◇ Slot file does not exist: " + filename);
+    return 1; // File doesn't exist, treat as empty
+  }
+  
+  File slotFile = FatFS.open(filename, "r");
+  if (!slotFile) {
+    if (verbose) Serial.println("◇ Failed to open slot file: " + filename);
+    return 1;
+  }
+  
+  String content = slotFile.readString();
+  slotFile.close();
+  
+  return validateNodeFile(content, verbose);
+}
+
+const char* getNodeFileValidationError(int errorCode) {
+  switch (errorCode) {
+    case 0: return "Valid";
+    case 1: return "Empty or missing content";
+    case 2: return "Missing opening brace '{'";
+    case 3: return "Missing closing brace '}'";
+    case 4: return "Invalid node number found";
+    case 5: return "Malformed connection format";
+    case 6: return "Invalid connection format";
+    default: return "Unknown error";
+  }
+}
+
+bool isSlotFileEmpty(const String& content) {
+  // Check if the content is just empty braces after stripping whitespace
+  String trimmed = content;
+  trimmed.trim();
+  trimmed.replace(" ", "");
+  trimmed.replace("\n", "");
+  trimmed.replace("\r", "");
+  trimmed.replace("\t", "");
+  
+  return (trimmed == "{}" || trimmed == "{ }" || trimmed.length() < 4);
+}
+
+bool isSlotFileEmpty(int slot) {
+  String content = readSlotFileContent(slot);
+  return isSlotFileEmpty(content);
+}
 
 void writeToNodeFile(int slot, int flashOrLocal) {
 

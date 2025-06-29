@@ -186,13 +186,13 @@ int jl_nodes_connect(int node1, int node2, int save) {
 
 int jl_nodes_disconnect(int node1, int node2) {
     removeBridgeFromNodeFile(node1, node2, netSlot, 0);
-    refreshConnections();
+    refreshConnections(-1);
     return 1;
 }
 
 int jl_nodes_clear(void) {
     clearNodeFile();  //!
-    refreshConnections();
+    refreshConnections(-1, 1, 1);
     return 1;
 }
 

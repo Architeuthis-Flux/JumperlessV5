@@ -430,8 +430,15 @@ void FileManager::refreshListing() {
     dir = FatFS.openDir(currentPath);
     
     while (dir.next() && fileCount < maxFiles) {
+        String fileName = dir.fileName();
+        
+        // Skip hidden files (files starting with '.') except for ".." navigation
+        if (fileName.startsWith(".") && fileName != "..") {
+            continue;
+        }
+        
         FileEntry& entry = fileList[fileCount];
-        entry.name = dir.fileName();
+        entry.name = fileName;
         entry.path = getFullPath(currentPath, entry.name);
         entry.isDirectory = dir.isDirectory();
         entry.size = dir.isDirectory() ? 0 : dir.fileSize();
@@ -1026,19 +1033,26 @@ void FileManager::run() {
                 if (file && !(file->name == ".." && file->path == "[UP]")) {
                     changeTerminalColor(FileColors::ERROR, false);
                     if (file->isDirectory) {
-                        Serial.print("Delete directory '" + file->name + "'? (y/N): ");
+                        Serial.println("\n\rDelete directory '" + file->name + "'? (y/N): ");
                     } else {
-                        Serial.print("Delete file '" + file->name + "'? (y/N): ");
+                        Serial.println("\n\rDelete file '" + file->name + "'? (y/N): ");
                     }
+                    Serial.flush();
                     changeTerminalColor(-1, false);
                     
                     while (Serial.available() == 0) delayMicroseconds(100);
                     char confirm = Serial.read();
                     Serial.println(confirm);
+                    Serial.flush();
                     
                     if (confirm == 'y' || confirm == 'Y') {
                         deleteFile(file->name);
+                        Serial.println("Deleting...");
+                        Serial.flush();
+                        refreshListing();
+                        drawInterface();
                     }
+                    
                 }
                 break;
             }
@@ -2292,5 +2306,52 @@ String filesystemAppPythonScriptsREPL() {
 
 String FileManager::getLastSavedFileContent() {
     return lastOpenedFileContent;
+}
+
+//==============================================================================
+// Global Utility Functions for External Use (e.g., USB filesystem)
+//==============================================================================
+
+FileType getFileTypeFromFilename(const String& filename) {
+    String lower = filename;
+    lower.toLowerCase();
+    
+    if (lower.endsWith(".py") || lower.endsWith(".pyw") || lower.endsWith(".pyi")) {
+        return FILE_TYPE_PYTHON;
+    } else if (lower.endsWith(".json")) {
+        return FILE_TYPE_JSON;
+    } else if (lower.endsWith(".cfg") || lower.endsWith(".conf") || lower.startsWith("config") || filename == "config.txt") {
+        return FILE_TYPE_CONFIG;
+    } else if (lower.startsWith("nodefileslot") && lower.endsWith(".txt")) {
+        return FILE_TYPE_NODEFILES;
+    } else if (lower.startsWith("netcolorsslot") && lower.endsWith(".txt")) {
+        return FILE_TYPE_COLORS;
+    } else if (lower.endsWith(".txt") || lower.endsWith(".md") || lower.endsWith(".readme")) {
+        return FILE_TYPE_TEXT;
+    }
+    return FILE_TYPE_UNKNOWN;
+}
+
+String getFileIconFromType(FileType type) {
+    switch (type) {
+        case FILE_TYPE_DIRECTORY: return "⌘";
+        case FILE_TYPE_PYTHON: return "𓆚";
+        case FILE_TYPE_TEXT: return "⍺";
+        case FILE_TYPE_CONFIG: return "⚙";
+        case FILE_TYPE_JSON: return "⟐";
+        case FILE_TYPE_NODEFILES: return "☊";
+        case FILE_TYPE_COLORS: return "⎃";
+        default: return "⍺";
+    }
+}
+
+String formatFileSizeForUSB(size_t size) {
+    if (size < 1024) {
+        return String(size) + " B";
+    } else if (size < 1024 * 1024) {
+        return String(size / 1024) + " KB";
+    } else {
+        return String(size / (1024 * 1024)) + " MB";
+    }
 }
 

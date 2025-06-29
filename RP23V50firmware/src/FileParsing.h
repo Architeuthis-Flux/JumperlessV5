@@ -2,7 +2,7 @@
 #ifndef FILEPARSING_H
 #define FILEPARSING_H
 
-
+#include <Arduino.h>
 
 // #include "RotaryEncoder.h"
 
@@ -46,7 +46,7 @@ void openNodeFile(int slot = 0, int flashOrLocal = 0);
 void splitStringToFields();
 
 void replaceSFNamesWithDefinedInts();
-void printNodeFile(int slot = 0, int printOrString = 0, int flashOrLocal = 0, int definesInts = 0);
+void printNodeFile(int slot = 0, int printOrString = 0, int flashOrLocal = 0, int definesInts = 0, bool printEmpty = true);
 void replaceNanoNamesWithDefinedInts();
 void saveCurrentSlotToSlot(int slotFrom = 0, int slotTo = 1, int flashOrLocalfrom = 0, int flashOrLocalTo = 0);
 void parseStringToBridges();
@@ -56,6 +56,20 @@ void clearNodeFile(int slot = 0, int flashOrLocal = 0);
 int lenHelper(int);
 int printLen(int);
 int isNodeValid(int node);
+
+// NodeFile validation functions
+int validateNodeFile(const String& content, bool verbose = false);
+int validateNodeFileSlot(int slot, bool verbose = false);
+const char* getNodeFileValidationError(int errorCode);
+
+// Slot content caching and validation functions
+String readSlotFileContent(int slot);
+bool isSlotContentValid(const String& content);
+bool hasSlotContentChanged(void);
+void updateSlotCache(void);
+void validateAllSlots(bool verbose = false);
+bool isSlotFileEmpty(const String& content);
+bool isSlotFileEmpty(int slot);
 
 // External declarations for node file operations
 // extern File nodeFile;

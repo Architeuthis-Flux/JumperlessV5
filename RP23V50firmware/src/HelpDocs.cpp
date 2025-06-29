@@ -1,5 +1,6 @@
 #include "HelpDocs.h"
 #include "Graphics.h"
+#include "configManager.h"
 #include <string.h>
 
 // Color definitions for help text formatting
@@ -171,12 +172,12 @@ void showCommandHelp(char command) {
             Serial.println("Usage: f");
             changeTerminalColor(HELP_DESC_COLOR, true);
             Serial.println("Then type connections like:");
-            Serial.println("  1-5 (connects breadboard holes 1 and 5)");
-            Serial.println("  D2-A3 (connects Arduino D2 to A3)");
-            Serial.println("  GND-30 (connects ground rail to hole 30)");
-            Serial.println("  1-5,7-12,D2-A3 (multiple connections at once)");
+            Serial.println("  f 1-5 (connects breadboard holes 1 and 5)");
+            Serial.println("  f D2-A3 (connects Arduino D2 to A3)");
+            Serial.println("  f GND-30 (connects ground rail to hole 30)");
+            Serial.println("  f 1-5,7-12,D2-A3 (multiple connections at once)");
             changeTerminalColor(HELP_NOTE_COLOR, true);
-            Serial.println("This is the main way to wire up your circuit!");
+            // Serial.println("This is the main way to wire up your circuit!");
             break;
             
         case '+':
@@ -185,7 +186,7 @@ void showCommandHelp(char command) {
             changeTerminalColor(HELP_USAGE_COLOR, true);
             Serial.println("Usage: +");
             changeTerminalColor(HELP_DESC_COLOR, true);
-            Serial.println("Then type new connections like: 1-5, D2-A3");
+            Serial.println("Then type new connections like: + 1-5, D2-A3");
             Serial.println("This adds to existing connections without clearing them.");
             break;
             
@@ -195,7 +196,7 @@ void showCommandHelp(char command) {
             changeTerminalColor(HELP_USAGE_COLOR, true);
             Serial.println("Usage: -");
             changeTerminalColor(HELP_DESC_COLOR, true);
-            Serial.println("Then type connections to remove like: 1-5, D2-A3");
+            Serial.println("Then type connections to remove like: - 1-5, D2-A3");
             Serial.println("Only removes the connections you specify.");
             break;
             
@@ -205,7 +206,7 @@ void showCommandHelp(char command) {
             changeTerminalColor(HELP_USAGE_COLOR, true);
             Serial.println("Usage: x");
             changeTerminalColor(HELP_NOTE_COLOR, true);
-            Serial.println("Warning: This removes everything. No undo!");
+            Serial.println("This removes everything in the current netlist.");
             break;
             
         case 'n':
@@ -215,14 +216,14 @@ void showCommandHelp(char command) {
             Serial.println("Usage: n");
             changeTerminalColor(HELP_DESC_COLOR, true);
             Serial.println("Shows all active connections in a nice list.");
-            Serial.println("Great for seeing what's currently wired up.");
+            // Serial.println("Great for seeing what's currently wired up.");
             break;
             
         case '^':
             changeTerminalColor(HELP_DESC_COLOR, true);
             Serial.println("Set DAC voltage output");
             changeTerminalColor(HELP_USAGE_COLOR, true);
-            Serial.println("Usage: ^3.3  (sets voltage to 3.3V)");
+            Serial.println("Usage: ^3.3  (sets DAC 1 voltage to 3.3V)");
             changeTerminalColor(HELP_DESC_COLOR, true);
             Serial.println("DAC features:");
             Serial.println("  - High precision 12-bit output");
@@ -230,7 +231,7 @@ void showCommandHelp(char command) {
             Serial.println("  - Range: -8V to +8V");
             Serial.println("  - Also available via Python: jumperless.set_dac(0, 3.3)");
             changeTerminalColor(HELP_NOTE_COLOR, true);
-            Serial.println("Perfect for testing circuits with precise known voltages!");
+            // Serial.println("Perfect for testing circuits with precise known voltages!");
             break;
             
         case 'v':
@@ -249,36 +250,37 @@ void showCommandHelp(char command) {
             Serial.println("  - Real-time monitoring capabilities");
             Serial.println("  - Python access: jumperless.get_adc(0)");
             changeTerminalColor(HELP_NOTE_COLOR, true);
-            Serial.println("Perfect for precision circuit debugging and monitoring!");
+            // Serial.println("Perfect for precision circuit debugging and monitoring!");
             break;
             
         case 'A':
+        case 'a':
             changeTerminalColor(HELP_DESC_COLOR, true);
-            Serial.println("Connect UART to Arduino D0 and D1 pins");
+            Serial.println("Connect or disconnect Jumperless Routable UART to Arduino D0 and D1 pins");
             changeTerminalColor(HELP_USAGE_COLOR, true);
-            Serial.println("Usage: A");
+            Serial.println("Usage: A to connect, a to disconnect");
             changeTerminalColor(HELP_DESC_COLOR, true);
-            Serial.println("This lets you program and communicate with an Arduino.");
+            //Serial.println("This lets you program and communicate with an Arduino.");
             Serial.println("Add '?' to check connection status: A?");
             break;
             
-        case 'a':
-            changeTerminalColor(HELP_DESC_COLOR, true);
-            Serial.println("Disconnect UART from Arduino");
-            changeTerminalColor(HELP_USAGE_COLOR, true);
-            Serial.println("Usage: a");
-            changeTerminalColor(HELP_DESC_COLOR, true);
-            Serial.println("Breaks the connection so you can use D0/D1 for other stuff.");
-            break;
+        
+            // changeTerminalColor(HELP_DESC_COLOR, true);
+            // Serial.println("Disconnect UART from Arduino");
+            // changeTerminalColor(HELP_USAGE_COLOR, true);
+            // Serial.println("Usage: a");
+            // changeTerminalColor(HELP_DESC_COLOR, true);
+            // Serial.println("Breaks the connection so you can use D0/D1 for other stuff.");
+            // break;
             
         case 'r':
             changeTerminalColor(HELP_DESC_COLOR, true);
             Serial.println("Reset Arduino or Jumperless");
             changeTerminalColor(HELP_USAGE_COLOR, true);
             Serial.println("Usage:");
-            Serial.println("  r   - reset both");
-            Serial.println("  rt  - reset top Arduino only");
-            Serial.println("  rb  - reset bottom Arduino only");
+            Serial.println("  r   - reset both Arduino Reset Pins");
+            Serial.println("  rt  - reset top Arduino Reset Pin only");
+            Serial.println("  rb  - reset bottom Arduino Reset Pin only");
             changeTerminalColor(HELP_NOTE_COLOR, true);
             Serial.println("Sometimes you just need to turn it off and on again.");
             break;
@@ -325,7 +327,7 @@ void showCommandHelp(char command) {
             changeTerminalColor(HELP_USAGE_COLOR, true);
             Serial.println("Usage: P");
             changeTerminalColor(HELP_DESC_COLOR, true);
-            Serial.println("Displays comprehensive node reference including:");
+            Serial.println("Displays node reference including:");
             Serial.println("  - All breadboard holes (1-60)");
             Serial.println("  - Arduino pins (D0-D13, A0-A5)");
             Serial.println("  - Power rails (GND, +5V, +3.3V)");
@@ -337,12 +339,12 @@ void showCommandHelp(char command) {
             
         case '.':
             changeTerminalColor(HELP_DESC_COLOR, true);
-            Serial.println("Connect or disconnect the OLED display");
+            Serial.println("Connect and initialize the I2C OLED display");
             changeTerminalColor(HELP_USAGE_COLOR, true);
             Serial.println("Usage: .");
             changeTerminalColor(HELP_DESC_COLOR, true);
             Serial.println("Toggles the little screen on/off.");
-            Serial.println("The display shows connections, voltages, and debug info.");
+            Serial.println("Note: connecting GPIO to the OLED is not the same as actually initializing the I2C display, this will do both");
             break;
             
         case 'l':
@@ -399,7 +401,7 @@ void showCommandHelp(char command) {
             Serial.println("Usage: s");
             changeTerminalColor(HELP_DESC_COLOR, true);
             Serial.println("Lists all your saved configurations with their slot numbers.");
-            Serial.println("Helps you remember what you saved where.");
+            Serial.println("You can copy and paste this output to reload it later");
             break;
             
         case 'b':
@@ -412,7 +414,7 @@ void showCommandHelp(char command) {
             Serial.println("  b2  - show extra details");
             changeTerminalColor(HELP_DESC_COLOR, true);
             Serial.println("This shows how Jumperless actually routes your connections");
-            Serial.println("through the internal crossbar switches. Very technical!");
+            //Serial.println("through the internal crossbar switches. Very technical!");
             break;
             
         case 'c':
@@ -422,7 +424,7 @@ void showCommandHelp(char command) {
             Serial.println("Usage: c");
             changeTerminalColor(HELP_DESC_COLOR, true);
             Serial.println("Shows the state of all the internal switching chips.");
-            Serial.println("Useful for debugging weird connection issues.");
+            //Serial.println("Useful for debugging weird connection issues.");
             break;
             
         case 'd':
@@ -437,7 +439,7 @@ void showCommandHelp(char command) {
             Serial.println("  - LED debug info");
             Serial.println("  - Serial passthrough options");
             changeTerminalColor(HELP_NOTE_COLOR, true);
-            Serial.println("Turn these on when things aren't working as expected.");
+            //Serial.println("Turn these on when things aren't working as expected.");
             break;
             
         case '?':
@@ -447,7 +449,7 @@ void showCommandHelp(char command) {
             Serial.println("Usage: ?");
             changeTerminalColor(HELP_DESC_COLOR, true);
             Serial.println("Tells you what version of Jumperless firmware you're running.");
-            Serial.println("Helpful when reporting bugs or checking for updates.");
+            //Serial.println("Helpful when reporting bugs or checking for updates.");
             break;
             
         case '@':
@@ -467,7 +469,7 @@ void showCommandHelp(char command) {
             Serial.println("  - Detailed device information with addresses");
             Serial.println("  - Also available as app: jumperless.run_app('i2c')");
             changeTerminalColor(HELP_NOTE_COLOR, true);
-            Serial.println("Perfect for finding I2C devices when you're not sure of the wiring!");
+            //Serial.println("Perfect for finding I2C devices when you're not sure of the wiring!");
             break;
             
         case '$':
@@ -487,8 +489,8 @@ void showCommandHelp(char command) {
             changeTerminalColor(HELP_USAGE_COLOR, true);
             Serial.println("Usage: g");
             changeTerminalColor(HELP_DESC_COLOR, true);
-            Serial.println("Shows the current HIGH/LOW state of all GPIO pins.");
-            Serial.println("Helpful for debugging digital circuits.");
+            Serial.println("Shows the current state of all GPIO pins.");
+            //Serial.println("Helpful for debugging digital circuits.");
             break;
             
         case '#':
@@ -502,35 +504,24 @@ void showCommandHelp(char command) {
             break;
             
         case '~':
-            changeTerminalColor(HELP_DESC_COLOR, true);
-            Serial.println("Print current configuration to serial");
-            changeTerminalColor(HELP_USAGE_COLOR, true);
-            Serial.println("Usage: ~");
-            changeTerminalColor(HELP_DESC_COLOR, true);
-            Serial.println("Dumps all the configuration settings in a readable format.");
-            Serial.println("Good for backing up your settings.");
+            // Use the comprehensive config help system
+            printConfigHelp();
             break;
             
         case '`':
-            changeTerminalColor(HELP_DESC_COLOR, true);
-            Serial.println("Edit configuration from serial input");
-            changeTerminalColor(HELP_USAGE_COLOR, true);
-            Serial.println("Usage: `");
-            changeTerminalColor(HELP_DESC_COLOR, true);
-            Serial.println("Lets you send new configuration data to update settings.");
-            changeTerminalColor(HELP_NOTE_COLOR, true);
-            Serial.println("Technical feature - be careful not to break things!");
+            // Use the comprehensive config help system
+            printConfigHelp();
             break;
             
-        case 'E':
-            changeTerminalColor(HELP_DESC_COLOR, true);
-            Serial.println("Toggle extra menu options display");
-            changeTerminalColor(HELP_USAGE_COLOR, true);
-            Serial.println("Usage: E");
-            changeTerminalColor(HELP_DESC_COLOR, true);
-            Serial.println("Hides/shows the extra commands in the main menu.");
-            Serial.println("Makes the menu less cluttered if you don't need technical stuff.");
-            break;
+        //case 'E':
+            // changeTerminalColor(HELP_DESC_COLOR, true);
+            // Serial.println("Toggle extra menu options display");
+            // changeTerminalColor(HELP_USAGE_COLOR, true);
+            // Serial.println("Usage: E");
+            // changeTerminalColor(HELP_DESC_COLOR, true);
+            // Serial.println("Hides/shows the extra commands in the main menu.");
+            // Serial.println("Makes the menu less cluttered if you don't need technical stuff.");
+            // break;
             
         case 'e':
             changeTerminalColor(HELP_DESC_COLOR, true);
@@ -538,7 +529,7 @@ void showCommandHelp(char command) {
             changeTerminalColor(HELP_USAGE_COLOR, true);
             Serial.println("Usage: e");
             changeTerminalColor(HELP_DESC_COLOR, true);
-            Serial.println("Toggles display of technical commands in the menu.");
+            Serial.println("Toggles display of extra commands in the menu.");
             break;
             
         case 'F':
@@ -548,7 +539,7 @@ void showCommandHelp(char command) {
             Serial.println("Usage: F");
             changeTerminalColor(HELP_DESC_COLOR, true);
             Serial.println("Changes the font used on the OLED display.");
-            Serial.println("Because comic sans is never the answer.");
+            //Serial.println("Because comic sans is never the answer.");
             break;
             
         case '=':
@@ -558,7 +549,7 @@ void showCommandHelp(char command) {
             Serial.println("Usage: =");
             changeTerminalColor(HELP_DESC_COLOR, true);
             Serial.println("Shows the raw pixel data from the OLED display.");
-            Serial.println("Very technical - mainly for display debugging.");
+            //Serial.println("Very technical - mainly for display debugging.");
             break;
             
         case 'k':
@@ -568,7 +559,7 @@ void showCommandHelp(char command) {
             Serial.println("Usage: k");
             changeTerminalColor(HELP_DESC_COLOR, true);
             Serial.println("Shows/hides a text version of the OLED display in your terminal.");
-            Serial.println("Handy when you can't see the physical display clearly.");
+            //Serial.println("Handy when you can't see the physical display clearly.");
             break;
             
         case 'R':
@@ -578,7 +569,7 @@ void showCommandHelp(char command) {
             Serial.println("Usage: R");
             changeTerminalColor(HELP_DESC_COLOR, true);
             Serial.println("Toggles a visual representation of the LED array in your terminal.");
-            Serial.println("Shows connections as colored blocks - pretty cool!");
+            Serial.println("This can make a mess of the terminal, but it's rad");
             break;
             
         case '_':
@@ -588,9 +579,36 @@ void showCommandHelp(char command) {
             Serial.println("Usage: _");
             changeTerminalColor(HELP_DESC_COLOR, true);
             Serial.println("Shows performance statistics for data processing.");
-            Serial.println("Mainly useful for firmware development and optimization.");
+            Serial.println("Mainly useful for debugging Arduino Serial passthrough");
             break;
             
+        case 'U':
+            changeTerminalColor(HELP_DESC_COLOR, true);
+            Serial.println("Enter USB Mass Storage mode");
+            changeTerminalColor(HELP_USAGE_COLOR, true);
+            Serial.println("Usage: U");
+            changeTerminalColor(HELP_DESC_COLOR, true);
+            Serial.println("Activates USB Mass Storage Device mode:");
+            Serial.println("  - Jumperless appears as a removable USB drive");
+            Serial.println("  - Edit files directly from your computer's file manager");
+            Serial.println("  - Access Python scripts, config files, and node files");
+            Serial.println("  - Jumperless becomes unresponsive during file editing");
+            changeTerminalColor(HELP_NOTE_COLOR, true);
+            Serial.println("SAFETY: Always safely eject the drive before unplugging!");
+            break;
+            
+        case 'u':
+            changeTerminalColor(HELP_DESC_COLOR, true);
+            Serial.println("Exit USB Mass Storage mode");
+            changeTerminalColor(HELP_USAGE_COLOR, true);
+            Serial.println("Usage: u");
+            changeTerminalColor(HELP_DESC_COLOR, true);
+            Serial.println("Deactivates USB Mass Storage mode and returns to normal operation.");
+            Serial.println("Alternatively, safely eject the drive from your computer.");
+            changeTerminalColor(HELP_NOTE_COLOR, true);
+            Serial.println("Always exit USB mode properly to prevent file corruption!");
+            break;
+
         case 'm':
             changeTerminalColor(HELP_DESC_COLOR, true);
             Serial.println("Show the main menu");
@@ -598,7 +616,7 @@ void showCommandHelp(char command) {
             Serial.println("Usage: m");
             changeTerminalColor(HELP_DESC_COLOR, true);
             Serial.println("Displays the command menu again if it scrolled off screen.");
-            Serial.println("Your lifeline when you forget what commands are available.");
+           // Serial.println("Your lifeline when you forget what commands are available.");
             break;
             
         case '!':
@@ -608,29 +626,29 @@ void showCommandHelp(char command) {
             Serial.println("Usage: !");
             changeTerminalColor(HELP_DESC_COLOR, true);
             Serial.println("Shows the raw node file data for the current slot.");
-            Serial.println("Technical details about how connections are stored.");
+           // Serial.println("Technical details about how connections are stored.");
             break;
             
-        case '{':
-            changeTerminalColor(HELP_DESC_COLOR, true);
-            Serial.println("Probe mode - explore connections with the probe");
-            changeTerminalColor(HELP_USAGE_COLOR, true);
-            Serial.println("Usage: { (or press the probe button)");
-            changeTerminalColor(HELP_DESC_COLOR, true);
-            Serial.println("Touch the probe to any point to see what it's connected to.");
-            changeTerminalColor(HELP_NOTE_COLOR, true);
-            Serial.println("The probe is amazing for tracing circuits and debugging!");
-            break;
+        // case '{':
+        //     changeTerminalColor(HELP_DESC_COLOR, true);
+        //     Serial.println("Probe mode - explore connections with the probe");
+        //     changeTerminalColor(HELP_USAGE_COLOR, true);
+        //     Serial.println("Usage: { (or press the probe button)");
+        //     changeTerminalColor(HELP_DESC_COLOR, true);
+        //     Serial.println("Touch the probe to any point to see what it's connected to.");
+        //     changeTerminalColor(HELP_NOTE_COLOR, true);
+        //     Serial.println("The probe is amazing for tracing circuits and debugging!");
+        //     break;
             
-        case '}':
-            changeTerminalColor(HELP_DESC_COLOR, true);
-            Serial.println("Probe mode - make connections with the probe");
-            changeTerminalColor(HELP_USAGE_COLOR, true);
-            Serial.println("Usage: } (or long-press the probe button)");
-            changeTerminalColor(HELP_DESC_COLOR, true);
-            Serial.println("Touch two points with the probe to connect them.");
-            Serial.println("Super intuitive way to wire up your circuit!");
-            break;
+        // case '}':
+        //     changeTerminalColor(HELP_DESC_COLOR, true);
+        //     Serial.println("Probe mode - make connections with the probe");
+        //     changeTerminalColor(HELP_USAGE_COLOR, true);
+        //     Serial.println("Usage: } (or long-press the probe button)");
+        //     changeTerminalColor(HELP_DESC_COLOR, true);
+        //     Serial.println("Touch two points with the probe to connect them.");
+        //     Serial.println("Super intuitive way to wire up your circuit!");
+        //     break;
             
         default:
             changeTerminalColor(HELP_NOTE_COLOR, true);
@@ -1124,32 +1142,8 @@ Serial.println(probe_art);
         Serial.println("  3. Message me on Discord or wherever");
         
     } else if (strcmp(category, "config") == 0) {
-        changeTerminalColor(HELP_DESC_COLOR, true);
-        Serial.println("Configuration file and persistent settings:\n");
-        
-        changeTerminalColor(HELP_COMMAND_COLOR, false);
-        Serial.print("~  ");
-        changeTerminalColor(HELP_DESC_COLOR, false);
-        Serial.println("- Print current configuration");
-        
-        changeTerminalColor(HELP_COMMAND_COLOR, false);
-        Serial.print("`  ");
-        changeTerminalColor(HELP_DESC_COLOR, false);
-        Serial.println("- Edit configuration settings");
-        
-        changeTerminalColor(HELP_USAGE_COLOR, true);
-        Serial.println("\n  Configuration Format:");
-        changeTerminalColor(HELP_DESC_COLOR, true);
-        Serial.println("  `[section] setting = value;");
-        Serial.println("  Example: `[dacs] dac_0 = 3.3;");
-        
-        changeTerminalColor(HELP_NOTE_COLOR, true);
-        Serial.println("\n Common Settings:");
-        changeTerminalColor(HELP_DESC_COLOR, true);
-        Serial.println("  `[dacs] top_rail = 5.00;");
-        Serial.println("  `[top_oled] connect_on_boot = true;");
-        Serial.println("  `[display] lines_wires = wires;");
-        Serial.println("  `[routing] stack_paths = 0;");
+        // Use the existing detailed config help system
+        printConfigHelp();
         
     } else if (strcmp(category, "glossary") == 0) {
         changeTerminalColor(HELP_DESC_COLOR, true);

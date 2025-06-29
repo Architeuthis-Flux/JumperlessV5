@@ -167,6 +167,11 @@ String generateNextScriptName(); // Helper to generate next available script nam
 // Utility functions
 String getFullPath(const String& basePath, const String& filename);
 bool isValidFilename(const String& filename);
+
+// Global utility functions for external use (e.g., USB filesystem)
+FileType getFileTypeFromFilename(const String& filename);
+String getFileIconFromType(FileType type);
+String formatFileSizeForUSB(size_t size);
 void printColoredPath(const String& path);
 
 #endif // FILESYSTEMSTUFF_H 

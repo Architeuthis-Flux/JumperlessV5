@@ -29,17 +29,17 @@ extern volatile int backpowered;
 #ifdef USE_TINYUSB
 #include "usb_interface_config.h"
 
-#if USB_CDC_ENABLE_COUNT >= 2
+// #if USB_CDC_ENABLE_COUNT >= 2
 extern Adafruit_USBD_CDC USBSer1;
-#endif
+// #endif
 
-#if USB_CDC_ENABLE_COUNT >= 3
+// #if USB_CDC_ENABLE_COUNT >= 3
 extern Adafruit_USBD_CDC USBSer2;
-#endif
+// #endif
 
-#if USB_CDC_ENABLE_COUNT >= 4
+// #if USB_CDC_ENABLE_COUNT >= 4
 extern Adafruit_USBD_CDC USBSer3;
-#endif
+// #endif
 
 #endif
 

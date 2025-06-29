@@ -40,6 +40,8 @@ Always use **single-line rounded corners** for all boxes and frames:
 Replace all standard emojis with culturally appropriate unicode alternatives:
 Don't add emojis or unicode to existing code unless absolutely necessary.
 
+Don't add unicode characters for normal prompts, only use them extremely sparingly or in some visual UI situation 
+
 #### File Type Indicators
 - `⌘` - Directory (place of interest sign) with blue ANSI color
 - `𓆚` - Python files (Egyptian hieroglyph snake) with green ANSI color  

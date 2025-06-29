@@ -1,71 +1,77 @@
 #ifndef USB_INTERFACE_CONFIG_H
 #define USB_INTERFACE_CONFIG_H
+#include <stdint.h>
 // Note: Don't include config.h here - it causes preprocessor issues
 // We'll handle dynamic naming in the USB descriptor callback
 
 // =============================================================================
-// USB Interface Configuration
+// SIMPLE STATIC USB Interface Configuration
 // =============================================================================
-// Enable/disable individual USB interface types by setting to 1 or 0
-// This allows testing different combinations to find optimal configuration
+// Fixed configuration: 3 CDC + 1 MSC for testing
 
-// CDC Serial Interfaces (Communication Device Class)
-#define USB_CDC_ENABLE_COUNT     3    // 0-4: Number of CDC interfaces to enable
-                                      // 0 = None, 1 = Main only, 2 = Main+Arduino, 
-                                      // 3 = Main+Arduino+Routable, 4 = All
+// CDC Serial Interfaces (Communication Device Class)  
+#define USB_CDC_ENABLE_COUNT 3
 
-// Mass Storage Interface
-#define USB_MSC_ENABLE           0    // 0 = Disabled, 1 = Enabled
+// MSC (Mass Storage Class) - Always enabled
+#define USB_MSC_ENABLE 1
 
-// HID Interfaces (Human Interface Device)  
-#define USB_HID_ENABLE_COUNT     0    // 0-2: Number of HID interfaces to enable
-
-// MIDI Interface
-#define USB_MIDI_ENABLE          0    // 0 = Disabled, 1 = Enabled
-
-// Vendor Interface (Custom protocol)
-#define USB_VENDOR_ENABLE        0    // 0 = Disabled, 1 = Enabled
+// All other interfaces disabled for simplicity
+#define USB_MIDI_ENABLE 0
+#define USB_HID_ENABLE 0
+#define USB_HID_ENABLE_COUNT 0
+#define USB_VENDOR_ENABLE 0
 
 // =============================================================================
-// Automatic Configuration Validation
+// TinyUSB Configuration Mapping
 // =============================================================================
 
-#if USB_CDC_ENABLE_COUNT > 4
-#error "Maximum 4 CDC interfaces supported"
-#endif
-
-#if USB_HID_ENABLE_COUNT > 2  
-#error "Maximum 2 HID interfaces supported"
-#endif
-
-// Calculate total interface count for validation
-#define USB_TOTAL_INTERFACES \
-    ((USB_CDC_ENABLE_COUNT * 2) + \
-     USB_MSC_ENABLE + \
-     USB_HID_ENABLE_COUNT + \
-     (USB_MIDI_ENABLE * 2) + \
-     USB_VENDOR_ENABLE)
-
-#if USB_TOTAL_INTERFACES > 14
-#warning "High interface count - may cause enumeration issues"
-#endif
+#define CFG_TUD_CDC USB_CDC_ENABLE_COUNT
+#define CFG_TUD_MSC USB_MSC_ENABLE
+#define CFG_TUD_MIDI USB_MIDI_ENABLE
+#define CFG_TUD_HID USB_HID_ENABLE
 
 // =============================================================================
-// Interface Names (for string descriptors) 
+// Simple Static Interface Names
 // =============================================================================
-// Note: These are fallback names. Dynamic names based on config are generated
-// at runtime in the USB descriptor callback function.
 
 static const char* USB_CDC_NAMES[] = {
-    "Jumperless Main",       // CDC 0 - Always the main serial
-    "Jumperless Serial 1",   // CDC 1 - Arduino programming/communication  
-    "Jumperless Serial 2",   // CDC 2 - User-configurable serial
-    "Jumperless Serial 3"    // CDC 3 - Debug output
+    "Jumperless Main",       // CDC 0 - Main serial
+    "Jumperless Serial 1",   // CDC 1 - Arduino/Serial1
+    "Jumperless Serial 2"    // CDC 2 - User serial
 };
 
 #define USB_MSC_NAME     "JL Mass Storage"
-#define USB_HID_NAME     "JL HID Device" 
-#define USB_MIDI_NAME    "JL MIDI Device"
-#define USB_VENDOR_NAME  "JL Vendor Device"
+
+// =============================================================================
+// Interface Number Definitions (for debugging and verification)
+// =============================================================================
+
+// Calculate interface numbers based on enabled interfaces
+enum {
+  // CDC interfaces (each CDC uses 2 interface numbers)
+#if USB_CDC_ENABLE_COUNT >= 1
+  ITF_NUM_CDC_0 = 0,
+  ITF_NUM_CDC_0_DATA,
+#endif
+#if USB_CDC_ENABLE_COUNT >= 2
+  ITF_NUM_CDC_1,
+  ITF_NUM_CDC_1_DATA,
+#endif
+#if USB_CDC_ENABLE_COUNT >= 3
+  ITF_NUM_CDC_2,
+  ITF_NUM_CDC_2_DATA,
+#endif
+#if USB_CDC_ENABLE_COUNT >= 4
+  ITF_NUM_CDC_3,
+  ITF_NUM_CDC_3_DATA,
+#endif
+
+  // MSC interface
+#if USB_MSC_ENABLE
+  ITF_NUM_MSC,
+#endif
+
+  ITF_NUM_TOTAL
+};
 
 #endif // USB_INTERFACE_CONFIG_H 

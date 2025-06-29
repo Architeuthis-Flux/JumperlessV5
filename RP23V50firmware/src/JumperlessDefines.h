@@ -104,6 +104,8 @@ extern int probeRev;
 #define POWER_PRIORITY_ADDRESS 163
 #define DAC_PRIORITY_ADDRESS 164
 
+// USB Mode Configuration
+#define USB_MODE_ADDRESS 165
 
 #define MAX_NETS 60
 #define MAX_BRIDGES 255

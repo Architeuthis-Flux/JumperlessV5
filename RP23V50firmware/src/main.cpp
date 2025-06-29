@@ -26,6 +26,7 @@ KevinC@ppucc.io
 
 #ifdef USE_TINYUSB
 #include <Adafruit_TinyUSB.h>
+#include "tusb.h"  // For tud_task() function
 #endif
 
 #include <Adafruit_NeoPixel.h>
@@ -69,6 +70,7 @@ KevinC@ppucc.io
 #include "HelpDocs.h"
 #include "Highlighting.h"
 #include "Python_Proper.h"
+#include "USBfs.h"
 
 // #define Serial SerialWrap
 // #define USBSer1 SerialWrap
@@ -160,11 +162,22 @@ void setup() {
 
   // readSettingsFromConfig();
   configLoaded = 1;
+  Serial.println("Configuration loaded!");
   startupTimers[1] = millis();
   delayMicroseconds(200);
   // Serial.print("config loaded in ");
   // Serial.print(millis() - start);
   // Serial.println("ms");
+  
+  // Initialize USB Mass Storage (CircuitPython-style)
+  // This will be ready when host connects, no special mode needed
+  // Serial.println("Initializing USB Mass Storage background service...");
+  // if (initUSBMassStorage()) {
+  //   Serial.println("USB Mass Storage ready (runs alongside normal operation)");
+  // } else {
+  //   Serial.println("USB Mass Storage initialization failed (non-critical)");
+  // }
+  
   initNets();
   backpowered = 0;
 
@@ -289,133 +302,133 @@ void setup() {
   startupTimers[9] = millis();
 }
 
-void printDirectoryContents(const char *dirname, int level) {
-  // Add indentation based on directory level
-  for (int i = 0; i < level; i++) {
-    Serial.print("  ");
-  }
+// void printDirectoryContents(const char *dirname, int level) {
+//   // Add indentation based on directory level
+//   for (int i = 0; i < level; i++) {
+//     Serial.print("  ");
+//   }
 
-  if (level == 0) {
-    Serial.println("/ (root)");
-  } else {
-    Serial.print(dirname);
-    Serial.println("/");
-  }
+//   if (level == 0) {
+//     Serial.println("/ (root)");
+//   } else {
+//     Serial.print(dirname);
+//     Serial.println("/");
+//   }
 
-  // Try to open as directory first
-  if (FatFS.exists(dirname)) {
-    // List files in directory - FatFS doesn't have opendir, so we'll try a
-    // different approach We'll check for common file patterns and known files
+//   // Try to open as directory first
+//   if (FatFS.exists(dirname)) {
+//     // List files in directory - FatFS doesn't have opendir, so we'll try a
+//     // different approach We'll check for common file patterns and known files
 
-    // Check for config file
-    String configPath = String(dirname) + "/config.txt";
-    if (FatFS.exists(configPath.c_str())) {
-      File configFile = FatFS.open(configPath.c_str(), "r");
-      if (configFile) {
-        for (int i = 0; i <= level; i++)
-          Serial.print("  ");
-        Serial.print("config.txt (");
-        Serial.print(configFile.size());
-        Serial.println(" bytes)");
-        configFile.close();
-      }
-    }
+//     // Check for config file
+//     String configPath = String(dirname) + "/config.txt";
+//     if (FatFS.exists(configPath.c_str())) {
+//       File configFile = FatFS.open(configPath.c_str(), "r");
+//       if (configFile) {
+//         for (int i = 0; i <= level; i++)
+//           Serial.print("  ");
+//         Serial.print("config.txt (");
+//         Serial.print(configFile.size());
+//         Serial.println(" bytes)");
+//         configFile.close();
+//       }
+//     }
 
-    // Check for scripts directory
-    String scriptsPath = String(dirname) + "/scripts";
-    if (FatFS.exists(scriptsPath.c_str())) {
-      printDirectoryContents(scriptsPath.c_str(), level + 1);
+//     // Check for scripts directory
+//     String scriptsPath = String(dirname) + "/scripts";
+//     if (FatFS.exists(scriptsPath.c_str())) {
+//       printDirectoryContents(scriptsPath.c_str(), level + 1);
 
-      // Check for common script files in scripts directory
-      for (int i = 1; i <= 20; i++) {
-        String scriptPath = scriptsPath + "/script_" + String(i) + ".py";
-        if (FatFS.exists(scriptPath.c_str())) {
-          File scriptFile = FatFS.open(scriptPath.c_str(), "r");
-          if (scriptFile) {
-            for (int j = 0; j <= level + 1; j++)
-              Serial.print("  ");
-            Serial.print("script_");
-            Serial.print(i);
-            Serial.print(".py (");
-            Serial.print(scriptFile.size());
-            Serial.println(" bytes)");
-            scriptFile.close();
-          }
-        }
-      }
+//       // Check for common script files in scripts directory
+//       for (int i = 1; i <= 20; i++) {
+//         String scriptPath = scriptsPath + "/script_" + String(i) + ".py";
+//         if (FatFS.exists(scriptPath.c_str())) {
+//           File scriptFile = FatFS.open(scriptPath.c_str(), "r");
+//           if (scriptFile) {
+//             for (int j = 0; j <= level + 1; j++)
+//               Serial.print("  ");
+//             Serial.print("script_");
+//             Serial.print(i);
+//             Serial.print(".py (");
+//             Serial.print(scriptFile.size());
+//             Serial.println(" bytes)");
+//             scriptFile.close();
+//           }
+//         }
+//       }
 
-      // Check for history file
-      String historyPath = scriptsPath + "/history.txt";
-      if (FatFS.exists(historyPath.c_str())) {
-        File historyFile = FatFS.open(historyPath.c_str(), "r");
-        if (historyFile) {
-          for (int j = 0; j <= level + 1; j++)
-            Serial.print("  ");
-          Serial.print("history.txt (");
-          Serial.print(historyFile.size());
-          Serial.println(" bytes)");
-          historyFile.close();
-        }
-      }
+//       // Check for history file
+//       String historyPath = scriptsPath + "/history.txt";
+//       if (FatFS.exists(historyPath.c_str())) {
+//         File historyFile = FatFS.open(historyPath.c_str(), "r");
+//         if (historyFile) {
+//           for (int j = 0; j <= level + 1; j++)
+//             Serial.print("  ");
+//           Serial.print("history.txt (");
+//           Serial.print(historyFile.size());
+//           Serial.println(" bytes)");
+//           historyFile.close();
+//         }
+//       }
 
-      // Check for common named scripts
-      String commonNames[] = {"test.py",  "demo.py", "main.py",
-                              "setup.py", "loop.py", "example.py"};
-      for (int i = 0; i < 6; i++) {
-        String scriptPath = scriptsPath + "/" + commonNames[i];
-        if (FatFS.exists(scriptPath.c_str())) {
-          File scriptFile = FatFS.open(scriptPath.c_str(), "r");
-          if (scriptFile) {
-            for (int j = 0; j <= level + 1; j++)
-              Serial.print("  ");
-            Serial.print(commonNames[i]);
-            Serial.print(" (");
-            Serial.print(scriptFile.size());
-            Serial.println(" bytes)");
-            scriptFile.close();
-          }
-        }
-      }
-    }
+//       // Check for common named scripts
+//       String commonNames[] = {"test.py",  "demo.py", "main.py",
+//                               "setup.py", "loop.py", "example.py"};
+//       for (int i = 0; i < 6; i++) {
+//         String scriptPath = scriptsPath + "/" + commonNames[i];
+//         if (FatFS.exists(scriptPath.c_str())) {
+//           File scriptFile = FatFS.open(scriptPath.c_str(), "r");
+//           if (scriptFile) {
+//             for (int j = 0; j <= level + 1; j++)
+//               Serial.print("  ");
+//             Serial.print(commonNames[i]);
+//             Serial.print(" (");
+//             Serial.print(scriptFile.size());
+//             Serial.println(" bytes)");
+//             scriptFile.close();
+//           }
+//         }
+//       }
+//     }
 
-    // Check for common slot files
-    for (int i = 0; i <= 10; i++) {
-      String slotPath = String(dirname) + "/slot" + String(i) + ".txt";
-      if (FatFS.exists(slotPath.c_str())) {
-        File slotFile = FatFS.open(slotPath.c_str(), "r");
-        if (slotFile) {
-          for (int j = 0; j <= level; j++)
-            Serial.print("  ");
-          Serial.print("slot");
-          Serial.print(i);
-          Serial.print(".txt (");
-          Serial.print(slotFile.size());
-          Serial.println(" bytes)");
-          slotFile.close();
-        }
-      }
-    }
+//     // Check for common slot files
+//     for (int i = 0; i <= 10; i++) {
+//       String slotPath = String(dirname) + "/slot" + String(i) + ".txt";
+//       if (FatFS.exists(slotPath.c_str())) {
+//         File slotFile = FatFS.open(slotPath.c_str(), "r");
+//         if (slotFile) {
+//           for (int j = 0; j <= level; j++)
+//             Serial.print("  ");
+//           Serial.print("slot");
+//           Serial.print(i);
+//           Serial.print(".txt (");
+//           Serial.print(slotFile.size());
+//           Serial.println(" bytes)");
+//           slotFile.close();
+//         }
+//       }
+//     }
 
-    // Check for other common files
-    String commonFiles[] = {"bootLoader.txt", "nodeFile.txt", "nets.txt",
-                            "bridges.txt", "netColors.txt"};
-    for (int i = 0; i < 5; i++) {
-      String filePath = String(dirname) + "/" + commonFiles[i];
-      if (FatFS.exists(filePath.c_str())) {
-        File file = FatFS.open(filePath.c_str(), "r");
-        if (file) {
-          for (int j = 0; j <= level; j++)
-            Serial.print("  ");
-          Serial.print(commonFiles[i]);
-          Serial.print(" (");
-          Serial.print(file.size());
-          Serial.println(" bytes)");
-          file.close();
-        }
-      }
-    }
-  }
-}
+//     // Check for other common files
+//     String commonFiles[] = {"bootLoader.txt", "nodeFile.txt", "nets.txt",
+//                             "bridges.txt", "netColors.txt"};
+//     for (int i = 0; i < 5; i++) {
+//       String filePath = String(dirname) + "/" + commonFiles[i];
+//       if (FatFS.exists(filePath.c_str())) {
+//         File file = FatFS.open(filePath.c_str(), "r");
+//         if (file) {
+//           for (int j = 0; j <= level; j++)
+//             Serial.print("  ");
+//           Serial.print(commonFiles[i]);
+//           Serial.print(" (");
+//           Serial.print(file.size());
+//           Serial.println(" bytes)");
+//           file.close();
+//         }
+//       }
+//     }
+//   }
+// }
 
 unsigned long startupCore2timers[10];
 
@@ -469,7 +482,7 @@ int input = '\0';
 int serSource = 0;
 int readInNodesArduino = 0;
 
-const char firmwareVersion[] = "5.2.0.5"; // remember to update this
+const char firmwareVersion[] = "5.2.0.7"; // remember to update this
 const bool newConfigOptions = false; // set to true with new config options //!
                                      // fix the saving every boot thing
 int firstLoop = 1;
@@ -495,6 +508,9 @@ unsigned long switchPositionCheckTimer = 0;
 //int switchPosition = 0;
 unsigned long switchPositionCheckInterval = 500;
 
+
+unsigned long mscModeRefreshTimer = 0;
+unsigned long mscModeRefreshInterval = 1000;
 
 volatile int core1passthrough = 1;
 
@@ -561,7 +577,7 @@ menu:
   if (dontShowMenu == 0) {
   forceprintmenu:
 
-    int numberOfMenuItems = 29 + (showExtraMenu == 1 ? 12 : 0) ;
+    int numberOfMenuItems = 31 + (showExtraMenu == 1 ? 12 : 0) ;
     float steps = 54.0 / (float)numberOfMenuItems;
     // Serial.print("steps = ");
     // Serial.println(steps);
@@ -606,6 +622,10 @@ menu:
     cycleTerminalColor();
     Serial.print("\t/ = show filesystem\n\r");
     cycleTerminalColor();
+          Serial.print("\t\b\bU/u = enable/disable USB Mass Storage\n\r");
+    cycleTerminalColor();
+    //Serial.print("\tu = disable USB Mass Storage drive\n\r");
+    //cycleTerminalColor();
      if (showExtraMenu == 0) {
     Serial.print("\te = show extra options\n\r");
      } else {
@@ -614,7 +634,10 @@ menu:
      
     if (showExtraMenu == 1) {
       Serial.println();
-
+      Serial.print("\ty = refresh connections\n\r");
+      cycleTerminalColor();
+      Serial.print("\tG = reload config.txt\n\r");
+      cycleTerminalColor();
       Serial.print("\to = load node file by slot\n\r");
       cycleTerminalColor();
       Serial.print("\tP = print all connectable nodes\n\r");
@@ -704,10 +727,10 @@ menu:
     Serial.flush();
   }
   if (configChanged == true && millis() > 2000) {
-    Serial.print("config changed, saving...");
+    //Serial.print("config changed, saving...");
     saveConfig();
-    Serial.println("\r                             \rconfig saved!\n\r");
-    Serial.flush();
+    //Serial.println("\r                             \rconfig saved!\n\r");
+    //Serial.flush();
     configChanged = false;
   }
 dontshowmenu:
@@ -751,6 +774,11 @@ dontshowmenu:
     }
 
     secondSerialHandler();
+    
+    // Handle USB tasks (required for MSC and other USB interfaces)
+    //#ifdef USE_TINYUSB
+    tud_task();
+    //#endif
     // //core1passthrough = 0;
 
     if (clickMenu() >= 0) {
@@ -929,7 +957,15 @@ dontshowmenu:
       showMeasurements(16, 0, 0);
     }
 
-
+  if (mscModeEnabled == true) {
+    if (millis() - mscModeRefreshTimer > mscModeRefreshInterval) {
+      mscModeRefreshTimer = millis();
+      //refreshUSBFilesystem();
+      //refreshConnections(-1);
+      //Serial.println("Periodic filesystem refresh completed");
+   //   refreshUSBFilesystem();
+    }
+  }
 
     // if (millis() - oled.lastConnectionCheck > oled.connectionCheckInterval &&
     // jumperlessConfig.top_oled.enabled == 1) {
@@ -1035,6 +1071,154 @@ skipinput:
   //   }
 
   switch (input) {
+
+    case 'G': { //! G - Load config.txt changes
+     Serial.println("Reloading config.txt...");
+      configChanged = true;
+
+     /// loadConfigChanges();
+     // goto dontshowmenu;
+      break;
+    }
+
+    case 'j':
+
+
+  
+    
+    goto dontshowmenu;
+    break;
+
+      case 'U': { //! U - Enable USB Mass Storage drive\n    
+
+if (mscModeEnabled == false) {
+  Serial.println("Enabling USB Mass Storage drive...");
+  if (initUSBMassStorage()) {
+    Serial.println("USB Mass Storage enabled - device will appear as 'JUMPERLESS' drive\n\r");
+    Serial.println("\tu = disable USB Mass Storage");
+    Serial.println("\tG = reload config.txt");
+    Serial.println("\ty = refresh connections when files change");
+    Serial.println("\n\r");
+    Serial.flush();
+  } else {
+    Serial.println("USB Mass Storage initialization failed");
+    Serial.flush();
+  }
+} else {
+  Serial.println("USB Mass Storage is already enabled");
+  printUSBMassStorageStatus();
+ refreshConnections(-1);
+ Serial.flush();
+}
+
+
+
+
+      //  Serial.println("\n╭─────────────────────────────────────╮");
+      //    Serial.println("│       USB Mass Storage Control      │");
+      //    Serial.println("╰─────────────────────────────────────╯");
+      //    printUSBMassStorageStatus();
+      //    Serial.println("Usage:");
+      //    Serial.println("  • Device appears as mass storage automatically");
+      //    Serial.println("  • No special mode needed (CircuitPython-style)");
+      //    Serial.println("  • Device remains responsive during file access");
+      //    Serial.println("  • Use 'U' command to check status anytime");
+      //    if (isUSBMassStorageMounted()) {
+      //      Serial.println("Currently mounted by host - ready for file access");
+      //    } else if (isUSBMassStorageEjected()) {
+      //      Serial.println("Device was ejected by host");
+      //    } else {
+      //      Serial.println("Waiting for host to mount device");
+      //    }
+      //    Serial.flush();
+         goto dontshowmenu;
+         break;
+       }
+
+  case 'Z': { //! Z - Toggle USB debug mode
+    Serial.println("╭─────────────────────────────────╮");
+    Serial.println("│        USB Debug Control        │");
+    Serial.println("├─────────────────────────────────┤");
+    Serial.println("│ 1. Toggle USB debug mode        │");
+    Serial.println("│ 2. Manual refresh from USB      │");
+    Serial.println("│ 3. Validate all slots           │");
+    Serial.println("│ Any other key - Cancel          │");
+    Serial.println("╰─────────────────────────────────╯");
+    Serial.print("Choose option: ");
+    Serial.flush();
+    
+    // Wait for input
+    while (Serial.available() == 0) {
+      delay(1);
+    }
+    char choice = Serial.read();
+    Serial.println(choice);
+    
+    switch (choice) {
+      case '1':
+        Serial.println("\nToggling USB debug mode...");
+        setUSBDebug(!usb_debug_enabled);
+        break;
+      case '2':
+        if (isUSBMassStorageMounted()) {
+          Serial.println("\nPerforming manual refresh from USB...");
+          manualRefreshFromUSB();
+        } else {
+          Serial.println("\nUSB drive not mounted");
+        }
+        break;
+      case '3':
+        Serial.println("\nValidating all slot files...");
+        validateAllSlots(true);
+        break;
+      default:
+        Serial.println("\nCancelled");
+        break;
+    }
+    
+    Serial.flush();
+    goto dontshowmenu;
+    break;
+  }
+
+  case 'u': { //! u - Disable USB Mass Storage drive
+    if (mscModeEnabled == true) {
+      Serial.println("Disabling USB Mass Storage drive...");
+      if (disableUSBMassStorage()) {
+        Serial.println("USB Mass Storage disabled - device no longer appears as drive");
+        Serial.println("Use 'U' command to re-enable when needed");
+      } else {
+        Serial.println("USB Mass Storage disable failed");
+      }
+    } else {
+      Serial.println("USB Mass Storage is already disabled");
+      Serial.println("Use 'U' command to enable");
+    }
+    
+    goto dontshowmenu;
+    break;
+  }
+  
+  case 'D': { //! D - Run USB MSC diagnostic test
+    // Serial.println("Running USB Mass Storage diagnostic test...");
+    // Serial.flush();
+    
+    // quickUSBMSCDiagnostic();
+    
+    // Serial.println("\nDiagnostic complete. Press any key to continue...");
+    // Serial.flush();
+    // while (Serial.available() == 0) {
+    //   delay(10);
+    // }
+    // // Clear the input
+    // while (Serial.available() > 0) {
+    //   Serial.read();
+    // }
+    // goto dontshowmenu;
+    break;
+  }
+
+
   case '/': { //!  /
 
     runApp(-1, (char*)"File Manager");
@@ -1553,14 +1737,14 @@ skipinput:
     oled.cycleFont();
     break;
 
-  case '%': { //!  %
-    // Print entire filesystem
-    Serial.println("\n\rFilesystem Contents:");
-    Serial.println("====================");
-    printDirectoryContents("/", 0);
-    Serial.println("====================");
-    break;
-  }
+  // case '%': { //!  %
+  //   // Print entire filesystem
+  //   Serial.println("\n\rFilesystem Contents:");
+  //   Serial.println("====================");
+  //   printDirectoryContents("/", 0);
+  //   Serial.println("====================");
+  //   break;
+  // }
 
   case '=': { //!  =
     //  while (SerialWrap.available() == 0) {
@@ -1828,7 +2012,7 @@ skipinput:
     break;
 
   case '!':
-    printNodeFile();
+    printNodeFile(netSlot, 0, 0, 0, true);
     break;
 
   case 'w':
@@ -1890,12 +2074,18 @@ skipinput:
 
     slotChanged = 0;
     loadingFile = 0;
-    refreshConnections(-1);
+    
+    // Check if this is a USB refresh request
+    if (isUSBMassStorageMounted()) {
+      manualRefreshFromUSB();
+    } else {
+      refreshConnections(-1);
+    }
     // chooseShownReadings();
     //  setGPIO();
     break;
   }
-  case 'f':
+  case 'f': {
 
     probeActive = 1;
     readInNodesArduino = 1;
@@ -1913,7 +2103,15 @@ skipinput:
     //   }
     savePreformattedNodeFile(serSource, netSlot, rotaryEncoderMode);
 
-    refreshConnections(-1);
+    // Validate the saved node file
+    int validation_result = validateNodeFileSlot(netSlot, true);
+    if (validation_result == 0) {
+      Serial.println("NodeFile validated successfully");
+      refreshConnections(-1);
+    } else {
+      Serial.println("NodeFile validation failed: " + String(getNodeFileValidationError(validation_result)));
+      Serial.println("Connections not refreshed due to invalid node file");
+    }
 
     // //if (debugNMtime) {
     //   Serial.print("\n\n\r");
@@ -1938,13 +2136,19 @@ skipinput:
     connectFromArduino = '\0';
     readInNodesArduino = 0;
     break;
+  }
 
     // case '\n':
     //   goto menu;
     //   break;
 
-  case 't':
+  case 't': { //! t - Test MSC callbacks
+    // Test function disabled
+    goto dontshowmenu;
     break;
+  }
+  
+  case 'T': { //! T - Show netlist info
 #ifdef FSSTUFF
     openNodeFile();
     getNodesToConnect();
@@ -1969,6 +2173,7 @@ skipinput:
 #endif
 
     break;
+  }
 
   case 'l':
     if (LEDbrightnessMenu() == '!') {
@@ -2055,6 +2260,8 @@ skipinput:
     }
   }
 
+
+
   case ':':
 
     if (Serial.read() == ':') {
@@ -2116,6 +2323,11 @@ void loop1() {
   // while (startupAnimationFinished == 0) {
 
   //   }
+  
+  // Handle USB tasks on core1 as well (important for MSC interface)
+  // #ifdef USE_TINYUSB
+  //  tud_task();
+  // #endif
 
   if (doomOn == 1) {
     playDoom();

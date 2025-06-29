@@ -13,6 +13,7 @@
 #include "Probing.h"
 #include "RotaryEncoder.h"
 #include "SerialWrapper.h"
+#include "USBfs.h"
 
 volatile int sendAllPathsCore2 =
     0; // this signals the core 2 to send all the paths to the CH446Q
@@ -37,8 +38,8 @@ unsigned long waitCore2() {
       sendAllPathsCore2 = 0;
       break;
     }
-  }
-  // Serial.println(micros() - timeout);
+    }
+    // Serial.println(micros() - timeout);
 
   core1request = 0;
   return micros() - timeout;
@@ -540,18 +541,18 @@ void printSlots(int fileNo) {
   Serial.print("\n\r(or even just a single slot)\n\n\n\r");
   if (fileNo == -1) {
     for (int i = 0; i < NUM_SLOTS; i++) {
-      Serial.print("\n\rSlot ");
-      Serial.print(i);
-      if (i == netSlot) {
-        Serial.print("        <--- current slot");
-      }
+      if (getSlotLength(i, 0) > 0) {  // Only print headers and content if slot has content
+        Serial.print("\n\rSlot ");
+        Serial.print(i);
+        if (i == netSlot) {
+          Serial.print("        <--- current slot");
+        }
 
-      Serial.print("\n\rnodeFileSlot");
-      Serial.print(i);
-      Serial.print(".txt\n\r");
-      if (getSlotLength(i, 0) > 0) {
+        Serial.print("\n\rnodeFileSlot");
+        Serial.print(i);
+        Serial.print(".txt\n\r");
         Serial.print("\n\rf ");
-        printNodeFile(i);
+        printNodeFile(i, 0, 0, 0, false);
         Serial.print("\n\n\r");
       }
     }
@@ -563,7 +564,8 @@ void printSlots(int fileNo) {
 
     Serial.print("\n\rf ");
 
-    printNodeFile(fileNo - '0');
+    printNodeFile(fileNo - '0', 0, 0, 0, true); // Print empty slots when showing specific slot
     Serial.print("\n\r");
   }
 }
+

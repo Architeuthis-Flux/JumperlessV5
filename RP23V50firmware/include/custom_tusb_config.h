@@ -78,7 +78,6 @@ extern "C" {
 #define CFG_TUD_CDC_EP_BUFSIZE 64
 
 #define CFG_TUD_MSC USB_MSC_ENABLE
-#define CFG_TUD_HID USB_HID_ENABLE_COUNT
 #define CFG_TUD_MIDI USB_MIDI_ENABLE
 #define CFG_TUD_VENDOR USB_VENDOR_ENABLE
 
@@ -87,7 +86,7 @@ extern "C" {
 #define CFG_TUD_CDC_TX_BUFSIZE 4096
 
 // MSC Buffer size of Device Mass storage
-#define CFG_TUD_MSC_EP_BUFSIZE 512
+#define CFG_TUD_MSC_EP_BUFSIZE 64
 
 // HID buffer size Should be sufficient to hold ID (if any) + Data
 #define CFG_TUD_HID_EP_BUFSIZE 64

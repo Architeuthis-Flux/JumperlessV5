@@ -26,6 +26,10 @@
 #include "tusb.h"
 #include "pico/stdlib.h"
 #include "hardware/gpio.h"
+#include "JumperlessDefines.h"
+
+// Override compile-time config with runtime dynamic config
+#define OVERRIDE_USB_CONFIG 1
 #include "usb_interface_config.h"
 #include "config.h"
 #include "configManager.h"
@@ -46,7 +50,7 @@ tusb_desc_device_t const desc_device =
     .bDescriptorType    = TUSB_DESC_DEVICE,
     .bcdUSB             = 0x0200,
 
-    // Use Interface Association Descriptor (IAD) for CDC
+    // Use Interface Association Descriptor (IAD) for composite device
     .bDeviceClass       = TUSB_CLASS_MISC,
     .bDeviceSubClass    = MISC_SUBCLASS_COMMON,
     .bDeviceProtocol    = MISC_PROTOCOL_IAD,
@@ -59,6 +63,7 @@ tusb_desc_device_t const desc_device =
 
     .iManufacturer      = 0x01,
     .iProduct           = 0x02,
+    .iSerialNumber      = 0x03,
 
     .bNumConfigurations = 0x01
 };
@@ -71,6 +76,9 @@ uint8_t const * __wrap_tud_descriptor_device_cb(void)
   static bool first_call = true;
   if (first_call) {
     first_call = false;
+    Serial.println("◆ USB Device descriptor requested");
+    Serial.printf("◆ Device class: 0x%02X, subclass: 0x%02X, protocol: 0x%02X\n",
+                 desc_device.bDeviceClass, desc_device.bDeviceSubClass, desc_device.bDeviceProtocol);
   }
   return (uint8_t const *) &desc_device;
 }
@@ -84,56 +92,8 @@ uint8_t const desc_hid_report[] =
 #endif
 
 //--------------------------------------------------------------------+
-// Dynamic Interface Numbering
+// Interface numbers are defined in usb_interface_config.h
 //--------------------------------------------------------------------+
-
-// Calculate interface numbers dynamically based on enabled interfaces
-enum
-{
-  // CDC interfaces (each CDC uses 2 interface numbers)
-#if USB_CDC_ENABLE_COUNT >= 1
-  ITF_NUM_CDC_0 = 0,
-  ITF_NUM_CDC_0_DATA,
-#endif
-#if USB_CDC_ENABLE_COUNT >= 2
-  ITF_NUM_CDC_1,
-  ITF_NUM_CDC_1_DATA,
-#endif
-#if USB_CDC_ENABLE_COUNT >= 3
-  ITF_NUM_CDC_2,
-  ITF_NUM_CDC_2_DATA,
-#endif
-#if USB_CDC_ENABLE_COUNT >= 4
-  ITF_NUM_CDC_3,
-  ITF_NUM_CDC_3_DATA,
-#endif
-
-  // MSC interface
-#if USB_MSC_ENABLE
-  ITF_NUM_MSC,
-#endif
-
-  // HID interfaces
-#if USB_HID_ENABLE_COUNT >= 1
-  ITF_NUM_HID_0,
-#endif
-#if USB_HID_ENABLE_COUNT >= 2
-  ITF_NUM_HID_1,
-#endif
-
-  // MIDI interface (uses 2 interface numbers)
-#if USB_MIDI_ENABLE
-  ITF_NUM_MIDI,
-  ITF_NUM_MIDI_STREAMING,
-#endif
-
-  // Vendor interface
-#if USB_VENDOR_ENABLE
-  ITF_NUM_VENDOR,
-#endif
-
-  ITF_NUM_TOTAL
-};
 
 // Calculate total descriptor length
 #define CONFIG_TOTAL_LEN  (TUD_CONFIG_DESC_LEN + \
@@ -213,7 +173,7 @@ uint8_t const desc_fs_configuration[] =
   // Config number, interface count, string index, total length, attribute, power in mA
   TUD_CONFIG_DESCRIPTOR(1, ITF_NUM_TOTAL, 0, CONFIG_TOTAL_LEN, 0x80, 500),
 
-  // CDC interfaces
+  // CDC interfaces with IADs for better enumeration
 #if USB_CDC_ENABLE_COUNT >= 1
   TUD_CDC_DESCRIPTOR(ITF_NUM_CDC_0, 4, EPNUM_CDC_0_NOTIF, 8, EPNUM_CDC_0_OUT, EPNUM_CDC_0_IN, 64),
 #endif
@@ -230,9 +190,9 @@ uint8_t const desc_fs_configuration[] =
   TUD_CDC_DESCRIPTOR(ITF_NUM_CDC_3, 7, EPNUM_CDC_3_NOTIF, 8, EPNUM_CDC_3_OUT, EPNUM_CDC_3_IN, 64),
 #endif
 
-  // MSC interface
+  // MSC interface - place after CDC interfaces for better compatibility
 #if USB_MSC_ENABLE
-  TUD_MSC_DESCRIPTOR(ITF_NUM_MSC, 8, EPNUM_MSC_OUT, EPNUM_MSC_IN, 64),
+  TUD_MSC_DESCRIPTOR(ITF_NUM_MSC, 7, EPNUM_MSC_OUT, EPNUM_MSC_IN, 64),
 #endif
 
   // HID interfaces
@@ -259,6 +219,33 @@ __attribute__((used))
 uint8_t const * __wrap_tud_descriptor_configuration_cb(uint8_t index)
 {
   (void) index; // for multiple configurations
+  
+  static bool first_call = true;
+  if (first_call) {
+    first_call = false;
+    Serial.println("◆ USB Configuration descriptor requested");
+    Serial.printf("◆ Total interfaces: %d\n", ITF_NUM_TOTAL);
+    Serial.printf("◆ CDC interfaces: %d\n", USB_CDC_ENABLE_COUNT);
+    Serial.printf("◆ MSC enabled: %d\n", USB_MSC_ENABLE);
+    Serial.printf("◆ Config length: %d bytes\n", CONFIG_TOTAL_LEN);
+    
+    // Debug interface assignments
+    Serial.println("◆ Interface assignments:");
+#if USB_CDC_ENABLE_COUNT >= 1
+    Serial.printf("◆   CDC 0: interfaces %d, %d\n", ITF_NUM_CDC_0, ITF_NUM_CDC_0_DATA);
+#endif
+#if USB_CDC_ENABLE_COUNT >= 2
+    Serial.printf("◆   CDC 1: interfaces %d, %d\n", ITF_NUM_CDC_1, ITF_NUM_CDC_1_DATA);
+#endif
+#if USB_CDC_ENABLE_COUNT >= 3
+    Serial.printf("◆   CDC 2: interfaces %d, %d\n", ITF_NUM_CDC_2, ITF_NUM_CDC_2_DATA);
+#endif
+#if USB_MSC_ENABLE
+    Serial.printf("◆   MSC: interface %d\n", ITF_NUM_MSC);
+    Serial.printf("◆   MSC endpoints: OUT=0x%02X, IN=0x%02X\n", EPNUM_MSC_OUT, EPNUM_MSC_IN);
+#endif
+  }
+  
   return desc_fs_configuration;
 }
 
@@ -288,7 +275,7 @@ static const char* string_desc_arr [] =
   (const char[]) { 0x09, 0x04 }, // 0: is supported language is English (0x0409)
   "Architeuthis Flux",           // 1: Manufacturer
   "Jumperless V5",               // 2: Product  
-  "JL5V001",                     // 3: Serials, should use chip ID
+  "JLV5port",                     // 3: Serials, should use chip ID
   
   // CDC interface names (only include if enabled)
 #if USB_CDC_ENABLE_COUNT >= 1
@@ -321,78 +308,6 @@ static const char* string_desc_arr [] =
 
 static uint16_t _desc_str[32];
 
-// Helper function to generate dynamic CDC interface names based on config
-const char* get_dynamic_cdc_name(uint8_t cdc_index) {
-  static char dynamic_name[32];
-  
-  switch(cdc_index) {
-    case 0:
-      return "Jumperless Main";
-      
-    case 1: {
-      // Get function name from table for serial 1
-      const char* function_name = getStringFromTable(jumperlessConfig.serial_1.function, uartFunctionTable);
-      if (function_name && strcmp(function_name, "off") != 0 && strcmp(function_name, "disable") != 0) {
-        // Capitalize first letter and format nicely
-        char formatted_function[16];
-        strncpy(formatted_function, function_name, sizeof(formatted_function) - 1);
-        formatted_function[sizeof(formatted_function) - 1] = '\0';
-        
-        // Capitalize first letter
-        if (formatted_function[0] >= 'a' && formatted_function[0] <= 'z') {
-          formatted_function[0] = formatted_function[0] - 'a' + 'A';
-        }
-        
-        // Replace underscores with spaces
-        for (int i = 0; formatted_function[i]; i++) {
-          if (formatted_function[i] == '_') {
-            formatted_function[i] = ' ';
-          }
-        }
-        
-        snprintf(dynamic_name, sizeof(dynamic_name), "JL %s", formatted_function);
-      } else {
-        snprintf(dynamic_name, sizeof(dynamic_name), "Jumperless Serial 1");
-      }
-      return dynamic_name;
-    }
-      
-    case 2: {
-      // Get function name from table for serial 2
-      const char* function_name = getStringFromTable(jumperlessConfig.serial_2.function, uartFunctionTable);
-      if (function_name && strcmp(function_name, "off") != 0 && strcmp(function_name, "disable") != 0) {
-        // Capitalize first letter and format nicely
-        char formatted_function[16];
-        strncpy(formatted_function, function_name, sizeof(formatted_function) - 1);
-        formatted_function[sizeof(formatted_function) - 1] = '\0';
-        
-        // Capitalize first letter
-        if (formatted_function[0] >= 'a' && formatted_function[0] <= 'z') {
-          formatted_function[0] = formatted_function[0] - 'a' + 'A';
-        }
-        
-        // Replace underscores with spaces
-        for (int i = 0; formatted_function[i]; i++) {
-          if (formatted_function[i] == '_') {
-            formatted_function[i] = ' ';
-          }
-        }
-        
-        snprintf(dynamic_name, sizeof(dynamic_name), "JL %s", formatted_function);
-      } else {
-        snprintf(dynamic_name, sizeof(dynamic_name), "Jumperless Serial 2");
-      }
-      return dynamic_name;
-    }
-      
-    case 3:
-      return "Jumperless Debug";
-      
-    default:
-      return USB_CDC_NAMES[cdc_index]; // Fallback to static names
-  }
-}
-
 // Wrapped function that intercepts the library's string descriptor callback
 __attribute__((used))
 uint16_t const* __wrap_tud_descriptor_string_cb(uint8_t index, uint16_t langid)
@@ -408,22 +323,12 @@ uint16_t const* __wrap_tud_descriptor_string_cb(uint8_t index, uint16_t langid)
   }
   else
   {
-    // Note: the 0xEE index string is a Microsoft OS 1.0 Descriptors.
-    // https://docs.microsoft.com/en-us/windows-hardware/drivers/usbcon/microsoft-defined-usb-descriptors
-
-    const char* str = NULL;
+    // Use static string array only - no dynamic naming for now
+    if ( !(index < sizeof(string_desc_arr)/sizeof(string_desc_arr[0])) ) {
+      return NULL;
+    }
     
-    // Handle dynamic CDC interface naming
-    if (index >= STRID_CDC_0 && index <= STRID_CDC_3) {
-      uint8_t cdc_index = index - STRID_CDC_0;
-      str = get_dynamic_cdc_name(cdc_index);
-    }
-    else {
-      // Use static string array for non-CDC interfaces
-      if ( !(index < sizeof(string_desc_arr)/sizeof(string_desc_arr[0])) ) return NULL;
-      str = string_desc_arr[index];
-    }
-
+    const char* str = string_desc_arr[index];
     if (!str) return NULL;
 
     // Cap at max char
