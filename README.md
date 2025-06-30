@@ -189,3 +189,4 @@ https://github.com/user-attachments/assets/13d6d9ab-8ea0-4387-aee6-343be06bf343
 ![RaspberryJ-2](https://github.com/user-attachments/assets/173f3d3b-58bf-4dea-9912-552df6e8ac47)
 ![JumperlessV5back](https://github.com/Architeuthis-Flux/JumperlessV5/assets/20519442/615c90cc-c19b-41ef-a5fb-0dfb2a027084)
 
+[![Ask DeepWiki](https://deepwiki.com/badge.svg)](https://deepwiki.com/Architeuthis-Flux/JumperlessV5)
