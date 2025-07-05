@@ -1,7 +1,7 @@
 # Getting Started
 ![guideNoHighlight](https://github.com/user-attachments/assets/dda9717f-4d94-4421-b145-e08cfc68a900)
 
-You probably want to install the [app](APP.md) first, to get the latest firmware.
+You probably want to install the [app](https://github.com/Architeuthis-Flux/JumperlessV5/blob/7ea0effd664215c4f7f4894d67472feb57d75df0/RP23V50firmware/docs/APP.md) first, to get the latest firmware.
 # Here's a super-quick rundown of the how to use the thing:
 
 ## The Probe

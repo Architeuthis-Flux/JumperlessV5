@@ -1,4 +1,4 @@
-# App intallation guide
+# App installation guide
 
 ## Find the latest release
 https://github.com/Architeuthis-Flux/JumperlessV5/releases/latest
