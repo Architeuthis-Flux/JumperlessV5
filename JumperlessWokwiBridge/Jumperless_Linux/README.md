@@ -8,22 +8,20 @@
 Multiple launcher options are provided for different use cases:
 
 ### Option 1: Shell Script Launchers (Recommended for most users)
-- `jumperless_launcher.sh` - Full-featured shell launcher with comprehensive process killing
+- `jumperless_launcher.sh` - Full-featured shell launcher
 - `jumperless_launcher` - Executable launcher (no extension) for double-clicking
 
 ### Option 2: Python Wrapper (For advanced users)
-- `jumperless_launcher.py` - Cross-platform Python launcher with process killing
+- `jumperless_launcher.py` - Cross-platform Python launcher
 
 ### Option 3: Manual Execution
 - Run `python3 JumperlessWokwiBridge.py` directly after installing requirements
 
-## Smart Process Management
-All launchers include comprehensive process killing functionality:
-- ✅ Automatically kills existing Jumperless instances before starting
-- ✅ Closes terminal windows running Jumperless (uses xdotool/wmctrl)
-- ✅ Handles GNOME Terminal, Konsole, and other terminal emulators
-- ✅ Graceful process termination with force-kill fallback
-- ✅ User-friendly messages and error handling
+## Simple Launcher Features
+All launchers provide:
+- ✅ Automatic Python dependency installation
+- ✅ Clear feedback about terminal environment
+- ✅ Graceful error handling and user-friendly messages
 
 ## Requirements
 - Python 3.6 or higher

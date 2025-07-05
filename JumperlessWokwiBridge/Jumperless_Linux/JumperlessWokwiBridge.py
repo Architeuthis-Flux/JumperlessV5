@@ -86,7 +86,12 @@ except ImportError:
     COLORS_AVAILABLE = False
 
 # Enhanced keyboard input support
-from pynput import keyboard as pynput_keyboard
+if sys.platform == "win32":
+    try:
+        from pynput import keyboard as pynput_keyboard
+        PYINPUT_AVAILABLE = True
+    except ImportError:
+        PYINPUT_AVAILABLE = False
 
 # Interactive mode will use termios on Unix-like systems
 import shutil
@@ -767,29 +772,47 @@ def find_main_port(jumperless_ports, force_quit_python=False):
                 # Clear buffers thoroughly
                 test_port.reset_input_buffer()
                 test_port.reset_output_buffer()
-                time.sleep(0.1)
+                time.sleep(0.6)
                 
                 # Send ? to check for firmware response
                 if force_quit_python:
-                    quit_command = "\n\rquit\n\r"
+                    quit_command = "\x11"
+                    test_port.write(quit_command.encode('utf-8', errors='ignore'))
+                    # print(quit_command)
+                    time.sleep(0.25)
+                    test_port.write(quit_command.encode('utf-8', errors='ignore'))
+                    time.sleep(0.25)
+                    test_port.write(quit_command.encode('utf-8', errors='ignore'))
+                    time.sleep(0.25)
+                    test_port.write(quit_command.encode('utf-8', errors='ignore'))
+                    time.sleep(0.25)
+                    test_port.write(quit_command.encode('utf-8', errors='ignore'))
+                    time.sleep(0.25)
+                    test_port.write(quit_command.encode('utf-8', errors='ignore'))
+                    time.sleep(0.25)
                     test_port.write(quit_command.encode('utf-8', errors='ignore'))
                     test_port.flush()
-                    time.sleep(0.5)
+                    time.sleep(0.25)
+                    test_port.write(quit_command.encode('utf-8', errors='ignore'))
+                    time.sleep(0.25)
+                    print(quit_command)
+                    
+                    test_port.flush()
                 
                 # Send ? to check for firmware response
                 test_port.write(b'?')
                 test_port.flush()
-                time.sleep(0.5)  # Give more time for response
+                time.sleep(0.85)  # Give more time for response
                 
                 if test_port.in_waiting > 0:
                     response_buffer = b''
                     start_time = time.time()
                     
                     # Read all available data with longer timeout
-                    while time.time() - start_time < 1.0:
+                    while time.time() - start_time < 1.3:
                         if test_port.in_waiting > 0:
                             response_buffer += test_port.read(test_port.in_waiting)
-                            time.sleep(0.01)  # Small delay to catch additional data
+                            time.sleep(0.1)  # Small delay to catch additional data
                         else:
                             time.sleep(0.05)
                             # If no new data for 100ms, assume we have the complete response
@@ -4302,6 +4325,7 @@ def main():
 
 
 """, Fore.MAGENTA)
+    print("\nNote: This app looks best on a dark background")
     create_directories()
         # Check for app updates
     update_app_if_needed()

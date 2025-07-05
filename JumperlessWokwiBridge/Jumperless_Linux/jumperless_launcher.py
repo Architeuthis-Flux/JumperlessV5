@@ -6,56 +6,11 @@ Cross-platform launcher that can be executed directly
 import os
 import sys
 import subprocess
-import time
-import signal
-
-def kill_existing_instances():
-    """Kill existing Jumperless instances on Linux"""
-    print("Checking for existing Jumperless instances...")
-    
-    # Close terminal windows using xdotool if available
-    try:
-        subprocess.run(['xdotool', 'search', '--name', 'Jumperless', 'windowclose'], 
-                      capture_output=True, check=False)
-        subprocess.run(['xdotool', 'search', '--name', 'jumperless', 'windowclose'], 
-                      capture_output=True, check=False)
-    except Exception:
-        pass
-    
-    # Try wmctrl for window management
-    try:
-        subprocess.run(['wmctrl', '-c', 'Jumperless'], 
-                      capture_output=True, check=False)
-        subprocess.run(['wmctrl', '-c', 'jumperless'], 
-                      capture_output=True, check=False)
-    except Exception:
-        pass
-    
-    # Kill processes
-    process_patterns = [
-        "Jumperless_cli",
-        "jumperless_cli", 
-        "JumperlessWokwiBridge",
-        "Jumperless.app"
-    ]
-    
-    for pattern in process_patterns:
-        try:
-            subprocess.run(['pkill', '-f', pattern], 
-                          capture_output=True, check=False)
-        except Exception:
-            pass
-    
-    time.sleep(1)
-    print("Cleared existing instances and terminal windows.")
 
 def main():
     """Main launcher function"""
     # Get script directory
     script_dir = os.path.dirname(os.path.abspath(__file__))
-    
-    # Kill existing instances
-    kill_existing_instances()
     
     print("\\n" + "="*50)
     print("    Jumperless Linux Python Launcher")

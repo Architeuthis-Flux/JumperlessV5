@@ -2,11 +2,10 @@
 # Auto-generated minimal dependencies
 
 beautifulsoup4==4.13.4
-colorama==0.4.6
-packaging==25.0
-psutil==7.0.0
+packaging==24.1
+psutil==5.9.8
 pyduinocli==0.35.0
 pyserial==3.5
-requests==2.32.4
+requests==2.32.3
 pywin32>=306; platform_system == "Windows"
 pynput; platform_system == "Windows"

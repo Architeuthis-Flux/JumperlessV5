@@ -776,10 +776,28 @@ def find_main_port(jumperless_ports, force_quit_python=False):
                 
                 # Send ? to check for firmware response
                 if force_quit_python:
-                    quit_command = "\n\rquit\n\r"
+                    quit_command = "\x11"
+                    test_port.write(quit_command.encode('utf-8', errors='ignore'))
+                    # print(quit_command)
+                    time.sleep(0.25)
+                    test_port.write(quit_command.encode('utf-8', errors='ignore'))
+                    time.sleep(0.25)
+                    test_port.write(quit_command.encode('utf-8', errors='ignore'))
+                    time.sleep(0.25)
+                    test_port.write(quit_command.encode('utf-8', errors='ignore'))
+                    time.sleep(0.25)
+                    test_port.write(quit_command.encode('utf-8', errors='ignore'))
+                    time.sleep(0.25)
+                    test_port.write(quit_command.encode('utf-8', errors='ignore'))
+                    time.sleep(0.25)
                     test_port.write(quit_command.encode('utf-8', errors='ignore'))
                     test_port.flush()
-                    time.sleep(0.5)
+                    time.sleep(0.25)
+                    test_port.write(quit_command.encode('utf-8', errors='ignore'))
+                    time.sleep(0.25)
+                    print(quit_command)
+                    
+                    test_port.flush()
                 
                 # Send ? to check for firmware response
                 test_port.write(b'?')
