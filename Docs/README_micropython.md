@@ -18,9 +18,8 @@ This guide covers how to write, load, and run Python scripts that control Jumper
 ### Starting MicroPython REPL
 From the main Jumperless menu, press `p` to enter the MicroPython REPL:
 
-```
->>> 
-```
+![Screenshot 2025-07-04 at 7 03 24 PM](https://github.com/user-attachments/assets/e7ce0688-5ddf-48da-8560-4a8f6b747c4f)
+
 
 ### Basic Hardware Control
 ```python
@@ -46,12 +45,15 @@ All Jumperless hardware functions are automatically imported into the global nam
 ### Node Connections
 ```python
 # Connect two nodes
-connect(1, 5)                    # Connect node 1 to node 5
-connect("D13", "TOP_RAIL")       # Connect using node names
-connect(TOP_RAIL, BOTTOM_RAIL)   # Connect power rails
+connect(1, 5)                    # Connect using numbers
+connect("d13", "tOp_rAiL")       # Connect using node names (case insensitive when in quotes)
+connect(TOP_RAIL, BOTTOM_RAIL)   # Connect using DEFINEs (all caps) Note: This will actually just be ignored by the Jumperless due to Do Not Intersect rules
 
-# Disconnect nodes
+# Disconnect bridges
 disconnect(1, 5)
+
+# Disconnect everything connected to a node
+disconnect(5, -1)
 
 # Check if nodes are connected
 if is_connected(1, 5):
@@ -60,8 +62,10 @@ if is_connected(1, 5):
 # Clear all connections
 nodes_clear()
 ```
+![Screenshot 2025-07-04 at 7 22 35 PM](https://github.com/user-attachments/assets/e08d9b83-aa4d-4e1a-873c-7f6c46ddb5bc)
 
-### DAC (Digital-to-Analog Converter)
+
+### DAC (Output Voltage)
 ```python
 # Set DAC voltage (-8.0V to 8.0V)
 dac_set(0, 2.5)    # Set DAC channel 0 to 2.5V
@@ -75,8 +79,9 @@ print("DAC 0: " + str(voltage) + "V")
 # 0 = DAC0, 1 = DAC1, 2 = TOP_RAIL, 3 = BOTTOM_RAIL
 # Can also use node names: DAC0, DAC1, TOP_RAIL, BOTTOM_RAIL
 ```
+![Screenshot 2025-07-04 at 7 17 36 PM](https://github.com/user-attachments/assets/f68b3bf2-3420-4d51-800a-1e8e9e804261)
 
-### ADC (Analog-to-Digital Converter)
+### ADC (Measure Voltage)
 ```python
 # Read analog voltage (0-8V range for channels 0-3, 0-5V for channel 4)
 voltage = adc_get(0)    # Read ADC channel 0
@@ -84,6 +89,7 @@ voltage = adc_get(1)    # Read ADC channel 1
 
 # Available channels: 0, 1, 2, 3, 4
 ```
+![Screenshot 2025-07-04 at 7 22 01 PM](https://github.com/user-attachments/assets/79cf16e8-8a79-4f11-9cf4-52456735b0dc)
 
 ### GPIO (General Purpose I/O)
 ```python
@@ -109,16 +115,19 @@ pull = gpio_get_pull(2)        # Returns "PULLUP", "PULLDOWN", or "NONE"
 
 # Available GPIO pins: 1-8 (GPIO 1-8), 9 (UART Tx), 10 (UART Rx)
 ```
+![Screenshot 2025-07-04 at 7 22 35 PM](https://github.com/user-attachments/assets/5b5f884f-f459-4a31-9f21-89d084594f97)
+![Screenshot 2025-07-04 at 7 31 19 PM](https://github.com/user-attachments/assets/c7bdb245-59a4-46db-9c52-fcc43c1f359e)
 
 ### Current Sensing (INA219)
 ```python
 # Read current sensor data
-current = ina_get_current(0)      # Current in mA
-voltage = ina_get_voltage(0)      # Shunt voltage in V
+current = ina_get_current(0)          # Current in A
+current = ina_get_current(0) * 1000   # Current in mA
+voltage = ina_get_voltage(0)          # Shunt voltage in V
 bus_voltage = ina_get_bus_voltage(0)  # Bus voltage in V
-power = ina_get_power(0)          # Power in mW
+power = ina_get_power(0)              # Power in W
 
-# Available sensors: 0, 1
+# Available sensors: 0, 1    # INA 1 is hardwired to the output of DAC 0 because it's meant for measuring resistance
 ```
 
 ### OLED Display
@@ -154,14 +163,8 @@ button = button_check()           # Alias
 button = probe_button(True)       # Blocking
 button = probe_button(False)      # Non-blocking
 ```
+![Screenshot 2025-07-04 at 7 37 54 PM](https://github.com/user-attachments/assets/4d0b2e29-e33d-4e1c-b339-336d1d686319)
 
-### Clickwheel Control
-```python
-# Simulate clickwheel actions
-clickwheel_up(1)      # Up click
-clickwheel_down(1)    # Down click
-clickwheel_press()    # Press
-```
 
 ### System Functions
 ```python
@@ -177,6 +180,213 @@ help()                # Display all available functions
 nodes_help()          # Show all available node names and aliases
 ```
 
+The help() functions will list all the available commands (except for the new ones I forget to update)
+
+<details> 
+<summary> Expand for the entire output of help() </summary>
+
+```python
+>>> help()
+Jumperless Native MicroPython Module
+Hardware Control Functions with Formatted Output:
+(GPIO functions return formatted strings like HIGH/LOW, INPUT/OUTPUT, PULLUP/NONE, CONNECTED/DISCONNECTED)
+
+DAC (Digital-to-Analog Converter):
+  jumperless.dac_set(channel, voltage)         - Set DAC output voltage
+  jumperless.dac_get(channel)                  - Get DAC output voltage
+  jumperless.set_dac(channel, voltage)         - Alias for dac_set
+  jumperless.get_dac(channel)                  - Alias for dac_get
+
+          channel: 0-3, DAC0, DAC1, TOP_RAIL, BOTTOM_RAIL
+          channel 0/DAC0: DAC 0
+          channel 1/DAC1: DAC 1
+          channel 2/TOP_RAIL: top rail
+          channel 3/BOTTOM_RAIL: bottom rail
+            voltage: -8.0 to 8.0V
+
+ADC (Analog-to-Digital Converter):
+  jumperless.adc_get(channel)                  - Read ADC input voltage
+  jumperless.get_adc(channel)                  - Alias for adc_get
+
+                                              channel: 0-4
+
+INA (Current/Power Monitor):
+  jumperless.ina_get_current(sensor)          - Read current in amps
+  jumperless.ina_get_voltage(sensor)          - Read shunt voltage
+  jumperless.ina_get_bus_voltage(sensor)      - Read bus voltage
+  jumperless.ina_get_power(sensor)            - Read power in watts
+  Aliases: get_current, get_voltage, get_bus_voltage, get_power
+
+             sensor: 0 or 1
+
+GPIO:
+  jumperless.gpio_set(pin, value)             - Set GPIO pin state
+  jumperless.gpio_get(pin)                    - Read GPIO pin state
+  jumperless.gpio_set_dir(pin, direction)     - Set GPIO pin direction
+  jumperless.gpio_get_dir(pin)                - Get GPIO pin direction
+  jumperless.gpio_set_pull(pin, pull)         - Set GPIO pull-up/down
+  jumperless.gpio_get_pull(pin)               - Get GPIO pull-up/down
+  Aliases: set_gpio, get_gpio, set_gpio_dir, get_gpio_dir, etc.
+
+            pin 1-8: GPIO 1-8
+            pin   9: UART Tx
+            pin  10: UART Rx
+              value: True/False   for HIGH/LOW
+          direction: True/False   for OUTPUT/INPUT
+               pull: -1/0/1       for PULL_DOWN/NONE/PULL_UP
+
+Node Connections:
+  jumperless.connect(node1, node2)            - Connect two nodes
+  jumperless.disconnect(node1, node2)         - Disconnect nodes
+  jumperless.is_connected(node1, node2)       - Check if nodes are connected
+
+  jumperless.nodes_clear()                    - Clear all connections
+         set node2 to -1 to disconnect everything connected to node1
+
+OLED Display:
+  jumperless.oled_print("text")               - Display text
+  jumperless.oled_clear()                     - Clear display
+  jumperless.oled_connect()                   - Connect OLED
+  jumperless.oled_disconnect()                - Disconnect OLED
+
+Clickwheel:
+  jumperless.clickwheel_up([clicks])          - Scroll up
+  jumperless.clickwheel_down([clicks])        - Scroll down
+  jumperless.clickwheel_press()               - Press button
+           clicks: number of steps
+
+Status:
+  jumperless.print_bridges()                  - Print all bridges
+  jumperless.print_paths()                    - Print path between nodes
+  jumperless.print_crossbars()                - Print crossbar array
+  jumperless.print_nets()                     - Print nets
+  jumperless.print_chip_status()              - Print chip status
+
+Probe Functions:
+  jumperless.probe_read([blocking=True])      - Read probe (default: blocking)
+  jumperless.read_probe([blocking=True])      - Read probe (default: blocking)
+  jumperless.probe_read_blocking()            - Wait for probe touch (explicit)
+  jumperless.probe_read_nonblocking()         - Check probe immediately (explicit)
+  jumperless.get_button([blocking=True])      - Get button state (default: blocking)
+  jumperless.probe_button([blocking=True])    - Get button state (default: blocking)
+  jumperless.probe_button_blocking()          - Wait for button press (explicit)
+  jumperless.probe_button_nonblocking()       - Check buttons immediately (explicit)
+  Touch aliases: probe_wait, wait_probe, probe_touch, wait_touch (always blocking)
+  Button aliases: button_read, read_button (parameterized)
+  Non-blocking only: check_button, button_check
+  Touch returns: ProbePad object (1-60, D13_PAD, TOP_RAIL_PAD, LOGO_PAD_TOP, etc.)
+  Button returns: CONNECT, REMOVE, or NONE (front=connect, rear=remove)
+
+Misc:
+  jumperless.arduino_reset()                  - Reset Arduino
+  jumperless.probe_tap(node)                  - Tap probe on node (unimplemented)
+  jumperless.run_app(appName)                 - Run app
+  jumperless.format_output(True/False)        - Enable/disable formatted output
+
+Help:
+  jumperless.help()                           - Display this help
+
+Node Names:
+  jumperless.node("TOP_RAIL")                  - Create node from string name
+  jumperless.TOP_RAIL                        - Pre-defined node constant
+  jumperless.D2, jumperless.A0, etc.         - Arduino pin constants
+  For global access: from jumperless_nodes import *
+  Node names: All standard names like "D13", "A0", "GPIO_1", etc.
+
+Examples (all functions available globally):
+  dac_set(TOP_RAIL, 3.3)                     # Set Top Rail to 3.3V using node
+  set_dac(3, 3.3)                            # Same as above using alias
+  dac_set(DAC0, 5.0)                         # Set DAC0 using node constant
+  voltage = get_adc(1)                       # Read ADC1 using alias
+  connect(TOP_RAIL, D13)                     # Connect using constants
+  connect("TOP_RAIL", 5)                      # Connect using strings
+  connect(4, 20)                             # Connect using numbers
+  top_rail = node("TOP_RAIL")                 # Create node object
+  connect(top_rail, D13)                     # Mix objects and constants
+  oled_print("Fuck you!")                    # Display text
+  current = get_current(0)                   # Read current using alias
+  set_gpio(1, True)                          # Set GPIO pin high using alias
+  pad = probe_read()                         # Wait for probe touch
+  if pad == 25: print('Touched pad 25!')    # Check specific pad
+  if pad == D13_PAD: connect(D13, TOP_RAIL)  # Auto-connect Arduino pin
+  if pad == TOP_RAIL_PAD: show_voltage()     # Show rail voltage
+  if pad == LOGO_PAD_TOP: print('Logo!')    # Check logo pad
+  button = get_button()                      # Wait for button press (blocking)
+  if button == CONNECT_BUTTON: ...          # Front button pressed
+  if button == REMOVE_BUTTON: ...           # Rear button pressed
+  button = check_button()                   # Check buttons immediately
+  if button == BUTTON_NONE: print('None')   # No button pressed
+  pad = wait_touch()                        # Wait for touch
+  btn = check_button()                      # Check button immediately
+  if pad == D13_PAD and btn == CONNECT_BUTTON: connect(D13, TOP_RAIL)
+
+Note: All functions and constants are available globally!
+No need for 'jumperless.' prefix in REPL or single commands.
+
+>>> 
+```
+</details>
+
+
+<details> 
+<summary> Expand for the entire output of nodes_help() </summary>
+
+```python
+>>> nodes_help()
+Jumperless Node Reference
+========================
+
+NODE TYPES:
+  Numbered:     1-60 (breadboard)
+  Arduino:      D0-D13, A0-A7 (nano header)
+  GPIO:         GPIO_1-GPIO_8 (routable GPIO)
+  Power:        TOP_RAIL, BOTTOM_RAIL, GND
+  DAC:          DAC0, DAC1 (analog outputs)
+  ADC:          ADC0-ADC4, PROBE (analog inputs)
+  Current:      ISENSE_PLUS, ISENSE_MINUS
+  UART:         UART_TX, UART_RX
+  Buffer:       BUFFER_IN, BUFFER_OUT
+
+THREE WAYS TO USE NODES:
+
+1. NUMBERS (direct breadboard holes):
+   connect(1, 30)                     # Connect holes 1 and 30
+   connect(15, 42)                    # Any number 1-60
+
+2. STRINGS (case-insensitive names):
+   connect("D13", "TOP_RAIL")         # Arduino pin to power rail
+   connect("gpio_1", "adc0")          # GPIO to ADC (case-insensitive)
+   connect("15", "dac1")              # Mix numbers and names
+
+3. CONSTANTS (pre-defined objects):
+   connect(TOP_RAIL, D13)            # Using imported constants
+   connect(GPIO_1, A0)               # No quotes needed
+   connect(DAC0, 25)                 # Mix constants and numbers
+
+MIXED USAGE:
+   my_pin = "D13"                    # Create node object from string
+   connect(my_pin, TOP_RAIL)         # Use node object with constant
+   oled_print(my_pin)                # Display shows 'D13'
+
+COMMON ALIASES (many names work for same node):
+   "TOP_RAIL" = "T_R"
+   "GPIO_1" = "GPIO1" = "GP1"
+   "DAC0" = "DAC_0"
+   "UART_TX" = "TX"
+
+NOTES:
+  - String names are case-insensitive: "d13" = "D13" = "nAnO_d13"
+  - Constants are case-sensitive: use D13, not d13
+  - All three methods work in any function
+```
+
+![Screenshot 2025-07-04 at 8 27 39 PM](https://github.com/user-attachments/assets/8d8dfc16-0dca-4ab8-9bcf-c511415bffc7)
+
+</details>
+
+   
+ 
+
 ### Formatted Output and Custom Types
 The Jumperless module provides formatted output for better readability:
 
@@ -187,58 +397,55 @@ direction = gpio_get_dir(1)   # Returns "INPUT" or "OUTPUT"
 pull = gpio_get_pull(1)       # Returns "PULLUP", "PULLDOWN", or "NONE"
 
 # Connection status returns formatted strings
-connected = is_connected(1, 5) # Returns "CONNECTED" or "DISCONNECTED"
+connected = is_connected(1, 5) # Returns "CONNECTED" (truthy) or "DISCONNECTED" (falsey)
 
 # Voltage and current readings are automatically formatted
 voltage = adc_get(0)          # Returns float (e.g., 3.300)
-current = ina_get_current(0)  # Returns float in mA (e.g., 123.4)
-power = ina_get_power(0)      # Returns float in mW (e.g., 456.7)
+current = ina_get_current(0)  # Returns float in A (e.g., 0.0123)
+power = ina_get_power(0)      # Returns float in W (e.g., 0.4567)
 
 # All functions work with both numbers and string aliases
 gpio_set_dir("GPIO_1", True)  # Same as gpio_set_dir(1, True)
 connect("TOP_RAIL", "GPIO_1") # Same as connect(101, 131)
 ```
+![Screenshot 2025-07-04 at 8 16 04 PM](https://github.com/user-attachments/assets/4ae5e7e2-845a-4e6e-bbd9-5c328624cfe9)
+
+
 
 ## Writing Python Scripts
 
 ### Basic Script Structure
 ```python
-#!/usr/bin/env python3
 """
 My Jumperless Script
 Description of what this script does
 """
 
-import time
+print("Starting my script...")
 
-def main():
-    print("Starting my script...")
-    
-    # Connect some nodes
-    connect(1, 5)
-    connect(2, 6)
-    
-    # Set up GPIO
-    gpio_set_dir(1, True)  # Output
-    gpio_set_dir(2, False) # Input
-    
-    # Main loop
-    for i in range(10):
-        gpio_set(1, True)
-        time.sleep(0.5)
-        gpio_set(1, False)
-        time.sleep(0.5)
-        
-        # Read input
-        if gpio_get(2) == "HIGH":
-            print("Button pressed!")
-    
-    # Cleanup
-    nodes_clear()
-    print("Script complete!")
+# Connect some nodes
+connect(1, 5)
+connect(2, 6)
 
-if __name__ == "__main__":
-    main()
+# Set up GPIO
+gpio_set_dir(1, True)  # Output
+gpio_set_dir(2, False) # Input
+
+# Main loop
+for i in range(10):
+    gpio_set(1, True)
+    time.sleep(0.5)
+    gpio_set(1, False)
+    time.sleep(0.5)
+    
+    # Read input
+    if gpio_get(2) == "HIGH":
+        print("Button pressed!")
+
+# Cleanup
+nodes_clear()
+print("Script complete!")
+
 ```
 
 ### Node Names and Constants
@@ -255,8 +462,8 @@ SUPPLY_8V_N = 121     # Also: 8V_N, 8V_NEG
 
 # Ground connections
 GND = 100             # Also: GROUND
-TOP_RAIL_GND = 104    # Also: TOP_GND
-BOTTOM_RAIL_GND = 126 # Also: BOT_GND, BOTTOM_GND
+TOP_RAIL_GND = 104    # Also: TOP_GND (not actually routable but included for PADs)
+BOTTOM_RAIL_GND = 126 # Also: BOT_GND, BOTTOM_GND (not actually routable but included for PADs)
 
 # DAC outputs
 DAC0 = 106            # Also: DAC_0, DAC0_5V
@@ -322,17 +529,15 @@ A5 = 91               # Also: NANO_A5
 A6 = 92               # Also: NANO_A6
 A7 = 93               # Also: NANO_A7
 
-# Arduino Nano power/control
-VIN = 69              # Also: NANO_VIN
-RESET = 84            # Also: NANO_RESET
-AREF = 85             # Also: NANO_AREF
-RST0 = 94             # Also: NANO_RESET_0
-RST1 = 95             # Also: NANO_RESET_1
-N_GND1 = 96           # Also: NANO_GND_1
-N_GND0 = 97           # Also: NANO_GND_0
+# Arduino Nano non-routable hardwired connections
+VIN = 69              # Unconnected to anything
+RST0 = 94             # Hardwired to GPIO 18 on the RP2350
+RST1 = 95             # Hardwired to GPIO 19 on the RP2350
+N_GND0 = 97           # GND
+N_GND1 = 96           # GND
+NANO_5V = 99          # Hardwired to USB 5V bus (can also be used to power the Jumperless)
+NANO_3V3 = 98         # Unconnected (without bridging the solder jumper on the back)
 
-# Special functions
-EMPTY = 127           # Also: EMPTY_NET
 ```
 
 ### Error Handling
@@ -451,11 +656,7 @@ The REPL automatically detects when you need multiple lines:
 │   ├── 03_gpio_basics.py
 │   ├── 04_node_connections.py
 │   ├── led_brightness_control.py
-│   ├── voltage_monitor.py
-│   ├── stylophone.py
 │   └── README.md
-├── lib/                  # User modules
-├── modules/              # Additional modules
 └── history.txt          # Command history
 ```
 
