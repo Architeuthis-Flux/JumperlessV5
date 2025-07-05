@@ -118,7 +118,12 @@ int oled::init() {
     scl_pin = jumperlessConfig.top_oled.scl_pin;
     sda_row = jumperlessConfig.top_oled.sda_row;
     scl_row = jumperlessConfig.top_oled.scl_row;
+    // Serial.println("oled::init");
+    // Serial.println(millis());
+
     success = connect();
+    // Serial.println("oled::init connect done");
+    // Serial.println(millis());
     // delay(100);
     if (checkConnection() == false) {
         oledConnected = false;
@@ -142,7 +147,7 @@ int oled::init() {
     display.display();
     
     setCursor(0, 0);
-    Wire1.setTimeout(25);
+    Wire1.setTimeout(15);
     charPos = 0;
     
     return success;
@@ -1436,11 +1441,25 @@ int oled::connect(void) {
     // gpioNet[jumperlessConfig.top_oled.scl_pin - 20] = -2;
     // removeBridgeFromNodeFile(jumperlessConfig.top_oled.gpio_sda, -1, netSlot, 0);
     // removeBridgeFromNodeFile(jumperlessConfig.top_oled.gpio_scl, -1, netSlot, 0);
-    addBridgeToNodeFile(jumperlessConfig.top_oled.gpio_sda, jumperlessConfig.top_oled.sda_row, netSlot, 0, 0);
-    addBridgeToNodeFile(jumperlessConfig.top_oled.gpio_scl, jumperlessConfig.top_oled.scl_row, netSlot, 0, 0);
-    refreshConnections(-1, 0, 0);
-    waitCore2();
-    found = initI2C(jumperlessConfig.top_oled.sda_pin, jumperlessConfig.top_oled.scl_pin, 100000);
+    
+    // Use batch operation to add both bridges at once for better performance
+    
+    int oledBridges[2][2] = {
+        {jumperlessConfig.top_oled.gpio_sda, jumperlessConfig.top_oled.sda_row},
+        {jumperlessConfig.top_oled.gpio_scl, jumperlessConfig.top_oled.scl_row}
+    };
+    addBridgeToNodeFile(oledBridges[0][0], oledBridges[0][1], netSlot, 0, 0);
+    addBridgeToNodeFile(oledBridges[1][0], oledBridges[1][1], netSlot, 0, 0);
+    
+    refreshConnections(1, 0, 0);
+    // Serial.print("waitCore2     ");
+    // Serial.println(millis());
+     waitCore2();
+    // Serial.print("waitCore2Done  ");
+    // Serial.println(millis());
+    found = initI2C(jumperlessConfig.top_oled.sda_pin, jumperlessConfig.top_oled.scl_pin, 400000);
+    // Serial.print("initI2C      ");
+    // Serial.println(millis());
     gpioState[jumperlessConfig.top_oled.sda_pin - 20] = 6;
     gpioState[jumperlessConfig.top_oled.scl_pin - 20] = 6;
     

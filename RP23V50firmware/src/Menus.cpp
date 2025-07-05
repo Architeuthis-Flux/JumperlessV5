@@ -24,6 +24,7 @@
 #include "oled.h"
 #include "menuTree.h"
 #include "SerialWrapper.h"
+#include "Highlighting.h"
 
 int inClickMenu = 0;
 
@@ -1530,10 +1531,19 @@ int selectSubmenuOption(int menuPosition, int menuLevel) {
               String menuLine = subMenuStrings[highlightedOption];
               menuLine.replace("~", "±");
               menuLine.replace("_", "-");
+              
+              // Add the previous menu level prefix to menuLine if available
+              if (menuLevel > 0 && previousMenuSelection[menuLevel - 1] != -1) {
+                String prefix = menuLines[previousMenuSelection[menuLevel - 1]];
+                prefix += " ";
+                menuLine = prefix + menuLine;
+              }
+              
               Serial.print(menuLine.c_str());
               menuLine.replace("±", "+-");
 
               oled.clearPrintShow(menuLine.c_str(), 2, true, true, true, 5, 8);
+              Serial.flush();
 
               for (int i = 0; i < 7; i++) {
 
@@ -1555,7 +1565,9 @@ int selectSubmenuOption(int menuPosition, int menuLevel) {
                   // Serial.print("\b");
                   // Serial.println((i + highlightedOption + 5) % 8);
                   // Serial.println(subMenuStrings[(i + highlightedOption + 5) % 8]);
-                  // Serial.print(" ");
+                  //  Serial.print("\r                          \r");
+                  //  Serial.print(subMenuStrings[(i + highlightedOption + 5) % 8]);
+                  //  Serial.flush();
                   }
                 }
 
@@ -1568,7 +1580,7 @@ int selectSubmenuOption(int menuPosition, int menuLevel) {
                 int nextStart = 0;
                 // selectColor = 0x1a001a;
 
-                Serial.print("\r                      \r");
+                Serial.print("\r                        \r");
                 for (int j = 0; j <= menuLevels[menuPosition]; j++) {
                   Serial.print(">");
                   if (j > 8) {
@@ -1586,6 +1598,14 @@ int selectSubmenuOption(int menuPosition, int menuLevel) {
                 String menuLine = subMenuStrings[highlightedOption];
                 menuLine.replace("~", "±");
                 menuLine.replace("_", "-");
+                
+                // Add the previous menu level prefix to menuLine if available
+                if (menuLevel > 0 && previousMenuSelection[menuLevel - 1] != -1) {
+                  String prefix = menuLines[previousMenuSelection[menuLevel - 1]];
+                  prefix += " ";
+                  menuLine = prefix + menuLine;
+                }
+                
                 Serial.print(menuLine.c_str());
                 menuLine.replace("±", "+-");
                 oled.clearPrintShow(menuLine.c_str(), 2, true, true, true, 5, 8);
@@ -1621,7 +1641,7 @@ int selectSubmenuOption(int menuPosition, int menuLevel) {
                           subMenuColors[(highlightedOption + menuLevel) % 8],
                           backgroundColor, 0, 1, 1);
 
-                  Serial.print("\r                         \r");
+                  Serial.print("\r                              \r");
                   oled.clear();
                   for (int j = 0; j <= menuLevels[menuPosition]; j++) {
                     Serial.print(">");
@@ -1631,14 +1651,59 @@ int selectSubmenuOption(int menuPosition, int menuLevel) {
                       }
                     }
                   Serial.print(" ");
-                  // Serial.print(subMenuStrings[highlightedOption]);
+                   //Serial.print(subMenuStrings[highlightedOption]);
 
                   String menuLine = subMenuStrings[highlightedOption];
                   menuLine.replace("~", "±");
                   menuLine.replace("_", "-");
+
+
+                  if (menuLine.startsWith("Top"))
+                  {
+                    menuLine.replace("'", "↑");
+                    menuLine.replace("Top R", "Top Rail");
+                    brightenedRail = 0;
+                  } else if (menuLine.startsWith("Bot"))
+                  {
+                    menuLine.replace(",", "↓");
+                    menuLine.replace("Bot R", "Bottom Rail");
+                    brightenedRail = 2;
+                  } else {
+                    brightenedRail = -1;
+                  }
+
+                  if (menuLine.startsWith("DAC 0"))
+                  {
+                    DACcolorOverride0 = -2;
+                    DACcolorOverride1 = -1;
+                  } else if (menuLine.startsWith("DAC 1"))
+                  {
+                    DACcolorOverride1 = -2;
+                    DACcolorOverride0 = -1;
+                  } else {
+                    DACcolorOverride0 = -1;
+                    DACcolorOverride1 = -1;
+                  }
+
+
+                  // // Add the previous menu level prefix to menuLine if available
+                  // if (menuLevel > 0 && previousMenuSelection[menuLevel - 1] != -1) {
+                  //   String prefix = menuLines[previousMenuSelection[menuLevel - 1]];
+                  //   prefix += " ";
+                  //   menuLine = prefix + menuLine;
+                  // }
+                  
                   Serial.print(menuLine.c_str());
+                  //Serial.println();
+                  Serial.flush();
+
+
                   menuLine.replace("±", "+-");
                   oled.clearPrintShow(menuLine.c_str(), 2, true, true, true, 5, 8);
+
+
+
+
                   } else if (menuType == 3) {
                     // Serial.println(subMenuColors[(highlightedOption + menuLevel) % 8],
 
@@ -2020,7 +2085,7 @@ int selectNodeAction(int whichSelection) {
           Serial.print(">>>> ");
           printNodeOrName(highlightedNode, 1);
 
-          oled.clearPrintShow("> ", 2, true, false);
+          //oled.clearPrintShow("> ", 2, true, false);
 
           oled.clearPrintShow(definesToChar(highlightedNode, 0), 2, false, true);
 
@@ -2791,15 +2856,28 @@ int doMenuAction(int menuPosition, int selection) {
                     case 0:
                       addBridgeToNodeFile(DAC0, currentAction.to[i], netSlot);
                       // setDac0_5Vvoltage(currentAction.analogVoltage);
+                      jumperlessConfig.dacs.dac_0 = currentAction.analogVoltage;
                       dacOutput[0] = currentAction.analogVoltage;
                       break;
                     case 1:
 
                       addBridgeToNodeFile(DAC1, currentAction.to[i], netSlot);
+                      jumperlessConfig.dacs.dac_1 = currentAction.analogVoltage;
                       dacOutput[1] = currentAction.analogVoltage;
                       // setDac1_8Vvoltage(currentAction.analogVoltage);
                       break;
                       // break;
+
+                      case 2:
+                        addBridgeToNodeFile(TOP_RAIL, currentAction.to[i], netSlot);
+                        jumperlessConfig.dacs.top_rail = currentAction.analogVoltage;
+                        railVoltage[0] = currentAction.analogVoltage;
+                        break;
+                      case 3:
+                        addBridgeToNodeFile(BOTTOM_RAIL, currentAction.to[i], netSlot);
+                        jumperlessConfig.dacs.bottom_rail = currentAction.analogVoltage;
+                        railVoltage[1] = currentAction.analogVoltage;
+                        break;
 
                     default:
                       break;

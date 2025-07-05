@@ -134,6 +134,7 @@ void sendPaths(int clean) {
     // digitalWrite(RESETPIN, LOW);
 
   while (core1busy == true) {
+    delayMicroseconds(10);  // Small delay to prevent tight loop
     }
   core2busy = true;
 

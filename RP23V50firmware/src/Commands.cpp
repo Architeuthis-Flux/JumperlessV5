@@ -32,7 +32,7 @@ unsigned long waitCore2() {
   core1request = 1;
   while (core2busy || (sendAllPathsCore2 != 0)) {
     // Serial.println("waiting for core2 to finish");
-    if (micros() - timeout > 50000) {
+    if (micros() - timeout > 25000) {  // Reduced timeout from 50000 to 25000
       //Serial.println("wait core2 timeout");
       core2busy = false;
       sendAllPathsCore2 = 0;
@@ -63,7 +63,7 @@ void refresh(int flashOrLocal, int ledShowOption, int fillUnused, int clean) {
 
 void refreshConnections(int ledShowOption, int fillUnused, int clean) {
 
-  waitCore2();
+ // waitCore2();
   //core1busy = true;
   clearAllNTCC();
   //core1busy = true;
@@ -79,6 +79,9 @@ void refreshConnections(int ledShowOption, int fillUnused, int clean) {
   assignTermColor();
   //findChangedNetColors();
   //assignNetColors();
+  
+  // Restore GPIO configurations from jumperlessConfig after net processing
+  setGPIO();
 
   // if (lastSlot != netSlot) {
   //   createLocalNodeFile(netSlot);
@@ -131,6 +134,10 @@ void refreshLocalConnections(int ledShowOption, int fillUnused, int clean) {
   assignNetColors();
   chooseShownReadings();
   assignTermColor();
+  
+  // Restore GPIO configurations from jumperlessConfig after net processing
+  setGPIO();
+  
   //core1busy = false;
   if (ledShowOption != 0) {
 
@@ -186,6 +193,10 @@ void refreshBlind(
   }
 
   chooseShownReadings();
+  
+  // Restore GPIO configurations from jumperlessConfig after net processing
+  setGPIO();
+  
   // sendPaths();
   //core1busy = false;
   waitCore2();

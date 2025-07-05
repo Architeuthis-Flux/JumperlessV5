@@ -56,6 +56,10 @@ int jl_oled_connect(void);
 int jl_oled_disconnect(void);
 void jl_arduino_reset(void);
 void jl_probe_tap(int node);
+int jl_probe_read_blocking(void);
+int jl_probe_read_nonblocking(void);
+int jl_probe_button_blocking(void);
+int jl_probe_button_nonblocking(void);
 void jl_clickwheel_up(int clicks);
 void jl_clickwheel_down(int clicks);
 void jl_clickwheel_press(void);
@@ -71,7 +75,9 @@ const mp_obj_type_t gpio_state_type;
 const mp_obj_type_t gpio_direction_type;
 const mp_obj_type_t gpio_pull_type;
 const mp_obj_type_t connection_state_type;
+const mp_obj_type_t probe_button_type;
 const mp_obj_type_t node_type;
+const mp_obj_type_t probe_pad_type;
 
 // Forward declarations for functions
 static void gpio_state_print(const mp_print_t *print, mp_obj_t self_in, mp_print_kind_t kind);
@@ -89,6 +95,12 @@ static mp_obj_t connection_state_make_new(const mp_obj_type_t *type, size_t n_ar
 static void node_print(const mp_print_t *print, mp_obj_t self_in, mp_print_kind_t kind);
 static mp_obj_t node_unary_op(mp_unary_op_t op, mp_obj_t self_in);
 static mp_obj_t node_make_new(const mp_obj_type_t *type, size_t n_args, size_t n_kw, const mp_obj_t *args);
+static void probe_button_print(const mp_print_t *print, mp_obj_t self_in, mp_print_kind_t kind);
+static mp_obj_t probe_button_unary_op(mp_unary_op_t op, mp_obj_t self_in);
+static mp_obj_t probe_button_make_new(const mp_obj_type_t *type, size_t n_args, size_t n_kw, const mp_obj_t *args);
+static void probe_pad_print(const mp_print_t *print, mp_obj_t self_in, mp_print_kind_t kind);
+static mp_obj_t probe_pad_unary_op(mp_unary_op_t op, mp_obj_t self_in);
+static mp_obj_t probe_pad_make_new(const mp_obj_type_t *type, size_t n_args, size_t n_kw, const mp_obj_t *args);
 
 //=============================================================================
 // Node Name Mapping - Comprehensive table of all node names and aliases
@@ -193,8 +205,104 @@ static const NodeMapping node_mappings[] = {
 
 static const size_t node_mappings_count = sizeof(node_mappings) / sizeof(NodeMapping);
 
+//=============================================================================
+// Probe Pad Mapping - Define all possible probe pad types
+//=============================================================================
+
+typedef struct {
+    const char* name;
+    int value;
+} PadMapping;
+
+// Define all possible probe pad types including special pads
+static const PadMapping pad_mappings[] = {
+    // Regular breadboard pads (1-60)
+    {"PAD_1", 1}, {"PAD_2", 2}, {"PAD_3", 3}, {"PAD_4", 4}, {"PAD_5", 5},
+    {"PAD_6", 6}, {"PAD_7", 7}, {"PAD_8", 8}, {"PAD_9", 9}, {"PAD_10", 10},
+    {"PAD_11", 11}, {"PAD_12", 12}, {"PAD_13", 13}, {"PAD_14", 14}, {"PAD_15", 15},
+    {"PAD_16", 16}, {"PAD_17", 17}, {"PAD_18", 18}, {"PAD_19", 19}, {"PAD_20", 20},
+    {"PAD_21", 21}, {"PAD_22", 22}, {"PAD_23", 23}, {"PAD_24", 24}, {"PAD_25", 25},
+    {"PAD_26", 26}, {"PAD_27", 27}, {"PAD_28", 28}, {"PAD_29", 29}, {"PAD_30", 30},
+    {"PAD_31", 31}, {"PAD_32", 32}, {"PAD_33", 33}, {"PAD_34", 34}, {"PAD_35", 35},
+    {"PAD_36", 36}, {"PAD_37", 37}, {"PAD_38", 38}, {"PAD_39", 39}, {"PAD_40", 40},
+    {"PAD_41", 41}, {"PAD_42", 42}, {"PAD_43", 43}, {"PAD_44", 44}, {"PAD_45", 45},
+    {"PAD_46", 46}, {"PAD_47", 47}, {"PAD_48", 48}, {"PAD_49", 49}, {"PAD_50", 50},
+    {"PAD_51", 51}, {"PAD_52", 52}, {"PAD_53", 53}, {"PAD_54", 54}, {"PAD_55", 55},
+    {"PAD_56", 56}, {"PAD_57", 57}, {"PAD_58", 58}, {"PAD_59", 59}, {"PAD_60", 60},
+    
+    // Special pads
+    {"NO_PAD", -1}, {"NONE", -1},
+    {"LOGO_PAD_TOP", 142}, {"LOGO_PAD_BOTTOM", 143},
+    {"GPIO_PAD", 144}, {"DAC_PAD", 145}, {"ADC_PAD", 146},
+    {"BUILDING_PAD_TOP", 147}, {"BUILDING_PAD_BOTTOM", 148},
+    
+    // Nano header pads (digital pins)
+    {"NANO_D0", 70}, {"D0_PAD", 70},
+    {"NANO_D1", 71}, {"D1_PAD", 71},
+    {"NANO_D2", 72}, {"D2_PAD", 72},
+    {"NANO_D3", 73}, {"D3_PAD", 73},
+    {"NANO_D4", 74}, {"D4_PAD", 74},
+    {"NANO_D5", 75}, {"D5_PAD", 75},
+    {"NANO_D6", 76}, {"D6_PAD", 76},
+    {"NANO_D7", 77}, {"D7_PAD", 77},
+    {"NANO_D8", 78}, {"D8_PAD", 78},
+    {"NANO_D9", 79}, {"D9_PAD", 79},
+    {"NANO_D10", 80}, {"D10_PAD", 80},
+    {"NANO_D11", 81}, {"D11_PAD", 81},
+    {"NANO_D12", 82}, {"D12_PAD", 82},
+    {"NANO_D13", 83}, {"D13_PAD", 83},
+    {"NANO_RESET", 84}, {"RESET_PAD", 84},
+    {"NANO_AREF", 85}, {"AREF_PAD", 85},
+    
+    // Nano header pads (analog pins)
+    {"NANO_A0", 86}, {"A0_PAD", 86},
+    {"NANO_A1", 87}, {"A1_PAD", 87},
+    {"NANO_A2", 88}, {"A2_PAD", 88},
+    {"NANO_A3", 89}, {"A3_PAD", 89},
+    {"NANO_A4", 90}, {"A4_PAD", 90},
+    {"NANO_A5", 91}, {"A5_PAD", 91},
+    {"NANO_A6", 92}, {"A6_PAD", 92},
+    {"NANO_A7", 93}, {"A7_PAD", 93},
+    
+    // Nano power/control pads (generally not routable but detectable)
+    {"NANO_VIN", 69}, {"VIN_PAD", 69},
+    {"NANO_RESET_0", 94}, {"RESET_0_PAD", 94},
+    {"NANO_RESET_1", 95}, {"RESET_1_PAD", 95},
+    {"NANO_GND_1", 96}, {"GND_1_PAD", 96},
+    {"NANO_GND_0", 97}, {"GND_0_PAD", 97},
+    {"NANO_3V3", 98}, {"3V3_PAD", 98},
+    {"NANO_5V", 99}, {"5V_PAD", 99},
+    
+    // Rail pads
+    {"TOP_RAIL", 101}, {"TOP_RAIL_PAD", 101},
+    {"BOTTOM_RAIL", 102}, {"BOTTOM_RAIL_PAD", 102}, {"BOT_RAIL_PAD", 102},
+    {"TOP_RAIL_GND", 104}, {"TOP_GND_PAD", 104},
+    {"BOTTOM_RAIL_GND", 126}, {"BOT_RAIL_GND", 126}, {"BOTTOM_GND_PAD", 126}, {"BOT_GND_PAD", 126},
+};
+
+static const size_t pad_mappings_count = sizeof(pad_mappings) / sizeof(PadMapping);
+
 // Forward declaration of function to get node name from value
 const char* jl_get_node_name(int node_value);
+
+// Function to get pad name from value
+const char* jl_get_pad_name(int pad_value) {
+    // Check for special pads first
+    for (size_t i = 0; i < pad_mappings_count; i++) {
+        if (pad_mappings[i].value == pad_value) {
+            return pad_mappings[i].name;
+        }
+    }
+    
+    // For numbered pads (1-60), return the number as string
+    static char pad_str[8];
+    if (pad_value >= 1 && pad_value <= 60) {
+        snprintf(pad_str, sizeof(pad_str), "%d", pad_value);
+        return pad_str;
+    }
+    
+    return "UNKNOWN_PAD";
+}
 
 // Implementation of function to get node name from value
 const char* jl_get_node_name(int node_value) {
@@ -440,6 +548,61 @@ static mp_obj_t connection_state_new(bool value) {
 }
 
 //=============================================================================
+// Probe Button Type - Represents probe button states (NONE/CONNECT/REMOVE)
+//=============================================================================
+
+typedef struct _probe_button_obj_t {
+    mp_obj_base_t base;
+    int value;  // 0 = NONE, 1 = CONNECT, 2 = REMOVE
+} probe_button_obj_t;
+
+static void probe_button_print(const mp_print_t *print, mp_obj_t self_in, mp_print_kind_t kind) {
+    probe_button_obj_t *self = MP_OBJ_TO_PTR(self_in);
+    if (self->value == 1) {
+        mp_printf(print, "CONNECT");
+    } else if (self->value == 2) {
+        mp_printf(print, "REMOVE");
+    } else {
+        mp_printf(print, "NONE");
+    }
+}
+
+static mp_obj_t probe_button_unary_op(mp_unary_op_t op, mp_obj_t self_in) {
+    probe_button_obj_t *self = MP_OBJ_TO_PTR(self_in);
+    switch (op) {
+        case MP_UNARY_OP_BOOL:
+            // Only CONNECT and REMOVE are "truthy"
+            return mp_obj_new_bool(self->value != 0);
+        default:
+            return MP_OBJ_NULL;
+    }
+}
+
+MP_DEFINE_CONST_OBJ_TYPE(
+    probe_button_type,
+    MP_QSTR_ProbeButton,
+    MP_TYPE_FLAG_NONE,
+    make_new, probe_button_make_new,
+    print, probe_button_print,
+    unary_op, probe_button_unary_op
+);
+
+static mp_obj_t probe_button_make_new(const mp_obj_type_t *type, size_t n_args, size_t n_kw, const mp_obj_t *args) {
+    mp_arg_check_num(n_args, n_kw, 1, 1, false);
+    probe_button_obj_t *o = m_new_obj(probe_button_obj_t);
+    o->base.type = &probe_button_type;
+    o->value = mp_obj_get_int(args[0]);
+    return MP_OBJ_FROM_PTR(o);
+}
+
+static mp_obj_t probe_button_new(int value) {
+    probe_button_obj_t *o = m_new_obj(probe_button_obj_t);
+    o->base.type = &probe_button_type;
+    o->value = value;
+    return MP_OBJ_FROM_PTR(o);
+}
+
+//=============================================================================
 // Node Type - Handles string names and aliases for node numbers
 //=============================================================================
 
@@ -538,6 +701,157 @@ static mp_obj_t node_new(int value) {
     return MP_OBJ_FROM_PTR(o);
 }
 
+//=============================================================================
+// Probe Pad Type - Represents probe pad readings and states
+//=============================================================================
+
+typedef struct _probe_pad_obj_t {
+    mp_obj_base_t base;
+    int value;  // the pad number or -1 for no pad
+} probe_pad_obj_t;
+
+static void probe_pad_print(const mp_print_t *print, mp_obj_t self_in, mp_print_kind_t kind) {
+    probe_pad_obj_t *self = MP_OBJ_TO_PTR(self_in);
+    
+    // Get the human-readable name for this pad
+    const char* name = jl_get_pad_name(self->value);
+    mp_printf(print, "%s", name);
+}
+
+static mp_obj_t probe_pad_unary_op(mp_unary_op_t op, mp_obj_t self_in) {
+    probe_pad_obj_t *self = MP_OBJ_TO_PTR(self_in);
+    switch (op) {
+        case MP_UNARY_OP_BOOL:
+            // Only valid pads (not -1) are "truthy"
+            return mp_obj_new_bool(self->value != -1);
+
+        default:
+            return MP_OBJ_NULL;
+    }
+}
+
+// Binary operations to allow pads to work with integers and strings
+static mp_obj_t probe_pad_binary_op(mp_binary_op_t op, mp_obj_t lhs_in, mp_obj_t rhs_in) {
+    // Handle string concatenation for all cases involving ProbePad
+    if (op == MP_BINARY_OP_ADD) {
+        if (mp_obj_is_str(lhs_in) && mp_obj_get_type(rhs_in) == &probe_pad_type) {
+            // "string" + ProbePad
+            const char* lhs_str = mp_obj_str_get_str(lhs_in);
+            probe_pad_obj_t *rhs = MP_OBJ_TO_PTR(rhs_in);
+            const char* rhs_str = jl_get_pad_name(rhs->value);
+            
+            // Concatenate strings
+            size_t lhs_len = strlen(lhs_str);
+            size_t rhs_len = strlen(rhs_str);
+            char* result = m_new(char, lhs_len + rhs_len + 1);
+            strcpy(result, lhs_str);
+            strcat(result, rhs_str);
+            
+            mp_obj_t result_obj = mp_obj_new_str(result, lhs_len + rhs_len);
+            m_del(char, result, lhs_len + rhs_len + 1);
+            return result_obj;
+            
+        } else if (mp_obj_get_type(lhs_in) == &probe_pad_type && mp_obj_is_str(rhs_in)) {
+            // ProbePad + "string"
+            probe_pad_obj_t *lhs = MP_OBJ_TO_PTR(lhs_in);
+            const char* lhs_str = jl_get_pad_name(lhs->value);
+            const char* rhs_str = mp_obj_str_get_str(rhs_in);
+            
+            // Concatenate strings
+            size_t lhs_len = strlen(lhs_str);
+            size_t rhs_len = strlen(rhs_str);
+            char* result = m_new(char, lhs_len + rhs_len + 1);
+            strcpy(result, lhs_str);
+            strcat(result, rhs_str);
+            
+            mp_obj_t result_obj = mp_obj_new_str(result, lhs_len + rhs_len);
+            m_del(char, result, lhs_len + rhs_len + 1);
+            return result_obj;
+        } else if (mp_obj_get_type(rhs_in) == &probe_pad_type) {
+            // Handle reverse operation: when string + ProbePad fails, MicroPython tries ProbePad + string
+            // Convert any left operand to string and concatenate with ProbePad
+            probe_pad_obj_t *rhs = MP_OBJ_TO_PTR(rhs_in);
+            const char* rhs_str = jl_get_pad_name(rhs->value);
+            
+            // Convert left operand to string
+            if (mp_obj_is_str(lhs_in)) {
+                const char* lhs_str = mp_obj_str_get_str(lhs_in);
+                size_t lhs_len = strlen(lhs_str);
+                size_t rhs_len = strlen(rhs_str);
+                char* result = m_new(char, lhs_len + rhs_len + 1);
+                strcpy(result, lhs_str);
+                strcat(result, rhs_str);
+                
+                mp_obj_t result_obj = mp_obj_new_str(result, lhs_len + rhs_len);
+                m_del(char, result, lhs_len + rhs_len + 1);
+                return result_obj;
+            }
+        }
+    }
+    
+    if (mp_obj_get_type(lhs_in) == &probe_pad_type) {
+        probe_pad_obj_t *lhs = MP_OBJ_TO_PTR(lhs_in);
+        if (op == MP_BINARY_OP_EQUAL) {
+            if (mp_obj_get_type(rhs_in) == &probe_pad_type) {
+                probe_pad_obj_t *rhs = MP_OBJ_TO_PTR(rhs_in);
+                return mp_obj_new_bool(lhs->value == rhs->value);
+            } else if (mp_obj_is_int(rhs_in)) {
+                return mp_obj_new_bool(lhs->value == mp_obj_get_int(rhs_in));
+            }
+        } else if (op == MP_BINARY_OP_NOT_EQUAL) {
+            if (mp_obj_get_type(rhs_in) == &probe_pad_type) {
+                probe_pad_obj_t *rhs = MP_OBJ_TO_PTR(rhs_in);
+                return mp_obj_new_bool(lhs->value != rhs->value);
+            } else if (mp_obj_is_int(rhs_in)) {
+                return mp_obj_new_bool(lhs->value != mp_obj_get_int(rhs_in));
+            }
+        }
+    }
+    return MP_OBJ_NULL;
+}
+
+// __str__ method for ProbePad
+static mp_obj_t probe_pad_str(mp_obj_t self_in) {
+    probe_pad_obj_t *self = MP_OBJ_TO_PTR(self_in);
+    const char* name = jl_get_pad_name(self->value);
+    return mp_obj_new_str(name, strlen(name));
+}
+static MP_DEFINE_CONST_FUN_OBJ_1(probe_pad_str_obj, probe_pad_str);
+
+// ProbePad methods table
+static const mp_rom_map_elem_t probe_pad_locals_dict_table[] = {
+    { MP_ROM_QSTR(MP_QSTR___str__), MP_ROM_PTR(&probe_pad_str_obj) },
+};
+static MP_DEFINE_CONST_DICT(probe_pad_locals_dict, probe_pad_locals_dict_table);
+
+MP_DEFINE_CONST_OBJ_TYPE(
+    probe_pad_type,
+    MP_QSTR_ProbePad,
+    MP_TYPE_FLAG_NONE,
+    make_new, probe_pad_make_new,
+    print, probe_pad_print,
+    unary_op, probe_pad_unary_op,
+    binary_op, probe_pad_binary_op,
+    locals_dict, &probe_pad_locals_dict
+);
+
+static mp_obj_t probe_pad_make_new(const mp_obj_type_t *type, size_t n_args, size_t n_kw, const mp_obj_t *args) {
+    mp_arg_check_num(n_args, n_kw, 1, 1, false);
+    
+    probe_pad_obj_t *o = m_new_obj(probe_pad_obj_t);
+    o->base.type = &probe_pad_type;
+    o->value = mp_obj_get_int(args[0]);
+    
+    return MP_OBJ_FROM_PTR(o);
+}
+
+static mp_obj_t probe_pad_new(int value) {
+    probe_pad_obj_t *o = m_new_obj(probe_pad_obj_t);
+    o->base.type = &probe_pad_type;
+    o->value = value;
+    return MP_OBJ_FROM_PTR(o);
+}
+
 // Helper function to extract integer from node or int argument
 static int get_node_value(mp_obj_t obj) {
     if (mp_obj_get_type(obj) == &node_type) {
@@ -557,19 +871,46 @@ static int get_node_value(mp_obj_t obj) {
     mp_raise_TypeError(MP_ERROR_TEXT("Expected node, int, or string"));
 }
 
+// Helper function to map node values to DAC channels
+static int map_node_to_dac_channel(int node_value) {
+    switch (node_value) {
+        case 106: // DAC0
+            return 0;
+        case 107: // DAC1
+            return 1;
+        case 101: // TOP_RAIL
+            return 2;
+        case 102: // BOTTOM_RAIL
+            return 3;
+        default:
+            // If it's already a channel number (0-3), return it
+            if (node_value >= 0 && node_value <= 3) {
+                return node_value;
+            }
+            return -1; // Invalid
+    }
+}
+
+// Helper function to get DAC channel from node or int argument
+static int get_dac_channel(mp_obj_t obj) {
+    int node_value = get_node_value(obj);
+    int channel = map_node_to_dac_channel(node_value);
+    if (channel == -1) {
+        mp_raise_ValueError(MP_ERROR_TEXT("Invalid DAC channel or node. Use 0-3, DAC0, DAC1, TOP_RAIL, or BOTTOM_RAIL"));
+    }
+    return channel;
+}
+
 //=============================================================================
 // Function Implementations
 //=============================================================================
 
 // DAC Functions
 static mp_obj_t jl_dac_set_func(size_t n_args, const mp_obj_t *args) {
-    int channel = mp_obj_get_int(args[0]);
+    int channel = get_dac_channel(args[0]);
     float voltage = mp_obj_get_float(args[1]);
     int save = (n_args > 2) ? mp_obj_is_true(args[2]) ? 1 : 0 : 1; // Default save=True
     
-    if (channel < 0 || channel > 3) {
-        mp_raise_ValueError(MP_ERROR_TEXT("DAC channel must be 0-3"));
-    }
     printf("jl_dac_set: channel: %d, voltage: %f, save: %d\n", channel, voltage, save);
     jl_dac_set(channel, voltage, save);
     return mp_const_none;
@@ -577,11 +918,7 @@ static mp_obj_t jl_dac_set_func(size_t n_args, const mp_obj_t *args) {
 static MP_DEFINE_CONST_FUN_OBJ_VAR_BETWEEN(jl_dac_set_obj, 2, 3, jl_dac_set_func);
 
 static mp_obj_t jl_dac_get_func(mp_obj_t channel_obj) {
-    int channel = mp_obj_get_int(channel_obj);
-    
-    if (channel < 0 || channel > 3) {
-        mp_raise_ValueError(MP_ERROR_TEXT("DAC channel must be 0-3"));
-    }
+    int channel = get_dac_channel(channel_obj);
     
     float voltage = jl_dac_get(channel);
     
@@ -828,6 +1165,23 @@ static mp_obj_t jl_oled_print_func(size_t n_args, const mp_obj_t *args) {
         // Connection State - CONNECTED/DISCONNECTED
         connection_state_obj_t *conn = MP_OBJ_TO_PTR(args[0]);
         text = conn->value ? "CONNECTED" : "DISCONNECTED";
+    } else if (mp_obj_get_type(args[0]) == &probe_button_type) {
+        // Probe Button - CONNECT/REMOVE/NONE
+        probe_button_obj_t *button = MP_OBJ_TO_PTR(args[0]);
+        if (button->value == 1) {
+            text = "CONNECT";
+        } else if (button->value == 2) {
+            text = "REMOVE";
+        } else {
+            text = "NONE";
+        }
+    } else if (mp_obj_get_type(args[0]) == &probe_pad_type) {
+        // Probe Pad - get its string representation
+        probe_pad_obj_t *pad = MP_OBJ_TO_PTR(args[0]);
+        const char* name = jl_get_pad_name(pad->value);
+        strncpy(buffer, name, sizeof(buffer) - 1);
+        buffer[sizeof(buffer) - 1] = '\0';
+        text = buffer;
     } else if (mp_obj_is_float(args[0])) {
         // Float - convert to string with 3 decimal places
         float value = mp_obj_get_float(args[0]);
@@ -933,6 +1287,193 @@ static mp_obj_t jl_probe_tap_func(mp_obj_t node_obj) {
 }
 static MP_DEFINE_CONST_FUN_OBJ_1(jl_probe_tap_obj, jl_probe_tap_func);
 
+static mp_obj_t jl_probe_read_blocking_func(void) {
+    int pad = jl_probe_read_blocking();
+    
+    // Check for interrupt signal (-999)
+    if (pad == -999) {
+        mp_raise_msg(&mp_type_KeyboardInterrupt, "Ctrl+Q");
+    }
+    
+    return probe_pad_new(pad);
+}
+static MP_DEFINE_CONST_FUN_OBJ_0(jl_probe_read_blocking_obj, jl_probe_read_blocking_func);
+
+static mp_obj_t jl_probe_read_nonblocking_func(void) {
+    int pad = jl_probe_read_nonblocking();
+    return probe_pad_new(pad);
+}
+static MP_DEFINE_CONST_FUN_OBJ_0(jl_probe_read_nonblocking_obj, jl_probe_read_nonblocking_func);
+
+static mp_obj_t jl_probe_button_blocking_func(void) {
+    int button_state = jl_probe_button_blocking();
+    
+    // Check for interrupt signal (-999) 
+    if (button_state == -999) {
+        mp_raise_msg(&mp_type_KeyboardInterrupt, "Ctrl+Q");
+    }
+    
+    return probe_button_new(button_state);
+}
+static MP_DEFINE_CONST_FUN_OBJ_0(jl_probe_button_blocking_obj, jl_probe_button_blocking_func);
+
+static mp_obj_t jl_probe_button_nonblocking_func(void) {
+    int button_state = jl_probe_button_nonblocking();
+    return probe_button_new(button_state);
+}
+static MP_DEFINE_CONST_FUN_OBJ_0(jl_probe_button_nonblocking_obj, jl_probe_button_nonblocking_func);
+
+// Probe aliases
+static mp_obj_t jl_probe_read_func(void) {
+    return jl_probe_read_blocking_func();
+}
+static MP_DEFINE_CONST_FUN_OBJ_0(jl_probe_read_obj, jl_probe_read_func);
+
+static mp_obj_t jl_read_probe_func(void) {
+    return jl_probe_read_blocking_func();
+}
+static MP_DEFINE_CONST_FUN_OBJ_0(jl_read_probe_obj, jl_read_probe_func);
+
+// Parameterized probe_read function with blocking parameter
+static mp_obj_t jl_probe_read_param_func(size_t n_args, const mp_obj_t *args) {
+    bool blocking = true; // Default to blocking
+    if (n_args > 0) {
+        blocking = mp_obj_is_true(args[0]);
+    }
+    
+    if (blocking) {
+        return jl_probe_read_blocking_func();
+    } else {
+        return jl_probe_read_nonblocking_func();
+    }
+}
+static MP_DEFINE_CONST_FUN_OBJ_VAR_BETWEEN(jl_probe_read_param_obj, 0, 1, jl_probe_read_param_func);
+
+// Parameterized read_probe function with blocking parameter
+static mp_obj_t jl_read_probe_param_func(size_t n_args, const mp_obj_t *args) {
+    bool blocking = true; // Default to blocking
+    if (n_args > 0) {
+        blocking = mp_obj_is_true(args[0]);
+    }
+    
+    if (blocking) {
+        return jl_probe_read_blocking_func();
+    } else {
+        return jl_probe_read_nonblocking_func();
+    }
+}
+static MP_DEFINE_CONST_FUN_OBJ_VAR_BETWEEN(jl_read_probe_param_obj, 0, 1, jl_read_probe_param_func);
+
+// Additional probe_read_blocking aliases
+static mp_obj_t jl_probe_wait_func(void) {
+    return jl_probe_read_blocking_func();
+}
+static MP_DEFINE_CONST_FUN_OBJ_0(jl_probe_wait_obj, jl_probe_wait_func);
+
+static mp_obj_t jl_wait_probe_func(void) {
+    return jl_probe_read_blocking_func();
+}
+static MP_DEFINE_CONST_FUN_OBJ_0(jl_wait_probe_obj, jl_wait_probe_func);
+
+static mp_obj_t jl_probe_touch_func(void) {
+    return jl_probe_read_blocking_func();
+}
+static MP_DEFINE_CONST_FUN_OBJ_0(jl_probe_touch_obj, jl_probe_touch_func);
+
+static mp_obj_t jl_wait_touch_func(void) {
+    return jl_probe_read_blocking_func();
+}
+static MP_DEFINE_CONST_FUN_OBJ_0(jl_wait_touch_obj, jl_wait_touch_func);
+
+// Probe button aliases (blocking by default for simplicity)
+static mp_obj_t jl_get_button_func(void) {
+    return jl_probe_button_blocking_func();
+}
+static MP_DEFINE_CONST_FUN_OBJ_0(jl_get_button_obj, jl_get_button_func);
+
+static mp_obj_t jl_button_read_func(void) {
+    return jl_probe_button_blocking_func();
+}
+static MP_DEFINE_CONST_FUN_OBJ_0(jl_button_read_obj, jl_button_read_func);
+
+static mp_obj_t jl_read_button_func(void) {
+    return jl_probe_button_blocking_func();
+}
+static MP_DEFINE_CONST_FUN_OBJ_0(jl_read_button_obj, jl_read_button_func);
+
+static mp_obj_t jl_probe_button_func(void) {
+    return jl_probe_button_blocking_func();
+}
+static MP_DEFINE_CONST_FUN_OBJ_0(jl_probe_button_obj, jl_probe_button_func);
+
+// Non-blocking button aliases
+static mp_obj_t jl_check_button_func(void) {
+    return jl_probe_button_nonblocking_func();
+}
+static MP_DEFINE_CONST_FUN_OBJ_0(jl_check_button_obj, jl_check_button_func);
+
+static mp_obj_t jl_button_check_func(void) {
+    return jl_probe_button_nonblocking_func();
+}
+static MP_DEFINE_CONST_FUN_OBJ_0(jl_button_check_obj, jl_button_check_func);
+
+// Parameterized button functions with blocking parameter
+static mp_obj_t jl_probe_button_param_func(size_t n_args, const mp_obj_t *args) {
+    bool blocking = true; // Default to blocking
+    if (n_args > 0) {
+        blocking = mp_obj_is_true(args[0]);
+    }
+    
+    if (blocking) {
+        return jl_probe_button_blocking_func();
+    } else {
+        return jl_probe_button_nonblocking_func();
+    }
+}
+static MP_DEFINE_CONST_FUN_OBJ_VAR_BETWEEN(jl_probe_button_param_obj, 0, 1, jl_probe_button_param_func);
+
+static mp_obj_t jl_get_button_param_func(size_t n_args, const mp_obj_t *args) {
+    bool blocking = true; // Default to blocking
+    if (n_args > 0) {
+        blocking = mp_obj_is_true(args[0]);
+    }
+    
+    if (blocking) {
+        return jl_probe_button_blocking_func();
+    } else {
+        return jl_probe_button_nonblocking_func();
+    }
+}
+static MP_DEFINE_CONST_FUN_OBJ_VAR_BETWEEN(jl_get_button_param_obj, 0, 1, jl_get_button_param_func);
+
+static mp_obj_t jl_button_read_param_func(size_t n_args, const mp_obj_t *args) {
+    bool blocking = true; // Default to blocking
+    if (n_args > 0) {
+        blocking = mp_obj_is_true(args[0]);
+    }
+    
+    if (blocking) {
+        return jl_probe_button_blocking_func();
+    } else {
+        return jl_probe_button_nonblocking_func();
+    }
+}
+static MP_DEFINE_CONST_FUN_OBJ_VAR_BETWEEN(jl_button_read_param_obj, 0, 1, jl_button_read_param_func);
+
+static mp_obj_t jl_read_button_param_func(size_t n_args, const mp_obj_t *args) {
+    bool blocking = true; // Default to blocking
+    if (n_args > 0) {
+        blocking = mp_obj_is_true(args[0]);
+    }
+    
+    if (blocking) {
+        return jl_probe_button_blocking_func();
+    } else {
+        return jl_probe_button_nonblocking_func();
+    }
+}
+static MP_DEFINE_CONST_FUN_OBJ_VAR_BETWEEN(jl_read_button_param_obj, 0, 1, jl_read_button_param_func);
+
 // Clickwheel Functions
 static mp_obj_t jl_clickwheel_up_func(size_t n_args, const mp_obj_t *args) {
     int clicks = (n_args > 0) ? mp_obj_get_int(args[0]) : 1; // Default clicks=1
@@ -982,6 +1523,64 @@ static const node_obj_t node_bottom_rail_obj = { .base = { &node_type }, .value 
 static const node_obj_t node_gnd_obj = { .base = { &node_type }, .value = 100 };
 static const node_obj_t node_dac0_obj = { .base = { &node_type }, .value = 106 };
 static const node_obj_t node_dac1_obj = { .base = { &node_type }, .value = 107 };
+
+// Pre-defined probe button constants
+static const probe_button_obj_t probe_button_none_obj = { .base = { &probe_button_type }, .value = 0 };
+static const probe_button_obj_t probe_button_connect_obj = { .base = { &probe_button_type }, .value = 1 };
+static const probe_button_obj_t probe_button_remove_obj = { .base = { &probe_button_type }, .value = 2 };
+
+// Pre-defined probe pad constants
+static const probe_pad_obj_t probe_no_pad_obj = { .base = { &probe_pad_type }, .value = -1 };
+static const probe_pad_obj_t probe_logo_pad_top_obj = { .base = { &probe_pad_type }, .value = 142 };
+static const probe_pad_obj_t probe_logo_pad_bottom_obj = { .base = { &probe_pad_type }, .value = 143 };
+static const probe_pad_obj_t probe_gpio_pad_obj = { .base = { &probe_pad_type }, .value = 144 };
+static const probe_pad_obj_t probe_dac_pad_obj = { .base = { &probe_pad_type }, .value = 145 };
+static const probe_pad_obj_t probe_adc_pad_obj = { .base = { &probe_pad_type }, .value = 146 };
+static const probe_pad_obj_t probe_building_pad_top_obj = { .base = { &probe_pad_type }, .value = 147 };
+static const probe_pad_obj_t probe_building_pad_bottom_obj = { .base = { &probe_pad_type }, .value = 148 };
+
+// Nano power/control pad constants
+static const probe_pad_obj_t probe_nano_vin_obj = { .base = { &probe_pad_type }, .value = 69 };
+static const probe_pad_obj_t probe_nano_reset_0_obj = { .base = { &probe_pad_type }, .value = 94 };
+static const probe_pad_obj_t probe_nano_reset_1_obj = { .base = { &probe_pad_type }, .value = 95 };
+static const probe_pad_obj_t probe_nano_gnd_1_obj = { .base = { &probe_pad_type }, .value = 96 };
+static const probe_pad_obj_t probe_nano_gnd_0_obj = { .base = { &probe_pad_type }, .value = 97 };
+static const probe_pad_obj_t probe_nano_3v3_obj = { .base = { &probe_pad_type }, .value = 98 };
+static const probe_pad_obj_t probe_nano_5v_obj = { .base = { &probe_pad_type }, .value = 99 };
+
+// Nano digital pin pad constants
+static const probe_pad_obj_t probe_d0_pad_obj = { .base = { &probe_pad_type }, .value = 70 };
+static const probe_pad_obj_t probe_d1_pad_obj = { .base = { &probe_pad_type }, .value = 71 };
+static const probe_pad_obj_t probe_d2_pad_obj = { .base = { &probe_pad_type }, .value = 72 };
+static const probe_pad_obj_t probe_d3_pad_obj = { .base = { &probe_pad_type }, .value = 73 };
+static const probe_pad_obj_t probe_d4_pad_obj = { .base = { &probe_pad_type }, .value = 74 };
+static const probe_pad_obj_t probe_d5_pad_obj = { .base = { &probe_pad_type }, .value = 75 };
+static const probe_pad_obj_t probe_d6_pad_obj = { .base = { &probe_pad_type }, .value = 76 };
+static const probe_pad_obj_t probe_d7_pad_obj = { .base = { &probe_pad_type }, .value = 77 };
+static const probe_pad_obj_t probe_d8_pad_obj = { .base = { &probe_pad_type }, .value = 78 };
+static const probe_pad_obj_t probe_d9_pad_obj = { .base = { &probe_pad_type }, .value = 79 };
+static const probe_pad_obj_t probe_d10_pad_obj = { .base = { &probe_pad_type }, .value = 80 };
+static const probe_pad_obj_t probe_d11_pad_obj = { .base = { &probe_pad_type }, .value = 81 };
+static const probe_pad_obj_t probe_d12_pad_obj = { .base = { &probe_pad_type }, .value = 82 };
+static const probe_pad_obj_t probe_d13_pad_obj = { .base = { &probe_pad_type }, .value = 83 };
+static const probe_pad_obj_t probe_reset_pad_obj = { .base = { &probe_pad_type }, .value = 84 };
+static const probe_pad_obj_t probe_aref_pad_obj = { .base = { &probe_pad_type }, .value = 85 };
+
+// Nano analog pin pad constants
+static const probe_pad_obj_t probe_a0_pad_obj = { .base = { &probe_pad_type }, .value = 86 };
+static const probe_pad_obj_t probe_a1_pad_obj = { .base = { &probe_pad_type }, .value = 87 };
+static const probe_pad_obj_t probe_a2_pad_obj = { .base = { &probe_pad_type }, .value = 88 };
+static const probe_pad_obj_t probe_a3_pad_obj = { .base = { &probe_pad_type }, .value = 89 };
+static const probe_pad_obj_t probe_a4_pad_obj = { .base = { &probe_pad_type }, .value = 90 };
+static const probe_pad_obj_t probe_a5_pad_obj = { .base = { &probe_pad_type }, .value = 91 };
+static const probe_pad_obj_t probe_a6_pad_obj = { .base = { &probe_pad_type }, .value = 92 };
+static const probe_pad_obj_t probe_a7_pad_obj = { .base = { &probe_pad_type }, .value = 93 };
+
+// Rail pad constants
+static const probe_pad_obj_t probe_top_rail_pad_obj = { .base = { &probe_pad_type }, .value = 101 };
+static const probe_pad_obj_t probe_bottom_rail_pad_obj = { .base = { &probe_pad_type }, .value = 102 };
+static const probe_pad_obj_t probe_top_rail_gnd_obj = { .base = { &probe_pad_type }, .value = 104 };
+static const probe_pad_obj_t probe_bottom_rail_gnd_obj = { .base = { &probe_pad_type }, .value = 126 };
 
 // Arduino Nano pin constants
 static const node_obj_t node_d0_obj = { .base = { &node_type }, .value = 70 };
@@ -1097,21 +1696,25 @@ static mp_obj_t jl_help_func(void) {
     mp_printf(&mp_plat_print, "(GPIO functions return formatted strings like HIGH/LOW, INPUT/OUTPUT, PULLUP/NONE, CONNECTED/DISCONNECTED)\n\n");
     mp_printf(&mp_plat_print, "DAC (Digital-to-Analog Converter):\n");
     mp_printf(&mp_plat_print, "  jumperless.dac_set(channel, voltage)         - Set DAC output voltage\n");
-    mp_printf(&mp_plat_print, "  jumperless.dac_get(channel)                  - Get DAC output voltage\n\n");
-    mp_printf(&mp_plat_print, "          channel 0: DAC 0\n");    
-    mp_printf(&mp_plat_print, "          channel 1: DAC 1\n\n");   
-    mp_printf(&mp_plat_print, "          channel 2: top rail\n");    
-    mp_printf(&mp_plat_print, "          channel 3: bottom rail\n");    
- 
+    mp_printf(&mp_plat_print, "  jumperless.dac_get(channel)                  - Get DAC output voltage\n");
+    mp_printf(&mp_plat_print, "  jumperless.set_dac(channel, voltage)         - Alias for dac_set\n");
+    mp_printf(&mp_plat_print, "  jumperless.get_dac(channel)                  - Alias for dac_get\n\n");
+    mp_printf(&mp_plat_print, "          channel: 0-3, DAC0, DAC1, TOP_RAIL, BOTTOM_RAIL\n");    
+    mp_printf(&mp_plat_print, "          channel 0/DAC0: DAC 0\n");    
+    mp_printf(&mp_plat_print, "          channel 1/DAC1: DAC 1\n");   
+    mp_printf(&mp_plat_print, "          channel 2/TOP_RAIL: top rail\n");    
+    mp_printf(&mp_plat_print, "          channel 3/BOTTOM_RAIL: bottom rail\n");    
     mp_printf(&mp_plat_print, "            voltage: -8.0 to 8.0V\n\n");
     mp_printf(&mp_plat_print, "ADC (Analog-to-Digital Converter):\n");
-    mp_printf(&mp_plat_print, "  jumperless.adc_get(channel)                  - Read ADC input voltage\n\n");
+    mp_printf(&mp_plat_print, "  jumperless.adc_get(channel)                  - Read ADC input voltage\n");
+    mp_printf(&mp_plat_print, "  jumperless.get_adc(channel)                  - Alias for adc_get\n\n");
     mp_printf(&mp_plat_print, "                                              channel: 0-4\n\n");
     mp_printf(&mp_plat_print, "INA (Current/Power Monitor):\n");
     mp_printf(&mp_plat_print, "  jumperless.ina_get_current(sensor)          - Read current in amps\n");
     mp_printf(&mp_plat_print, "  jumperless.ina_get_voltage(sensor)          - Read shunt voltage\n");
     mp_printf(&mp_plat_print, "  jumperless.ina_get_bus_voltage(sensor)      - Read bus voltage\n");
-    mp_printf(&mp_plat_print, "  jumperless.ina_get_power(sensor)            - Read power in watts\n\n");
+    mp_printf(&mp_plat_print, "  jumperless.ina_get_power(sensor)            - Read power in watts\n");
+    mp_printf(&mp_plat_print, "  Aliases: get_current, get_voltage, get_bus_voltage, get_power\n\n");
     mp_printf(&mp_plat_print, "             sensor: 0 or 1\n\n");
     mp_printf(&mp_plat_print, "GPIO:\n");
     mp_printf(&mp_plat_print, "  jumperless.gpio_set(pin, value)             - Set GPIO pin state\n");
@@ -1119,7 +1722,8 @@ static mp_obj_t jl_help_func(void) {
     mp_printf(&mp_plat_print, "  jumperless.gpio_set_dir(pin, direction)     - Set GPIO pin direction\n");
     mp_printf(&mp_plat_print, "  jumperless.gpio_get_dir(pin)                - Get GPIO pin direction\n");
     mp_printf(&mp_plat_print, "  jumperless.gpio_set_pull(pin, pull)         - Set GPIO pull-up/down\n");
-    mp_printf(&mp_plat_print, "  jumperless.gpio_get_pull(pin)               - Get GPIO pull-up/down\n\n");
+    mp_printf(&mp_plat_print, "  jumperless.gpio_get_pull(pin)               - Get GPIO pull-up/down\n");
+    mp_printf(&mp_plat_print, "  Aliases: set_gpio, get_gpio, set_gpio_dir, get_gpio_dir, etc.\n\n");
     mp_printf(&mp_plat_print, "            pin 1-8: GPIO 1-8\n");
     mp_printf(&mp_plat_print, "            pin   9: UART Tx\n");
     mp_printf(&mp_plat_print, "            pin  10: UART Rx\n");
@@ -1152,6 +1756,20 @@ static mp_obj_t jl_help_func(void) {
     mp_printf(&mp_plat_print, "  jumperless.print_nets()                     - Print nets\n");
     mp_printf(&mp_plat_print, "  jumperless.print_chip_status()              - Print chip status\n\n");
 
+    mp_printf(&mp_plat_print, "Probe Functions:\n");
+    mp_printf(&mp_plat_print, "  jumperless.probe_read([blocking=True])      - Read probe (default: blocking)\n");
+    mp_printf(&mp_plat_print, "  jumperless.read_probe([blocking=True])      - Read probe (default: blocking)\n");
+    mp_printf(&mp_plat_print, "  jumperless.probe_read_blocking()            - Wait for probe touch (explicit)\n");
+    mp_printf(&mp_plat_print, "  jumperless.probe_read_nonblocking()         - Check probe immediately (explicit)\n");
+    mp_printf(&mp_plat_print, "  jumperless.get_button([blocking=True])      - Get button state (default: blocking)\n");
+    mp_printf(&mp_plat_print, "  jumperless.probe_button([blocking=True])    - Get button state (default: blocking)\n");
+    mp_printf(&mp_plat_print, "  jumperless.probe_button_blocking()          - Wait for button press (explicit)\n");
+    mp_printf(&mp_plat_print, "  jumperless.probe_button_nonblocking()       - Check buttons immediately (explicit)\n");
+    mp_printf(&mp_plat_print, "  Touch aliases: probe_wait, wait_probe, probe_touch, wait_touch (always blocking)\n");
+    mp_printf(&mp_plat_print, "  Button aliases: button_read, read_button (parameterized)\n");
+    mp_printf(&mp_plat_print, "  Non-blocking only: check_button, button_check\n");
+    mp_printf(&mp_plat_print, "  Touch returns: ProbePad object (1-60, D13_PAD, TOP_RAIL_PAD, LOGO_PAD_TOP, etc.)\n");
+    mp_printf(&mp_plat_print, "  Button returns: CONNECT, REMOVE, or NONE (front=connect, rear=remove)\n\n");
     mp_printf(&mp_plat_print, "Misc:\n");
     mp_printf(&mp_plat_print, "  jumperless.arduino_reset()                  - Reset Arduino\n");
     mp_printf(&mp_plat_print, "  jumperless.probe_tap(node)                  - Tap probe on node (unimplemented)\n");
@@ -1166,16 +1784,31 @@ static mp_obj_t jl_help_func(void) {
     mp_printf(&mp_plat_print, "  For global access: from jumperless_nodes import *\n");
     mp_printf(&mp_plat_print, "  Node names: All standard names like \"D13\", \"A0\", \"GPIO_1\", etc.\n\n");
     mp_printf(&mp_plat_print, "Examples (all functions available globally):\n");
-    mp_printf(&mp_plat_print, "  dac_set(3, 3.3)                            # Set Top Rail to 3.3V\n");
-    mp_printf(&mp_plat_print, "  voltage = adc_get(1)                       # Read ADC1\n");
+    mp_printf(&mp_plat_print, "  dac_set(TOP_RAIL, 3.3)                     # Set Top Rail to 3.3V using node\n");
+    mp_printf(&mp_plat_print, "  set_dac(3, 3.3)                            # Same as above using alias\n");
+    mp_printf(&mp_plat_print, "  dac_set(DAC0, 5.0)                         # Set DAC0 using node constant\n");
+    mp_printf(&mp_plat_print, "  voltage = get_adc(1)                       # Read ADC1 using alias\n");
     mp_printf(&mp_plat_print, "  connect(TOP_RAIL, D13)                     # Connect using constants\n");
     mp_printf(&mp_plat_print, "  connect(\"TOP_RAIL\", 5)                      # Connect using strings\n");
     mp_printf(&mp_plat_print, "  connect(4, 20)                             # Connect using numbers\n");
     mp_printf(&mp_plat_print, "  top_rail = node(\"TOP_RAIL\")                 # Create node object\n");
     mp_printf(&mp_plat_print, "  connect(top_rail, D13)                     # Mix objects and constants\n");
     mp_printf(&mp_plat_print, "  oled_print(\"Fuck you!\")                    # Display text\n");
-    mp_printf(&mp_plat_print, "  current = ina_get_current(0)               # Read current\n");
-    mp_printf(&mp_plat_print, "  gpio_set(1, True)                          # Set GPIO pin high\n\n");
+    mp_printf(&mp_plat_print, "  current = get_current(0)                   # Read current using alias\n");
+    mp_printf(&mp_plat_print, "  set_gpio(1, True)                          # Set GPIO pin high using alias\n");
+    mp_printf(&mp_plat_print, "  pad = probe_read()                         # Wait for probe touch\n");
+    mp_printf(&mp_plat_print, "  if pad == 25: print('Touched pad 25!')    # Check specific pad\n");
+    mp_printf(&mp_plat_print, "  if pad == D13_PAD: connect(D13, TOP_RAIL)  # Auto-connect Arduino pin\n");
+    mp_printf(&mp_plat_print, "  if pad == TOP_RAIL_PAD: show_voltage()     # Show rail voltage\n");
+    mp_printf(&mp_plat_print, "  if pad == LOGO_PAD_TOP: print('Logo!')    # Check logo pad\n");
+    mp_printf(&mp_plat_print, "  button = get_button()                      # Wait for button press (blocking)\n");
+    mp_printf(&mp_plat_print, "  if button == CONNECT_BUTTON: ...          # Front button pressed\n");
+    mp_printf(&mp_plat_print, "  if button == REMOVE_BUTTON: ...           # Rear button pressed\n");
+    mp_printf(&mp_plat_print, "  button = check_button()                   # Check buttons immediately\n");
+    mp_printf(&mp_plat_print, "  if button == BUTTON_NONE: print('None')   # No button pressed\n");
+    mp_printf(&mp_plat_print, "  pad = wait_touch()                        # Wait for touch\n");
+    mp_printf(&mp_plat_print, "  btn = check_button()                      # Check button immediately\n");
+    mp_printf(&mp_plat_print, "  if pad == D13_PAD and btn == CONNECT_BUTTON: connect(D13, TOP_RAIL)\n\n");
     mp_printf(&mp_plat_print, "Note: All functions and constants are available globally!\n");
     mp_printf(&mp_plat_print, "No need for 'jumperless.' prefix in REPL or single commands.\n\n");
     return mp_const_none;
@@ -1311,12 +1944,91 @@ static const mp_rom_map_elem_t jumperless_module_globals_table[] = {
     { MP_ROM_QSTR(MP_QSTR_GPIO_26), MP_ROM_PTR(&node_gpio7_obj) },
     { MP_ROM_QSTR(MP_QSTR_GPIO_27), MP_ROM_PTR(&node_gpio8_obj) },
     
+    // Probe button constants
+    { MP_ROM_QSTR(MP_QSTR_BUTTON_NONE), MP_ROM_PTR(&probe_button_none_obj) },
+    { MP_ROM_QSTR(MP_QSTR_BUTTON_CONNECT), MP_ROM_PTR(&probe_button_connect_obj) },
+    { MP_ROM_QSTR(MP_QSTR_BUTTON_REMOVE), MP_ROM_PTR(&probe_button_remove_obj) },
+    { MP_ROM_QSTR(MP_QSTR_CONNECT_BUTTON), MP_ROM_PTR(&probe_button_connect_obj) },
+    { MP_ROM_QSTR(MP_QSTR_REMOVE_BUTTON), MP_ROM_PTR(&probe_button_remove_obj) },
+    
+    // Probe pad constants
+    { MP_ROM_QSTR(MP_QSTR_NO_PAD), MP_ROM_PTR(&probe_no_pad_obj) },
+    { MP_ROM_QSTR(MP_QSTR_LOGO_PAD_TOP), MP_ROM_PTR(&probe_logo_pad_top_obj) },
+    { MP_ROM_QSTR(MP_QSTR_LOGO_PAD_BOTTOM), MP_ROM_PTR(&probe_logo_pad_bottom_obj) },
+    { MP_ROM_QSTR(MP_QSTR_GPIO_PAD), MP_ROM_PTR(&probe_gpio_pad_obj) },
+    { MP_ROM_QSTR(MP_QSTR_DAC_PAD), MP_ROM_PTR(&probe_dac_pad_obj) },
+    { MP_ROM_QSTR(MP_QSTR_ADC_PAD), MP_ROM_PTR(&probe_adc_pad_obj) },
+    { MP_ROM_QSTR(MP_QSTR_BUILDING_PAD_TOP), MP_ROM_PTR(&probe_building_pad_top_obj) },
+    { MP_ROM_QSTR(MP_QSTR_BUILDING_PAD_BOTTOM), MP_ROM_PTR(&probe_building_pad_bottom_obj) },
+    
+    // Nano power/control pad constants
+    { MP_ROM_QSTR(MP_QSTR_NANO_VIN), MP_ROM_PTR(&probe_nano_vin_obj) },
+    { MP_ROM_QSTR(MP_QSTR_VIN_PAD), MP_ROM_PTR(&probe_nano_vin_obj) },
+    { MP_ROM_QSTR(MP_QSTR_NANO_RESET_0), MP_ROM_PTR(&probe_nano_reset_0_obj) },
+    { MP_ROM_QSTR(MP_QSTR_RESET_0_PAD), MP_ROM_PTR(&probe_nano_reset_0_obj) },
+    { MP_ROM_QSTR(MP_QSTR_NANO_RESET_1), MP_ROM_PTR(&probe_nano_reset_1_obj) },
+    { MP_ROM_QSTR(MP_QSTR_RESET_1_PAD), MP_ROM_PTR(&probe_nano_reset_1_obj) },
+    { MP_ROM_QSTR(MP_QSTR_NANO_GND_1), MP_ROM_PTR(&probe_nano_gnd_1_obj) },
+    { MP_ROM_QSTR(MP_QSTR_GND_1_PAD), MP_ROM_PTR(&probe_nano_gnd_1_obj) },
+    { MP_ROM_QSTR(MP_QSTR_NANO_GND_0), MP_ROM_PTR(&probe_nano_gnd_0_obj) },
+    { MP_ROM_QSTR(MP_QSTR_GND_0_PAD), MP_ROM_PTR(&probe_nano_gnd_0_obj) },
+    { MP_ROM_QSTR(MP_QSTR_NANO_3V3), MP_ROM_PTR(&probe_nano_3v3_obj) },
+    { MP_ROM_QSTR(MP_QSTR_3V3_PAD), MP_ROM_PTR(&probe_nano_3v3_obj) },
+    { MP_ROM_QSTR(MP_QSTR_NANO_5V), MP_ROM_PTR(&probe_nano_5v_obj) },
+    { MP_ROM_QSTR(MP_QSTR_5V_PAD), MP_ROM_PTR(&probe_nano_5v_obj) },
+    
+    // Nano digital pin pad constants
+    { MP_ROM_QSTR(MP_QSTR_D0_PAD), MP_ROM_PTR(&probe_d0_pad_obj) },
+    { MP_ROM_QSTR(MP_QSTR_D1_PAD), MP_ROM_PTR(&probe_d1_pad_obj) },
+    { MP_ROM_QSTR(MP_QSTR_D2_PAD), MP_ROM_PTR(&probe_d2_pad_obj) },
+    { MP_ROM_QSTR(MP_QSTR_D3_PAD), MP_ROM_PTR(&probe_d3_pad_obj) },
+    { MP_ROM_QSTR(MP_QSTR_D4_PAD), MP_ROM_PTR(&probe_d4_pad_obj) },
+    { MP_ROM_QSTR(MP_QSTR_D5_PAD), MP_ROM_PTR(&probe_d5_pad_obj) },
+    { MP_ROM_QSTR(MP_QSTR_D6_PAD), MP_ROM_PTR(&probe_d6_pad_obj) },
+    { MP_ROM_QSTR(MP_QSTR_D7_PAD), MP_ROM_PTR(&probe_d7_pad_obj) },
+    { MP_ROM_QSTR(MP_QSTR_D8_PAD), MP_ROM_PTR(&probe_d8_pad_obj) },
+    { MP_ROM_QSTR(MP_QSTR_D9_PAD), MP_ROM_PTR(&probe_d9_pad_obj) },
+    { MP_ROM_QSTR(MP_QSTR_D10_PAD), MP_ROM_PTR(&probe_d10_pad_obj) },
+    { MP_ROM_QSTR(MP_QSTR_D11_PAD), MP_ROM_PTR(&probe_d11_pad_obj) },
+    { MP_ROM_QSTR(MP_QSTR_D12_PAD), MP_ROM_PTR(&probe_d12_pad_obj) },
+    { MP_ROM_QSTR(MP_QSTR_D13_PAD), MP_ROM_PTR(&probe_d13_pad_obj) },
+    { MP_ROM_QSTR(MP_QSTR_RESET_PAD), MP_ROM_PTR(&probe_reset_pad_obj) },
+    { MP_ROM_QSTR(MP_QSTR_AREF_PAD), MP_ROM_PTR(&probe_aref_pad_obj) },
+    
+    // Nano analog pin pad constants
+    { MP_ROM_QSTR(MP_QSTR_A0_PAD), MP_ROM_PTR(&probe_a0_pad_obj) },
+    { MP_ROM_QSTR(MP_QSTR_A1_PAD), MP_ROM_PTR(&probe_a1_pad_obj) },
+    { MP_ROM_QSTR(MP_QSTR_A2_PAD), MP_ROM_PTR(&probe_a2_pad_obj) },
+    { MP_ROM_QSTR(MP_QSTR_A3_PAD), MP_ROM_PTR(&probe_a3_pad_obj) },
+    { MP_ROM_QSTR(MP_QSTR_A4_PAD), MP_ROM_PTR(&probe_a4_pad_obj) },
+    { MP_ROM_QSTR(MP_QSTR_A5_PAD), MP_ROM_PTR(&probe_a5_pad_obj) },
+    { MP_ROM_QSTR(MP_QSTR_A6_PAD), MP_ROM_PTR(&probe_a6_pad_obj) },
+    { MP_ROM_QSTR(MP_QSTR_A7_PAD), MP_ROM_PTR(&probe_a7_pad_obj) },
+    
+    // Rail pad constants
+    { MP_ROM_QSTR(MP_QSTR_TOP_RAIL_PAD), MP_ROM_PTR(&probe_top_rail_pad_obj) },
+    { MP_ROM_QSTR(MP_QSTR_BOTTOM_RAIL_PAD), MP_ROM_PTR(&probe_bottom_rail_pad_obj) },
+    { MP_ROM_QSTR(MP_QSTR_BOT_RAIL_PAD), MP_ROM_PTR(&probe_bottom_rail_pad_obj) },
+    { MP_ROM_QSTR(MP_QSTR_TOP_RAIL_GND), MP_ROM_PTR(&probe_top_rail_gnd_obj) },
+    { MP_ROM_QSTR(MP_QSTR_TOP_GND_PAD), MP_ROM_PTR(&probe_top_rail_gnd_obj) },
+    { MP_ROM_QSTR(MP_QSTR_BOTTOM_RAIL_GND), MP_ROM_PTR(&probe_bottom_rail_gnd_obj) },
+    { MP_ROM_QSTR(MP_QSTR_BOT_RAIL_GND), MP_ROM_PTR(&probe_bottom_rail_gnd_obj) },
+    { MP_ROM_QSTR(MP_QSTR_BOTTOM_GND_PAD), MP_ROM_PTR(&probe_bottom_rail_gnd_obj) },
+    { MP_ROM_QSTR(MP_QSTR_BOT_GND_PAD), MP_ROM_PTR(&probe_bottom_rail_gnd_obj) },
+    
     // DAC functions
     { MP_ROM_QSTR(MP_QSTR_dac_set), MP_ROM_PTR(&jl_dac_set_obj) },
     { MP_ROM_QSTR(MP_QSTR_dac_get), MP_ROM_PTR(&jl_dac_get_obj) },
     
+    // DAC function aliases
+    { MP_ROM_QSTR(MP_QSTR_set_dac), MP_ROM_PTR(&jl_dac_set_obj) },
+    { MP_ROM_QSTR(MP_QSTR_get_dac), MP_ROM_PTR(&jl_dac_get_obj) },
+    
     // ADC functions
     { MP_ROM_QSTR(MP_QSTR_adc_get), MP_ROM_PTR(&jl_adc_get_obj) },
+    
+    // ADC function aliases
+    { MP_ROM_QSTR(MP_QSTR_get_adc), MP_ROM_PTR(&jl_adc_get_obj) },
     
     // INA functions
     { MP_ROM_QSTR(MP_QSTR_ina_get_current), MP_ROM_PTR(&jl_ina_get_current_obj) },
@@ -1324,13 +2036,31 @@ static const mp_rom_map_elem_t jumperless_module_globals_table[] = {
     { MP_ROM_QSTR(MP_QSTR_ina_get_bus_voltage), MP_ROM_PTR(&jl_ina_get_bus_voltage_obj) },
     { MP_ROM_QSTR(MP_QSTR_ina_get_power), MP_ROM_PTR(&jl_ina_get_power_obj) },
     
+    // INA function aliases
+    { MP_ROM_QSTR(MP_QSTR_get_ina_current), MP_ROM_PTR(&jl_ina_get_current_obj) },
+    { MP_ROM_QSTR(MP_QSTR_get_ina_voltage), MP_ROM_PTR(&jl_ina_get_voltage_obj) },
+    { MP_ROM_QSTR(MP_QSTR_get_ina_bus_voltage), MP_ROM_PTR(&jl_ina_get_bus_voltage_obj) },
+    { MP_ROM_QSTR(MP_QSTR_get_ina_power), MP_ROM_PTR(&jl_ina_get_power_obj) },
+    { MP_ROM_QSTR(MP_QSTR_get_current), MP_ROM_PTR(&jl_ina_get_current_obj) },
+    { MP_ROM_QSTR(MP_QSTR_get_voltage), MP_ROM_PTR(&jl_ina_get_voltage_obj) },
+    { MP_ROM_QSTR(MP_QSTR_get_bus_voltage), MP_ROM_PTR(&jl_ina_get_bus_voltage_obj) },
+    { MP_ROM_QSTR(MP_QSTR_get_power), MP_ROM_PTR(&jl_ina_get_power_obj) },
+    
     // GPIO functions
     { MP_ROM_QSTR(MP_QSTR_gpio_set), MP_ROM_PTR(&jl_gpio_set_obj) },
     { MP_ROM_QSTR(MP_QSTR_gpio_get), MP_ROM_PTR(&jl_gpio_get_obj) },
     { MP_ROM_QSTR(MP_QSTR_gpio_set_dir), MP_ROM_PTR(&jl_gpio_set_dir_obj) },
     { MP_ROM_QSTR(MP_QSTR_gpio_get_dir), MP_ROM_PTR(&jl_gpio_get_dir_obj) },
     { MP_ROM_QSTR(MP_QSTR_gpio_set_pull), MP_ROM_PTR(&jl_gpio_set_pull_obj) },
-    { MP_ROM_QSTR(MP_QSTR_gpio_get_pull), MP_ROM_PTR(&jl_gpio_get_pull_obj) }, 
+    { MP_ROM_QSTR(MP_QSTR_gpio_get_pull), MP_ROM_PTR(&jl_gpio_get_pull_obj) },
+    
+    // GPIO function aliases
+    { MP_ROM_QSTR(MP_QSTR_set_gpio), MP_ROM_PTR(&jl_gpio_set_obj) },
+    { MP_ROM_QSTR(MP_QSTR_get_gpio), MP_ROM_PTR(&jl_gpio_get_obj) },
+    { MP_ROM_QSTR(MP_QSTR_set_gpio_dir), MP_ROM_PTR(&jl_gpio_set_dir_obj) },
+    { MP_ROM_QSTR(MP_QSTR_get_gpio_dir), MP_ROM_PTR(&jl_gpio_get_dir_obj) },
+    { MP_ROM_QSTR(MP_QSTR_set_gpio_pull), MP_ROM_PTR(&jl_gpio_set_pull_obj) },
+    { MP_ROM_QSTR(MP_QSTR_get_gpio_pull), MP_ROM_PTR(&jl_gpio_get_pull_obj) }, 
     
     // Node functions
     { MP_ROM_QSTR(MP_QSTR_connect), MP_ROM_PTR(&jl_nodes_connect_obj) },
@@ -1360,6 +2090,30 @@ static const mp_rom_map_elem_t jumperless_module_globals_table[] = {
     
     // Probe functions
     { MP_ROM_QSTR(MP_QSTR_probe_tap), MP_ROM_PTR(&jl_probe_tap_obj) },
+    { MP_ROM_QSTR(MP_QSTR_probe_read_blocking), MP_ROM_PTR(&jl_probe_read_blocking_obj) },
+    { MP_ROM_QSTR(MP_QSTR_probe_read_nonblocking), MP_ROM_PTR(&jl_probe_read_nonblocking_obj) },
+    
+    // Probe button functions
+    { MP_ROM_QSTR(MP_QSTR_probe_button_blocking), MP_ROM_PTR(&jl_probe_button_blocking_obj) },
+    { MP_ROM_QSTR(MP_QSTR_probe_button_nonblocking), MP_ROM_PTR(&jl_probe_button_nonblocking_obj) },
+    
+    // Probe touch/read aliases (parameterized versions support blocking=True/False)
+    { MP_ROM_QSTR(MP_QSTR_probe_read), MP_ROM_PTR(&jl_probe_read_param_obj) },
+    { MP_ROM_QSTR(MP_QSTR_read_probe), MP_ROM_PTR(&jl_read_probe_param_obj) },
+    { MP_ROM_QSTR(MP_QSTR_probe_wait), MP_ROM_PTR(&jl_probe_wait_obj) },
+    { MP_ROM_QSTR(MP_QSTR_wait_probe), MP_ROM_PTR(&jl_wait_probe_obj) },
+    { MP_ROM_QSTR(MP_QSTR_probe_touch), MP_ROM_PTR(&jl_probe_touch_obj) },
+    { MP_ROM_QSTR(MP_QSTR_wait_touch), MP_ROM_PTR(&jl_wait_touch_obj) },
+    
+    // Probe button aliases (parameterized versions support blocking=True/False)
+    { MP_ROM_QSTR(MP_QSTR_get_button), MP_ROM_PTR(&jl_get_button_param_obj) },
+    { MP_ROM_QSTR(MP_QSTR_button_read), MP_ROM_PTR(&jl_button_read_param_obj) },
+    { MP_ROM_QSTR(MP_QSTR_read_button), MP_ROM_PTR(&jl_read_button_param_obj) },
+    { MP_ROM_QSTR(MP_QSTR_probe_button), MP_ROM_PTR(&jl_probe_button_param_obj) },
+    
+    // Probe button non-blocking aliases
+    { MP_ROM_QSTR(MP_QSTR_check_button), MP_ROM_PTR(&jl_check_button_obj) },
+    { MP_ROM_QSTR(MP_QSTR_button_check), MP_ROM_PTR(&jl_button_check_obj) },
     
     // Clickwheel functions
     { MP_ROM_QSTR(MP_QSTR_clickwheel_up), MP_ROM_PTR(&jl_clickwheel_up_obj) },

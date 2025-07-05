@@ -30,6 +30,9 @@ struct FileEntry {
     time_t lastModified;
 };
 
+// Display configuration constants
+static const int DEFAULT_DISPLAY_LINES = 25; // Increased from ~15 to 25 lines
+
 // Color scheme for filesystem display
 struct FileColors {
     static const int DIRECTORY = 51;     // Cyan
@@ -79,6 +82,18 @@ private:
     
     // File content storage for REPL mode
     String lastOpenedFileContent;
+    
+    // Output area for prompts and messages
+    int outputAreaStartRow;
+    int outputAreaHeight;
+    int outputAreaCurrentRow;
+    
+    // Input blocking to prevent accidental double-presses
+    unsigned long lastDisplayUpdate;
+    static const unsigned long INPUT_BLOCK_TIME = 200; // 200ms block after display updates
+    
+    // Display configuration
+    int textAreaLines; // Lines available for text (total - headers - footers)
     
     // Helper functions
     FileType getFileType(const String& filename);
@@ -153,6 +168,17 @@ public:
     
     // Interactive input helpers
     String promptForFilename(const String& prompt);
+    
+    // Output area management
+    void clearOutputArea();
+    void outputToArea(const String& text, int color = 248);
+    void showOutputAreaBorder();
+    String promptInOutputArea(const String& prompt);
+    
+    // Input management
+    void blockInputBriefly();
+    void clearBufferedInput(bool allowCtrlQ = true);
+    bool isInputBlocked();
 };
 
 // Global functions
@@ -173,5 +199,15 @@ FileType getFileTypeFromFilename(const String& filename);
 String getFileIconFromType(FileType type);
 String formatFileSizeForUSB(size_t size);
 void printColoredPath(const String& path);
+
+// Initialize MicroPython examples on boot
+void initializeMicroPythonExamples(bool forceInitialization = false);
+
+// Verify MicroPython examples exist
+bool verifyMicroPythonExamples();
+
+// Display configuration functions
+int getConfiguredDisplayLines();
+int getConfiguredEditorLines();
 
 #endif // FILESYSTEMSTUFF_H 

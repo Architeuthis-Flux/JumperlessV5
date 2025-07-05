@@ -799,6 +799,11 @@ void updateStateFromGPIOConfig(void) {
               gpio_set_dir(gpio_pin, false);  // Set as input
               gpio_set_pulls(gpio_pin, false, false);  // No pulls
               break;
+            case 3: // bus keeper
+              gpioState[i] = 7;  // New state for bus keeper
+              gpio_set_dir(gpio_pin, false);  // Set as input
+              gpio_set_pulls(gpio_pin, true, true);  // Both pulls enabled = bus keeper
+              break;
 
             }
           break;
@@ -881,6 +886,15 @@ void updateGPIOConfigFromState(void) {
           gpio_set_pulls(gpio_pin, false, true);  // Pull down
           break;
         case 6: // do nothing
+          break;
+        case 7: // bus keeper
+          if (jumperlessConfig.gpio.direction[i] != 1 || jumperlessConfig.gpio.pulls[i] != 3) {
+            changed = 1;
+            }
+          jumperlessConfig.gpio.direction[i] = 1; // input
+          jumperlessConfig.gpio.pulls[i] = 3; // bus keeper
+          gpio_set_dir(gpio_pin, false);  // Set as input
+          gpio_set_pulls(gpio_pin, true, true);  // Both pulls enabled = bus keeper
           break;
         }
       }
@@ -1023,6 +1037,9 @@ void readSettingsFromConfig() {
             } else if (jumperlessConfig.gpio.pulls[i] == 0) { // pulldown
               gpioState[i] = 4;
               gpio_set_pulls(gpio_pin, false, true);
+              } else if (jumperlessConfig.gpio.pulls[i] == 3) { // bus keeper
+              gpioState[i] = 7;
+              gpio_set_pulls(gpio_pin, true, true);
               } else {
               gpioState[i] = 5; // unknown
               gpio_set_pulls(gpio_pin, false, false);

@@ -49,7 +49,7 @@ bool safeFlush(Stream *stream, unsigned long timeoutMs = 50) {
     }
     
     // Small delay to prevent busy waiting
-    delayMicroseconds(100);
+    delayMicroseconds(50);  // Reduced from 100
   }
   
   // Timeout reached - don't flush
@@ -197,6 +197,29 @@ const uint8_t symbols[50][3] = {
 { 0x0d, 0x0b, 0x00, }, // 𝟸
 { 0x09, 0x0b, 0x0f, } };// 𝟹
 
+const uint8_t arrow[8][3] = {
+{ 0x08, 0x1f, 0x08, }, // ↑ up arrow
+{ 0x02, 0x1f, 0x02, }, // ↓ down arrow  
+{ 0x04, 0xA, 0x11, }, // ← left arrow
+{ 0x04, 0x0a, 0x11, }, // → right arrow
+{ 0x1c, 0x18, 0x16, }, // ↖ up-left arrow
+{ 0x16, 0x18, 0x1c, }, // ↗ up-right arrow
+{ 0x0d, 0x03, 0x07, }, // ↘ down-left arrow
+{ 0x07, 0x03, 0x0d, }, // ↙ down-right arrow
+};
+
+const uint8_t lowercaseArrow[8][3] = {
+
+  { 0x04, 0x08, 0x04, }, // ↑ up arrow
+  { 0x04, 0x02, 0x04, }, // ↓ down arrow  
+  { 0x04, 0x1a, 0x00, }, // ← left arrow
+  { 0x00, 0x1a, 0x04, }, // → right arrow
+  { 0x06, 0x04, 0x00, }, // ↖ up-left arrow
+  { 0x00, 0x04, 0x06, }, // ↗ up-right arrow
+  { 0x00, 0x02, 0x06, }, // ↘ down-left arrow
+  { 0x06, 0x02, 0x00, }, // ↙ down-right arrow
+};
+
 // char symbolMap[40] = {
 // '!', '$', '%', '^', '*', '_', '-', '+', '÷', 'x', '=', '±', '?', '<', '>', '~', '\'', ',', '.', '/', '\\', '(', ')', '[', ']', '{', '}', '|', ';', ':', 'µ', '°', '❬', '❭', '"', '\'', '𝟷', '𝟸', '𝟹'};
 
@@ -205,7 +228,7 @@ const wchar_t fontMap[120] = {
 'A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'J', 'K', 'L', 'M', 'N', 'O', 'P', 'Q', 'R', 'S', 'T', 'U', 'V', 'W', 'X', 'Y', 'Z',
 'a', 'b', 'c', 'd', 'e', 'f', 'g', 'h', 'i', 'j', 'k', 'l', 'm', 'n', 'o', 'p', 'q', 'r', 's', 't', 'u', 'v', 'w', 'x', 'y', 'z',
 '!', '$', '%', '^', '*', '_', '-', '+', L'÷', 'x', '=', L'±', '?', '<', '>', '~', '\'', ',', '.', '/', '\\',
-'(', ')', '[', ']', '{', '}', '|', ';', ':', L'µ', L'°', L'❬', L'❭', '"', '\'', L'𝟷', L'𝟸', L'𝟹', '0', '1', '2', '3', '4', '5', '6', '7', '8', '9' };
+'(', ')', '[', ']', '{', '}', '|', ';', ':', L'µ', L'°', L'❬', L'❭', '"', '\'', L'𝟷', L'𝟸', L'𝟹', '0', '1', '2', '3', '4', '5', '6', '7', '8', '9', L'↓', L'↑' };
 
 
 
@@ -245,7 +268,7 @@ const uint8_t font[][3] = // 'JumperlessFontmap', 500x5px
 
   0x1e, 0x12, 0x1e, },{ 0x14, 0x1e, 0x10, },{ 0x1a, 0x12, 0x16, },{ 0x12, 0x16, 0x1e, },{ //lowercase Numbers
   0x0e, 0x08, 0x1e, },{ 0x16, 0x12, 0x1a, },{ 0x1e, 0x1a, 0x1a, },{ 0x12, 0x0a, 0x06, },{
-  0x1e, 0x1a, 0x1e, },{ 0x16, 0x16, 0x1e, }
+  0x1e, 0x1a, 0x1e, },{ 0x16, 0x16, 0x1e, }, {0b00000010, 0b00000001, 0b00000010}, {0b00001000, 0b00010000, 0b00001000}
 
   };
 
@@ -277,7 +300,7 @@ uint32_t specialColors[13][5] = {
 int menuBrightnessSetting = -40; // -100 - 100 (0 default)
 
 bool animationsEnabled = true;
-specialRowAnimation rowAnimations[26];
+specialRowAnimation rowAnimations[50];
 volatile int doomOn = 0;
 
 int wireStatus[64][5]; // row, led (net stored)
@@ -891,6 +914,7 @@ void initRowAnimations() {
   rowAnimations[2].direction = 0;
   rowAnimations[2].frameInterval = 160;
 
+  //! gpio input idle animations
   for (int i = 0; i < 10; i++) {
     rowAnimations[i + 3].index = currentIndex;
     currentIndex++;
@@ -903,6 +927,61 @@ void initRowAnimations() {
     }
     rowAnimations[i + 3].direction = 1;
     rowAnimations[i + 3].frameInterval = 110;
+  }
+
+  //! gpio keeper input animations  
+  for (int i = 0; i < 10; i++) {
+    // High state keeper animation (type 7)
+    rowAnimations[currentIndex].index = currentIndex;
+    currentIndex++;
+    rowAnimations[currentIndex - 1].net = animationOrder[i + 3];
+    rowAnimations[currentIndex - 1].currentFrame = i;
+    rowAnimations[currentIndex - 1].numberOfFrames = 15;
+    rowAnimations[currentIndex - 1].type = 7; // gpio keeper high
+    rowAnimations[currentIndex - 1].direction = 1;
+    rowAnimations[currentIndex - 1].frameInterval = 120;
+    
+    // Create frames with red overlay for high state
+    for (int j = 0; j < 15; j++) {
+      int hue = gpioAnimationBaseHues[i]/3;
+
+ 
+      
+
+        int redOverlayHue = (hue * (100 - (j*8))) / 100; // 12% of base hue mixed with red (0)
+        // if (j == 0) redOverlayHue = 5;
+        // if (j == 15) redOverlayHue = 250;
+        // if (j == 7) redOverlayHue = 0;
+
+
+
+
+      hsvColor highColor = {(uint8_t)redOverlayHue, (uint8_t)min(255, satValues[j] + 180), (uint8_t)(gpioIdleBrightness + 18)};
+      rowAnimations[currentIndex - 1].frames[j] = HsvToRaw(highColor);
+    }
+    
+    // Low state keeper animation (type 8) 
+    rowAnimations[currentIndex].index = currentIndex;
+    currentIndex++;
+    rowAnimations[currentIndex - 1].net = animationOrder[i + 3];
+    rowAnimations[currentIndex - 1].currentFrame = i;
+    rowAnimations[currentIndex - 1].numberOfFrames = 15;
+    rowAnimations[currentIndex - 1].type = 8; // gpio keeper low
+    rowAnimations[currentIndex - 1].direction = 0;
+    rowAnimations[currentIndex - 1].frameInterval = 120;
+    
+    // Create frames with green overlay for low state
+    for (int j = 0; j < 15; j++) {
+      int hue = gpioAnimationBaseHues[i];
+
+      int greenOverlayHue = (hue * (100 - (j*6)) + (85 * (j*6))) / 100; // 12% of base hue mixed with green (85)
+
+      greenOverlayHue = (greenOverlayHue + (85 * 3))/4;
+      
+      
+      hsvColor lowColor = {(uint8_t)greenOverlayHue, (uint8_t)min(255, satValues[j] + 180), (uint8_t)(gpioIdleBrightness + 18)};
+      rowAnimations[currentIndex - 1].frames[j] = HsvToRaw(lowColor);
+    }
   }
 
   //! warning row animation
@@ -962,10 +1041,11 @@ void initRowAnimations() {
 
 // 0-2 = top rail, gnd, bottom rail // type 1
 // 3-12 = gpio 1-10 floating // type 2
-// 13 = warning row // type 3
-// 14 = highlighted net // type 4
-// 15 = highlighted row // type 6
-// 16 = probe connect highlight row // type 5
+// 13-32 = gpio 1-10 keeper (odd=high, even=low) // type 7/8
+// 33 = warning row // type 3
+// 34 = highlighted net // type 4
+// 35 = highlighted row // type 6
+// 36 = probe connect highlight row // type 5
 
 /// index is the net, value is the animation index
 int assignedAnimations[MAX_NETS] = {-1};
@@ -1014,19 +1094,37 @@ void assignRowAnimations(void) {
         continue;
       }
       if (gpioNet[i] > 0) {
-        assignedAnimations[gpioNet[i]] = i + 3;
-        rowAnimations[i + 3].net = gpioNet[i];
+        // Check if GPIO is in bus keeper mode (state 7)
+        if (gpioState[i] == 7) {
+          // Assign keeper animation based on current reading
+          int keeperAnimationIndex = 13 + (i * 2); // Start after idle animations
+          if (keeperAnimationIndex + 1 < 50) { // Bounds check
+            if (gpioReading[i] == 1) {
+              // High state - use keeper high animation
+              assignedAnimations[gpioNet[i]] = keeperAnimationIndex;
+              rowAnimations[keeperAnimationIndex].net = gpioNet[i];
+            } else {
+              // Low state - use keeper low animation  
+              assignedAnimations[gpioNet[i]] = keeperAnimationIndex + 1;
+              rowAnimations[keeperAnimationIndex + 1].net = gpioNet[i];
+            }
+          }
+        } else {
+          // Regular idle animation for non-keeper modes
+          assignedAnimations[gpioNet[i]] = i + 3;
+          rowAnimations[i + 3].net = gpioNet[i];
+        }
       }
     }
 
     if (brightenedNet > 0) {
-      assignedAnimations[brightenedNet] = 14;
-      rowAnimations[14].net = brightenedNet;
+      assignedAnimations[brightenedNet] = 34; // Updated index after keeper animations
+      rowAnimations[34].net = brightenedNet;
     }
 
     if (warningNet > 0) {
-      assignedAnimations[warningNet] = 13;
-      rowAnimations[13].net = warningNet;
+      assignedAnimations[warningNet] = 33; // Updated index after keeper animations  
+      rowAnimations[33].net = warningNet;
     }
   }
   // Serial.println(" ");
@@ -1234,6 +1332,22 @@ void showRowAnimation(int index, int net) {
 
         return;
         // continue;
+      }
+    }
+  } else if (rowAnimations[index].type == 7 || rowAnimations[index].type == 8) {
+    // Bus keeper animations - show only if GPIO state matches animation type
+    int gpioIndex = (index - 13) / 2; // Calculate GPIO index from keeper animation index
+    if (gpioIndex >= 0 && gpioIndex < 10 && gpioNet[gpioIndex] == actualNet && gpioNet[gpioIndex] != -1) {
+      if (gpioState[gpioIndex] == 7) { // Confirm it's in keeper mode
+        // Type 7 = keeper high, Type 8 = keeper low
+        bool shouldShowHigh = (rowAnimations[index].type == 7);
+        bool gpioIsHigh = (gpioReading[gpioIndex] == 1);
+        
+        if (shouldShowHigh != gpioIsHigh) {
+          return; // Don't show wrong state animation
+        }
+      } else {
+        return; // Not in keeper mode anymore
       }
     }
   }
@@ -3280,7 +3394,7 @@ void drawAnimatedImage(int imageIndex, int speed) {
       // showLEDsCore2 = 3;
       cycleCount++;
       leds.show();
-      delayMicroseconds(speed + (cycleCount * 200));
+      delayMicroseconds(speed + (cycleCount * 80));
     }
   } else { // play the animation backwards
     cycleCount = 44;
@@ -3504,15 +3618,19 @@ void printRLEimageData(int imageIndex) {
   Serial.flush();
 }
 
-// Screen state functions for clean transitions
+// Screen state functions for clean transitions - Windows compatible
 void saveScreenState(Stream *stream) {
-  // Clear screen for file manager interface
+  // Clear screen for file manager interface - Windows compatible
   stream->print("\033[2J\033[H");
   stream->flush();
+  // Add delay for Windows terminals to process the command
+  delay(50);
 }
 
 void restoreScreenState(Stream *stream) {
-  // Clear screen for clean return to REPL
+  // Clear screen for clean return to REPL - Windows compatible
   stream->print("\033[2J\033[H");
   stream->flush();
+  // Add delay for Windows terminals to process the command
+  delay(50);
 }

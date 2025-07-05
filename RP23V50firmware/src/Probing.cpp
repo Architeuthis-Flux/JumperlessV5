@@ -24,6 +24,7 @@
 #include "PersistentStuff.h"
 #include "oled.h"
 #include "Highlighting.h"
+#include "Python_Proper.h"
 
 int debugProbing = 0;
 
@@ -54,6 +55,15 @@ int probeRowMap[108] = {
     NANO_D13, NANO_3V3, NANO_AREF, NANO_A0, NANO_A1, NANO_A2, NANO_A3, NANO_A4, NANO_A5, NANO_A6, NANO_A7,NANO_5V, NANO_RESET_0, GND, NANO_VIN,
     LOGO_PAD_BOTTOM, LOGO_PAD_TOP, GPIO_PAD, DAC_PAD, ADC_PAD, BUILDING_PAD_TOP, BUILDING_PAD_BOTTOM, -1, -1, -1, -1
   };
+
+  int probeRowMapByPad[108] = {
+    -1, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, TOP_RAIL, TOP_RAIL_GND,
+    BOTTOM_RAIL, BOTTOM_RAIL_GND, 31, 32, 33, 34, 35, 36, 37, 38, 39, 40, 41, 42, 43, 44, 45, 46, 47, 48, 49, 50, 51, 52, 53, 54, 55, 56, 57, 58, 59, 60,
+    NANO_D1, NANO_D0, NANO_RESET_1, NANO_GND_1, NANO_D2, NANO_D3, NANO_D4, NANO_D5, NANO_D6, NANO_D7, NANO_D8, NANO_D9, NANO_D10, NANO_D11, NANO_D12,
+    NANO_D13, NANO_3V3, NANO_AREF, NANO_A0, NANO_A1, NANO_A2, NANO_A3, NANO_A4, NANO_A5, NANO_A6, NANO_A7,NANO_5V, NANO_RESET_0, NANO_GND_0, NANO_VIN,
+    LOGO_PAD_BOTTOM, LOGO_PAD_TOP, GPIO_PAD, DAC_PAD, ADC_PAD, BUILDING_PAD_TOP, BUILDING_PAD_BOTTOM, -1, -1, -1, -1
+  };
+  
 
 /* clang-format on */
 
@@ -3439,7 +3449,9 @@ int lastRowProbed = -1;
 
 unsigned long lastDuplicateTime = millis();
 int lastDuplicateRead = 0;
-int justReadProbe(bool allowDuplicates) {
+
+
+int justReadProbe(bool allowDuplicates, int rawPad) {
 
   if (blockProbing > 0) {
     return -1;
@@ -3471,7 +3483,7 @@ int justReadProbe(bool allowDuplicates) {
 
   if (allowDuplicates) {
     // Check if the mapped row is the same, not just the raw reading
-    if (probeRowMap[rowProbed] == lastRowProbed) {
+    if (probeRowMapByPad[rowProbed] == lastRowProbed) {
       // If the timer hasn't elapsed, reject the duplicate reading
       if (millis() - lastDuplicateTime < 500) {
         if (debugProbing == 1) {
@@ -3484,21 +3496,33 @@ int justReadProbe(bool allowDuplicates) {
         lastDuplicateTime = millis();
         lastProbeRead = probeRead;
         // Return the same reading now that timer is complete
-        return probeRowMap[rowProbed];
+        if (rawPad == 1) {
+          return probeRowMapByPad[rowProbed];
+          } else {
+          return probeRowMap[rowProbed];
+          }
         }
       } else {
       // Different row, reset timer and update last values
       lastDuplicateTime = millis();
       lastProbeRead = probeRead;
-      lastRowProbed = probeRowMap[rowProbed];
-      return probeRowMap[rowProbed];
+      lastRowProbed = probeRowMapByPad[rowProbed];
+      if (rawPad == 1) {
+        return probeRowMapByPad[rowProbed];
+        } else {
+        return probeRowMap[rowProbed];
+        }
       }
     }
 
   // For non-allowDuplicates case
   lastProbeRead = probeRead;
-  lastRowProbed = probeRowMap[rowProbed];
-  return probeRowMap[rowProbed];
+  lastRowProbed = probeRowMapByPad[rowProbed];
+  if (rawPad == 1) {
+    return probeRowMapByPad[rowProbed];
+    } else {
+    return probeRowMap[rowProbed];
+    }
   }
 /// @brief returns the row probed plus checks for button presses, or -1 if nothing
 /// @return -16 connect, -18 remove, -19 encoder up, -17 encoder down, -10 encoder pressed
@@ -3992,3 +4016,32 @@ void probeLEDhandler(void) {
 // highlightNets function moved to Highlighting.cpp
 
   // Double click detector state machine
+
+// C wrapper functions for MicroPython module
+extern "C" int jl_probe_button_nonblocking(void) {
+    // checkProbeButton() is already non-blocking, so just call it directly
+    // Returns: 0=NONE, 1=REMOVE(rear), 2=CONNECT(front)
+    return checkProbeButton();
+}
+
+extern "C" int jl_probe_button_blocking(void) {
+    // Loop until any button is pressed
+    // Returns: 1=REMOVE(rear), 2=CONNECT(front) (never returns 0)
+    int button_state = 0;
+    while (button_state == 0) {
+        mp_hal_check_interrupt();
+        
+        // Check if interrupt was requested and return special value
+        if (mp_interrupt_requested) {
+            mp_interrupt_requested = false; // Clear the flag
+            return -999; // Special return value indicating interrupt
+        }
+        
+        button_state = checkProbeButton();
+        if (button_state != 0) {
+            return button_state;
+        }
+        delay(1);  // Small delay to prevent busy-waiting
+    }
+    return button_state;  // This should never be reached, but just in case
+}

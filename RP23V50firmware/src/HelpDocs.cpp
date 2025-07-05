@@ -134,15 +134,20 @@ void showGeneralHelp() {
     changeTerminalColor(HELP_DESC_COLOR, false);
     Serial.println("      - Troubleshooting and technical internals");
     
-    changeTerminalColor(HELP_COMMAND_COLOR, false);
-    Serial.print(" config");
-    changeTerminalColor(HELP_DESC_COLOR, false);
-    Serial.println("     - Configuration file and persistent settings");
-    
-    changeTerminalColor(HELP_COMMAND_COLOR, false);
-    Serial.print(" glossary");
-    changeTerminalColor(HELP_DESC_COLOR, false);
-    Serial.println("   - Definitions of nets, nodes, bridges, and more");
+            changeTerminalColor(HELP_COMMAND_COLOR, false);
+        Serial.print(" config");
+        changeTerminalColor(HELP_DESC_COLOR, false);
+        Serial.println("     - Configuration file and persistent settings");
+        
+        changeTerminalColor(HELP_COMMAND_COLOR, false);
+        Serial.print(" advanced");
+        changeTerminalColor(HELP_DESC_COLOR, false);
+        Serial.println("   - Advanced commands and technical features");
+        
+        changeTerminalColor(HELP_COMMAND_COLOR, false);
+        Serial.print(" glossary");
+        changeTerminalColor(HELP_DESC_COLOR, false);
+        Serial.println("   - Definitions of nets, nodes, bridges, and more");
     
     Serial.println();
     changeTerminalColor(HELP_USAGE_COLOR, true);
@@ -244,6 +249,7 @@ void showCommandHelp(char command) {
             Serial.println("  vi      - show current sensor readings");
             Serial.println("  vi1     - show current sensor 1");
             Serial.println("  vl      - toggle live readings display");
+            //Serial.println("  vp      - read probe voltage");
             changeTerminalColor(HELP_DESC_COLOR, true);
             Serial.println("Features:");
             Serial.println("  - High resolution 12-bit ADC readings");
@@ -349,7 +355,7 @@ void showCommandHelp(char command) {
             
         case 'l':
             changeTerminalColor(HELP_DESC_COLOR, true);
-            Serial.println("LED brightness control and test patterns");
+            Serial.println("LED brightness control and test pattern menu");
             changeTerminalColor(HELP_USAGE_COLOR, true);
             Serial.println("Usage: l");
             changeTerminalColor(HELP_DESC_COLOR, true);
@@ -358,7 +364,7 @@ void showCommandHelp(char command) {
             Serial.println("  - Run test patterns");
             Serial.println("  - Check if LEDs are working");
             changeTerminalColor(HELP_NOTE_COLOR, true);
-            Serial.println("If your connections look dim, crank up the brightness!");
+            Serial.println("If your connections look dim, crank up the brightness");
             break;
             
         case '\'':
@@ -439,7 +445,7 @@ void showCommandHelp(char command) {
             Serial.println("  - LED debug info");
             Serial.println("  - Serial passthrough options");
             changeTerminalColor(HELP_NOTE_COLOR, true);
-            //Serial.println("Turn these on when things aren't working as expected.");
+            Serial.println("Use d0-d9 to directly toggle specific debug categories.");
             break;
             
         case '?':
@@ -581,6 +587,17 @@ void showCommandHelp(char command) {
             Serial.println("Shows performance statistics for data processing.");
             Serial.println("Mainly useful for debugging Arduino Serial passthrough");
             break;
+
+        // case '&':
+        //     changeTerminalColor(HELP_DESC_COLOR, true);
+        //     Serial.println("Load changed net colors from file");
+        //     changeTerminalColor(HELP_USAGE_COLOR, true);
+        //     Serial.println("Usage: &");
+        //     changeTerminalColor(HELP_DESC_COLOR, true);
+        //     Serial.println("Reloads the color configuration for current slot.");
+        //     changeTerminalColor(HELP_NOTE_COLOR, true);
+        //     Serial.println("Advanced command for color management and debugging.");
+        //     break;
             
         case 'U':
             changeTerminalColor(HELP_DESC_COLOR, true);
@@ -629,9 +646,91 @@ void showCommandHelp(char command) {
            // Serial.println("Technical details about how connections are stored.");
             break;
             
+        case 'G':
+            changeTerminalColor(HELP_DESC_COLOR, true);
+            Serial.println("Reload config.txt changes (for USB Mass Storage mode)");
+            changeTerminalColor(HELP_USAGE_COLOR, true);
+            Serial.println("Usage: G");
+            changeTerminalColor(HELP_DESC_COLOR, true);
+            Serial.println("Reloads the configuration file without restarting the device.");
+            changeTerminalColor(HELP_NOTE_COLOR, true);
+            Serial.println("Use this after editing config.txt via USB Mass Storage mode.");
+            break;
+
+        // case 'j':
+        //     changeTerminalColor(HELP_DESC_COLOR, true);
+        //     Serial.println("Internal navigation command");
+        //     changeTerminalColor(HELP_USAGE_COLOR, true);
+        //     Serial.println("Usage: j");
+        //     changeTerminalColor(HELP_DESC_COLOR, true);
+        //     Serial.println("Internal command for menu navigation - typically not used directly.");
+        //     break;
+
+        case 'Z':
+            changeTerminalColor(HELP_DESC_COLOR, true);
+            Serial.println("USB Mass Storage Debug Control menu");
+            changeTerminalColor(HELP_USAGE_COLOR, true);
+            Serial.println("Usage: Z");
+            changeTerminalColor(HELP_DESC_COLOR, true);
+            Serial.println("Opens advanced USB debugging menu with options:");
+            Serial.println("  1. Toggle USB debug mode");
+            Serial.println("  2. Manual refresh from USB");
+            Serial.println("  3. Validate all slot files");
+            changeTerminalColor(HELP_NOTE_COLOR, true);
+            Serial.println("For troubleshooting USB Mass Storage issues.");
+            break;
+
+        case '/':
+            changeTerminalColor(HELP_DESC_COLOR, true);
+            Serial.println("File Manager application");
+            changeTerminalColor(HELP_USAGE_COLOR, true);
+            Serial.println("Usage: /");
+            changeTerminalColor(HELP_DESC_COLOR, true);
+            Serial.println("Launches the built-in file manager for:");
+            Serial.println("  - Browsing files and directories");
+            Serial.println("  - Creating, editing, and deleting files");
+            Serial.println("  - Managing Python scripts and config files");
+            Serial.println("  - Viewing file contents and information");
+            changeTerminalColor(HELP_NOTE_COLOR, true);
+            Serial.println("Use file manager commands: h(help), v(view), e(edit), n(new), d(delete)");
+            break;
+
+        case 'C':
+            changeTerminalColor(HELP_DESC_COLOR, true);
+            Serial.println("Toggle terminal colors");
+            changeTerminalColor(HELP_USAGE_COLOR, true);
+            Serial.println("Usage: C");
+            changeTerminalColor(HELP_DESC_COLOR, true);
+            Serial.println("Enables or disables colored terminal output.");
+            changeTerminalColor(HELP_NOTE_COLOR, true);
+            Serial.println("Useful for terminal clients that don't support ANSI colors.");
+            break;
+
+        case 'E':
+            changeTerminalColor(HELP_DESC_COLOR, true);
+            Serial.println("Toggle menu display");
+            changeTerminalColor(HELP_USAGE_COLOR, true);
+            Serial.println("Usage: E");
+            changeTerminalColor(HELP_DESC_COLOR, true);
+            Serial.println("Shows or hides the main menu after each command.");
+            changeTerminalColor(HELP_NOTE_COLOR, true);
+            Serial.println("Different from 'e' - this controls menu visibility entirely.");
+            break;
+
+        // case 'i':
+        //     changeTerminalColor(HELP_DESC_COLOR, true);
+        //     Serial.println("Initialize OLED display");
+        //     changeTerminalColor(HELP_USAGE_COLOR, true);
+        //     Serial.println("Usage: i");
+        //     changeTerminalColor(HELP_DESC_COLOR, true);
+        //     Serial.println("Manually initialize the OLED display if not already connected.");
+        //     changeTerminalColor(HELP_NOTE_COLOR, true);
+        //     Serial.println("Usually not needed - the '.' command handles both connection and init.");
+        //     break;
+
         // case '{':
         //     changeTerminalColor(HELP_DESC_COLOR, true);
-        //     Serial.println("Probe mode - explore connections with the probe");
+        //     Serial.println("Probe mode - explore connections");
         //     changeTerminalColor(HELP_USAGE_COLOR, true);
         //     Serial.println("Usage: { (or press the probe button)");
         //     changeTerminalColor(HELP_DESC_COLOR, true);
@@ -639,17 +738,76 @@ void showCommandHelp(char command) {
         //     changeTerminalColor(HELP_NOTE_COLOR, true);
         //     Serial.println("The probe is amazing for tracing circuits and debugging!");
         //     break;
-            
+
         // case '}':
         //     changeTerminalColor(HELP_DESC_COLOR, true);
-        //     Serial.println("Probe mode - make connections with the probe");
+        //     Serial.println("Probe mode - make connections");
         //     changeTerminalColor(HELP_USAGE_COLOR, true);
         //     Serial.println("Usage: } (or long-press the probe button)");
         //     changeTerminalColor(HELP_DESC_COLOR, true);
         //     Serial.println("Touch two points with the probe to connect them.");
+        //     changeTerminalColor(HELP_NOTE_COLOR, true);
         //     Serial.println("Super intuitive way to wire up your circuit!");
         //     break;
-            
+
+        case 'w':
+            changeTerminalColor(HELP_DESC_COLOR, true);
+            Serial.println("Wave generator function (don't use, it's a janky pile of garbage)");
+            changeTerminalColor(HELP_USAGE_COLOR, true);
+            Serial.println("Usage: w");
+            changeTerminalColor(HELP_DESC_COLOR, true);
+            Serial.println("Generates various waveforms on DAC outputs.");
+            changeTerminalColor(HELP_NOTE_COLOR, true);
+            Serial.println("If wave generation fails, falls back to slot selection menu.");
+            break;
+
+        case 'y':
+            changeTerminalColor(HELP_DESC_COLOR, true);
+            Serial.println("Refresh connections and load files");
+            changeTerminalColor(HELP_USAGE_COLOR, true);
+            Serial.println("Usage: y");
+            changeTerminalColor(HELP_DESC_COLOR, true);
+            Serial.println("Refreshes all connections and loads any file changes.");
+            Serial.println("If USB Mass Storage is mounted, performs manual USB refresh.");
+            changeTerminalColor(HELP_NOTE_COLOR, true);
+            Serial.println("Use after editing files via USB Mass Storage mode.");
+            break;
+
+        // case 't':
+        //     changeTerminalColor(HELP_DESC_COLOR, true);
+        //     Serial.println("Test MSC callbacks (disabled)");
+        //     changeTerminalColor(HELP_USAGE_COLOR, true);
+        //     Serial.println("Usage: t");
+        //     changeTerminalColor(HELP_DESC_COLOR, true);
+        //     Serial.println("Internal test function - currently disabled.");
+        //     break;
+
+        // case 'T':
+        //     changeTerminalColor(HELP_DESC_COLOR, true);
+        //     Serial.println("Show detailed netlist information");
+        //     changeTerminalColor(HELP_USAGE_COLOR, true);
+        //     Serial.println("Usage: T");
+        //     changeTerminalColor(HELP_DESC_COLOR, true);
+        //     Serial.println("Displays comprehensive netlist details including:");
+        //     Serial.println("  - Complete connection information");
+        //     Serial.println("  - Bridge array data");
+        //     Serial.println("  - Path routing information");
+        //     Serial.println("  - Special nets and technical internals");
+        //     changeTerminalColor(HELP_NOTE_COLOR, true);
+        //     Serial.println("More detailed than 'n' - shows technical implementation details.");
+        //     break;
+
+        // case ':':
+        //     changeTerminalColor(HELP_DESC_COLOR, true);
+        //     Serial.println("Machine mode activation");
+        //     changeTerminalColor(HELP_USAGE_COLOR, true);
+        //     Serial.println("Usage: :: (type colon twice)");
+        //     changeTerminalColor(HELP_DESC_COLOR, true);
+        //     Serial.println("Enters machine mode for automated control.");
+        //     changeTerminalColor(HELP_NOTE_COLOR, true);
+        //     Serial.println("Advanced feature for programmatic control of Jumperless.");
+        //     break;
+
         default:
             changeTerminalColor(HELP_NOTE_COLOR, true);
             Serial.print("No specific help available for command '");
@@ -775,6 +933,12 @@ Serial.println(probe_art);
         Serial.println("  Keep switch on 'SELECT' mode for best results");
         Serial.println("  'MEASURE' mode is experimental and flaky");
         
+        // changeTerminalColor(HELP_USAGE_COLOR, true);
+        // Serial.println("\n KEYBOARD SHORTCUTS:");
+        // changeTerminalColor(HELP_DESC_COLOR, true);
+        // Serial.println("  {  - Probe explore mode (same as pressing probe button)");
+        // Serial.println("  }  - Probe connect mode (same as long-pressing probe button)");
+        
         changeTerminalColor(HELP_USAGE_COLOR, true);
         Serial.println("\n Special Functions:");
         changeTerminalColor(HELP_DESC_COLOR, true);
@@ -809,7 +973,9 @@ Serial.println(probe_art);
         Serial.println("  v     - All ADC readings");
         Serial.println("  v0-v4 - Specific ADC channel");
         Serial.println("  vi    - Current sensor readings");
+        Serial.println("  vi1   - Current sensor 1 only");
         Serial.println("  vl    - Toggle live readings");
+        Serial.println("  vp    - Read probe voltage");
         
         changeTerminalColor(HELP_NOTE_COLOR, true);
         Serial.println("\n Animated Voltage Display:");
@@ -955,12 +1121,18 @@ Serial.println(probe_art);
         changeTerminalColor(HELP_DESC_COLOR, false);
         Serial.println("- MicroPython REPL (same as 'p' command)");
         
+        changeTerminalColor(HELP_COMMAND_COLOR, false);
+        Serial.print("  /          ");
+        changeTerminalColor(HELP_DESC_COLOR, false);
+        Serial.println("- File Manager (browse/edit files)");
+        
         changeTerminalColor(HELP_NOTE_COLOR, true);
         Serial.println("\n App Examples:");
         changeTerminalColor(HELP_DESC_COLOR, true);
         Serial.println("  Connect I2C device, run i2c app to find address");
         Serial.println("  Use scope app to visualize signals on ADC pins");
         Serial.println("  Run calibrate app if voltages seem off");
+        Serial.println("  Use / to browse and edit files directly");
         
     } else if (strcmp(category, "scripts") == 0) {
         changeTerminalColor(HELP_DESC_COLOR, true);
@@ -1117,33 +1289,116 @@ Serial.println(probe_art);
         changeTerminalColor(HELP_COMMAND_COLOR, false);
         Serial.print("d  ");
         changeTerminalColor(HELP_DESC_COLOR, false);
-        Serial.println("- Debug flags menu");
+        Serial.println("- Debug flags menu (d0-d9 for specific flags)");
         
         changeTerminalColor(HELP_COMMAND_COLOR, false);
         Serial.print("?  ");
         changeTerminalColor(HELP_DESC_COLOR, false);
         Serial.println("- Show firmware version");
         
-        // changeTerminalColor(HELP_COMMAND_COLOR, false);
-        // Serial.print("@  ");
-        // changeTerminalColor(HELP_DESC_COLOR, false);
-        // Serial.println("- Scan I2C devices");
-        
         changeTerminalColor(HELP_COMMAND_COLOR, false);
         Serial.print("g  ");
         changeTerminalColor(HELP_DESC_COLOR, false);
         Serial.println("- Print GPIO states");
+        
+        changeTerminalColor(HELP_COMMAND_COLOR, false);
+        Serial.print("T  ");
+        changeTerminalColor(HELP_DESC_COLOR, false);
+        Serial.println("- Detailed netlist information");
+        
+        changeTerminalColor(HELP_COMMAND_COLOR, false);
+        Serial.print("Z  ");
+        changeTerminalColor(HELP_DESC_COLOR, false);
+        Serial.println("- USB debug control menu");
+        
+        changeTerminalColor(HELP_COMMAND_COLOR, false);
+        Serial.print("!  ");
+        changeTerminalColor(HELP_DESC_COLOR, false);
+        Serial.println("- Print raw node file contents");
         
         changeTerminalColor(HELP_USAGE_COLOR, true);
         Serial.println("\n When Things Go Wrong:");
         changeTerminalColor(HELP_DESC_COLOR, true);
         Serial.println("  1. Check 'n' (netlist) for connections");
         Serial.println("  2. Use 'b' to see routing internals");
-        Serial.println("  3. Message me on Discord or wherever");
+        Serial.println("  3. Try 'T' for detailed technical info");
+        Serial.println("  4. Enable debug flags with 'd' menu");
+        Serial.println("  5. Message me on Discord or wherever");
         
     } else if (strcmp(category, "config") == 0) {
         // Use the existing detailed config help system
         printConfigHelp();
+        
+    } else if (strcmp(category, "advanced") == 0) {
+        changeTerminalColor(HELP_DESC_COLOR, true);
+        Serial.println("Advanced commands and technical features:");
+        Serial.println("A lot of these are for my own debugging, but you can use them if you want.\n\r");
+        changeTerminalColor(HELP_COMMAND_COLOR, false);
+        Serial.print("G  ");
+        changeTerminalColor(HELP_DESC_COLOR, false);
+        Serial.println("- Reload config.txt changes");
+        
+        changeTerminalColor(HELP_COMMAND_COLOR, false);
+        Serial.print("C  ");
+        changeTerminalColor(HELP_DESC_COLOR, false);
+        Serial.println("- Toggle terminal colors");
+        
+        changeTerminalColor(HELP_COMMAND_COLOR, false);
+        Serial.print("E  ");
+        changeTerminalColor(HELP_DESC_COLOR, false);
+        Serial.println("- Toggle menu display");
+        
+        changeTerminalColor(HELP_COMMAND_COLOR, false);
+        Serial.print("i  ");
+        changeTerminalColor(HELP_DESC_COLOR, false);
+        Serial.println("- Initialize OLED display");
+        
+        changeTerminalColor(HELP_COMMAND_COLOR, false);
+        Serial.print("w  ");
+        changeTerminalColor(HELP_DESC_COLOR, false);
+        Serial.println("- Wave generator function");
+        
+        changeTerminalColor(HELP_COMMAND_COLOR, false);
+        Serial.print("y  ");
+        changeTerminalColor(HELP_DESC_COLOR, false);
+        Serial.println("- Refresh connections and load files");
+        
+        changeTerminalColor(HELP_COMMAND_COLOR, false);
+        Serial.print("t  ");
+        changeTerminalColor(HELP_DESC_COLOR, false);
+        Serial.println("- Test MSC callbacks (disabled)");
+        
+        changeTerminalColor(HELP_COMMAND_COLOR, false);
+        Serial.print(":: ");
+        changeTerminalColor(HELP_DESC_COLOR, false);
+        Serial.println("- Machine mode activation");
+        
+        changeTerminalColor(HELP_COMMAND_COLOR, false);
+        Serial.print("m  ");
+        changeTerminalColor(HELP_DESC_COLOR, false);
+        Serial.println("- Show main menu");
+        
+        changeTerminalColor(HELP_COMMAND_COLOR, false);
+        Serial.print("j  ");
+        changeTerminalColor(HELP_DESC_COLOR, false);
+        Serial.println("- Internal navigation command");
+        
+        changeTerminalColor(HELP_COMMAND_COLOR, false);
+        Serial.print("&  ");
+        changeTerminalColor(HELP_DESC_COLOR, false);
+        Serial.println("- Load changed net colors from file");
+        
+        changeTerminalColor(HELP_COMMAND_COLOR, false);
+        Serial.print("_  ");
+        changeTerminalColor(HELP_DESC_COLOR, false);
+        Serial.println("- Print timing statistics");
+        
+        changeTerminalColor(HELP_NOTE_COLOR, true);
+        Serial.println("\n Advanced Features:");
+        changeTerminalColor(HELP_DESC_COLOR, true);
+        Serial.println("  - Most users won't need these commands");
+        Serial.println("  - Some are for internal system operation");
+        Serial.println("  - Others are for power users and debugging");
         
     } else if (strcmp(category, "glossary") == 0) {
         changeTerminalColor(HELP_DESC_COLOR, true);
@@ -1204,7 +1459,7 @@ Serial.println(probe_art);
         changeTerminalColor(HELP_DESC_COLOR, true);
         Serial.println("\nAvailable categories:");
         Serial.println("  basics, probe, voltage, arduino, python, apps");
-        Serial.println("  display, slots, scripts, debug, config, glossary");
+        Serial.println("  display, slots, scripts, debug, config, advanced, glossary");
     }
     
     changeTerminalColor(HELP_NORMAL_COLOR, true);

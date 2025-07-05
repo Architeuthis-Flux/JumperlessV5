@@ -41,7 +41,7 @@ createSafeString(specialFunctionsString, 2800);
 
 char inputBuffer[INPUTBUFFERLENGTH] = { 0 };
 
-ArduinoJson::StaticJsonDocument<8000> wokwiJson;
+ArduinoJson::StaticJsonDocument<8000> wokwiJson;;
 
 String connectionsW[MAX_BRIDGES][5];
 
@@ -2058,6 +2058,18 @@ void writeToNodeFile(int slot, int flashOrLocal) {
 void openNodeFile(int slot, int flashOrLocal) {
   timeToFP = millis();
   netsUpdated = false;
+  
+  // First, validate and repair the node file if necessary (only for flash files)
+  if (flashOrLocal == 0) {
+    if (!validateAndRepairNodeFile(slot, 2)) {
+      if (debugFP) {
+        Serial.println("◇ Critical error: Unable to validate or repair nodeFileSlot" + String(slot) + ".txt");
+      }
+      core1busy = false;
+      return;
+    }
+  }
+
   // Serial.println(nodeFileString);
   // Serial.println("opening nodeFileSlot" + String(slot) + ".txt");
   //Serial.println("flashOrLocal = " + String(flashOrLocal));
@@ -2100,13 +2112,24 @@ void openNodeFile(int slot, int flashOrLocal) {
 
     // multicore_lockout_end_blocking();
     }
+  
+  // Additional validation of the loaded content before parsing
+  if (flashOrLocal == 0) {
+    int validation_result = validateNodeFile(nodeFileString.c_str(), false);
+    if (validation_result != 0) {
+      if (debugFP) {
+        Serial.println("◇ Loaded content failed validation, clearing and using empty file");
+      }
+      nodeFileString.clear();
+      nodeFileString.concat("{ }");
+      clearNodeFile(slot, 0);
+    }
+  }
+  
   // Serial.println(nodeFileString);
   // Serial.println();
   //   Serial.println("nodeFileString = ");
   // nodeFileString.printTo(Serial);
-
-
-
 
   splitStringToFields();
   core1busy = false;
@@ -2674,12 +2697,11 @@ int loadChangedNetColorsFromFile(int slot, int flashOrLocal) {
 
   // Thread safety mechanism
   core1request = 1;
-  // while (core2busy == true) {
-  //     // Yield or delay slightly if needed, current pattern is spin-wait
-  // }
-  waitCore2();
+  while (core2busy == true) {
+      // Yield or delay slightly if needed, current pattern is spin-wait
+  }
   core1request = 0;
-  // core1busy = true;
+  core1busy = true;
 
   // Initialize/clear the global ::changedNetColors array
   // Assumes changedNetColors is declared extern and MAX_NETS is defined
@@ -2964,3 +2986,173 @@ int saveChangedNetColorsToFile(int slot, int flashOrLocal) {
     return 1; // Indicate success
     }
   }
+
+// Node File Validation and Repair System
+// =====================================
+// This system prevents infinite loops and unresponsive behavior when bad data
+// exists in node files (e.g., malformed connections like "ILES," without dashes).
+// 
+// The repair process:
+// 1. validateAndRepairNodeFile() - Main entry point, attempts repair up to maxRetries times
+// 2. attemptNodeFileRepair() - Parses file, removes malformed connections, saves clean version
+// 3. If repair fails completely, clears the file to ensure system remains responsive
+//
+// This is called from openNodeFile() before any parsing to prevent crashes during startup.
+
+bool attemptNodeFileRepair(int slot) {
+  if (debugFP) {
+    Serial.println("◇ Attempting to repair nodeFileSlot" + String(slot) + ".txt");
+  }
+  
+  String content = readSlotFileContent(slot);
+  if (content.length() == 0) {
+    return false; // Nothing to repair
+  }
+  
+  // Extract content between braces
+  int openBraceIdx = content.indexOf("{");
+  int closeBraceIdx = content.indexOf("}");
+  
+  if (openBraceIdx == -1 || closeBraceIdx == -1) {
+    if (debugFP) {
+      Serial.println("◇ Missing braces, creating clean file");
+    }
+    clearNodeFile(slot, 0);
+    return true;
+  }
+  
+  String connections = content.substring(openBraceIdx + 1, closeBraceIdx);
+  connections.trim();
+  
+  if (connections.length() == 0) {
+    return true; // Empty file is valid
+  }
+  
+  // Split connections and validate each one
+  String repairedConnections = "";
+  int validConnections = 0;
+  int startIdx = 0;
+  int commaIdx = connections.indexOf(',', startIdx);
+  
+  while (startIdx < connections.length()) {
+    String connection;
+    
+    if (commaIdx == -1) {
+      connection = connections.substring(startIdx);
+    } else {
+      connection = connections.substring(startIdx, commaIdx);
+      startIdx = commaIdx + 1;
+      commaIdx = connections.indexOf(',', startIdx);
+    }
+    
+    connection.trim();
+    
+    // Skip empty connections
+    if (connection.length() == 0) {
+      if (commaIdx == -1) break;
+      continue;
+    }
+    
+    // Validate connection format
+    int dashIdx = connection.indexOf('-');
+    if (dashIdx != -1) {
+      String node1Str = connection.substring(0, dashIdx);
+      String node2Str = connection.substring(dashIdx + 1);
+      
+      node1Str.trim();
+      node2Str.trim();
+      
+      // Check if both parts are valid numbers or known names
+      bool valid = true;
+      int node1 = node1Str.toInt();
+      int node2 = node2Str.toInt();
+      
+      // If toInt() returns 0, check if it was actually "0" or a failed conversion
+      if ((node1 == 0 && node1Str != "0") || (node2 == 0 && node2Str != "0")) {
+        // Check if they're valid node names (will be converted later)
+        if (node1Str.length() < 2 || node2Str.length() < 2) {
+          valid = false;
+        }
+      } else {
+        // Validate numeric node numbers
+        if (isNodeValid(node1) != 1 || isNodeValid(node2) != 1) {
+          valid = false;
+        }
+      }
+      
+      if (valid) {
+        if (repairedConnections.length() > 0) {
+          repairedConnections += ",";
+        }
+        repairedConnections += connection;
+        validConnections++;
+      } else {
+        if (debugFP) {
+          Serial.println("◇ Removed invalid connection: '" + connection + "'");
+        }
+      }
+    } else {
+      if (debugFP) {
+        Serial.println("◇ Removed malformed connection (no dash): '" + connection + "'");
+      }
+    }
+    
+    if (commaIdx == -1) break;
+  }
+  
+  // Write the repaired content back to file
+  core1request = 1;
+  while (core2busy == true) { }
+  core1request = 0;
+  core1busy = true;
+  
+  File slotFile = FatFS.open("nodeFileSlot" + String(slot) + ".txt", "w");
+  if (slotFile) {
+    slotFile.print("{ ");
+    if (repairedConnections.length() > 0) {
+      slotFile.print(repairedConnections);
+    }
+    slotFile.print(" }");
+    slotFile.close();
+    
+    if (debugFP) {
+      Serial.println("◆ Repaired nodeFileSlot" + String(slot) + ".txt with " + String(validConnections) + " valid connections");
+    }
+  }
+  
+  core1busy = false;
+  return validConnections >= 0; // Success even if no valid connections (empty is valid)
+}
+
+bool validateAndRepairNodeFile(int slot, int maxRetries) {
+  for (int attempt = 0; attempt < maxRetries; attempt++) {
+    int validation_result = validateNodeFileSlot(slot, debugFP);
+    
+    if (validation_result == 0) {
+      if (debugFP && attempt > 0) {
+        Serial.println("◆ NodeFile validation passed after repair");
+      }
+      return true; // Valid
+    }
+    
+    if (debugFP) {
+      Serial.println("◇ NodeFile validation failed (attempt " + String(attempt + 1) + "): " + 
+                     String(getNodeFileValidationError(validation_result)));
+    }
+    
+    // Attempt repair
+    if (!attemptNodeFileRepair(slot)) {
+      if (debugFP) {
+        Serial.println("◇ Repair attempt failed");
+      }
+      break;
+    }
+  }
+  
+  // If we get here, repair failed - clear the file
+  if (debugFP) {
+    Serial.println("◇ All repair attempts failed, clearing nodeFileSlot" + String(slot) + ".txt");
+  }
+  clearNodeFile(slot, 0);
+  return true; // Cleared file is valid
+}

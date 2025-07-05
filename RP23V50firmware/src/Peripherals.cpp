@@ -180,7 +180,9 @@ void initGPIO(void) {
             break;
           case 0: // pulldown
             gpio_set_pulls(gpio_pin, false, true);  // Pull down
-
+            break;
+          case 3: // bus keeper - weakly retains current logical state when not driven
+            gpio_set_pulls(gpio_pin, true, true);  // Both pulls enabled = bus keeper
             break;
           default:
             break;
@@ -422,14 +424,57 @@ int initI2C(int sdaPin, int sclPin, int speed) {
 
 
 void setGPIO(void) {
-  //     // Serial.print(19+i);
-  //     // Serial.print(" ");
-  //     // Serial.println(gpioState[i]);
-
-
-  return;
-
+  // Restore GPIO configurations from jumperlessConfig after refreshConnections()
+  for (int i = 0; i < 10; i++) {
+    uint8_t gpio_pin = gpioDef[i][0];
+    
+    // Set direction
+    if (jumperlessConfig.gpio.direction[i] == 0) {
+      gpio_set_dir(gpio_pin, true);  // Set as output
+    } else {
+      gpio_set_dir(gpio_pin, false); // Set as input
+    }
+    
+    // Set pull resistors and update gpioState for animation system
+    switch (jumperlessConfig.gpio.pulls[i]) {
+      case 0: // pulldown
+        gpio_set_pulls(gpio_pin, false, true);
+        if (jumperlessConfig.gpio.direction[i] == 1) { // input
+          gpioState[i] = 4; // input with pulldown
+        }
+        break;
+      case 1: // pullup
+        gpio_set_pulls(gpio_pin, true, false);
+        if (jumperlessConfig.gpio.direction[i] == 1) { // input
+          gpioState[i] = 3; // input with pullup
+        }
+        break;
+      case 2: // no pull
+        gpio_set_pulls(gpio_pin, false, false);
+        if (jumperlessConfig.gpio.direction[i] == 1) { // input
+          gpioState[i] = 2; // input with no pull
+        }
+        break;
+      case 3: // bus keeper - weakly retains current logical state when not driven
+        gpio_set_pulls(gpio_pin, true, true);
+        if (jumperlessConfig.gpio.direction[i] == 1) { // input
+          gpioState[i] = 7; // bus keeper mode
+        }
+        break;
+      default:
+        gpio_set_pulls(gpio_pin, false, false);
+        if (jumperlessConfig.gpio.direction[i] == 1) { // input
+          gpioState[i] = 2; // input with no pull
+        }
+        break;
+    }
+    
+    // Set initial output state for output pins
+    if (jumperlessConfig.gpio.direction[i] == 0) {
+      gpio_put(gpio_pin, gpioState[i]);
+    }
   }
+}
 
 
 
@@ -639,11 +684,18 @@ void printGPIOState(void) {
         pin = 1;
         }
       uint8_t pulls;
+      bool pullup_enabled = gpio_is_pulled_up(pin);
+      bool pulldown_enabled = gpio_is_pulled_down(pin);
 
-      pulls = gpio_is_pulled_up(pin);
-      if (pulls == 0 && gpio_is_pulled_down(pin) == 0) {
-        pulls = 2;
-        }
+      if (pullup_enabled && pulldown_enabled) {
+        pulls = 3; // bus keeper
+      } else if (pullup_enabled) {
+        pulls = 1; // pullup
+      } else if (pulldown_enabled) {
+        pulls = 0; // pulldown
+      } else {
+        pulls = 2; // no pull
+      }
 
       switch (pulls) {
         case 0:
@@ -654,6 +706,9 @@ void printGPIOState(void) {
           break;
         case 2:
           Serial.print("none");
+          break;
+        case 3:
+          Serial.print("keeper");
           break;
         }
       Serial.print("\t");
@@ -782,6 +837,9 @@ void readGPIO(void) {
                 continue;
                 } else if (gpioState[i] == 6) {
                   reading = gpio_get(gpioDef[i][0]);
+                  } else if (gpioState[i] == 7) {
+                    // Bus keeper mode - just read current state, no floating detection needed
+                    reading = gpio_get(gpioDef[i][0]);
                   } else {
                   reading = gpioReadWithFloating(gpioDef[i][0]); //check if the pin is floating or has a state
                   }
@@ -1073,7 +1131,7 @@ void initINA219(void) {
   //Wire.begin();
 
   if (!INA0.begin() || !INA1.begin()) {
-    delay(3000);
+    // Remove blocking delay - just log the error
     Serial.println("Failed to find INA219 chip");
     }
 

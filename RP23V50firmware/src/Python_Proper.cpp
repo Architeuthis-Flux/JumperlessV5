@@ -5,19 +5,20 @@
 #include "FilesystemStuff.h"
 extern "C" {
 #include "py/gc.h"
-
 #include "py/runtime.h"
 #include "py/stackctrl.h"
 #include "py/mpstate.h"
 #include "py/repl.h"
+#include "py/mpthread.h"
 #include <micropython_embed.h>
 }
 
 // Global state for proper MicroPython integration
-static char mp_heap[32 * 1024]; // 32KB heap for MicroPython (reduced for RP2350B)
+static char mp_heap[128 * 1024]; // 128KB heap for MicroPython (reduced for RP2350B)
 static bool mp_initialized = false;
 static bool mp_repl_active = false;
 static bool jumperless_globals_loaded = false;
+bool mp_interrupt_requested = false; // Flag for Ctrl+Q interrupt
 
 // Command execution state
 static char mp_command_buffer[512];
@@ -65,6 +66,12 @@ mp_uint_t mp_hal_stdout_tx_strn(const char *str, size_t len);
 void mp_hal_delay_ms(mp_uint_t ms);
 mp_uint_t mp_hal_ticks_ms(void);
 
+// Forward declaration for filesystem setup
+void setupFilesystemAndPaths(void);
+
+// Forward declaration for interrupt checking  
+// (Note: Actual function is C++ linkage for use by other modules)
+
 // Arduino wrapper functions for HAL
 int arduino_serial_available(Stream *stream = global_mp_stream);
 int arduino_serial_read(Stream *stream = global_mp_stream);
@@ -77,16 +84,28 @@ extern void *global_mp_stream_ptr;
 }
 
 // Arduino timing functions for MicroPython
-extern "C" void mp_hal_delay_ms(mp_uint_t ms) { delay(ms); }
+extern "C" void mp_hal_delay_ms(mp_uint_t ms) { 
+  // Check for interrupt during delays
+  mp_hal_check_interrupt();
+  delay(ms); 
+}
 
-extern "C" mp_uint_t mp_hal_ticks_ms(void) { return millis(); }
+extern "C" mp_uint_t mp_hal_ticks_ms(void) { 
+  // Check for interrupt during timing calls (called frequently)
+  mp_hal_check_interrupt();
+  return millis(); 
+}
 
 // Arduino wrapper functions for the HAL layer
 extern "C" int arduino_serial_available(Stream *stream) {
+  // Check for interrupt request before checking availability
+  mp_hal_check_interrupt();
   return global_mp_stream->available();
 }
 
 extern "C" int arduino_serial_read(Stream *stream) {
+  // Check for interrupt request before reading
+  mp_hal_check_interrupt();
   return global_mp_stream->read();
 }
 
@@ -106,7 +125,11 @@ extern "C" void arduino_serial_write(const char *str, int len, void *stream) {
   }
 }
 
-extern "C" void arduino_delay_ms(unsigned int ms) { delay(ms); }
+extern "C" void arduino_delay_ms(unsigned int ms) { 
+  // Check for interrupt during delays
+  mp_hal_check_interrupt();
+  delay(ms); 
+}
 
 extern "C" unsigned int arduino_millis() { return millis(); }
 
@@ -119,6 +142,9 @@ void setGlobalStream(Stream *stream) {
 
 // MicroPython HAL stdout function with Jumperless-specific functionality
 extern "C" void mp_hal_stdout_tx_strn_cooked(const char *str, size_t len) {
+    // Check for interrupt before outputting (this is called frequently)
+    mp_hal_check_interrupt();
+    
     // Basic output to global stream (regular MicroPython output)
     if (global_mp_stream) {
         for (size_t i = 0; i < len; i++) {
@@ -132,6 +158,43 @@ extern "C" void mp_hal_stdout_tx_strn_cooked(const char *str, size_t len) {
 }
 
 // HAL functions are now implemented in lib/micropython/port/mphalport.c
+
+// Function to check for interrupt and raise KeyboardInterrupt if requested
+void mp_hal_check_interrupt(void) {
+  // More frequent checking - check every call for better responsiveness
+  static uint32_t last_interrupt_time = 0;
+  static uint32_t debug_counter = 0;
+  debug_counter++;
+  
+  // Check for Ctrl+Q more frequently - check every call when stream is available
+  if (global_mp_stream) {
+    // Check if there's any input available
+    while (global_mp_stream->available()) {
+      int c = global_mp_stream->read(); // Read and consume immediately
+      
+      if (c == 17) { // Ctrl+Q (ASCII 17)
+        // Debounce: prevent multiple interrupts within 500ms
+        uint32_t current_time = millis();
+        if (current_time - last_interrupt_time > 100) {
+          global_mp_stream->println("^Q");
+          if (global_mp_stream) {
+            changeTerminalColor(replColors[4], true, global_mp_stream);
+            global_mp_stream->println("KeyboardInterrupt (Ctrl+Q)");
+            changeTerminalColor(replColors[1], true, global_mp_stream);
+          }
+          last_interrupt_time = current_time;
+          
+          // Set flag for interrupt - the actual exception will be raised at Python level
+          mp_interrupt_requested = true;
+          return; // Exit immediately when interrupt detected
+        } else {
+          // Too soon after last interrupt, ignore
+        }
+      }
+      // For any other character, just consume it and continue
+    }
+  }
+}
 
 
 
@@ -157,7 +220,7 @@ bool initMicroPythonProper(Stream *stream) {
   //     "    sys.path.append('/lib')\n"
   //     "    print('MicroPython', sys.version)\n"
   //     "except ImportError as e:\n"
-  //     "    print('MicroPython initialized (sys module unavailable)')\n"
+  //     "    print('MicroPython initialized (sys modu le unavailable)')\n"
   //     "print('\\nJumperless hardware control available')\n");
   // changeTerminalColor(replColors[5], true, global_mp_stream);
   // // Test if native jumperless module is available
@@ -181,17 +244,11 @@ bool initMicroPythonProper(Stream *stream) {
   // Simple initialization - don't load complex modules during startup
   mp_embed_exec_str("print('MicroPython ready for Jumperless')");
   
-  // Manually set up basic path since sys.path is disabled to avoid build errors
-  // This allows importing from /python directory when using FatFS
+  // Set up filesystem and module import paths
+  setupFilesystemAndPaths();
+    
     mp_initialized = true;
   mp_repl_active = false;
-  mp_embed_exec_str(
-      "try:\n"
-      "    import sys\n"
-      "    # Note: sys.path is disabled in build, but sys module works\n"
-      "    print('Python path: /python (FatFS)')\n"
-      "except ImportError:\n"
-      "    print('sys module not available')\n");
 
   addJumperlessPythonFunctions();
   addMicroPythonModules();
@@ -208,6 +265,7 @@ void deinitMicroPythonProper(void) {
       mp_initialized = false;
   mp_repl_active = false;
   jumperless_globals_loaded = false;  // Reset globals flag
+  mp_interrupt_requested = false;  // Clear any pending interrupt
   }
 }
 
@@ -243,6 +301,9 @@ void startMicroPythonREPL(void) {
     return;
   }
 
+  // Clear any pending interrupt flag when starting REPL
+  mp_interrupt_requested = false;
+
   // Print Python prompt with color
   changeTerminalColor(replColors[1], true, global_mp_stream);
   global_mp_stream->print(
@@ -257,6 +318,7 @@ void stopMicroPythonREPL(void) {
     changeTerminalColor(0, false, global_mp_stream);
     global_mp_stream->println("\n[MP] Exiting REPL...");
     mp_repl_active = false;
+    mp_interrupt_requested = false; // Clear any pending interrupt
   }
 }
 
@@ -278,6 +340,9 @@ void enterMicroPythonREPL(Stream *stream) {
   // Always add jumperless functions to global namespace when entering REPL
   // This makes all functions available without the jumperless. prefix
   addJumperlessPythonFunctions();
+
+  // Automatically create MicroPython examples if needed
+  initializeMicroPythonExamples();
 
   // Check if REPL is already active
   if (mp_repl_active) {
@@ -315,6 +380,10 @@ void enterMicroPythonREPL(Stream *stream) {
   changeTerminalColor(replColors[0], false, global_mp_stream);
   global_mp_stream->println("       -   Exit REPL");
   changeTerminalColor(replColors[3], false, global_mp_stream);
+  global_mp_stream->print("  Ctrl+Q ");
+  changeTerminalColor(replColors[0], false, global_mp_stream);
+  global_mp_stream->println("     -   quit REPL or interrupt running script");
+  changeTerminalColor(replColors[3], false, global_mp_stream);
   global_mp_stream->print("  helpl");
   changeTerminalColor(replColors[0], false, global_mp_stream);
   global_mp_stream->println("       -   Show REPLhelp");
@@ -342,18 +411,18 @@ void enterMicroPythonREPL(Stream *stream) {
   global_mp_stream->print("  new ");
   changeTerminalColor(replColors[0], false, global_mp_stream);
   global_mp_stream->println("        -   Create new script with eKilo editor");
-  changeTerminalColor(replColors[3], false, global_mp_stream);
-  global_mp_stream->print("  multiline ");
-  changeTerminalColor(replColors[0], false, global_mp_stream);
-  global_mp_stream->println("  -   Toggle multiline mode");
-  changeTerminalColor(replColors[3], false, global_mp_stream);
-  global_mp_stream->print("  run ");
-  changeTerminalColor(replColors[0], false, global_mp_stream);
-  global_mp_stream->println("        -   Execute script (multiline mode)");
+  // changeTerminalColor(replColors[3], false, global_mp_stream);
+  // global_mp_stream->print("  multiline ");
+  // changeTerminalColor(replColors[0], false, global_mp_stream);
+  // global_mp_stream->println("  -   Toggle multiline mode");
+  // changeTerminalColor(replColors[3], false, global_mp_stream);
+  // global_mp_stream->print("  run ");
+  // changeTerminalColor(replColors[0], false, global_mp_stream);
+  // global_mp_stream->println("        -   Execute script (multiline mode)");
   changeTerminalColor(replColors[3], false, global_mp_stream);
   global_mp_stream->print("  help() ");
   changeTerminalColor(replColors[0], false, global_mp_stream);
-  global_mp_stream->println("     - Show hardware commands");
+  global_mp_stream->println("     -   Show hardware commands");
 
   changeTerminalColor(replColors[5], true, global_mp_stream);
   global_mp_stream->println("\nNavigation:");
@@ -362,7 +431,8 @@ void enterMicroPythonREPL(Stream *stream) {
   global_mp_stream->println("  ←/→ arrows - Move cursor, edit text");
   global_mp_stream->println("  TAB        - Add 4-space indentation");
   global_mp_stream->println(
-      "  Enter      - Execute (empty line in multiline to finish)");
+      "  Enter      - Execute (on an empty line)");
+  // global_mp_stream->println("  Ctrl+Q     - Force quit REPL or interrupt running script");
   // global_mp_stream->println("  files      - Browse and manage Python scripts");
   // global_mp_stream->println("  new        - Create new scripts with eKilo editor");
   // global_mp_stream->println("  run        - Execute accumulated script "
@@ -540,14 +610,21 @@ void processMicroPythonInput(Stream *stream) {
         return;
       }
 
-      // Handle Ctrl+C (ASCII 3) - cancel current input and reset
-      if (c == 3) {
-        global_mp_stream->println("^C");
-        global_mp_stream->println("KeyboardInterrupt");
-        editor.reset();
+      // Handle Ctrl+Q (ASCII 17) - force quit REPL or interrupt script
+      if (c == 17) {
+        global_mp_stream->println("^Q");
+        
+        // Set interrupt flag for script execution
+        mp_interrupt_requested = true;
+        
+        // Always exit REPL immediately when Ctrl+Q is pressed during input
+        // This covers the case where user is typing but not executing a script
+        changeTerminalColor(replColors[4], true, global_mp_stream);
+        global_mp_stream->println("KeyboardInterrupt (Ctrl+Q)");
+        global_mp_stream->println("Force quit - exiting REPL...");
         changeTerminalColor(replColors[1], true, global_mp_stream);
-        global_mp_stream->print(">>> ");
-        global_mp_stream->flush();
+        stopMicroPythonREPL();
+        editor.reset();
         return;
       }
 
@@ -735,6 +812,7 @@ void processMicroPythonInput(Stream *stream) {
           global_mp_stream->println("  TAB        - Add 4-space indentation");
           global_mp_stream->println(
               "  Enter      - Execute (empty line in multiline to finish)");
+          global_mp_stream->println("  Ctrl+Q     - Force quit REPL or interrupt running script");
           global_mp_stream->println("  files      - Browse and manage Python scripts");
           global_mp_stream->println("  new        - Create new scripts with eKilo editor");
           global_mp_stream->println("  run        - Execute accumulated script "
@@ -961,14 +1039,25 @@ void processMicroPythonInput(Stream *stream) {
 
         // Check if this is an empty line in multiline mode (escape mechanism)
         bool force_execution = false;
-        if (editor.in_multiline_mode && !editor.multiline_forced_on) {
+        bool force_multiline = false;
+        
+        // Check the current line content to determine if we should execute
+        int line_start = editor.current_input.lastIndexOf('\n', editor.cursor_pos - 1);
+        line_start = (line_start >= 0) ? line_start + 1 : 0;
+        String current_line = editor.current_input.substring(line_start, editor.cursor_pos);
+        current_line.trim();
+        
+        // If we just loaded from history, first Enter should add newline unless current line is empty
+        if (editor.just_loaded_from_history) {
+          editor.just_loaded_from_history = false; // Clear the flag
+          if (current_line.length() == 0) {
+            force_execution = true; // Empty line - execute
+          } else {
+            force_execution = false; // Non-empty line - add newline and continue
+            force_multiline = true; // Force multiline mode
+          }
+        } else if (editor.in_multiline_mode && !editor.multiline_forced_on) {
           // Only allow empty line escape in AUTO mode, not when forced ON
-          int line_start =
-              editor.current_input.lastIndexOf('\n', editor.cursor_pos - 1);
-          line_start = (line_start >= 0) ? line_start + 1 : 0;
-          String current_line =
-              editor.current_input.substring(line_start, editor.cursor_pos);
-          current_line.trim();
           if (current_line.length() == 0) {
             force_execution = true; // Empty line in multiline mode
           }
@@ -977,7 +1066,10 @@ void processMicroPythonInput(Stream *stream) {
         // Check if MicroPython needs more input (multiline detection)
         // Use current input WITHOUT adding newline first
         bool needs_more_input = false;
-        if (editor.multiline_forced_on) {
+        if (force_multiline) {
+          // Force multiline mode (e.g., when loading from history with content)
+          needs_more_input = true;
+        } else if (editor.multiline_forced_on) {
           // In forced ON mode, ALWAYS continue - never execute until 'run' is
           // typed
           needs_more_input = true;
@@ -1113,6 +1205,7 @@ void processMicroPythonInput(Stream *stream) {
           // Exit history mode when user starts editing
           if (editor.in_history_mode) {
             editor.in_history_mode = false;
+            editor.just_loaded_from_history = false; // Clear the flag when user starts editing
             history.resetHistoryNavigation();
           }
           char char_to_delete =
@@ -1177,6 +1270,7 @@ void processMicroPythonInput(Stream *stream) {
         // Exit history mode when user starts editing
         if (editor.in_history_mode) {
           editor.in_history_mode = false;
+          editor.just_loaded_from_history = false; // Clear the flag when user starts editing
           history.resetHistoryNavigation();
         }
 
@@ -2055,6 +2149,9 @@ void REPLEditor::loadFromHistory(Stream *stream, const String &historical_input)
   cursor_pos = current_input.length();
   in_multiline_mode = (current_input.indexOf('\n') >= 0);
   escape_state = 0; // Reset escape state when loading new input
+  
+  // Flag that we just loaded from history - first Enter should add newline
+  just_loaded_from_history = true;
 
   // Redraw the entire input
   redrawFullInput(stream);
@@ -2069,6 +2166,7 @@ void REPLEditor::exitHistoryMode(Stream *stream) {
     cursor_pos = current_input.length();
     in_multiline_mode = (current_input.indexOf('\n') >= 0);
     in_history_mode = false;
+    just_loaded_from_history = false; // Clear the flag when exiting history mode
     escape_state = 0; // Reset escape state
     redrawFullInput(stream);
   }
@@ -2154,9 +2252,11 @@ void REPLEditor::reset() {
   escape_state = 0;
   original_input = "";
   in_history_mode = false;
+  just_loaded_from_history = false; // Clear the flag on reset
   // Don't reset multiline mode settings - preserve user's choice
   // multiline_override, multiline_forced_on, multiline_forced_off should persist
   last_displayed_lines = 0;
+  mp_interrupt_requested = false; // Clear any pending interrupt
 }
 
 void REPLEditor::fullReset() {
@@ -2167,6 +2267,7 @@ void REPLEditor::fullReset() {
   escape_state = 0;
   original_input = "";
   in_history_mode = false;
+  just_loaded_from_history = false; // Clear the flag on full reset
   multiline_override = false;
   multiline_forced_on = false;
   multiline_forced_off = false;
@@ -2261,15 +2362,26 @@ static const FunctionTypeMap function_type_map[] = {
   // DAC functions
   {"dac_set", OUTPUT_NONE},
   {"dac_get", OUTPUT_VOLTAGE},
+  {"set_dac", OUTPUT_NONE},           // Alias
+  {"get_dac", OUTPUT_VOLTAGE},        // Alias
   
   // ADC functions  
   {"adc_get", OUTPUT_VOLTAGE},
+  {"get_adc", OUTPUT_VOLTAGE},        // Alias
   
   // INA functions
   {"ina_get_current", OUTPUT_CURRENT},
   {"ina_get_voltage", OUTPUT_VOLTAGE},
   {"ina_get_bus_voltage", OUTPUT_VOLTAGE},
   {"ina_get_power", OUTPUT_POWER},
+  {"get_ina_current", OUTPUT_CURRENT},      // Alias
+  {"get_ina_voltage", OUTPUT_VOLTAGE},      // Alias
+  {"get_ina_bus_voltage", OUTPUT_VOLTAGE},  // Alias
+  {"get_ina_power", OUTPUT_POWER},          // Alias
+  {"get_current", OUTPUT_CURRENT},          // Alias
+  {"get_voltage", OUTPUT_VOLTAGE},          // Alias
+  {"get_bus_voltage", OUTPUT_VOLTAGE},      // Alias
+  {"get_power", OUTPUT_POWER},              // Alias
   
   // GPIO functions
   {"gpio_set", OUTPUT_NONE},
@@ -2278,12 +2390,26 @@ static const FunctionTypeMap function_type_map[] = {
   {"gpio_get_dir", OUTPUT_GPIO_DIR},
   {"gpio_set_pull", OUTPUT_NONE},
   {"gpio_get_pull", OUTPUT_GPIO_PULL},
+  {"set_gpio", OUTPUT_NONE},               // Alias
+  {"get_gpio", OUTPUT_GPIO_STATE},         // Alias
+  {"set_gpio_dir", OUTPUT_NONE},           // Alias
+  {"get_gpio_dir", OUTPUT_GPIO_DIR},       // Alias
+  {"set_gpio_pull", OUTPUT_NONE},          // Alias
+  {"get_gpio_pull", OUTPUT_GPIO_PULL},     // Alias
+  {"set_gpio_direction", OUTPUT_NONE},     // Alias
+  {"get_gpio_direction", OUTPUT_GPIO_DIR}, // Alias
   
   // Node functions
   {"connect", OUTPUT_BOOL_CONNECTED},
   {"disconnect", OUTPUT_NONE},
   {"nodes_clear", OUTPUT_NONE},
   {"is_connected", OUTPUT_BOOL_CONNECTED},
+  {"connect_nodes", OUTPUT_BOOL_CONNECTED},     // Alias
+  {"disconnect_nodes", OUTPUT_NONE},            // Alias
+  {"clear_nodes", OUTPUT_NONE},                 // Alias
+  {"clear_connections", OUTPUT_NONE},           // Alias
+  {"nodes_connected", OUTPUT_BOOL_CONNECTED},   // Alias
+  {"connected", OUTPUT_BOOL_CONNECTED},         // Alias
   
   // OLED functions
   {"oled_print", OUTPUT_NONE},
@@ -2291,6 +2417,31 @@ static const FunctionTypeMap function_type_map[] = {
   {"oled_show", OUTPUT_NONE},
   {"oled_connect", OUTPUT_BOOL_YESNO},
   {"oled_disconnect", OUTPUT_NONE},
+  {"print_oled", OUTPUT_NONE},          // Alias
+  {"clear_oled", OUTPUT_NONE},          // Alias
+  {"show_oled", OUTPUT_NONE},           // Alias
+  {"connect_oled", OUTPUT_BOOL_YESNO},  // Alias
+  {"disconnect_oled", OUTPUT_NONE},     // Alias
+  {"display_print", OUTPUT_NONE},       // Alias
+  {"display_clear", OUTPUT_NONE},       // Alias
+  {"display_show", OUTPUT_NONE},        // Alias
+  
+  // Status functions
+  {"print_bridges", OUTPUT_NONE},
+  {"print_paths", OUTPUT_NONE},
+  {"print_crossbars", OUTPUT_NONE},
+  {"print_nets", OUTPUT_NONE},
+  {"print_chip_status", OUTPUT_NONE},
+  {"show_bridges", OUTPUT_NONE},        // Alias
+  {"show_paths", OUTPUT_NONE},          // Alias
+  {"show_crossbars", OUTPUT_NONE},      // Alias
+  {"show_nets", OUTPUT_NONE},           // Alias
+  {"show_chip_status", OUTPUT_NONE},    // Alias
+  {"bridges", OUTPUT_NONE},             // Alias
+  {"paths", OUTPUT_NONE},               // Alias
+  {"crossbars", OUTPUT_NONE},           // Alias
+  {"nets", OUTPUT_NONE},                // Alias
+  {"chip_status", OUTPUT_NONE},         // Alias
   
   // Other functions
   {"arduino_reset", OUTPUT_NONE},
@@ -2300,6 +2451,20 @@ static const FunctionTypeMap function_type_map[] = {
   {"clickwheel_press", OUTPUT_NONE},
   {"run_app", OUTPUT_NONE},
   {"help", OUTPUT_NONE},
+  {"reset_arduino", OUTPUT_NONE},       // Alias
+  {"reset", OUTPUT_NONE},               // Alias
+  {"app_run", OUTPUT_NONE},             // Alias
+  {"tap_probe", OUTPUT_NONE},           // Alias
+  {"tap", OUTPUT_NONE},                 // Alias
+  {"wheel_up", OUTPUT_NONE},            // Alias
+  {"wheel_down", OUTPUT_NONE},          // Alias
+  {"wheel_press", OUTPUT_NONE},         // Alias
+  {"click_up", OUTPUT_NONE},            // Alias
+  {"click_down", OUTPUT_NONE},          // Alias
+  {"click_press", OUTPUT_NONE},         // Alias
+  {"scroll_up", OUTPUT_NONE},           // Alias
+  {"scroll_down", OUTPUT_NONE},         // Alias
+  {"press", OUTPUT_NONE},               // Alias
   
   {nullptr, OUTPUT_NONE} // End marker
 };
@@ -2309,19 +2474,33 @@ static const FunctionTypeMap function_type_map[] = {
  */
 static const char* jumperless_functions[] = {
   // DAC functions
-  "dac_set", "dac_get",
+  "dac_set", "dac_get", "set_dac", "get_dac",
   // ADC functions  
-  "adc_get",
+  "adc_get", "get_adc",
   // INA functions
   "ina_get_current", "ina_get_voltage", "ina_get_bus_voltage", "ina_get_power",
+  "get_ina_current", "get_ina_voltage", "get_ina_bus_voltage", "get_ina_power",
+  "get_current", "get_voltage", "get_bus_voltage", "get_power",
   // GPIO functions
   "gpio_set", "gpio_get", "gpio_set_dir", "gpio_get_dir", "gpio_set_pull", "gpio_get_pull",
+  "set_gpio", "get_gpio", "set_gpio_dir", "get_gpio_dir", "set_gpio_pull", "get_gpio_pull",
+  "set_gpio_direction", "get_gpio_direction",
   // Node functions
   "connect", "disconnect", "nodes_clear", "is_connected",
+  "connect_nodes", "disconnect_nodes", "clear_nodes", "clear_connections", "nodes_connected", "connected",
   // OLED functions
   "oled_print", "oled_clear", "oled_show", "oled_connect", "oled_disconnect",
+  "print_oled", "clear_oled", "show_oled", "connect_oled", "disconnect_oled",
+  "display_print", "display_clear", "display_show",
+  // Status functions
+  "print_bridges", "print_paths", "print_crossbars", "print_nets", "print_chip_status",
+  "show_bridges", "show_paths", "show_crossbars", "show_nets", "show_chip_status",
+  "bridges", "paths", "crossbars", "nets", "chip_status",
   // Other functions
   "arduino_reset", "probe_tap", "clickwheel_up", "clickwheel_down", "clickwheel_press", "run_app", "help",
+  "reset_arduino", "reset", "app_run", "tap_probe", "tap",
+  "wheel_up", "wheel_down", "wheel_press", "click_up", "click_down", "click_press",
+  "scroll_up", "scroll_down", "press",
   nullptr // End marker
 };
 
@@ -2395,7 +2574,8 @@ String formatResult(float value, FunctionOutputType output_type) {
       return (value != 0.0f) ? "OUTPUT" : "INPUT";
       
     case OUTPUT_GPIO_PULL:
-      if (value > 0.5f) return "PULLUP";
+      if (value > 1.5f) return "KEEPER";
+      else if (value > 0.5f) return "PULLUP";
       else if (value < -0.5f) return "PULLDOWN";
       else return "NONE";
       
@@ -2676,6 +2856,85 @@ void testFormattedOutput(void) {
   global_mp_stream->printf("  is_connected(1, 5) -> %s\n", result_buffer);
   
   global_mp_stream->println("\n=== Formatted Output Test Complete ===\n");
+}
+
+// Filesystem setup and module path configuration
+void setupFilesystemAndPaths(void) {
+  global_mp_stream->println("[MP] Setting up filesystem and module paths...");
+  
+  // Set up sys.path for module imports
+  mp_embed_exec_str(
+    "try:\n"
+    "    import sys\n"
+    "    import os\n"
+    "    \n"
+    "    # Clear existing sys.path and set up Jumperless-specific paths\n"
+    "    sys.path.clear()\n"
+    "    sys.path.append('')  # Current directory\n"
+    "    \n"
+    "    # Add Jumperless module directories\n"
+    "    paths_to_add = [\n"
+    "        '/python_scripts',\n"
+    "        '/python_scripts/lib',\n"
+    "        '/python_scripts/modules',\n"
+    "        '/lib',\n"
+    "        '/modules'\n"
+    "    ]\n"
+    "    \n"
+    "    for path in paths_to_add:\n"
+    "        try:\n"
+    "            # Check if path exists before adding\n"
+    "            if path in ['', '/']:\n"
+    "                sys.path.append(path)\n"
+    "            else:\n"
+    "                # Try to access the directory to see if it exists\n"
+    "                try:\n"
+    "                    os.listdir(path)\n"
+    "                    sys.path.append(path)\n"
+    "                    print('Added ' + path + ' to sys.path')\n"
+    "                except OSError:\n"
+    "                    # Directory doesn't exist, skip silently\n"
+    "                    pass\n"
+    "        except Exception as e:\n"
+    "            print('Error adding ' + path + ': ' + str(e))\n"
+    "    \n"
+    "    print('Module search paths:')\n"
+    "    for i, path in enumerate(sys.path):\n"
+    "        print('  ' + str(i) + ': ' + path)\n"
+    "    \n"
+    "    print()\n"
+    "    print('Place .py and .mpy modules in:')\n"
+    "    print('  /python_scripts/lib/  - User modules')\n"
+    "    print('  /python_scripts/      - User scripts')\n"
+    "    print()\n"
+    "    \n"
+    "except ImportError as e:\n"
+    "    print('sys or os module not available:', e)\n"
+    "except Exception as e:\n"
+    "    print('Error setting up module paths:', e)\n"
+  );
+  
+  // Test basic module availability
+  mp_embed_exec_str(
+    "try:\n"
+    "    # Test that we can import basic modules\n"
+    "    import time\n"
+    "    print('✓ time module available')\n"
+    "except ImportError:\n"
+    "    print('✗ time module not available')\n"
+    "\n"
+    "try:\n"
+    "    import os\n"
+    "    print('✓ os module available')\n"
+    "except ImportError:\n"
+    "    print('✗ os module not available')\n"
+    "\n"
+    "try:\n"
+    "    import gc\n"
+    "    print('✓ gc module available')\n"
+    "except ImportError:\n"
+    "    print('✗ gc module not available')\n"
+  );
 }
 
 

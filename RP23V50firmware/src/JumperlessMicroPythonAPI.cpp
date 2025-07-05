@@ -21,10 +21,16 @@
 #include "CH446Q.h"
 #include "NetManager.h"
 #include "Apps.h"
+#include "Probing.h"
+#include "Python_Proper.h"
+#include "config.h"
+
+// Forward declarations
+int justReadProbe(bool allowDuplicates);
 
 // C-compatible wrapper functions for MicroPython
 extern "C" {
-
+#include "py/mpthread.h"
 // DAC Functions
 void jl_dac_set(int channel, float voltage, int save) {
     // if (channel == 0) {
@@ -111,10 +117,12 @@ int jl_gpio_get(int pin) {
     return 0;
 }
 
-void jl_gpio_set_direction(int pin, int direction) {
+int jl_gpio_set_direction(int pin, int direction) {
     if (pin >= 1 && pin <= 10) {
+        jumperlessConfig.gpio.direction[pin - 1] = direction;
         pinMode(gpioDef[pin - 1][0], direction ? OUTPUT : INPUT);
     }
+    return 1;
 }
 
 int jl_gpio_get_dir(int pin) {
@@ -136,12 +144,14 @@ int jl_gpio_get_pull(int pin) {
         pin = gpioDef[pin - 1][0];
         bool pull_up = gpio_is_pulled_up(pin);
         bool pull_down = gpio_is_pulled_down(pin);
-        if (pull_up) {
-            return 1;
+        if (pull_up && pull_down) {
+            return 2; // bus keeper
+        } else if (pull_up) {
+            return 1; // pullup
         } else if (pull_down) {
-            return -1;
+            return -1; // pulldown
         } else {
-            return 0;
+            return 0; // no pull
         }
     }
     return 0;
@@ -163,6 +173,9 @@ void jl_gpio_set_pull(int pin, int pull) {
     } else if (pull == -1) {
         pull_up = false;
         pull_down = true;
+    } else if (pull == 2) {
+        pull_up = true;
+        pull_down = true; // bus keeper mode
     }
 
 
@@ -267,6 +280,32 @@ int jl_run_app(char* appName) {
 void jl_probe_tap(int node) {
     // TODO: Implement probe simulation
     // This would simulate tapping the probe on a specific node
+}
+
+int jl_probe_read_blocking(void) {
+    int pad = -1;
+    static int call_count = 0;
+    call_count++;
+    
+    while (pad == -1) {
+        mp_hal_check_interrupt();
+        
+        // Check if interrupt was requested and return special value
+        if (mp_interrupt_requested) {
+            mp_interrupt_requested = false; // Clear the flag
+            Serial.print("DEBUG: Interrupt detected in jl_probe_read_blocking, call #");
+            Serial.println(call_count);
+            return -999; // Special return value indicating interrupt
+        }
+        
+        pad = justReadProbe(false, 1);
+        delay(1); // Small delay to prevent busy waiting
+    }
+    return pad;
+}
+
+int jl_probe_read_nonblocking(void) {
+    return justReadProbe(true, 1);
 }
 
 // Clickwheel Functions

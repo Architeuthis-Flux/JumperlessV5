@@ -4,7 +4,7 @@
 # KevinC@ppucc.io
 #
 
-App_Version = "1.1.1.5"
+App_Version = "1.1.1.8"
 new_requirements = True
 
 import pathlib
@@ -84,6 +84,14 @@ except ImportError:
         RESET_ALL = '\033[0m' if platform.system() != 'Windows' else ''
     
     COLORS_AVAILABLE = False
+
+# Enhanced keyboard input support
+if sys.platform == "win32":
+    try:
+        from pynput import keyboard as pynput_keyboard
+        PYINPUT_AVAILABLE = True
+    except ImportError:
+        PYINPUT_AVAILABLE = False
 
 # Interactive mode will use termios on Unix-like systems
 import shutil
@@ -764,7 +772,7 @@ def find_main_port(jumperless_ports, force_quit_python=False):
                 # Clear buffers thoroughly
                 test_port.reset_input_buffer()
                 test_port.reset_output_buffer()
-                time.sleep(0.1)
+                time.sleep(0.6)
                 
                 # Send ? to check for firmware response
                 if force_quit_python:
@@ -776,17 +784,17 @@ def find_main_port(jumperless_ports, force_quit_python=False):
                 # Send ? to check for firmware response
                 test_port.write(b'?')
                 test_port.flush()
-                time.sleep(0.5)  # Give more time for response
+                time.sleep(0.85)  # Give more time for response
                 
                 if test_port.in_waiting > 0:
                     response_buffer = b''
                     start_time = time.time()
                     
                     # Read all available data with longer timeout
-                    while time.time() - start_time < 1.0:
+                    while time.time() - start_time < 1.3:
                         if test_port.in_waiting > 0:
                             response_buffer += test_port.read(test_port.in_waiting)
-                            time.sleep(0.01)  # Small delay to catch additional data
+                            time.sleep(0.1)  # Small delay to catch additional data
                         else:
                             time.sleep(0.05)
                             # If no new data for 100ms, assume we have the complete response
@@ -4299,6 +4307,7 @@ def main():
 
 
 """, Fore.MAGENTA)
+    print("\nNote: This app looks best on a dark background")
     create_directories()
         # Check for app updates
     update_app_if_needed()
@@ -4345,9 +4354,9 @@ def main():
     safe_print("Device can auto-enable interactive mode with SO (0x0E) and disable with SI (0x0F)", Fore.BLUE)
     
     if sys.platform == "win32":
-        safe_print("NOTE: Interactive mode not supported on Windows", Fore.YELLOW)
+        safe_print("Interactive mode available (Windows pynput - full Ctrl key support)", Fore.GREEN)
     else:
-        safe_print("Interactive mode available", Fore.GREEN)
+        safe_print("Interactive mode available (Unix termios)", Fore.GREEN)
     
     if READLINE_AVAILABLE:
         safe_print("Use ↑/↓ arrow keys for command history, Tab for completion", Fore.BLUE)
@@ -4590,11 +4599,6 @@ def enable_interactive_mode():
     if interactive_mode:
         return True
     
-    # Check platform support first
-    if sys.platform == "win32":
-        safe_print("WARNING: Interactive mode not supported on Windows", Fore.YELLOW)
-        return False
-    
     try:
         # Disable readline completion and history during interactive mode
         if READLINE_AVAILABLE:
@@ -4607,8 +4611,15 @@ def enable_interactive_mode():
             readline.parse_and_bind("tab: self-insert")  # Make tab insert literal tab
         
         interactive_mode = True
-        safe_print("\nInteractive mode ON - (ESC to force off)", Fore.BLUE)
-        # safe_print("Using termios for raw terminal input", Fore.BLUE)
+        
+        # Platform-specific messages
+        if sys.platform == "win32":
+            safe_print("\nInteractive mode ON - (Ctrl+C to exit)", Fore.BLUE)
+            safe_print("Using pynput for enhanced keyboard input (full Ctrl key support)", Fore.CYAN)
+        else:
+            safe_print("\nInteractive mode ON - (ESC to force off)", Fore.BLUE)
+            safe_print("Using termios for raw terminal input", Fore.CYAN)
+        
         return True
         
     except Exception as e:
@@ -4707,10 +4718,143 @@ def handle_interactive_input_simple():
     except Exception as e:
         safe_print(f"Interactive mode error: {e}", Fore.RED)
         disable_interactive_mode()
+
+def handle_interactive_input_windows():
+    """Windows-specific approach using pynput for complete key support"""
+    global interactive_mode, serialconnected, ser
+    
+    try:
+        safe_print("Using pynput for enhanced Windows keyboard input (supports all Ctrl combinations)", Fore.GREEN)
         
-
-
-
+        def on_key_press(key):
+            if not interactive_mode:
+                return False  # Stop listener
+            
+            try:
+                # Handle special keys
+                if key == pynput_keyboard.Key.esc:
+                    # Send ESC sequence
+                    with serial_lock:
+                        if serialconnected and ser and ser.is_open:
+                            ser.write(b'\x1b')
+                elif key == pynput_keyboard.Key.enter:
+                    # Send newline
+                    with serial_lock:
+                        if serialconnected and ser and ser.is_open:
+                            ser.write(b'\n')
+                elif key == pynput_keyboard.Key.backspace:
+                    # Send backspace
+                    with serial_lock:
+                        if serialconnected and ser and ser.is_open:
+                            ser.write(b'\x08')
+                elif key == pynput_keyboard.Key.tab:
+                    # Send tab
+                    with serial_lock:
+                        if serialconnected and ser and ser.is_open:
+                            ser.write(b'\t')
+                # Arrow keys
+                elif key == pynput_keyboard.Key.up:
+                    with serial_lock:
+                        if serialconnected and ser and ser.is_open:
+                            ser.write(b'\x1b[A')
+                elif key == pynput_keyboard.Key.down:
+                    with serial_lock:
+                        if serialconnected and ser and ser.is_open:
+                            ser.write(b'\x1b[B')
+                elif key == pynput_keyboard.Key.right:
+                    with serial_lock:
+                        if serialconnected and ser and ser.is_open:
+                            ser.write(b'\x1b[C')
+                elif key == pynput_keyboard.Key.left:
+                    with serial_lock:
+                        if serialconnected and ser and ser.is_open:
+                            ser.write(b'\x1b[D')
+                # Navigation keys
+                elif key == pynput_keyboard.Key.home:
+                    with serial_lock:
+                        if serialconnected and ser and ser.is_open:
+                            ser.write(b'\x1b[H')
+                elif key == pynput_keyboard.Key.end:
+                    with serial_lock:
+                        if serialconnected and ser and ser.is_open:
+                            ser.write(b'\x1b[F')
+                elif key == pynput_keyboard.Key.page_up:
+                    with serial_lock:
+                        if serialconnected and ser and ser.is_open:
+                            ser.write(b'\x1b[5~')
+                elif key == pynput_keyboard.Key.page_down:
+                    with serial_lock:
+                        if serialconnected and ser and ser.is_open:
+                            ser.write(b'\x1b[6~')
+                elif key == pynput_keyboard.Key.insert:
+                    with serial_lock:
+                        if serialconnected and ser and ser.is_open:
+                            ser.write(b'\x1b[2~')
+                elif key == pynput_keyboard.Key.delete:
+                    with serial_lock:
+                        if serialconnected and ser and ser.is_open:
+                            ser.write(b'\x1b[3~')
+                # Function keys
+                elif key == pynput_keyboard.Key.f1:
+                    with serial_lock:
+                        if serialconnected and ser and ser.is_open:
+                            ser.write(b'\x1bOP')
+                elif key == pynput_keyboard.Key.f2:
+                    with serial_lock:
+                        if serialconnected and ser and ser.is_open:
+                            ser.write(b'\x1bOQ')
+                elif key == pynput_keyboard.Key.f3:
+                    with serial_lock:
+                        if serialconnected and ser and ser.is_open:
+                            ser.write(b'\x1bOR')
+                elif key == pynput_keyboard.Key.f4:
+                    with serial_lock:
+                        if serialconnected and ser and ser.is_open:
+                            ser.write(b'\x1bOS')
+                # Handle printable characters (including Ctrl combinations)
+                elif hasattr(key, 'char') and key.char:
+                    char_to_send = key.char
+                    
+                    # Handle Ctrl combinations properly
+                    if hasattr(key, 'vk'):
+                        # Check for Ctrl combinations by checking current modifier state
+                        try:
+                            with controller.modifiers as modifiers:
+                                if pynput_keyboard.Key.ctrl in modifiers or pynput_keyboard.Key.ctrl_l in modifiers or pynput_keyboard.Key.ctrl_r in modifiers:
+                                    # Convert to control character
+                                    if key.char and len(key.char) == 1:
+                                        char_code = ord(key.char.upper())
+                                        if 65 <= char_code <= 90:  # A-Z
+                                            ctrl_char = chr(char_code - 64)  # Ctrl+A = 1, Ctrl+B = 2, etc.
+                                            char_to_send = ctrl_char
+                        except:
+                            pass  # Use original character if modifier check fails
+                    
+                    # Send the character
+                    with serial_lock:
+                        if serialconnected and ser and ser.is_open:
+                            ser.write(char_to_send.encode('utf-8', errors='ignore'))
+                            
+                elif debugWokwi:
+                    safe_print(f"Unhandled special key: {key}", Fore.YELLOW)
+                    
+            except Exception as e:
+                if debugWokwi:
+                    safe_print(f"Error handling key press: {e}", Fore.RED)
+        
+        # Create a controller instance for modifier state checking
+        controller = pynput_keyboard.Controller()
+        
+        # Start listener
+        with pynput_keyboard.Listener(on_press=on_key_press, suppress=False) as listener:
+            listener.join()
+            
+    except Exception as e:
+        safe_print(f"pynput interactive mode error: {e}", Fore.RED)
+        disable_interactive_mode()
+    finally:
+        if interactive_mode:
+            disable_interactive_mode()
 
 
 
@@ -4718,17 +4862,12 @@ def handle_interactive_input():
     """Handle character-by-character input in interactive mode"""
     global interactive_mode, serialconnected, ser
     
-    # Use simple termios approach on Unix/Linux/macOS
-    if sys.platform != "win32":
+    if sys.platform == "win32":
+        # Use Windows-specific msvcrt approach
+        return handle_interactive_input_windows()
+    else:
+        # Use Unix/Linux/macOS termios approach
         return handle_interactive_input_simple()
-    
-    # Windows not supported - disable interactive mode
-    safe_print("WARNING: Interactive mode not supported on Windows", Fore.YELLOW)
-    safe_print("Requires Unix/Linux/macOS with termios support", Fore.CYAN)
-    safe_print("Disabling interactive mode - using normal line input instead", Fore.BLUE)
-    
-    disable_interactive_mode()
-    return
 
 def get_command_suggestions():
     """Get list of common commands for tab completion"""
@@ -4762,7 +4901,7 @@ def cleanup_on_exit():
                 # safe_print(f"Terminating subprocess PID {process.pid}...", Fore.CYAN)
                 process.terminate()
                 try:
-                    process.wait(timeout=2)
+                    process.wait(timeout=0.2)
                     safe_print(f"Subprocess PID {process.pid} terminated gracefully", Fore.GREEN)
                 except subprocess.TimeoutExpired:
                     safe_print(f"Force killing subprocess PID {process.pid}...", Fore.RED)

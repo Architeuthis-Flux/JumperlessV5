@@ -17,36 +17,47 @@
 struct EditorRow;
 struct SyntaxDefinition;
 
+// Editor configuration - make screen size configurable
+#define DEFAULT_EDITOR_ROWS 35  // Increased from smaller default to 25 rows
+#define DEFAULT_EDITOR_COLS 80
+
 // Editor configuration structure
 struct EditorConfig {
     int cx, cy;           // Cursor position
+    int rx;               // Render cursor position (for tabs)
     int rowoff;           // Row offset for scrolling
     int coloff;           // Column offset for scrolling
     int screenrows;       // Number of rows on screen
     int screencols;       // Number of columns on screen
     int numrows;          // Number of rows in file
-    EditorRow* row;       // Array of editor rows
+    EditorRow* row;        // Array of editor rows
     int dirty;            // File modified flag
     char* filename;       // Current filename
     char statusmsg[80];   // Status message
     unsigned long statusmsg_time; // Status message timestamp
     SyntaxDefinition* syntax; // Current syntax highlighting
-    int should_quit;      // Flag to quit editor
     
-    // OLED horizontal scrolling for all visible lines
-    int oled_horizontal_offset;
-    static const int OLED_SCROLL_MARGIN = 4; // Start scrolling when within 4 chars of edge
+    // Search functionality
+    char* search_query;
+    int search_direction;
+    int search_last_match;
     
-    // OLED update batching
-    unsigned long oled_last_input_time;
-    bool oled_update_pending;
-    static const unsigned long OLED_UPDATE_DELAY = 50000; // 50 milliseconds for responsive updates
-    
-    // Clickwheel character selection mode
+    // Character insertion mode tracking
     bool char_selection_mode;
     int selected_char_index;
     unsigned long char_selection_timer;
-    static const unsigned long CHAR_SELECTION_TIMEOUT = 8000; // 8 seconds timeout for character selection
+    static const unsigned long CHAR_SELECTION_TIMEOUT = 5000; // 5 seconds timeout for character selection
+    
+    // OLED update batching - optimized for responsiveness
+    unsigned long oled_last_input_time;
+    bool oled_update_pending;
+    static const unsigned long OLED_UPDATE_DELAY = 350000; // 350 milliseconds for responsive updates
+    // Note: OLED updates only happen when screen is clean and serial buffer is empty
+    
+    // OLED horizontal scrolling for all visible lines
+    int oled_horizontal_offset;
+    int oled_cursor_position;
+    static const int OLED_SCROLL_MARGIN = 4; // Start scrolling when within 4 chars of edge
     
     // Encoder position tracking for smooth movement
     long last_encoder_position;
@@ -68,6 +79,15 @@ struct EditorConfig {
     int lines_used;
     String saved_file_content; // Content of saved file for REPL return
     
+    // Ctrl+P functionality - save and launch MicroPython REPL
+    bool should_launch_repl;
+    
+    // Quit flag
+    bool should_quit;
+    
+    // Screen refresh optimization
+    bool screen_dirty;     // Flag to track when screen needs refresh
+    
     EditorConfig();
     ~EditorConfig();
 };
@@ -84,8 +104,8 @@ struct SyntaxDefinition {
 
 // Main editor functions
 void ekilo_init();
-int ekilo_main(const char* filename);
-String ekilo_main_repl(const char* filename); // REPL mode - returns saved content
+int ekilo_main(const char* filename); // Returns: 0=normal exit, 2=save and launch REPL
+String ekilo_main_repl(const char* filename); // REPL mode - returns saved content, "[LAUNCH_REPL]" prefix if Ctrl+P
 int ekilo_open(const char* filename);
 int ekilo_save();
 void ekilo_refresh_screen();
@@ -130,5 +150,10 @@ void ekilo_exit_char_selection();
 void ekilo_cycle_character(int direction);
 void ekilo_confirm_character();
 char ekilo_get_character_from_index(int index);
+
+// Memory monitoring and safety functions
+bool check_memory_available(size_t needed);
+void ekilo_show_memory_status();
+void ekilo_emergency_cleanup();
 
 #endif // EKILO_EDITOR_H 

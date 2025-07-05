@@ -220,15 +220,10 @@ void resetConfigToDefaults(int clearCalibration, int clearHardware) {
 
 void updateConfigFromFile(const char* filename) {
 
-    Serial.print("Updating config from file: ");
-    Serial.println(filename);
-    Serial.flush();
-
     if (!FatFS.exists(filename)) {
-        Serial.println("Config file not found");
         firstStart = 1;
         resetConfigToDefaults();
-        
+        return;
     }
 
     File file = FatFS.open(filename, "r");
@@ -601,14 +596,6 @@ void saveConfig(void) {
 }
 
 void loadConfig(void) {
-
-
-   // delay(1000);
-
-
-
-
-
     updateConfigFromFile("/config.txt");
 
     if (jumperlessConfig.calibration.probe_min == 0 || jumperlessConfig.calibration.probe_max == 0) {
@@ -617,9 +604,8 @@ void loadConfig(void) {
     }
     
     readSettingsFromConfig();
-    initChipStatus();
-
-
+    // Defer initChipStatus to reduce startup time - it can be done later
+    // initChipStatus();
 }
 
 int parseSectionName(const char* sectionName) {

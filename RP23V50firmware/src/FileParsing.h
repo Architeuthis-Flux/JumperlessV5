@@ -62,7 +62,11 @@ int validateNodeFile(const String& content, bool verbose = false);
 int validateNodeFileSlot(int slot, bool verbose = false);
 const char* getNodeFileValidationError(int errorCode);
 
-// Slot content caching and validation functions
+// NodeFile repair and recovery functions
+bool attemptNodeFileRepair(int slot);
+bool validateAndRepairNodeFile(int slot, int maxRetries);
+
+// Slot content caching and validation functions  
 String readSlotFileContent(int slot);
 bool isSlotContentValid(const String& content);
 bool hasSlotContentChanged(void);

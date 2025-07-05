@@ -106,7 +106,7 @@ struct config {
             1, //uart_rx
         };
         int pulls[10] = {
-            0, //gpio_0 0 = pull down 1 = pull up 2 = none
+            0, //gpio_0 0 = pull down 1 = pull up 2 = none 3 = bus keeper
             0, //gpio_1
             0, //gpio_2
             0, //gpio_3

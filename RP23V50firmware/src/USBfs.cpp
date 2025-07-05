@@ -26,6 +26,7 @@
 #include "RotaryEncoder.h"  // for netSlot
 #include "FileParsing.h"    // for validation functions
 #include "LEDs.h"           // for core synchronization variables
+#include "FilesystemStuff.h" // for initializeMicroPythonExamples
 // #include <class/msc/msc.h>
 bool mscModeEnabled = false;
 FatFSUSBClass FatFSUSB;
@@ -447,6 +448,9 @@ bool initUSBMassStorage(void) {
         Serial.println("Failed to initialize FatFSUSB");
         return false;
     }
+    
+    // Automatically create MicroPython examples if needed
+    initializeMicroPythonExamples();
     
     if (usb_debug_enabled) {
         Serial.println("FatFSUSB initialized successfully");

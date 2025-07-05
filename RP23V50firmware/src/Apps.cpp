@@ -1133,7 +1133,7 @@ void calibrateDacs(void) {
 
       refreshConnections(0, 0, 1);
       if (firstStart == 1) {
-        delay(5);
+        delay(2);
       } else {
         delay(18);
       }
@@ -1153,7 +1153,7 @@ void calibrateDacs(void) {
         setVoltage = 0.0;
         setDacByNumber(d, setVoltage, 0);
         if (firstStart == 1) {
-          delay(10);
+          delay(3);
         } else {
           delay(38);
         }

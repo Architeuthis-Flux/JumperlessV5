@@ -92,7 +92,7 @@ struct specialRowAnimation {
 
 extern int defNudge;
 
-extern specialRowAnimation rowAnimations[26];
+extern specialRowAnimation rowAnimations[50];
 
 extern specialRowAnimation warningRowAnimation;
 extern specialRowAnimation warningNetAnimation;

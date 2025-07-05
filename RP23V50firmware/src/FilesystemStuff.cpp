@@ -1,4 +1,5 @@
 #include "FilesystemStuff.h"
+#include "micropythonExamples.h"
 #include "Graphics.h"
 #include "oled.h"
 #include <time.h>
@@ -6,6 +7,7 @@
 #include "config.h"
 #include <cstring>
 #include "Menus.h"
+#include "Python_Proper.h"
 
 
 // External references
@@ -17,14 +19,103 @@ extern class oled oled;
 // Global flag to signal return to main menu after editing
 static bool returnToMainMenu = false;
 
+// Global file manager instance for output area access
+static FileManager* globalFileManager = nullptr;
+
+// Message queue for filesystem messages that won't get overwritten
+struct FilesystemMessage {
+    String message;
+    int color;
+    unsigned long timestamp;
+};
+
+static const int MAX_FS_MESSAGES = 10;
+static FilesystemMessage fsMessages[MAX_FS_MESSAGES];
+static int fsMessageCount = 0;
+static unsigned long lastMessageDisplayTime = 0;
+
+void addFilesystemMessage(const String& message, int color = 248) {
+    // Safety check - don't add messages during early startup
+    if (!Serial) {
+        return;
+    }
+    
+    // If we have a global file manager instance, use its output area
+    if (globalFileManager != nullptr) {
+        globalFileManager->outputToArea(message, color);
+        return;
+    }
+    
+    // Add to traditional message queue for compatibility (fallback)
+    if (fsMessageCount < MAX_FS_MESSAGES) {
+        fsMessages[fsMessageCount].message = message;
+        fsMessages[fsMessageCount].color = color;
+        fsMessages[fsMessageCount].timestamp = millis();
+        fsMessageCount++;
+    } else {
+        // Shift messages up and add new one at end
+        for (int i = 0; i < MAX_FS_MESSAGES - 1; i++) {
+            fsMessages[i] = fsMessages[i + 1];
+        }
+        fsMessages[MAX_FS_MESSAGES - 1].message = message;
+        fsMessages[MAX_FS_MESSAGES - 1].color = color;
+        fsMessages[MAX_FS_MESSAGES - 1].timestamp = millis();
+    }
+    lastMessageDisplayTime = millis();
+}
+
+void clearFilesystemMessages() {
+    fsMessageCount = 0;
+}
+
+void displayFilesystemMessages() {
+    // Only show messages for 10 seconds
+    if (millis() - lastMessageDisplayTime > 10000) {
+        clearFilesystemMessages();
+        return;
+    }
+    
+    if (fsMessageCount > 0) {
+        // Display messages at the bottom of screen (line 25+)
+        for (int i = 0; i < fsMessageCount && i < 3; i++) {  // Show max 3 messages
+            Serial.print("\033["); // Move cursor
+            Serial.print(25 + i);
+            Serial.print(";1H");
+            
+            changeTerminalColor(fsMessages[fsMessageCount - 1 - i].color, false);
+            Serial.print(fsMessages[fsMessageCount - 1 - i].message);
+            
+            // Clear rest of line
+            Serial.print("\033[K");
+            changeTerminalColor(-1, false);
+        }
+        Serial.flush();
+    }
+}
+
 FileManager::FileManager() {
     currentPath = "/";
     maxFiles = 100;
+    
+    // Check available memory before allocating file list
+    size_t freeHeap = rp2040.getFreeHeap();
+    if (freeHeap < sizeof(FileEntry) * maxFiles + 10240) { // Need array + 10KB overhead
+        // Reduce maxFiles if memory is limited
+        maxFiles = min(50, (int)((freeHeap - 10240) / sizeof(FileEntry)));
+        if (maxFiles < 10) maxFiles = 10; // Minimum usable size
+    }
+    
     fileList = new FileEntry[maxFiles];
+    if (!fileList) {
+        // Critical error - fallback to minimal allocation
+        maxFiles = 10;
+        fileList = new FileEntry[maxFiles];
+    }
     fileCount = 0;
     selectedIndex = 0;
     displayOffset = 0;
-    maxDisplayLines = 80; // Adjust based on terminal size
+    maxDisplayLines = ::DEFAULT_DISPLAY_LINES; // Use configurable display lines
+    textAreaLines = maxDisplayLines - 7; // Reserve lines for headers, footers, and output area
     
     // Initialize OLED batching
     lastInputTime = 0;
@@ -49,10 +140,29 @@ FileManager::FileManager() {
     
     // Initialize filesystem
     initializeFilesystem();
+    
+    // Initialize output area (positioned after help lines)
+    int fileListStartRow = 6;
+    int fileListEndRow = fileListStartRow + textAreaLines - 1;
+    int helpStartRow = fileListEndRow + 2; // Leave 1 line gap after file list
+    outputAreaStartRow = helpStartRow + 4;  // Start after help lines (3 lines) + border
+    outputAreaHeight = 5;
+    outputAreaCurrentRow = 0;
+    
+    // Set global pointer for message routing
+    globalFileManager = this;
+    
+    // Initialize input blocking
+    lastDisplayUpdate = 0;
 }
 
 FileManager::~FileManager() {
     delete[] fileList;
+    
+    // Clear global pointer
+    if (globalFileManager == this) {
+        globalFileManager = nullptr;
+    }
 }
 
 void FileManager::initializeFilesystem() {
@@ -371,44 +481,49 @@ void FileManager::refreshListing() {
     int test_entries = 0;
     
     // Test directory accessibility by trying to read a few entries
+    // BUT: Empty directories are still valid and accessible!
     while (dir.next() && test_entries < 5) {
         test_entries++;
         dir_accessible = true;
     }
     
+    // If we couldn't read any entries, the directory might be empty OR inaccessible
+    // Try to distinguish between empty and actually broken directories
     if (!dir_accessible) {
-        changeTerminalColor(FileColors::ERROR, false);
-        Serial.println("Failed to open directory: " + currentPath);
-        changeTerminalColor(-1, false); // Reset colors
-        
-        recursion_depth++;
-        
-        // Try to recover by going to root or alternative directory (only if not too deep)
-        if (recursion_depth <= 2 && currentPath != "/") {
-            Serial.println("[FS] Attempting to return to root directory...");
-            currentPath = "/";
-            Dir testRoot = FatFS.openDir("/");
-            int test_count = 0;
-            bool root_ok = false;
-            while (testRoot.next() && test_count < 3) {
-                test_count++;
-                root_ok = true;
-            }
-            if (root_ok) {
-                refreshListing(); // Recursive call to try root
-                recursion_depth--; // Decrement on successful path
-                return;
+        // For empty directories, we should still consider them accessible
+        // Check if the directory path exists as a directory
+        if (FatFS.exists(currentPath.c_str())) {
+            // Directory exists, so it's accessible even if empty
+            dir_accessible = true;
+        } else {
+            // Directory actually failed to open - this is a real error
+            changeTerminalColor(FileColors::ERROR, false);
+            Serial.println("Failed to open directory: " + currentPath);
+            changeTerminalColor(-1, false); // Reset colors
+            
+            recursion_depth++;
+            
+            // Try to recover by going to root or alternative directory (only if not too deep)
+            if (recursion_depth <= 2 && currentPath != "/") {
+                Serial.println("[FS] Attempting to return to root directory...");
+                currentPath = "/";
+                // Try root directory - it should exist
+                if (FatFS.exists("/")) {
+                    refreshListing(); // Recursive call to try root
+                    recursion_depth--; // Decrement on successful path
+                    return;
+                }
+                
+                // No alternative directories to try - filesystem issues
             }
             
-            // No alternative directories to try - filesystem issues
+            // If all fails, mark filesystem as unavailable
+            Serial.println("[FS] All recovery attempts failed, filesystem unavailable");
+            currentPath = "[NO_FS]";
+            recursion_depth = 0; // Reset for next attempt
+            refreshListing(); // Show error message
+            return;
         }
-        
-        // If all fails, mark filesystem as unavailable
-        Serial.println("[FS] All recovery attempts failed, filesystem unavailable");
-        currentPath = "[NO_FS]";
-        recursion_depth = 0; // Reset for next attempt
-        refreshListing(); // Show error message
-        return;
     }
     
     // Successfully opened directory, reset recursion counter
@@ -540,6 +655,7 @@ void FileManager::showCurrentListing(bool showHeader) {
             case FILE_TYPE_JSON: color = FileColors::JSON; break;
             case FILE_TYPE_NODEFILES: color = FileColors::NODEFILES; break;
             case FILE_TYPE_COLORS: color = FileColors::COLORS; break;
+            case FILE_TYPE_UNKNOWN: color = FileColors::TEXT; break;
 
         }
         
@@ -589,7 +705,7 @@ void FileManager::showCurrentListing(bool showHeader) {
     // Show scroll indicator if needed
     if (fileCount > maxDisplayLines) {
         changeTerminalColor(FileColors::STATUS, true);
-        Serial.println("╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌");
+        Serial.println("╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌");
         Serial.println("Showing " + String(startIdx + 1) + "-" + String(endIdx) + " of " + String(fileCount) + " files");
     }
     
@@ -725,12 +841,11 @@ void FileManager::moveSelection(int direction) {
     oledHorizontalOffset = 0;
     oledCursorPosition = 0;
     
-    // Adjust display offset if needed (limit to 15 visible lines)
-    int maxVisible = 15;
+    // Adjust display offset if needed (use configurable visible lines)
     if (selectedIndex < displayOffset) {
         displayOffset = selectedIndex;
-    } else if (selectedIndex >= displayOffset + maxVisible) {
-        displayOffset = selectedIndex - maxVisible + 1;
+    } else if (selectedIndex >= displayOffset + textAreaLines) {
+        displayOffset = selectedIndex - textAreaLines + 1;
     }
     
     // Update display in place
@@ -775,24 +890,18 @@ bool FileManager::createFile(const String& filename) {
     String fullPath = getFullPath(currentPath, filename);
     
     if (FatFS.exists(fullPath.c_str())) {
-        changeTerminalColor(FileColors::ERROR, false);
-        Serial.println("File already exists: " + filename);
-        changeTerminalColor(-1, false); // Reset colors
+        outputToArea("File already exists: " + filename, FileColors::ERROR);
         return false;
     }
     
     File file = FatFS.open(fullPath.c_str(), "w");
     if (file) {
         file.close();
-        changeTerminalColor(FileColors::STATUS, false);
-        Serial.println("Created file: " + filename);
-        changeTerminalColor(-1, false); // Reset colors
+        outputToArea("Created file: " + filename, FileColors::STATUS);
         refreshListing();
         return true;
     } else {
-        changeTerminalColor(FileColors::ERROR, false);
-        Serial.println("Failed to create file: " + filename);
-        changeTerminalColor(-1, false); // Reset colors
+        outputToArea("Failed to create file: " + filename, FileColors::ERROR);
         return false;
     }
 }
@@ -801,15 +910,11 @@ bool FileManager::deleteFile(const String& filename) {
     String fullPath = getFullPath(currentPath, filename);
     
     if (FatFS.remove(fullPath.c_str())) {
-        changeTerminalColor(FileColors::STATUS, false);
-        Serial.println("Deleted: " + filename);
-        changeTerminalColor(-1, false);
+        outputToArea("Deleted: " + filename, FileColors::STATUS);
         refreshListing();
         return true;
     } else {
-        changeTerminalColor(FileColors::ERROR, false);
-        Serial.println("Failed to delete: " + filename);
-        changeTerminalColor(-1, false);
+        outputToArea("Failed to delete: " + filename, FileColors::ERROR);
         return false;
     }
 }
@@ -823,11 +928,23 @@ bool FileManager::editFile(const String& filename) {
 }
 
 bool FileManager::editFileWithEkilo(const String& filename) {
+    // Check available memory before opening file
+    size_t freeHeap = rp2040.getFreeHeap();
+    if (freeHeap < 20480) { // Require at least 20KB free for editor
+        outputToArea("ERROR: Not enough memory to open editor (" + String(freeHeap / 1024) + "KB free)", FileColors::ERROR);
+        return false;
+    }
+    
     if (replMode) {
         // In REPL mode - use launchEkiloREPL and store returned content
         String content = launchEkiloREPL(filename.c_str());
         
         if (content.length() > 0) {
+            // Check content size before storing
+            if (content.length() > 8192) { // Limit to 8KB
+                outputToArea("WARNING: File content too large for REPL mode, truncating", FileColors::ERROR);
+                content = content.substring(0, 8192);
+            }
             // User saved new content
             lastOpenedFileContent = content;
             shouldExitForREPL = true; // Signal to exit file manager
@@ -835,6 +952,13 @@ bool FileManager::editFileWithEkilo(const String& filename) {
             // User didn't save - try to load existing file content if it exists
             File file = FatFS.open(filename.c_str(), "r");
             if (file) {
+                size_t fileSize = file.size();
+                if (fileSize > 8192) { // Limit file size for REPL mode
+                    file.close();
+                    outputToArea("WARNING: File too large for REPL mode (" + String(fileSize / 1024) + "KB)", FileColors::ERROR);
+                    return false;
+                }
+                
                 String existingContent = file.readString();
                 file.close();
                 if (existingContent.length() > 0) {
@@ -864,7 +988,7 @@ bool FileManager::viewFile(const String& filename) {
     Serial.println("│                              FILE VIEWER                                  │");
     Serial.println("╰───────────────────────────────────────────────────────────────────────────╯");
     Serial.println("File: " + filename);
-    Serial.println("╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌");
+    Serial.println("╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌");
     
     changeTerminalColor(248, true); // Light grey for content
     
@@ -914,6 +1038,9 @@ void FileManager::run() {
         // Process any pending OLED updates
         processOLEDUpdate();
         
+        // Display any filesystem messages at bottom of screen
+        displayFilesystemMessages();
+        
         // Note: Removed returnToMainMenu check - editor returns directly to file manager now
         
         // Handle rotary encoder input
@@ -941,17 +1068,28 @@ void FileManager::run() {
                 selectCurrentFile();
                 scheduleOLEDUpdate();
                 lastInputTime = micros(); // Record input time
+                blockInputBriefly(); // Block input briefly after interface changes
                 // Note: selectCurrentFile() now handles interface redrawing internally
             }
             lastEncoderButtonState = encoderButtonState;
         }
         
-        // Wait for input without blocking
+        // Check if input is blocked (except Ctrl+Q)
         char input = 0;
         if (Serial.available()) {
-            input = Serial.read();
-            lastInputTime = micros(); // Record input time for any serial input
-            scheduleOLEDUpdate(); // Schedule OLED update for any input
+            char c = Serial.peek(); // Look at next character without reading it
+            
+            // Allow Ctrl+Q through even during input blocking
+            if (c == 17 || !isInputBlocked()) { // Ctrl+Q or not blocked
+                input = Serial.read();
+                lastInputTime = micros(); // Record input time for any serial input
+                scheduleOLEDUpdate(); // Schedule OLED update for any input
+            } else {
+                // Input is blocked, clear buffer except Ctrl+Q
+                clearBufferedInput(true);
+                delayMicroseconds(100);
+                continue;
+            }
         } else {
             delayMicroseconds(100);
             continue;
@@ -965,9 +1103,16 @@ void FileManager::run() {
                 running = false;
                 break;
                 
+            case 16: // Ctrl-P
+                // In file manager, Ctrl-P doesn't make sense (no content to save)
+                // Ignore silently to prevent crashes
+                outputToArea("Ctrl-P: No action in file manager", FileColors::STATUS);
+                break;
+                
             case '\r':
             case '\n':
                 selectCurrentFile();
+                blockInputBriefly(); // Block input briefly after interface changes
                 // Note: selectCurrentFile() now handles interface redrawing internally
                 break;
                 
@@ -992,6 +1137,7 @@ void FileManager::run() {
                     editFile(file->path);
                     refreshListing(); // Refresh in case file was modified
                     drawInterface(); // Redraw entire interface
+                    blockInputBriefly(); // Block input after interface refresh
                 }
                 break;
             }
@@ -1012,6 +1158,7 @@ void FileManager::run() {
                     createFile(filename);
                     refreshListing();
                     drawInterface();
+                    blockInputBriefly(); // Block input after interface refresh
                 }
                 break;
             }
@@ -1023,6 +1170,7 @@ void FileManager::run() {
                     createDirectory(dirname);
                     refreshListing();
                     drawInterface();
+                    blockInputBriefly(); // Block input after interface refresh
                 }
                 break;
             }
@@ -1031,26 +1179,56 @@ void FileManager::run() {
             case 'X': {
                 FileEntry* file = getCurrentFile();
                 if (file && !(file->name == ".." && file->path == "[UP]")) {
-                    changeTerminalColor(FileColors::ERROR, false);
+                    String confirmPrompt;
                     if (file->isDirectory) {
-                        Serial.println("\n\rDelete directory '" + file->name + "'? (y/N): ");
+                        confirmPrompt = "Delete directory '" + file->name + "'? (y/N): ";
                     } else {
-                        Serial.println("\n\rDelete file '" + file->name + "'? (y/N): ");
+                        confirmPrompt = "Delete file '" + file->name + "'? (y/N): ";
                     }
-                    Serial.flush();
+                    
+                    // Show prompt in output area
+                    if (outputAreaCurrentRow == 0) {
+                        showOutputAreaBorder();
+                    }
+                    
+                    // Show the prompt WITHOUT automatic newline
+                    moveCursor(outputAreaStartRow + outputAreaCurrentRow, 1);
+                    clearCurrentLine();
+                    changeTerminalColor(FileColors::ERROR, false);
+                    Serial.print(confirmPrompt);
                     changeTerminalColor(-1, false);
                     
-                    while (Serial.available() == 0) delayMicroseconds(100);
-                    char confirm = Serial.read();
-                    Serial.println(confirm);
+                    // Show cursor for input
+                    Serial.print("\033[?25h");
                     Serial.flush();
                     
+                    // Wait for confirmation and echo the character
+                    char confirm = 0;
+                    while (confirm == 0) {
+                        if (Serial.available()) {
+                            confirm = Serial.read();
+                            // Echo the character immediately
+                            Serial.print(confirm);
+                            Serial.flush();
+                        } else {
+                            delayMicroseconds(100);
+                        }
+                    }
+                    
+                    Serial.print("\n\r");
+                    Serial.print("\033[?25l"); // Hide cursor
+                    Serial.flush();
+                    
+                    outputAreaCurrentRow++; // Move to next line
+                    
                     if (confirm == 'y' || confirm == 'Y') {
+                        outputToArea("Deleting...", FileColors::STATUS);
                         deleteFile(file->name);
-                        Serial.println("Deleting...");
-                        Serial.flush();
                         refreshListing();
                         drawInterface();
+                        blockInputBriefly(); // Block input after interface refresh
+                    } else {
+                        outputToArea("Delete cancelled", FileColors::STATUS);
                     }
                     
                 }
@@ -1074,6 +1252,7 @@ void FileManager::run() {
             case '/':
                 if (goHome()) {
                     drawInterface();
+                    blockInputBriefly(); // Block input after interface refresh
                 }
                 break;
                 
@@ -1081,6 +1260,7 @@ void FileManager::run() {
                 if (currentPath != "/") {
                     if (goUp()) {
                         drawInterface();
+                        blockInputBriefly(); // Block input after interface refresh
                     }
                 }
                 break;
@@ -1091,16 +1271,46 @@ void FileManager::run() {
                 refreshListing();
                 updateStatusLine();
                 updateFileListDisplay();
+                blockInputBriefly(); // Block input after interface refresh
                 break;
             }
             
+            case 'u':
+            case 'U': {
+                // Show memory status
+                size_t freeHeap = rp2040.getFreeHeap();
+                outputToArea("Memory: " + String(freeHeap / 1024) + "KB free, " + 
+                           String(maxFiles) + " max files", FileColors::STATUS);
+                break;
+            }
+            
+            case 'm':
+            case 'M': {
+                // Manual MicroPython examples initialization
+                clearFilesystemMessages(); // Clear old messages first
+                addFilesystemMessage("Manual initialization requested...", 155);
+                initializeMicroPythonExamples(true); // Force initialization
+                refreshListing();
+                drawInterface();
+                blockInputBriefly(); // Block input after interface refresh
+                break;
+            }
+            
+            default:
+                // Handle unrecognized characters (including other control chars)
+                if (input >= 1 && input <= 31 && input != 17 && input != 16 && input != 27) {
+                    // Control character that we don't handle - show debug info
+                    outputToArea("Unhandled control char: Ctrl+" + String(char('A' + input - 1)), FileColors::STATUS);
+                }
+                // For regular printable characters, just ignore silently
+                break;
 
         }
     }
     
     // Clean up interactive mode
     clearScreen();
-    showCursor();
+    showCursor(); // Ensure cursor is visible when exiting
     
     // Restore normal font if we were using small fonts
     if (oled.oledConnected) {
@@ -1127,8 +1337,8 @@ void FileManager::initInteractiveMode() {
     Serial.flush();
     delay(100); // Give system time to switch modes
     
-    //clearScreen();
-    //hideCursor();
+    // Show cursor by default - only hide during drawing
+    showCursor();
 }
 
 void FileManager::clearScreen() {
@@ -1147,13 +1357,13 @@ void FileManager::moveCursor(int row, int col) {
 }
 
 void FileManager::hideCursor() {
-    // Serial.print("\033[?25l");
-    // Serial.flush();
+    Serial.print("\033[?25l");
+    Serial.flush();
 }
 
 void FileManager::showCursor() {
-    // Serial.print("\033[?25h");
-    // Serial.flush();
+    Serial.print("\033[?25h");
+    Serial.flush();
 }
 
 void FileManager::clearCurrentLine() {
@@ -1165,6 +1375,13 @@ void FileManager::clearCurrentLine() {
 void FileManager::drawInterface(bool fullScreen) {
     // Always use full interface - no special REPL mode anymore
     // Full screen mode (original behavior)
+    
+    // Hide cursor during drawing for clean interface
+    hideCursor();
+    
+    // Clear output area when redrawing interface
+    clearOutputArea();
+    
     // Position for header
     if (fullScreen) {
         moveCursor(1, 1);
@@ -1182,22 +1399,34 @@ void FileManager::drawInterface(bool fullScreen) {
     // Draw file listing
     updateFileListDisplay();
     
-    // Draw comprehensive help lines at bottom (2 lines in magenta)
+    // Draw comprehensive help lines at bottom (positioned after file list area)
+    int fileListStartRow = 6;
+    int fileListEndRow = fileListStartRow + textAreaLines - 1;
+    int helpStartRow = fileListEndRow + 2; // Leave 1 line gap after file list
     if (fullScreen) {
-        moveCursor(22, 1);
+        moveCursor(helpStartRow, 1);
     }
     changeTerminalColor(125, false); 
-    Serial.print(" enter = open   │ h = help │ q = quit │ ↑↓/wheel = nav │ . = up dir  │ / = root");
+    Serial.print(" [enter] = open   │ h = help │ v = quick view │ ↑↓/wheel = nav │ . = up dir   |");
     if (fullScreen) {
-        moveCursor(23, 1);
+        moveCursor(helpStartRow + 1, 1);
     }
     changeTerminalColor(89, false); 
-    Serial.print(" v = quick view │ e = edit │ i = info │  n = new file  │ d = new dir │ x = delete");
+    Serial.print(" CTRL + q = quit  │ e = edit │ n = new file   │ d = new dir    │ u = memory   |");
+     
     changeTerminalColor(-1, false); // Reset colors
+    
+    // Show output area border
+    showOutputAreaBorder();
+    
     Serial.flush();
+    
+    // Show cursor after drawing is complete
+    showCursor();
 }
 
 void FileManager::updateStatusLine() {
+    hideCursor(); // Hide cursor during status update
     moveCursor(4, 1);
     clearCurrentLine();
     
@@ -1224,16 +1453,23 @@ void FileManager::updateStatusLine() {
     
     Serial.print("\x1b[0m"); // Reset colors
     Serial.flush();
+    
+    showCursor(); // Show cursor after status update
 }
 
 void FileManager::updateFileListDisplay() {
     // Always use full interface - no special REPL mode anymore
-        // Full screen mode (original behavior)
-        // Clear file listing area (lines 6-20)
-        for (int i = 6; i <= 20; i++) {
-            moveCursor(i, 1);
-            clearCurrentLine();
-        }
+    // Temporarily hide cursor during update for clean display
+    hideCursor();
+    
+    // Full screen mode (original behavior)
+    // Clear file listing area (dynamically sized)
+    int fileListStartRow = 6;
+    int fileListEndRow = fileListStartRow + textAreaLines - 1;
+    for (int i = fileListStartRow; i <= fileListEndRow; i++) {
+        moveCursor(i, 1);
+        clearCurrentLine();
+    }
         
         // Handle special case where filesystem is not available
         if (currentPath == "[NO_FS]") {
@@ -1257,14 +1493,14 @@ void FileManager::updateFileListDisplay() {
         // Calculate display range
         int startIdx = displayOffset;
         int endIdx = min(displayOffset + maxDisplayLines, fileCount);
-        endIdx = min(endIdx, startIdx + 15); // Limit to 15 lines visible
+        endIdx = min(endIdx, startIdx + textAreaLines); // Use configurable lines
         
         for (int i = startIdx; i < endIdx; i++) {
             bool isSelected = (i == selectedIndex);
             FileEntry& entry = fileList[i];
             
             // Position cursor for this file entry
-            moveCursor(6 + (i - startIdx), 3);
+            moveCursor(fileListStartRow + (i - startIdx), 3);
             clearCurrentLine();
             
             // Calculate indentation based on directory depth
@@ -1295,6 +1531,7 @@ void FileManager::updateFileListDisplay() {
                 case FILE_TYPE_JSON: color = FileColors::JSON; break;
                 case FILE_TYPE_NODEFILES: color = FileColors::NODEFILES; break;
                 case FILE_TYPE_COLORS: color = FileColors::COLORS; break;
+                case FILE_TYPE_UNKNOWN: color = FileColors::TEXT; break;
             }
             
             changeTerminalColor(color, false);
@@ -1341,8 +1578,8 @@ void FileManager::updateFileListDisplay() {
         }
         
         // Show scroll indicator if needed
-        if (fileCount > 15) {
-            moveCursor(21, 3);
+        if (fileCount > textAreaLines) {
+            moveCursor(fileListEndRow + 1, 3);
             changeTerminalColor(FileColors::STATUS, false);
             Serial.print("Showing ");
             Serial.print(startIdx + 1);
@@ -1355,6 +1592,9 @@ void FileManager::updateFileListDisplay() {
         }
         
         Serial.flush();
+        
+        // Show cursor after update is complete
+        showCursor();
 }
 
 void FileManager::showInteractiveHelp() {
@@ -1435,16 +1675,31 @@ void FileManager::showInteractiveHelp() {
     Serial.println("⟐ OTHER:");
     moveCursor(21, 5);
     changeTerminalColor(207, false); // Magenta
+    Serial.print("r               ");
+    changeTerminalColor(248, false);
+    Serial.println("- Refresh directory listing");
+    moveCursor(22, 5);
+    changeTerminalColor(207, false);
+    Serial.print("u               ");
+    changeTerminalColor(248, false);
+    Serial.println("- Show memory status");
+    moveCursor(23, 5);
+    changeTerminalColor(207, false);
+    Serial.print("m               ");
+    changeTerminalColor(248, false);
+    Serial.println("- Force initialize MicroPython examples");
+    moveCursor(24, 5);
+    changeTerminalColor(207, false);
     Serial.print("h               ");
     changeTerminalColor(248, false);
     Serial.println("- Show this help");
-    moveCursor(22, 5);
+    moveCursor(25, 5);
     changeTerminalColor(207, false);
-    Serial.print("q               ");
+    Serial.print("CTRL+q          ");
     changeTerminalColor(248, false);
     Serial.println("- Quit file manager");
     
-    moveCursor(24, 3);
+    moveCursor(26, 3);
     changeTerminalColor(FileColors::STATUS, false);
     Serial.print("Press any key to return...");
     changeTerminalColor(0, false);
@@ -1632,6 +1887,8 @@ void filesystemApp() {
     changeTerminalColor(8, true);
     delayMicroseconds(100); // Give time for initialization messages to be seen
     
+    // Automatically create MicroPython examples if needed
+    initializeMicroPythonExamples();
     
     // Check if filesystem initialization was successful
     if (manager.getCurrentPath() == "[NO_FS]") {
@@ -1698,6 +1955,10 @@ void eKiloApp() {
     
     // Restore original screen state with all scrollback intact
     restoreScreenState(&Serial);
+    
+    // Windows-specific: Add extra delay to ensure proper display
+    Serial.flush();
+    delay(100);
 }
 
 void launchEkilo(const char* filename) {
@@ -1728,7 +1989,33 @@ void launchEkilo(const char* filename) {
     // Launch eKilo editor
     int result = ekilo_main(filename);
     
-    // Editor has exited - clean up and prepare for return
+    // Check if Ctrl+P was pressed (save and launch REPL)
+    if (result == 2) {
+        // Clear screen and launch MicroPython REPL
+        Serial.print("\x1b[2J\x1b[H");
+        changeTerminalColor(FileColors::STATUS, false);
+        Serial.println("☺ File saved successfully");
+        Serial.println("🐍 Launching MicroPython REPL...");
+        changeTerminalColor(-1, false); // Reset colors
+        
+        // Brief pause to let user see the message
+        delay(500);
+        
+        // Launch MicroPython REPL
+        enterMicroPythonREPL(&Serial);
+        
+        // After REPL exits, handle return appropriately
+        if (calledFromFileManager) {
+            // If called from file manager, just return (file manager will handle display)
+            return;
+        } else {
+            // If called standalone, return to main menu
+            Serial.print("\x1b[2J\x1b[H");
+            return;
+        }
+    }
+    
+    // Editor has exited normally - clean up and prepare for return
     // Clear screen immediately to prepare for next interface
     Serial.print("\x1b[2J\x1b[H");
     
@@ -1794,6 +2081,31 @@ String launchEkiloREPL(const char* filename) {
     
     // Restore original screen state with all scrollback intact
     restoreScreenState(&Serial);
+    
+    // Windows-specific: Add extra delay and clear to ensure proper display
+    Serial.flush();
+    delay(100);
+    
+    // Check if Ctrl+P was pressed (launch REPL directly)
+    if (savedContent.startsWith("[LAUNCH_REPL]")) {
+        // Remove the prefix and get the actual content
+        String actualContent = savedContent.substring(13); // Remove "[LAUNCH_REPL]" prefix
+        
+        changeTerminalColor(FileColors::STATUS, false);
+        Serial.println("☺ File saved as " + finalFilename);
+        Serial.println("🐍 Launching MicroPython REPL with script content...");
+        changeTerminalColor(-1, false); // Reset colors
+        
+        // Brief pause to let user see the message
+        delay(500);
+        
+        // Clear screen and launch MicroPython REPL
+        Serial.print("\x1b[2J\x1b[H");
+        enterMicroPythonREPL(&Serial);
+        
+        // Return the actual content so it can be loaded into REPL
+        return actualContent;
+    }
     
     changeTerminalColor(FileColors::STATUS, false);
     if (savedContent.length() > 0) {
@@ -2112,55 +2424,22 @@ bool FileManager::createDirectory(const String& dirname) {
     String fullPath = getFullPath(currentPath, dirname);
     
     if (FatFS.exists(fullPath.c_str())) {
-        changeTerminalColor(FileColors::ERROR, false);
-        Serial.println("Directory already exists: " + dirname);
-        changeTerminalColor(-1, false);
+        outputToArea("Directory already exists: " + dirname, FileColors::ERROR);
         return false;
     }
     
     if (FatFS.mkdir(fullPath.c_str())) {
-        changeTerminalColor(FileColors::STATUS, false);
-        Serial.println("Created directory: " + dirname);
-        changeTerminalColor(-1, false);
+        outputToArea("Created directory: " + dirname, FileColors::STATUS);
         refreshListing();
         return true;
     } else {
-        changeTerminalColor(FileColors::ERROR, false);
-        Serial.println("Failed to create directory: " + dirname);
-        changeTerminalColor(-1, false);
+        outputToArea("Failed to create directory: " + dirname, FileColors::ERROR);
         return false;
     }
 }
 
 String FileManager::promptForFilename(const String& prompt) {
-    changeTerminalColor(FileColors::STATUS, false);
-    Serial.print(prompt);
-    changeTerminalColor(-1, false);
-    
-    String filename = "";
-    while (true) {
-        if (Serial.available()) {
-            char c = Serial.read();
-            if (c == '\r' || c == '\n') {
-                Serial.println();
-                break;
-            } else if (c == 8 || c == 127) { // Backspace
-                if (filename.length() > 0) {
-                    filename.remove(filename.length() - 1);
-                    Serial.print("\b \b");
-                }
-            } else if (c == 27) { // ESC - cancel
-                Serial.println("\n[Cancelled]");
-                return "";
-            } else if (c >= 32 && c <= 126) { // Printable characters
-                filename += c;
-                Serial.print(c);
-            }
-        }
-        delayMicroseconds(10);
-    }
-    
-    return filename;
+    return promptInOutputArea(prompt);
 }
 
 void filesystemAppPythonScripts() {
@@ -2197,6 +2476,9 @@ void filesystemAppPythonScripts() {
     Serial.println("   Initializing filesystem...");
     changeTerminalColor(8, true);
     delayMicroseconds(100); // Give time for initialization messages to be seen
+    
+    // Automatically create MicroPython examples if needed
+    initializeMicroPythonExamples();
     
     // Check if filesystem initialization was successful
     if (manager.getCurrentPath() == "[NO_FS]") {
@@ -2290,6 +2572,9 @@ String filesystemAppPythonScriptsREPL() {
         FatFS.mkdir("/python_scripts");
     }
     
+    // Automatically create MicroPython examples if needed
+    initializeMicroPythonExamples();
+    
     // Navigate to python_scripts directory
     if (FatFS.exists("/python_scripts")) {
         manager.changeDirectory("/python_scripts");
@@ -2353,5 +2638,622 @@ String formatFileSizeForUSB(size_t size) {
     } else {
         return String(size / (1024 * 1024)) + " MB";
     }
+}
+
+//==============================================================================
+// Display Configuration Functions
+//==============================================================================
+
+int getConfiguredDisplayLines() {
+    return DEFAULT_DISPLAY_LINES;
+}
+
+int getConfiguredEditorLines() {
+    // Editor gets slightly fewer lines due to headers and footers
+    return DEFAULT_DISPLAY_LINES - 1;
+}
+
+
+
+//==============================================================================
+// Helper Functions for MicroPython Examples
+//==============================================================================
+
+// Simple version for startup - no message queue
+bool writeStringToFileSimple(const char* filename, const char* content) {
+    if (!filename || !content) {
+        return false;
+    }
+    
+    size_t contentLength = strlen(content);
+    if (contentLength == 0) {
+        return false;
+    }
+    
+    File file = FatFS.open(filename, "w");
+    if (!file) {
+        return false;
+    }
+    
+    size_t totalBytesWritten = 0;
+    const size_t chunkSize = 64; // Write in 512-byte chunks to avoid memory issues
+    
+    while (totalBytesWritten < contentLength) {
+        size_t bytesToWrite = min(chunkSize, contentLength - totalBytesWritten);
+        size_t bytesWritten = file.write((const uint8_t*)(content + totalBytesWritten), bytesToWrite);
+        
+        if (bytesWritten != bytesToWrite) {
+            file.close();
+            return false;
+        }
+        
+        totalBytesWritten += bytesWritten;
+    }
+    
+    file.close();
+    return true;
+}
+
+// Interactive version with message queue
+bool writeStringToFile(const char* filename, const char* content) {
+    if (!filename || !content) {
+        addFilesystemMessage("ERROR: Invalid filename or content", 196);
+        return false;
+    }
+    
+    size_t contentLength = strlen(content);
+    if (contentLength == 0) {
+        addFilesystemMessage("ERROR: Empty content for " + String(filename), 196);
+        return false;
+    }
+    
+    // Check memory availability and file size limits
+    size_t freeHeap = rp2040.getFreeHeap();
+    if (freeHeap < contentLength + 2048) { // Need content size + 2KB overhead
+        addFilesystemMessage("ERROR: Not enough memory to write file (" + String(contentLength / 1024) + "KB needed)", 196);
+        return false;
+    }
+    
+    if (contentLength > 32768) { // Limit individual files to 32KB
+        addFilesystemMessage("ERROR: File too large (" + String(contentLength / 1024) + "KB, max 32KB)", 196);
+        return false;
+    }
+    
+    // Reduce verbosity - only show messages for errors or final verification
+    File file = FatFS.open(filename, "w");
+    if (!file) {
+        addFilesystemMessage("ERROR: Cannot open " + String(filename) + " for writing", 196);
+        return false;
+    }
+    
+    size_t totalBytesWritten = 0;
+    const size_t chunkSize = 256; // Reduce chunk size to avoid memory issues
+    
+    while (totalBytesWritten < contentLength) {
+        size_t bytesToWrite = min(chunkSize, contentLength - totalBytesWritten);
+        size_t bytesWritten = file.write((const uint8_t*)(content + totalBytesWritten), bytesToWrite);
+        
+        if (bytesWritten != bytesToWrite) {
+            addFilesystemMessage("ERROR: Write failed at byte " + String(totalBytesWritten), 196);
+            file.close();
+            return false;
+        }
+        
+        totalBytesWritten += bytesWritten;
+        
+        // Add small delay every few chunks to prevent system overload
+        if ((totalBytesWritten % (chunkSize * 4)) == 0) {
+            delay(10);
+            
+            // Process any pending serial data to keep connection alive
+            if (Serial.available()) {
+                while (Serial.available()) {
+                    Serial.read();
+                }
+            }
+        }
+    }
+    
+    file.close();
+    
+    // Quick verification - don't spend too much time on this
+    File verifyFile = FatFS.open(filename, "r");
+    if (verifyFile) {
+        size_t actualSize = verifyFile.size();
+        verifyFile.close();
+        if (actualSize != contentLength) {
+            addFilesystemMessage("ERROR: Size mismatch " + String(actualSize) + " vs " + String(contentLength), 196);
+            return false;
+        }
+        // Silent verification - only report errors
+    } else {
+        // Don't fail on verification errors - the file might still be usable
+        // Just continue silently
+    }
+    
+    return true;
+}
+
+//==============================================================================
+// Initialize MicroPython Examples Function - Conditional Compilation
+//==============================================================================
+
+void initializeMicroPythonExamples(bool forceInitialization) {
+    // Safety check - don't do anything if Serial is not available
+    if (!Serial) {
+        return;
+    }
+    
+    // Build arrays dynamically based on enabled examples
+    struct ExampleInfo {
+        const char* path;
+        const char* content;
+        const char* name;
+    };
+    
+    // Create array of enabled examples
+    ExampleInfo examples[] = {
+#ifdef INCLUDE_DAC_BASICS
+        {"/python_scripts/examples/01_dac_basics.py", DAC_BASICS_PY, "01_dac_basics.py"},
+#endif
+#ifdef INCLUDE_ADC_BASICS
+        {"/python_scripts/examples/02_adc_basics.py", ADC_BASICS_PY, "02_adc_basics.py"},
+#endif
+#ifdef INCLUDE_GPIO_BASICS
+        {"/python_scripts/examples/03_gpio_basics.py", GPIO_BASICS_PY, "03_gpio_basics.py"},
+#endif
+#ifdef INCLUDE_NODE_CONNECTIONS
+        {"/python_scripts/examples/04_node_connections.py", NODE_CONNECTIONS_PY, "04_node_connections.py"},
+#endif
+#ifdef INCLUDE_README
+        {"/python_scripts/examples/README.md", README_MD, "README.md"},
+#endif
+#ifdef INCLUDE_TEST_RUNNER
+        {"/python_scripts/examples/test_examples.py", TEST_RUNNER_PY, "test_examples.py"},
+#endif
+#ifdef INCLUDE_LED_BRIGHTNESS_CONTROL
+        {"/python_scripts/examples/led_brightness_control.py", LED_BRIGHTNESS_CONTROL_PY, "led_brightness_control.py"},
+#endif
+#ifdef INCLUDE_VOLTAGE_MONITOR
+        {"/python_scripts/examples/voltage_monitor.py", VOLTAGE_MONITOR_PY, "voltage_monitor.py"},
+#endif
+#ifdef INCLUDE_STYLOPHONE
+        {"/python_scripts/examples/stylophone.py", STYLOPHONE_PY, "stylophone.py"},
+#endif
+    };
+    
+    int totalExamples = sizeof(examples) / sizeof(examples[0]);
+    
+    // If no examples are enabled, exit early
+    if (totalExamples == 0) {
+        if (globalFileManager != nullptr) {
+            globalFileManager->outputToArea("[INIT] No examples enabled at compile time", 155);
+        } else {
+            addFilesystemMessage("[INIT] No examples enabled at compile time", 155);
+        }
+        return;
+    }
+    
+    // Quick check - if all enabled files exist and not forced, do nothing silently
+    if (!forceInitialization) {
+        bool allFilesExist = true;
+        for (int i = 0; i < totalExamples; i++) {
+            if (!FatFS.exists(examples[i].path)) {
+                allFilesExist = false;
+                break;
+            }
+        }
+        
+        // If all enabled files exist and not forced, exit silently
+        if (allFilesExist && FatFS.exists("/python_scripts") && FatFS.exists("/python_scripts/examples")) {
+            return;
+        }
+    }
+    
+    // Only provide feedback if we're actually doing work
+    bool useOutputArea = (globalFileManager != nullptr);
+    
+    if (useOutputArea) {
+        globalFileManager->outputToArea("[INIT] Initializing " + String(totalExamples) + " MicroPython examples...", 155);
+    } else {
+        addFilesystemMessage("[INIT] Initializing " + String(totalExamples) + " MicroPython examples...", 155);
+    }
+    
+    // Clean up old location if it exists (migration from previous version)
+    if (FatFS.exists("/micropython_examples")) {
+        if (useOutputArea) {
+            globalFileManager->outputToArea("[MIGRATION] Cleaning up old location...", 155);
+        } else {
+            addFilesystemMessage("[MIGRATION] Cleaning up old location...", 155);
+        }
+        
+        // Try to remove files in the old directory first
+        Dir oldDir = FatFS.openDir("/micropython_examples");
+        while (oldDir.next()) {
+            String fileName = oldDir.fileName();
+            String fullPath = "/micropython_examples/" + fileName;
+            FatFS.remove(fullPath.c_str());
+        }
+        
+        // Then try to remove the directory itself
+        FatFS.rmdir("/micropython_examples");
+        
+        if (useOutputArea) {
+            globalFileManager->outputToArea("Old location cleaned up", 155);
+        } else {
+            addFilesystemMessage("Old location cleaned up", 155);
+        }
+    }
+    
+    // First ensure python_scripts directory exists
+    if (!FatFS.exists("/python_scripts")) {
+        if (useOutputArea) {
+            globalFileManager->outputToArea("[CREATE] Creating /python_scripts directory...", 155);
+        } else {
+            addFilesystemMessage("[CREATE] Creating /python_scripts directory...", 155);
+        }
+        
+        if (!FatFS.mkdir("/python_scripts")) {
+            if (useOutputArea) {
+                globalFileManager->outputToArea("ERROR: Failed to create /python_scripts", 196);
+            } else {
+                addFilesystemMessage("ERROR: Failed to create /python_scripts", 196);
+            }
+            return;
+        }
+        
+        if (useOutputArea) {
+            globalFileManager->outputToArea("Created /python_scripts directory", 155);
+        } else {
+            addFilesystemMessage("Created /python_scripts directory", 155);
+        }
+    }
+    
+    // Ensure examples directory exists inside python_scripts
+    if (!FatFS.exists("/python_scripts/examples")) {
+        if (useOutputArea) {
+            globalFileManager->outputToArea("[CREATE] Creating examples directory...", 155);
+        } else {
+            addFilesystemMessage("[CREATE] Creating examples directory...", 155);
+        }
+        
+        // Create the examples directory
+        if (!FatFS.mkdir("/python_scripts/examples")) {
+            if (useOutputArea) {
+                globalFileManager->outputToArea("ERROR: Failed to create examples directory", 196);
+            } else {
+                addFilesystemMessage("ERROR: Failed to create examples directory", 196);
+            }
+            return;
+        }
+        
+        if (useOutputArea) {
+            globalFileManager->outputToArea("Created examples directory", 155);
+        } else {
+            addFilesystemMessage("Created examples directory", 155);
+        }
+    }
+    
+    // Check available memory before creating files
+    size_t freeHeap = rp2040.getFreeHeap();
+    if (freeHeap < 20000) {  // Require at least 20KB free heap
+        String errorMsg = "ERROR: Low memory (" + String(freeHeap) + " bytes), skipping file creation";
+        if (useOutputArea) {
+            globalFileManager->outputToArea(errorMsg, 196);
+        } else {
+            addFilesystemMessage(errorMsg, 196);
+        }
+        return;
+    }
+    
+    int filesToCreate = 0;
+    int filesCreated = 0;
+    int filesSkipped = 0;
+    
+    if (useOutputArea) {
+        globalFileManager->outputToArea("[FILES] Checking example files...", 155);
+    } else {
+        addFilesystemMessage("[FILES] Checking example files...", 155);
+    }
+    
+    // First pass - count files that need to be created
+    for (int i = 0; i < totalExamples; i++) {
+        if (!FatFS.exists(examples[i].path)) {
+            filesToCreate++;
+        } else {
+            filesSkipped++;
+        }
+    }
+    
+    if (filesToCreate > 0) {
+        String startMsg = "Creating " + String(filesToCreate) + " example files...";
+        if (useOutputArea) {
+            globalFileManager->outputToArea(startMsg, 155);
+        } else {
+            addFilesystemMessage(startMsg, 155);
+        }
+    }
+    
+    // Safety timeout - don't spend more than 30 seconds creating files
+    unsigned long startTime = millis();
+    const unsigned long maxTime = 30000; // 30 seconds
+    
+    for (int i = 0; i < totalExamples; i++) {
+        // Check timeout to prevent system lockup
+        if (millis() - startTime > maxTime) {
+            String timeoutMsg = "TIMEOUT: File creation aborted after 30s";
+            if (useOutputArea) {
+                globalFileManager->outputToArea(timeoutMsg, 196);
+            } else {
+                addFilesystemMessage(timeoutMsg, 196);
+            }
+            break;
+        }
+        
+        if (!FatFS.exists(examples[i].path)) {
+            // Show progress for each file
+            String progressMsg = "Creating " + String(examples[i].name) + " (" + String(filesCreated + 1) + "/" + String(filesToCreate) + ")";
+            if (useOutputArea) {
+                globalFileManager->outputToArea(progressMsg, 155);
+            } else {
+                addFilesystemMessage(progressMsg, 155);
+            }
+            
+            bool success = writeStringToFile(examples[i].path, examples[i].content);
+            
+            if (success) {
+                filesCreated++;
+                String successMsg = "✓ Created " + String(examples[i].name);
+                if (useOutputArea) {
+                    globalFileManager->outputToArea(successMsg, 155);
+                } else {
+                    addFilesystemMessage(successMsg, 155);
+                }
+            } else {
+                String errorMsg = "✗ Failed to create " + String(examples[i].name);
+                if (useOutputArea) {
+                    globalFileManager->outputToArea(errorMsg, 196);
+                } else {
+                    addFilesystemMessage(errorMsg, 196);
+                }
+                // Continue with other files even if one fails
+            }
+            
+            // Add delay between file writes to prevent system overload
+            delay(100);
+            
+            // Process any pending serial data to keep connection alive
+            if (Serial.available()) {
+                while (Serial.available()) {
+                    Serial.read();
+                }
+            }
+        }
+    }
+    
+    // Summary message
+    String summary;
+    if (filesToCreate > 0) {
+        if (filesCreated == filesToCreate) {
+            summary = "✓ All " + String(filesCreated) + " example files created successfully!";
+        } else if (filesCreated > 0) {
+            summary = "⚠ Created " + String(filesCreated) + "/" + String(filesToCreate) + " files (some failed)";
+        } else {
+            summary = "✗ Failed to create any example files";
+        }
+    } else {
+        summary = "✓ All " + String(filesSkipped) + " example files already exist";
+    }
+    
+    if (useOutputArea) {
+        globalFileManager->outputToArea(summary, filesCreated > 0 || filesToCreate == 0 ? 155 : 196);
+    } else {
+        addFilesystemMessage(summary, filesCreated > 0 || filesToCreate == 0 ? 155 : 196);
+    }
+    
+    // Clear older messages to prevent memory buildup
+    if (fsMessageCount > 5) {
+        fsMessageCount = 3;  // Keep only the last 3 messages
+    }
+}
+
+
+
+bool verifyMicroPythonExamples() {
+    // Check if all expected files exist
+    const char* expectedFiles[] = {
+        "/python_scripts/examples/01_dac_basics.py",
+        "/python_scripts/examples/02_adc_basics.py", 
+        "/python_scripts/examples/03_gpio_basics.py",
+        "/python_scripts/examples/04_node_connections.py",
+        "/python_scripts/examples/README.md",
+        "/python_scripts/examples/test_examples.py",
+        "/python_scripts/examples/led_brightness_control.py",
+        "/python_scripts/examples/voltage_monitor.py",
+        "/python_scripts/examples/stylophone.py"
+    };
+    
+    bool allFilesExist = true;
+    int fileCount = sizeof(expectedFiles) / sizeof(expectedFiles[0]);
+    
+    Serial.println("Verifying MicroPython examples...");
+    
+    for (int i = 0; i < fileCount; i++) {
+        if (!FatFS.exists(expectedFiles[i])) {
+            Serial.print("  MISSING: ");
+            Serial.println(expectedFiles[i]);
+            allFilesExist = false;
+        } else {
+            // Check file size to ensure it's not empty
+            File checkFile = FatFS.open(expectedFiles[i], "r");
+            if (checkFile) {
+                size_t fileSize = checkFile.size();
+                checkFile.close();
+                if (fileSize > 0) {
+                    Serial.print("  OK: ");
+                    Serial.print(expectedFiles[i]);
+                    Serial.print(" (");
+                    Serial.print(fileSize);
+                    Serial.println(" bytes)");
+                } else {
+                    Serial.print("  EMPTY: ");
+                    Serial.println(expectedFiles[i]);
+                    allFilesExist = false;
+                }
+            } else {
+                Serial.print("  UNREADABLE: ");
+                Serial.println(expectedFiles[i]);
+                allFilesExist = false;
+            }
+        }
+    }
+    
+    if (allFilesExist) {
+        Serial.println("All MicroPython example files verified successfully!");
+    } else {
+        Serial.println("Some MicroPython example files are missing or corrupted!");
+    }
+    
+    return allFilesExist;
+}
+
+//==============================================================================
+// Output Area Management Functions
+//==============================================================================
+
+void FileManager::clearOutputArea() {
+    // Clear the output area
+    for (int i = 0; i < outputAreaHeight; i++) {
+        moveCursor(outputAreaStartRow + i, 1);
+        clearCurrentLine();
+    }
+    outputAreaCurrentRow = 0;
+}
+
+void FileManager::outputToArea(const String& text, int color) {
+    if (outputAreaCurrentRow >= outputAreaHeight) {
+        // Scroll up by shifting all lines up
+        for (int i = 0; i < outputAreaHeight - 1; i++) {
+            moveCursor(outputAreaStartRow + i, 1);
+            clearCurrentLine();
+        }
+        outputAreaCurrentRow = outputAreaHeight - 1;
+    }
+    
+    moveCursor(outputAreaStartRow + outputAreaCurrentRow, 1);
+    clearCurrentLine();
+    
+    changeTerminalColor(color, false);
+    Serial.print(text);
+    Serial.print("\n\r"); // Use proper line ending
+    changeTerminalColor(-1, false); // Reset colors
+    
+    outputAreaCurrentRow++;
+}
+
+void FileManager::showOutputAreaBorder() {
+    moveCursor(outputAreaStartRow - 1, 1);
+    changeTerminalColor(FileColors::STATUS, false);
+    Serial.print("╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌\n\r");
+    changeTerminalColor(-1, false); // Reset colors
+}
+
+String FileManager::promptInOutputArea(const String& prompt) {
+    // Show the border if this is the first use
+    if (outputAreaCurrentRow == 0) {
+        showOutputAreaBorder();
+    }
+    
+    // Show the prompt WITHOUT the automatic newline from outputToArea
+    moveCursor(outputAreaStartRow + outputAreaCurrentRow, 1);
+    clearCurrentLine();
+    
+    changeTerminalColor(FileColors::STATUS, false);
+    Serial.print(prompt);
+    changeTerminalColor(-1, false); // Reset colors
+    
+    // Position cursor right after the prompt text for input
+    int inputStartCol = prompt.length() + 1;
+    
+    // Show cursor for input
+    Serial.print("\033[?25h");
+    Serial.flush();
+    
+    String input = "";
+    while (true) {
+        if (Serial.available()) {
+            char c = Serial.read();
+            if (c == '\r' || c == '\n') {
+                Serial.print("\n\r");
+                outputAreaCurrentRow++; // Move to next line after input
+                break;
+            } else if (c == 8 || c == 127) { // Backspace
+                if (input.length() > 0) {
+                    input.remove(input.length() - 1);
+                    // Move cursor back, print space to clear character, move cursor back again
+                    Serial.print("\b \b");
+                    Serial.flush();
+                }
+            } else if (c == 27) { // ESC - cancel
+                Serial.print("\n\r");
+                outputAreaCurrentRow++; // Move to next line
+                moveCursor(outputAreaStartRow + outputAreaCurrentRow, 1);
+                clearCurrentLine();
+                changeTerminalColor(FileColors::ERROR, false);
+                Serial.print("[Cancelled]\n\r");
+                changeTerminalColor(-1, false);
+                outputAreaCurrentRow++;
+                Serial.print("\033[?25l"); // Hide cursor
+                Serial.flush();
+                return "";
+            } else if (c >= 32 && c <= 126) { // Printable characters
+                input += c;
+                // Echo the character immediately
+                Serial.print(c);
+                Serial.flush(); // Ensure immediate display
+            }
+            // Ignore other control characters
+        }
+        delayMicroseconds(10);
+    }
+    
+    // Hide cursor
+    Serial.print("\033[?25l");
+    Serial.flush();
+    
+    return input;
+}
+
+//==============================================================================
+// Input Management Functions
+//==============================================================================
+
+void FileManager::blockInputBriefly() {
+    lastDisplayUpdate = millis();
+}
+
+void FileManager::clearBufferedInput(bool allowCtrlQ) {
+    char ctrlQFound = 0;
+    while (Serial.available()) {
+        char c = Serial.read();
+        // Save Ctrl+Q if we want to allow it
+        if (allowCtrlQ && c == 17) { // Ctrl+Q
+            ctrlQFound = c;
+        }
+    }
+    
+    // Put Ctrl+Q back by sending it to Serial - this is a simple approach
+    // In practice, the main loop will need to handle this specially
+    if (ctrlQFound != 0) {
+        // We can't easily put it back, so we'll handle this in isInputBlocked()
+        // by allowing Ctrl+Q to pass through even during blocking
+    }
+}
+
+bool FileManager::isInputBlocked() {
+    if (lastDisplayUpdate == 0) return false;
+    
+    unsigned long elapsed = millis() - lastDisplayUpdate;
+    return elapsed < INPUT_BLOCK_TIME;
 }
 

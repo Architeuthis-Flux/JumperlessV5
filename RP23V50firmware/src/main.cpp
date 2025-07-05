@@ -71,6 +71,7 @@ KevinC@ppucc.io
 #include "Highlighting.h"
 #include "Python_Proper.h"
 #include "USBfs.h"
+#include "FilesystemStuff.h"
 
 // #define Serial SerialWrap
 // #define USBSer1 SerialWrap
@@ -121,6 +122,8 @@ void setup() {
   // FatFS.begin();
   if (!FatFS.begin()) {
     Serial.println("Failed to initialize FatFS");
+  } else {
+    Serial.println("FatFS initialized successfully");
   }
 
   // delayMicroseconds(800);
@@ -302,133 +305,6 @@ void setup() {
   startupTimers[9] = millis();
 }
 
-// void printDirectoryContents(const char *dirname, int level) {
-//   // Add indentation based on directory level
-//   for (int i = 0; i < level; i++) {
-//     Serial.print("  ");
-//   }
-
-//   if (level == 0) {
-//     Serial.println("/ (root)");
-//   } else {
-//     Serial.print(dirname);
-//     Serial.println("/");
-//   }
-
-//   // Try to open as directory first
-//   if (FatFS.exists(dirname)) {
-//     // List files in directory - FatFS doesn't have opendir, so we'll try a
-//     // different approach We'll check for common file patterns and known files
-
-//     // Check for config file
-//     String configPath = String(dirname) + "/config.txt";
-//     if (FatFS.exists(configPath.c_str())) {
-//       File configFile = FatFS.open(configPath.c_str(), "r");
-//       if (configFile) {
-//         for (int i = 0; i <= level; i++)
-//           Serial.print("  ");
-//         Serial.print("config.txt (");
-//         Serial.print(configFile.size());
-//         Serial.println(" bytes)");
-//         configFile.close();
-//       }
-//     }
-
-//     // Check for scripts directory
-//     String scriptsPath = String(dirname) + "/scripts";
-//     if (FatFS.exists(scriptsPath.c_str())) {
-//       printDirectoryContents(scriptsPath.c_str(), level + 1);
-
-//       // Check for common script files in scripts directory
-//       for (int i = 1; i <= 20; i++) {
-//         String scriptPath = scriptsPath + "/script_" + String(i) + ".py";
-//         if (FatFS.exists(scriptPath.c_str())) {
-//           File scriptFile = FatFS.open(scriptPath.c_str(), "r");
-//           if (scriptFile) {
-//             for (int j = 0; j <= level + 1; j++)
-//               Serial.print("  ");
-//             Serial.print("script_");
-//             Serial.print(i);
-//             Serial.print(".py (");
-//             Serial.print(scriptFile.size());
-//             Serial.println(" bytes)");
-//             scriptFile.close();
-//           }
-//         }
-//       }
-
-//       // Check for history file
-//       String historyPath = scriptsPath + "/history.txt";
-//       if (FatFS.exists(historyPath.c_str())) {
-//         File historyFile = FatFS.open(historyPath.c_str(), "r");
-//         if (historyFile) {
-//           for (int j = 0; j <= level + 1; j++)
-//             Serial.print("  ");
-//           Serial.print("history.txt (");
-//           Serial.print(historyFile.size());
-//           Serial.println(" bytes)");
-//           historyFile.close();
-//         }
-//       }
-
-//       // Check for common named scripts
-//       String commonNames[] = {"test.py",  "demo.py", "main.py",
-//                               "setup.py", "loop.py", "example.py"};
-//       for (int i = 0; i < 6; i++) {
-//         String scriptPath = scriptsPath + "/" + commonNames[i];
-//         if (FatFS.exists(scriptPath.c_str())) {
-//           File scriptFile = FatFS.open(scriptPath.c_str(), "r");
-//           if (scriptFile) {
-//             for (int j = 0; j <= level + 1; j++)
-//               Serial.print("  ");
-//             Serial.print(commonNames[i]);
-//             Serial.print(" (");
-//             Serial.print(scriptFile.size());
-//             Serial.println(" bytes)");
-//             scriptFile.close();
-//           }
-//         }
-//       }
-//     }
-
-//     // Check for common slot files
-//     for (int i = 0; i <= 10; i++) {
-//       String slotPath = String(dirname) + "/slot" + String(i) + ".txt";
-//       if (FatFS.exists(slotPath.c_str())) {
-//         File slotFile = FatFS.open(slotPath.c_str(), "r");
-//         if (slotFile) {
-//           for (int j = 0; j <= level; j++)
-//             Serial.print("  ");
-//           Serial.print("slot");
-//           Serial.print(i);
-//           Serial.print(".txt (");
-//           Serial.print(slotFile.size());
-//           Serial.println(" bytes)");
-//           slotFile.close();
-//         }
-//       }
-//     }
-
-//     // Check for other common files
-//     String commonFiles[] = {"bootLoader.txt", "nodeFile.txt", "nets.txt",
-//                             "bridges.txt", "netColors.txt"};
-//     for (int i = 0; i < 5; i++) {
-//       String filePath = String(dirname) + "/" + commonFiles[i];
-//       if (FatFS.exists(filePath.c_str())) {
-//         File file = FatFS.open(filePath.c_str(), "r");
-//         if (file) {
-//           for (int j = 0; j <= level; j++)
-//             Serial.print("  ");
-//           Serial.print(commonFiles[i]);
-//           Serial.print(" (");
-//           Serial.print(file.size());
-//           Serial.println(" bytes)");
-//           file.close();
-//         }
-//       }
-//     }
-//   }
-// }
 
 unsigned long startupCore2timers[10];
 
@@ -482,7 +358,7 @@ int input = '\0';
 int serSource = 0;
 int readInNodesArduino = 0;
 
-const char firmwareVersion[] = "5.2.0.7"; // remember to update this
+const char firmwareVersion[] = "5.2.1.0"; // remember to update this
 const bool newConfigOptions = false; // set to true with new config options //!
                                      // fix the saving every boot thing
 int firstLoop = 1;

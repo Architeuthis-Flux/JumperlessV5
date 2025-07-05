@@ -59,6 +59,7 @@ struct REPLEditor {
   bool multiline_forced_on = false;  // Force multiline mode on
   bool multiline_forced_off = false; // Force multiline mode off
   int last_displayed_lines = 0;      // Track how many lines we last displayed
+  bool just_loaded_from_history = false; // Flag to track when we just loaded from history
 
   // Methods
   void getCurrentLine(String &line, int &line_start, int &cursor_in_line);
@@ -122,6 +123,10 @@ void testFormattedOutput(void);
 // Status functions
 bool isMicroPythonInitialized(void);
 void printMicroPythonStatus(void);
+
+// Interrupt handling
+extern bool mp_interrupt_requested; // Global interrupt flag for Ctrl+Q
+void mp_hal_check_interrupt(void);
 
 // Terminal color control
 void changeTerminalColor(Stream *stream = global_mp_stream, int color = 69, bool bold = true);
