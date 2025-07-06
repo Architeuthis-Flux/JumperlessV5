@@ -43,3 +43,13 @@ JumperlessWokwiBridge/JumperlessFiles
 JumperlessWokwiBridge/Jumper
 *.so
 /RP23V50firmware/.cache
+.Trash*
+JumperlessWokwiBridge/*tar.gz
+JumperlessWokwiBridge/builds/
+JumperlessWokwiBridge/tools/
+JumperlessWokwiBridge/*.AppDir
+JumperlessWokwiBridge/*.zip
+JumperlessWokwiBridge/JumperlessWindows/
+
+
+

@@ -4,8 +4,10 @@
 # KevinC@ppucc.io
 #
 
-App_Version = "1.1.1.8"
+App_Version = "1.1.1.9"
 new_requirements = True
+
+
 
 import pathlib
 import requests
@@ -4741,8 +4743,19 @@ def handle_interactive_input_windows():
     """Windows-specific approach using pynput for complete key support"""
     global interactive_mode, serialconnected, ser
     
+    # Check if pynput is available
+    try:
+        import pynput.keyboard as pynput_keyboard
+    except ImportError:
+        safe_print("WARNING: pynput not available - falling back to simple input mode", Fore.YELLOW)
+        disable_interactive_mode()
+        return
+    
     try:
         safe_print("Using pynput for enhanced Windows keyboard input (supports all Ctrl combinations)", Fore.GREEN)
+        
+        # Create a controller instance for modifier state checking
+        controller = pynput_keyboard.Controller()
         
         def on_key_press(key):
             if not interactive_mode:
@@ -4859,9 +4872,6 @@ def handle_interactive_input_windows():
             except Exception as e:
                 if debugWokwi:
                     safe_print(f"Error handling key press: {e}", Fore.RED)
-        
-        # Create a controller instance for modifier state checking
-        controller = pynput_keyboard.Controller()
         
         # Start listener
         with pynput_keyboard.Listener(on_press=on_key_press, suppress=False) as listener:

@@ -16,12 +16,15 @@ pyinstaller-hooks-contrib==2025.5
 pynput==1.8.1
 pyserial==3.5
 requests==2.32.4
-setuptools==80.9.0
+setuptools==70.3.0
 six==1.17.0
 soupsieve==2.7
 termcolor==3.1.0
 typing_extensions==4.14.0
 urllib3==2.4.0
+
+# Fix for PyInstaller libpython3.10.so issue
+backports-datetime-fromisoformat==2.0.2
 
 # macOS-specific packages (only install on macOS)
 macholib==1.16.3; sys_platform == "darwin"
