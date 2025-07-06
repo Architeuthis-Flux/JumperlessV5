@@ -475,3 +475,12 @@ If you need both `DAC`s, you can just get rid of this connection and the `probe 
 
 
 That's probably more than you need to worry about but that gives me a nice start on real docs
+
+
+
+<!--
+<img width="901" alt="FileManager" src="https://github.com/user-attachments/assets/de4a251a-9727-422d-ade0-53984cf67fba" />
+<img width="898" alt="Screenshot 2025-07-06 at 11 25 26 AM" src="https://github.com/user-attachments/assets/aa5db6a7-f9e1-4ea8-902c-050626712c07" />
+<img width="928" alt="Screenshot 2025-07-06 at 11 25 50 AM" src="https://github.com/user-attachments/assets/1b4c74bc-19fa-4e74-8799-b778e8a56825" />
+--!>
+
