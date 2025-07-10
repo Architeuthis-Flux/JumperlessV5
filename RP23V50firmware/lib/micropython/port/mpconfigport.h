@@ -29,6 +29,7 @@ typedef uint32_t mp_hal_pin_obj_t;
 #define MICROPY_HELPER_REPL         (1)
 #define MICROPY_HELPER_LEXER_UNIX   (0)  // Disable to save memory
 #define MICROPY_MEM_STATS           (1)  // Disable to save memory
+#define MICROPY_KBD_EXCEPTION      (1)
 
 // REPL configuration - basic only
 #define MICROPY_REPL_AUTO_INDENT    (1)  // Disable to save memory
@@ -45,10 +46,17 @@ typedef uint32_t mp_hal_pin_obj_t;
 #define MICROPY_PY___FILE__         (0)  // Disable to avoid import path issues
 #define MICROPY_PY_SYS_PLATFORM     "jumperless-rp2350"
 #define MICROPY_PY_SYS_EXIT         (1)
-#define MICROPY_PY_SYS_PATH         (0)  // Keep disabled - causes build errors without proper port setup
+#define MICROPY_PY_SYS_PATH         (1)  
 #define MICROPY_PY_SYS_PS1_PS2      (1)  // Enable for REPL
-#define MICROPY_PY_SYS_STDIO_BUFFER (0)  // Keep disabled to save memory
-#define MICROPY_PY_SYS_ATTR_DELEGATION (1)  // Keep disabled to save memory
+#define MICROPY_PY_SYS_STDIO_BUFFER (1)  
+#define MICROPY_PY_SYS_ATTR_DELEGATION (1)  
+
+
+#define MICROPY_PY_FSTRINGS         (1)
+
+
+#define MICROPY_STACK_CHECK (1)
+#define MICROPY_STACK_CHECK_MARGIN (1024)  // 1KB margin for embedded systems
 
 // Basic modules - minimal set
 #define MICROPY_PY_ARRAY            (1)
@@ -104,7 +112,7 @@ typedef uint32_t mp_hal_pin_obj_t;
 #define MICROPY_ERROR_REPORTING     (MICROPY_ERROR_REPORTING_DETAILED)
 #define MICROPY_ENABLE_SOURCE_LINE  (1)
 
-#define MICROPY_ENABLE_EXTERNAL_IMPORT (0)  // Disable to avoid sys.path dependency
+#define MICROPY_ENABLE_EXTERNAL_IMPORT (1)  // Disable to avoid sys.path dependency
 #define MICROPY_MALLOC_USES_ALLOCATED_SIZE (1)
 
 // Additional features for embedded use

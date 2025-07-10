@@ -188,6 +188,7 @@ String filesystemAppPythonScriptsREPL(); // REPL mode - returns content if file 
 void eKiloApp();
 void launchEkilo(const char* filename = nullptr);
 String launchEkiloREPL(const char* filename = nullptr); // REPL mode - returns content if file saved
+String launchInlineEkilo(const String& initial_content = ""); // Inline editing mode - no screen clearing, no file operations
 String generateNextScriptName(); // Helper to generate next available script name
 
 // Utility functions

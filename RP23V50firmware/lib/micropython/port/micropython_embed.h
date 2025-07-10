@@ -53,6 +53,9 @@ bool mp_embed_obj_to_bool(mp_obj_t obj);
 // Error handling
 const char* mp_embed_get_last_error(void);
 
+// Hardware control functions
+int getCurrentInterruptChar(void);
+
 #ifdef __cplusplus
 }
 #endif

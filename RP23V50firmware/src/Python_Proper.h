@@ -80,6 +80,13 @@ struct REPLEditor {
   void reset();
   void fullReset(); // Complete reset including multiline mode settings
   void enterPasteMode(Stream *stream);
+  
+  // New multiline navigation helpers
+  void moveUpInMultiline(Stream *stream);
+  void moveDownInMultiline(Stream *stream);
+  void moveToEndOfPreviousLine(Stream *stream);
+  void moveToStartOfNextLine(Stream *stream);
+  void positionCursorAtCurrentPos(Stream *stream);
 };
 
 // Core initialization and cleanup
@@ -100,6 +107,9 @@ bool executeSinglePythonCommandFloat(const char* command, float* result);
 float quickPythonCommand(const char* command);
 String parseCommandWithPrefix(const char* command);
 bool isJumperlessFunction(const char* function_name);
+
+// Syntax highlighting helper
+void displayStringWithSyntaxHighlighting(const String& text, Stream* stream);
 
 // REPL control
 void startMicroPythonREPL(void);

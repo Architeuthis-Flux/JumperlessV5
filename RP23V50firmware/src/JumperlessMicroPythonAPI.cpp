@@ -217,17 +217,18 @@ int jl_nodes_is_connected(int node1, int node2) {
 
 // OLED Functions
 int jl_oled_print(const char* text, int size) {
-    oled.clearPrintShow(text, size, true, true, true);
+    mp_hal_check_interrupt();
+    oled.clearPrintShow(text, size, true, true, true, -1, -1, 15000);
     return 1;
 }
 
 int jl_oled_clear(void) {
-    oled.clear();
+    oled.clear(1000);
     return 1;
 }
 
 int jl_oled_show(void) {
-    oled.show();
+    oled.show(1000);
     return 1;
 }
 

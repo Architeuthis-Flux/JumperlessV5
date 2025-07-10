@@ -497,7 +497,7 @@ void oled::setCursor(int16_t x, int16_t y) {
 // ============================
 
 // Main display function with all options
-void oled::clearPrintShow(const char* text, int textSize, bool clear, bool showOled, bool center, int x_pos, int y_pos) {
+void oled::clearPrintShow(const char* text, int textSize, bool clear, bool showOled, bool center, int x_pos, int y_pos, int waitToFinish) {
     if (!oledConnected || !text) return;
 
     if (clear) {
@@ -546,15 +546,15 @@ void oled::clearPrintShow(const char* text, int textSize, bool clear, bool showO
     }
     
     if (showOled) {
-        show();
+        show(waitToFinish);
         //display.display();
         //dumpFrameBufferQuarterSize(1);
     }
 }
 
 // Main display function with font family selection
-void oled::clearPrintShow(const char* text, int textSize, FontFamily family, bool clear, bool showOled, bool center, int x_pos, int y_pos) {
-    if (!oledConnected || !text) return;
+    void oled::clearPrintShow(const char* text, int textSize, FontFamily family, bool clear, bool showOled, bool center, int x_pos, int y_pos, int waitToFinish) {
+        if (!oledConnected || !text) return;
 
     if (clear) {
         charPos = 0;
@@ -599,7 +599,7 @@ void oled::clearPrintShow(const char* text, int textSize, FontFamily family, boo
     }
     
     if (showOled) { 
-        show();
+        show(waitToFinish);
         //display.display();
         //dumpFrameBufferQuarterSize(1);
     }
@@ -684,20 +684,20 @@ void oled::displayMultiLineText(const char* text, bool center) {
 }
 
 // Simplified overloads
-void oled::clearPrintShow(const char* text, int textSize) {
-    clearPrintShow(text, textSize, true, true, true, -1, -1);
+void oled::clearPrintShow(const char* text, int textSize, int waitToFinish) {
+    clearPrintShow(text, textSize, true, true, true, -1, -1, waitToFinish);
 }
 
-void oled::clearPrintShow(const String& text, int textSize) {
-    clearPrintShow(text.c_str(), textSize, true, true, true, -1, -1);
+void oled::clearPrintShow(const String& text, int textSize, int waitToFinish) {
+    clearPrintShow(text.c_str(), textSize, true, true, true, -1, -1, waitToFinish);
 }
 
-void oled::clearPrintShow(const String& text, int textSize, bool clear, bool showOled, bool center, int x_pos, int y_pos) {
-    clearPrintShow(text.c_str(), textSize, clear, showOled, center, x_pos, y_pos);
+void oled::clearPrintShow(const String& text, int textSize, bool clear, bool showOled, bool center, int x_pos, int y_pos, int waitToFinish) {
+    clearPrintShow(text.c_str(), textSize, clear, showOled, center, x_pos, y_pos, waitToFinish);
 }
 
-void oled::clearPrintShow(const String& text, int textSize, FontFamily family, bool clear, bool showOled, bool center, int x_pos, int y_pos) {
-    clearPrintShow(text.c_str(), textSize, family, clear, showOled, center, x_pos, y_pos);
+void oled::clearPrintShow(const String& text, int textSize, FontFamily family, bool clear, bool showOled, bool center, int x_pos, int y_pos, int waitToFinish) {
+    clearPrintShow(text.c_str(), textSize, family, clear, showOled, center, x_pos, y_pos, waitToFinish);
 }
 
 
@@ -769,24 +769,46 @@ void oled::println(float f) {
 // UTILITY FUNCTIONS
 // ================
 
-void oled::clear() {
+bool oled::clear(int waitToFinish) {
     if (!oledConnected) {
         charPos = 0;
-        return;
+        return false;
     }
     charPos = 0;
     display.clearDisplay();
     setCursor(0, 0); // Auto-positioning for clear
+    int waited = 0;
+    if (waitToFinish > 0) {
+        while (Wire1.finishedAsync() == false) {
+            delayMicroseconds(1);
+            waited += 1;
+            if (waited > waitToFinish) {
+                break;
+            }
+        }
+    }
+    return true;
 }
 
-void oled::show() {
+bool oled::show(int waitToFinish) {
     
     if (jumperlessConfig.top_oled.show_in_terminal > 0) {
         dumpFrameBufferQuarterSize(1);
     }
-    if (!oledConnected) return;
+    if (!oledConnected) return false;
     display.display();
-    
+    int waited = 0;
+    if (waitToFinish > 0) {
+        while (Wire1.finishedAsync() == false) {
+            delayMicroseconds(1);
+            waited += 1;
+            if (waited > waitToFinish) {
+                Serial.println("OLED show timed out");
+                break;
+            }
+        }
+    }
+    return true;
 }
 
 void oled::moveToNextLine() {

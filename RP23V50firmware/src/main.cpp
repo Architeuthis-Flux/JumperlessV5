@@ -358,7 +358,7 @@ int input = '\0';
 int serSource = 0;
 int readInNodesArduino = 0;
 
-const char firmwareVersion[] = "5.2.1.0"; // remember to update this
+const char firmwareVersion[] = "5.2.1.1"; // remember to update this
 const bool newConfigOptions = false; // set to true with new config options //!
                                      // fix the saving every boot thing
 int firstLoop = 1;
@@ -1284,10 +1284,10 @@ if (mscModeEnabled == false) {
     delay(1);
     refreshPaths();
     clearAllNTCC();
-    oled.oledConnected = false;
+    //oled.oledConnected = false;
 
     clearNodeFile(netSlot, 0);
-    refreshConnections(-1);
+    refreshConnections(-1, 1, 1);
     digitalWrite(RESETPIN, LOW);
 
     break;

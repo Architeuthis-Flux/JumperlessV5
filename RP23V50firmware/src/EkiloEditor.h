@@ -106,6 +106,7 @@ struct SyntaxDefinition {
 void ekilo_init();
 int ekilo_main(const char* filename); // Returns: 0=normal exit, 2=save and launch REPL
 String ekilo_main_repl(const char* filename); // REPL mode - returns saved content, "[LAUNCH_REPL]" prefix if Ctrl+P
+String ekilo_inline_edit(const String& initial_content = ""); // Inline editing mode - returns content directly without file operations
 int ekilo_open(const char* filename);
 int ekilo_save();
 void ekilo_refresh_screen();

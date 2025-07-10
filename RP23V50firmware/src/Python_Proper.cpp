@@ -3,6 +3,7 @@
 #include <FatFS.h>
 #include "config.h"
 #include "FilesystemStuff.h"
+#include "EkiloEditor.h"
 extern "C" {
 #include "py/gc.h"
 #include "py/runtime.h"
@@ -19,6 +20,9 @@ static bool mp_initialized = false;
 static bool mp_repl_active = false;
 static bool jumperless_globals_loaded = false;
 bool mp_interrupt_requested = false; // Flag for Ctrl+Q interrupt
+
+// Keyboard interrupt character storage
+static int keyboard_interrupt_char = 17; // Default to Ctrl+Q (ASCII 17)
 
 // Command execution state
 static char mp_command_buffer[512];
@@ -86,20 +90,24 @@ extern void *global_mp_stream_ptr;
 // Arduino timing functions for MicroPython
 extern "C" void mp_hal_delay_ms(mp_uint_t ms) { 
   // Check for interrupt during delays
-  mp_hal_check_interrupt();
-  delay(ms); 
+  unsigned int start_time = millis();
+  while (millis() - start_time < ms) {
+    // Check for interrupt every millisecond during delays
+    mp_hal_check_interrupt();
+    delay(1); // Small delay to prevent overwhelming the system
+  }
 }
 
 extern "C" mp_uint_t mp_hal_ticks_ms(void) { 
-  // Check for interrupt during timing calls (called frequently)
-  mp_hal_check_interrupt();
+  // // Check for interrupt during timing calls (called frequently)
+  // mp_hal_check_interrupt();
   return millis(); 
 }
 
 // Arduino wrapper functions for the HAL layer
 extern "C" int arduino_serial_available(Stream *stream) {
   // Check for interrupt request before checking availability
-  mp_hal_check_interrupt();
+  // mp_hal_check_interrupt();
   return global_mp_stream->available();
 }
 
@@ -133,6 +141,21 @@ extern "C" void arduino_delay_ms(unsigned int ms) {
 
 extern "C" unsigned int arduino_millis() { return millis(); }
 
+// HAL function to set the keyboard interrupt character
+extern "C" mp_uint_t mp_hal_set_interrupt_char(int c) {
+    keyboard_interrupt_char = c;
+    if (global_mp_stream) {
+        char char_name = (c >= 1 && c <= 26) ? (char)(c + 64) : '?';
+        global_mp_stream->printf("[MP] Keyboard interrupt character set to Ctrl+%c (ASCII %d)\n", char_name, c);
+    }
+    return 0;
+}
+
+// Helper function to get current interrupt character
+extern "C" int getCurrentInterruptChar(void) {
+    return keyboard_interrupt_char;
+}
+
 void setGlobalStream(Stream *stream) {
   global_mp_stream = stream;
   global_mp_stream_ptr = (void *)stream;
@@ -148,6 +171,11 @@ extern "C" void mp_hal_stdout_tx_strn_cooked(const char *str, size_t len) {
     // Basic output to global stream (regular MicroPython output)
     if (global_mp_stream) {
         for (size_t i = 0; i < len; i++) {
+            // // Check for interrupt more frequently during output
+            // if (i % 10 == 0) { // Check every 10 characters
+            //     mp_hal_check_interrupt();
+            // }
+            
             if (str[i] == '\n') {
                 global_mp_stream->write('\r');
             }
@@ -163,8 +191,16 @@ extern "C" void mp_hal_stdout_tx_strn_cooked(const char *str, size_t len) {
 void mp_hal_check_interrupt(void) {
   // More frequent checking - check every call for better responsiveness
   static uint32_t last_interrupt_time = 0;
+  static uint32_t last_check_time = 0;
   static uint32_t debug_counter = 0;
   debug_counter++;
+  
+  // Throttle checking to avoid overwhelming the system, but check more frequently than before
+  uint32_t current_time = millis();
+  if (current_time - last_check_time < 1) { // Check at most every 1ms instead of every call
+    return;
+  }
+  last_check_time = current_time;
   
   // Check for Ctrl+Q more frequently - check every call when stream is available
   if (global_mp_stream) {
@@ -172,15 +208,17 @@ void mp_hal_check_interrupt(void) {
     while (global_mp_stream->available()) {
       int c = global_mp_stream->read(); // Read and consume immediately
       
-      if (c == 17) { // Ctrl+Q (ASCII 17)
-        // Debounce: prevent multiple interrupts within 500ms
-        uint32_t current_time = millis();
-        if (current_time - last_interrupt_time > 100) {
-          global_mp_stream->println("^Q");
+      if (c == keyboard_interrupt_char) { // Check configured interrupt char
+        // Reduce debounce time for faster response in tight loops
+        if (current_time - last_interrupt_time > 50) { // Reduced from 100ms to 50ms
+          char char_display = (keyboard_interrupt_char >= 1 && keyboard_interrupt_char <= 26) ? 
+                             (char)(keyboard_interrupt_char + 64) : '?';
+          global_mp_stream->printf("^%c\n", char_display);
           if (global_mp_stream) {
             changeTerminalColor(replColors[4], true, global_mp_stream);
-            global_mp_stream->println("KeyboardInterrupt (Ctrl+Q)");
+            global_mp_stream->printf("KeyboardInterrupt (Ctrl+%c)\n\r", char_display);
             changeTerminalColor(replColors[1], true, global_mp_stream);
+            mp_raise_type(&mp_type_KeyboardInterrupt);
           }
           last_interrupt_time = current_time;
           
@@ -241,6 +279,11 @@ bool initMicroPythonProper(Stream *stream) {
   // Initialize MicroPython
   mp_embed_init(mp_heap, sizeof(mp_heap), stack_top);
 
+  // Set Ctrl+Q (ASCII 17) as the keyboard interrupt character instead of Ctrl+C (ASCII 3)
+  // This enables proper KeyboardInterrupt exceptions that can be caught by try/except
+  // and will automatically interrupt running loops/scripts when Ctrl+Q is pressed
+  mp_embed_exec_str("import micropython; micropython.kbd_intr(17)");
+
   // Simple initialization - don't load complex modules during startup
   mp_embed_exec_str("print('MicroPython ready for Jumperless')");
   
@@ -255,6 +298,8 @@ bool initMicroPythonProper(Stream *stream) {
 
 
   global_mp_stream->println("[MP] MicroPython initialized successfully");
+
+  global_mp_stream->println("[MP] interrupt char: " + String(keyboard_interrupt_char));
   return true;
 }
 
@@ -380,7 +425,7 @@ void enterMicroPythonREPL(Stream *stream) {
   changeTerminalColor(replColors[0], false, global_mp_stream);
   global_mp_stream->println("       -   Exit REPL");
   changeTerminalColor(replColors[3], false, global_mp_stream);
-  global_mp_stream->print("  Ctrl+Q ");
+  global_mp_stream->printf("  Ctrl+%c ", (char)(keyboard_interrupt_char + 64)); // Convert ASCII to Ctrl+ notation
   changeTerminalColor(replColors[0], false, global_mp_stream);
   global_mp_stream->println("     -   quit REPL or interrupt running script");
   changeTerminalColor(replColors[3], false, global_mp_stream);
@@ -411,6 +456,10 @@ void enterMicroPythonREPL(Stream *stream) {
   global_mp_stream->print("  new ");
   changeTerminalColor(replColors[0], false, global_mp_stream);
   global_mp_stream->println("        -   Create new script with eKilo editor");
+  changeTerminalColor(replColors[3], false, global_mp_stream);
+  global_mp_stream->print("  Ctrl+E ");
+  changeTerminalColor(replColors[0], false, global_mp_stream);
+  global_mp_stream->println("     -   Edit current input in inline editor");
   // changeTerminalColor(replColors[3], false, global_mp_stream);
   // global_mp_stream->print("  multiline ");
   // changeTerminalColor(replColors[0], false, global_mp_stream);
@@ -442,9 +491,13 @@ void enterMicroPythonREPL(Stream *stream) {
   global_mp_stream->println("\nHardware:");
   changeTerminalColor(replColors[7], false, global_mp_stream);
   global_mp_stream->println(
-      "  help()  - Show Jumperless hardware commands");
-  global_mp_stream->println(
-      "  ");
+      "  help()           - Show Jumperless hardware commands");
+  char int_char = (keyboard_interrupt_char >= 1 && keyboard_interrupt_char <= 26) ? 
+                  (char)(keyboard_interrupt_char + 64) : '?';
+  // global_mp_stream->printf(
+  //     "  check_interrupt() - Call in tight loops to allow Ctrl+%c\n", int_char);
+  // global_mp_stream->println(
+  //     "  ");
   global_mp_stream->println();
 
   if (global_mp_stream == &Serial) {
@@ -469,6 +522,7 @@ void enterMicroPythonREPL(Stream *stream) {
   // Blocking loop - stay in REPL until user exits
   while (mp_repl_active) {
     processMicroPythonInput(global_mp_stream);
+   // mp_hal_check_interrupt();
     delayMicroseconds(10); // Small delay to prevent overwhelming
   }
 
@@ -546,55 +600,103 @@ void processMicroPythonInput(Stream *stream) {
         switch (c) {
         case 65: // Up arrow - history previous
         {
-          String prev_cmd = history.getPreviousCommand();
-          if (prev_cmd.length() > 0) {
-            editor.loadFromHistory(global_mp_stream, prev_cmd);
-            global_mp_stream->flush();
+          // Only allow history navigation if:
+          // 1. Current input is empty (blank prompt), OR
+          // 2. We just loaded from history and no other keys were pressed
+          bool allow_history = (editor.current_input.length() == 0) || 
+                               (editor.just_loaded_from_history);
+          
+          if (allow_history) {
+            String prev_cmd = history.getPreviousCommand();
+            if (prev_cmd.length() > 0) {
+              editor.loadFromHistory(global_mp_stream, prev_cmd);
+              global_mp_stream->flush();
+            }
+          } else if (editor.in_multiline_mode) {
+            // In multiline mode, move cursor up one line
+            editor.moveUpInMultiline(global_mp_stream);
+            // Redraw to ensure display is synchronized
+            editor.redrawFullInput(global_mp_stream);
           }
+          // If neither history nor multiline, do nothing
         }
           return;
 
         case 66: // Down arrow - history next
         {
-          String next_cmd = history.getNextCommand();
-          if (next_cmd.length() > 0) {
-            editor.loadFromHistory(global_mp_stream, next_cmd);
-            global_mp_stream->flush();
+          // Only allow history navigation if:
+          // 1. We're currently in history mode, OR
+          // 2. Current input is empty (blank prompt), OR  
+          // 3. We just loaded from history and no other keys were pressed
+          bool allow_history = (editor.in_history_mode) ||
+                               (editor.current_input.length() == 0) || 
+                               (editor.just_loaded_from_history);
+          
+          if (allow_history) {
+            String next_cmd = history.getNextCommand();
+            if (next_cmd.length() > 0) {
+              editor.loadFromHistory(global_mp_stream, next_cmd);
+              global_mp_stream->flush();
             } else {
-            // Return to original input
-            editor.exitHistoryMode(global_mp_stream);
-            global_mp_stream->flush();
+              // Return to original input
+              editor.exitHistoryMode(global_mp_stream);
+              global_mp_stream->flush();
+            }
+          } else if (editor.in_multiline_mode) {
+            // In multiline mode, move cursor down one line
+            editor.moveDownInMultiline(global_mp_stream);
+            // Redraw to ensure display is synchronized
+            editor.redrawFullInput(global_mp_stream);
           }
+          // If neither history nor multiline, do nothing
         }
           return;
 
         case 67: // Right arrow
+          // Exit history mode when user starts navigating
+          if (editor.in_history_mode) {
+            editor.in_history_mode = false;
+            editor.just_loaded_from_history = false; // Clear the flag
+            history.resetHistoryNavigation();
+          }
+          
           if (editor.cursor_pos < editor.current_input.length()) {
-            editor.cursor_pos++;
-            global_mp_stream->print("\033[C"); // Move cursor right
-            global_mp_stream->flush();
+            char char_to_right = editor.current_input.charAt(editor.cursor_pos);
+            
+            if (char_to_right == '\n') {
+              // Navigate to next line
+              editor.cursor_pos++; // Move past the newline
+            } else {
+              // Normal right movement
+              editor.cursor_pos++;
+            }
+            
+            // Always redraw to ensure cursor is positioned correctly
+            editor.redrawFullInput(global_mp_stream);
           }
           return;
 
         case 68: // Left arrow
+          // Exit history mode when user starts navigating
+          if (editor.in_history_mode) {
+            editor.in_history_mode = false;
+            editor.just_loaded_from_history = false; // Clear the flag
+            history.resetHistoryNavigation();
+          }
+          
           if (editor.cursor_pos > 0) {
-            // Exit history mode when user starts navigating
-            if (editor.in_history_mode) {
-              editor.in_history_mode = false;
-              history.resetHistoryNavigation();
-            }
-            
             char char_to_left = editor.current_input.charAt(editor.cursor_pos - 1);
             
             if (char_to_left == '\n') {
               // Navigate to previous line
-              editor.navigateOverNewline(global_mp_stream);
+              editor.cursor_pos--; // Move before the newline
             } else {
               // Normal left movement
               editor.cursor_pos--;
-              global_mp_stream->print("\033[D"); // Move cursor left
-              global_mp_stream->flush();
             }
+            
+            // Always redraw to ensure cursor is positioned correctly
+            editor.redrawFullInput(global_mp_stream);
           }
           return;
 
@@ -610,17 +712,19 @@ void processMicroPythonInput(Stream *stream) {
         return;
       }
 
-      // Handle Ctrl+Q (ASCII 17) - force quit REPL or interrupt script
-      if (c == 17) {
-        global_mp_stream->println("^Q");
+      // Handle configured interrupt character - force quit REPL or interrupt script
+      if (c == keyboard_interrupt_char) {
+        char char_display = (keyboard_interrupt_char >= 1 && keyboard_interrupt_char <= 26) ? 
+                           (char)(keyboard_interrupt_char + 64) : '?';
+        global_mp_stream->printf("^%c\n", char_display);
         
         // Set interrupt flag for script execution
         mp_interrupt_requested = true;
         
-        // Always exit REPL immediately when Ctrl+Q is pressed during input
+        // Always exit REPL immediately when interrupt char is pressed during input
         // This covers the case where user is typing but not executing a script
         changeTerminalColor(replColors[4], true, global_mp_stream);
-        global_mp_stream->println("KeyboardInterrupt (Ctrl+Q)");
+        global_mp_stream->printf("KeyboardInterrupt (Ctrl+%c)\n", char_display);
         global_mp_stream->println("Force quit - exiting REPL...");
         changeTerminalColor(replColors[1], true, global_mp_stream);
         stopMicroPythonREPL();
@@ -632,6 +736,9 @@ void processMicroPythonInput(Stream *stream) {
       if (c == '\r' || c == '\n') {
         global_mp_stream->println(); // Echo newline
 
+        // Clear history flags at the start of enter processing
+        editor.just_loaded_from_history = false;
+        
         // Check for special commands first
         String trimmed_input = editor.current_input;
         trimmed_input.trim();
@@ -671,6 +778,8 @@ void processMicroPythonInput(Stream *stream) {
               "  multiline off  - Force multiline mode OFF");
           global_mp_stream->println(
               "  multiline auto - Return to automatic detection");
+          global_mp_stream->println(
+              "  multiline edit - Use inline eKilo editor for multiline input");
           editor.reset();
           changeTerminalColor(replColors[1], true, global_mp_stream);
           global_mp_stream->print(">>> ");
@@ -717,6 +826,36 @@ void processMicroPythonInput(Stream *stream) {
           return;
         }
 
+        if (trimmed_input == "multiline edit") {
+          changeTerminalColor(replColors[5], true, global_mp_stream);
+          global_mp_stream->println("Starting inline editor...");
+          changeTerminalColor(replColors[0], false, global_mp_stream);
+          
+          // Launch inline editor for multiline editing
+          String savedContent = launchInlineEkilo("");
+          
+          // If content was provided, execute it directly
+          if (savedContent.length() > 0) {
+            changeTerminalColor(replColors[2], true, global_mp_stream);
+            global_mp_stream->println("Executing multiline script:");
+            
+            // Add to history before execution
+            history.addToHistory(savedContent);
+            
+            // Execute the script
+            mp_embed_exec_str(savedContent.c_str());
+          } else {
+            changeTerminalColor(replColors[5], true, global_mp_stream);
+            global_mp_stream->println("Editing cancelled");
+          }
+          
+          editor.reset();
+          changeTerminalColor(replColors[1], true, global_mp_stream);
+          global_mp_stream->print(">>> ");
+          global_mp_stream->flush();
+          return;
+        }
+
 
 
         //! New command - create new script with eKilo editor
@@ -754,6 +893,37 @@ void processMicroPythonInput(Stream *stream) {
             global_mp_stream->flush();
             return;
           }
+        }
+
+        //! Edit command - shortcut for multiline edit
+        if (trimmed_input == "edit" || trimmed_input == "edit()") {
+          changeTerminalColor(replColors[5], true, global_mp_stream);
+          global_mp_stream->println("Starting inline editor...");
+          changeTerminalColor(replColors[0], false, global_mp_stream);
+          
+          // Launch inline editor for multiline editing
+          String savedContent = launchInlineEkilo("");
+          
+          // If content was provided, execute it directly
+          if (savedContent.length() > 0) {
+            changeTerminalColor(replColors[2], true, global_mp_stream);
+            global_mp_stream->println("Executing multiline script:");
+            
+            // Add to history before execution
+            history.addToHistory(savedContent);
+            
+            // Execute the script
+            mp_embed_exec_str(savedContent.c_str());
+          } else {
+            changeTerminalColor(replColors[5], true, global_mp_stream);
+            global_mp_stream->println("Editing cancelled");
+          }
+          
+          editor.reset();
+          changeTerminalColor(replColors[1], true, global_mp_stream);
+          global_mp_stream->print(">>> ");
+          global_mp_stream->flush();
+          return;
         }
 
         //! Help commands
@@ -794,10 +964,14 @@ void processMicroPythonInput(Stream *stream) {
           changeTerminalColor(replColors[0], false, global_mp_stream);
           global_mp_stream->println("         -   Create new script with eKilo editor");
           changeTerminalColor(replColors[3], false, global_mp_stream);
+          global_mp_stream->print("  edit ");
+          changeTerminalColor(replColors[0], false, global_mp_stream);
+          global_mp_stream->println("        -   Launch inline eKilo editor");
+          changeTerminalColor(replColors[3], false, global_mp_stream);
           global_mp_stream->print("  multiline ");
           changeTerminalColor(replColors[0], false, global_mp_stream);
           global_mp_stream->println(
-              "    -   Toggle multiline mode (on/off/auto)");
+              "    -   Toggle multiline mode (on/off/auto/edit)");
           changeTerminalColor(replColors[3], false, global_mp_stream);
           global_mp_stream->print("  run ");
           changeTerminalColor(replColors[0], false, global_mp_stream);
@@ -812,11 +986,16 @@ void processMicroPythonInput(Stream *stream) {
           global_mp_stream->println("  TAB        - Add 4-space indentation");
           global_mp_stream->println(
               "  Enter      - Execute (empty line in multiline to finish)");
-          global_mp_stream->println("  Ctrl+Q     - Force quit REPL or interrupt running script");
+          char int_char = (keyboard_interrupt_char >= 1 && keyboard_interrupt_char <= 26) ? 
+                          (char)(keyboard_interrupt_char + 64) : '?';
+          global_mp_stream->printf("  Ctrl+%c     - Force quit REPL or interrupt running script\n", int_char);
           global_mp_stream->println("  files      - Browse and manage Python scripts");
           global_mp_stream->println("  new        - Create new scripts with eKilo editor");
+          global_mp_stream->println("  edit       - Launch inline eKilo editor for multiline scripts");
           global_mp_stream->println("  run        - Execute accumulated script "
                                     "(multiline forced ON)");
+          changeTerminalColor(replColors[8], false, global_mp_stream);
+          global_mp_stream->println("  multiline edit - Launch inline eKilo editor");
 
           changeTerminalColor(replColors[5], true, global_mp_stream);
           global_mp_stream->println("\nHardware:");
@@ -1047,16 +1226,8 @@ void processMicroPythonInput(Stream *stream) {
         String current_line = editor.current_input.substring(line_start, editor.cursor_pos);
         current_line.trim();
         
-        // If we just loaded from history, first Enter should add newline unless current line is empty
-        if (editor.just_loaded_from_history) {
-          editor.just_loaded_from_history = false; // Clear the flag
-          if (current_line.length() == 0) {
-            force_execution = true; // Empty line - execute
-          } else {
-            force_execution = false; // Non-empty line - add newline and continue
-            force_multiline = true; // Force multiline mode
-          }
-        } else if (editor.in_multiline_mode && !editor.multiline_forced_on) {
+        // Don't force multiline mode when loading from history - let normal detection work
+        if (editor.in_multiline_mode && !editor.multiline_forced_on) {
           // Only allow empty line escape in AUTO mode, not when forced ON
           if (current_line.length() == 0) {
             force_execution = true; // Empty line in multiline mode
@@ -1201,13 +1372,14 @@ void processMicroPythonInput(Stream *stream) {
         }
 
       } else if (c == '\b' || c == 127) { // Backspace
+        // Exit history mode when user starts editing
+        if (editor.in_history_mode) {
+          editor.in_history_mode = false;
+          editor.just_loaded_from_history = false; // Clear the flag when user starts editing
+          history.resetHistoryNavigation();
+        }
+        
         if (editor.cursor_pos > 0) {
-          // Exit history mode when user starts editing
-          if (editor.in_history_mode) {
-            editor.in_history_mode = false;
-            editor.just_loaded_from_history = false; // Clear the flag when user starts editing
-            history.resetHistoryNavigation();
-          }
           char char_to_delete =
               editor.current_input.charAt(editor.cursor_pos - 1);
 
@@ -1243,7 +1415,7 @@ void processMicroPythonInput(Stream *stream) {
                   // Remove 4 spaces at once
                   editor.current_input.remove(editor.cursor_pos - 4, 4);
                   editor.cursor_pos -= 4;
-                  editor.redrawCurrentLine(global_mp_stream);
+                  editor.redrawFullInput(global_mp_stream);
                 }
               }
             }
@@ -1252,20 +1424,60 @@ void processMicroPythonInput(Stream *stream) {
               // Normal single character backspace
               editor.current_input.remove(editor.cursor_pos - 1, 1);
               editor.cursor_pos--;
-              editor.redrawCurrentLine(global_mp_stream);
+              editor.redrawFullInput(global_mp_stream);
             }
           }
         }
+      } else if (c == 5) { // Ctrl+E - Edit current input in inline editor
+        // Don't exit history mode - preserve the current input
+        changeTerminalColor(replColors[5], true, global_mp_stream);
+        global_mp_stream->println("\n[Opening inline editor...]");
+        global_mp_stream->flush();
+        
+        // Open inline editor with current input
+        String edited_content = ekilo_inline_edit(editor.current_input);
+        
+        // Check if user cancelled (empty return means cancelled)
+        if (edited_content.length() > 0) {
+          // Replace current input with edited content
+          editor.current_input = edited_content;
+          editor.cursor_pos = edited_content.length();
+          editor.in_multiline_mode = (edited_content.indexOf('\n') >= 0);
+          
+          // Exit history mode if we were in it
+          if (editor.in_history_mode) {
+            editor.in_history_mode = false;
+            editor.just_loaded_from_history = false;
+            history.resetHistoryNavigation();
+          }
+          
+          changeTerminalColor(replColors[2], true, global_mp_stream);
+          global_mp_stream->println("[Content updated from editor]");
+        } else {
+          changeTerminalColor(replColors[4], true, global_mp_stream);
+          global_mp_stream->println("[Editor cancelled - no changes]");
+        }
+        
+        // Redraw the full input
+        editor.redrawFullInput(global_mp_stream);
+        
       } else if (c == '\t') { // TAB character
+        // Exit history mode when user starts editing
+        if (editor.in_history_mode) {
+          editor.in_history_mode = false;
+          editor.just_loaded_from_history = false; // Clear the flag when user starts editing
+          history.resetHistoryNavigation();
+        }
+        
         // Convert TAB to 4 spaces at cursor position
-        String spaces = "   ";
+        String spaces = "    ";
         editor.current_input =
             editor.current_input.substring(0, editor.cursor_pos) + spaces +
             editor.current_input.substring(editor.cursor_pos);
         editor.cursor_pos += 4;
-        changeTerminalColor(replColors[3], false, global_mp_stream);
-        global_mp_stream->print(spaces); // Show 4 spaces
-        global_mp_stream->flush();
+        
+        // Always redraw the entire input buffer to keep everything synchronized
+        editor.redrawFullInput(global_mp_stream);
       } else if (c >= 32 && c <= 126) { // Printable characters
         // Exit history mode when user starts editing
         if (editor.in_history_mode) {
@@ -1280,18 +1492,12 @@ void processMicroPythonInput(Stream *stream) {
             editor.current_input.substring(editor.cursor_pos);
         editor.cursor_pos++;
 
-        // Redraw from cursor position if we're in the middle of text
-        if (editor.cursor_pos < editor.current_input.length()) {
-          editor.redrawCurrentLine(global_mp_stream);
-        } else {
-          // Just echo the character if at end
-          changeTerminalColor(replColors[3], false, global_mp_stream);
-          global_mp_stream->write(c);
-          global_mp_stream->flush();
-        }
+        // Always redraw the entire input buffer to keep everything synchronized
+        editor.redrawFullInput(global_mp_stream);
       } else {
         mp_repl_continue_with_input(editor.current_input.c_str());
       }
+      //Serial.println("looping");
       // All other characters are ignored
     }
   }
@@ -1358,6 +1564,15 @@ void addJumperlessPythonFunctions(void) {
       "    # Also keep jumperless module available for explicit access if needed\n"
       "    globals()['jumperless'] = jumperless\n"
       "    \n"
+      "    # Add a helper function for checking interrupts in tight loops\n"
+      "    def check_interrupt():\n"
+      "        '''Call this function in tight loops to allow keyboard interrupt.'''\n"
+      "        import time\n"
+      "        time.sleep_ms(1)  # Minimal delay that triggers interrupt checking\n"
+      "    \n"
+      "    # Make it available globally\n"
+      "    globals()['check_interrupt'] = check_interrupt\n"
+      "    \n"
       "    # Test that functions are actually available\n"
       "    #available_functions = [name for name in globals() if not name.startswith('_') and callable(globals()[name])]\n"
       "    #print(' Available global functions: ' + str(len(available_functions)))\n"
@@ -1368,6 +1583,7 @@ void addJumperlessPythonFunctions(void) {
       "    \n"
       "    #print('All jumperless functions and constants available globally')\n"
       "    #print('You can now use: connect(), dac_set(), TOP_RAIL, D13, etc.')\n"
+      "    #print('For tight loops, use check_interrupt() to allow interrupts')\n"
       "    \n"
       "except ImportError as e:\n"
       "    print('△ Native jumperless module not available: ' + str(e))\n"
@@ -2042,30 +2258,9 @@ void REPLEditor::moveCursorDown(Stream *stream, int lines) {
 }
 
 void REPLEditor::redrawCurrentLine(Stream *stream) {
-  String current_line;
-  int line_start, cursor_in_line;
-  getCurrentLine(current_line, line_start, cursor_in_line);
-
-  // Clear entire current line and start fresh
-  stream->print("\r");
-  clearEntireLine(stream);
-
-  // Draw prompt
-  if (in_multiline_mode) {
-    changeTerminalColor(replColors[1], true, stream);
-    stream->print("... ");
-  } else {
-    changeTerminalColor(replColors[1], true, stream);
-    stream->print(">>> ");
-  }
-
-  // Draw line content
-  changeTerminalColor(replColors[3], false, stream);
-  stream->print(current_line);
-
-  // Position cursor correctly
-  int prompt_length = 4; // ">>> " or "... " both are 4 chars
-  moveCursorToColumn(stream, prompt_length + cursor_in_line);
+  // For consistency with the full buffer approach, just call redrawFullInput
+  // This ensures all display updates are synchronized
+  redrawFullInput(stream);
 }
 
 void REPLEditor::navigateToLine(Stream *stream, int target_line) {
@@ -2122,20 +2317,135 @@ void REPLEditor::backspaceOverNewline(Stream *stream) {
 
 void REPLEditor::navigateOverNewline(Stream *stream) {
   if (cursor_pos > 0 && current_input.charAt(cursor_pos - 1) == '\n') {
-    // Move cursor position to before the newline
-    cursor_pos--;
+    // Use the new improved function
+    moveToEndOfPreviousLine(stream);
+  }
+}
 
-    // Move cursor up one line visually
+// Move cursor up one line in multiline input
+void REPLEditor::moveUpInMultiline(Stream *stream) {
+  if (!in_multiline_mode) return;
+  
+  // Find current line info
+  String current_line;
+  int line_start, cursor_in_line;
+  getCurrentLine(current_line, line_start, cursor_in_line);
+  
+  // Only move up if we're not already on the first line
+  if (line_start > 0) {
+    // Find the start of the previous line
+    int prev_line_start = 0;
+    
+    // Search backwards from line_start-1 to find the previous newline
+    for (int i = line_start - 2; i >= 0; i--) {
+      if (current_input.charAt(i) == '\n') {
+        prev_line_start = i + 1;
+        break;
+      }
+    }
+    
+    // Calculate the length of the previous line
+    int prev_line_length = (line_start - 1) - prev_line_start; // -1 for the newline
+    
+    // Position cursor in previous line, trying to maintain column position
+    int new_cursor_in_line = min(cursor_in_line, prev_line_length);
+    cursor_pos = prev_line_start + new_cursor_in_line;
+    
+    // Move cursor up visually one line with proper synchronization
+    stream->print("\r"); // Start at beginning of current line
     moveCursorUp(stream);
+    
+    // Position cursor at correct column
+    int prompt_length = (prev_line_start == 0) ? 4 : 4; // >>> or ...
+    moveCursorToColumn(stream, prompt_length + new_cursor_in_line);
+  }
+}
 
-    // Find the end of the previous line
-    String current_line;
-    int line_start, cursor_in_line;
-    getCurrentLine(current_line, line_start, cursor_in_line);
+// Move cursor down one line in multiline input
+void REPLEditor::moveDownInMultiline(Stream *stream) {
+  if (!in_multiline_mode) return;
+  
+  // Find current line info
+  String current_line;
+  int line_start, cursor_in_line;
+  getCurrentLine(current_line, line_start, cursor_in_line);
+  
+  // Find start of next line
+  int next_line_start = line_start + current_line.length() + 1; // +1 for newline
+  
+  // Only move down if there is a next line
+  if (next_line_start < current_input.length()) {
+    // Find end of next line
+    int next_line_end = current_input.length();
+    for (int i = next_line_start; i < current_input.length(); i++) {
+      if (current_input.charAt(i) == '\n') {
+        next_line_end = i;
+        break;
+      }
+    }
+    
+    // Calculate length of next line
+    int next_line_length = next_line_end - next_line_start;
+    
+    // Position cursor in next line, trying to maintain column position
+    int new_cursor_in_line = min(cursor_in_line, next_line_length);
+    cursor_pos = next_line_start + new_cursor_in_line;
+    
+    // Move cursor down visually one line with proper synchronization
+    stream->print("\r"); // Start at beginning of current line
+    moveCursorDown(stream);
+    
+    // Position cursor at correct column
+    int prompt_length = 4; // Always ... for continuation lines
+    moveCursorToColumn(stream, prompt_length + new_cursor_in_line);
+  }
+}
 
-    // Move to end of previous line
-    int prompt_length = in_multiline_mode ? 4 : 4;
-    moveCursorToColumn(stream, prompt_length + current_line.length());
+// Move cursor to end of previous line (improved left arrow behavior)
+void REPLEditor::moveToEndOfPreviousLine(Stream *stream) {
+  if (cursor_pos > 0 && current_input.charAt(cursor_pos - 1) == '\n') {
+    // We're at the beginning of a line, move to end of previous line
+    
+    // Find the start of the previous line
+    int prev_line_start = 0;
+    
+    // Search backwards from cursor_pos-2 to find the previous newline
+    for (int i = cursor_pos - 2; i >= 0; i--) {
+      if (current_input.charAt(i) == '\n') {
+        prev_line_start = i + 1;
+        break;
+      }
+    }
+    
+    // Calculate the length of the previous line
+    int prev_line_length = (cursor_pos - 1) - prev_line_start; // -1 for the newline
+    
+    // Move cursor to end of previous line
+    cursor_pos = prev_line_start + prev_line_length;
+    
+    // Move cursor up one line visually with proper synchronization
+    stream->print("\r"); // Start at beginning of current line
+    moveCursorUp(stream);
+    
+    // Position cursor at end of previous line
+    int prompt_length = (prev_line_start == 0) ? 4 : 4; // >>> or ...
+    moveCursorToColumn(stream, prompt_length + prev_line_length);
+  }
+}
+
+// Move cursor to start of next line (improved right arrow behavior)
+void REPLEditor::moveToStartOfNextLine(Stream *stream) {
+  if (cursor_pos < current_input.length() && current_input.charAt(cursor_pos) == '\n') {
+    // Move cursor to start of next line
+    cursor_pos++; // Move past the newline
+    
+    // Move cursor down one line visually with proper synchronization
+    stream->print("\r"); // Start at beginning of current line
+    moveCursorDown(stream);
+    
+    // Position cursor at start of next line (after prompt)
+    int prompt_length = 4; // Always ... for continuation lines
+    moveCursorToColumn(stream, prompt_length);
   }
 }
 
@@ -2220,9 +2530,8 @@ void REPLEditor::redrawFullInput(Stream *stream) {
         stream->print("... ");
       }
 
-      // Show line content
-      changeTerminalColor(replColors[3], false, stream);
-      stream->print(line);
+      // Show line content with syntax highlighting
+      displayStringWithSyntaxHighlighting(line, stream);
       clearToEndOfLine(stream); // Clear any trailing characters
 
       // Add newline if not the last line
@@ -2236,12 +2545,70 @@ void REPLEditor::redrawFullInput(Stream *stream) {
     }
   }
 
-  // Update tracking for next redraw
-  last_displayed_lines = new_line_count;
+  // Update tracking for next redraw - use lines_printed which represents
+  // how many lines we need to move up from current position to get to first line
+  // CRITICAL FIX: Previously used new_line_count (number of \n chars) which caused
+  // over-clearing and screen scrolling. Now uses lines_printed (actual cursor movements).
+  last_displayed_lines = lines_printed;
 
-  // Position cursor at the end of input
-  cursor_pos = current_input.length();
+  // Position cursor at the correct location in the buffer
+  positionCursorAtCurrentPos(stream);
   stream->flush();
+}
+
+// Position cursor at the current cursor_pos location in the displayed input
+void REPLEditor::positionCursorAtCurrentPos(Stream *stream) {
+  if (cursor_pos == 0) {
+    // Cursor is at the beginning of first line
+    stream->print("\r");
+    moveCursorToColumn(stream, 4); // Move to after ">>> "
+    return;
+  }
+  
+  // Count how many lines we need to move up from the bottom
+  int lines_from_bottom = 0;
+  int chars_from_line_start = 0;
+  
+  // Find which line the cursor is on and position within that line
+  int line_start = 0;
+  int line_number = 0;
+  
+  for (int i = 0; i <= current_input.length(); i++) {
+    if (i == cursor_pos) {
+      // Found cursor position
+      chars_from_line_start = cursor_pos - line_start;
+      break;
+    }
+    
+    if (i < current_input.length() && current_input.charAt(i) == '\n') {
+      line_start = i + 1;
+      line_number++;
+    }
+  }
+  
+  // Calculate how many lines from the bottom (current position) to the target line
+  int total_lines = 0;
+  for (int i = 0; i < current_input.length(); i++) {
+    if (current_input.charAt(i) == '\n') {
+      total_lines++;
+    }
+  }
+  
+  lines_from_bottom = total_lines - line_number;
+  
+  // Move cursor to the correct line
+  if (lines_from_bottom > 0) {
+    moveCursorUp(stream, lines_from_bottom);
+  }
+  
+  // Move cursor to the correct column within the line
+  stream->print("\r"); // Go to beginning of line
+  
+  // Calculate column position (including prompt)
+  int prompt_length = (line_number == 0) ? 4 : 4; // ">>> " or "... " both 4 chars
+  int target_column = prompt_length + chars_from_line_start;
+  
+  moveCursorToColumn(stream, target_column);
 }
 
 void REPLEditor::reset() {
@@ -2282,11 +2649,213 @@ void REPLEditor::fullReset() {
 
 char result_buffer[64];
 
-void getMicroPythonCommandFromStream(Stream *stream) {
-  String command = "";
-  while (stream->available()) {
-    command += (char)stream->read();
+// Helper function to apply syntax highlighting to a string
+void displayStringWithSyntaxHighlighting(const String& text, Stream* stream) {
+  if (text.length() == 0) return;
+  
+  // Simple syntax highlighting keywords (reusing from eKilo editor)
+  const char* python_keywords[] = {
+    "and", "as", "assert", "break", "class", "continue", "def", "del",
+    "elif", "else", "except", "exec", "finally", "for", "from", "global",
+    "if", "import", "in", "is", "lambda", "not", "or", "pass", "print",
+    "raise", "return", "try", "while", "with", "yield", "async", "await",
+    "nonlocal", "True", "False", "None", nullptr
+  };
+  
+  const char* python_builtins[] = {
+    "abs", "all", "any", "bin", "bool", "bytes", "callable", "chr", "dict", 
+    "dir", "enumerate", "eval", "filter", "float", "format", "getattr", 
+    "globals", "hasattr", "hash", "help", "hex", "id", "input", "int", 
+    "isinstance", "iter", "len", "list", "locals", "map", "max", "min", 
+    "next", "object", "oct", "open", "ord", "pow", "print", "range", 
+    "repr", "reversed", "round", "set", "setattr", "slice", "sorted", 
+    "str", "sum", "super", "tuple", "type", "vars", "zip", "self", "cls", nullptr
+  };
+  
+  const char* jumperless_functions[] = {
+    "dac_set", "dac_get", "set_dac", "get_dac", "adc_get", "get_adc",
+    "ina_get_current", "ina_get_voltage", "ina_get_bus_voltage", "ina_get_power",
+    "get_current", "get_voltage", "get_bus_voltage", "get_power",
+    "gpio_set", "gpio_get", "gpio_set_dir", "gpio_get_dir", "gpio_set_pull", "gpio_get_pull",
+    "set_gpio", "get_gpio", "set_gpio_dir", "get_gpio_dir", "set_gpio_pull", "get_gpio_pull",
+    "connect", "disconnect", "is_connected", "nodes_clear", "node",
+    "oled_print", "oled_clear", "oled_connect", "oled_disconnect",
+    "clickwheel_up", "clickwheel_down", "clickwheel_press",
+    "print_bridges", "print_paths", "print_crossbars", "print_nets", "print_chip_status",
+    "probe_read", "read_probe", "probe_read_blocking", "probe_read_nonblocking",
+    "get_button", "probe_button", "probe_button_blocking", "probe_button_nonblocking",
+    "probe_wait", "wait_probe", "probe_touch", "wait_touch", "button_read", "read_button",
+    "check_button", "button_check", "arduino_reset", "probe_tap", "run_app", "format_output",
+    "help_nodes", nullptr
+  };
+  
+  const char* jumperless_constants[] = {
+    "TOP_RAIL", "BOTTOM_RAIL", "GND", "DAC0", "DAC1", "ADC0", "ADC1", "ADC2", "ADC3", "ADC4",
+    "PROBE", "ISENSE_PLUS", "ISENSE_MINUS", "UART_TX", "UART_RX", "BUFFER_IN", "BUFFER_OUT",
+    "GPIO_1", "GPIO_2", "GPIO_3", "GPIO_4", "GPIO_5", "GPIO_6", "GPIO_7", "GPIO_8",
+    "D0", "D1", "D2", "D3", "D4", "D5", "D6", "D7", "D8", "D9", "D10", "D11", "D12", "D13",
+    "A0", "A1", "A2", "A3", "A4", "A5", "A6", "A7", "D13_PAD", "TOP_RAIL_PAD", "BOTTOM_RAIL_PAD",
+    "LOGO_PAD_TOP", "LOGO_PAD_BOTTOM", "CONNECT_BUTTON", "REMOVE_BUTTON", "BUTTON_NONE",
+    "CONNECT", "REMOVE", "NONE", nullptr
+  };
+  
+  auto is_separator = [](char c) -> bool {
+    return isspace(c) || c == '\0' || strchr(",.()+-/*=~%<>[];", c) != nullptr;
+  };
+  
+  auto is_keyword = [&](const char* word, int len, const char* keywords[]) -> bool {
+    for (int i = 0; keywords[i] != nullptr; i++) {
+      if (strlen(keywords[i]) == len && !strncmp(word, keywords[i], len)) {
+        return true;
+      }
+    }
+    return false;
+  };
+  
+  int i = 0;
+  int current_color = -1;
+  const char* text_cstr = text.c_str();
+  int text_len = text.length();
+  
+  while (i < text_len) {
+    char c = text_cstr[i];
+    
+    // Handle comments
+    if (c == '#') {
+      if (current_color != 34) {
+        stream->print("\x1b[38;5;34m"); // Green for comments
+        current_color = 34;
+      }
+      // Print rest of line as comment
+      while (i < text_len && text_cstr[i] != '\n') {
+        stream->write(text_cstr[i]);
+        i++;
+      }
+      continue;
+    }
+    
+    // Handle strings
+    if (c == '"' || c == '\'') {
+      if (current_color != 39) {
+        stream->print("\x1b[38;5;39m"); // Cyan for strings
+        current_color = 39;
+      }
+      char quote = c;
+      stream->write(c);
+      i++;
+      while (i < text_len && text_cstr[i] != quote) {
+        if (text_cstr[i] == '\\' && i + 1 < text_len) {
+          stream->write(text_cstr[i]); // Backslash
+          i++;
+          if (i < text_len) {
+            stream->write(text_cstr[i]); // Escaped character
+            i++;
+          }
+        } else {
+          stream->write(text_cstr[i]);
+          i++;
+        }
+      }
+      if (i < text_len) {
+        stream->write(text_cstr[i]); // Closing quote
+        i++;
+      }
+      continue;
+    }
+    
+    // Handle numbers
+    if (isdigit(c) || (c == '.' && i + 1 < text_len && isdigit(text_cstr[i + 1]))) {
+      if (current_color != 199) {
+        stream->print("\x1b[38;5;199m"); // Bright red for numbers
+        current_color = 199;
+      }
+      while (i < text_len && (isdigit(text_cstr[i]) || text_cstr[i] == '.')) {
+        stream->write(text_cstr[i]);
+        i++;
+      }
+      continue;
+    }
+    
+    // Handle keywords/identifiers
+    if (isalpha(c) || c == '_') {
+      int start = i;
+      while (i < text_len && (isalnum(text_cstr[i]) || text_cstr[i] == '_')) {
+        i++;
+      }
+      
+      int word_len = i - start;
+      int new_color = 255; // Default white
+      
+      // Check for different types of keywords
+      if (is_keyword(text_cstr + start, word_len, python_keywords)) {
+        new_color = 214; // Orange for Python keywords
+      } else if (is_keyword(text_cstr + start, word_len, python_builtins)) {
+        new_color = 79; // Green for Python builtins
+      } else if (is_keyword(text_cstr + start, word_len, jumperless_functions)) {
+        new_color = 207; // Bright magenta for Jumperless functions
+      } else if (is_keyword(text_cstr + start, word_len, jumperless_constants)) {
+        new_color = 105; // Purple for Jumperless constants
+      }
+      
+      if (current_color != new_color) {
+        stream->print("\x1b[38;5;");
+        stream->print(new_color);
+        stream->print("m");
+        current_color = new_color;
+      }
+      
+      // Print the word
+      for (int j = start; j < start + word_len; j++) {
+        stream->write(text_cstr[j]);
+      }
+      continue;
+    }
+    
+    // Default characters
+    if (current_color != 255) {
+      stream->print("\x1b[38;5;255m"); // White for default
+      current_color = 255;
+    }
+    stream->write(c);
+    i++;
   }
+  
+  // Reset color at end
+  if (current_color != -1) {
+    stream->print("\x1b[0m");
+  }
+}
+
+void getMicroPythonCommandFromStream(Stream *stream) {
+  stream->print("Python> ");
+  stream->flush();
+  
+  String command = "";
+  while (stream->available() == 0) {
+    delay(1); // Wait for input
+  }
+  
+  // Read input character by character with syntax highlighting
+  while (stream->available() > 0) {
+    char c = stream->read();
+    if (c == '\r' || c == '\n') {
+      break;
+    }
+    if (c == '\b' || c == 127) { // Backspace
+      if (command.length() > 0) {
+        command = command.substring(0, command.length() - 1);
+        stream->print("\b \b"); // Erase character
+      }
+    } else if (c >= 32 && c <= 126) { // Printable characters
+      command += c;
+      // Real-time syntax highlighting - redraw the visible part
+      stream->print("\rPython> ");
+      displayStringWithSyntaxHighlighting(command, stream);
+      stream->flush();
+    }
+  }
+  
+  stream->println(); // New line after input
   command.trim();
   
   if (command.length() > 0) {
@@ -2315,6 +2884,12 @@ bool initMicroPythonQuiet(void) {
 
   // Initialize MicroPython silently
   mp_embed_init(mp_heap, sizeof(mp_heap), stack_top);
+  
+  // Set Ctrl+Q (ASCII 17) as the keyboard interrupt character instead of Ctrl+C (ASCII 3)
+  // This enables proper KeyboardInterrupt exceptions that can be caught by try/except
+  // and will automatically interrupt running loops/scripts when Ctrl+Q is pressed
+  mp_embed_exec_str("import micropython; micropython.kbd_intr(17)");
+  
   mp_initialized = true;
   mp_repl_active = false;
 
@@ -2329,6 +2904,12 @@ bool initMicroPythonQuiet(void) {
       "    import jumperless\n"
       "    from jumperless import *\n"
       "    globals()['jumperless'] = jumperless\n"
+      "    \n"
+      "    # Add interrupt checking helper for tight loops\n"
+      "    def check_interrupt():\n"
+      "        import time\n"
+      "        time.sleep_ms(1)\n"
+      "    globals()['check_interrupt'] = check_interrupt\n"
       "except: pass\n");
   
   return true;

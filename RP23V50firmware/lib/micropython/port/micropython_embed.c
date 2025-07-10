@@ -11,7 +11,7 @@
 #include "py/repl.h"
 #include "py/gc.h"
 #include "py/mperrno.h"
-#include "py/stackctrl.h"
+#include "py/cstack.h"  // Use newer cstack API instead of deprecated stackctrl
 #include "py/nlr.h"
 #include "py/builtin.h"
 
@@ -24,8 +24,11 @@ static char heap[MICROPY_HEAP_SIZE];
 
 // Initialize MicroPython runtime
 int mp_embed_init(void *heap, size_t heap_size, void *stack_top) {
-    // Use the passed heap parameter, not the static one
-    mp_stack_ctrl_init();
+    // Use the newer cstack API with proper stack limit initialization
+    // Define a reasonable stack size for embedded systems (8KB)
+    const size_t stack_size = 16 * 1024;  // 16KB stack size
+    mp_cstack_init_with_top(stack_top, stack_size);
+    
     gc_init(heap, (char*)heap + heap_size);
     mp_init();
     return 0;

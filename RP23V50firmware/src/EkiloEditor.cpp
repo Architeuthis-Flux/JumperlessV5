@@ -54,6 +54,8 @@ static EditorConfig E;
 #define HL_STRING 6
 #define HL_NUMBER 7
 #define HL_MATCH 8
+#define HL_JUMPERLESS_FUNC 9
+#define HL_JUMPERLESS_TYPE 10
 
 #define HL_HIGHLIGHT_STRINGS (1<<0)
 #define HL_HIGHLIGHT_NUMBERS (1<<1)
@@ -75,7 +77,33 @@ const char* python_keywords[] = {
     "locals|", "map|", "max|", "min|", "next|", "object|", "oct|", "open|",
     "ord|", "pow|", "print|", "range|", "repr|", "reversed|", "round|",
     "set|", "setattr|", "slice|", "sorted|", "str|", "sum|", "super|",
-    "tuple|", "type|", "vars|", "zip|", "self|", "cls|", nullptr
+    "tuple|", "type|", "vars|", "zip|", "self|", "cls|",
+    
+    // Jumperless Functions (marked with ||)
+    "dac_set||", "dac_get||", "set_dac||", "get_dac||", "adc_get||", "get_adc||",
+    "ina_get_current||", "ina_get_voltage||", "ina_get_bus_voltage||", "ina_get_power||",
+    "get_current||", "get_voltage||", "get_bus_voltage||", "get_power||",
+    "gpio_set||", "gpio_get||", "gpio_set_dir||", "gpio_get_dir||", "gpio_set_pull||", "gpio_get_pull||",
+    "set_gpio||", "get_gpio||", "set_gpio_dir||", "get_gpio_dir||", "set_gpio_pull||", "get_gpio_pull||",
+    "connect||", "disconnect||", "is_connected||", "nodes_clear||", "node||",
+    "oled_print||", "oled_clear||", "oled_connect||", "oled_disconnect||",
+    "clickwheel_up||", "clickwheel_down||", "clickwheel_press||",
+    "print_bridges||", "print_paths||", "print_crossbars||", "print_nets||", "print_chip_status||",
+    "probe_read||", "read_probe||", "probe_read_blocking||", "probe_read_nonblocking||",
+    "get_button||", "probe_button||", "probe_button_blocking||", "probe_button_nonblocking||",
+    "probe_wait||", "wait_probe||", "probe_touch||", "wait_touch||", "button_read||", "read_button||",
+    "check_button||", "button_check||", "arduino_reset||", "probe_tap||", "run_app||", "format_output||",
+    "help_nodes||",
+    
+    // Jumperless Types/Constants (marked with |||)
+    "TOP_RAIL|||", "BOTTOM_RAIL|||", "GND|||", "DAC0|||", "DAC1|||", "ADC0|||", "ADC1|||", "ADC2|||", "ADC3|||", "ADC4|||",
+    "PROBE|||", "ISENSE_PLUS|||", "ISENSE_MINUS|||", "UART_TX|||", "UART_RX|||", "BUFFER_IN|||", "BUFFER_OUT|||",
+    "GPIO_1|||", "GPIO_2|||", "GPIO_3|||", "GPIO_4|||", "GPIO_5|||", "GPIO_6|||", "GPIO_7|||", "GPIO_8|||",
+    "D0|||", "D1|||", "D2|||", "D3|||", "D4|||", "D5|||", "D6|||", "D7|||", "D8|||", "D9|||", "D10|||", "D11|||", "D12|||", "D13|||",
+    "A0|||", "A1|||", "A2|||", "A3|||", "A4|||", "A5|||", "A6|||", "A7|||",
+    "D13_PAD|||", "TOP_RAIL_PAD|||", "BOTTOM_RAIL_PAD|||", "LOGO_PAD_TOP|||", "LOGO_PAD_BOTTOM|||",
+    "CONNECT_BUTTON|||", "REMOVE_BUTTON|||", "BUTTON_NONE|||", "CONNECT|||", "REMOVE|||", "NONE|||",
+    nullptr
 };
 
 SyntaxDefinition syntax_db[] = {
@@ -414,12 +442,23 @@ void ekilo_update_syntax(EditorRow* row) {
             int j;
             for (j = 0; keywords[j]; j++) {
                 int klen = strlen(keywords[j]);
-                int kw2 = keywords[j][klen - 1] == '|';
-                if (kw2) klen--;
+                int highlight_type = HL_KEYWORD1;
+                
+                // Check for different keyword types based on suffix
+                if (klen >= 3 && !strncmp(&keywords[j][klen - 3], "|||", 3)) {
+                    highlight_type = HL_JUMPERLESS_TYPE;
+                    klen -= 3;
+                } else if (klen >= 2 && !strncmp(&keywords[j][klen - 2], "||", 2)) {
+                    highlight_type = HL_JUMPERLESS_FUNC;
+                    klen -= 2;
+                } else if (klen >= 1 && keywords[j][klen - 1] == '|') {
+                    highlight_type = HL_KEYWORD2;
+                    klen--;
+                }
                 
                 if (!strncmp(&row->render[i], keywords[j], klen) &&
                     is_separator(row->render[i + klen])) {
-                    memset(&row->hl[i], kw2 ? HL_KEYWORD2 : HL_KEYWORD1, klen);
+                    memset(&row->hl[i], highlight_type, klen);
                     i += klen;
                     break;
                 }
@@ -440,17 +479,19 @@ void ekilo_update_syntax(EditorRow* row) {
         ekilo_update_syntax(&E.row[row->idx + 1]);
 }
 
-// Convert syntax highlighting to ANSI color codes
+// Convert syntax highlighting to ANSI color codes (256-color mode)
 int ekilo_syntax_to_color(int hl) {
     switch (hl) {
-        case HL_COMMENT:
-        case HL_MLCOMMENT: return 36; // Cyan
-        case HL_KEYWORD1: return 33;  // Yellow
-        case HL_KEYWORD2: return 32;  // Green
-        case HL_STRING: return 35;    // Magenta
-        case HL_NUMBER: return 31;    // Red
-        case HL_MATCH: return 34;     // Blue
-        default: return 37;           // White
+        case HL_COMMENT: return 34; // Green
+        case HL_MLCOMMENT: return 244; // Light gray (much more subtle than bright cyan)
+        case HL_KEYWORD1: return 214;  // Orange (vibrant and distinct)
+        case HL_KEYWORD2: return 79;   // Forest green (rich green for built-ins)
+        case HL_STRING: return 39;    
+        case HL_NUMBER: return 199;    
+        case HL_MATCH: return 27;      
+        case HL_JUMPERLESS_FUNC: return 207;  
+        case HL_JUMPERLESS_TYPE: return 105; 
+        default: return 255;           // Bright white (default text)
     }
 }
 
@@ -930,9 +971,11 @@ int ekilo_save() {
         if (E.repl_mode && len < 8192) { // Limit stored content to 8KB
             E.saved_file_content = String(buf, len);
             E.should_quit = 1; // Auto-exit after save in REPL mode
+            ekilo_set_status_message("File saved: %s (%d bytes) - content stored for REPL", E.filename, len);
         } else if (E.repl_mode) {
             // File too large for REPL return, just signal completion
             E.should_quit = 1;
+            ekilo_set_status_message("File saved: %s (too large for REPL)", E.filename);
         }
         
         free(buf);
@@ -1077,7 +1120,7 @@ void ekilo_refresh_screen() {
                     if (color != current_color) {
                         current_color = color;
                         char buf[16];
-                        int clen = snprintf(buf, sizeof(buf), "\x1b[%dm", color);
+                        int clen = snprintf(buf, sizeof(buf), "\x1b[38;5;%dm", color);
                         buffer_append(&ab, buf, clen);
                     }
                     buffer_append(&ab, &c[j], 1);
@@ -1969,10 +2012,36 @@ String ekilo_main_repl(const char* filename) {
     ekilo_init_repl_mode();
     
     if (filename != nullptr) {
-        ekilo_open(filename);
+        // Try to open existing file, but if it fails, still set the filename for new files
+        if (ekilo_open(filename) != 0) {
+            // File doesn't exist - set the filename for saving new file
+            free(E.filename);
+            E.filename = strdup(filename);
+            if (!E.filename) {
+                ekilo_set_status_message("ERROR: Memory allocation failed for filename");
+            } else {
+                // Ensure the directory exists for the new file
+                String file_path = String(filename);
+                int last_slash = file_path.lastIndexOf('/');
+                if (last_slash > 0) {
+                    String dir_path = file_path.substring(0, last_slash);
+                    if (!FatFS.exists(dir_path.c_str())) {
+                        FatFS.mkdir(dir_path.c_str());
+                    }
+                }
+                // Enable Python syntax highlighting for new files
+                ekilo_select_syntax_highlight(filename);
+                ekilo_set_status_message("Creating new file: %s", filename);
+                E.screen_dirty = true; // Force initial screen refresh with new filename
+            }
+        }
     }
     
-    ekilo_set_status_message("REPL Mode | Ctrl-S: Save & Load | Ctrl-P: Save & Launch REPL | Ctrl-Q: Exit");
+    if (E.filename) {
+        ekilo_set_status_message("Editing: %s | Ctrl-S: Save & Load | Ctrl-P: Save & Launch REPL | Ctrl-Q: Exit", E.filename);
+    } else {
+        ekilo_set_status_message("REPL Mode | Ctrl-S: Save & Load | Ctrl-P: Save & Launch REPL | Ctrl-Q: Exit");
+    }
     
     // Initialize encoder position tracking
     E.last_encoder_position = encoderPosition;
@@ -2021,4 +2090,612 @@ String ekilo_main_repl(const char* filename) {
     ekilo_cleanup_repl_mode();
     
     return savedContent;
+}
+
+// Inline editing mode - provides eKilo-style editing without screen clearing or file operations
+String ekilo_inline_edit(const String& initial_content) {
+    // Initialize a minimal editor state without clearing screen
+    EditorConfig inline_editor;
+    inline_editor.cx = 0;
+    inline_editor.cy = 0;
+    inline_editor.rowoff = 0;
+    inline_editor.coloff = 0;
+    inline_editor.numrows = 0;
+    inline_editor.row = nullptr;
+    inline_editor.dirty = 0;
+    inline_editor.filename = nullptr;
+    inline_editor.syntax = &syntax_db[0]; // Set Python syntax highlighting
+    inline_editor.should_quit = 0;
+    strcpy(inline_editor.statusmsg, "");
+    inline_editor.statusmsg_time = 0;
+    
+    // Helper functions for inline syntax highlighting
+    auto inline_update_syntax = [&](EditorRow* row) {
+        if (!row || row->rsize <= 0 || !inline_editor.syntax) return;
+        
+        unsigned char* new_hl = (unsigned char*)realloc(row->hl, row->rsize);
+        if (!new_hl) {
+            free(row->hl);
+            row->hl = nullptr;
+            return;
+        }
+        row->hl = new_hl;
+        memset(row->hl, HL_NORMAL, row->rsize);
+        
+        const char** keywords = inline_editor.syntax->keywords;
+        const char* scs = inline_editor.syntax->singleline_comment_start;
+        int scs_len = scs ? strlen(scs) : 0;
+        
+        int prev_sep = 1;
+        int in_string = 0;
+        
+        int i = 0;
+        while (i < row->rsize) {
+            char c = row->render[i];
+            unsigned char prev_hl = (i > 0) ? row->hl[i - 1] : HL_NORMAL;
+            
+            // Handle comments
+            if (scs_len && !in_string) {
+                if (!strncmp(&row->render[i], scs, scs_len)) {
+                    memset(&row->hl[i], HL_COMMENT, row->rsize - i);
+                    break;
+                }
+            }
+            
+            // Handle strings
+            if (inline_editor.syntax->flags & HL_HIGHLIGHT_STRINGS) {
+                if (in_string) {
+                    row->hl[i] = HL_STRING;
+                    if (c == '\\' && i + 1 < row->rsize) {
+                        row->hl[i + 1] = HL_STRING;
+                        i += 2;
+                        continue;
+                    }
+                    if (c == in_string) in_string = 0;
+                    i++;
+                    prev_sep = 1;
+                    continue;
+                } else {
+                    if (c == '"' || c == '\'') {
+                        in_string = c;
+                        row->hl[i] = HL_STRING;
+                        i++;
+                        continue;
+                    }
+                }
+            }
+            
+            // Handle numbers
+            if (inline_editor.syntax->flags & HL_HIGHLIGHT_NUMBERS) {
+                if ((isdigit(c) && (prev_sep || prev_hl == HL_NUMBER)) ||
+                    (c == '.' && prev_hl == HL_NUMBER)) {
+                    row->hl[i] = HL_NUMBER;
+                    i++;
+                    prev_sep = 0;
+                    continue;
+                }
+            }
+            
+                            // Handle keywords
+                if (prev_sep) {
+                    int j;
+                    for (j = 0; keywords[j]; j++) {
+                        int klen = strlen(keywords[j]);
+                        int highlight_type = HL_KEYWORD1;
+                        
+                        // Check for different keyword types based on suffix
+                        if (klen >= 3 && !strncmp(&keywords[j][klen - 3], "|||", 3)) {
+                            highlight_type = HL_JUMPERLESS_TYPE;
+                            klen -= 3;
+                        } else if (klen >= 2 && !strncmp(&keywords[j][klen - 2], "||", 2)) {
+                            highlight_type = HL_JUMPERLESS_FUNC;
+                            klen -= 2;
+                        } else if (klen >= 1 && keywords[j][klen - 1] == '|') {
+                            highlight_type = HL_KEYWORD2;
+                            klen--;
+                        }
+                        
+                        if (!strncmp(&row->render[i], keywords[j], klen) &&
+                            is_separator(row->render[i + klen])) {
+                            memset(&row->hl[i], highlight_type, klen);
+                            i += klen;
+                            break;
+                        }
+                    }
+                    if (keywords[j] != nullptr) {
+                        prev_sep = 0;
+                        continue;
+                    }
+                }
+            
+            prev_sep = is_separator(c);
+            i++;
+        }
+    };
+    
+    // Helper function to display a line with syntax highlighting
+    auto display_line_with_syntax = [&](const char* line, int line_length, bool is_current_line) {
+        if (!line || line_length == 0) return;
+        
+        // Create temporary render buffer for this line
+        char* render = (char*)malloc(line_length + 1);
+        unsigned char* hl = (unsigned char*)malloc(line_length);
+        if (!render || !hl) {
+            free(render);
+            free(hl);
+            Serial.print(line);
+            return;
+        }
+        
+        // Simple render (no tabs for inline editor)
+        memcpy(render, line, line_length);
+        render[line_length] = '\0';
+        memset(hl, HL_NORMAL, line_length);
+        
+        // Apply syntax highlighting
+        if (inline_editor.syntax) {
+            const char** keywords = inline_editor.syntax->keywords;
+            const char* scs = inline_editor.syntax->singleline_comment_start;
+            int scs_len = scs ? strlen(scs) : 0;
+            
+            int prev_sep = 1;
+            int in_string = 0;
+            
+            for (int i = 0; i < line_length; i++) {
+                char c = render[i];
+                unsigned char prev_hl = (i > 0) ? hl[i - 1] : HL_NORMAL;
+                
+                // Handle comments
+                if (scs_len && !in_string) {
+                    if (i <= line_length - scs_len && !strncmp(&render[i], scs, scs_len)) {
+                        for (int j = i; j < line_length; j++) hl[j] = HL_COMMENT;
+                        break;
+                    }
+                }
+                
+                // Handle strings
+                if (inline_editor.syntax->flags & HL_HIGHLIGHT_STRINGS) {
+                    if (in_string) {
+                        hl[i] = HL_STRING;
+                        if (c == '\\' && i + 1 < line_length) {
+                            hl[i + 1] = HL_STRING;
+                            i++;
+                            continue;
+                        }
+                        if (c == in_string) in_string = 0;
+                        prev_sep = 1;
+                        continue;
+                    } else {
+                        if (c == '"' || c == '\'') {
+                            in_string = c;
+                            hl[i] = HL_STRING;
+                            continue;
+                        }
+                    }
+                }
+                
+                // Handle numbers
+                if (inline_editor.syntax->flags & HL_HIGHLIGHT_NUMBERS) {
+                    if ((isdigit(c) && (prev_sep || prev_hl == HL_NUMBER)) ||
+                        (c == '.' && prev_hl == HL_NUMBER)) {
+                        hl[i] = HL_NUMBER;
+                        prev_sep = 0;
+                        continue;
+                    }
+                }
+                
+                // Handle keywords
+                if (prev_sep) {
+                    int j;
+                    for (j = 0; keywords[j]; j++) {
+                        int klen = strlen(keywords[j]);
+                        int highlight_type = HL_KEYWORD1;
+                        
+                        // Check for different keyword types based on suffix
+                        if (klen >= 3 && !strncmp(&keywords[j][klen - 3], "|||", 3)) {
+                            highlight_type = HL_JUMPERLESS_TYPE;
+                            klen -= 3;
+                        } else if (klen >= 2 && !strncmp(&keywords[j][klen - 2], "||", 2)) {
+                            highlight_type = HL_JUMPERLESS_FUNC;
+                            klen -= 2;
+                        } else if (klen >= 1 && keywords[j][klen - 1] == '|') {
+                            highlight_type = HL_KEYWORD2;
+                            klen--;
+                        }
+                        
+                        if (i <= line_length - klen && !strncmp(&render[i], keywords[j], klen) &&
+                            (i + klen >= line_length || is_separator(render[i + klen]))) {
+                            for (int k = 0; k < klen; k++) {
+                                hl[i + k] = highlight_type;
+                            }
+                            i += klen - 1;
+                            break;
+                        }
+                    }
+                    if (keywords[j] != nullptr) {
+                        prev_sep = 0;
+                        continue;
+                    }
+                }
+                
+                prev_sep = is_separator(c);
+            }
+        }
+        
+        // Display the line with colors
+        int current_color = -1;
+        for (int i = 0; i < line_length; i++) {
+            int color = ekilo_syntax_to_color(hl[i]);
+            if (color != current_color) {
+                if (current_color != -1) {
+                    Serial.print("\x1b[0m"); // Reset
+                }
+                current_color = color;
+                Serial.print("\x1b[38;5;");
+                Serial.print(color);
+                Serial.print("m");
+            }
+            Serial.write(render[i]);
+        }
+        if (current_color != -1) {
+            Serial.print("\x1b[0m"); // Reset at end
+        }
+        
+        free(render);
+        free(hl);
+    };
+    
+    // Helper function to calculate Python autoindent
+    auto calculate_python_indent = [&](const String& line) -> String {
+        // Calculate current indentation level
+        int current_indent = 0;
+        for (int i = 0; i < line.length(); i++) {
+            if (line.charAt(i) == ' ') {
+                current_indent++;
+            } else {
+                break;
+            }
+        }
+        
+        String trimmed_line = line;
+        trimmed_line.trim();
+        
+        String indent_spaces = "";
+        if (trimmed_line.endsWith(":")) {
+            // Increase indentation level by 4 spaces for Python blocks
+            for (int i = 0; i < current_indent + 4; i++) {
+                indent_spaces += " ";
+            }
+        } else if (current_indent > 0) {
+            // Maintain current indentation level
+            for (int i = 0; i < current_indent; i++) {
+                indent_spaces += " ";
+            }
+        }
+        
+        return indent_spaces;
+    };
+    
+    // Don't clear screen - we're working inline
+    Serial.println("--- Python Inline Editor Mode ---");
+    Serial.println("Ctrl+S: Accept and return | Ctrl+Q: Cancel | Arrow keys: Navigate");
+    // Serial.println("Auto-indent and syntax highlighting enabled");
+    Serial.println();
+    
+    // Load initial content if provided
+    if (initial_content.length() > 0) {
+        // Split content by lines and insert each row
+        int start = 0;
+        int pos = 0;
+        while (pos <= initial_content.length()) {
+            if (pos == initial_content.length() || initial_content[pos] == '\n') {
+                String line = initial_content.substring(start, pos);
+                
+                // Insert this line into the editor
+                if (inline_editor.numrows == 0) {
+                    inline_editor.row = (EditorRow*)malloc(sizeof(EditorRow));
+                } else {
+                    inline_editor.row = (EditorRow*)realloc(inline_editor.row, sizeof(EditorRow) * (inline_editor.numrows + 1));
+                }
+                
+                if (inline_editor.row) {
+                    EditorRow* new_row = &inline_editor.row[inline_editor.numrows];
+                    new_row->idx = inline_editor.numrows;
+                    new_row->size = line.length();
+                    new_row->chars = (char*)malloc(line.length() + 1);
+                    if (new_row->chars) {
+                        memcpy(new_row->chars, line.c_str(), line.length());
+                        new_row->chars[line.length()] = '\0';
+                        new_row->rsize = 0;
+                        new_row->render = nullptr;
+                        new_row->hl = nullptr;
+                        new_row->hl_oc = 0;
+                        
+                        // Update render for this row
+                        int tabs = 0;
+                        for (int j = 0; j < new_row->size; j++) {
+                            if (new_row->chars[j] == '\t') tabs++;
+                        }
+                        
+                        new_row->render = (char*)malloc(new_row->size + tabs * 7 + 1);
+                        if (new_row->render) {
+                            int idx = 0;
+                            for (int j = 0; j < new_row->size; j++) {
+                                if (new_row->chars[j] == '\t') {
+                                    new_row->render[idx++] = ' ';
+                                    while (idx % 8 != 0) new_row->render[idx++] = ' ';
+                                } else {
+                                    new_row->render[idx++] = new_row->chars[j];
+                                }
+                            }
+                            new_row->render[idx] = '\0';
+                            new_row->rsize = idx;
+                        }
+                        
+                        inline_editor.numrows++;
+                    }
+                }
+                start = pos + 1;
+            }
+            pos++;
+        }
+        
+        // Position cursor at end of content
+        if (inline_editor.numrows > 0) {
+            inline_editor.cy = inline_editor.numrows - 1;
+            inline_editor.cx = inline_editor.row[inline_editor.cy].size;
+        }
+    }
+    
+    // Display current content with syntax highlighting
+    for (int i = 0; i < inline_editor.numrows; i++) {
+        if (inline_editor.row[i].chars) {
+            Serial.print("... ");
+            display_line_with_syntax(inline_editor.row[i].chars, inline_editor.row[i].size, false);
+            Serial.println();
+        }
+    }
+    
+    // Show current prompt
+    if (inline_editor.numrows == 0) {
+        Serial.print(">>> ");
+    } else {
+        Serial.print("... ");
+    }
+    Serial.flush();
+    
+    // Simple editing loop - much simpler than full eKilo
+    String current_line = "";
+    if (inline_editor.numrows > 0 && inline_editor.cy < inline_editor.numrows) {
+        current_line = String(inline_editor.row[inline_editor.cy].chars);
+    }
+    
+    while (!inline_editor.should_quit) {
+        if (Serial.available()) {
+            int c = Serial.read();
+            
+            // Handle escape sequences (arrow keys) - consume completely
+            if (c == 27) { // ESC
+                // Wait for more characters and consume the entire sequence
+                unsigned long start_time = millis();
+                while (millis() - start_time < 10) { // Wait up to 10ms
+                    if (Serial.available() >= 2) break;
+                    delayMicroseconds(100);
+                }
+                
+                if (Serial.available() >= 2) {
+                    char seq1 = Serial.read();
+                    char seq2 = Serial.read();
+                    if (seq1 == '[') {
+                        switch (seq2) {
+                            case 'A': // Up arrow - navigate to previous line
+                                if (inline_editor.cy > 0) {
+                                    // Save current line
+                                    if (inline_editor.cy < inline_editor.numrows) {
+                                        free(inline_editor.row[inline_editor.cy].chars);
+                                        inline_editor.row[inline_editor.cy].chars = (char*)malloc(current_line.length() + 1);
+                                        if (inline_editor.row[inline_editor.cy].chars) {
+                                            memcpy(inline_editor.row[inline_editor.cy].chars, current_line.c_str(), current_line.length());
+                                            inline_editor.row[inline_editor.cy].chars[current_line.length()] = '\0';
+                                            inline_editor.row[inline_editor.cy].size = current_line.length();
+                                        }
+                                    }
+                                    
+                                    // Move to previous line
+                                    inline_editor.cy--;
+                                    current_line = String(inline_editor.row[inline_editor.cy].chars);
+                                    
+                                    // Redraw current line
+                                    Serial.print("\r... ");
+                                    display_line_with_syntax(current_line.c_str(), current_line.length(), true);
+                                }
+                                break;
+                                
+                            case 'B': // Down arrow - navigate to next line
+                                if (inline_editor.cy < inline_editor.numrows - 1) {
+                                    // Save current line
+                                    if (inline_editor.cy < inline_editor.numrows) {
+                                        free(inline_editor.row[inline_editor.cy].chars);
+                                        inline_editor.row[inline_editor.cy].chars = (char*)malloc(current_line.length() + 1);
+                                        if (inline_editor.row[inline_editor.cy].chars) {
+                                            memcpy(inline_editor.row[inline_editor.cy].chars, current_line.c_str(), current_line.length());
+                                            inline_editor.row[inline_editor.cy].chars[current_line.length()] = '\0';
+                                            inline_editor.row[inline_editor.cy].size = current_line.length();
+                                        }
+                                    }
+                                    
+                                    // Move to next line
+                                    inline_editor.cy++;
+                                    current_line = String(inline_editor.row[inline_editor.cy].chars);
+                                    
+                                    // Redraw current line
+                                    Serial.print("\r... ");
+                                    display_line_with_syntax(current_line.c_str(), current_line.length(), true);
+                                }
+                                break;
+                                
+                            case 'C': // Right arrow - ignore for now
+                            case 'D': // Left arrow - ignore for now
+                                break;
+                        }
+                    }
+                } else {
+                    // Consume any remaining escape sequence characters
+                    while (Serial.available() > 0) {
+                        Serial.read();
+                    }
+                }
+                continue;
+            }
+            
+            switch (c) {
+                case 19: // Ctrl+S - Accept and return content
+                {
+                    Serial.println();
+                    Serial.println("--- Content Accepted ---");
+                    
+                    // Build final content string
+                    String final_content = "";
+                    
+                    // Add all rows except the last one
+                    for (int i = 0; i < inline_editor.numrows; i++) {
+                        if (i == inline_editor.cy) {
+                            // Use the edited current line
+                            final_content += current_line;
+                        } else if (inline_editor.row[i].chars) {
+                            final_content += String(inline_editor.row[i].chars);
+                        }
+                        if (i < inline_editor.numrows - 1) {
+                            final_content += "\n";
+                        }
+                    }
+                    
+                    // If we're on a new line or have no rows, add current line
+                    if (inline_editor.numrows == 0 || inline_editor.cy >= inline_editor.numrows) {
+                        if (final_content.length() > 0) final_content += "\n";
+                        final_content += current_line;
+                    }
+                    
+                    // Cleanup
+                    for (int i = 0; i < inline_editor.numrows; i++) {
+                        free(inline_editor.row[i].chars);
+                        free(inline_editor.row[i].render);
+                        free(inline_editor.row[i].hl);
+                    }
+                    free(inline_editor.row);
+                    
+                    return final_content;
+                }
+                
+                case 17: // Ctrl+Q - Cancel
+                    Serial.println();
+                    Serial.println("--- Editing Cancelled ---");
+                    
+                    // Cleanup
+                    for (int i = 0; i < inline_editor.numrows; i++) {
+                        free(inline_editor.row[i].chars);
+                        free(inline_editor.row[i].render);
+                        free(inline_editor.row[i].hl);
+                    }
+                    free(inline_editor.row);
+                    
+                    return "";
+                
+                case '\r':
+                case '\n': // Enter - new line with autoindent
+                {
+                    Serial.println();
+                    
+                    // Calculate autoindent for the next line based on current line
+                    String auto_indent = calculate_python_indent(current_line);
+                    
+                    // Add current line to editor
+                    if (inline_editor.numrows == 0) {
+                        inline_editor.row = (EditorRow*)malloc(sizeof(EditorRow));
+                    } else {
+                        inline_editor.row = (EditorRow*)realloc(inline_editor.row, sizeof(EditorRow) * (inline_editor.numrows + 1));
+                    }
+                    
+                    if (inline_editor.row) {
+                        EditorRow* new_row = &inline_editor.row[inline_editor.numrows];
+                        new_row->idx = inline_editor.numrows;
+                        new_row->size = current_line.length();
+                        new_row->chars = (char*)malloc(current_line.length() + 1);
+                        if (new_row->chars) {
+                            memcpy(new_row->chars, current_line.c_str(), current_line.length());
+                            new_row->chars[current_line.length()] = '\0';
+                            new_row->rsize = current_line.length();
+                            new_row->render = (char*)malloc(current_line.length() + 1);
+                            if (new_row->render) {
+                                memcpy(new_row->render, current_line.c_str(), current_line.length());
+                                new_row->render[current_line.length()] = '\0';
+                            }
+                            new_row->hl = nullptr;
+                            new_row->hl_oc = 0;
+                            inline_update_syntax(new_row);
+                            inline_editor.numrows++;
+                        }
+                    }
+                    
+                    // Move to new line with autoindent
+                    inline_editor.cy = inline_editor.numrows;
+                    current_line = auto_indent;
+                    
+                    // Show prompt with autoindent
+                    Serial.print("... ");
+                    if (auto_indent.length() > 0) {
+                        Serial.print("\x1b[90m"); // Dark gray for indent
+                        Serial.print(auto_indent);
+                        Serial.print("\x1b[0m"); // Reset color
+                    }
+                    break;
+                }
+                
+                case '\b':
+                case 127: // Backspace
+                    if (current_line.length() > 0) {
+                        current_line = current_line.substring(0, current_line.length() - 1);
+                        Serial.print("\b \b"); // Erase character
+                    }
+                    break;
+                
+                case '\t': // Tab - smart Python indent (4 spaces)
+                    current_line += "    ";
+                    Serial.print("\x1b[90m    \x1b[0m"); // Show indent in gray
+                    break;
+                
+                default:
+                    if (c >= 32 && c <= 126) { // Printable characters
+                        current_line += (char)c;
+                        
+                        // For real-time syntax highlighting, redraw the current line
+                        // but only every few characters to avoid flickering
+                        static int char_count = 0;
+                        char_count++;
+                        
+                        if (char_count % 3 == 0 || c == ':' || c == '"' || c == '\'' || c == '#') {
+                            // Redraw line with syntax highlighting for important characters
+                            Serial.print("\r... ");
+                            display_line_with_syntax(current_line.c_str(), current_line.length(), true);
+                        } else {
+                            // Just echo the character for performance
+                            Serial.write(c);
+                        }
+                    }
+                    break;
+            }
+            Serial.flush();
+        }
+        delayMicroseconds(100);
+    }
+    
+    // Cleanup (shouldn't reach here normally)
+    for (int i = 0; i < inline_editor.numrows; i++) {
+        free(inline_editor.row[i].chars);
+        free(inline_editor.row[i].render);
+        free(inline_editor.row[i].hl);
+    }
+    free(inline_editor.row);
+    
+    return "";
 } 

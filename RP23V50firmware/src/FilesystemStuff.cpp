@@ -3257,3 +3257,21 @@ bool FileManager::isInputBlocked() {
     return elapsed < INPUT_BLOCK_TIME;
 }
 
+// Inline editing mode - provides enhanced multiline editing without screen clearing
+String launchInlineEkilo(const String& initial_content) {
+    // Flush any pending serial data before launching editor
+    Serial.flush();
+    while (Serial.available() > 0) {
+        Serial.read();
+    }
+    
+    // Launch inline editor
+    String result = ekilo_inline_edit(initial_content);
+    
+    // Restore interactive mode if using Serial
+    Serial.write(0x0E); // turn on interactive mode
+    Serial.flush();
+    
+    return result;
+}
+

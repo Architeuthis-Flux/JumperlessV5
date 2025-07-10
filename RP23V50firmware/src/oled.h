@@ -110,8 +110,8 @@ public:
     // Display functions
     void displayBitmap(int x, int y, const unsigned char* bitmap, int width, int height);
     void showJogo32h();
-    void clear();
-    void show();
+    bool clear(int waitToFinish = 0);
+    bool show(int waitToFinish = 0);
     void moveToNextLine();
     
     // Unified cursor positioning
@@ -141,13 +141,13 @@ public:
     String getFontName(FontFamily fontFamily);
     
     // Simplified display functions
-    void clearPrintShow(const char* text, int textSize, bool clear = true, bool show = true, bool center = true, int x_pos = -1, int y_pos = -1);
-    void clearPrintShow(const char* text, int textSize, FontFamily family, bool clear = true, bool show = true, bool center = true, int x_pos = -1, int y_pos = -1);
+    void clearPrintShow(const char* text, int textSize = 2, bool clear = true, bool show = true, bool center = true, int x_pos = -1, int y_pos = -1, int waitToFinish = 0);
+    void clearPrintShow(const char* text, int textSize, FontFamily family, bool clear = true, bool show = true, bool center = true, int x_pos = -1, int y_pos = -1, int waitToFinish = 0);
     
-    void clearPrintShow(const char* text, int textSize = 2);
-    void clearPrintShow(const String& text, int textSize);
-    void clearPrintShow(const String& text, int textSize, bool clear, bool show, bool center, int x_pos = -1, int y_pos = -1);
-    void clearPrintShow(const String& text, int textSize, FontFamily family, bool clear = true, bool show = true, bool center = true, int x_pos = -1, int y_pos = -1);
+    void clearPrintShow(const char* text, int textSize = 2, int waitToFinish = 0);
+    void clearPrintShow(const String& text, int textSize, int waitToFinish = 0);
+    void clearPrintShow(const String& text, int textSize, bool clear, bool show, bool center, int x_pos = -1, int y_pos = -1, int waitToFinish = 0);
+    void clearPrintShow(const String& text, int textSize, FontFamily family, bool clear = true, bool show = true, bool center = true, int x_pos = -1, int y_pos = -1, int waitToFinish = 0);
 
     
     // Helper for multi-line text

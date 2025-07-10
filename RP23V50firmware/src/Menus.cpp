@@ -2033,7 +2033,7 @@ int selectNodeAction(int whichSelection) {
           Serial.print(">>>> ");
           printNodeOrName(highlightedNode, 1);
           oled.clearPrintShow("> ", 2, true, false);
-          oled.clearPrintShow(definesToChar(highlightedNode, 0), 2, false, true);
+          oled.clearPrintShow(definesToChar(highlightedNode, 0), 2, true, true);
           // oled.clrPrintfsh(">>>> %s", definesToChar(highlightedNode, 1));
           //oled.show();
          // oled.clearPrintShow(">>>>", 3, 5, 5, true);
@@ -2087,7 +2087,7 @@ int selectNodeAction(int whichSelection) {
 
           //oled.clearPrintShow("> ", 2, true, false);
 
-          oled.clearPrintShow(definesToChar(highlightedNode, 0), 2, false, true);
+          oled.clearPrintShow(definesToChar(highlightedNode, 0), 2, true, true);
 
           // oled.clrPrintfsh(">>>> %s", definesToChar(highlightedNode, 1));
 
