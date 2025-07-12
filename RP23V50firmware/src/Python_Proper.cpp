@@ -21,6 +21,10 @@ static bool mp_repl_active = false;
 static bool jumperless_globals_loaded = false;
 bool mp_interrupt_requested = false; // Flag for Ctrl+Q interrupt
 
+// Global state for REPL initial file loading
+static String repl_initial_filepath = "";
+static bool repl_has_initial_file = false;
+
 // Keyboard interrupt character storage
 static int keyboard_interrupt_char = 17; // Default to Ctrl+Q (ASCII 17)
 
@@ -369,7 +373,17 @@ void stopMicroPythonREPL(void) {
 
 bool isMicroPythonREPLActive(void) { return mp_repl_active; }
 
+// Helper function to set initial file for REPL
+void setREPLInitialFile(const String& filepath) {
+  repl_initial_filepath = filepath;
+  repl_has_initial_file = (filepath.length() > 0);
+}
+
 void enterMicroPythonREPL(Stream *stream) {
+  enterMicroPythonREPLWithFile(stream, "");
+}
+
+void enterMicroPythonREPLWithFile(Stream *stream, const String& filepath) {
   // Colorful initialization like original implementation
   changeTerminalColor(replColors[6], true, global_mp_stream);
 
@@ -394,6 +408,11 @@ void enterMicroPythonREPL(Stream *stream) {
     changeTerminalColor(replColors[4], true, global_mp_stream);
     global_mp_stream->println("[MP] REPL already active");
     return;
+  }
+
+  // Set initial file if provided
+  if (filepath.length() > 0) {
+    setREPLInitialFile(filepath);
   }
 
   // Show colorful welcome messages
@@ -459,7 +478,7 @@ void enterMicroPythonREPL(Stream *stream) {
   changeTerminalColor(replColors[3], false, global_mp_stream);
   global_mp_stream->print("  Ctrl+E ");
   changeTerminalColor(replColors[0], false, global_mp_stream);
-  global_mp_stream->println("     -   Edit current input in inline editor");
+          global_mp_stream->println("     -   Edit current input in main eKilo editor");
   // changeTerminalColor(replColors[3], false, global_mp_stream);
   // global_mp_stream->print("  multiline ");
   // changeTerminalColor(replColors[0], false, global_mp_stream);
@@ -532,6 +551,9 @@ void enterMicroPythonREPL(Stream *stream) {
   if (global_mp_stream == &Serial) {
     global_mp_stream->write(0x0F); // turn off interactive mode
     global_mp_stream->flush();
+    //delay(100); // Give system time to switch modes
+    // global_mp_stream->write(0x0E); // turn interactive mode back on for main menu
+    // global_mp_stream->flush();
   }
   global_mp_stream->print("\033[0m");
   // stream->println("Returned to Arduino mode");
@@ -541,6 +563,8 @@ void processMicroPythonInput(Stream *stream) {
   if (!mp_initialized) {
     return;
   }
+
+  // Use global variables for initial content
 
   // // Process any queued hardware commands
   // if (mp_command_ready) {
@@ -567,6 +591,46 @@ void processMicroPythonInput(Stream *stream) {
     static REPLEditor editor;
     static ScriptHistory history;
     static bool history_initialized = false;
+
+    // Check for pending initial file to load (do this BEFORE first_run check)
+    if (repl_has_initial_file && repl_initial_filepath.length() > 0) {
+      // Reset the editor to ensure we can load the file
+      editor.reset();
+      
+      // Initialize history if needed
+      if (!history_initialized) {
+        history.initFilesystem();
+        history_initialized = true;
+      }
+
+      // Load the file content into the editor
+      File file = FatFS.open(repl_initial_filepath.c_str(), "r");
+      if (file) {
+        String fileContent = file.readString();
+        file.close();
+        
+        editor.current_input = fileContent;
+        editor.cursor_pos = fileContent.length();
+        editor.in_multiline_mode = (fileContent.indexOf('\n') >= 0);
+        
+        changeTerminalColor(replColors[5], true, global_mp_stream);
+        global_mp_stream->println("Script loaded from file: " + repl_initial_filepath);
+        changeTerminalColor(replColors[1], true, global_mp_stream);
+        
+        // Show the loaded content
+        editor.drawFromCurrentLine(global_mp_stream);
+      } else {
+        changeTerminalColor(replColors[4], true, global_mp_stream);
+        global_mp_stream->println("Failed to load file: " + repl_initial_filepath);
+        changeTerminalColor(replColors[1], true, global_mp_stream);
+      }
+      
+      // Clear the pending file
+      repl_initial_filepath = "";
+      repl_has_initial_file = false;
+      editor.first_run = false;
+      return;
+    }
 
     if (editor.first_run) {
       // Initialize history first, before any input processing
@@ -614,9 +678,8 @@ void processMicroPythonInput(Stream *stream) {
             }
           } else if (editor.in_multiline_mode) {
             // In multiline mode, move cursor up one line
-            editor.moveUpInMultiline(global_mp_stream);
-            // Redraw to ensure display is synchronized
-            editor.redrawFullInput(global_mp_stream);
+            editor.moveCursorUp();
+            editor.repositionCursorOnly(global_mp_stream);
           }
           // If neither history nor multiline, do nothing
         }
@@ -644,9 +707,8 @@ void processMicroPythonInput(Stream *stream) {
             }
           } else if (editor.in_multiline_mode) {
             // In multiline mode, move cursor down one line
-            editor.moveDownInMultiline(global_mp_stream);
-            // Redraw to ensure display is synchronized
-            editor.redrawFullInput(global_mp_stream);
+            editor.moveCursorDown();
+            editor.repositionCursorOnly(global_mp_stream);
           }
           // If neither history nor multiline, do nothing
         }
@@ -661,18 +723,8 @@ void processMicroPythonInput(Stream *stream) {
           }
           
           if (editor.cursor_pos < editor.current_input.length()) {
-            char char_to_right = editor.current_input.charAt(editor.cursor_pos);
-            
-            if (char_to_right == '\n') {
-              // Navigate to next line
-              editor.cursor_pos++; // Move past the newline
-            } else {
-              // Normal right movement
-              editor.cursor_pos++;
-            }
-            
-            // Always redraw to ensure cursor is positioned correctly
-            editor.redrawFullInput(global_mp_stream);
+            editor.moveCursorRight();
+            editor.repositionCursorOnly(global_mp_stream);
           }
           return;
 
@@ -685,18 +737,8 @@ void processMicroPythonInput(Stream *stream) {
           }
           
           if (editor.cursor_pos > 0) {
-            char char_to_left = editor.current_input.charAt(editor.cursor_pos - 1);
-            
-            if (char_to_left == '\n') {
-              // Navigate to previous line
-              editor.cursor_pos--; // Move before the newline
-            } else {
-              // Normal left movement
-              editor.cursor_pos--;
-            }
-            
-            // Always redraw to ensure cursor is positioned correctly
-            editor.redrawFullInput(global_mp_stream);
+            editor.moveCursorLeft();
+            editor.repositionCursorOnly(global_mp_stream);
           }
           return;
 
@@ -778,8 +820,8 @@ void processMicroPythonInput(Stream *stream) {
               "  multiline off  - Force multiline mode OFF");
           global_mp_stream->println(
               "  multiline auto - Return to automatic detection");
-          global_mp_stream->println(
-              "  multiline edit - Use inline eKilo editor for multiline input");
+                  global_mp_stream->println(
+            "  multiline edit - Use main eKilo editor for multiline input");
           editor.reset();
           changeTerminalColor(replColors[1], true, global_mp_stream);
           global_mp_stream->print(">>> ");
@@ -828,25 +870,68 @@ void processMicroPythonInput(Stream *stream) {
 
         if (trimmed_input == "multiline edit") {
           changeTerminalColor(replColors[5], true, global_mp_stream);
-          global_mp_stream->println("Starting inline editor...");
+          global_mp_stream->println("Opening eKilo editor...");
           changeTerminalColor(replColors[0], false, global_mp_stream);
           
-          // Launch inline editor for multiline editing
-          String savedContent = launchInlineEkilo("");
+          // Create python_scripts directory if it doesn't exist
+          if (!FatFS.exists("/python_scripts")) {
+            FatFS.mkdir("/python_scripts");
+          }
           
-          // If content was provided, execute it directly
+          // Save current input to temporary file
+          String tempFile = "/python_scripts/_temp_repl_edit.py";
+          File file = FatFS.open(tempFile, "w");
+          if (file) {
+            if (editor.current_input.length() > 0) {
+              file.print(editor.current_input);
+            } else {
+              // Start with a helpful comment if no input
+              file.println("# Edit your Python script here");
+              file.println("# Press Ctrl+S to save and return to REPL");
+              file.println("# Press Ctrl+P to save and execute immediately");
+            }
+            file.close();
+          }
+          
+          // Launch main eKilo editor with temporary file
+          String savedContent = launchEkiloREPL(tempFile.c_str());
+          
+          // Restore interactive mode after returning from eKilo
+          if (global_mp_stream == &Serial) {
+            global_mp_stream->write(0x0E); // turn on interactive mode
+            global_mp_stream->flush();
+          }
+          
+          // Handle the return from eKilo
           if (savedContent.length() > 0) {
-            changeTerminalColor(replColors[2], true, global_mp_stream);
-            global_mp_stream->println("Executing multiline script:");
-            
-            // Add to history before execution
-            history.addToHistory(savedContent);
-            
-            // Execute the script
-            mp_embed_exec_str(savedContent.c_str());
+            // Check if this was a Ctrl+P (save and execute) request
+            if (savedContent.startsWith("[LAUNCH_REPL]")) {
+              // Remove the marker and execute the content
+              String contentToExecute = savedContent.substring(13); // Remove "[LAUNCH_REPL]"
+              if (contentToExecute.length() > 0) {
+                changeTerminalColor(replColors[2], true, global_mp_stream);
+                global_mp_stream->println("Executing script from eKilo:");
+                
+                // Add to history before execution
+                history.addToHistory(contentToExecute);
+                
+                // Execute the script
+                mp_embed_exec_str(contentToExecute.c_str());
+              }
+            } else {
+              // Regular save - load content into REPL editor
+              editor.current_input = savedContent;
+              editor.cursor_pos = savedContent.length();
+              editor.in_multiline_mode = (savedContent.indexOf('\n') >= 0);
+              changeTerminalColor(replColors[5], true, global_mp_stream);
+              global_mp_stream->println("Script loaded into REPL editor");
+              // Don't reset - show the loaded content
+              editor.drawFromCurrentLine(global_mp_stream);
+              return;
+            }
           } else {
             changeTerminalColor(replColors[5], true, global_mp_stream);
-            global_mp_stream->println("Editing cancelled");
+            global_mp_stream->println("Returned from eKilo editor");
           }
           
           editor.reset();
@@ -881,7 +966,7 @@ void processMicroPythonInput(Stream *stream) {
             changeTerminalColor(replColors[5], true, global_mp_stream);
             global_mp_stream->println("Script content loaded into REPL");
             // Don't reset - show the loaded content
-            editor.redrawFullInput(global_mp_stream);
+            editor.redrawAndPosition(global_mp_stream);
             return;
           } else {
             changeTerminalColor(replColors[5], true, global_mp_stream);
@@ -895,28 +980,71 @@ void processMicroPythonInput(Stream *stream) {
           }
         }
 
-        //! Edit command - shortcut for multiline edit
+        //! Edit command - launch main eKilo editor for multiline editing
         if (trimmed_input == "edit" || trimmed_input == "edit()") {
           changeTerminalColor(replColors[5], true, global_mp_stream);
-          global_mp_stream->println("Starting inline editor...");
+          global_mp_stream->println("Opening eKilo editor...");
           changeTerminalColor(replColors[0], false, global_mp_stream);
           
-          // Launch inline editor for multiline editing
-          String savedContent = launchInlineEkilo("");
+          // Create python_scripts directory if it doesn't exist
+          if (!FatFS.exists("/python_scripts")) {
+            FatFS.mkdir("/python_scripts");
+          }
           
-          // If content was provided, execute it directly
+          // Save current input to temporary file
+          String tempFile = "/python_scripts/_temp_repl_edit.py";
+          File file = FatFS.open(tempFile, "w");
+          if (file) {
+            if (editor.current_input.length() > 0) {
+              file.print(editor.current_input);
+            } else {
+              // Start with a helpful comment if no input
+              file.println("# Edit your Python script here");
+              file.println("# Press Ctrl+S to save and return to REPL");
+              file.println("# Press Ctrl+P to save and execute immediately");
+            }
+            file.close();
+          }
+          
+          // Launch main eKilo editor with temporary file
+          String savedContent = launchEkiloREPL(tempFile.c_str());
+          
+          // Restore interactive mode after returning from eKilo
+          if (global_mp_stream == &Serial) {
+            global_mp_stream->write(0x0E); // turn on interactive mode
+            global_mp_stream->flush();
+          }
+          
+          // Handle the return from eKilo
           if (savedContent.length() > 0) {
-            changeTerminalColor(replColors[2], true, global_mp_stream);
-            global_mp_stream->println("Executing multiline script:");
-            
-            // Add to history before execution
-            history.addToHistory(savedContent);
-            
-            // Execute the script
-            mp_embed_exec_str(savedContent.c_str());
+            // Check if this was a Ctrl+P (save and execute) request
+            if (savedContent.startsWith("[LAUNCH_REPL]")) {
+              // Remove the marker and execute the content
+              String contentToExecute = savedContent.substring(13); // Remove "[LAUNCH_REPL]"
+              if (contentToExecute.length() > 0) {
+                changeTerminalColor(replColors[2], true, global_mp_stream);
+                global_mp_stream->println("Executing script from eKilo:");
+                
+                // Add to history before execution
+                history.addToHistory(contentToExecute);
+                
+                // Execute the script
+                mp_embed_exec_str(contentToExecute.c_str());
+              }
+            } else {
+              // Regular save - load content into REPL editor
+              editor.current_input = savedContent;
+              editor.cursor_pos = savedContent.length();
+              editor.in_multiline_mode = (savedContent.indexOf('\n') >= 0);
+              changeTerminalColor(replColors[5], true, global_mp_stream);
+              global_mp_stream->println("Script loaded into REPL editor");
+              // Don't reset - show the loaded content
+              editor.drawFromCurrentLine(global_mp_stream);
+              return;
+            }
           } else {
             changeTerminalColor(replColors[5], true, global_mp_stream);
-            global_mp_stream->println("Editing cancelled");
+            global_mp_stream->println("Returned from eKilo editor");
           }
           
           editor.reset();
@@ -966,7 +1094,7 @@ void processMicroPythonInput(Stream *stream) {
           changeTerminalColor(replColors[3], false, global_mp_stream);
           global_mp_stream->print("  edit ");
           changeTerminalColor(replColors[0], false, global_mp_stream);
-          global_mp_stream->println("        -   Launch inline eKilo editor");
+          global_mp_stream->println("        -   Launch main eKilo editor");
           changeTerminalColor(replColors[3], false, global_mp_stream);
           global_mp_stream->print("  multiline ");
           changeTerminalColor(replColors[0], false, global_mp_stream);
@@ -991,11 +1119,11 @@ void processMicroPythonInput(Stream *stream) {
           global_mp_stream->printf("  Ctrl+%c     - Force quit REPL or interrupt running script\n", int_char);
           global_mp_stream->println("  files      - Browse and manage Python scripts");
           global_mp_stream->println("  new        - Create new scripts with eKilo editor");
-          global_mp_stream->println("  edit       - Launch inline eKilo editor for multiline scripts");
+          global_mp_stream->println("  edit       - Launch main eKilo editor for multiline scripts");
           global_mp_stream->println("  run        - Execute accumulated script "
                                     "(multiline forced ON)");
           changeTerminalColor(replColors[8], false, global_mp_stream);
-          global_mp_stream->println("  multiline edit - Launch inline eKilo editor");
+          global_mp_stream->println("  multiline edit - Launch main eKilo editor");
 
           changeTerminalColor(replColors[5], true, global_mp_stream);
           global_mp_stream->println("\nHardware:");
@@ -1099,7 +1227,7 @@ void processMicroPythonInput(Stream *stream) {
                   editor.current_input = loaded_script;
                   editor.cursor_pos = loaded_script.length();
                   editor.in_multiline_mode = (loaded_script.indexOf('\n') >= 0);
-                  editor.redrawFullInput(global_mp_stream);
+                  editor.redrawAndPosition(global_mp_stream);
                   return; // Stay in editing mode
                 }
               }
@@ -1157,7 +1285,7 @@ void processMicroPythonInput(Stream *stream) {
             changeTerminalColor(replColors[5], true, global_mp_stream);
             global_mp_stream->println("File content loaded into REPL");
             // Don't reset - show the loaded content
-            editor.redrawFullInput(global_mp_stream);
+            editor.redrawAndPosition(global_mp_stream);
             return;
           } else {
             changeTerminalColor(replColors[5], true, global_mp_stream);
@@ -1415,7 +1543,7 @@ void processMicroPythonInput(Stream *stream) {
                   // Remove 4 spaces at once
                   editor.current_input.remove(editor.cursor_pos - 4, 4);
                   editor.cursor_pos -= 4;
-                  editor.redrawFullInput(global_mp_stream);
+                  editor.redrawAndPosition(global_mp_stream);
                 }
               }
             }
@@ -1424,42 +1552,81 @@ void processMicroPythonInput(Stream *stream) {
               // Normal single character backspace
               editor.current_input.remove(editor.cursor_pos - 1, 1);
               editor.cursor_pos--;
-              editor.redrawFullInput(global_mp_stream);
+              editor.redrawAndPosition(global_mp_stream);
             }
           }
         }
-      } else if (c == 5) { // Ctrl+E - Edit current input in inline editor
-        // Don't exit history mode - preserve the current input
+      } else if (c == 5) { // Ctrl+E - Edit current input in main eKilo editor
         changeTerminalColor(replColors[5], true, global_mp_stream);
-        global_mp_stream->println("\n[Opening inline editor...]");
-        global_mp_stream->flush();
+        global_mp_stream->println("\n[Opening eKilo editor...]");
+        changeTerminalColor(replColors[0], false, global_mp_stream);
         
-        // Open inline editor with current input
-        String edited_content = ekilo_inline_edit(editor.current_input);
-        
-        // Check if user cancelled (empty return means cancelled)
-        if (edited_content.length() > 0) {
-          // Replace current input with edited content
-          editor.current_input = edited_content;
-          editor.cursor_pos = edited_content.length();
-          editor.in_multiline_mode = (edited_content.indexOf('\n') >= 0);
-          
-          // Exit history mode if we were in it
-          if (editor.in_history_mode) {
-            editor.in_history_mode = false;
-            editor.just_loaded_from_history = false;
-            history.resetHistoryNavigation();
-          }
-          
-          changeTerminalColor(replColors[2], true, global_mp_stream);
-          global_mp_stream->println("[Content updated from editor]");
-        } else {
-          changeTerminalColor(replColors[4], true, global_mp_stream);
-          global_mp_stream->println("[Editor cancelled - no changes]");
+        // Create python_scripts directory if it doesn't exist
+        if (!FatFS.exists("/python_scripts")) {
+          FatFS.mkdir("/python_scripts");
         }
         
-        // Redraw the full input
-        editor.redrawFullInput(global_mp_stream);
+        // Save current input to temporary file
+        String tempFile = "/python_scripts/_temp_repl_edit.py";
+        File file = FatFS.open(tempFile, "w");
+        if (file) {
+          if (editor.current_input.length() > 0) {
+            file.print(editor.current_input);
+          } else {
+            // Start with a helpful comment if no input
+            file.println("# Edit your Python script here");
+            file.println("# Press Ctrl+S to save and return to REPL");
+            file.println("# Press Ctrl+P to save and execute immediately");
+          }
+          file.close();
+        }
+        
+        // Launch main eKilo editor with temporary file
+        String savedContent = launchEkiloREPL(tempFile.c_str());
+        
+        // Restore interactive mode after returning from eKilo
+        if (global_mp_stream == &Serial) {
+          global_mp_stream->write(0x0E); // turn on interactive mode
+          global_mp_stream->flush();
+        }
+        
+        // Handle the return from eKilo
+        if (savedContent.length() > 0) {
+          // Check if this was a Ctrl+P (save and execute) request
+          if (savedContent.startsWith("[LAUNCH_REPL]")) {
+            // Remove the marker and execute the content
+            String contentToExecute = savedContent.substring(13); // Remove "[LAUNCH_REPL]"
+            if (contentToExecute.length() > 0) {
+              changeTerminalColor(replColors[2], true, global_mp_stream);
+              global_mp_stream->println("Executing script from eKilo:");
+              
+              // Add to history before execution
+              history.addToHistory(contentToExecute);
+              
+              // Execute the script
+              mp_embed_exec_str(contentToExecute.c_str());
+            }
+          } else {
+            // Regular save - load content into REPL editor
+            editor.current_input = savedContent;
+            editor.cursor_pos = savedContent.length();
+            editor.in_multiline_mode = (savedContent.indexOf('\n') >= 0);
+            changeTerminalColor(replColors[5], true, global_mp_stream);
+            global_mp_stream->println("Script loaded into REPL editor");
+            // Don't reset - show the loaded content
+            editor.drawFromCurrentLine(global_mp_stream);
+            return;
+          }
+        } else {
+          changeTerminalColor(replColors[5], true, global_mp_stream);
+          global_mp_stream->println("Returned from eKilo editor");
+        }
+        
+        editor.reset();
+        changeTerminalColor(replColors[1], true, global_mp_stream);
+        global_mp_stream->print(">>> ");
+        global_mp_stream->flush();
+        return;
         
       } else if (c == '\t') { // TAB character
         // Exit history mode when user starts editing
@@ -1477,7 +1644,7 @@ void processMicroPythonInput(Stream *stream) {
         editor.cursor_pos += 4;
         
         // Always redraw the entire input buffer to keep everything synchronized
-        editor.redrawFullInput(global_mp_stream);
+        editor.redrawAndPosition(global_mp_stream);
       } else if (c >= 32 && c <= 126) { // Printable characters
         // Exit history mode when user starts editing
         if (editor.in_history_mode) {
@@ -1493,7 +1660,7 @@ void processMicroPythonInput(Stream *stream) {
         editor.cursor_pos++;
 
         // Always redraw the entire input buffer to keep everything synchronized
-        editor.redrawFullInput(global_mp_stream);
+        editor.redrawAndPosition(global_mp_stream);
       } else {
         mp_repl_continue_with_input(editor.current_input.c_str());
       }
@@ -2195,16 +2362,33 @@ void ScriptHistory::loadHistoryFromFile() {
 }
 
 // REPLEditor method implementations
+// Static variables for cursor tracking (shared between functions)
+static bool cursor_position_known = false;
+static int last_terminal_line = 0;
+static int last_terminal_column = 0;
+
 void REPLEditor::getCurrentLine(String &line, int &line_start, int &cursor_in_line) {
-  int last_newline = current_input.lastIndexOf('\n');
-  if (last_newline >= 0) {
-    line = current_input.substring(last_newline + 1);
-    line_start = last_newline + 1;
-  } else {
-    line = current_input;
-    line_start = 0;
+  // Find the newline before the cursor position (start of current line)
+  int line_start_pos = 0;
+  for (int i = cursor_pos - 1; i >= 0; i--) {
+    if (current_input.charAt(i) == '\n') {
+      line_start_pos = i + 1;
+      break;
+    }
   }
-  cursor_in_line = cursor_pos - line_start;
+  
+  // Find the newline after the cursor position (end of current line)
+  int line_end_pos = current_input.length();
+  for (int i = cursor_pos; i < current_input.length(); i++) {
+    if (current_input.charAt(i) == '\n') {
+      line_end_pos = i;
+      break;
+    }
+  }
+  
+  line_start = line_start_pos;
+  line = current_input.substring(line_start_pos, line_end_pos);
+  cursor_in_line = cursor_pos - line_start_pos;
 }
 
 void REPLEditor::moveCursorToColumn(Stream *stream, int column) {
@@ -2219,75 +2403,9 @@ void REPLEditor::clearToEndOfLine(Stream *stream) {
   stream->flush();
 }
 
-void REPLEditor::clearEntireLine(Stream *stream) {
-  stream->print("\033[2K"); // CSI 2 K - Erase All
-  stream->flush();
-}
-
-void REPLEditor::clearScreen(Stream *stream) {
-  stream->print("\033[2J"); // CSI 2 J - Erase All
-  stream->print("\033[H");  // CSI H - Home cursor
-  stream->flush();
-}
-
 void REPLEditor::clearBelow(Stream *stream) {
   stream->print("\033[J"); // CSI J - Erase Below
   stream->flush();
-}
-
-void REPLEditor::moveCursorUp(Stream *stream, int lines) {
-  if (lines > 1) {
-    stream->print("\033[");
-    stream->print(lines);
-    stream->print("A");
-  } else {
-    stream->print("\033[A");
-  }
-  stream->flush();
-}
-
-void REPLEditor::moveCursorDown(Stream *stream, int lines) {
-  if (lines > 1) {
-    stream->print("\033[");
-    stream->print(lines);
-    stream->print("B");
-  } else {
-    stream->print("\033[B");
-  }
-  stream->flush();
-}
-
-void REPLEditor::redrawCurrentLine(Stream *stream) {
-  // For consistency with the full buffer approach, just call redrawFullInput
-  // This ensures all display updates are synchronized
-  redrawFullInput(stream);
-}
-
-void REPLEditor::navigateToLine(Stream *stream, int target_line) {
-  // Split input into lines
-  String lines = current_input;
-  int line_count = 1;
-  for (int i = 0; i < lines.length(); i++) {
-    if (lines.charAt(i) == '\n')
-      line_count++;
-  }
-
-  // Find current line number
-  int current_line_num = 1;
-  for (int i = 0; i < cursor_pos; i++) {
-    if (current_input.charAt(i) == '\n')
-      current_line_num++;
-  }
-
-  if (target_line < 1 || target_line > line_count)
-    return;
-
-  int line_diff = target_line - current_line_num;
-  if (line_diff > 0) {
-    moveCursorDown(stream, line_diff);
-  } else if (line_diff < 0) {
-    moveCursorUp(stream, -line_diff);
-  }
 }
 
 void REPLEditor::backspaceOverNewline(Stream *stream) {
@@ -2301,151 +2419,8 @@ void REPLEditor::backspaceOverNewline(Stream *stream) {
       in_multiline_mode = false;
     }
 
-    // Move cursor up one line
-    moveCursorUp(stream);
-
-    // Find the end of the previous line
-    String current_line;
-    int line_start, cursor_in_line;
-    getCurrentLine(current_line, line_start, cursor_in_line);
-
-    // Move to end of previous line
-    int prompt_length = in_multiline_mode ? 4 : 4;
-    moveCursorToColumn(stream, prompt_length + current_line.length());
-  }
-}
-
-void REPLEditor::navigateOverNewline(Stream *stream) {
-  if (cursor_pos > 0 && current_input.charAt(cursor_pos - 1) == '\n') {
-    // Use the new improved function
-    moveToEndOfPreviousLine(stream);
-  }
-}
-
-// Move cursor up one line in multiline input
-void REPLEditor::moveUpInMultiline(Stream *stream) {
-  if (!in_multiline_mode) return;
-  
-  // Find current line info
-  String current_line;
-  int line_start, cursor_in_line;
-  getCurrentLine(current_line, line_start, cursor_in_line);
-  
-  // Only move up if we're not already on the first line
-  if (line_start > 0) {
-    // Find the start of the previous line
-    int prev_line_start = 0;
-    
-    // Search backwards from line_start-1 to find the previous newline
-    for (int i = line_start - 2; i >= 0; i--) {
-      if (current_input.charAt(i) == '\n') {
-        prev_line_start = i + 1;
-        break;
-      }
-    }
-    
-    // Calculate the length of the previous line
-    int prev_line_length = (line_start - 1) - prev_line_start; // -1 for the newline
-    
-    // Position cursor in previous line, trying to maintain column position
-    int new_cursor_in_line = min(cursor_in_line, prev_line_length);
-    cursor_pos = prev_line_start + new_cursor_in_line;
-    
-    // Move cursor up visually one line with proper synchronization
-    stream->print("\r"); // Start at beginning of current line
-    moveCursorUp(stream);
-    
-    // Position cursor at correct column
-    int prompt_length = (prev_line_start == 0) ? 4 : 4; // >>> or ...
-    moveCursorToColumn(stream, prompt_length + new_cursor_in_line);
-  }
-}
-
-// Move cursor down one line in multiline input
-void REPLEditor::moveDownInMultiline(Stream *stream) {
-  if (!in_multiline_mode) return;
-  
-  // Find current line info
-  String current_line;
-  int line_start, cursor_in_line;
-  getCurrentLine(current_line, line_start, cursor_in_line);
-  
-  // Find start of next line
-  int next_line_start = line_start + current_line.length() + 1; // +1 for newline
-  
-  // Only move down if there is a next line
-  if (next_line_start < current_input.length()) {
-    // Find end of next line
-    int next_line_end = current_input.length();
-    for (int i = next_line_start; i < current_input.length(); i++) {
-      if (current_input.charAt(i) == '\n') {
-        next_line_end = i;
-        break;
-      }
-    }
-    
-    // Calculate length of next line
-    int next_line_length = next_line_end - next_line_start;
-    
-    // Position cursor in next line, trying to maintain column position
-    int new_cursor_in_line = min(cursor_in_line, next_line_length);
-    cursor_pos = next_line_start + new_cursor_in_line;
-    
-    // Move cursor down visually one line with proper synchronization
-    stream->print("\r"); // Start at beginning of current line
-    moveCursorDown(stream);
-    
-    // Position cursor at correct column
-    int prompt_length = 4; // Always ... for continuation lines
-    moveCursorToColumn(stream, prompt_length + new_cursor_in_line);
-  }
-}
-
-// Move cursor to end of previous line (improved left arrow behavior)
-void REPLEditor::moveToEndOfPreviousLine(Stream *stream) {
-  if (cursor_pos > 0 && current_input.charAt(cursor_pos - 1) == '\n') {
-    // We're at the beginning of a line, move to end of previous line
-    
-    // Find the start of the previous line
-    int prev_line_start = 0;
-    
-    // Search backwards from cursor_pos-2 to find the previous newline
-    for (int i = cursor_pos - 2; i >= 0; i--) {
-      if (current_input.charAt(i) == '\n') {
-        prev_line_start = i + 1;
-        break;
-      }
-    }
-    
-    // Calculate the length of the previous line
-    int prev_line_length = (cursor_pos - 1) - prev_line_start; // -1 for the newline
-    
-    // Move cursor to end of previous line
-    cursor_pos = prev_line_start + prev_line_length;
-    
-    // Move cursor up one line visually with proper synchronization
-    stream->print("\r"); // Start at beginning of current line
-    moveCursorUp(stream);
-    
-    // Position cursor at end of previous line
-    int prompt_length = (prev_line_start == 0) ? 4 : 4; // >>> or ...
-    moveCursorToColumn(stream, prompt_length + prev_line_length);
-  }
-}
-
-// Move cursor to start of next line (improved right arrow behavior)
-void REPLEditor::moveToStartOfNextLine(Stream *stream) {
-  if (cursor_pos < current_input.length() && current_input.charAt(cursor_pos) == '\n') {
-    // Move cursor to start of next line
-    cursor_pos++; // Move past the newline
-    
-    // Move cursor down one line visually with proper synchronization
-    stream->print("\r"); // Start at beginning of current line
-    moveCursorDown(stream);
-    
-    // Position cursor at start of next line (after prompt)
-    int prompt_length = 4; // Always ... for continuation lines
-    moveCursorToColumn(stream, prompt_length);
+    // Redraw after removing newline
+    redrawAndPosition(stream);
   }
 }
 
@@ -2463,36 +2438,34 @@ void REPLEditor::loadFromHistory(Stream *stream, const String &historical_input)
   // Flag that we just loaded from history - first Enter should add newline
   just_loaded_from_history = true;
 
-  // Redraw the entire input
-  redrawFullInput(stream);
+  // For history, just print simply from current line - no complex positioning
+  drawFromCurrentLine(stream);
 
   // Small delay to prevent input processing issues
   delayMicroseconds(100);
 }
 
-void REPLEditor::exitHistoryMode(Stream *stream) {
-  if (in_history_mode) {
-    current_input = original_input;
-    cursor_pos = current_input.length();
-    in_multiline_mode = (current_input.indexOf('\n') >= 0);
-    in_history_mode = false;
-    just_loaded_from_history = false; // Clear the flag when exiting history mode
-    escape_state = 0; // Reset escape state
-    redrawFullInput(stream);
-  }
-}
-
-void REPLEditor::redrawFullInput(Stream *stream) {
-  // Clear any previously displayed lines by moving up and clearing
+// Simple drawing function for history - clears previous display and shows new content
+void REPLEditor::drawFromCurrentLine(Stream *stream) {
+  // Clear the previous history display if we have one
   if (last_displayed_lines > 0) {
-    // Move cursor up to the beginning of the first displayed line
-    moveCursorUp(stream, last_displayed_lines);
+    // Move to beginning of current line
+    stream->print("\r");
+    
+    // Move up to the start of the previous display
+    for (int i = 0; i < last_displayed_lines; i++) {
+      stream->print("\033[A"); // Move up one line
+    }
+    
+    // Move to beginning of line and clear everything below
+    stream->print("\r");
+    clearBelow(stream);
+  } else {
+    // Just clear the current line and below
+    stream->print("\r");
+    clearBelow(stream);
   }
-
-  // Move to beginning of current line and clear everything below
-  stream->print("\r"); // Go to start of current line
-  clearBelow(stream);  // Clear everything below cursor
-
+  
   // If we have no input, just show prompt
   if (current_input.length() == 0) {
     changeTerminalColor(replColors[1], true, stream);
@@ -2502,21 +2475,12 @@ void REPLEditor::redrawFullInput(Stream *stream) {
     return;
   }
 
-  // Count total lines in new input
-  int new_line_count = 0;
-  for (int i = 0; i < current_input.length(); i++) {
-    if (current_input.charAt(i) == '\n') {
-      new_line_count++;
-    }
-  }
-
-  // Split input into lines for display
+  // Split input into lines and display each one
   String lines = current_input;
   int line_start = 0;
   int current_line_num = 0;
-  int lines_printed = 0;
+  int lines_displayed = 0;
 
-  // Display each line with proper prompt
   for (int i = 0; i <= lines.length(); i++) {
     if (i == lines.length() || lines.charAt(i) == '\n') {
       String line = lines.substring(line_start, i);
@@ -2532,12 +2496,11 @@ void REPLEditor::redrawFullInput(Stream *stream) {
 
       // Show line content with syntax highlighting
       displayStringWithSyntaxHighlighting(line, stream);
-      clearToEndOfLine(stream); // Clear any trailing characters
 
       // Add newline if not the last line
       if (i < lines.length()) {
         stream->println();
-        lines_printed++;
+        lines_displayed++;
       }
 
       line_start = i + 1;
@@ -2545,70 +2508,343 @@ void REPLEditor::redrawFullInput(Stream *stream) {
     }
   }
 
-  // Update tracking for next redraw - use lines_printed which represents
-  // how many lines we need to move up from current position to get to first line
-  // CRITICAL FIX: Previously used new_line_count (number of \n chars) which caused
-  // over-clearing and screen scrolling. Now uses lines_printed (actual cursor movements).
-  last_displayed_lines = lines_printed;
+  // Update tracking for next time
+  last_displayed_lines = lines_displayed;
 
-  // Position cursor at the correct location in the buffer
-  positionCursorAtCurrentPos(stream);
   stream->flush();
 }
 
-// Position cursor at the current cursor_pos location in the displayed input
-void REPLEditor::positionCursorAtCurrentPos(Stream *stream) {
-  if (cursor_pos == 0) {
-    // Cursor is at the beginning of first line
-    stream->print("\r");
-    moveCursorToColumn(stream, 4); // Move to after ">>> "
-    return;
+void REPLEditor::exitHistoryMode(Stream *stream) {
+  if (in_history_mode) {
+    current_input = original_input;
+    cursor_pos = current_input.length();
+    in_multiline_mode = (current_input.indexOf('\n') >= 0);
+    in_history_mode = false;
+    just_loaded_from_history = false; // Clear the flag when exiting history mode
+    escape_state = 0; // Reset escape state
+    drawFromCurrentLine(stream);
+  }
+}
+
+
+// ============================================================================
+// CENTRALIZED CURSOR POSITION MANAGEMENT SYSTEM
+// ============================================================================
+
+// Update cursor position calculations from current cursor_pos
+void REPLEditor::updateCursorPosition() {
+  cursor_position.line = 0;
+  cursor_position.column = 0;
+  cursor_position.total_lines = 1; // At least one line
+  cursor_position.is_valid = true;
+  
+  if (current_input.length() == 0) {
+    return; // Already initialized to 0,0
   }
   
-  // Count how many lines we need to move up from the bottom
-  int lines_from_bottom = 0;
-  int chars_from_line_start = 0;
+  // Count total lines
+  for (int i = 0; i < current_input.length(); i++) {
+    if (current_input.charAt(i) == '\n') {
+      cursor_position.total_lines++;
+    }
+  }
   
-  // Find which line the cursor is on and position within that line
+  // Find current line and column
   int line_start = 0;
-  int line_number = 0;
-  
-  for (int i = 0; i <= current_input.length(); i++) {
+  for (int i = 0; i <= current_input.length() && i <= cursor_pos; i++) {
     if (i == cursor_pos) {
-      // Found cursor position
-      chars_from_line_start = cursor_pos - line_start;
+      cursor_position.column = cursor_pos - line_start;
       break;
     }
     
     if (i < current_input.length() && current_input.charAt(i) == '\n') {
+      cursor_position.line++;
       line_start = i + 1;
-      line_number++;
+    }
+  }
+}
+
+// Set cursor_pos from line/column coordinates
+void REPLEditor::setCursorFromLineColumn(int line, int col) {
+  if (line < 0 || col < 0) return;
+  
+  // Ensure we have current position data
+  if (!cursor_position.is_valid) {
+    updateCursorPosition();
+  }
+  
+  // Clamp line to valid range
+  line = min(line, cursor_position.total_lines - 1);
+  
+  // Find the start of the target line
+  int target_line_start = 0;
+  int current_line = 0;
+  
+  for (int i = 0; i <= current_input.length(); i++) {
+    if (current_line == line) {
+      target_line_start = i;
+      break;
+    }
+    
+    if (i < current_input.length() && current_input.charAt(i) == '\n') {
+      current_line++;
+      target_line_start = i + 1;
     }
   }
   
-  // Calculate how many lines from the bottom (current position) to the target line
-  int total_lines = 0;
-  for (int i = 0; i < current_input.length(); i++) {
+  // Find the end of the target line
+  int target_line_end = current_input.length();
+  for (int i = target_line_start; i < current_input.length(); i++) {
     if (current_input.charAt(i) == '\n') {
-      total_lines++;
+      target_line_end = i;
+      break;
     }
   }
   
-  lines_from_bottom = total_lines - line_number;
+  // Calculate line length and clamp column
+  int line_length = target_line_end - target_line_start;
+  col = min(col, line_length);
   
-  // Move cursor to the correct line
-  if (lines_from_bottom > 0) {
-    moveCursorUp(stream, lines_from_bottom);
+  // Set cursor position
+  cursor_pos = target_line_start + col;
+  
+  // Update position cache
+  cursor_position.line = line;
+  cursor_position.column = col;
+  cursor_position.is_valid = true;
+}
+
+// Move cursor up one line (data only, no terminal output)
+void REPLEditor::moveCursorUp() {
+  updateCursorPosition();
+  
+  if (cursor_position.line > 0) {
+    setCursorFromLineColumn(cursor_position.line - 1, cursor_position.column);
+  }
+}
+
+// Move cursor down one line (data only, no terminal output)
+void REPLEditor::moveCursorDown() {
+  updateCursorPosition();
+  
+  if (cursor_position.line < cursor_position.total_lines - 1) {
+    setCursorFromLineColumn(cursor_position.line + 1, cursor_position.column);
+  }
+}
+
+// Move cursor left one character (data only, no terminal output)
+void REPLEditor::moveCursorLeft() {
+  if (cursor_pos > 0) {
+    cursor_pos--;
+    cursor_position.is_valid = false; // Mark for recalculation
+  }
+}
+
+// Move cursor right one character (data only, no terminal output)
+void REPLEditor::moveCursorRight() {
+  if (cursor_pos < current_input.length()) {
+    cursor_pos++;
+    cursor_position.is_valid = false; // Mark for recalculation
+  }
+}
+
+// Move cursor to start of current line (data only, no terminal output)
+void REPLEditor::moveCursorToLineStart() {
+  updateCursorPosition();
+  setCursorFromLineColumn(cursor_position.line, 0);
+}
+
+// Move cursor to end of current line (data only, no terminal output)
+void REPLEditor::moveCursorToLineEnd() {
+  updateCursorPosition();
+  
+  // Find the current line length
+  int line_start = cursor_pos - cursor_position.column;
+  int line_end = current_input.length();
+  
+  for (int i = line_start; i < current_input.length(); i++) {
+    if (current_input.charAt(i) == '\n') {
+      line_end = i;
+      break;
+    }
   }
   
-  // Move cursor to the correct column within the line
-  stream->print("\r"); // Go to beginning of line
+  int line_length = line_end - line_start;
+  setCursorFromLineColumn(cursor_position.line, line_length);
+}
+
+// Redraw content and position cursor - fixed positioning approach
+void REPLEditor::redrawAndPosition(Stream *stream) {
+  updateCursorPosition();
   
-  // Calculate column position (including prompt)
-  int prompt_length = (line_number == 0) ? 4 : 4; // ">>> " or "... " both 4 chars
-  int target_column = prompt_length + chars_from_line_start;
+  // The key insight: we need to always position our display at the same location
+  // To do this, we'll track how many lines our display occupies and always
+  // clear exactly that many lines, then redraw from the same starting position
   
+  // Step 1: Calculate how many lines we need to display
+  int total_display_lines = 1; // At least one line for content
+  if (current_input.length() > 0) {
+    for (int i = 0; i < current_input.length(); i++) {
+      if (current_input.charAt(i) == '\n') {
+        total_display_lines++;
+      }
+    }
+  }
+  
+  // Step 2: Clear our previous display area
+  // Move to beginning of current line
+  stream->print("\r");
+  
+  // Calculate how far to move up based on where the cursor currently is
+  // The terminal cursor should be on the line corresponding to cursor_position.line
+  // We need to move up to the first line of our display
+  int lines_to_move_up = cursor_position.line;
+  
+  // Also account for any extra lines if the previous display was larger
+  int extra_lines_to_clear = max(0, last_displayed_lines - (total_display_lines - 1));
+  lines_to_move_up += extra_lines_to_clear;
+  
+  if (lines_to_move_up > 0) {
+    stream->print("\033[");
+    stream->print(lines_to_move_up);
+    stream->print("A"); // Move up to first line of display
+  }
+  
+  // Clear everything below this position
+  clearBelow(stream);
+  
+  // Step 3: If we have no input, just show prompt
+  if (current_input.length() == 0) {
+    changeTerminalColor(replColors[1], true, stream);
+    stream->print(">>> ");
+    stream->flush();
+    last_displayed_lines = 0;
+    return;
+  }
+
+  // Step 4: Display all lines
+  String lines = current_input;
+  int line_start = 0;
+  int current_line_num = 0;
+  int lines_with_newlines = 0;
+
+  for (int i = 0; i <= lines.length(); i++) {
+    if (i == lines.length() || lines.charAt(i) == '\n') {
+      String line = lines.substring(line_start, i);
+
+      // Show appropriate prompt
+      if (current_line_num == 0) {
+        changeTerminalColor(replColors[1], true, stream);
+        stream->print(">>> ");
+      } else {
+        changeTerminalColor(replColors[1], true, stream);
+        stream->print("... ");
+      }
+
+      // Show line content with syntax highlighting
+      displayStringWithSyntaxHighlighting(line, stream);
+
+      // Add newline if not the last line
+      if (i < lines.length()) {
+        stream->println();
+        lines_with_newlines++;
+      }
+
+      line_start = i + 1;
+      current_line_num++;
+    }
+  }
+
+  // Step 5: Update tracking
+  last_displayed_lines = lines_with_newlines;
+
+  // Step 6: Position cursor at the target location
+  // We're currently at the end of the last line
+  // Move to beginning of last line, then up to first line, then down to target
+  stream->print("\r");
+  
+  if (lines_with_newlines > 0) {
+    stream->print("\033[");
+    stream->print(lines_with_newlines);
+    stream->print("A"); // Move up to first line
+  }
+  
+  // Move down to target line
+  if (cursor_position.line > 0) {
+    // When at bottom of screen, cursor can't move down, so add newlines instead
+    for (int i = 0; i < cursor_position.line; i++) {
+      stream->println(); // Add newline to push content up
+    }
+  }
+  
+  // Position horizontally
+  stream->print("\r");
+  int prompt_length = (cursor_position.line == 0) ? 4 : 4;
+  int target_column = prompt_length + cursor_position.column;
   moveCursorToColumn(stream, target_column);
+  
+  stream->flush();
+  
+  // Reset cursor position tracking for repositionCursorOnly
+  resetCursorTracking();
+}
+
+// Reset the cursor position tracking (call after redrawAndPosition)
+void REPLEditor::resetCursorTracking() {
+  updateCursorPosition();
+  cursor_position_known = true;
+  last_terminal_line = cursor_position.line;
+  last_terminal_column = cursor_position.column;
+}
+
+// Mark cursor position as unknown (forces next movement to redraw)
+void REPLEditor::invalidateCursorTracking() {
+  cursor_position_known = false;
+}
+
+// Move cursor to correct position without redrawing content
+void REPLEditor::repositionCursorOnly(Stream *stream) {
+  updateCursorPosition();
+  
+  // If we don't know where the terminal cursor is, do a full reposition
+  if (!cursor_position_known) {
+    redrawAndPosition(stream);
+    return;
+  }
+  
+  // Calculate relative movement needed
+  int line_diff = cursor_position.line - last_terminal_line;
+  
+  // Move vertically if needed
+  if (line_diff != 0) {
+    if (line_diff > 0) {
+      // Need to move down - but when at bottom of screen, cursor can't move down
+      // Instead, add newlines to create space and push content up
+      for (int i = 0; i < line_diff; i++) {
+        stream->println(); // Add newline to push content up
+      }
+    } else {
+      // Move up, but don't go above line 0
+      int lines_to_move_up = min(-line_diff, last_terminal_line);
+      if (lines_to_move_up > 0) {
+        stream->print("\033[");
+        stream->print(lines_to_move_up);
+        stream->print("A");
+      }
+    }
+  }
+  
+  // Always recalculate horizontal position to account for prompts
+  stream->print("\r");
+  int prompt_length = (cursor_position.line == 0) ? 4 : 4;
+  int target_column = prompt_length + cursor_position.column;
+  moveCursorToColumn(stream, target_column);
+  
+  // Update tracking
+  last_terminal_line = cursor_position.line;
+  last_terminal_column = cursor_position.column;
+  
+  stream->flush();
 }
 
 void REPLEditor::reset() {
@@ -2623,7 +2859,17 @@ void REPLEditor::reset() {
   // Don't reset multiline mode settings - preserve user's choice
   // multiline_override, multiline_forced_on, multiline_forced_off should persist
   last_displayed_lines = 0;
+  last_displayed_content = ""; // Clear the last displayed content
   mp_interrupt_requested = false; // Clear any pending interrupt
+  
+  // Reset cursor position tracking
+  cursor_position.line = 0;
+  cursor_position.column = 0;
+  cursor_position.total_lines = 0;
+  cursor_position.is_valid = false;
+  
+  // Reset terminal cursor tracking
+  cursor_position_known = false;
 }
 
 void REPLEditor::fullReset() {
@@ -2639,7 +2885,43 @@ void REPLEditor::fullReset() {
   multiline_forced_on = false;
   multiline_forced_off = false;
   last_displayed_lines = 0;
+  last_displayed_content = ""; // Clear the last displayed content
+  
+  // Reset cursor position tracking
+  cursor_position.line = 0;
+  cursor_position.column = 0;
+  cursor_position.total_lines = 0;
+  cursor_position.is_valid = false;
+  
+  // Reset terminal cursor tracking
+  cursor_position_known = false;
 }
+
+// ============================================================================
+// CURSOR MOVEMENT FUNCTIONS - CLEANED UP
+// ============================================================================
+// 
+// This REPLEditor now has a clean, simple cursor movement system:
+//
+// LOGICAL CURSOR FUNCTIONS (update internal position only):
+//   - moveCursorUp(), moveCursorDown() - move cursor between lines
+//   - moveCursorLeft(), moveCursorRight() - move cursor within line
+//   - moveCursorToLineStart(), moveCursorToLineEnd() - move to line boundaries
+//   - updateCursorPosition(), setCursorFromLineColumn() - position management
+//
+// TERMINAL CONTROL FUNCTIONS (send ANSI escape codes):
+//   - clearBelow() - clear everything below cursor
+//   - moveCursorToColumn() - position terminal cursor at column
+//
+// DISPLAY FUNCTIONS:
+//   - redrawAndPosition() - redraws content and positions cursor correctly
+//   - repositionCursorOnly() - moves cursor without redrawing (for arrow keys)
+//   - getCurrentLine() - gets current line information
+//   - backspaceOverNewline() - handles backspace over newlines
+//   - loadFromHistory(), exitHistoryMode() - history navigation
+//
+// All deprecated functions have been removed to eliminate confusion.
+// ============================================================================
 
 // Note: enterPasteMode function removed - replaced with "new" command that opens eKilo editor
 // for creating new scripts. This provides a better user experience than paste mode.

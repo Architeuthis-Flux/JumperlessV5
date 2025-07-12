@@ -207,7 +207,7 @@ public:
     uint8_t currentTextSize = 1; // Track current text size
     
     unsigned long lastConnectionCheck = 0;
-    unsigned long connectionCheckInterval = 500;
+    unsigned long connectionCheckInterval = 2500;
     
     const GFXfont* currentFont;
     int currentFontIndex = 0;

@@ -1704,7 +1704,7 @@ static mp_obj_t jl_help_func(void) {
     mp_printf(&mp_plat_print, "          channel 1/DAC1: DAC 1\n");   
     mp_printf(&mp_plat_print, "          channel 2/TOP_RAIL: top rail\n");    
     mp_printf(&mp_plat_print, "          channel 3/BOTTOM_RAIL: bottom rail\n");    
-    mp_printf(&mp_plat_print, "            voltage: -8.0 to 8.0V\n\n");
+    mp_printf(&mp_plat_print, "          voltage: -8.0 to 8.0V\n\n");
     mp_printf(&mp_plat_print, "ADC (Analog-to-Digital Converter):\n");
     mp_printf(&mp_plat_print, "  jumperless.adc_get(channel)                  - Read ADC input voltage\n");
     mp_printf(&mp_plat_print, "  jumperless.get_adc(channel)                  - Alias for adc_get\n\n");

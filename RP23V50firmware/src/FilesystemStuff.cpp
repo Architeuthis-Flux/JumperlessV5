@@ -935,19 +935,31 @@ bool FileManager::editFileWithEkilo(const String& filename) {
         return false;
     }
     
-    if (replMode) {
+    if (replMode || true) {
         // In REPL mode - use launchEkiloREPL and store returned content
+        // Serial.println("REPLMODE");
+        // delay(1000);
         String content = launchEkiloREPL(filename.c_str());
+
+//Serial.print("return\n\nn\n\n\n\n\n\n\n\n\n\n\n\n\r");
         
         if (content.length() > 0) {
-            // Check content size before storing
-            if (content.length() > 8192) { // Limit to 8KB
-                outputToArea("WARNING: File content too large for REPL mode, truncating", FileColors::ERROR);
-                content = content.substring(0, 8192);
+            // Check if this is the special marker indicating REPL was launched
+            if (content == "[REPL_LAUNCHED]") {
+                // REPL was launched with Ctrl+P but no content was executed
+                // Still exit the file manager to return to main menu
+                lastOpenedFileContent = "";
+                shouldExitForREPL = true; // Signal to exit file manager
+            } else {
+                // Check content size before storing
+                if (content.length() > 8192) { // Limit to 8KB
+                    outputToArea("WARNING: File content too large for REPL mode, truncating", FileColors::ERROR);
+                    content = content.substring(0, 8192);
+                }
+                // User saved new content
+                lastOpenedFileContent = content;
+                shouldExitForREPL = true; // Signal to exit file manager
             }
-            // User saved new content
-            lastOpenedFileContent = content;
-            shouldExitForREPL = true; // Signal to exit file manager
         } else {
             // User didn't save - try to load existing file content if it exists
             File file = FatFS.open(filename.c_str(), "r");
@@ -968,6 +980,8 @@ bool FileManager::editFileWithEkilo(const String& filename) {
             }
         }
     } else {
+        // Serial.println("NORMALMODE");
+        // delay(1000);
         // Normal mode - use regular launchEkilo
         launchEkilo(filename.c_str());
     }
@@ -1031,6 +1045,8 @@ void FileManager::run() {
     while (running) {
         // In REPL mode, check if we should exit after content is ready
         if (replMode && shouldExitForREPL) {
+            // Clear screen completely before exiting to avoid weird state
+            clearScreen();
             running = false;
             break;
         }
@@ -1317,10 +1333,14 @@ void FileManager::run() {
         oled.restoreNormalFont();
     }
     
-    // Exit Jumperless interactive mode
-    Serial.write(0x0F);
-    Serial.flush();
-    delay(100); // Give system time to switch modes
+    // Only exit interactive mode if we're NOT returning to main menu after REPL launch
+    if (!shouldExitForREPL) {
+        // Exit Jumperless interactive mode (normal file manager exit)
+        Serial.write(0x0F);
+        Serial.flush();
+        delay(100); // Give system time to switch modes
+    }
+    // If shouldExitForREPL is true, we're returning to main menu and want to keep interactive mode on
     
     changeTerminalColor(FileColors::STATUS, false);
     Serial.println("Exiting File Manager...");
@@ -2093,18 +2113,31 @@ String launchEkiloREPL(const char* filename) {
         
         changeTerminalColor(FileColors::STATUS, false);
         Serial.println("☺ File saved as " + finalFilename);
-        Serial.println("🐍 Launching MicroPython REPL with script content...");
+        Serial.println("🐍 Launching MicroPython REPL with script file...");
         changeTerminalColor(-1, false); // Reset colors
         
         // Brief pause to let user see the message
-        delay(500);
+       // delay(500);
         
-        // Clear screen and launch MicroPython REPL
+        // Clear screen and launch MicroPython REPL with file
         Serial.print("\x1b[2J\x1b[H");
-        enterMicroPythonREPL(&Serial);
+        enterMicroPythonREPLWithFile(&Serial, finalFilename);
+       // Serial.print("return\n\nn\n\n\n\n\n\n\n\n\n\n\n\n\r");
+        //Serial.write(0x0F); // turn off interactive mode
+        //Serial.flush();
         
-        // Return the actual content so it can be loaded into REPL
-        return actualContent;
+        // Restore interactive mode after REPL
+        Serial.write(0x0E); // turn on interactive mode
+        Serial.print("\x1b[2J\x1b[H");
+        Serial.flush();
+        
+        // When REPL was launched with Ctrl+P, always return content to signal file manager to exit
+        // Even if actualContent is empty, return a special marker so file manager knows to quit
+        if (actualContent.length() > 0) {
+            return actualContent;
+        } else {
+            return "[REPL_LAUNCHED]"; // Special marker to signal file manager should exit
+        }
     }
     
     changeTerminalColor(FileColors::STATUS, false);
@@ -2114,6 +2147,11 @@ String launchEkiloREPL(const char* filename) {
         Serial.println("☺ Editor session completed");
     }
     changeTerminalColor(-1, false); // Reset colors
+    
+    // Restore interactive mode if using Serial
+    Serial.write(0x0E); // turn on interactive mode
+    Serial.print("\x1b[2J\x1b[H");
+    Serial.flush();
     
     return savedContent;
 }
@@ -2583,8 +2621,19 @@ String filesystemAppPythonScriptsREPL() {
     manager.run();
     String content = manager.getLastSavedFileContent();
     
-    // Clear screen for clean return to REPL
-    restoreScreenState(&Serial);
+    // If we exited because REPL was launched, don't restore screen state
+    // as the REPL has already modified the display
+    if (manager.getShouldExitForREPL()) {
+        // Clear screen completely for clean return to main menu
+        Serial.print("\x1b[2J\x1b[H");
+        Serial.flush();
+        // Ensure interactive mode is enabled for main menu
+        Serial.write(0x0E);
+        Serial.flush();
+    } else {
+        // Normal exit - restore screen state
+        restoreScreenState(&Serial);
+    }
     
     return content;
 }
@@ -2853,10 +2902,12 @@ void initializeMicroPythonExamples(bool forceInitialization) {
     // Only provide feedback if we're actually doing work
     bool useOutputArea = (globalFileManager != nullptr);
     
+    String initAction = forceInitialization ? "[FORCE INIT]" : "[INIT]";
+    String initMsg = initAction + " Initializing " + String(totalExamples) + " MicroPython examples...";
     if (useOutputArea) {
-        globalFileManager->outputToArea("[INIT] Initializing " + String(totalExamples) + " MicroPython examples...", 155);
+        globalFileManager->outputToArea(initMsg, 155);
     } else {
-        addFilesystemMessage("[INIT] Initializing " + String(totalExamples) + " MicroPython examples...", 155);
+        addFilesystemMessage(initMsg, 155);
     }
     
     // Clean up old location if it exists (migration from previous version)
@@ -2958,7 +3009,7 @@ void initializeMicroPythonExamples(bool forceInitialization) {
     
     // First pass - count files that need to be created
     for (int i = 0; i < totalExamples; i++) {
-        if (!FatFS.exists(examples[i].path)) {
+        if (!FatFS.exists(examples[i].path) || forceInitialization) {
             filesToCreate++;
         } else {
             filesSkipped++;
@@ -2966,7 +3017,8 @@ void initializeMicroPythonExamples(bool forceInitialization) {
     }
     
     if (filesToCreate > 0) {
-        String startMsg = "Creating " + String(filesToCreate) + " example files...";
+        String action = forceInitialization ? "Overwriting" : "Creating";
+        String startMsg = action + " " + String(filesToCreate) + " example files...";
         if (useOutputArea) {
             globalFileManager->outputToArea(startMsg, 155);
         } else {
@@ -2990,9 +3042,10 @@ void initializeMicroPythonExamples(bool forceInitialization) {
             break;
         }
         
-        if (!FatFS.exists(examples[i].path)) {
+        if (!FatFS.exists(examples[i].path) || forceInitialization) {
             // Show progress for each file
-            String progressMsg = "Creating " + String(examples[i].name) + " (" + String(filesCreated + 1) + "/" + String(filesToCreate) + ")";
+            String action = forceInitialization ? "Overwriting" : "Creating";
+            String progressMsg = action + " " + String(examples[i].name) + " (" + String(filesCreated + 1) + "/" + String(filesToCreate) + ")";
             if (useOutputArea) {
                 globalFileManager->outputToArea(progressMsg, 155);
             } else {
@@ -3003,14 +3056,16 @@ void initializeMicroPythonExamples(bool forceInitialization) {
             
             if (success) {
                 filesCreated++;
-                String successMsg = "✓ Created " + String(examples[i].name);
+                String successMsg = forceInitialization ? "✓ Overwrote " : "✓ Created ";
+                successMsg += String(examples[i].name);
                 if (useOutputArea) {
                     globalFileManager->outputToArea(successMsg, 155);
                 } else {
                     addFilesystemMessage(successMsg, 155);
                 }
             } else {
-                String errorMsg = "✗ Failed to create " + String(examples[i].name);
+                String action = forceInitialization ? "overwrite" : "create";
+                String errorMsg = "✗ Failed to " + action + " " + String(examples[i].name);
                 if (useOutputArea) {
                     globalFileManager->outputToArea(errorMsg, 196);
                 } else {
@@ -3034,12 +3089,22 @@ void initializeMicroPythonExamples(bool forceInitialization) {
     // Summary message
     String summary;
     if (filesToCreate > 0) {
-        if (filesCreated == filesToCreate) {
-            summary = "✓ All " + String(filesCreated) + " example files created successfully!";
-        } else if (filesCreated > 0) {
-            summary = "⚠ Created " + String(filesCreated) + "/" + String(filesToCreate) + " files (some failed)";
+        if (forceInitialization) {
+            if (filesCreated == filesToCreate) {
+                summary = "✓ All " + String(filesCreated) + " example files overwrote successfully!";
+            } else if (filesCreated > 0) {
+                summary = "⚠ Overwrote " + String(filesCreated) + "/" + String(filesToCreate) + " files (some failed)";
+            } else {
+                summary = "✗ Failed to overwrite any example files";
+            }
         } else {
-            summary = "✗ Failed to create any example files";
+            if (filesCreated == filesToCreate) {
+                summary = "✓ All " + String(filesCreated) + " example files created successfully!";
+            } else if (filesCreated > 0) {
+                summary = "⚠ Created " + String(filesCreated) + "/" + String(filesToCreate) + " files (some failed)";
+            } else {
+                summary = "✗ Failed to create any example files";
+            }
         }
     } else {
         summary = "✓ All " + String(filesSkipped) + " example files already exist";

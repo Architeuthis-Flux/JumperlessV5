@@ -165,6 +165,7 @@ public:
     String getCurrentPath() const { return currentPath; }
     int getFileCount() const { return fileCount; }
     FileEntry* getCurrentFile();
+    bool getShouldExitForREPL() const { return shouldExitForREPL; }
     
     // Interactive input helpers
     String promptForFilename(const String& prompt);

@@ -159,7 +159,7 @@ bool oled::checkConnection(void) {
         oledConnected = false;
         return false;
     }
-    if (millis() - lastConnectionCheck > 1000) {
+    //if (millis() - lastConnectionCheck > 1000) {
         Wire1.beginTransmission(address);
         if (Wire1.endTransmission() != 0) {
             lastConnectionCheck = millis();
@@ -168,7 +168,7 @@ bool oled::checkConnection(void) {
         }
         lastConnectionCheck = millis();
         oledConnected = true;
-    }
+    //}
     return true;
 }
 

@@ -843,25 +843,37 @@ dontshowmenu:
     }
   }
 
-    // if (millis() - oled.lastConnectionCheck > oled.connectionCheckInterval &&
-    // jumperlessConfig.top_oled.enabled == 1) {
-    //   ///Serial.println("oled connection lost");
-    //   oled.checkConnection();
-    //   if (oled.isConnected() == false) {
-    //     // Serial.println("oled connection lost");
-    //     oled.oledConnected = false;
-    //     oled.disconnect();
-    //     jumperlessConfig.top_oled.enabled = 0;
-    //     if (jumperlessConfig.top_oled.lock_connection == 1 &&
-    //     oled.connectionRetries < oled.maxConnectionRetries) {
-    //       oled.connectionRetries++;
-    //       // if (oled.connectionRetries > oled.maxConnectionRetries) {
-    //       //   oled.connectionRetries = 0;
-    //       oled.init();
-    //       //}
-    //       }
-    //     }
-    //   }
+    if (millis() - oled.lastConnectionCheck > oled.connectionCheckInterval &&
+    jumperlessConfig.top_oled.enabled == 1) {
+      //Serial.println("checking oled connection");
+      //Serial.println(oled.checkConnection());
+      oled.lastConnectionCheck = millis();
+      if (checkIfBridgeExists(jumperlessConfig.top_oled.sda_row, jumperlessConfig.top_oled.gpio_sda) == true) {
+        if (checkIfBridgeExists(jumperlessConfig.top_oled.scl_row, jumperlessConfig.top_oled.gpio_scl) == true) {
+
+      if (oled.checkConnection() == false) {
+         Serial.print("\r                                             \roled connection lost, retrying...");
+        oled.oledConnected = false;
+        //oled.disconnect();
+        //jumperlessConfig.top_oled.enabled = 0;
+
+        // if (jumperlessConfig.top_oled.lock_connection == 1 &&
+        if (oled.connectionRetries < oled.maxConnectionRetries) {
+          //oled.connectionRetries++;
+          // if (oled.connectionRetries > oled.maxConnectionRetries) {
+          //   oled.connectionRetries = 0;
+          //Serial.println("retrying oled connection");
+          oled.init();
+          //}
+          }
+        }
+
+        
+        oled.connectionRetries = 0;
+        
+      }
+      }
+    }
   
 
   if (millis() - switchPositionCheckTimer > switchPositionCheckInterval) {
@@ -1214,27 +1226,36 @@ if (mscModeEnabled == false) {
   case '.': { //!  .
     // initOLED();
     if (jumperlessConfig.top_oled.enabled == 0) {
+      Serial.println("oled enabled");
+      oled.init();
       jumperlessConfig.top_oled.enabled = 1;
       configChanged = true;
     } else {
+      oled.disconnect();
       jumperlessConfig.top_oled.enabled = 0;
+      oled.oledConnected = false;
+      
       configChanged = true;
+      Serial.println("oled disconnected");
     }
 
-    oled.init();
+    
     // oled.print("FUCK");
     // oled.show();
     // oled.test();
+    goto dontshowmenu;
     break;
   }
 
   case 'c': { //!  c
     printChipStateArray();
+    goto dontshowmenu;
     break;
   }
 
   case '_': { //!  _
     printMicrosPerByte();
+    goto dontshowmenu;
     break;
   }
 
@@ -1244,6 +1265,7 @@ if (mscModeEnabled == false) {
   }
   case '&': { //!  &
     loadChangedNetColorsFromFile(netSlot, 0);
+    goto dontshowmenu;
     break;
     int node1 = -1;
     int node2 = -1;
@@ -1277,6 +1299,7 @@ if (mscModeEnabled == false) {
     delay(1);
     drawAnimatedImage(0);
     pauseCore2 = 0;
+    goto dontshowmenu;
     break;
   }
   case 'x': { //!  x
@@ -1289,6 +1312,10 @@ if (mscModeEnabled == false) {
     clearNodeFile(netSlot, 0);
     refreshConnections(-1, 1, 1);
     digitalWrite(RESETPIN, LOW);
+
+    Serial.println("Cleared all connections");
+
+    goto dontshowmenu;
 
     break;
   }

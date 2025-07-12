@@ -717,6 +717,17 @@ void ekilo_insert_newline() {
         row->size = E.cx;
         row->chars[row->size] = '\0';
         ekilo_update_row(row);
+        
+        // When splitting a line, also update the new row to ensure proper syntax highlighting
+        if (E.cy + 1 < E.numrows) {
+            ekilo_update_row(&E.row[E.cy + 1]);
+            
+            // Update syntax highlighting for subsequent rows since line split can affect
+            // multiline comments and other context-dependent highlighting
+            for (int i = E.cy + 2; i < E.numrows; i++) {
+                ekilo_update_row(&E.row[i]);
+            }
+        }
     }
     E.cy++;
     E.cx = 0;
@@ -741,12 +752,19 @@ void ekilo_del_char() {
         ekilo_row_del_char(row, E.cx - 1);
         E.cx--;
     } else {
+        // Joining lines - need to update syntax highlighting for subsequent lines
         E.cx = E.row[E.cy - 1].size;
         ekilo_row_append_string(&E.row[E.cy - 1], row->chars, row->size);
         ekilo_del_row(E.cy);
         E.cy--;
         // Reset horizontal scrolling when moving to previous line
         E.oled_horizontal_offset = 0;
+        
+        // When joining lines, update syntax highlighting for subsequent rows since 
+        // line joining can affect multiline comments and other context-dependent highlighting
+        for (int i = E.cy; i < E.numrows; i++) {
+            ekilo_update_row(&E.row[i]);
+        }
     }
     
     // Schedule OLED update after character deletion

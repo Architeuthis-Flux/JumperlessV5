@@ -12,10 +12,10 @@
 #define INCLUDE_GPIO_BASICS
 #define INCLUDE_NODE_CONNECTIONS
 #define INCLUDE_README
-#define INCLUDE_TEST_RUNNER
+//#define INCLUDE_TEST_RUNNER
 #define INCLUDE_LED_BRIGHTNESS_CONTROL
-//#define INCLUDE_VOLTAGE_MONITOR
-//#define INCLUDE_STYLOPHONE
+#define INCLUDE_VOLTAGE_MONITOR
+#define INCLUDE_STYLOPHONE
 
 // Convenience defines to disable groups of examples
 // Uncomment any of these to disable entire categories
@@ -61,43 +61,35 @@
 #ifdef INCLUDE_DAC_BASICS
 const char* DAC_BASICS_PY = R"("""
 Basic DAC (Digital-to-Analog Converter) operations.
-This example shows how to set and read DAC voltages.
+This example shows how to set DAC voltages.
 
 Hardware Setup:
 1. Connect voltmeter or LED to DAC output pins
 2. DAC channels: 0=DAC_A, 1=DAC_B, 2=TOP_RAIL, 3=BOTTOM_RAIL
-
-Usage:
-  exec(open('examples/01_dac_basics.py').read())
 """
 
-import time
+print("DAC Basics Demo")
 
-def dac_basics():
-    print("DAC Basics Demo")
-    
-    # Test all DAC channels
-    channels = [0, 1, 2, 3]
-    channel_names = ["DAC_A", "DAC_B", "TOP_RAIL", "BOTTOM_RAIL"]
-    
-    for i, channel in enumerate(channels):
-        print("\nTesting " + channel_names[i] + " (channel " + str(channel) + "):")
-        
-        # Set different voltages
-        voltages = [0.0, 1.65, 3.3]
-        for voltage in voltages:
-            dac_set(channel, voltage)
-            actual = dac_get(channel)
-            print("  Set: " + str(voltage) + "V, Read: " + str(round(actual, 3)) + "V")
-            time.sleep(1)
-        
-        # Reset to 0V
-        dac_set(channel, 0.0)
-    
-    print("\nDAC Basics complete!")
+# Test all DAC channels
+channels = [0, 1, 2, 3]
+channel_names = ["DAC_A", "DAC_B", "TOP_RAIL", "BOTTOM_RAIL"]
 
-if __name__ == "__main__":
-    dac_basics()
+for i, channel in enumerate(channels):
+    print("\nTesting " + channel_names[i] + " (channel " + str(channel) + "):")
+    
+    # Set different voltages
+    voltages = [0.0, 1.65, 3.3]
+    for voltage in voltages:
+        dac_set(channel, voltage)
+        actual = dac_get(channel)
+        print("  Set: " + str(voltage) + "V, Read: " + str(round(actual, 3)) + "V")
+        time.sleep(1)
+    
+    # Reset to 0V
+    dac_set(channel, 0.0)
+
+print("\nDAC Basics complete!")
+
 )";
 #endif
 
@@ -110,35 +102,24 @@ Hardware Setup:
 1. Connect voltage sources to ADC input pins
 2. ADC channels: 0-3 available
 3. Input range: 0V to 3.3V
-
-Usage:
-  exec(open('examples/02_adc_basics.py').read())
 """
 
-import time
+print("ADC Basics Demo")
+    
+# Read all ADC channels
+channels = [0, 1, 2, 3]
 
-def adc_basics():
-    print("ADC Basics Demo")
+print("Reading ADC channels (Ctrl+Q to stop):")
+print("Connect voltage sources to ADC inputs")
     
-    # Read all ADC channels
-    channels = [0, 1, 2, 3]
     
-    print("Reading ADC channels (Ctrl+C to stop):")
-    print("Connect voltage sources to ADC inputs")
-    
-    try:
-        while True:
-            print("\nADC Readings:")
-            for channel in channels:
-                voltage = adc_get(channel)
-                print("  ADC" + str(channel) + ": " + str(round(voltage, 3)) + "V")
-            time.sleep(2)
+while True:
+    print("\nADC Readings:")
+    for channel in channels:
+        voltage = adc_get(channel)
+        print("  ADC" + str(channel) + ": " + str(round(voltage, 3)) + "V")
+    time.sleep(0.5)
             
-    except KeyboardInterrupt:
-        print("\nADC Basics complete!")
-
-if __name__ == "__main__":
-    adc_basics()
 )";
 #endif
 
@@ -150,54 +131,45 @@ This example shows digital I/O, direction control, and pull resistors.
 Hardware Setup:
 1. Connect LEDs, buttons, or other digital devices
 2. GPIO pins: 1-10 available
-3. Use appropriate resistors for LEDs
-
-Usage:
-  exec(open('examples/03_gpio_basics.py').read())
 """
 
-import time
+print("GPIO Basics Demo")
 
-def gpio_basics():
-    print("GPIO Basics Demo")
-    
-    # Test GPIO pin 1
-    pin = 1
-    print("Testing GPIO pin " + str(pin))
-    
-    # Set as output
-    gpio_set_dir(pin, True)  # True = OUTPUT
-    print("Set as output")
-    
-    # Blink test
-    print("Blinking 5 times...")
-    for i in range(5):
-        gpio_set(pin, True)   # HIGH
-        print("  GPIO" + str(pin) + " = HIGH")
-        time.sleep(0.5)
-        
-        gpio_set(pin, False)  # LOW
-        print("  GPIO" + str(pin) + " = LOW")
-        time.sleep(0.5)
-    
-    # Set as input
-    gpio_set_dir(pin, False)  # False = INPUT
-    print("Set as input")
-    
-    # Test pull resistors
-    pulls = [0, 1, -1]  # None, Up, Down
-    pull_names = ["NONE", "PULLUP", "PULLDOWN"]
-    
-    for i, pull in enumerate(pulls):
-        gpio_set_pull(pin, pull)
-        state = gpio_get(pin)
-        print("Pull " + pull_names[i] + ": " + str(state))
-        time.sleep(1)
-    
-    print("GPIO Basics complete!")
+# Test GPIO pin 1
+pin = 1
+print("Testing GPIO pin " + str(pin))
 
-if __name__ == "__main__":
-    gpio_basics()
+# Set as output
+gpio_set_dir(pin, True)  # True = OUTPUT
+print("Set as output")
+
+# Blink test
+print("Blinking 5 times...")
+for i in range(5):
+    gpio_set(pin, True)   # HIGH
+    print("  GPIO" + str(pin) + " = HIGH")
+    time.sleep(0.5)
+    
+    gpio_set(pin, False)  # LOW
+    print("  GPIO" + str(pin) + " = LOW")
+    time.sleep(0.5)
+
+# Set as input
+gpio_set_dir(pin, False)  # False = INPUT
+print("Set as input")
+
+# Test pull resistors
+pulls = [0, 1, -1]  # None, Up, Down
+pull_names = ["NONE", "PULLUP", "PULLDOWN"]
+
+for i, pull in enumerate(pulls):
+    gpio_set_pull(pin, pull)
+    state = gpio_get(pin)
+    print("Pull " + pull_names[i] + ": " + str(state))
+    time.sleep(1)
+
+print("GPIO Basics complete!")
+
 )";
 #endif
 
@@ -209,59 +181,50 @@ This example shows how to connect/disconnect nodes and check connections.
 Hardware Setup:
 1. No additional hardware required
 2. Uses internal routing matrix
-
-Usage:
-  exec(open('examples/04_node_connections.py').read())
 """
 
-import time
+print("Node Connections Demo")
+    
+# Clear all existing connections
+nodes_clear()
+print("Cleared all connections")
 
-def node_connections():
-    print("Node Connections Demo")
-    
-    # Clear all existing connections
-    nodes_clear()
-    print("Cleared all connections")
-    
-    # Test connections
-    test_connections = [
-        (1, 30),
-        (15, 45),
-        (DAC0, 20),
-        (GPIO_1, 25)
-    ]
-    
-    for node1, node2 in test_connections:
-        print("\nConnecting " + str(node1) + " to " + str(node2))
-        
-        # Connect nodes
-        result = connect(node1, node2)
-        print("Connect result: " + str(result))
-        
-        # Check connection
-        connected = is_connected(node1, node2)
-        print("Is connected: " + str(connected))
-        
-        time.sleep(1)
-        
-        # Disconnect
-        disconnect(node1, node2)
-        print("Disconnected")
-        
-        # Verify disconnection
-        connected = is_connected(node1, node2)
-        print("Is connected: " + str(connected))
-        
-        time.sleep(1)
-    
-    # Show final status
-    print("\nFinal status:")
-    print_bridges()
-    
-    print("Node Connections complete!")
+# Test connections
+test_connections = [
+    (1, 30),
+    (15, 45),
+    (DAC0, 20),
+    (GPIO_1, 25)
+]
 
-if __name__ == "__main__":
-    node_connections()
+for node1, node2 in test_connections:
+    print("\nConnecting " + str(node1) + " to " + str(node2))
+    
+    # Connect nodes
+    connect(node1, node2)
+    
+    # Check connection
+    connected = is_connected(node1, node2)
+    print("Is connected: " + str(connected))
+    
+    time.sleep(0.5)
+    
+    # Disconnect
+    disconnect(node1, node2)
+    
+    # Verify disconnection
+    connected = is_connected(node1, node2)
+    print("Is connected: " + str(connected))
+    
+    time.sleep(0.5)
+
+# Show final status
+print("\nFinal status:")
+print_bridges()
+
+print("Node Connections complete!")
+nodes_clear()
+
 )";
 #endif
 
@@ -319,9 +282,6 @@ General requirements:
 const char* TEST_RUNNER_PY = R"("""
 Test runner for all Jumperless MicroPython examples.
 Runs each example in sequence for verification.
-
-Usage:
-  exec(open('examples/test_examples.py').read())
 """
 
 import time
@@ -386,7 +346,7 @@ def quick_test():
     gpio_set(1, False)
     
     # Quick connection test
-    print("Connection Test: Connecting holes 1-30")
+    print("Connection Test: Connecting rows 1-30")
     result = connect(1, 30)
     print("  Connect 1-30: " + str(result))  # Convert result to string
     
@@ -412,65 +372,42 @@ LED Brightness Control Demo
 Touch breadboard pads 1-10 to control LED brightness levels.
 
 Hardware Setup:
-1. Connect LED anode to breadboard hole 15
+1. Connect LED anode to breadboard row 15
 2. Connect LED cathode to GND through resistor
-
-Usage:
-  exec(open('examples/micropython_examples/led_brightness_control.py').read())
 """
 
-import time
+print("LED Brightness Control Demo")
+    
+nodes_clear()
+oled_clear()
+oled_print("LED Brightness")
 
-def led_brightness_control():
-    print("LED Brightness Control Demo")
-    
-    nodes_clear()
-    oled_clear()
-    oled_print("LED Brightness")
-    
-    connect(DAC0, 15)
-    print("Hardware Setup:")
-    print("  Connect LED anode to hole 15")
-    print("  Connect LED cathode to GND through resistor")
-    print("  Press Enter when ready...")
-    
-    try:
-        input()
-    except:
-        pass
-    
-    try:
-        while True:
-            pad = probe_read(False)
-            
-            if pad and pad != -1:
-                try:
-                    if hasattr(pad, 'value'):
-                        pad_num = pad.value
-                    else:
-                        pad_num = int(str(pad))
-                    
-                    if 1 <= pad_num <= 10:
-                        voltage = (pad_num / 10.0) * 3.3
-                        dac_set(DAC0, voltage)
-                        print("Pad " + str(pad_num) + ": " + str(round(voltage, 1)) + "V")
-                        oled_clear()
-                        oled_print("Bright: " + str(pad_num) + "/10")
-                        
-                except (ValueError, AttributeError):
-                    pass
-            
-            time.sleep(0.1)
-            
-    except KeyboardInterrupt:
-        print("Demo stopped")
-        dac_set(DAC0, 0)
-        oled_clear()
-        oled_print("Demo Done")
+connect(DAC0, 15)
+print("Hardware Setup:")
+print("  Connect LED anode to row 15")
+print("  Connect LED cathode to GND through resistor")
 
-if __name__ == "__main__":
-    print("LED Brightness Control Demo loaded!")
-    led_brightness_control()
+while True:
+    pad = probe_read(False)
+    
+    if pad and pad != -1:
+        
+        if hasattr(pad, 'value'):
+            pad_num = pad.value
+        else:
+            pad_num = int(str(pad))
+        
+        if 1 <= pad_num <= 10:
+            voltage = (pad_num / 10.0) * 3.3
+            dac_set(DAC0, voltage)
+            print("Pad " + str(pad_num) + ": " + str(round(voltage, 1)) + "V")
+            oled_clear()
+            oled_print("Bright: " + str(pad_num) + "/10")
+            
+
+    
+    time.sleep(0.1)
+    
 )";
 #endif
 
@@ -480,43 +417,31 @@ Voltage Monitor Demo
 Monitor voltage on ADC with real-time OLED display.
 
 Hardware Setup:
-1. Connect voltage source to breadboard hole 20
+1. Connect voltage source to breadboard row 20
 2. Voltage range: 0V to 3.3V
-
-Usage:
-  exec(open('examples/micropython_examples/voltage_monitor.py').read())
 """
 
 import time
 
-def voltage_monitor():
-    print("Voltage Monitor Demo")
-    
-    nodes_clear()
-    connect(ADC0, 20)
-    print("ADC0 connected to hole 20")
-    print("Connect voltage source to hole 20")
-    
-    oled_clear()
-    oled_print("Voltage Monitor")
-    time.sleep(1)
-    
-    try:
-        while True:
-            voltage = adc_get(0)
-            oled_clear()
-            oled_print(str(round(voltage, 3)) + "V")
-            print("Voltage: " + str(round(voltage, 3)) + "V")
-            time.sleep(0.5)
-            
-    except KeyboardInterrupt:
-        print("Monitor stopped")
-        oled_clear()
-        oled_print("Monitor Done")
+print("Voltage Monitor Demo")
 
-if __name__ == "__main__":
-    print("Voltage Monitor Demo loaded!")
-    voltage_monitor()
+nodes_clear()
+connect(ADC0, 20)
+print("ADC0 connected to row 20")
+print("Connect voltage source to row 20")
+
+oled_clear()
+oled_print("Voltage Monitor")
+time.sleep(1)
+
+while True:
+    voltage = adc_get(0)
+    oled_clear()
+    oled_print(str(round(voltage, 3)) + "V")
+    print("Voltage: " + str(round(voltage, 3)) + "V")
+    time.sleep(0.15)
+        
+
 )";
 #endif
 
@@ -526,10 +451,7 @@ Jumperless Stylophone
 Musical instrument using probe and GPIO to generate audio tones.
 
 Hardware Setup:
-1. Connect speaker between holes 30 (positive) and 60 (negative)
-
-Usage:
-  exec(open('examples/micropython_examples/stylophone.py').read())
+1. Connect speaker between rows 25 (positive) and 55 (negative)    
 """
 
 import time
@@ -559,62 +481,46 @@ def play_tone(frequency, duration_ms=100):
     half_period_s = period_s / 2
     cycles = int((duration_ms / 1000.0) / period_s)
     
-    for _ in range(cycles):
+    for i in range(cycles):
         gpio_set(1, True)
         time.sleep(half_period_s)
         gpio_set(1, False)
         time.sleep(half_period_s)
 
-def stylophone():
-    print("Jumperless Stylophone")
-    setup_audio()
-    
-    #oled_clear()
-    oled_print("Touch pads!")
-    
-    current_note = None
-    last_pad = None
-    
-    try:
-        while True:
-            pad = probe_read_nonblocking()
-            
-            if pad and pad != -1:
-                try:
-                    print("Pad: " + str(pad))
+print("Jumperless Stylophone")
+setup_audio()
 
-                    #pad_num = int(str(pad))
-                except:
-                    continue
-                
-                frequency = NOTE_MAP[pad]
-                
-                if frequency > 0 and pad != last_pad:
-                    print("Playing pad " + str(pad) + ": " + str(frequency) + " Hz")
-                    oled_clear()
-                    oled_print("Pad " + str(pad))
-                    current_note = frequency
-                    last_pad = pad
-                
-                if current_note:
-                    play_tone(current_note, 50)
-            else:
-                if current_note:
-                    current_note = None
-                    last_pad = None
-                    oled_clear()
-                    oled_print("Touch pads!")
-                time.sleep(0.01)
-                
-    except KeyboardInterrupt:
-        print("Stylophone stopped")
-        gpio_set(1, False)
-        oled_clear()
-        oled_print("Goodbye!")
+#oled_clear()
+oled_print("Touch pads!")
 
-if __name__ == "__main__":
-    print("Stylophone loaded!")
-    stylophone()
+current_note = None
+last_pad = None
+
+while True:
+    pad = probe_read_nonblocking()
+        
+    if pad and pad != -1:
+        
+        print("Pad: " + str(pad))
+
+        frequency = NOTE_MAP[pad]
+        
+        if frequency > 0 and pad != last_pad:
+            print("Playing pad " + str(pad) + ": " + str(frequency) + " Hz")
+            #oled_clear()
+            oled_print("Pad " + str(pad))
+            current_note = frequency
+            last_pad = pad
+        
+        if current_note:
+            play_tone(current_note, 50)
+    else:
+        if current_note:
+            current_note = None
+            last_pad = None
+            #oled_clear()
+            #oled_print("Touch pads!")
+        time.sleep(0.01)
 )";
 #endif
 

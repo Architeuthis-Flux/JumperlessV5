@@ -21,6 +21,7 @@
 #include "configManager.h"
 #include "oled.h"
 #include "Python_Proper.h"
+#include "FilesystemStuff.h"
 
 
 
@@ -1511,6 +1512,9 @@ void calibrateDacs(void) {
   // showProbeLEDs = 1;
   refreshConnections(-1);
   configChanged = true;
+  if (firstStart == 1) {
+    initializeMicroPythonExamples(true);
+  } 
   // printPathsCompact();
 }
 

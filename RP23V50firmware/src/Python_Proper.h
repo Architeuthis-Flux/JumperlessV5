@@ -60,33 +60,43 @@ struct REPLEditor {
   bool multiline_forced_off = false; // Force multiline mode off
   int last_displayed_lines = 0;      // Track how many lines we last displayed
   bool just_loaded_from_history = false; // Flag to track when we just loaded from history
+  String last_displayed_content = "";    // Track the last content we displayed
 
-  // Methods
-  void getCurrentLine(String &line, int &line_start, int &cursor_in_line);
-  void moveCursorToColumn(Stream *stream, int column);
+  // Centralized cursor position management
+  struct CursorPosition {
+    int line = 0;           // Current line number (0-based)
+    int column = 0;         // Current column within line (0-based)
+    int total_lines = 0;    // Total number of lines in input
+    bool is_valid = false;  // Whether position calculations are current
+  } cursor_position;
+
+  // Logical cursor management (updates internal cursor position)
+  void updateCursorPosition();                     // Calculate line/column from cursor_pos
+  void setCursorFromLineColumn(int line, int col); // Set cursor_pos from line/column
+  void moveCursorUp();                             // Move logical cursor up one line
+  void moveCursorDown();                           // Move logical cursor down one line
+  void moveCursorLeft();                           // Move logical cursor left one character
+  void moveCursorRight();                          // Move logical cursor right one character
+  void moveCursorToLineStart();                    // Move logical cursor to start of current line
+  void moveCursorToLineEnd();                      // Move logical cursor to end of current line
+  
+  // Terminal control (sends ANSI escape codes)
   void clearToEndOfLine(Stream *stream);
-  void clearEntireLine(Stream *stream);
-  void clearScreen(Stream *stream);
   void clearBelow(Stream *stream);
-  void moveCursorUp(Stream *stream, int lines = 1);
-  void moveCursorDown(Stream *stream, int lines = 1);
-  void redrawCurrentLine(Stream *stream);
-  void navigateToLine(Stream *stream, int target_line);
+  void moveCursorToColumn(Stream *stream, int column);
+  
+  // Display management
+  void redrawAndPosition(Stream *stream);          // Redraw content and position cursor
+  void repositionCursorOnly(Stream *stream);       // Move cursor without redrawing content
+  void resetCursorTracking();                      // Reset cursor position tracking
+  void invalidateCursorTracking();                 // Mark cursor position as unknown
+  void drawFromCurrentLine(Stream *stream);        // Simple drawing from current line (for history)
+  void getCurrentLine(String &line, int &line_start, int &cursor_in_line);
   void backspaceOverNewline(Stream *stream);
-  void navigateOverNewline(Stream *stream);
   void loadFromHistory(Stream *stream, const String &historical_input);
   void exitHistoryMode(Stream *stream);
-  void redrawFullInput(Stream *stream);
   void reset();
   void fullReset(); // Complete reset including multiline mode settings
-  void enterPasteMode(Stream *stream);
-  
-  // New multiline navigation helpers
-  void moveUpInMultiline(Stream *stream);
-  void moveDownInMultiline(Stream *stream);
-  void moveToEndOfPreviousLine(Stream *stream);
-  void moveToStartOfNextLine(Stream *stream);
-  void positionCursorAtCurrentPos(Stream *stream);
 };
 
 // Core initialization and cleanup
@@ -119,6 +129,7 @@ void processMicroPythonInput(Stream *stream = global_mp_stream);
 
 // Simple blocking REPL function - call from main.cpp
 void enterMicroPythonREPL(Stream *stream = global_mp_stream);
+void enterMicroPythonREPLWithFile(Stream *stream, const String& filepath);
 
 // Helper functions
 void addJumperlessPythonFunctions(void);
