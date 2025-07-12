@@ -65,6 +65,10 @@ void jl_clickwheel_down(int clicks);
 void jl_clickwheel_press(void);
 void jl_run_app(char* appName);
 void jl_help(void);
+int jl_pwm_setup(int gpio_pin, float frequency, float duty_cycle);
+int jl_pwm_set_duty_cycle(int gpio_pin, float duty_cycle);
+int jl_pwm_set_frequency(int gpio_pin, float frequency);
+int jl_pwm_stop(int gpio_pin);
 
 //=============================================================================
 // Custom Boolean-like Types for Jumperless
@@ -374,6 +378,12 @@ static mp_obj_t gpio_state_unary_op(mp_unary_op_t op, mp_obj_t self_in) {
     switch (op) {
         case MP_UNARY_OP_BOOL:
             return mp_obj_new_bool(self->value);
+        case MP_UNARY_OP_INT_MAYBE:
+            // Support int(state) conversion (HIGH=1, LOW=0)
+            return mp_obj_new_int(self->value ? 1 : 0);
+        case MP_UNARY_OP_FLOAT_MAYBE:
+            // Support float(state) conversion (HIGH=1.0, LOW=0.0)
+            return mp_obj_new_float(self->value ? 1.0 : 0.0);
         default:
             return MP_OBJ_NULL;
     }
@@ -421,6 +431,12 @@ static mp_obj_t gpio_direction_unary_op(mp_unary_op_t op, mp_obj_t self_in) {
     switch (op) {
         case MP_UNARY_OP_BOOL:
             return mp_obj_new_bool(self->value);
+        case MP_UNARY_OP_INT_MAYBE:
+            // Support int(direction) conversion (OUTPUT=1, INPUT=0)
+            return mp_obj_new_int(self->value ? 1 : 0);
+        case MP_UNARY_OP_FLOAT_MAYBE:
+            // Support float(direction) conversion (OUTPUT=1.0, INPUT=0.0)
+            return mp_obj_new_float(self->value ? 1.0 : 0.0);
         default:
             return MP_OBJ_NULL;
     }
@@ -473,6 +489,12 @@ static mp_obj_t gpio_pull_unary_op(mp_unary_op_t op, mp_obj_t self_in) {
         case MP_UNARY_OP_BOOL:
             // Only PULLUP is "truthy"
             return mp_obj_new_bool(self->value == 1);
+        case MP_UNARY_OP_INT_MAYBE:
+            // Support int(pull) conversion (PULLUP=1, PULLDOWN=-1, NONE=0)
+            return mp_obj_new_int(self->value);
+        case MP_UNARY_OP_FLOAT_MAYBE:
+            // Support float(pull) conversion (PULLUP=1.0, PULLDOWN=-1.0, NONE=0.0)
+            return mp_obj_new_float((mp_float_t)self->value);
         default:
             return MP_OBJ_NULL;
     }
@@ -518,6 +540,12 @@ static mp_obj_t connection_state_unary_op(mp_unary_op_t op, mp_obj_t self_in) {
     switch (op) {
         case MP_UNARY_OP_BOOL:
             return mp_obj_new_bool(self->value);
+        case MP_UNARY_OP_INT_MAYBE:
+            // Support int(connection) conversion (CONNECTED=1, DISCONNECTED=0)
+            return mp_obj_new_int(self->value ? 1 : 0);
+        case MP_UNARY_OP_FLOAT_MAYBE:
+            // Support float(connection) conversion (CONNECTED=1.0, DISCONNECTED=0.0)
+            return mp_obj_new_float(self->value ? 1.0 : 0.0);
         default:
             return MP_OBJ_NULL;
     }
@@ -573,6 +601,12 @@ static mp_obj_t probe_button_unary_op(mp_unary_op_t op, mp_obj_t self_in) {
         case MP_UNARY_OP_BOOL:
             // Only CONNECT and REMOVE are "truthy"
             return mp_obj_new_bool(self->value != 0);
+        case MP_UNARY_OP_INT_MAYBE:
+            // Support int(button) conversion (CONNECT=1, REMOVE=2, NONE=0)
+            return mp_obj_new_int(self->value);
+        case MP_UNARY_OP_FLOAT_MAYBE:
+            // Support float(button) conversion (CONNECT=1.0, REMOVE=2.0, NONE=0.0)
+            return mp_obj_new_float((mp_float_t)self->value);
         default:
             return MP_OBJ_NULL;
     }
@@ -628,6 +662,12 @@ static mp_obj_t node_unary_op(mp_unary_op_t op, mp_obj_t self_in) {
     switch (op) {
         case MP_UNARY_OP_BOOL:
             return mp_obj_new_bool(self->value != 0);
+        case MP_UNARY_OP_INT_MAYBE:
+            // Support int(node) conversion - returns the node number
+            return mp_obj_new_int(self->value);
+        case MP_UNARY_OP_FLOAT_MAYBE:
+            // Support float(node) conversion - returns the node number as float
+            return mp_obj_new_float((mp_float_t)self->value);
         default:
             return MP_OBJ_NULL;
     }
@@ -724,7 +764,12 @@ static mp_obj_t probe_pad_unary_op(mp_unary_op_t op, mp_obj_t self_in) {
         case MP_UNARY_OP_BOOL:
             // Only valid pads (not -1) are "truthy"
             return mp_obj_new_bool(self->value != -1);
-
+        case MP_UNARY_OP_INT_MAYBE:
+            // Support int(pad) conversion
+            return mp_obj_new_int(self->value);
+        case MP_UNARY_OP_FLOAT_MAYBE:
+            // Support float(pad) conversion
+            return mp_obj_new_float((mp_float_t)self->value);
         default:
             return MP_OBJ_NULL;
     }
@@ -1078,6 +1123,122 @@ static mp_obj_t jl_gpio_get_pull_func(mp_obj_t pin_obj) {
     return gpio_pull_new(pull);
 }
 static MP_DEFINE_CONST_FUN_OBJ_1(jl_gpio_get_pull_obj, jl_gpio_get_pull_func);
+
+// PWM Functions
+static mp_obj_t jl_pwm_func(size_t n_args, const mp_obj_t *args) {
+    int gpio_pin = mp_obj_get_int(args[0]);
+    float frequency = 1.0; // Default frequency
+    float duty_cycle = 0.5;   // Default duty cycle
+    
+    if (n_args > 1) {
+        frequency = mp_obj_get_float(args[1]);
+    }
+    if (n_args > 2) {
+        duty_cycle = mp_obj_get_float(args[2]);
+    }
+    
+    // Convert GPIO node constants (131-138) to pin numbers (1-8)
+    if (gpio_pin >= 131 && gpio_pin <= 138) {
+        gpio_pin = gpio_pin - 131 + 1;
+    }
+    
+    if (gpio_pin < 1 || gpio_pin > 8) {
+        mp_raise_ValueError(MP_ERROR_TEXT("GPIO pin must be 1-8 or GPIO_1-GPIO_8"));
+    }
+    
+    if (frequency < 10.0 || frequency > 62500000.0) {
+        mp_raise_ValueError(MP_ERROR_TEXT("PWM frequency must be 10Hz to 62.5MHz"));
+    }
+    
+    if (duty_cycle < 0.0 || duty_cycle > 1.0) {
+        mp_raise_ValueError(MP_ERROR_TEXT("PWM duty cycle must be 0.0 to 1.0"));
+    }
+    
+    int result = jl_pwm_setup(gpio_pin, frequency, duty_cycle);
+    
+    if (result != 0) {
+        mp_raise_ValueError(MP_ERROR_TEXT("PWM setup failed"));
+    }
+    
+    return mp_const_none;
+}
+static MP_DEFINE_CONST_FUN_OBJ_VAR_BETWEEN(jl_pwm_obj, 1, 3, jl_pwm_func);
+
+static mp_obj_t jl_pwm_set_duty_cycle_func(mp_obj_t pin_obj, mp_obj_t duty_cycle_obj) {
+    int gpio_pin = mp_obj_get_int(pin_obj);
+    float duty_cycle = mp_obj_get_float(duty_cycle_obj);
+    
+    // Convert GPIO node constants (131-138) to pin numbers (1-8)
+    if (gpio_pin >= 131 && gpio_pin <= 138) {
+        gpio_pin = gpio_pin - 131 + 1;
+    }
+    
+    if (gpio_pin < 1 || gpio_pin > 8) {
+        mp_raise_ValueError(MP_ERROR_TEXT("GPIO pin must be 1-8 or GPIO_1-GPIO_8"));
+    }
+    
+    if (duty_cycle < 0.0 || duty_cycle > 1.0) {
+        mp_raise_ValueError(MP_ERROR_TEXT("PWM duty cycle must be 0.0 to 1.0"));
+    }
+    
+    int result = jl_pwm_set_duty_cycle(gpio_pin, duty_cycle);
+    
+        if (result != 0) {
+        mp_raise_ValueError(MP_ERROR_TEXT("PWM duty cycle set failed"));
+    }
+
+    return mp_const_none;
+}
+static MP_DEFINE_CONST_FUN_OBJ_2(jl_pwm_set_duty_cycle_obj, jl_pwm_set_duty_cycle_func);
+
+static mp_obj_t jl_pwm_set_frequency_func(mp_obj_t pin_obj, mp_obj_t frequency_obj) {
+    int gpio_pin = mp_obj_get_int(pin_obj);
+    float frequency = mp_obj_get_float(frequency_obj);
+    
+    // Convert GPIO node constants (131-138) to pin numbers (1-8)
+    if (gpio_pin >= 131 && gpio_pin <= 138) {
+        gpio_pin = gpio_pin - 131 + 1;
+    }
+    
+    if (gpio_pin < 1 || gpio_pin > 8) {
+        mp_raise_ValueError(MP_ERROR_TEXT("GPIO pin must be 1-8 or GPIO_1-GPIO_8"));
+    }
+    
+    if (frequency < 10.0 || frequency > 62500000.0) {
+        mp_raise_ValueError(MP_ERROR_TEXT("PWM frequency must be 10Hz to 62.5MHz"));
+    }
+    
+    int result = jl_pwm_set_frequency(gpio_pin, frequency);
+    
+    if (result != 0) {
+        mp_raise_ValueError(MP_ERROR_TEXT("PWM frequency set failed"));
+    }
+
+    return mp_const_none;
+}
+static MP_DEFINE_CONST_FUN_OBJ_2(jl_pwm_set_frequency_obj, jl_pwm_set_frequency_func);
+
+static mp_obj_t jl_pwm_stop_func(mp_obj_t pin_obj) {
+    int gpio_pin = mp_obj_get_int(pin_obj);
+    
+    // Convert GPIO node constants (131-138) to pin numbers (1-8)
+    if (gpio_pin >= 131 && gpio_pin <= 138) {
+        gpio_pin = gpio_pin - 131 + 1;
+    }
+    
+    if (gpio_pin < 1 || gpio_pin > 8) {
+        mp_raise_ValueError(MP_ERROR_TEXT("GPIO pin must be 1-8 or GPIO_1-GPIO_8"));
+    }
+    
+    int result = jl_pwm_stop(gpio_pin);
+    
+    if (result != 0) {
+        mp_raise_ValueError(MP_ERROR_TEXT("PWM stop failed"));
+    }
+    
+    return mp_const_none;
+}
+static MP_DEFINE_CONST_FUN_OBJ_1(jl_pwm_stop_obj, jl_pwm_stop_func);
 
 // Node Functions
 static mp_obj_t jl_nodes_connect_func(size_t n_args, const mp_obj_t *args) {
@@ -1730,6 +1891,17 @@ static mp_obj_t jl_help_func(void) {
     mp_printf(&mp_plat_print, "              value: True/False   for HIGH/LOW\n");
     mp_printf(&mp_plat_print, "          direction: True/False   for OUTPUT/INPUT\n");
     mp_printf(&mp_plat_print, "               pull: -1/0/1       for PULL_DOWN/NONE/PULL_UP\n\n");
+    mp_printf(&mp_plat_print, "PWM (Pulse Width Modulation):\n");
+    mp_printf(&mp_plat_print, "  jumperless.pwm(pin, [frequency], [duty])    - Setup PWM on GPIO pin\n");
+    mp_printf(&mp_plat_print, "  jumperless.pwm_set_duty_cycle(pin, duty)    - Set PWM duty cycle\n");
+    mp_printf(&mp_plat_print, "  jumperless.pwm_set_frequency(pin, freq)     - Set PWM frequency\n");
+    mp_printf(&mp_plat_print, "  jumperless.pwm_stop(pin)                    - Stop PWM on pin\n");
+    mp_printf(&mp_plat_print, "  Pin: 1-8 (numeric) or GPIO_1-GPIO_8 (constants)\n");
+    mp_printf(&mp_plat_print, "  Frequency: 10Hz to 62.5MHz, Duty: 0.0 to 1.0\n");
+    mp_printf(&mp_plat_print, "  Aliases: set_pwm, set_pwm_duty_cycle, set_pwm_frequency, stop_pwm\n\n");
+    mp_printf(&mp_plat_print, "             pin: 1-8       GPIO pins only\n");
+    mp_printf(&mp_plat_print, "       frequency: 1-62.5MHz default 1000Hz\n");
+    mp_printf(&mp_plat_print, "      duty_cycle: 0.0-1.0   default 0.5 (50%%)\n\n");
     mp_printf(&mp_plat_print, "Node Connections:\n");
     mp_printf(&mp_plat_print, "  jumperless.connect(node1, node2)            - Connect two nodes\n");
     mp_printf(&mp_plat_print, "  jumperless.disconnect(node1, node2)         - Disconnect nodes\n");
@@ -1796,6 +1968,11 @@ static mp_obj_t jl_help_func(void) {
     mp_printf(&mp_plat_print, "  oled_print(\"Fuck you!\")                    # Display text\n");
     mp_printf(&mp_plat_print, "  current = get_current(0)                   # Read current using alias\n");
     mp_printf(&mp_plat_print, "  set_gpio(1, True)                          # Set GPIO pin high using alias\n");
+    mp_printf(&mp_plat_print, "  pwm(1, 1000, 0.5)                         # 1kHz PWM, 50%% duty cycle on pin 1\n");
+    mp_printf(&mp_plat_print, "  pwm(GPIO_2, 0.5, 0.25)                    # 0.5Hz PWM, 25%% duty (LED blink)\n");
+    mp_printf(&mp_plat_print, "  pwm_set_duty_cycle(GPIO_1, 0.75)          # Change to 75%% duty cycle\n");
+    mp_printf(&mp_plat_print, "  pwm_set_frequency(2, 0.1)                 # Very slow 0.1Hz frequency\n");
+    mp_printf(&mp_plat_print, "  pwm_stop(GPIO_1)                          # Stop PWM on GPIO_1\n");
     mp_printf(&mp_plat_print, "  pad = probe_read()                         # Wait for probe touch\n");
     mp_printf(&mp_plat_print, "  if pad == 25: print('Touched pad 25!')    # Check specific pad\n");
     mp_printf(&mp_plat_print, "  if pad == D13_PAD: connect(D13, TOP_RAIL)  # Auto-connect Arduino pin\n");
@@ -2061,6 +2238,18 @@ static const mp_rom_map_elem_t jumperless_module_globals_table[] = {
     { MP_ROM_QSTR(MP_QSTR_get_gpio_dir), MP_ROM_PTR(&jl_gpio_get_dir_obj) },
     { MP_ROM_QSTR(MP_QSTR_set_gpio_pull), MP_ROM_PTR(&jl_gpio_set_pull_obj) },
     { MP_ROM_QSTR(MP_QSTR_get_gpio_pull), MP_ROM_PTR(&jl_gpio_get_pull_obj) }, 
+    
+    // PWM functions
+    { MP_ROM_QSTR(MP_QSTR_pwm), MP_ROM_PTR(&jl_pwm_obj) },
+    { MP_ROM_QSTR(MP_QSTR_pwm_set_duty_cycle), MP_ROM_PTR(&jl_pwm_set_duty_cycle_obj) },
+    { MP_ROM_QSTR(MP_QSTR_pwm_set_frequency), MP_ROM_PTR(&jl_pwm_set_frequency_obj) },
+    { MP_ROM_QSTR(MP_QSTR_pwm_stop), MP_ROM_PTR(&jl_pwm_stop_obj) },
+    
+    // PWM function aliases
+    { MP_ROM_QSTR(MP_QSTR_set_pwm), MP_ROM_PTR(&jl_pwm_obj) },
+    { MP_ROM_QSTR(MP_QSTR_set_pwm_duty_cycle), MP_ROM_PTR(&jl_pwm_set_duty_cycle_obj) },
+    { MP_ROM_QSTR(MP_QSTR_set_pwm_frequency), MP_ROM_PTR(&jl_pwm_set_frequency_obj) },
+    { MP_ROM_QSTR(MP_QSTR_stop_pwm), MP_ROM_PTR(&jl_pwm_stop_obj) },
     
     // Node functions
     { MP_ROM_QSTR(MP_QSTR_connect), MP_ROM_PTR(&jl_nodes_connect_obj) },

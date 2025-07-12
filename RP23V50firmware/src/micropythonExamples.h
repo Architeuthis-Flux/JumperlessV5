@@ -97,11 +97,6 @@ print("\nDAC Basics complete!")
 const char* ADC_BASICS_PY = R"("""
 Basic ADC (Analog-to-Digital Converter) operations.
 This example shows how to read analog voltages.
-
-Hardware Setup:
-1. Connect voltage sources to ADC input pins
-2. ADC channels: 0-3 available
-3. Input range: 0V to 3.3V
 """
 
 print("ADC Basics Demo")
@@ -127,10 +122,6 @@ while True:
 const char* GPIO_BASICS_PY = R"("""
 Basic GPIO (General Purpose Input/Output) operations.
 This example shows digital I/O, direction control, and pull resistors.
-
-Hardware Setup:
-1. Connect LEDs, buttons, or other digital devices
-2. GPIO pins: 1-10 available
 """
 
 print("GPIO Basics Demo")
@@ -177,10 +168,6 @@ print("GPIO Basics complete!")
 const char* NODE_CONNECTIONS_PY = R"("""
 Node connection and routing operations.
 This example shows how to connect/disconnect nodes and check connections.
-
-Hardware Setup:
-1. No additional hardware required
-2. Uses internal routing matrix
 """
 
 print("Node Connections Demo")
@@ -373,39 +360,31 @@ Touch breadboard pads 1-10 to control LED brightness levels.
 
 Hardware Setup:
 1. Connect LED anode to breadboard row 15
-2. Connect LED cathode to GND through resistor
+2. Connect LED cathode to GND
 """
 
 print("LED Brightness Control Demo")
     
-nodes_clear()
-oled_clear()
 oled_print("LED Brightness")
 
-connect(DAC0, 15)
 print("Hardware Setup:")
 print("  Connect LED anode to row 15")
-print("  Connect LED cathode to GND through resistor")
+print("  Connect LED cathode to GND")
+
+connect(DAC0, 15)
 
 while True:
-    pad = probe_read(False)
-    
-    if pad and pad != -1:
-        
-        if hasattr(pad, 'value'):
-            pad_num = pad.value
-        else:
-            pad_num = int(str(pad))
-        
-        if 1 <= pad_num <= 10:
-            voltage = (pad_num / 10.0) * 3.3
-            dac_set(DAC0, voltage)
-            print("Pad " + str(pad_num) + ": " + str(round(voltage, 1)) + "V")
-            oled_clear()
-            oled_print("Bright: " + str(pad_num) + "/10")
-            
+    pad = probe_read_blocking()
 
-    
+    if pad:
+
+        voltage = (float(pad) / 60.0) * 5.0
+        dac_set(DAC0, voltage)
+        print("\r                      ", end="\r")
+        print(str(pad) + ": " + str(round(voltage, 1)) + "V", end="")
+        oled_clear()
+        oled_print("Bright: " + str(pad) + "/60")
+            
     time.sleep(0.1)
     
 )";
@@ -425,22 +404,19 @@ import time
 
 print("Voltage Monitor Demo")
 
-nodes_clear()
 connect(ADC0, 20)
 print("ADC0 connected to row 20")
 print("Connect voltage source to row 20")
 
-oled_clear()
 oled_print("Voltage Monitor")
 time.sleep(1)
 
 while True:
     voltage = adc_get(0)
-    oled_clear()
     oled_print(str(round(voltage, 3)) + "V")
-    print("Voltage: " + str(round(voltage, 3)) + "V")
+    print("\r                      ", end="\r")
+    print("Voltage: " + str(round(voltage, 3)) + "V", end="")
     time.sleep(0.15)
-        
 
 )";
 #endif
@@ -456,71 +432,31 @@ Hardware Setup:
 
 import time
 
-NOTE_MAP = {
-    1: 261.63, 2: 277.18, 3: 293.66, 4: 311.13, 5: 329.63,
-    6: 349.23, 7: 369.99, 8: 392.00, 9: 415.30, 10: 440.00,
-    11: 466.16, 12: 493.88, 13: 523.25, 14: 554.37, 15: 587.33,
-    16: 622.25, 17: 659.25, 18: 698.46, 19: 739.99, 20: 783.99,
-    21: 830.61, 22: 880.00, 23: 932.33, 24: 987.77, 25: 1046.50
-}
+speaker_pos_row = 25
+speaker_neg_row = 55
+freq_multiplier = 40.0
 
 def setup_audio():
-    #nodes_clear()
-    #gpio_set_direction(1, 0)
-    #gpio_set(1, 0)
-    connect(GPIO_1, 25)
-    connect(GND, 55)
-    print("Audio setup complete")
-    print("Connect speaker: positive to row 25, negative to row 55")
-    time.sleep(1)
-
-def play_tone(frequency, duration_ms=100):
-    if frequency <= 0:
-        return
-    period_s = 1.0 / frequency
-    half_period_s = period_s / 2
-    cycles = int((duration_ms / 1000.0) / period_s)
-    
-    for i in range(cycles):
-        gpio_set(1, True)
-        time.sleep(half_period_s)
-        gpio_set(1, False)
-        time.sleep(half_period_s)
+    connect(GPIO_1, speaker_pos_row)
+    connect(GND, speaker_neg_row)
+    pwm(GPIO_1, 10, 0.5)
+    print("Connect speaker: positive to row " + str(speaker_pos_row) + ", negative to row " + str(speaker_neg_row))
+    time.sleep(0.1)
 
 print("Jumperless Stylophone")
-setup_audio()
-
-#oled_clear()
 oled_print("Touch pads!")
 
-current_note = None
-last_pad = None
-
 while True:
-    pad = probe_read_nonblocking()
-        
-    if pad and pad != -1:
-        
-        print("Pad: " + str(pad))
 
-        frequency = NOTE_MAP[pad]
-        
-        if frequency > 0 and pad != last_pad:
-            print("Playing pad " + str(pad) + ": " + str(frequency) + " Hz")
-            #oled_clear()
-            oled_print("Pad " + str(pad))
-            current_note = frequency
-            last_pad = pad
-        
-        if current_note:
-            play_tone(current_note, 50)
-    else:
-        if current_note:
-            current_note = None
-            last_pad = None
-            #oled_clear()
-            #oled_print("Touch pads!")
-        time.sleep(0.01)
+    pad = probe_read_blocking()
+
+    frequency = float(pad) * freq_multiplier
+    pwm_set_frequency(GPIO_1, frequency)
+
+    print("\r                                 ", end="\r")
+    print("Pad: " + str(pad) + " " + str(frequency) + " Hz", end="")
+    oled_print(str(frequency) + " Hz")
+
 )";
 #endif
 

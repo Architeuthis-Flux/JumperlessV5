@@ -50,6 +50,11 @@ extern int baudRate;
 
 extern gpio_function_t gpio_function_map[10];
 
+// PWM state tracking
+extern float gpioPWMFrequency[10];
+extern float gpioPWMDutyCycle[10];
+extern bool gpioPWMEnabled[10];
+
 // gpioDef[i][0] is the pin number
 // gpioDef[i][1] is the RP_GPIO_x define
 // gpioDef[i][2] is the index of the gpioState array
@@ -267,5 +272,12 @@ const uint16_t DACLookup_FullSine_5Bit[32] =
         4095, 4056, 3939, 3750, 3495, 3185, 2831, 2447,
         2048, 1648, 1264, 910, 600, 345, 156, 39,
         0, 39, 156, 345, 600, 910, 1264, 1648};
+
+// PWM functions
+int setupPWM(int gpio_pin, float frequency = 1000.0, float duty_cycle = 0.5);
+int setPWMDutyCycle(int gpio_pin, float duty_cycle);
+int setPWMFrequency(int gpio_pin, float frequency);
+int stopPWM(int gpio_pin);
+void printPWMState(void);
 
 #endif

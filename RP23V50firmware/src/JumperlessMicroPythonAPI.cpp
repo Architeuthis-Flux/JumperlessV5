@@ -25,6 +25,10 @@
 #include "Python_Proper.h"
 #include "config.h"
 
+
+
+
+
 // Forward declarations
 int justReadProbe(bool allowDuplicates);
 
@@ -204,8 +208,10 @@ int jl_nodes_disconnect(int node1, int node2) {
 }
 
 int jl_nodes_clear(void) {
-    clearNodeFile();  //!
+    createSlots(netSlot,  1);
+    delay(2);
     refreshConnections(-1, 1, 1);
+    waitCore2();
     return 1;
 }
 
@@ -218,18 +224,30 @@ int jl_nodes_is_connected(int node1, int node2) {
 // OLED Functions
 int jl_oled_print(const char* text, int size) {
     mp_hal_check_interrupt();
-    oled.clearPrintShow(text, size, true, true, true, -1, -1, 15000);
-    return 1;
+    if (jumperlessConfig.top_oled.enabled == 1) {
+        oled.clearPrintShow(text, size, true, true, true, -1, -1, 15000);
+        return 1;
+    } else {
+        return 0;
+    }
 }
 
 int jl_oled_clear(void) {
-    oled.clear(1000);
-    return 1;
+    if (jumperlessConfig.top_oled.enabled == 1) {
+        oled.clear(1000);
+        return 1;
+    } else {
+        return 0;
+    }
 }
 
 int jl_oled_show(void) {
-    oled.show(1000);
-    return 1;
+    if (jumperlessConfig.top_oled.enabled == 1) {
+        oled.show(1000);
+        return 1;
+    } else {
+        return 0;
+    }
 }
 
 int jl_oled_connect(void) {
@@ -326,6 +344,23 @@ void jl_clickwheel_press(void) {
     encoderOverride = 10;
     lastButtonEncoderState = PRESSED;
     encoderButtonState = RELEASED;
+}
+
+// PWM Functions
+extern "C" int jl_pwm_setup(int gpio_pin, float frequency, float duty_cycle) {
+    return setupPWM(gpio_pin, frequency, duty_cycle);
+}
+
+extern "C" int jl_pwm_set_duty_cycle(int gpio_pin, float duty_cycle) {
+    return setPWMDutyCycle(gpio_pin, duty_cycle);
+}
+
+extern "C" int jl_pwm_set_frequency(int gpio_pin, float frequency) {
+    return setPWMFrequency(gpio_pin, frequency);
+}
+
+extern "C" int jl_pwm_stop(int gpio_pin) {
+    return stopPWM(gpio_pin);
 }
 
 } // extern "C" 

@@ -129,6 +129,42 @@ struct config {
             2, //uart_tx - no pull
             2, //uart_rx - no pull
         };
+        float pwm_frequency[10] = {
+            1.0, //gpio_0 default frequency in Hz
+            1.0, //gpio_1
+            1.0, //gpio_2
+            1.0, //gpio_3
+            1.0, //gpio_4
+            1.0, //gpio_5
+            1.0, //gpio_6
+            1.0, //gpio_7
+            1.0, //uart_tx
+            1.0, //uart_rx
+        };
+        float pwm_duty_cycle[10] = {
+            0.5, //gpio_0 default duty cycle (0.0 to 1.0)
+            0.5, //gpio_1
+            0.5, //gpio_2
+            0.5, //gpio_3
+            0.5, //gpio_4
+            0.5, //gpio_5
+            0.5, //gpio_6
+            0.5, //gpio_7
+            0.5, //uart_tx
+            0.5, //uart_rx
+        };
+        bool pwm_enabled[10] = {
+            false, //gpio_0 PWM enabled flag
+            false, //gpio_1
+            false, //gpio_2
+            false, //gpio_3
+            false, //gpio_4
+            false, //gpio_5
+            false, //gpio_6
+            false, //gpio_7
+            false, //uart_tx
+            false, //uart_rx
+        };
         // int uart_tx_pin = 0;
         // int uart_rx_pin = 1;
         // int uart_tx_pull = 2;

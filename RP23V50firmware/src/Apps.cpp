@@ -1520,7 +1520,7 @@ void calibrateDacs(void) {
 
       Serial.print(adcZero[i]);
 
-      Serial.print("\t");
+      Serial.print("\t\t");
 
       Serial.println(adcSpread[i]);
     }

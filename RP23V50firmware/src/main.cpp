@@ -116,7 +116,7 @@ unsigned long dumpLEDrate = 50;
 
 
 
-const char firmwareVersion[] = "5.2.1.3"; // remember to update this
+const char firmwareVersion[] = "5.2.1.4"; // remember to update this
  bool newConfigOptions = true; // set to true with new config options //!
                                      // fix the saving every boot thing
 

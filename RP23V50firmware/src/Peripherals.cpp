@@ -9,6 +9,7 @@
 
 //#include "hardware/adc.h"
 #include "hardware/gpio.h"
+#include "hardware/pwm.h"
 // #include "pico/cyw43_arch.h"
 //#include "pico/stdlib.h"
 //#include <Arduino.h>
@@ -37,6 +38,7 @@
 #include "Probing.h"
 //#include "hardware/adc.h"
 #include "Highlighting.h"
+
 
 
 // Compatibility for clangd - these are provided by Arduino.h at compile time
@@ -144,6 +146,17 @@ uint32_t lastTime = 0;
 // LOOKUP TABLE SINE
 uint16_t sine0[360];
 uint16_t sine1[360];
+
+// PWM state tracking
+float gpioPWMFrequency[10] = {
+    1000.0, 1000.0, 1000.0, 1000.0, 1000.0, 1000.0, 1000.0, 1000.0, 1000.0, 1000.0
+};
+float gpioPWMDutyCycle[10] = {
+    0.5, 0.5, 0.5, 0.5, 0.5, 0.5, 0.5, 0.5, 0.5, 0.5
+};
+bool gpioPWMEnabled[10] = {
+    false, false, false, false, false, false, false, false, false, false
+};
 
 void initGPIO(void) {
   for (int i = 0; i < 8; i++) {
@@ -2754,3 +2767,165 @@ void refillTable(int amplitude, int offset, int dac) {
 //                 "irqmask: %i, out: %i\n",
 //                 i, gpio29Function, pd, h, slew, drive, irqmask, out);
 // }
+
+// PWM Functions
+int setupPWM(int gpio_pin, float frequency, float duty_cycle) {
+    // Validate GPIO pin number (1-8 for regular GPIO pins)
+    if (gpio_pin < 1 || gpio_pin > 8) {
+        return -1; // Invalid pin
+    }
+    
+    // Validate frequency (0.01Hz to 62.5MHz)
+    if (frequency < 10.0 || frequency > 62500000.0) {
+        return -2; // Invalid frequency
+    }
+    
+    int gpio_index = gpio_pin - 1; // Convert to 0-based index
+    int physical_pin = gpioDef[gpio_index][0]; // Get physical pin number
+    
+    // Set up PWM
+    gpio_set_function(physical_pin, GPIO_FUNC_PWM);
+    
+    // Find out which PWM slice is connected to this GPIO
+    uint slice_num = pwm_gpio_to_slice_num(physical_pin);
+    
+    // Calculate PWM parameters
+    // System clock is 150MHz by default
+    float clock_freq = 150000000.0f;
+    uint32_t divider = (uint32_t)(clock_freq / (frequency * 65536)) + 1;
+    if (divider > 255) divider = 255;
+    
+    uint32_t wrap = (uint32_t)(clock_freq / (frequency * divider)) - 1;
+    if (wrap > 65535) wrap = 65535;
+    
+    // Set the PWM parameters
+    pwm_set_clkdiv(slice_num, divider);
+    pwm_set_wrap(slice_num, wrap);
+    
+    // Set duty cycle
+    uint32_t level = (uint32_t)(duty_cycle * (wrap + 1));
+    pwm_set_gpio_level(physical_pin, level);
+    
+    // Enable PWM
+    pwm_set_enabled(slice_num, true);
+    
+    // Update state tracking
+    gpioPWMFrequency[gpio_index] = frequency;
+    gpioPWMDutyCycle[gpio_index] = duty_cycle;
+    gpioPWMEnabled[gpio_index] = true;
+    
+    // Update config
+    jumperlessConfig.gpio.pwm_frequency[gpio_index] = frequency;
+    jumperlessConfig.gpio.pwm_duty_cycle[gpio_index] = duty_cycle;
+    jumperlessConfig.gpio.pwm_enabled[gpio_index] = true;
+    
+    return 0; // Success
+}
+
+int setPWMDutyCycle(int gpio_pin, float duty_cycle) {
+    // Validate GPIO pin number (1-8 for regular GPIO pins)
+    if (gpio_pin < 1 || gpio_pin > 8) {
+        return -1; // Invalid pin
+    }
+    
+    // Validate duty cycle (0.0 to 1.0)
+    if (duty_cycle < 0.0 || duty_cycle > 1.0) {
+        return -2; // Invalid duty cycle
+    }
+    
+    int gpio_index = gpio_pin - 1; // Convert to 0-based index
+    int physical_pin = gpioDef[gpio_index][0]; // Get physical pin number
+    
+    // Check if PWM is enabled
+    if (!gpioPWMEnabled[gpio_index]) {
+        // Set up PWM with default frequency if not already enabled
+        float default_freq = (gpioPWMFrequency[gpio_index] < 0.01) ? 1000.0 : gpioPWMFrequency[gpio_index];
+        return setupPWM(gpio_pin, default_freq, duty_cycle);
+    }
+    
+    // Re-setup PWM with the new duty cycle (simpler approach)
+    return setupPWM(gpio_pin, gpioPWMFrequency[gpio_index], duty_cycle);
+}
+
+int setPWMFrequency(int gpio_pin, float frequency) {
+    // Validate GPIO pin number (1-8 for regular GPIO pins)
+    if (gpio_pin < 1 || gpio_pin > 8) {
+        return -1; // Invalid pin
+    }
+    
+    // Validate frequency (0.01Hz to 62.5MHz)
+    if (frequency < 0.01 || frequency > 62500000.0) {
+        return -2; // Invalid frequency
+    }
+    
+    int gpio_index = gpio_pin - 1; // Convert to 0-based index
+    
+    // Check if PWM is enabled
+    if (!gpioPWMEnabled[gpio_index]) {
+        // Set up PWM with default duty cycle if not already enabled
+        float default_duty = (gpioPWMDutyCycle[gpio_index] < 0.0 || gpioPWMDutyCycle[gpio_index] > 1.0) ? 0.5 : gpioPWMDutyCycle[gpio_index];
+        return setupPWM(gpio_pin, frequency, default_duty);
+    }
+    
+    // Re-setup PWM with new frequency
+    return setupPWM(gpio_pin, frequency, gpioPWMDutyCycle[gpio_index]);
+}
+
+int stopPWM(int gpio_pin) {
+    // Validate GPIO pin number (1-8 for regular GPIO pins)
+    if (gpio_pin < 1 || gpio_pin > 8) {
+        return -1; // Invalid pin
+    }
+    
+    int gpio_index = gpio_pin - 1; // Convert to 0-based index
+    int physical_pin = gpioDef[gpio_index][0]; // Get physical pin number
+    
+    // Find out which PWM slice is connected to this GPIO
+    uint slice_num = pwm_gpio_to_slice_num(physical_pin);
+    
+    // Disable PWM
+    pwm_set_enabled(slice_num, false);
+    
+    // Set pin back to SIO function
+    gpio_set_function(physical_pin, GPIO_FUNC_SIO);
+    
+    // Update state tracking
+    gpioPWMEnabled[gpio_index] = false;
+    jumperlessConfig.gpio.pwm_enabled[gpio_index] = false;
+    
+    return 0; // Success
+}
+
+void printPWMState(void) {
+    Serial.println("\n   PWM State:");
+    Serial.println("   number:\t\b1\t\b2\t\b3\t\b4\t\b5\t\b6\t\b7\t\b8");
+    
+    Serial.print("  enabled:\t");
+    for (int i = 0; i < 8; i++) {
+        Serial.print(gpioPWMEnabled[i] ? "yes" : "no");
+        Serial.print("\t");
+    }
+    Serial.println();
+    
+    Serial.print("frequency:\t");
+    for (int i = 0; i < 8; i++) {
+        if (gpioPWMEnabled[i]) {
+            Serial.print(gpioPWMFrequency[i], 1);
+        } else {
+            Serial.print("-");
+        }
+        Serial.print("\t");
+    }
+    Serial.println();
+    
+    Serial.print("duty_cycle:\t");
+    for (int i = 0; i < 8; i++) {
+        if (gpioPWMEnabled[i]) {
+            Serial.print(gpioPWMDutyCycle[i], 2);
+        } else {
+            Serial.print("-");
+        }
+        Serial.print("\t");
+    }
+    Serial.println();
+}

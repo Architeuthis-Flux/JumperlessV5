@@ -64,6 +64,36 @@ void parseCommaSeparatedInts(const char* str, int* array, int maxValues) {
     }
 }
 
+// Parse comma-separated floats into an array
+void parseCommaSeparatedFloats(const char* str, float* array, int maxValues) {
+    char buffer[256];
+    strncpy(buffer, str, sizeof(buffer)-1);
+    buffer[sizeof(buffer)-1] = '\0';
+    
+    char* token = strtok(buffer, ",");
+    int i = 0;
+    while(token != NULL && i < maxValues) {
+        trim(token);
+        array[i++] = atof(token);
+        token = strtok(NULL, ",");
+    }
+}
+
+// Parse comma-separated booleans into an array
+void parseCommaSeparatedBools(const char* str, bool* array, int maxValues) {
+    char buffer[256];
+    strncpy(buffer, str, sizeof(buffer)-1);
+    buffer[sizeof(buffer)-1] = '\0';
+    
+    char* token = strtok(buffer, ",");
+    int i = 0;
+    while(token != NULL && i < maxValues) {
+        trim(token);
+        array[i++] = parseBool(token);
+        token = strtok(NULL, ",");
+    }
+}
+
 
 
 // Helper for all parse functions
@@ -392,6 +422,9 @@ void updateConfigFromFile(const char* filename) {
         } else if (strcmp(section, "gpio") == 0) {
             if (strcmp(key, "direction") == 0) parseCommaSeparatedInts(value, jumperlessConfig.gpio.direction, 10);
             else if (strcmp(key, "pulls") == 0) parseCommaSeparatedInts(value, jumperlessConfig.gpio.pulls, 10);
+            else if (strcmp(key, "pwm_frequency") == 0) parseCommaSeparatedFloats(value, jumperlessConfig.gpio.pwm_frequency, 10);
+            else if (strcmp(key, "pwm_duty_cycle") == 0) parseCommaSeparatedFloats(value, jumperlessConfig.gpio.pwm_duty_cycle, 10);
+            else if (strcmp(key, "pwm_enabled") == 0) parseCommaSeparatedBools(value, jumperlessConfig.gpio.pwm_enabled, 10);
             else if (strcmp(key, "uart_tx_function") == 0) jumperlessConfig.gpio.uart_tx_function = parseArbitraryFunction(value);
             else if (strcmp(key, "uart_rx_function") == 0) jumperlessConfig.gpio.uart_rx_function = parseArbitraryFunction(value);
         } else if (strcmp(section, "serial_1") == 0) {
@@ -1782,6 +1815,15 @@ void updateConfigValue(const char* section, const char* key, const char* value) 
         }
         else if (strcmp(key, "pulls") == 0) {
             parseCommaSeparatedInts(value, jumperlessConfig.gpio.pulls, 10);
+        }
+        else if (strcmp(key, "pwm_frequency") == 0) {
+            parseCommaSeparatedFloats(value, jumperlessConfig.gpio.pwm_frequency, 10);
+        }
+        else if (strcmp(key, "pwm_duty_cycle") == 0) {
+            parseCommaSeparatedFloats(value, jumperlessConfig.gpio.pwm_duty_cycle, 10);
+        }
+        else if (strcmp(key, "pwm_enabled") == 0) {
+            parseCommaSeparatedBools(value, jumperlessConfig.gpio.pwm_enabled, 10);
         }
         else if (strcmp(key, "uart_tx_function") == 0) jumperlessConfig.gpio.uart_tx_function = parseArbitraryFunction(value);
         else if (strcmp(key, "uart_rx_function") == 0) jumperlessConfig.gpio.uart_rx_function = parseArbitraryFunction(value);

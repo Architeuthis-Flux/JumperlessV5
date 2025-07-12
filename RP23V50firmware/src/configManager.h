@@ -32,6 +32,8 @@ void printConfigStructToSerial(bool showNames = true);
 void printConfigHelp(void);
 bool parseSetting(const char* line, char* section, char* key, char* value);
 void parseCommaSeparatedInts(const char* str, int* array, int maxValues);
+void parseCommaSeparatedFloats(const char* str, float* array, int maxValues);
+void parseCommaSeparatedBools(const char* str, bool* array, int maxValues);
 bool parseBool(const char* str);
 float parseFloat(const char* str);
 int parseInt(const char* str);
