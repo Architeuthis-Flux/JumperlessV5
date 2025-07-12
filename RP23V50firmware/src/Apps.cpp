@@ -1035,14 +1035,21 @@ void calibrateDacs(void) {
 
   if (firstStart == 1) {
     Serial.println("\n\rFirst startup calibration\n\n\r");
+    
+    // Ensure routing system is properly initialized after filesystem wipe
+    Serial.println("Initializing routing system for first startup...");
+    initChipStatus();  // Initialize chip mappings based on hardware revision
+    clearAllNTCC();    // Clear and reinitialize routing state
+    delay(100);        // Give system time to stabilize
+    Serial.println("Routing system initialized.");
   } else {
     // Serial.println("Calibration");
+    clearAllNTCC();
   }
   // delay(3000);
   float setVoltage = 0.0;
 
   uint32_t dacColors[4] = {0x150003, 0x101000, 0x001204, 0x000512};
-  clearAllNTCC();
   // sendAllPathsCore2 = 1;
   INA0.setBusADC(0x0e);
   INA1.setBusADC(0x0e);
@@ -1134,7 +1141,7 @@ void calibrateDacs(void) {
 
       refreshConnections(0, 0, 1);
       if (firstStart == 1) {
-        delay(2);
+        delay(20);
       } else {
         delay(18);
       }
@@ -1154,15 +1161,16 @@ void calibrateDacs(void) {
         setVoltage = 0.0;
         setDacByNumber(d, setVoltage, 0);
         if (firstStart == 1) {
-          delay(3);
+          delay(32);
         } else {
           delay(38);
         }
         float reading = INA0.getBusVoltage_mV();
+       
         while (INA0.getConversionFlag() == 0) {
 
           // Serial.print(".");
-          delayMicroseconds(100);
+          delayMicroseconds(400);
         }
 
         reading = INA0.getBusVoltage_mV();
@@ -1271,6 +1279,219 @@ void calibrateDacs(void) {
       }
     }
 
+    // ADC calibration - use DAC 1 to calibrate all ADCs
+    Serial.println("\n\n\rCalibrating ADCs against INA readings using DAC 1\n\r");
+    
+    int adcChannels[] = {0, 1, 2, 3, 4, 7};  // ADC channels to calibrate
+    int numAdcChannels = 6;
+    
+    for (int adcIdx = 0; adcIdx < numAdcChannels; adcIdx++) {
+      int d = adcChannels[adcIdx];
+      b.clear();
+      b.print("calib", 0x100010, 0x000000, 0, 0, -1);
+      //b.print("ADC", dacColors[d], 0x000000, 3, -1, -2);
+      char adcName[10]="";
+
+      switch (d) {
+      case 0:
+        strcpy(adcName, "ADC 0");
+        break;
+      case 1:
+        strcpy(adcName, "ADC 1");
+        
+        break;
+      case 2:
+        strcpy(adcName, "ADC 2");
+        break;
+      case 3:
+        strcpy(adcName, "ADC 3");
+        break;
+      case 4:
+        strcpy(adcName, "ADC 4");
+        break;
+      case 7:
+        strcpy(adcName, "Probe");
+        break;
+      }
+
+      b.print(adcName, dacColors[d%4], 0x000000, 0, 1, 3);
+      
+      // Use DAC 1 to calibrate all ADCs (it's working properly)
+      clearAllNTCC();
+      createSlots(netSlot, 1);
+      //refreshConnections(0, 0, 1);
+      
+      // Always use DAC 1 as the voltage source
+      addBridgeToNodeFile(DAC1, ISENSE_PLUS, netSlot);
+      
+      // Connect to the appropriate ADC
+      switch (d) {
+      case 0:
+        addBridgeToNodeFile(DAC1, ADC0, netSlot);
+        Serial.println("\n\n\r\tADC 0 calibration (using DAC 1)");
+        break;
+      case 1:
+        addBridgeToNodeFile(DAC1, ADC1, netSlot);
+        Serial.println("\n\n\r\tADC 1 calibration (using DAC 1)");
+        break;
+      case 2:
+        addBridgeToNodeFile(DAC1, ADC2, netSlot);
+        Serial.println("\n\n\r\tADC 2 calibration (using DAC 1)");
+        break;
+      case 3:
+        addBridgeToNodeFile(DAC1, ADC3, netSlot);
+        Serial.println("\n\n\r\tADC 3 calibration (using DAC 1)");
+        break;
+      case 4:
+        addBridgeToNodeFile(DAC1, ADC4, netSlot);
+        Serial.println("\n\n\r\tADC 4 calibration (0-5V range, using DAC 1)");
+        break;
+      case 7:
+        addBridgeToNodeFile(DAC1, ROUTABLE_BUFFER_IN, netSlot);
+        Serial.println("\n\n\r\tADC 7 calibration (Probe tip, using DAC 1)");
+        break;
+      }
+      
+      refreshConnections(0, 1, 1);
+      delay(250);
+      printPathsCompact();
+      
+             // Calibrate ADC using multiple voltage points
+       float voltagePoints[8];
+       int numPoints;
+       
+       if (d == 4) {
+         // ADC 4 has 0-5V range, use points within this range
+         float adc4Points[] = {0.0, 1.0, 2.0, 3.0, 4.0, 4.5};
+         numPoints = 6;
+         for (int i = 0; i < numPoints; i++) {
+           voltagePoints[i] = adc4Points[i];
+         }
+       } else {
+         // ADCs 0-3 and 7 have ±8V range, but use 0-6V for calibration (INA can't measure negative)
+         float standardPoints[] = {0.0, 1.0, 2.0, 3.0, 4.0, 5.0, 6.0};
+         numPoints = 7;
+         for (int i = 0; i < numPoints; i++) {
+           voltagePoints[i] = standardPoints[i];
+         }
+       }
+       float totalError = 0.0;
+       float sumINA = 0.0;
+       float sumADC = 0.0;
+       float sumADCSquared = 0.0;
+       float sumADCxINA = 0.0;
+       int validPoints = 0;
+       
+       for (int p = 0; p < numPoints; p++) {
+         float testVoltage = voltagePoints[p];
+         setDacByNumber(1, testVoltage, 0);  // Always use DAC 1
+         delay(100);
+         
+         // Get INA reading
+         float inaReading = INA0.getBusVoltage();
+         
+         while (INA0.getConversionFlag() == 0) {
+           delayMicroseconds(100);
+         }
+         inaReading = INA0.getBusVoltage();
+         
+         // Get raw ADC reading for the specific channel
+         int rawADC = readAdc(d, 64);
+         
+         // Only use positive voltages for calibration (INA can't measure negative)
+         if (inaReading > 0.1) {
+           sumINA += inaReading;
+           sumADC += rawADC;
+           sumADCSquared += rawADC * rawADC;
+           sumADCxINA += rawADC * inaReading;
+           validPoints++;
+           
+           Serial.print("Set: ");
+           Serial.print(testVoltage);
+           Serial.print("V, INA: ");
+           Serial.print(inaReading);
+           Serial.print("V, raw ADC");
+           Serial.print(d);
+           Serial.print(": ");
+           Serial.println(rawADC);
+         }
+       }
+       
+       // Calculate calibration using linear regression
+       if (validPoints >= 2) {
+         // Use linear regression to find: INA_voltage = slope * rawADC + intercept
+         float n = validPoints;
+         float slope = (n * sumADCxINA - sumADC * sumINA) / (n * sumADCSquared - sumADC * sumADC);
+         float intercept = (sumINA - slope * sumADC) / n;
+         
+         // Handle different ADC formulas
+         if (d == 4) {
+           // ADC 4 formula: voltage = (rawADC * adcSpread / 4095) (no offset)
+           // We want: INA_voltage = slope * rawADC + intercept
+           // So: adcSpread/4095 = slope, and intercept should be 0
+           adcSpread[d] = slope * 4095.0;
+           adcZero[d] = 0.0;  // No offset for ADC 4
+         } else {
+           // Other ADCs formula: voltage = (rawADC * adcSpread / 4095) - adcZero
+           // We want: INA_voltage = slope * rawADC + intercept
+           // Matching coefficients: adcSpread/4095 = slope, so adcSpread = slope * 4095
+           // And: -adcZero = intercept, so adcZero = -intercept
+           adcSpread[d] = slope * 4095.0;
+           adcZero[d] = -intercept;  // This is what gets subtracted in the offset
+         }
+         
+         if (abs(slope) > 0.0001) {
+           
+           // Clamp to reasonable values based on ADC type
+           if (d == 4) {
+             // ADC 4 is 0-5V range
+             if (adcSpread[d] < 3.0 || adcSpread[d] > 8.0) {
+               Serial.print("ADC4 spread out of range: ");
+               Serial.print(adcSpread[d]);
+               Serial.println(", using default");
+               adcSpread[d] = 5.0;  // Default for 0-5V
+               adcZero[d] = 0.0;
+             }
+           } else {
+             // Other ADCs are ±8V range
+             if (adcSpread[d] < 10.0 || adcSpread[d] > 30.0) {
+               Serial.print("adcSpread out of range: ");
+               Serial.print(adcSpread[d]);
+               Serial.println(", using default");
+               adcSpread[d] = 18.28;  // Default value
+               adcZero[d] = 8.0;
+             } else if (abs(adcZero[d]) > 50.0) {
+               Serial.print("adcZero out of range: ");
+               Serial.print(adcZero[d]);
+               Serial.println(", using default");
+               adcZero[d] = 8.0;  // Default value
+             }
+           }
+           
+           // Print calibration results if values are reasonable
+           Serial.print("ADC ");
+           Serial.print(d);
+           Serial.print(" calibration: spread=");
+           Serial.print(adcSpread[d], 2);
+           Serial.print(", zero=");
+           Serial.print(adcZero[d], 2);
+           Serial.print(" (slope=");
+           Serial.print(slope, 6);
+           Serial.print(", intercept=");
+           Serial.print(intercept, 2);
+           Serial.println(")");
+         } else {
+           Serial.print("ADC calibration failed - slope too small: ");
+           Serial.println(slope, 6);
+           // Keep default values
+         }
+       } else {
+         Serial.println("ADC calibration failed - insufficient valid points");
+       }
+      
+             setDacByNumber(1, 0.0, 0);  // Reset DAC 1 to 0V
+     }
+
     Serial.println("\n\n\tCalibration Values\n\n\r");
     Serial.print("            DAC Zero\tDAC Spread\tADC Zero\tADC Spread\n\r");
     for (int i = 0; i < 4; i++) {
@@ -1303,6 +1524,16 @@ void calibrateDacs(void) {
 
       Serial.println(adcSpread[i]);
     }
+    
+    Serial.println("\n\r            ADC Zero\tADC Spread");
+    Serial.print("ADC 4 (0-5V)   ");
+    Serial.print(adcZero[4]);
+    Serial.print("\t");
+    Serial.println(adcSpread[4]);
+    Serial.print("ADC 7 (Probe)  ");
+    Serial.print(adcZero[7]);
+    Serial.print("\t");
+    Serial.println(adcSpread[7]);
     saveDacCalibration();
   }
   setRailsAndDACs();
@@ -1348,9 +1579,9 @@ void calibrateDacs(void) {
 
       clearAllNTCC();
       createSlots(netSlot, 1);
-      refreshConnections(0, 0, 1);
+      //refreshConnections(0, 0, 1);
       if (firstStart == 1) {
-        delay(1);
+        delay(8);
       } else {
         delay(8);
       }
@@ -1394,7 +1625,7 @@ void calibrateDacs(void) {
         break;
       }
 
-      refreshConnections();
+      refreshConnections(0, 1, 1);
       // refreshBlind(1, 0);
       if (firstStart == 1) {
         delay(1);
@@ -1410,10 +1641,10 @@ void calibrateDacs(void) {
         setVoltage = i * 1.0;
         setDacByNumber(d, setVoltage, 0);
         Serial.print("set : ");
-        Serial.print(setVoltage);
+        Serial.printf("%*.3f", 6, setVoltage);
         Serial.print(" V\t");
         if (firstStart == 1) {
-          delay(20);
+          delay(25);
         } else {
           delay(150);
         }
@@ -1426,27 +1657,27 @@ void calibrateDacs(void) {
         nextRow++;
 
         if (firstStart == 1) {
-          delay(1);
+          delay(5);
         } else {
           delay(8);
         }
         if (d == 0) {
-          reading = readAdcVoltage(7, 32);
+          reading = readAdcVoltage(7, 64);
         } else {
-          reading = readAdcVoltage(d, 32);
+          reading = readAdcVoltage(d, 64);
         }
         Serial.print("\tADC measured: ");
-        if (i < 0) {
-          Serial.print(setVoltage); // + random(-4, 4) / 100.0);
+        //if (i < 0) {
+         // Serial.print(setVoltage); // + random(-4, 4) / 100.0);
 
-        } else if (i > 8) {
-          Serial.print(setVoltage); // + random(-4, 4) / 100.0);
-        } else {
-          Serial.print(reading);
-        }
+        // } else if (i > 8) {
+        //   Serial.print(setVoltage); // + random(-4, 4) / 100.0);
+        // } else {
+          Serial.printf("%*.3f", 6, reading);
+        //}
         Serial.print(" V");
         if (firstStart == 1) {
-          delay(1);
+          delay(3);
         } else {
           delay(8);
         }
@@ -1476,7 +1707,7 @@ void calibrateDacs(void) {
         }
 
         Serial.print("\t     INA measured: ");
-        Serial.print(reading);
+        Serial.printf("%*.3f", 6, reading);
         Serial.println(" V");
 
         // dacCalibration[0][i] = reading;

@@ -109,8 +109,11 @@ extern uint8_t gpioAnimationBaseHues[10];
 extern int menuBrightnessSetting;
 extern bread b;
 
-extern const int highSaturationSpectrumColors[54];
+extern const int highSaturationSpectrumColors[51];
 extern const int highSaturationSpectrumColorsCount;
+extern const int highSaturationBrightColors[29];
+extern const int highSaturationBrightColorsCount;
+
 
 void printSpectrumOrderedColorCube(void);
 
@@ -147,7 +150,9 @@ void changeTerminalColor(int termColor = -1, bool flush = true,
                          Stream *stream = &Serial);
 
 // void cycleTerminalColor(bool reset = false, bool reverse = false, int step = -1, bool flush = true, Stream *stream = &Serial);
-void cycleTerminalColor(bool reset = false, float step = 100.0, bool flush = true, Stream *stream = &Serial);
+void cycleTerminalColor(bool reset = false, float step = 100.0, bool flush = true, Stream *stream = &Serial, int startColorIndex = 0, int bright = 1);
+
+void changeTerminalColorHighSat(int colorIndex = -1, bool flush = true, Stream *stream = &Serial, int bright = 0);
 
 void drawImage(int imageIndex = 0);
 void drawAnimatedImage(int imageIndex = 0, int speed = 2000);

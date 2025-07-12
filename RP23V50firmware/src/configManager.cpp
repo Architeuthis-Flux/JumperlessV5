@@ -1,4 +1,5 @@
 #include <FatFS.h>
+#include "Graphics.h"
 #include "MatrixState.h"
 #include "config.h"
 #include "PersistentStuff.h"
@@ -8,16 +9,20 @@
 #include "configManager.h"
 #include "NetManager.h"
 #include "Peripherals.h"
-
+#include "FilesystemStuff.h"
 #include "oled.h"
 #include "ArduinoStuff.h"
+#include "Apps.h"
 #ifdef DONOTUSE_SERIALWRAPPER
 #include "SerialWrapper.h"
 #define Serial SerialWrap
 #endif
+
+
 // Define the global configuration instance
 
 bool configChanged = false;
+bool autoCalibrationNeeded = false;
 
 struct config jumperlessConfig;
 
@@ -58,6 +63,7 @@ void parseCommaSeparatedInts(const char* str, int* array, int maxValues) {
         token = strtok(NULL, ",");
     }
 }
+
 
 
 // Helper for all parse functions
@@ -172,6 +178,18 @@ void resetConfigToDefaults(int clearCalibration, int clearHardware) {
     float saved_bottom_rail_spread = jumperlessConfig.calibration.bottom_rail_spread;
     float saved_dac_0_spread = jumperlessConfig.calibration.dac_0_spread;
     float saved_dac_1_spread = jumperlessConfig.calibration.dac_1_spread;
+    float saved_adc_0_zero = jumperlessConfig.calibration.adc_0_zero;
+    float saved_adc_0_spread = jumperlessConfig.calibration.adc_0_spread;
+    float saved_adc_1_zero = jumperlessConfig.calibration.adc_1_zero;
+    float saved_adc_1_spread = jumperlessConfig.calibration.adc_1_spread;
+    float saved_adc_2_zero = jumperlessConfig.calibration.adc_2_zero;
+    float saved_adc_2_spread = jumperlessConfig.calibration.adc_2_spread;
+    float saved_adc_3_zero = jumperlessConfig.calibration.adc_3_zero;
+    float saved_adc_3_spread = jumperlessConfig.calibration.adc_3_spread;
+    float saved_adc_4_zero = jumperlessConfig.calibration.adc_4_zero;
+    float saved_adc_4_spread = jumperlessConfig.calibration.adc_4_spread;
+    float saved_adc_7_zero = jumperlessConfig.calibration.adc_7_zero;
+    float saved_adc_7_spread = jumperlessConfig.calibration.adc_7_spread;
     int saved_probe_max = jumperlessConfig.calibration.probe_max;
     int saved_probe_min = jumperlessConfig.calibration.probe_min;
     // Serial.print("saved_probe_min = ");
@@ -210,6 +228,18 @@ void resetConfigToDefaults(int clearCalibration, int clearHardware) {
     jumperlessConfig.calibration.bottom_rail_spread = saved_bottom_rail_spread;
     jumperlessConfig.calibration.dac_0_spread = saved_dac_0_spread;
     jumperlessConfig.calibration.dac_1_spread = saved_dac_1_spread;
+    jumperlessConfig.calibration.adc_0_zero = saved_adc_0_zero;
+    jumperlessConfig.calibration.adc_0_spread = saved_adc_0_spread;
+    jumperlessConfig.calibration.adc_1_zero = saved_adc_1_zero;
+    jumperlessConfig.calibration.adc_1_spread = saved_adc_1_spread;
+    jumperlessConfig.calibration.adc_2_zero = saved_adc_2_zero;
+    jumperlessConfig.calibration.adc_2_spread = saved_adc_2_spread;
+    jumperlessConfig.calibration.adc_3_zero = saved_adc_3_zero;
+    jumperlessConfig.calibration.adc_3_spread = saved_adc_3_spread;
+    jumperlessConfig.calibration.adc_4_zero = saved_adc_4_zero;
+    jumperlessConfig.calibration.adc_4_spread = saved_adc_4_spread;
+    jumperlessConfig.calibration.adc_7_zero = saved_adc_7_zero;
+    jumperlessConfig.calibration.adc_7_spread = saved_adc_7_spread;
 
     } 
 
@@ -238,11 +268,12 @@ void updateConfigFromFile(const char* filename) {
     char value[64];
     // Config version tracking  
     const char* currentFirmwareVersion = firmwareVersion;
+
     
     bool foundConfigVersion = false;
     char configFirmwareVersion[16] = {0};
     bool needsReset = false;
-    
+    delay(1000);
     while (file.available()) {
         int bytesRead = file.readBytesUntil('\n', line, sizeof(line)-1);
         line[bytesRead] = '\0';
@@ -270,9 +301,28 @@ void updateConfigFromFile(const char* filename) {
         // Update config based on section and key
         if (strcmp(section, "config") == 0) {
             if (strcmp(key, "firmware_version") == 0) {
-                strncpy(configFirmwareVersion, value, sizeof(configFirmwareVersion)-1);
+                // Strip trailing semicolon from version string first
+                if (value[strlen(value)-1] == ';') {
+                    value[strlen(value)-1] = '\0';
+                }
+                // Trim leading and trailing whitespace more robustly
+                char* trimmed = value;
+                while (isspace(*trimmed)) trimmed++;  // Skip leading spaces
+                char* end = trimmed + strlen(trimmed) - 1;
+                while (end > trimmed && isspace(*end)) end--;  // Find end of non-space chars
+                *(end + 1) = '\0';  // Null terminate
+                
+                strncpy(configFirmwareVersion, trimmed, sizeof(configFirmwareVersion)-1);
+                configFirmwareVersion[sizeof(configFirmwareVersion)-1] = '\0';  // Ensure null termination
+                // Serial.print("configFirmwareVersion = ");
+                // Serial.println(configFirmwareVersion);
+                // Serial.print("firmwareVersion = ");
+                // Serial.println(firmwareVersion);
+                // Serial.print("strcmp(configFirmwareVersion, firmwareVersion) = ");
+                //Serial.println(strcmp(configFirmwareVersion, firmwareVersion));
                 foundConfigVersion = true;
             }
+            
         } else if (strcmp(section, "hardware") == 0) {
             if (strcmp(key, "generation") == 0) jumperlessConfig.hardware.generation = parseInt(value);
             else if (strcmp(key, "revision") == 0) jumperlessConfig.hardware.revision = parseInt(value);
@@ -311,6 +361,18 @@ void updateConfigFromFile(const char* filename) {
             else if (strcmp(key, "dac_0_spread") == 0) jumperlessConfig.calibration.dac_0_spread = parseFloat(value);
             else if (strcmp(key, "dac_1_zero") == 0) jumperlessConfig.calibration.dac_1_zero = parseInt(value);
             else if (strcmp(key, "dac_1_spread") == 0) jumperlessConfig.calibration.dac_1_spread = parseFloat(value);
+            else if (strcmp(key, "adc_0_zero") == 0) jumperlessConfig.calibration.adc_0_zero = parseFloat(value);
+            else if (strcmp(key, "adc_0_spread") == 0) jumperlessConfig.calibration.adc_0_spread = parseFloat(value);
+            else if (strcmp(key, "adc_1_zero") == 0) jumperlessConfig.calibration.adc_1_zero = parseFloat(value);
+            else if (strcmp(key, "adc_1_spread") == 0) jumperlessConfig.calibration.adc_1_spread = parseFloat(value);
+            else if (strcmp(key, "adc_2_zero") == 0) jumperlessConfig.calibration.adc_2_zero = parseFloat(value);
+            else if (strcmp(key, "adc_2_spread") == 0) jumperlessConfig.calibration.adc_2_spread = parseFloat(value);
+            else if (strcmp(key, "adc_3_zero") == 0) jumperlessConfig.calibration.adc_3_zero = parseFloat(value);
+            else if (strcmp(key, "adc_3_spread") == 0) jumperlessConfig.calibration.adc_3_spread = parseFloat(value);
+            else if (strcmp(key, "adc_4_zero") == 0) jumperlessConfig.calibration.adc_4_zero = parseFloat(value);
+            else if (strcmp(key, "adc_4_spread") == 0) jumperlessConfig.calibration.adc_4_spread = parseFloat(value);
+            else if (strcmp(key, "adc_7_zero") == 0) jumperlessConfig.calibration.adc_7_zero = parseFloat(value);
+            else if (strcmp(key, "adc_7_spread") == 0) jumperlessConfig.calibration.adc_7_spread = parseFloat(value);
             else if (strcmp(key, "probe_max") == 0) jumperlessConfig.calibration.probe_max = parseInt(value);
             else if (strcmp(key, "probe_min") == 0) jumperlessConfig.calibration.probe_min = parseInt(value);
         } else if (strcmp(section, "logo_pads") == 0) {
@@ -366,7 +428,7 @@ void updateConfigFromFile(const char* filename) {
     // Check if config needs to be reset due to version differences
     if (!foundConfigVersion) {
         // Old config without version tracking - reset to be safe
-       // Serial.println("Config file missing version info. Resetting to defaults (preserving hardware/calibration)...");
+        Serial.println("Config file missing version info. Resetting to defaults (preserving hardware/calibration)...");
         needsReset = true;
     } else {
         // Parse version numbers to compare
@@ -376,24 +438,89 @@ void updateConfigFromFile(const char* filename) {
         sscanf(configFirmwareVersion, "%d.%d.%d.%d", &configGen, &configMajor, &configMinor, &configPatch);
         sscanf(currentFirmwareVersion, "%d.%d.%d.%d", &currentGen, &currentMajor, &currentMinor, &currentPatch);
         
-        // Check if firmware is more than one version behind
+        // Check if current firmware is newer than config firmware
+        bool isNewerFirmware = (currentMajor > configMajor) || 
+                              (currentMajor == configMajor && currentMinor > configMinor) ||
+                              (currentMajor == configMajor && currentMinor == configMinor && currentPatch > configPatch);
+        
+        if (isNewerFirmware && newConfigOptions) {
+            Serial.print("Firmware updated from ");
+            Serial.print(configFirmwareVersion);
+            Serial.print(" to ");
+            Serial.print(currentFirmwareVersion);
+            Serial.println(" with new config options. Reloading config...");
+            
+            // Save ALL current config values before reset
+            struct config savedConfig = jumperlessConfig;
+            
+            // Reset to defaults to get any new options
+            resetConfigToDefaults(0, 0);  // Don't clear calibration or hardware
+            
+            // Check if there are new calibration options by comparing calibration sections
+            bool hasNewCalibrationOptions = false;
+            
+            // Compare key calibration parameters to detect new options
+            if (jumperlessConfig.calibration.top_rail_zero != savedConfig.calibration.top_rail_zero ||
+                jumperlessConfig.calibration.top_rail_spread != savedConfig.calibration.top_rail_spread ||
+                jumperlessConfig.calibration.bottom_rail_zero != savedConfig.calibration.bottom_rail_zero ||
+                jumperlessConfig.calibration.bottom_rail_spread != savedConfig.calibration.bottom_rail_spread ||
+                jumperlessConfig.calibration.dac_0_zero != savedConfig.calibration.dac_0_zero ||
+                jumperlessConfig.calibration.dac_0_spread != savedConfig.calibration.dac_0_spread ||
+                jumperlessConfig.calibration.dac_1_zero != savedConfig.calibration.dac_1_zero ||
+                jumperlessConfig.calibration.dac_1_spread != savedConfig.calibration.dac_1_spread ||
+                jumperlessConfig.calibration.adc_0_zero != savedConfig.calibration.adc_0_zero ||
+                jumperlessConfig.calibration.adc_0_spread != savedConfig.calibration.adc_0_spread ||
+                jumperlessConfig.calibration.adc_1_zero != savedConfig.calibration.adc_1_zero ||
+                jumperlessConfig.calibration.adc_1_spread != savedConfig.calibration.adc_1_spread ||
+                jumperlessConfig.calibration.adc_2_zero != savedConfig.calibration.adc_2_zero ||
+                jumperlessConfig.calibration.adc_2_spread != savedConfig.calibration.adc_2_spread ||
+                jumperlessConfig.calibration.adc_3_zero != savedConfig.calibration.adc_3_zero ||
+                jumperlessConfig.calibration.adc_3_spread != savedConfig.calibration.adc_3_spread ||
+                jumperlessConfig.calibration.adc_4_zero != savedConfig.calibration.adc_4_zero ||
+                jumperlessConfig.calibration.adc_4_spread != savedConfig.calibration.adc_4_spread ||
+                jumperlessConfig.calibration.adc_7_zero != savedConfig.calibration.adc_7_zero ||
+                jumperlessConfig.calibration.adc_7_spread != savedConfig.calibration.adc_7_spread) {
+                hasNewCalibrationOptions = true;
+            }
+            
+            // Restore all saved values (this preserves user settings while adding any new defaults)
+            jumperlessConfig.hardware = savedConfig.hardware;
+            jumperlessConfig.dacs = savedConfig.dacs;
+            jumperlessConfig.debug = savedConfig.debug;
+            jumperlessConfig.routing = savedConfig.routing;
+            jumperlessConfig.calibration = savedConfig.calibration;
+            jumperlessConfig.logo_pads = savedConfig.logo_pads;
+            jumperlessConfig.display = savedConfig.display;
+            jumperlessConfig.gpio = savedConfig.gpio;
+            jumperlessConfig.serial_1 = savedConfig.serial_1;
+            jumperlessConfig.serial_2 = savedConfig.serial_2;
+            jumperlessConfig.top_oled = savedConfig.top_oled;
+            
+            // Save the updated config with current firmware version
+            saveConfig();
+            Serial.println("Config updated with new firmware version.");
+            
+            // Set flag to run calibration later if there are new calibration options
+            if (hasNewCalibrationOptions) {
+                Serial.println("New calibration options detected. Calibration will run after initialization...");
+                autoCalibrationNeeded = true;
+            }
+            
+            // Reset the flag so this only happens once per firmware update
+            newConfigOptions = false;
+            return;
+        }
+        
+        // Check if firmware is significantly older (for backward compatibility warnings)
         bool majorVersionDiff = (currentMajor > configMajor);
         bool minorVersionDiff = (currentMajor == configMajor && currentMinor > configMinor + 1);
-        bool patchVersionDiff = (currentMajor == configMajor && currentMinor == configMinor && currentPatch > configPatch + 1);
         
-        if (majorVersionDiff || minorVersionDiff ) {
-            // Serial.print("Config from firmware ");
-            // Serial.print(configFirmwareVersion);
-            // Serial.print(" is too old for current firmware ");
-            // Serial.print(currentFirmwareVersion);
-            // Serial.println(". Resetting to defaults (preserving hardware/calibration)...");
-            needsReset = true;
-        } else if (newConfigOptions && strcmp(configFirmwareVersion, currentFirmwareVersion) != 0) {
-            // Serial.print("Config from firmware ");
-            // Serial.print(configFirmwareVersion);
-            // Serial.print(" has new options in firmware ");
-            // Serial.print(currentFirmwareVersion);
-            // Serial.println(". Resetting to defaults (preserving hardware/calibration)...");
+        if (majorVersionDiff || minorVersionDiff) {
+            Serial.print("Config from firmware ");
+            Serial.print(configFirmwareVersion);
+            Serial.print(" is significantly older than current firmware ");
+            Serial.print(currentFirmwareVersion);
+            Serial.println(". Resetting to defaults (preserving hardware/calibration)...");
             needsReset = true;
         }
     }
@@ -491,6 +618,18 @@ void saveConfigToFile(const char* filename) {
     file.print("dac_0_spread = "); file.print(jumperlessConfig.calibration.dac_0_spread); file.println(";");
     file.print("dac_1_zero = "); file.print(jumperlessConfig.calibration.dac_1_zero); file.println(";");
     file.print("dac_1_spread = "); file.print(jumperlessConfig.calibration.dac_1_spread); file.println(";");
+    file.print("adc_0_zero = "); file.print(jumperlessConfig.calibration.adc_0_zero); file.println(";");
+    file.print("adc_0_spread = "); file.print(jumperlessConfig.calibration.adc_0_spread); file.println(";");
+    file.print("adc_1_zero = "); file.print(jumperlessConfig.calibration.adc_1_zero); file.println(";");
+    file.print("adc_1_spread = "); file.print(jumperlessConfig.calibration.adc_1_spread); file.println(";");
+    file.print("adc_2_zero = "); file.print(jumperlessConfig.calibration.adc_2_zero); file.println(";");
+    file.print("adc_2_spread = "); file.print(jumperlessConfig.calibration.adc_2_spread); file.println(";");
+    file.print("adc_3_zero = "); file.print(jumperlessConfig.calibration.adc_3_zero); file.println(";");
+    file.print("adc_3_spread = "); file.print(jumperlessConfig.calibration.adc_3_spread); file.println(";");
+    file.print("adc_4_zero = "); file.print(jumperlessConfig.calibration.adc_4_zero); file.println(";");
+    file.print("adc_4_spread = "); file.print(jumperlessConfig.calibration.adc_4_spread); file.println(";");
+    file.print("adc_7_zero = "); file.print(jumperlessConfig.calibration.adc_7_zero); file.println(";");
+    file.print("adc_7_spread = "); file.print(jumperlessConfig.calibration.adc_7_spread); file.println(";");
     file.print("probe_max = "); file.print(jumperlessConfig.calibration.probe_max); file.println(";");
     file.print("probe_min = "); file.print(jumperlessConfig.calibration.probe_min); file.println(";");
     file.println();
@@ -728,6 +867,30 @@ void printConfigSectionToSerial(int section, bool showNames, bool pasteable) {
         Serial.print("dac_1_zero = "); Serial.print(jumperlessConfig.calibration.dac_1_zero); Serial.println(";");
         if (pasteable == true) Serial.print("`[calibration] ");
         Serial.print("dac_1_spread = "); Serial.print(jumperlessConfig.calibration.dac_1_spread); Serial.println(";");
+        if (pasteable == true) Serial.print("`[calibration] ");
+        Serial.print("adc_0_zero = "); Serial.print(jumperlessConfig.calibration.adc_0_zero); Serial.println(";");
+        if (pasteable == true) Serial.print("`[calibration] ");
+        Serial.print("adc_0_spread = "); Serial.print(jumperlessConfig.calibration.adc_0_spread); Serial.println(";");
+        if (pasteable == true) Serial.print("`[calibration] ");
+        Serial.print("adc_1_zero = "); Serial.print(jumperlessConfig.calibration.adc_1_zero); Serial.println(";");
+        if (pasteable == true) Serial.print("`[calibration] ");
+        Serial.print("adc_1_spread = "); Serial.print(jumperlessConfig.calibration.adc_1_spread); Serial.println(";");
+        if (pasteable == true) Serial.print("`[calibration] ");
+        Serial.print("adc_2_zero = "); Serial.print(jumperlessConfig.calibration.adc_2_zero); Serial.println(";");
+        if (pasteable == true) Serial.print("`[calibration] ");
+        Serial.print("adc_2_spread = "); Serial.print(jumperlessConfig.calibration.adc_2_spread); Serial.println(";");
+        if (pasteable == true) Serial.print("`[calibration] ");
+        Serial.print("adc_3_zero = "); Serial.print(jumperlessConfig.calibration.adc_3_zero); Serial.println(";");
+        if (pasteable == true) Serial.print("`[calibration] ");
+        Serial.print("adc_3_spread = "); Serial.print(jumperlessConfig.calibration.adc_3_spread); Serial.println(";");
+        if (pasteable == true) Serial.print("`[calibration] ");
+        Serial.print("adc_4_zero = "); Serial.print(jumperlessConfig.calibration.adc_4_zero); Serial.println(";");
+        if (pasteable == true) Serial.print("`[calibration] ");
+        Serial.print("adc_4_spread = "); Serial.print(jumperlessConfig.calibration.adc_4_spread); Serial.println(";");
+        if (pasteable == true) Serial.print("`[calibration] ");
+        Serial.print("adc_7_zero = "); Serial.print(jumperlessConfig.calibration.adc_7_zero); Serial.println(";");
+        if (pasteable == true) Serial.print("`[calibration] ");
+        Serial.print("adc_7_spread = "); Serial.print(jumperlessConfig.calibration.adc_7_spread); Serial.println(";");
         if (pasteable == true) Serial.print("`[calibration] ");
         Serial.print("probe_max = "); Serial.print(jumperlessConfig.calibration.probe_max); Serial.println(";");
         if (pasteable == true) Serial.print("`[calibration] ");
@@ -1042,16 +1205,41 @@ void printSettingChange(const char* section, const char* key, const char* oldVal
 }
 
 void printConfigHelp() {
+
+    
     Serial.println("\n\r");
-    Serial.println("         ~ = show current config");
-    Serial.println("~[section] = show specific section (e.g. ~[routing])");
-    Serial.println("         ` = enter config settings");
-    Serial.println("        ~? = show this help\n\r");
-    Serial.println("    ~reset = reset to defaults");
-    Serial.println("    ~names = show names for settings");
-    Serial.println("  ~numbers = show numbers for settings");
-    Serial.println("\n    config setting format (prefix with ` to paste from main menu)\n\r");    
-    Serial.println("`[serial_1]connect_on_boot = true;");
+    cycleTerminalColor(true, 8.0, true,  &Serial, 12, 1);
+    Serial.println("                              Read config ");
+    cycleTerminalColor(false, 2.0, true,  &Serial, 0, 1);
+    Serial.println("                          ~ = show current config");
+    Serial.println("                     ~names = show names for settings");
+    Serial.println("                   ~numbers = show numbers for settings");
+    Serial.println("                 ~[section] = show specific section (e.g. ~[routing])");
+    cycleTerminalColor(true, 15.0, true,  &Serial, 22, 1);
+    Serial.println("\n\r");
+    Serial.println("                              Write config ");
+    cycleTerminalColor(false, 2.0, true,  &Serial, 0, 1);
+    Serial.println("`[section] setting = value; = enter config settings (pro tip: copy/paste setting from ~ output and just change the value)");
+    // Serial.println("\n\r    config setting format (prefix with ` to paste from main menu)\n\r");    
+    // Serial.println("    Example: ");
+    // Serial.println("`[serial_1]connect_on_boot = true;");
+        cycleTerminalColor(true, 15.0, true,  &Serial, 1, 1);
+
+    Serial.println("\n\r");
+    Serial.println("                              Reset config");
+    cycleTerminalColor(false, 2.0, true,  &Serial, 0, 1);
+    Serial.println("                     `reset = reset to defaults (keeps calibration and hardware version)");
+    Serial.println("            `reset_hardware = reset hardware settings (keeps calibration)");
+    Serial.println("         `reset_calibration = reset calibration settings (keeps hardware version)");
+    Serial.println("                 `reset_all = reset to defaults and clear all settings");
+    cycleTerminalColor(false, 1.0, true,  &Serial, 0, 1);
+    Serial.println("         `force_first_start = clears everything to factory settings and runs first startup calibration");
+
+    cycleTerminalColor(true, 15.0, true,  &Serial, 18, 1);
+    Serial.println("\n\r");
+    Serial.println("                              Help");
+    cycleTerminalColor(false, 1.0, true,  &Serial, 0, 1);
+    Serial.println("                         ~? = show this help\n\r");
     // Serial.println("\n\r\tor you can use dot notation\n\r");
     // Serial.println("`config.routing.stack_paths = 1;");
     // Serial.println("\n\r\tor paste a whole section\n\r");
@@ -1068,7 +1256,7 @@ void printConfigToSerial(bool showNamesArg) {
     char line[128] = {0};
     int lineIndex = 0;
     unsigned long lastCharTime = millis();
-    const unsigned long timeout = 100; // 100ms timeout
+    const unsigned long timeout = 1000; // 100ms timeout
 
     // Wait for input with timeout
     while (true) {
@@ -1145,6 +1333,7 @@ bool dacChange = false;
     while (Serial.available() == 0) {
         // delayMicroseconds(10);
         if (millis() - lastCharTime > 400) {
+            //Serial.println("No input detected. Showing help.");
             printConfigHelp();
             return;
         }
@@ -1192,7 +1381,7 @@ bool dacChange = false;
                     memset(line, 0, sizeof(line));
                     lineIndex = 0;
                     continue;
-                } else if (strcmp(line, "clear_calibration") == 0 || strcmp(line, "clear_cal") == 0) {
+                } else if (strcmp(line, "clear_calibration") == 0 || strcmp(line, "clear_cal") == 0 || strcmp(line, "reset_calibration") == 0 || strcmp(line, "reset_cal") == 0) {
                     resetConfigToDefaults(1, 0);
                     Serial.println("Done. Calibration has been cleared");
                     ledChange = true;
@@ -1200,7 +1389,7 @@ bool dacChange = false;
                     memset(line, 0, sizeof(line));
                     lineIndex = 0;
                     continue;
-                } else if (strcmp(line, "clear_hardware") == 0 || strcmp(line, "clear_hw") == 0) {
+                } else if (strcmp(line, "clear_hardware") == 0 || strcmp(line, "clear_hw") == 0 || strcmp(line, "reset_hardware") == 0 || strcmp(line, "reset_hw") == 0) {
                     resetConfigToDefaults(0, 1);
                     Serial.println("Done. Hardware has been cleared");
                     ledChange = true;
@@ -1208,7 +1397,7 @@ bool dacChange = false;
                     memset(line, 0, sizeof(line));
                     lineIndex = 0;
                     continue;
-                } else if (strcmp(line, "clear_all") == 0) {
+                } else if (strcmp(line, "clear_all") == 0 || strcmp(line, "reset_all") == 0) {
                     resetConfigToDefaults(1, 1);
                     Serial.println("Done. All settings have been cleared");
                     ledChange = true;
@@ -1216,18 +1405,54 @@ bool dacChange = false;
                     memset(line, 0, sizeof(line));
                     lineIndex = 0;
                     continue;
-                } else if (strcmp(line, "force_first_start") == 0) {
+                } else if (strcmp(line, "clear_filesystem") == 0 || strcmp(line, "reset_filesystem") == 0) {
+                    Serial.println("Deleting all filesystem contents...");
+                    bool deleteSuccess = deleteDirectoryContents("/");
+                    Serial.println("Filesystem contents deleted.");
+                    continue;
+                
+                } else if (strcmp(line, "force_first_start") == 0 || strcmp(line, "factory_reset") == 0) {
                     //firstStart = 1;
-                    Serial.println("Config file deleted. \n\n\rPower cycle your Jumperless to reset config and force startup calibration.\n\n\r");
-                    Serial.flush();
+                    cycleTerminalColor(true, 100.0, true,  &Serial, 0, 1);
                     FatFS.remove("/config.txt");
+
+                    Serial.println("Config file deleted.");
+                    Serial.flush();
+                    
+                    // // Delete all contents of the filesystem recursively
+                    bool deleteSuccess = deleteDirectoryContents("/");
+                    
+                    cycleTerminalColor(false, 100.0, true,  &Serial, 0, 1);
+                    if (deleteSuccess) {
+                        Serial.println("All filesystem contents deleted successfully.");
+                    } else {
+                        Serial.println("Some files/directories could not be deleted (this may be normal).");
+                    }
+                    Serial.flush();
+
+
+                    
+
+                    EEPROM.write(FIRSTSTARTUPADDRESS, 0x00);
+                    EEPROM.commit();
+                    cycleTerminalColor(false, 100.0, true,  &Serial, 0, 1);
+                    Serial.println("First startup flag cleared.");
+                    Serial.flush();
+                    
+
+                    cycleTerminalColor(false, 100.0, true,  &Serial, 0, 1);
+                    Serial.println("Done. All settings have been cleared");
+                    delay(200);
+                    cycleTerminalColor(false, 100.0, true,  &Serial, 0, 1);
+                   // Serial.println("\n\rPower cycle your Jumperless to reset config and force startup calibration.");
+
                     unsigned long startTime = millis()+1000;
                     int dots = 0;
-
-                    while (1) {
+//return;
+                    while (millis() < 3000) {
                          if (millis() - startTime > 500) {
                         Serial.print("\r                                           \r");
-                        Serial.print("Waiting for power cycle");
+                        Serial.print("Power cycling");
                        
                             dots++;
                             for (int i = 0; i < dots; i++) {
@@ -1239,12 +1464,14 @@ bool dacChange = false;
                             
                             dots = 0;
                         }
+                        Serial.flush();
             
                     }
                     // saveConfigToFile("/config.txt");
                     // Serial.println("Done. All settings have been reset to defaults");
                     memset(line, 0, sizeof(line));
                     lineIndex = 0;
+                    rp2040.reboot();
                     continue;
                 }
             }
@@ -1318,9 +1545,9 @@ bool dacChange = false;
         }
  //Serial.println(timedOut);
         if (timedOut > timeout) {
-            printConfigHelp();
-            Serial.println("\n\r");
-            Serial.flush();
+            // printConfigHelp();
+            // Serial.println("\n\r");
+            // Serial.flush();
             memset(line, 0, sizeof(line));
             lineIndex = 0;
 
@@ -1391,6 +1618,18 @@ void updateConfigValue(const char* section, const char* key, const char* value) 
         else if (strcmp(key, "dac_0_spread") == 0) sprintf(oldValue, "%.2f", jumperlessConfig.calibration.dac_0_spread);
         else if (strcmp(key, "dac_1_zero") == 0) sprintf(oldValue, "%d", jumperlessConfig.calibration.dac_1_zero);
         else if (strcmp(key, "dac_1_spread") == 0) sprintf(oldValue, "%.2f", jumperlessConfig.calibration.dac_1_spread);
+        else if (strcmp(key, "adc_0_zero") == 0) sprintf(oldValue, "%.2f", jumperlessConfig.calibration.adc_0_zero);
+        else if (strcmp(key, "adc_0_spread") == 0) sprintf(oldValue, "%.2f", jumperlessConfig.calibration.adc_0_spread);
+        else if (strcmp(key, "adc_1_zero") == 0) sprintf(oldValue, "%.2f", jumperlessConfig.calibration.adc_1_zero);
+        else if (strcmp(key, "adc_1_spread") == 0) sprintf(oldValue, "%.2f", jumperlessConfig.calibration.adc_1_spread);
+        else if (strcmp(key, "adc_2_zero") == 0) sprintf(oldValue, "%.2f", jumperlessConfig.calibration.adc_2_zero);
+        else if (strcmp(key, "adc_2_spread") == 0) sprintf(oldValue, "%.2f", jumperlessConfig.calibration.adc_2_spread);
+        else if (strcmp(key, "adc_3_zero") == 0) sprintf(oldValue, "%.2f", jumperlessConfig.calibration.adc_3_zero);
+        else if (strcmp(key, "adc_3_spread") == 0) sprintf(oldValue, "%.2f", jumperlessConfig.calibration.adc_3_spread);
+        else if (strcmp(key, "adc_4_zero") == 0) sprintf(oldValue, "%.2f", jumperlessConfig.calibration.adc_4_zero);
+        else if (strcmp(key, "adc_4_spread") == 0) sprintf(oldValue, "%.2f", jumperlessConfig.calibration.adc_4_spread);
+        else if (strcmp(key, "adc_7_zero") == 0) sprintf(oldValue, "%.2f", jumperlessConfig.calibration.adc_7_zero);
+        else if (strcmp(key, "adc_7_spread") == 0) sprintf(oldValue, "%.2f", jumperlessConfig.calibration.adc_7_spread);
         else if (strcmp(key, "probe_max") == 0) sprintf(oldValue, "%d", jumperlessConfig.calibration.probe_max);
         else if (strcmp(key, "probe_min") == 0) sprintf(oldValue, "%d", jumperlessConfig.calibration.probe_min);
     }
@@ -1506,6 +1745,18 @@ void updateConfigValue(const char* section, const char* key, const char* value) 
         else if (strcmp(key, "dac_0_spread") == 0) jumperlessConfig.calibration.dac_0_spread = parseFloat(value);
         else if (strcmp(key, "dac_1_zero") == 0) jumperlessConfig.calibration.dac_1_zero = parseInt(value);
         else if (strcmp(key, "dac_1_spread") == 0) jumperlessConfig.calibration.dac_1_spread = parseFloat(value);
+        else if (strcmp(key, "adc_0_zero") == 0) jumperlessConfig.calibration.adc_0_zero = parseFloat(value);
+        else if (strcmp(key, "adc_0_spread") == 0) jumperlessConfig.calibration.adc_0_spread = parseFloat(value);
+        else if (strcmp(key, "adc_1_zero") == 0) jumperlessConfig.calibration.adc_1_zero = parseFloat(value);
+        else if (strcmp(key, "adc_1_spread") == 0) jumperlessConfig.calibration.adc_1_spread = parseFloat(value);
+        else if (strcmp(key, "adc_2_zero") == 0) jumperlessConfig.calibration.adc_2_zero = parseFloat(value);
+        else if (strcmp(key, "adc_2_spread") == 0) jumperlessConfig.calibration.adc_2_spread = parseFloat(value);
+        else if (strcmp(key, "adc_3_zero") == 0) jumperlessConfig.calibration.adc_3_zero = parseFloat(value);
+        else if (strcmp(key, "adc_3_spread") == 0) jumperlessConfig.calibration.adc_3_spread = parseFloat(value);
+        else if (strcmp(key, "adc_4_zero") == 0) jumperlessConfig.calibration.adc_4_zero = parseFloat(value);
+        else if (strcmp(key, "adc_4_spread") == 0) jumperlessConfig.calibration.adc_4_spread = parseFloat(value);
+        else if (strcmp(key, "adc_7_zero") == 0) jumperlessConfig.calibration.adc_7_zero = parseFloat(value);
+        else if (strcmp(key, "adc_7_spread") == 0) jumperlessConfig.calibration.adc_7_spread = parseFloat(value);
         else if (strcmp(key, "probe_max") == 0) jumperlessConfig.calibration.probe_max = parseInt(value);
         else if (strcmp(key, "probe_min") == 0) jumperlessConfig.calibration.probe_min = parseInt(value);
     }

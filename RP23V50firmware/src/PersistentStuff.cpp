@@ -321,6 +321,18 @@ void saveDacCalibration(void)
   jumperlessConfig.calibration.dac_1_zero = dacZero[1];
   jumperlessConfig.calibration.top_rail_zero = dacZero[2];
   jumperlessConfig.calibration.bottom_rail_zero = dacZero[3];
+  jumperlessConfig.calibration.adc_0_spread = adcSpread[0];
+  jumperlessConfig.calibration.adc_1_spread = adcSpread[1];
+  jumperlessConfig.calibration.adc_2_spread = adcSpread[2];
+  jumperlessConfig.calibration.adc_3_spread = adcSpread[3];
+  jumperlessConfig.calibration.adc_4_spread = adcSpread[4];
+  jumperlessConfig.calibration.adc_7_spread = adcSpread[7];
+  jumperlessConfig.calibration.adc_0_zero = adcZero[0];
+  jumperlessConfig.calibration.adc_1_zero = adcZero[1];
+  jumperlessConfig.calibration.adc_2_zero = adcZero[2];
+  jumperlessConfig.calibration.adc_3_zero = adcZero[3];
+  jumperlessConfig.calibration.adc_4_zero = adcZero[4];
+  jumperlessConfig.calibration.adc_7_zero = adcZero[7];
   jumperlessConfig.calibration.probe_max = 0.0f;
   jumperlessConfig.calibration.probe_min = 0.0f;
 
@@ -971,6 +983,20 @@ void readSettingsFromConfig() {
   dacZero[1] = jumperlessConfig.calibration.dac_1_zero;
   dacZero[2] = jumperlessConfig.calibration.top_rail_zero;
   dacZero[3] = jumperlessConfig.calibration.bottom_rail_zero;
+
+  // ADC calibration
+  adcSpread[0] = jumperlessConfig.calibration.adc_0_spread;
+  adcSpread[1] = jumperlessConfig.calibration.adc_1_spread;
+  adcSpread[2] = jumperlessConfig.calibration.adc_2_spread;
+  adcSpread[3] = jumperlessConfig.calibration.adc_3_spread;
+  adcSpread[4] = jumperlessConfig.calibration.adc_4_spread;
+  adcSpread[7] = jumperlessConfig.calibration.adc_7_spread;
+  adcZero[0] = jumperlessConfig.calibration.adc_0_zero;
+  adcZero[1] = jumperlessConfig.calibration.adc_1_zero;
+  adcZero[2] = jumperlessConfig.calibration.adc_2_zero;
+  adcZero[3] = jumperlessConfig.calibration.adc_3_zero;
+  adcZero[4] = jumperlessConfig.calibration.adc_4_zero;
+  adcZero[7] = jumperlessConfig.calibration.adc_7_zero;
 
 
   // DAC voltages

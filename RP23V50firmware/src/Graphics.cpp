@@ -312,11 +312,11 @@ int colorCycle = 0;
 int defNudge = 0;
 
 
-const int highSaturationSpectrumColors[54] = {
+const int highSaturationSpectrumColors[51] = {
   // Red hues (0-30°)
   160, 196, 202, 166,
   // Orange hues (30-60°)
-  208, 172, 214, 178, 220,
+  208,  214, 178, 220,
   // Yellow hues (60-90°)
   184, 226, 190, 148, 154, 112, 118,
   // Yellow-Green hues (90-120°)
@@ -330,7 +330,7 @@ const int highSaturationSpectrumColors[54] = {
   // Cyan-Blue hues (210-240°)
   26, 27,
   // Blue hues (240-270°)
-  20, 21, 57, 56,
+    63, 62,
   // Blue-Magenta hues (270-300°)
   93, 92, 129, 128, 165,
   // Magenta hues (300-330°)
@@ -339,8 +339,37 @@ const int highSaturationSpectrumColors[54] = {
   161, 197
 };
 
-const int highSaturationSpectrumColorsCount = 54;
+const int highSaturationSpectrumColorsCount = 51;
 
+
+const int highSaturationBrightColors[29] = {
+  // Red hues (0-30°)
+   196, 202, 
+  // Orange hues (30-60°)
+  208,  214,  220,
+  // Yellow hues (60-90°)
+   226, 190,  154,  118,
+  // Yellow-Green hues (90-120°)
+   82,
+  // Green hues (120-150°)
+   46, 47, 
+  // Green-Cyan hues (150-180°)
+  48,  49,  50,
+  // Cyan hues (180-210°)
+   51, 45,  39,  33,
+  // Cyan-Blue hues (210-240°)
+   27,
+  // Blue hues (240-270°)
+  63, 
+  // Blue-Magenta hues (270-300°)
+  99, 129, 165,
+  // Magenta hues (300-330°)
+   201, 200,  199,  198,
+  // Red-Magenta hues (330-360°)
+   197
+};
+
+const int highSaturationBrightColorsCount = 29;
 
 
 void changeTerminalColor(int termColor, bool flush, Stream *stream) {
@@ -369,52 +398,14 @@ void changeTerminalColor(int termColor, bool flush, Stream *stream) {
 }
 
 
-// void cycleTerminalColor(bool reset, bool reverse, int step, bool flush, Stream *stream) {
-//   if (disableTerminalColors) {
-//     return;
-//   }
-//   static float stepDistance = 5.0f;
-//   static float colorAccumulator = 0.0f;
-//   if (step != -1) {
-//     stepDistance = (float)step;
-//   }
-//   static int currentColor = 0;
-//   if (reset) {
-//     currentColor = 0;
-//     colorAccumulator = 0.0f;
-//   } else {
-//     if (reverse) {
-//       colorAccumulator -= stepDistance;
-//     } else {
-//       colorAccumulator += stepDistance;
-//     }
-    
-//     // Only update currentColor when we've accumulated enough for a full step
-//     while (colorAccumulator >= 1.0f) {
-//       currentColor++;
-//       colorAccumulator -= 1.0f;
-//       if (currentColor >= highSaturationSpectrumColorsCount) {
-//         currentColor = 0;
-//       }
-//     }
-//     while (colorAccumulator <= -1.0f) {
-//       currentColor--;
-//       colorAccumulator += 1.0f;
-//       if (currentColor < 0) {
-//         currentColor = highSaturationSpectrumColorsCount - 1;
-//       }
-//     }
-//   }
-//   int color = highSaturationSpectrumColors[currentColor];
 
-
-//   stream->printf("\033[38;5;%dm", color);
-//   if (flush) {
-//     stream->flush();
-//   }
-// }
-
-void cycleTerminalColor(bool reset,  float step, bool flush, Stream *stream) {
+///@brief cycle through the high saturation spectrum colors (54 colors)
+///@param reset if true, reset the color accumulator
+///@param step the step size (0.1 - 100.0)
+///@param flush if true, flush the stream
+///@param stream the stream to print to
+///@param startColorIndex the color index to start at (0-53) (only if reset is true)
+void cycleTerminalColor(bool reset,  float step, bool flush, Stream *stream, int startColorIndex, int bright) {
   if (disableTerminalColors) {
     return;
   }
@@ -428,7 +419,7 @@ void cycleTerminalColor(bool reset,  float step, bool flush, Stream *stream) {
   }
   static int currentColor = 0;
   if (reset) {
-    currentColor = 0;
+    currentColor = startColorIndex;
     colorAccumulator = 0.0f;
   } else {
     // if (reverse) {
@@ -441,25 +432,77 @@ void cycleTerminalColor(bool reset,  float step, bool flush, Stream *stream) {
     while (colorAccumulator >= 1.0f) {
       currentColor++;
       colorAccumulator -= 1.0f;
-      if (currentColor >= highSaturationSpectrumColorsCount) {
-        currentColor = 0;
+      if (bright == 1) {
+        if (currentColor >= highSaturationBrightColorsCount) {
+          currentColor = 0;
+        }
+      } else {
+        if (currentColor >= highSaturationSpectrumColorsCount) {
+          currentColor = 0;
+        }
       }
     }
     while (colorAccumulator <= -1.0f) {
       currentColor--;
       colorAccumulator += 1.0f;
       if (currentColor < 0) {
-        currentColor = highSaturationSpectrumColorsCount - 1;
+        if (bright == 1) {
+          currentColor = highSaturationBrightColorsCount - 1;
+        } else {
+          currentColor = highSaturationSpectrumColorsCount - 1;
+        }
       }
     }
   }
   int color = highSaturationSpectrumColors[currentColor];
-
+  if (bright == 1) {
+    color = highSaturationBrightColors[currentColor];
+  }
   stream->printf("\033[38;5;%dm", color);
   if (flush) {
     stream->flush();
   }
 }
+
+///@brief change the terminal color to a high saturation color
+///@param colorIndex the color index to change to (0-53)
+///@param flush if true, flush the stream
+///@param stream the stream to print to
+void changeTerminalColorHighSat(int colorIndex, bool flush, Stream *stream, int bright) {
+  static int currentColorIndex = 0;
+  if (colorIndex == -1) {
+   
+    currentColorIndex++;
+    if (bright == 1) {
+      if (currentColorIndex >= highSaturationBrightColorsCount) {
+        currentColorIndex = 0;
+      }
+    } else {
+      if (currentColorIndex >= highSaturationSpectrumColorsCount) {
+        currentColorIndex = 0;
+      }
+    }
+    colorIndex = currentColorIndex;
+  }
+
+  int color = highSaturationSpectrumColors[colorIndex];
+  if (bright == 1) {
+    color = highSaturationBrightColors[colorIndex];
+  }
+  
+  stream->printf("\033[38;5;%dm", color);
+  if (flush) {
+    stream->flush();
+  }
+}
+
+void cycleTerminalColorHighSat(bool flush, Stream *stream) {
+  static int currentColorIndex = 0;
+  currentColorIndex++;
+  if (currentColorIndex >= highSaturationBrightColorsCount) {
+    currentColorIndex = 0;
+  }
+} 
 
 
 

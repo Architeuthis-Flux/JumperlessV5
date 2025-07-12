@@ -2702,6 +2702,70 @@ int getConfiguredEditorLines() {
     return DEFAULT_DISPLAY_LINES - 1;
 }
 
+//==============================================================================
+// Filesystem Utility Functions
+//==============================================================================
+
+// Recursively delete all contents of a directory
+bool deleteDirectoryContents(const String& path) {
+    Dir dir = FatFS.openDir(path);
+    bool success = true;
+    
+    while (dir.next()) {
+        String fileName = dir.fileName();
+        String fullPath;
+        
+        // Build full path
+        if (path == "/") {
+            fullPath = "/" + fileName;
+        } else {
+            fullPath = path + "/" + fileName;
+        }
+        
+        if (dir.isDirectory()) {
+            // Recursively delete subdirectory contents first
+            if (!deleteDirectoryContents(fullPath)) {
+                success = false;
+                Serial.print("Failed to delete contents of directory: ");
+                Serial.println(fullPath);
+                continue;
+            }
+            
+            // Then delete the empty directory
+            if (!FatFS.rmdir(fullPath.c_str())) {
+                success = false;
+                Serial.print("Failed to remove directory: ");
+                Serial.println(fullPath);
+            } else {
+                Serial.print("Removed directory: ");
+                Serial.println(fullPath);
+            }
+        } else {
+            // Delete file
+            if (!FatFS.remove(fullPath.c_str())) {
+                success = false;
+                Serial.print("Failed to delete file: ");
+                Serial.println(fullPath);
+            } else {
+                Serial.print("Deleted file: ");
+                Serial.println(fullPath);
+            }
+        }
+        
+        // Add small delay to prevent system overload
+        delayMicroseconds(100);
+        
+        // Process any pending serial data to keep system responsive
+        if (Serial.available()) {
+            while (Serial.available()) {
+                Serial.read();
+            }
+        }
+    }
+    
+    return success;
+}
+
 
 
 //==============================================================================

@@ -69,6 +69,18 @@ struct config {
         float dac_0_spread = 21.5;
         int dac_1_zero = 1650;
         float dac_1_spread = 21.5;
+        float adc_0_zero = 9.0;
+        float adc_0_spread = 18.28;
+        float adc_1_zero = 9.0;
+        float adc_1_spread = 18.28;
+        float adc_2_zero = 9.0;
+        float adc_2_spread = 18.28;
+        float adc_3_zero = 9.0;
+        float adc_3_spread = 18.28;
+        float adc_4_zero = 0.0;
+        float adc_4_spread = 5.0;
+        float adc_7_zero = 9.0;
+        float adc_7_spread = 18.28;
         int probe_max = 4060;
         int probe_min = 15;
     } calibration;

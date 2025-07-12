@@ -212,4 +212,7 @@ bool verifyMicroPythonExamples();
 int getConfiguredDisplayLines();
 int getConfiguredEditorLines();
 
+// Filesystem utility functions
+bool deleteDirectoryContents(const String& path);
+
 #endif // FILESYSTEMSTUFF_H 

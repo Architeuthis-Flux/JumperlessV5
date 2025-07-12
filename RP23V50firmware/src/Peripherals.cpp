@@ -2000,7 +2000,7 @@ float readAdcVoltage(int channel, int samples) {
 
   float adcReading = (adcReadingUnscaled) * (adcSpread[channel] / 4095);
   if (channel != 4) {
-    adcReading -= adcSpread[channel] / 2; // offset
+    adcReading -= adcZero[channel]; // offset - use calibrated zero value
     }
 
   // float adcReading = (adcReadingUnscaled) * (adcSpread[channel] / 4095);

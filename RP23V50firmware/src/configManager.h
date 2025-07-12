@@ -5,6 +5,7 @@
 #include "oled.h"
 
 extern bool configChanged;
+extern bool autoCalibrationNeeded;
 // Global configuration instance
 extern struct config jumperlessConfig;
 
@@ -40,7 +41,7 @@ int parseDumpFormat(const char* str);
 
 // External variables from main.cpp
 extern const char firmwareVersion[];
-extern const bool newConfigOptions;
+extern bool newConfigOptions;
 void trim(char* str);
 void toLower(char* str); 
 void updateConfigValue(const char* section, const char* key, const char* value);

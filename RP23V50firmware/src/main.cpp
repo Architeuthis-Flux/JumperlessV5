@@ -114,6 +114,13 @@ volatile int dumpLED = 0;
 unsigned long dumpLEDTimer = 0;
 unsigned long dumpLEDrate = 50;
 
+
+
+const char firmwareVersion[] = "5.2.1.3"; // remember to update this
+ bool newConfigOptions = true; // set to true with new config options //!
+                                     // fix the saving every boot thing
+
+                                     
 void setup() {
   pinMode(RESETPIN, OUTPUT_12MA);
 
@@ -165,7 +172,7 @@ void setup() {
 
   // readSettingsFromConfig();
   configLoaded = 1;
-  Serial.println("Configuration loaded!");
+  //Serial.println("Configuration loaded!");
   startupTimers[1] = millis();
   delayMicroseconds(200);
   // Serial.print("config loaded in ");
@@ -358,9 +365,6 @@ int input = '\0';
 int serSource = 0;
 int readInNodesArduino = 0;
 
-const char firmwareVersion[] = "5.2.1.1"; // remember to update this
-const bool newConfigOptions = false; // set to true with new config options //!
-                                     // fix the saving every boot thing
 int firstLoop = 1;
 
 volatile int probeActive = 0;
@@ -399,7 +403,11 @@ void loop() {
 menu:
   if (firstLoop == 1) {
 
-    if (firstStart == true) {
+    if (firstStart == true || autoCalibrationNeeded == true) {
+      if (autoCalibrationNeeded == true) {
+        Serial.println("New calibration options detected in config.txt. Running automatic calibration...");
+        delay(2000);
+      }
       calibrateDacs();
       firstStart = false;
     }
@@ -453,8 +461,9 @@ menu:
   if (dontShowMenu == 0) {
   forceprintmenu:
 
+
     int numberOfMenuItems = 31 + (showExtraMenu == 1 ? 12 : 0) ;
-    float steps = 54.0 / (float)numberOfMenuItems;
+    float steps = (float)highSaturationBrightColorsCount / (float)numberOfMenuItems;
     // Serial.print("steps = ");
     // Serial.println(steps);
 
@@ -971,6 +980,28 @@ skipinput:
 
     case 'j':
 
+    for (int i = 0; i < highSaturationSpectrumColorsCount; i++) {
+      changeTerminalColorHighSat(i, true, &Serial, 0);
+      Serial.print(i);
+      Serial.print(": ");
+      if (i < 10) {
+        Serial.print(" ");
+      }
+      Serial.print(highSaturationSpectrumColors[i]);
+
+      Serial.print("\t\t");
+      if (i < highSaturationBrightColorsCount) {
+      changeTerminalColorHighSat(i, true, &Serial, 1);
+      Serial.print(i);
+      Serial.print(": ");
+      if (i < 10) {
+        Serial.print(" ");
+      }
+      Serial.print(highSaturationBrightColors[i]);
+      }
+      Serial.println();
+
+    }
 
   
     
@@ -1110,7 +1141,8 @@ if (mscModeEnabled == false) {
   case '/': { //!  /
 
     runApp(-1, (char*)"File Manager");
-    
+    Serial.write(0x0F);
+    Serial.flush();
     break;
   }
 
@@ -1122,7 +1154,7 @@ if (mscModeEnabled == false) {
       Serial.println("Terminal colors enabled");
     }
     Serial.flush();
-    goto dontshowmenu;
+    //goto dontshowmenu;
     break;
   }
   case 'E': { //!  E
@@ -1220,6 +1252,8 @@ if (mscModeEnabled == false) {
     // }
     // Serial.println("Using stream: " + String(streamChoice));
     enterMicroPythonREPL();
+    Serial.write(0x0F);
+    Serial.flush();
     // printAllConnectableNodes();
     break;
   }
