@@ -419,7 +419,45 @@ void promptRefreshConnections() {
 void manualRefreshFromUSB() {
     //Serial.println("Manually refreshing connections from USB changes...");
     
-    // Validate current slot
+    // Multi-level cache invalidation approach based on research:
+    // 1. Sync filesystem to ensure USB host changes are visible
+    fatfs::disk_ioctl(0, CTRL_SYNC, nullptr);
+    
+    // 2. Add memory barrier to prevent compiler optimizations
+    __sync_synchronize();
+    
+    // 3. Force close any open files to invalidate file handles
+    // This ensures we're not reading from cached file handles
+    while (core2busy == true) {
+        // Wait for core2 to finish
+    }
+    core1busy = true;
+    
+    // Force close any potentially open nodeFile handles and refresh filesystem
+    extern File nodeFile;
+    if (nodeFile) {
+        nodeFile.close();
+    }
+    
+    // Force a filesystem "refresh" by attempting to remount
+    // This invalidates internal FatFS caches
+    FatFS.end();
+    delay(10);  // Brief delay for hardware to settle
+    FatFS.begin();
+    
+    core1busy = false;
+    
+    // 4. Clear cached file content to force re-read from disk
+    clearNodeFileString();
+    
+    // 5. Small delay to address USB timing window issues
+    // Research shows this helps with high-speed USB transfer timing
+    delayMicroseconds(100);
+    
+    // 6. Additional memory barrier after all cache operations
+    __sync_synchronize();
+    
+    // 7. Validate current slot
     int validation_result = validateNodeFileSlot(netSlot, usb_debug_enabled);
     if (validation_result == 0) {
         if (usb_debug_enabled) {
@@ -432,6 +470,8 @@ void manualRefreshFromUSB() {
         //Serial.println("Connections not refreshed due to invalid node file");
     }
 }
+
+
 
 //==============================================================================
 // Public Interface Functions
@@ -450,7 +490,7 @@ bool initUSBMassStorage(void) {
     }
     
     // Automatically create MicroPython examples if needed
-    initializeMicroPythonExamples();
+    //initializeMicroPythonExamples();
     
     if (usb_debug_enabled) {
         Serial.println("FatFSUSB initialized successfully");

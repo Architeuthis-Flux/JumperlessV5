@@ -811,7 +811,7 @@ void printConfigSectionToSerial(int section, bool showNames, bool pasteable) {
     if (section == -1) {
         Serial.println("Jumperless Config:\n\r");
     }
-    
+    cycleTerminalColor(true, (highSaturationBrightColorsCount/8.0), true, &Serial, 0, 1);
     // Print config metadata section
     if (section == -1 || section == -2) {
         Serial.print("\n`[config] ");
@@ -829,7 +829,7 @@ void printConfigSectionToSerial(int section, bool showNames, bool pasteable) {
         if (pasteable == true) Serial.print("`[hardware] ");
         Serial.print("probe_revision = "); Serial.print(jumperlessConfig.hardware.probe_revision); Serial.println(";");
     }
-
+    cycleTerminalColor();
     // Print DAC settings section
     if (section == -1 || section == 1) {
         Serial.print("\n`[dacs] ");
@@ -852,7 +852,7 @@ void printConfigSectionToSerial(int section, bool showNames, bool pasteable) {
         if (pasteable == true) Serial.print("`[dacs] ");
         Serial.print("limit_min = "); Serial.print(jumperlessConfig.dacs.limit_min); Serial.println(";");
     }
-
+    cycleTerminalColor();
     // Print debug flags section
     if (section == -1 || section == 2) {
         Serial.print("\n`[debug] ");
@@ -867,7 +867,7 @@ void printConfigSectionToSerial(int section, bool showNames, bool pasteable) {
         if (pasteable == true) Serial.print("`[debug] ");
         Serial.print("leds = "); Serial.print(getStringFromTable(jumperlessConfig.debug.leds, boolTable)); Serial.println(";");
     }
-
+    cycleTerminalColor();
     // Print routing settings section
     if (section == -1 || section == 3) {
         Serial.print("\n`[routing] ");
@@ -880,7 +880,7 @@ void printConfigSectionToSerial(int section, bool showNames, bool pasteable) {
         if (pasteable == true) Serial.print("`[routing] ");
         Serial.print("rail_priority = "); Serial.print(jumperlessConfig.routing.rail_priority); Serial.println(";");
     }
-
+    cycleTerminalColor();
     // Print calibration section
     if (section == -1 || section == 4) {
         Serial.print("\n`[calibration] ");
@@ -929,7 +929,7 @@ void printConfigSectionToSerial(int section, bool showNames, bool pasteable) {
         if (pasteable == true) Serial.print("`[calibration] ");
         Serial.print("probe_min = "); Serial.print(jumperlessConfig.calibration.probe_min); Serial.println(";");
     }
-
+    cycleTerminalColor();
     // Print logo pad settings section
     if (section == -1 || section == 5) {
         Serial.print("\n`[logo_pads] ");
@@ -942,7 +942,7 @@ void printConfigSectionToSerial(int section, bool showNames, bool pasteable) {
         if (pasteable == true) Serial.print("`[logo_pads] ");
         Serial.print("building_pad_bottom = "); Serial.print(getStringFromTable(jumperlessConfig.logo_pads.building_pad_bottom, arbitraryFunctionTable)); Serial.println(";");
     }
-
+    cycleTerminalColor();
     // Print display settings section
     if (section == -1 || section == 6) {
         Serial.print("\n`[display] ");
@@ -963,7 +963,7 @@ void printConfigSectionToSerial(int section, bool showNames, bool pasteable) {
         if (pasteable == true) Serial.print("`[display] ");
         Serial.print("dump_format = "); Serial.print(getStringFromTable(jumperlessConfig.display.dump_format, dumpFormatTable)); Serial.println(";");
     }
-
+    cycleTerminalColor();
     // Print GPIO section
     if (section == -1 || section == 7) {
         Serial.print("\n`[gpio] ");
@@ -986,7 +986,7 @@ void printConfigSectionToSerial(int section, bool showNames, bool pasteable) {
         if (pasteable == true) Serial.print("`[gpio] ");
         Serial.print("uart_rx_function = "); Serial.print(getStringFromTable(jumperlessConfig.gpio.uart_rx_function, arbitraryFunctionTable)); Serial.println(";");
     }
-
+    cycleTerminalColor();
     // Print serial_1 section
     if (section == -1 || section == 8) {
         Serial.print("\n`[serial_1] ");
@@ -1003,7 +1003,7 @@ void printConfigSectionToSerial(int section, bool showNames, bool pasteable) {
         if (pasteable == true) Serial.print("`[serial_1] ");
         Serial.print("autoconnect_flashing = "); Serial.print(getStringFromTable(jumperlessConfig.serial_1.autoconnect_flashing, boolTable)); Serial.println(";");
     }
-
+    cycleTerminalColor();
     // Print serial_2 section
     if (section == -1 || section == 9) {
         Serial.print("\n`[serial_2] ");
@@ -1020,7 +1020,7 @@ void printConfigSectionToSerial(int section, bool showNames, bool pasteable) {
         if (pasteable == true) Serial.print("`[serial_2] ");
         Serial.print("autoconnect_flashing = "); Serial.print(getStringFromTable(jumperlessConfig.serial_2.autoconnect_flashing, boolTable)); Serial.println(";");
     }
-
+    cycleTerminalColor();
     // Print top_oled section
     if (section == -1 || section == 10) {
         Serial.print("\n`[top_oled] ");
@@ -1071,7 +1071,7 @@ void printConfigSectionToSerial(int section, bool showNames, bool pasteable) {
         if (pasteable == true) Serial.print("`[top_oled] ");
         Serial.print("font = "); Serial.print(getStringFromTable(jumperlessConfig.top_oled.font, fontTable)); Serial.println(";");
     }
-
+    cycleTerminalColor();
     if (section == -1) {
         Serial.println("\nEND\n\r");
     }

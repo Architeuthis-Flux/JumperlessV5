@@ -4,6 +4,8 @@
  * Adapted for RP2350B with 16MB QSPI Flash
  */
 
+ /*
+
 #include "SPI.h"
 #include "SdFat.h"
 #include "Adafruit_SPIFlash.h"
@@ -36,6 +38,7 @@ static bool fs_changed = true;
  * @brief Initialize the QSPI flash for USB Mass Storage
  * @return true if successful, false otherwise
  */
+ /*
 bool initializeUSBFlash(void) {
     if (flash_initialized) {
         return true;
@@ -65,10 +68,14 @@ bool initializeUSBFlash(void) {
     
     return true;
 }
+*/
+
+
 
 /**
  * @brief Deinitialize flash (close file system)
  */
+/*
 void deinitializeUSBFlash(void) {
     if (!flash_initialized) {
         return;
@@ -95,42 +102,47 @@ void deinitializeUSBFlash(void) {
  * @brief Get the flash object reference for MSC callbacks
  * @return Reference to the flash object
  */
+/*
 Adafruit_SPIFlash& getUSBFlash(void) {
     return flash;
 }
-
+*/
 /**
  * @brief Get the file system object reference
  * @return Reference to the FatVolume object
  */
+/*
 FatVolume& getUSBFileSystem(void) {
     return fatfs;
 }
-
+*/
 /**
  * @brief Check if flash is initialized
  * @return true if initialized
  */
+/*
 bool isUSBFlashInitialized(void) {
     return flash_initialized;
 }
-
+*/
 /**
  * @brief Check if file system is formatted
  * @return true if formatted and mounted
  */
+/*
 bool isUSBFileSystemFormatted(void) {
     return fs_formatted;
 }
-
+*/
 /**
  * @brief Force refresh of file system status
  * This is called when the host writes to the flash
  */
+/*
 void markUSBFileSystemChanged(void) {
     fs_changed = true;
 }
-
+*/
 //==============================================================================
 // File System Monitoring Functions
 //==============================================================================
@@ -139,7 +151,8 @@ void markUSBFileSystemChanged(void) {
  * @brief Check and list flash contents (for debugging)
  * This is called periodically to monitor file system changes
  */
-void monitorUSBFlashContents(void) {
+/*
+                                                                                void monitorUSBFlashContents(void) {
     if (!flash_initialized || !fs_formatted) {
         // Try to re-initialize if not ready
         if (!flash_initialized) {
@@ -194,6 +207,7 @@ void monitorUSBFlashContents(void) {
  * @param bufsize Buffer size in bytes (must be multiple of 512)
  * @return Number of bytes read, or -1 on error
  */
+/*
 int32_t readFlashBlocks(uint32_t lba, void* buffer, uint32_t bufsize) {
     if (!flash_initialized) {
         Serial.println("◇ Flash not initialized for read");
@@ -210,7 +224,7 @@ int32_t readFlashBlocks(uint32_t lba, void* buffer, uint32_t bufsize) {
     
     return bufsize;
 }
-
+*/
 /**
  * @brief Write blocks directly to flash
  * @param lba Logical block address (sector number)  
@@ -218,6 +232,7 @@ int32_t readFlashBlocks(uint32_t lba, void* buffer, uint32_t bufsize) {
  * @param bufsize Buffer size in bytes (must be multiple of 512)
  * @return Number of bytes written, or -1 on error
  */
+/*
 int32_t writeFlashBlocks(uint32_t lba, const uint8_t* buffer, uint32_t bufsize) {
     if (!flash_initialized) {
         Serial.println("◇ Flash not initialized for write");
@@ -234,11 +249,12 @@ int32_t writeFlashBlocks(uint32_t lba, const uint8_t* buffer, uint32_t bufsize) 
     
     return bufsize;
 }
-
+*/
 /**
  * @brief Sync/flush flash cache
  * @return true if successful
  */
+/*
 bool syncFlashBlocks(void) {
     if (!flash_initialized) {
         return false;
@@ -255,13 +271,14 @@ bool syncFlashBlocks(void) {
     
     return true;
 }
-
+*/
 /**
  * @brief Get flash capacity information
  * @param block_count_out Outputs total number of 512-byte blocks
  * @param block_size_out Outputs block size (always 512)
  * @return true if successful
  */
+/*
 bool getFlashCapacity(uint32_t* block_count_out, uint16_t* block_size_out) {
     if (!flash_initialized) {
         return false;
@@ -275,7 +292,7 @@ bool getFlashCapacity(uint32_t* block_count_out, uint16_t* block_size_out) {
     
     return true;
 }
-
+*/
 //==============================================================================
 // USB Mass Storage Integration
 //==============================================================================
@@ -285,6 +302,7 @@ bool getFlashCapacity(uint32_t* block_count_out, uint16_t* block_size_out) {
  * This is called when entering USB MSC mode
  * @return true if successful
  */
+/*
 bool prepareFlashForUSB(void) {
     Serial.println("◆ Preparing flash for USB Mass Storage mode...");
     
@@ -302,12 +320,13 @@ bool prepareFlashForUSB(void) {
     
     return true;
 }
-
+*/
 /**
  * @brief Restore flash for normal application use
  * This is called when exiting USB MSC mode
  */
-void restoreFlashForApp(void) {
+/*
+        void restoreFlashForApp(void) {
     Serial.println("◆ Restoring flash for application use...");
     
     if (!flash_initialized) {
@@ -323,10 +342,11 @@ void restoreFlashForApp(void) {
         Serial.println("△ Failed to remount file system");
     }
 }
-
+*/
 /**
  * @brief Print flash status information
  */
+/*
 void printFlashStatus(void) {
     Serial.println("\n╭─ Flash Status ──────────────╮");
     Serial.printf("│ Initialized:    %s      │\n", flash_initialized ? "YES" : "NO ");
@@ -340,3 +360,4 @@ void printFlashStatus(void) {
     
     Serial.println("╰─────────────────────────────╯");
 }
+*/  

@@ -116,7 +116,7 @@ unsigned long dumpLEDrate = 50;
 
 
 
-const char firmwareVersion[] = "5.2.1.4"; // remember to update this
+const char firmwareVersion[] = "5.2.1.5"; // remember to update this
  bool newConfigOptions = true; // set to true with new config options //!
                                      // fix the saving every boot thing
 
@@ -390,7 +390,7 @@ unsigned long switchPositionCheckInterval = 500;
 
 
 unsigned long mscModeRefreshTimer = 0;
-unsigned long mscModeRefreshInterval = 1000;
+unsigned long mscModeRefreshInterval = 2000;
 
 volatile int core1passthrough = 1;
 
@@ -872,8 +872,10 @@ dontshowmenu:
           // if (oled.connectionRetries > oled.maxConnectionRetries) {
           //   oled.connectionRetries = 0;
           //Serial.println("retrying oled connection");
-          oled.init();
-          //}
+          if (oled.init() != 0) {
+            Serial.print("\r                                          \r");
+            Serial.flush();
+          }
           }
         }
 
@@ -1017,8 +1019,10 @@ if (mscModeEnabled == false) {
     Serial.println("\tu = disable USB Mass Storage");
     Serial.println("\tG = reload config.txt");
     Serial.println("\ty = refresh connections when files change");
+    Serial.println("\tS = show status");
     Serial.println("\n\r");
     Serial.flush();
+    delay(3000);
   } else {
     Serial.println("USB Mass Storage initialization failed");
     Serial.flush();
@@ -1030,9 +1034,55 @@ if (mscModeEnabled == false) {
  Serial.flush();
 }
 
+delay(3000);
+unsigned long mscModeTimer = millis();
+while (mscModeEnabled == true) {  
+while (Serial.available() == 0) {
+  // if (millis() - mscModeTimer > 3000) {
+  //   manualRefreshFromUSB();
+  //   refreshConnections(-1);
+  //   mscModeTimer = millis();
+  // }
+}
+if (Serial.available() > 0) {
+  char c = Serial.read();
+  if (c == 'u') {
+    Serial.println("Disabling USB Mass Storage");
+    disableUSBMassStorage();
+    mscModeEnabled = false;
+    Serial.flush();
+    refreshConnections(-1, 1, 1);
+  }
+  if (c == 'U') {
+    Serial.println("Enabling USB Mass Storage");
+    initUSBMassStorage();
+    printUSBMassStorageStatus();
+    Serial.flush();
+  }
+  if (c == 'y' || c == 'Y') {
+    Serial.println("Refreshing connections");
+    manualRefreshFromUSB();
+    delay(100);
+    refreshConnections(-1);
+    
+    Serial.flush();
+  }
+  if (c == 'G' || c == 'g') {
+    Serial.println("Reloading config.txt");
 
-
-
+    Serial.flush();
+    manualRefreshFromUSB();
+    delay(100);
+    loadConfig();
+    Serial.flush();
+  }
+  if (c == 's' || c == 'S') {
+    Serial.println("Showing status");
+    printUSBMassStorageStatus();
+    Serial.flush();
+  }
+}
+}
       //  Serial.println("\n╭─────────────────────────────────────╮");
       //    Serial.println("│       USB Mass Storage Control      │");
       //    Serial.println("╰─────────────────────────────────────╯");
@@ -1088,7 +1138,7 @@ if (mscModeEnabled == false) {
         break;
       case '3':
         Serial.println("\nValidating all slot files...");
-        validateAllSlots(true);
+        //validateAllSlots(true);
         break;
       default:
         Serial.println("\nCancelled");
@@ -1177,9 +1227,9 @@ if (mscModeEnabled == false) {
     // Serial.println("Displaying color names (enter range like '10-200' for
     // specific range)"); colorPicker(0, 255);
     if (jumperlessConfig.top_oled.show_in_terminal > 0) {
-      jumperlessConfig.top_oled.show_in_terminal = 0;
-    } else {
       jumperlessConfig.top_oled.show_in_terminal = 1;
+    } else {
+      jumperlessConfig.top_oled.show_in_terminal = 0;
     }
     configChanged = true;
     break;
