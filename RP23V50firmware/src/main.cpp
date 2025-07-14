@@ -116,7 +116,7 @@ unsigned long dumpLEDrate = 50;
 
 
 
-const char firmwareVersion[] = "5.2.1.5"; // remember to update this
+const char firmwareVersion[] = "5.2.1.6"; // remember to update this
  bool newConfigOptions = true; // set to true with new config options //!
                                      // fix the saving every boot thing
 
@@ -133,40 +133,9 @@ void setup() {
     Serial.println("FatFS initialized successfully");
   }
 
-  // delayMicroseconds(800);
-  //  Serial.setTimeout(8000);
-  //   USB_PID = 0xACAB;
-  //   USB_VID = 0x1D50;
-  //   USB_MANUFACTURER = "Architeuthis Flux";
-  //   USB_PRODUCT = "Jumperless";
-  // SerialWrap.enableSerial1(true);  // Enable Serial1 + USBSer1 mirroring
-  //  SerialWrap.enableSerial2(true);  // Enable Serial2 + USBSer2 mirroring
-
-  // Your existing code remains unchanged!
-  // This now automatically initializes ALL enabled serial ports with the same
-  // baud rate
-
-  // SerialWrap.enableSerial1(true);
-
-  // Serial.enableUSBSer1(true);
-
-  // Serial.begin(115200);
-  // USBSer1.begin(115200);
-  // USBSer2.begin(115200);
 
   startupTimers[0] = millis();
-  // Initialize FatFS
-  // if (!FatFS.begin()) {
-  //   Serial.println("Failed to initialize FatFS");
-  // }
 
-  // EEPROM.begin(512);
-
-  // debugFlagInit(0); //these will be overridden by the config file
-
-  // Load configuration
-  // delay(1000);
-  // unsigned long start = millis();
 
   loadConfig();
 
@@ -175,18 +144,7 @@ void setup() {
   //Serial.println("Configuration loaded!");
   startupTimers[1] = millis();
   delayMicroseconds(200);
-  // Serial.print("config loaded in ");
-  // Serial.print(millis() - start);
-  // Serial.println("ms");
-  
-  // Initialize USB Mass Storage (CircuitPython-style)
-  // This will be ready when host connects, no special mode needed
-  // Serial.println("Initializing USB Mass Storage background service...");
-  // if (initUSBMassStorage()) {
-  //   Serial.println("USB Mass Storage ready (runs alongside normal operation)");
-  // } else {
-  //   Serial.println("USB Mass Storage initialization failed (non-critical)");
-  // }
+
   
   initNets();
   backpowered = 0;
@@ -211,22 +169,6 @@ void setup() {
     jumperlessConfig.top_oled.show_in_terminal = 3;
   }
 
-  // Serial.println("Serial 1 baud rate: ");
-  // Serial.println(jumperlessConfig.serial_1.baud_rate);
-  // Serial.println("Serial 2 baud rate: ");
-  // Serial.println(jumperlessConfig.serial_2.baud_rate);
-
-  // Serial.println("Serial 1 function: ");
-  // Serial.println(jumperlessConfig.serial_1.function);
-  // Serial.println("Serial 2 function: ");
-  // Serial.println(jumperlessConfig.serial_2.function);
-
-  // if (jumperlessConfig.serial_1.function != 0) {
-  // Serial.begin(jumperlessConfig.serial_1.baud_rate);
-
-  // Serial.enableUSBSer1(true);
-  // USBSer1.begin(jumperlessConfig.serial_1.baud_rate);
-  // }
 
   if (jumperlessConfig.serial_2.function != 0) {
     // Serial.begin(jumperlessConfig.serial_2.baud_rate);
@@ -235,30 +177,7 @@ void setup() {
   }
 
   Serial.begin(115200);
-  // uint8_t serialTarget = SERIAL_PORT_MAIN;
-  // //SerialWrap.enableSerial1(true);
-  // Serial.enableSerial1(true);
-  // Serial.enableSerial2(true);
-  // Serial.enableUSBSer1(true);
-  // Serial.enableUSBSer2(true);
-  // Serial.enableUSBSer1(true);
 
-  // if (jumperlessConfig.serial_1.function == 2) {
-
-  // SerialWrap.setSerialTarget(SERIAL_PORT_SERIAL1 | SERIAL_PORT_MAIN);
-  // SerialWrap.setSerialReadTarget(SERIAL_PORT_SERIAL1 | SERIAL_PORT_MAIN);
-  // SerialWrap.setSerialWriteTarget(SERIAL_PORT_USBSER1 | SERIAL_PORT_MAIN);
-  // }
-
-  //  if (jumperlessConfig.serial_2.function == 2) {
-  //   //SerialWrap.enableSerial2(true);
-  //     serialTarget = SERIAL_PORT_SERIAL2 | SERIAL_PORT_MAIN;
-  //   }
-
-  // Serial.setSerialTarget(serialTarget);
-
-  // Serial.println("Hello! This automatically goes to all enabled ports!");
-  // printDirectoryContents("/", 0);
   initDAC();
   pinMode(PROBE_PIN, OUTPUT_8MA);
   pinMode(BUTTON_PIN, INPUT_PULLDOWN);
@@ -2330,6 +2249,9 @@ void loop1() {
       probeActive == 1) {
     passthroughStatus = secondSerialHandler();
   }
+
+  replyWithSerialInfo();
+
 
   if (dumpLED == 1) {
 

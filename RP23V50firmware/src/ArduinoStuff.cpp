@@ -405,7 +405,6 @@ int secondSerialHandler(void) {
              serialPassthroughStatusTimeout) {
     serialPassthroughStatus = 0;
   }
-  replyWithSerialInfo();
 
   return ret;
 }
