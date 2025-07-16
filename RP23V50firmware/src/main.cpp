@@ -116,8 +116,8 @@ unsigned long dumpLEDrate = 50;
 
 
 
-const char firmwareVersion[] = "5.2.1.6"; // remember to update this
- bool newConfigOptions = true; // set to true with new config options //!
+const char firmwareVersion[] = "5.2.2.0"; // remember to update this
+ bool newConfigOptions = false; // set to true with new config options //!
                                      // fix the saving every boot thing
 
                                      
@@ -228,6 +228,8 @@ void setup() {
   getNothingTouched();
   startupTimers[8] = millis();
   createSlots(-1, 0);
+  initializeNetColorTracking(); // Initialize net color tracking after slots are created
+  initializeValidationTracking(); // Initialize validation tracking
   startupTimers[9] = millis();
 }
 
@@ -537,6 +539,8 @@ menu:
     //Serial.flush();
     configChanged = false;
   }
+
+  //Serial.println(millis());
 dontshowmenu:
 
   connectFromArduino = '\0';
@@ -566,6 +570,7 @@ dontshowmenu:
   while (Serial.available() == 0 && connectFromArduino == '\0' &&
          slotChanged == 0) {
 
+          unsigned long busyTimer = millis();
     // warningNet = 7;
     // firstConnection = -1;
     checkPads();
@@ -813,18 +818,24 @@ dontshowmenu:
     // Serial.println(switchPosition);
     // Serial.flush();
   }
+
+
+  // Serial.print("busyTimer = ");
+  // Serial.println(millis() - busyTimer);
          }
 
-  if (slotChanged == 1) {
-    // Serial.println("slotChanged");
-    refreshPaths();
-    // clearChangedNetColors(0);
-    loadChangedNetColorsFromFile(netSlot, 0);
-    goto loadfile;
-  }
+  // if (slotChanged == 1) {
+  //   // Serial.println("slotChanged");
+  //   refreshPaths();
+  //   // clearChangedNetColors(0);
+  //   loadChangedNetColorsFromFile(netSlot, 0);
+  //   Serial.println(millis());
+  //   goto loadfile;
+  // }
 
   input = Serial.read();
 
+  timer = millis();
   // Serial.print("input = ");
   // Serial.println(input);
   // Serial.flush();
@@ -887,6 +898,8 @@ skipinput:
   //   runApp(input - '0');
   //   return;
   //   }
+  // Serial.print("before switch = ");
+  // Serial.println (millis() - timer);
 
   switch (input) {
 
@@ -1962,9 +1975,11 @@ if (Serial.available() > 0) {
     } else {
       netSlot--;
     }
-    Serial.print("\r                                         \r");
+    // Serial.print("slotChanged = ");
+    // Serial.println(millis() - timer);
+   // Serial.print("\r                                         \r");
     Serial.print("Slot ");
-    Serial.print(netSlot);
+    Serial.println(netSlot);
     slotPreview = netSlot;
     slotChanged = 1;
     // printAllChangedNetColorFiles();
@@ -1973,22 +1988,28 @@ if (Serial.available() > 0) {
   case 'y': {
   loadfile:
     loadingFile = 1;
+    // Serial.print("loadingFile = ");
+    // Serial.println(millis() - timer);
     if (slotChanged == 1) {
       // clearChangedNetColors(0);
       loadChangedNetColorsFromFile(netSlot, 0);
+      // Serial.print("loadChangedNetColorsFromFile = ");
+      // Serial.println(millis() - timer);
     }
 
     slotChanged = 0;
     loadingFile = 0;
     
     // Check if this is a USB refresh request
-    if (isUSBMassStorageMounted()) {
-      manualRefreshFromUSB();
-    } else {
+    // if (isUSBMassStorageMounted()) {
+    //   manualRefreshFromUSB();
+    // } else {
       refreshConnections(-1);
-    }
+    //}
     // chooseShownReadings();
     //  setGPIO();
+    // Serial.print("refreshConnections = ");
+    // Serial.println(millis() - timer);
     break;
   }
   case 'f': {

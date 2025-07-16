@@ -31,6 +31,10 @@
 #include "py/lexer.h"
 #include "py/builtin.h"
 #include "py/mperrno.h"
+#include <string.h>
+
+// Forward declaration for filesystem bridge function
+extern char* jl_fs_read_file(const char* path);
 
 // Import the global stream from our main Arduino code
 extern void* global_mp_stream_ptr;
@@ -67,11 +71,24 @@ int mp_hal_stdin_rx_chr(void) {
 
 // Import stat function implementation removed - using inline version from builtin.h
 
-// Lexer function - return NULL since we don't support file-based lexing
+// Lexer function for reading Python files through our filesystem bridge
 mp_lexer_t *mp_lexer_new_from_file(qstr filename) {
-    (void)filename;
-    // Could also do: mp_raise_msg(&mp_type_OSError, MP_ERROR_TEXT("File access not supported"));
-    return NULL;
+    // Convert qstr to C string
+    const char *path = qstr_str(filename);
+    
+    // Read file contents using our filesystem bridge
+    char *content = jl_fs_read_file(path);
+    if (content == NULL) {
+        mp_raise_OSError(MP_ENOENT);
+    }
+    
+    // Create lexer from the file contents
+    // The lexer will take ownership of the content string
+    mp_lexer_t *lex = mp_lexer_new_from_str_len(filename, content, strlen(content), 0);
+    
+    // Note: content should not be freed here as lexer now owns it
+    // MicroPython will handle freeing when the lexer is destroyed
+    return lex;
 }
 
 // Open function implementation removed - VFS provides this when MICROPY_VFS is enabled

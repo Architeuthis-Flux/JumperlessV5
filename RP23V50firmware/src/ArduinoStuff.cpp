@@ -414,6 +414,7 @@ char arduinoCommandStrings[10][50] = {
     "jumperlessConfig.serial_1.function",
     "jumperlessConfig.serial_1.connect_on_boot",
     "jumperlessConfig.serial_1.lock_connection",
+    
 
 };
 

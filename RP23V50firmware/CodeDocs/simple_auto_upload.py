@@ -80,8 +80,9 @@ class SimpleJumperlessUploader:
                 if currently_connected and not self.device_connected:
                     # Check if we should ignore this reconnect (happens after upload)
                     time_since_upload = time.time() - self.last_upload_time
-                    if self.ignore_next_reconnect and time_since_upload < 30:  # 30 second window
+                    if self.ignore_next_reconnect and time_since_upload < 10:  # 30 second window
                         print(f"🔄 Device reconnected after upload - ignoring...")
+                        
                         self.device_connected = True
                         self.ignore_next_reconnect = False
                     else:

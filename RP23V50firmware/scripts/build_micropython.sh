@@ -114,10 +114,7 @@ include $(TOP)/py/py.mk
 # Define extmod source files we specifically want  
 SRC_EXTMOD_C = \
 	extmod/modtime.c \
-	extmod/modos.c \
 	extmod/modplatform.c \
-	extmod/vfs.c \
-
 
 # Process extmod sources like regular sources
 PY_O += $(addprefix $(BUILD)/, $(SRC_EXTMOD_C:.c=.o))
@@ -164,12 +161,10 @@ micropython-embed-package: $(GENHDR_OUTPUT)
 	$(ECHO) "- extmod (specific modules only)"
 	$(Q)$(CP) $(TOP)/extmod/modtime.c $(PACKAGE_DIR)/extmod
 	$(Q)$(CP) $(TOP)/extmod/modtime.h $(PACKAGE_DIR)/extmod
-	$(Q)$(CP) $(TOP)/extmod/modos.c $(PACKAGE_DIR)/extmod
 	$(Q)$(CP) $(TOP)/extmod/modplatform.c $(PACKAGE_DIR)/extmod
 	$(Q)$(CP) $(TOP)/extmod/modplatform.h $(PACKAGE_DIR)/extmod
 	$(Q)$(CP) $(TOP)/extmod/misc.h $(PACKAGE_DIR)/extmod
-	$(Q)$(CP) $(TOP)/extmod/vfs.c $(PACKAGE_DIR)/extmod
-	$(Q)$(CP) $(TOP)/extmod/vfs.h $(PACKAGE_DIR)/extmod
+
 	$(ECHO) "- shared"
 	$(Q)$(CP) $(TOP)/shared/runtime/gchelper.h $(PACKAGE_DIR)/shared/runtime
 	$(Q)$(CP) $(TOP)/shared/runtime/gchelper_generic.c $(PACKAGE_DIR)/shared/runtime

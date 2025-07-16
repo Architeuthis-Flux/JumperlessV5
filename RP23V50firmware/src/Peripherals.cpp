@@ -497,6 +497,7 @@ int gpioReadWithFloating(int pin, unsigned long usDelay) { //2 = floating, 1 = h
   int reading = -1;
   int readingPulldown = -1;
   int readingPullup = -1;
+  readingGPIO = true;
 
 
 
@@ -574,6 +575,8 @@ int gpioReadWithFloating(int pin, unsigned long usDelay) { //2 = floating, 1 = h
         /// gpio_set_dir(pin, true); //set the pin back to whatever it was
         }
 
+      readingGPIO = false;
+        
       return state;
   }
 
@@ -785,10 +788,11 @@ gpio_function_t gpio_function_map[10] = { GPIO_FUNC_SIO, GPIO_FUNC_SIO, GPIO_FUN
 //this is used to store the output state of the GPIO pins
 //0 = low, 1 = high, 2 = input
 int gpioOutput[10] = { 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 };
-
+volatile bool readingGPIO = false;
 void readGPIO(void) {
   // Serial.println("\n\n\n\rreadGPIO\n\n\n\n\n\r");
   // return;
+ 
   for (int i = 0; i < 10; i++) { //if you want to read the UART pins, set this to 10
     // if (gpioNet[i] != -1 &&
     //     (gpioState[i] == 2 || gpioState[i] == 3 || gpioState[i] == 4)) {

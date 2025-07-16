@@ -28,32 +28,118 @@ The new implementation creates a proper MicroPython C extension module that inte
 - **Pythonic API**: Follows Python conventions and patterns
 - **Documentation**: Standard Python docstrings and help system
 - **No string escaping**: No need to worry about quote handling in commands
+- **Syntax highlighting**: Color-coded functions in Jumperless text editor
+
+## Syntax Highlighting Features
+
+The Jumperless text editor provides intelligent syntax highlighting for Python code with special recognition of Jumperless-specific functions:
+
+### Color Coding Scheme
+
+- **Orange (214)**: Python keywords (`def`, `class`, `if`, `for`, etc.)
+- **Forest Green (79)**: Python built-ins (`print`, `len`, `range`, etc.)
+- **Bright Yellow (39)**: Strings
+- **Pink (199)**: Numbers
+- **Magenta (207)**: Jumperless hardware functions (`gpio_set`, `dac_set`, `connect`, etc.)
+- **Purple (105)**: Jumperless constants/types (`TOP_RAIL`, `GPIO_1`, `CONNECT_BUTTON`, etc.)
+- **Cyan-Blue (45)**: **NEW** - JFS filesystem functions (`jfs.open`, `jfs.read`, `fs_exists`, etc.)
+- **Green (34)**: Comments
+
+### JFS Module Support
+
+The editor now recognizes and highlights all JFS (Jumperless FileSystem) functions:
+
+```python
+import jfs
+
+# All JFS functions are highlighted in cyan-blue
+jfs.open("config.txt", "r")    # File operations
+jfs.read("data.py")           # Direct read
+jfs.write("log.txt", data)    # Direct write
+jfs.exists("script.py")       # File checking
+jfs.listdir("/")              # Directory listing
+jfs.mkdir("python_scripts")   # Directory creation
+
+# Basic filesystem functions also highlighted
+fs_exists("test.txt")         # Simple existence check
+fs_read("config.json")        # Simple file read
+```
+
+This makes it easy to distinguish between:
+- Hardware operations (magenta)
+- Filesystem operations (cyan-blue)  
+- Standard Python code (orange/green)
 
 ## Implementation Architecture
 
 ### Core Files
 
-1. **`lib/micropython/modjumperless.cpp`**
+1. **`modules/jumperless/modjumperless.c`**
    - Main MicroPython C extension module
    - Defines all Python-accessible functions
    - Handles parameter validation and type conversion
    - Registers the module with MicroPython
+   - Includes comprehensive JFS (Jumperless FileSystem) module
 
 2. **`src/JumperlessMicroPythonAPI.cpp`**
    - C++ wrapper functions that bridge MicroPython calls to existing Jumperless functionality
    - Provides C-compatible interface for the MicroPython module
    - Implements actual hardware control logic
+   - **NEW**: Comprehensive filesystem functions for JFS module
 
-3. **`lib/micropython/micropython.mk`**
-   - Makefile fragment for building the module
+3. **`src/EkiloEditor.cpp`**
+   - **Updated**: Enhanced syntax highlighting for JFS functions
+   - Recognizes filesystem operations with distinct cyan-blue coloring
+   - Supports all jfs.* functions and basic fs_* functions
+
+4. **`modules/jumperless/micropython.mk`**
+   - Module build configuration
    - Configures compiler flags and source files
-   - Enables the module by default
+   - Enables both jumperless and jfs modules
 
-4. **`lib/micropython/mpconfigport.h`**
-   - MicroPython configuration enabling the Jumperless module
-   - Sets `MODULE_JUMPERLESS_ENABLED (1)`
+5. **`lib/micropython/port/mpconfigport.h`**
+   - MicroPython configuration enabling custom modules
+   - Enables filesystem support for module importing
 
 ## API Reference
+
+### JFS (Jumperless FileSystem) Module
+
+The JFS module provides comprehensive filesystem access with both simple and advanced file operations:
+
+```python
+import jfs
+
+# Simple file operations
+jfs.write("config.txt", "debug=true")
+content = jfs.read("config.txt")
+
+# Advanced file operations with handles
+with jfs.open("data.log", "a") as file:
+    file.write("System started\n")
+    size = file.size()
+    pos = file.tell()
+
+# Directory operations
+jfs.mkdir("python_scripts")
+files = jfs.listdir("/")
+if jfs.exists("backup.py"):
+    jfs.rename("backup.py", "scripts/backup.py")
+
+# Basic filesystem functions (also available in main jumperless module)
+fs_exists("test.txt")
+fs_read("config.json")
+fs_write("output.txt", "result")
+```
+
+**Key Features:**
+- Context manager support (`with` statements)
+- Memory-efficient chunk reading for large files
+- Standard Python file API compatibility
+- Embedded system optimizations
+- **Syntax highlighting**: All JFS functions appear in cyan-blue color
+
+For complete JFS documentation, see [`CodeDocs/JFS_Module_Documentation.md`](JFS_Module_Documentation.md).
 
 ### DAC Functions
 ```python

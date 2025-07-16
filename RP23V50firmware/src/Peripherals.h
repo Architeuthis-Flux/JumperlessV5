@@ -55,6 +55,8 @@ extern float gpioPWMFrequency[10];
 extern float gpioPWMDutyCycle[10];
 extern bool gpioPWMEnabled[10];
 
+extern volatile bool readingGPIO;
+
 // gpioDef[i][0] is the pin number
 // gpioDef[i][1] is the RP_GPIO_x define
 // gpioDef[i][2] is the index of the gpioState array

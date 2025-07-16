@@ -24,6 +24,7 @@
 #include "Probing.h"
 #include "Python_Proper.h"
 #include "config.h"
+#include "FatFS.h"
 
 
 
@@ -116,7 +117,21 @@ void jl_gpio_set(int pin, int value) {
 
 int jl_gpio_get(int pin) {
     if (pin >= 1 && pin <= 10) {
-        return gpio_get(gpioDef[pin - 1][0]);
+        // Serial.print("jl_gpio_get = ");
+        // Serial.println(gpioDef[pin - 1][0]);
+        // Serial.print("gpio_get = ");
+        // Serial.println(gpio_get((uint)gpioDef[pin - 1][0]));
+        // Serial.println("digitalRead = ");
+        // Serial.println(digitalRead(gpioDef[pin - 1][0]));
+        // return gpio_get(gpioDef[pin - 1][0]);
+        while (readingGPIO) {
+            delayMicroseconds(1);
+        }
+
+        int reading = gpioReadWithFloating(gpioDef[pin - 1][0], 50);
+        // Serial.print("gpioReadWithFloating = ");
+        // Serial.println(reading);
+        return reading;
     }
     return 0;
 }
@@ -216,7 +231,12 @@ int jl_nodes_clear(void) {
 }
 
 int jl_nodes_is_connected(int node1, int node2) {
-    return checkIfBridgeExists(node1, node2, netSlot, 0 );
+
+    int connected = checkIfBridgeExists(node1, node2, netSlot, 0 );
+    // Serial.print("jl_nodes_is_connected = ");
+    // Serial.println(connected);
+    return connected;
+    //return checkIfBridgeExists(node1, node2, netSlot, 0 );
 }
 
 
@@ -225,7 +245,7 @@ int jl_nodes_is_connected(int node1, int node2) {
 int jl_oled_print(const char* text, int size) {
     mp_hal_check_interrupt();
     if (jumperlessConfig.top_oled.enabled == 1) {
-        oled.clearPrintShow(text, size, true, true, true, -1, -1, 15000);
+        oled.clearPrintShow(text, size, true, true, true, -1, -1, 1500);
         return 1;
     } else {
         return 0;
@@ -361,6 +381,184 @@ extern "C" int jl_pwm_set_frequency(int gpio_pin, float frequency) {
 
 extern "C" int jl_pwm_stop(int gpio_pin) {
     return stopPWM(gpio_pin);
+}
+
+// Filesystem Functions
+int jl_fs_exists(const char* path) {
+    if (!path) return 0;
+    return FatFS.exists(path) ? 1 : 0;
+}
+
+char* jl_fs_listdir(const char* path) {
+    if (!path) return nullptr;
+    
+    // Use static buffer to avoid memory management issues
+    static char listBuffer[2048];
+    listBuffer[0] = '\0';
+    
+    Dir dir = FatFS.openDir(path);
+    
+    bool first = true;
+    while (dir.next()) {
+        if (!first) {
+            strcat(listBuffer, ",");
+        }
+        strcat(listBuffer, dir.fileName().c_str());
+        if (dir.isDirectory()) {
+            strcat(listBuffer, "/");
+        }
+        first = false;
+        
+        // Prevent buffer overflow
+        if (strlen(listBuffer) > 1900) {
+            strcat(listBuffer, "...");
+            break;
+        }
+    }
+    
+    return listBuffer;
+}
+
+char* jl_fs_read_file(const char* path) {
+    if (!path) return nullptr;
+    
+    File file = FatFS.open(path, "r");
+    if (!file) {
+        return nullptr;
+    }
+    
+    // Use static buffer for file contents
+    static char fileBuffer[4096];
+    size_t bytesRead = file.readBytes(fileBuffer, sizeof(fileBuffer) - 1);
+    fileBuffer[bytesRead] = '\0';
+    
+    file.close();
+    return fileBuffer;
+}
+
+int jl_fs_write_file(const char* path, const char* content) {
+    if (!path || !content) return 0;
+    
+    File file = FatFS.open(path, "w");
+    if (!file) {
+        return 0;
+    }
+    
+    size_t written = file.write((const uint8_t*)content, strlen(content));
+    file.close();
+    
+    return (written == strlen(content)) ? 1 : 0;
+}
+
+char* jl_fs_get_current_dir(void) {
+    static char currentDir[] = "/";
+    return currentDir;
+}
+
+// File operations
+void* jl_fs_open_file(const char* path, const char* mode) {
+    if (!path || !mode) return nullptr;
+    
+    File* file = new File(FatFS.open(path, mode));
+    if (!*file) {
+        delete file;
+        return nullptr;
+    }
+    return file;
+}
+
+void jl_fs_close_file(void* file_handle) {
+    if (file_handle) {
+        File* file = (File*)file_handle;
+        file->close();
+        delete file;
+    }
+}
+
+int jl_fs_read_bytes(void* file_handle, char* buffer, int size) {
+    if (!file_handle || !buffer) return -1;
+    File* file = (File*)file_handle;
+    return file->readBytes(buffer, size);
+}
+
+int jl_fs_write_bytes(void* file_handle, const char* data, int size) {
+    if (!file_handle || !data) return -1;
+    File* file = (File*)file_handle;
+    return file->write((const uint8_t*)data, size);
+}
+
+int jl_fs_seek(void* file_handle, int position, int mode) {
+    if (!file_handle) return 0;
+    File* file = (File*)file_handle;
+    SeekMode seekMode = SeekSet;
+    if (mode == 1) seekMode = SeekCur;
+    else if (mode == 2) seekMode = SeekEnd;
+    return file->seek(position, seekMode) ? 1 : 0;
+}
+
+int jl_fs_position(void* file_handle) {
+    if (!file_handle) return -1;
+    File* file = (File*)file_handle;
+    return file->position();
+}
+
+int jl_fs_size(void* file_handle) {
+    if (!file_handle) return -1;
+    File* file = (File*)file_handle;
+    return file->size();
+}
+
+int jl_fs_available(void* file_handle) {
+    if (!file_handle) return 0;
+    File* file = (File*)file_handle;
+    return file->available();
+}
+
+char* jl_fs_name(void* file_handle) {
+    if (!file_handle) return nullptr;
+    File* file = (File*)file_handle;
+    static char nameBuffer[256];
+    strncpy(nameBuffer, file->name(), sizeof(nameBuffer) - 1);
+    nameBuffer[sizeof(nameBuffer) - 1] = '\0';
+    return nameBuffer;
+}
+
+// Directory operations
+int jl_fs_mkdir(const char* path) {
+    if (!path) return 0;
+    return FatFS.mkdir(path) ? 1 : 0;
+}
+
+int jl_fs_rmdir(const char* path) {
+    if (!path) return 0;
+    return FatFS.rmdir(path) ? 1 : 0;
+}
+
+int jl_fs_remove(const char* path) {
+    if (!path) return 0;
+    return FatFS.remove(path) ? 1 : 0;
+}
+
+int jl_fs_rename(const char* pathFrom, const char* pathTo) {
+    if (!pathFrom || !pathTo) return 0;
+    return FatFS.rename(pathFrom, pathTo) ? 1 : 0;
+}
+
+// Get filesystem info
+int jl_fs_total_bytes(void) {
+    FSInfo info;
+    if (FatFS.info(info)) {
+        return (int)(info.totalBytes & 0xFFFFFFFF); // Return lower 32 bits
+    }
+    return -1;
+}
+
+int jl_fs_used_bytes(void) {
+    FSInfo info;
+    if (FatFS.info(info)) {
+        return (int)(info.usedBytes & 0xFFFFFFFF); // Return lower 32 bits  
+    }
+    return -1;
 }
 
 } // extern "C" 

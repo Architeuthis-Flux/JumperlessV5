@@ -18,6 +18,8 @@
 
 #include "py/obj.h"
 #include "py/runtime.h"
+#include "py/lexer.h"
+#include "py/mperrno.h"
 #include "py/builtin.h"
 #include <string.h>
 #include <stdio.h>
@@ -48,6 +50,34 @@ int jl_nodes_print_paths(void);
 int jl_nodes_print_crossbars(void);
 int jl_nodes_print_nets(void);
 int jl_nodes_print_chip_status(void);
+
+// Filesystem functions - bridge to existing FatFS 
+int jl_fs_exists(const char* path);
+char* jl_fs_listdir(const char* path);
+char* jl_fs_read_file(const char* path);
+int jl_fs_write_file(const char* path, const char* content);
+char* jl_fs_get_current_dir(void);
+
+// Extended file operations
+void* jl_fs_open_file(const char* path, const char* mode);
+void jl_fs_close_file(void* file_handle);
+int jl_fs_read_bytes(void* file_handle, char* buffer, int size);
+int jl_fs_write_bytes(void* file_handle, const char* data, int size);
+int jl_fs_seek(void* file_handle, int position, int mode);
+int jl_fs_position(void* file_handle);
+int jl_fs_size(void* file_handle);
+int jl_fs_available(void* file_handle);
+char* jl_fs_name(void* file_handle);
+
+// Directory operations
+int jl_fs_mkdir(const char* path);
+int jl_fs_rmdir(const char* path);
+int jl_fs_remove(const char* path);
+int jl_fs_rename(const char* pathFrom, const char* pathTo);
+
+// Filesystem info
+int jl_fs_total_bytes(void);
+int jl_fs_used_bytes(void);
 int jl_nodes_clear(void);
 int jl_oled_print(const char* text, int size);
 int jl_oled_clear(void);
@@ -362,28 +392,48 @@ static int find_node_value(const char* name) {
     return -1; // Not found
 }
 
-// GPIO State Type (HIGH/LOW) that behaves like bool in conditionals
+// GPIO State Type (HIGH/LOW/FLOATING) that behaves like bool in conditionals
+typedef enum {
+    GPIO_STATE_LOW = 0,
+    GPIO_STATE_HIGH = 1,
+    GPIO_STATE_FLOATING = 2
+} gpio_state_value_t;
+
 typedef struct _gpio_state_obj_t {
     mp_obj_base_t base;
-    bool value;
+    gpio_state_value_t value;
 } gpio_state_obj_t;
 
 static void gpio_state_print(const mp_print_t *print, mp_obj_t self_in, mp_print_kind_t kind) {
     gpio_state_obj_t *self = MP_OBJ_TO_PTR(self_in);
-    mp_printf(print, "%s", self->value ? "HIGH" : "LOW");
+    switch (self->value) {
+        case GPIO_STATE_HIGH:
+            mp_printf(print, "HIGH");
+            break;
+        case GPIO_STATE_LOW:
+            mp_printf(print, "LOW");
+            break;
+        case GPIO_STATE_FLOATING:
+            mp_printf(print, "FLOATING");
+            break;
+        default:
+            mp_printf(print, "UNKNOWN");
+            break;
+    }
 }
 
 static mp_obj_t gpio_state_unary_op(mp_unary_op_t op, mp_obj_t self_in) {
     gpio_state_obj_t *self = MP_OBJ_TO_PTR(self_in);
     switch (op) {
         case MP_UNARY_OP_BOOL:
-            return mp_obj_new_bool(self->value);
+            // HIGH = True, LOW = False, FLOATING = False
+            return mp_obj_new_bool(self->value == GPIO_STATE_HIGH);
         case MP_UNARY_OP_INT_MAYBE:
-            // Support int(state) conversion (HIGH=1, LOW=0)
-            return mp_obj_new_int(self->value ? 1 : 0);
+            // Support int(state) conversion (HIGH=1, LOW=0, FLOATING=2)
+            return mp_obj_new_int(self->value);
         case MP_UNARY_OP_FLOAT_MAYBE:
-            // Support float(state) conversion (HIGH=1.0, LOW=0.0)
-            return mp_obj_new_float(self->value ? 1.0 : 0.0);
+            // Support float(state) conversion (HIGH=1.0, LOW=0.0, FLOATING=2.0)
+            return mp_obj_new_float((float)self->value);
         default:
             return MP_OBJ_NULL;
     }
@@ -402,13 +452,38 @@ static mp_obj_t gpio_state_make_new(const mp_obj_type_t *type, size_t n_args, si
     mp_arg_check_num(n_args, n_kw, 1, 1, false);
     gpio_state_obj_t *o = m_new_obj(gpio_state_obj_t);
     o->base.type = &gpio_state_type;
-    o->value = mp_obj_is_true(args[0]);
+    
+    if (mp_obj_is_int(args[0])) {
+        // Handle integer values: 0=LOW, 1=HIGH, 2=FLOATING
+        int val = mp_obj_get_int(args[0]);
+        if (val == 0) o->value = GPIO_STATE_LOW;
+        else if (val == 1) o->value = GPIO_STATE_HIGH;
+        else if (val == 2) o->value = GPIO_STATE_FLOATING;
+        else o->value = mp_obj_is_true(args[0]) ? GPIO_STATE_HIGH : GPIO_STATE_LOW;
+    } else if (mp_obj_is_str(args[0])) {
+        // Handle string values: "HIGH", "LOW", "FLOATING"
+        const char *str = mp_obj_str_get_str(args[0]);
+        if (strcmp(str, "HIGH") == 0 || strcmp(str, "high") == 0 || strcmp(str, "1") == 0) {
+            o->value = GPIO_STATE_HIGH;
+        } else if (strcmp(str, "LOW") == 0 || strcmp(str, "low") == 0 || strcmp(str, "0") == 0) {
+            o->value = GPIO_STATE_LOW;
+        } else if (strcmp(str, "FLOATING") == 0 || strcmp(str, "floating") == 0 || 
+                   strcmp(str, "FLOAT") == 0 || strcmp(str, "float") == 0 || strcmp(str, "2") == 0) {
+            o->value = GPIO_STATE_FLOATING;
+        } else {
+            mp_raise_ValueError("GPIO state must be 'HIGH', 'LOW', or 'FLOATING'");
+        }
+    } else {
+        // Handle boolean values (default behavior)
+        o->value = mp_obj_is_true(args[0]) ? GPIO_STATE_HIGH : GPIO_STATE_LOW;
+    }
+    
     return MP_OBJ_FROM_PTR(o);
 }
 
 // These make_new functions will be implemented after the struct definitions later in the file
 
-static mp_obj_t gpio_state_new(bool value) {
+static mp_obj_t gpio_state_new(gpio_state_value_t value) {
     gpio_state_obj_t *o = m_new_obj(gpio_state_obj_t);
     o->base.type = &gpio_state_type;
     o->value = value;
@@ -1092,8 +1167,17 @@ static mp_obj_t jl_gpio_get_func(mp_obj_t pin_obj) {
     
     int value = jl_gpio_get(pin);
     
-    // Return custom GPIO state object that displays as HIGH/LOW but behaves as boolean
-    return gpio_state_new(value);
+    // Return custom GPIO state object that displays as HIGH/LOW/FLOATING
+    // jl_gpio_get returns: 0=LOW, 1=HIGH, 2=FLOATING
+    gpio_state_value_t state;
+    switch (value) {
+        case 0: state = GPIO_STATE_LOW; break;
+        case 1: state = GPIO_STATE_HIGH; break;
+        case 2: state = GPIO_STATE_FLOATING; break;
+        default: state = GPIO_STATE_LOW; break; // Default to LOW for safety
+    }
+    
+    return gpio_state_new(state);
 }
 static MP_DEFINE_CONST_FUN_OBJ_1(jl_gpio_get_obj, jl_gpio_get_func);
 
@@ -1305,9 +1389,14 @@ static mp_obj_t jl_oled_print_func(size_t n_args, const mp_obj_t *args) {
         }
         text = buffer;
     } else if (mp_obj_get_type(args[0]) == &gpio_state_type) {
-        // GPIO State - HIGH/LOW
+        // GPIO State - HIGH/LOW/FLOATING
         gpio_state_obj_t *state = MP_OBJ_TO_PTR(args[0]);
-        text = state->value ? "HIGH" : "LOW";
+        switch (state->value) {
+            case GPIO_STATE_HIGH: text = "HIGH"; break;
+            case GPIO_STATE_LOW: text = "LOW"; break;
+            case GPIO_STATE_FLOATING: text = "FLOATING"; break;
+            default: text = "UNKNOWN"; break;
+        }
     } else if (mp_obj_get_type(args[0]) == &gpio_direction_type) {
         // GPIO Direction - INPUT/OUTPUT
         gpio_direction_obj_t *dir = MP_OBJ_TO_PTR(args[0]);
@@ -1796,6 +1885,11 @@ static const node_obj_t node_isense_minus_obj = { .base = { &node_type }, .value
 static const node_obj_t node_buffer_in_obj = { .base = { &node_type }, .value = 139 };
 static const node_obj_t node_buffer_out_obj = { .base = { &node_type }, .value = 140 };
 
+// GPIO State constants
+static const gpio_state_obj_t gpio_state_high_obj = { .base = { &gpio_state_type }, .value = GPIO_STATE_HIGH };
+static const gpio_state_obj_t gpio_state_low_obj = { .base = { &gpio_state_type }, .value = GPIO_STATE_LOW };
+static const gpio_state_obj_t gpio_state_floating_obj = { .base = { &gpio_state_type }, .value = GPIO_STATE_FLOATING };
+
 
 // Nodes Help Function
 static mp_obj_t jl_help_nodes_func(void) {
@@ -1992,12 +2086,572 @@ static mp_obj_t jl_help_func(void) {
 }
 static MP_DEFINE_CONST_FUN_OBJ_0(jl_help_obj, jl_help_func);
 
+// Filesystem Functions
+static mp_obj_t jl_fs_exists_func(mp_obj_t path_obj) {
+    const char* path = mp_obj_str_get_str(path_obj);
+    int exists = jl_fs_exists(path);
+    return mp_obj_new_bool(exists);
+}
+static MP_DEFINE_CONST_FUN_OBJ_1(jl_fs_exists_obj, jl_fs_exists_func);
+
+static mp_obj_t jl_fs_listdir_func(mp_obj_t path_obj) {
+    const char* path = mp_obj_str_get_str(path_obj);
+    char* result = jl_fs_listdir(path);
+    if (result == NULL) {
+        return mp_const_none;
+    }
+    
+    // Make a copy since strtok modifies the string
+    size_t len = strlen(result);
+    char* result_copy = malloc(len + 1);
+    if (result_copy == NULL) {
+        return mp_const_none;
+    }
+    strcpy(result_copy, result);
+    
+    // Parse comma-separated string into Python list
+    mp_obj_t list_obj = mp_obj_new_list(0, NULL);
+    
+    char* token = strtok(result_copy, ",");
+    while (token != NULL) {
+        // Remove any leading/trailing whitespace if needed
+        while (*token == ' ') token++; // Skip leading spaces
+        
+        mp_obj_t item = mp_obj_new_str(token, strlen(token));
+        mp_obj_list_append(list_obj, item);
+        
+        token = strtok(NULL, ",");
+    }
+    
+    free(result_copy);
+    return list_obj;
+}
+static MP_DEFINE_CONST_FUN_OBJ_1(jl_fs_listdir_obj, jl_fs_listdir_func);
+
+static mp_obj_t jl_fs_read_file_func(mp_obj_t path_obj) {
+    const char* path = mp_obj_str_get_str(path_obj);
+    char* content = jl_fs_read_file(path);
+    if (content == NULL) {
+        return mp_const_none;
+    }
+    mp_obj_t content_obj = mp_obj_new_str(content, strlen(content));
+    // Note: caller should free content if needed
+    return content_obj;
+}
+static MP_DEFINE_CONST_FUN_OBJ_1(jl_fs_read_file_obj, jl_fs_read_file_func);
+
+static mp_obj_t jl_fs_write_file_func(mp_obj_t path_obj, mp_obj_t content_obj) {
+    const char* path = mp_obj_str_get_str(path_obj);
+    const char* content = mp_obj_str_get_str(content_obj);
+    int result = jl_fs_write_file(path, content);
+    return mp_obj_new_bool(result == 1);
+}
+static MP_DEFINE_CONST_FUN_OBJ_2(jl_fs_write_file_obj, jl_fs_write_file_func);
+
+static mp_obj_t jl_fs_get_current_dir_func(void) {
+    char* current_dir = jl_fs_get_current_dir();
+    if (current_dir == NULL) {
+        return mp_obj_new_str("/", 1);
+    }
+    mp_obj_t dir_obj = mp_obj_new_str(current_dir, strlen(current_dir));
+    return dir_obj;
+}
+static MP_DEFINE_CONST_FUN_OBJ_0(jl_fs_get_current_dir_obj, jl_fs_get_current_dir_func);
+
+//==============================================================================
+// JFS (Jumperless FileSystem) Module - Comprehensive File I/O
+//==============================================================================
+
+// File object type
+typedef struct _mp_obj_jfs_file_t {
+    mp_obj_base_t base;
+    void* file_handle;
+    bool is_open;
+} mp_obj_jfs_file_t;
+
+// File type declaration
+const mp_obj_type_t mp_type_jfs_file;
+
+// File object methods
+static mp_obj_t jfs_file_read(size_t n_args, const mp_obj_t *args) {
+    mp_obj_jfs_file_t *self = MP_OBJ_TO_PTR(args[0]);
+    if (!self->is_open || !self->file_handle) {
+        mp_raise_ValueError("I/O operation on closed file");
+    }
+    
+    size_t size = 1024; // Default read size
+    if (n_args > 1) {
+        size = mp_obj_get_int(args[1]);
+    }
+    
+    char* buffer = malloc(size + 1);
+    if (!buffer) {
+        mp_raise_OSError(12); // ENOMEM
+    }
+    
+    int bytes_read = jl_fs_read_bytes(self->file_handle, buffer, size);
+    if (bytes_read < 0) {
+        free(buffer);
+        mp_raise_OSError(5); // EIO
+    }
+    
+    buffer[bytes_read] = '\0';
+    mp_obj_t result = mp_obj_new_str(buffer, bytes_read);
+    free(buffer);
+    return result;
+}
+static MP_DEFINE_CONST_FUN_OBJ_VAR_BETWEEN(jfs_file_read_obj, 1, 2, jfs_file_read);
+
+static mp_obj_t jfs_file_write(mp_obj_t self_in, mp_obj_t data_obj) {
+    mp_obj_jfs_file_t *self = MP_OBJ_TO_PTR(self_in);
+    if (!self->is_open || !self->file_handle) {
+        mp_raise_ValueError("I/O operation on closed file");
+    }
+    
+    const char* data = mp_obj_str_get_str(data_obj);
+    size_t len = strlen(data);
+    
+    int bytes_written = jl_fs_write_bytes(self->file_handle, data, len);
+    if (bytes_written < 0) {
+        mp_raise_OSError(5); // EIO
+    }
+    
+    return mp_obj_new_int(bytes_written);
+}
+static MP_DEFINE_CONST_FUN_OBJ_2(jfs_file_write_obj, jfs_file_write);
+
+static mp_obj_t jfs_file_seek(size_t n_args, const mp_obj_t *args) {
+    mp_obj_jfs_file_t *self = MP_OBJ_TO_PTR(args[0]);
+    if (!self->is_open || !self->file_handle) {
+        mp_raise_ValueError("I/O operation on closed file");
+    }
+    
+    int position = mp_obj_get_int(args[1]);
+    int whence = 0; // Default to SEEK_SET
+    if (n_args > 2) {
+        whence = mp_obj_get_int(args[2]);
+    }
+    
+    int result = jl_fs_seek(self->file_handle, position, whence);
+    return mp_obj_new_bool(result);
+}
+static MP_DEFINE_CONST_FUN_OBJ_VAR_BETWEEN(jfs_file_seek_obj, 2, 3, jfs_file_seek);
+
+static mp_obj_t jfs_file_tell(mp_obj_t self_in) {
+    mp_obj_jfs_file_t *self = MP_OBJ_TO_PTR(self_in);
+    if (!self->is_open || !self->file_handle) {
+        mp_raise_ValueError("I/O operation on closed file");
+    }
+    
+    int position = jl_fs_position(self->file_handle);
+    return mp_obj_new_int(position);
+}
+static MP_DEFINE_CONST_FUN_OBJ_1(jfs_file_tell_obj, jfs_file_tell);
+
+static mp_obj_t jfs_file_size(mp_obj_t self_in) {
+    mp_obj_jfs_file_t *self = MP_OBJ_TO_PTR(self_in);
+    if (!self->is_open || !self->file_handle) {
+        mp_raise_ValueError("I/O operation on closed file");
+    }
+    
+    int size = jl_fs_size(self->file_handle);
+    return mp_obj_new_int(size);
+}
+static MP_DEFINE_CONST_FUN_OBJ_1(jfs_file_size_obj, jfs_file_size);
+
+static mp_obj_t jfs_file_available(mp_obj_t self_in) {
+    mp_obj_jfs_file_t *self = MP_OBJ_TO_PTR(self_in);
+    if (!self->is_open || !self->file_handle) {
+        return mp_obj_new_int(0);
+    }
+    
+    int available = jl_fs_available(self->file_handle);
+    return mp_obj_new_int(available);
+}
+static MP_DEFINE_CONST_FUN_OBJ_1(jfs_file_available_obj, jfs_file_available);
+
+static mp_obj_t jfs_file_name(mp_obj_t self_in) {
+    mp_obj_jfs_file_t *self = MP_OBJ_TO_PTR(self_in);
+    if (!self->is_open || !self->file_handle) {
+        return mp_const_none;
+    }
+    
+    char* name = jl_fs_name(self->file_handle);
+    if (!name) {
+        return mp_const_none;
+    }
+    
+    return mp_obj_new_str(name, strlen(name));
+}
+static MP_DEFINE_CONST_FUN_OBJ_1(jfs_file_name_obj, jfs_file_name);
+
+static mp_obj_t jfs_file_close(mp_obj_t self_in) {
+    mp_obj_jfs_file_t *self = MP_OBJ_TO_PTR(self_in);
+    if (self->is_open && self->file_handle) {
+        jl_fs_close_file(self->file_handle);
+        self->file_handle = NULL;
+        self->is_open = false;
+    }
+    return mp_const_none;
+}
+static MP_DEFINE_CONST_FUN_OBJ_1(jfs_file_close_obj, jfs_file_close);
+
+// Context manager methods for 'with' statement support
+static mp_obj_t jfs_file_enter(mp_obj_t self_in) {
+    // Just return self for context manager
+    return self_in;
+}
+static MP_DEFINE_CONST_FUN_OBJ_1(jfs_file_enter_obj, jfs_file_enter);
+
+static mp_obj_t jfs_file_exit(size_t n_args, const mp_obj_t *args) {
+    // args[0] is self, args[1-3] are exception info (exc_type, exc_val, exc_tb)
+    mp_obj_jfs_file_t *self = MP_OBJ_TO_PTR(args[0]);
+    
+    // Always close the file when exiting context
+    if (self->is_open && self->file_handle) {
+        jl_fs_close_file(self->file_handle);
+        self->file_handle = NULL;
+        self->is_open = false;
+    }
+    
+    // Return False to not suppress any exceptions
+    return mp_const_false;
+}
+static MP_DEFINE_CONST_FUN_OBJ_VAR_BETWEEN(jfs_file_exit_obj, 4, 4, jfs_file_exit);
+
+// File object locals dict
+static const mp_rom_map_elem_t jfs_file_locals_dict_table[] = {
+    { MP_ROM_QSTR(MP_QSTR_read), MP_ROM_PTR(&jfs_file_read_obj) },
+    { MP_ROM_QSTR(MP_QSTR_write), MP_ROM_PTR(&jfs_file_write_obj) },
+    { MP_ROM_QSTR(MP_QSTR_seek), MP_ROM_PTR(&jfs_file_seek_obj) },
+    { MP_ROM_QSTR(MP_QSTR_tell), MP_ROM_PTR(&jfs_file_tell_obj) },
+    { MP_ROM_QSTR(MP_QSTR_position), MP_ROM_PTR(&jfs_file_tell_obj) }, // Alias
+    { MP_ROM_QSTR(MP_QSTR_size), MP_ROM_PTR(&jfs_file_size_obj) },
+    { MP_ROM_QSTR(MP_QSTR_available), MP_ROM_PTR(&jfs_file_available_obj) },
+    { MP_ROM_QSTR(MP_QSTR_name), MP_ROM_PTR(&jfs_file_name_obj) },
+    { MP_ROM_QSTR(MP_QSTR_close), MP_ROM_PTR(&jfs_file_close_obj) },
+    
+    // Context manager methods for 'with' statement support
+    { MP_ROM_QSTR(MP_QSTR___enter__), MP_ROM_PTR(&jfs_file_enter_obj) },
+    { MP_ROM_QSTR(MP_QSTR___exit__), MP_ROM_PTR(&jfs_file_exit_obj) },
+};
+static MP_DEFINE_CONST_DICT(jfs_file_locals_dict, jfs_file_locals_dict_table);
+
+// File type definition
+MP_DEFINE_CONST_OBJ_TYPE(
+    mp_type_jfs_file,
+    MP_QSTR_JFSFile,
+    MP_TYPE_FLAG_NONE,
+    locals_dict, &jfs_file_locals_dict
+);
+
+// JFS module functions
+static mp_obj_t jfs_open(size_t n_args, const mp_obj_t *args) {
+    const char* path = mp_obj_str_get_str(args[0]);
+    const char* mode = "r"; // Default mode
+    if (n_args > 1) {
+        mode = mp_obj_str_get_str(args[1]);
+    }
+    
+    void* file_handle = jl_fs_open_file(path, mode);
+    if (!file_handle) {
+        mp_raise_OSError(2); // ENOENT
+    }
+    
+    mp_obj_jfs_file_t *file_obj = m_new_obj(mp_obj_jfs_file_t);
+    file_obj->base.type = &mp_type_jfs_file;
+    file_obj->file_handle = file_handle;
+    file_obj->is_open = true;
+    
+    return MP_OBJ_FROM_PTR(file_obj);
+}
+static MP_DEFINE_CONST_FUN_OBJ_VAR_BETWEEN(jfs_open_obj, 1, 2, jfs_open);
+
+static mp_obj_t jfs_exists(mp_obj_t path_obj) {
+    const char* path = mp_obj_str_get_str(path_obj);
+    int exists = jl_fs_exists(path);
+    return mp_obj_new_bool(exists);
+}
+static MP_DEFINE_CONST_FUN_OBJ_1(jfs_exists_obj, jfs_exists);
+
+static mp_obj_t jfs_listdir(mp_obj_t path_obj) {
+    const char* path = mp_obj_str_get_str(path_obj);
+    char* result = jl_fs_listdir(path);
+    if (result == NULL) {
+        return mp_obj_new_list(0, NULL);
+    }
+    
+    // Parse comma-separated string into Python list
+    mp_obj_t list_obj = mp_obj_new_list(0, NULL);
+    
+    size_t len = strlen(result);
+    char* result_copy = malloc(len + 1);
+    if (result_copy == NULL) {
+        return mp_obj_new_list(0, NULL);
+    }
+    strcpy(result_copy, result);
+    
+    char* token = strtok(result_copy, ",");
+    while (token != NULL) {
+        while (*token == ' ') token++; // Skip leading spaces
+        mp_obj_t item = mp_obj_new_str(token, strlen(token));
+        mp_obj_list_append(list_obj, item);
+        token = strtok(NULL, ",");
+    }
+    
+    free(result_copy);
+    return list_obj;
+}
+static MP_DEFINE_CONST_FUN_OBJ_1(jfs_listdir_obj, jfs_listdir);
+
+static mp_obj_t jfs_mkdir(mp_obj_t path_obj) {
+    const char* path = mp_obj_str_get_str(path_obj);
+    int result = jl_fs_mkdir(path);
+    if (!result) {
+        mp_raise_OSError(2); // ENOENT - failed to create directory
+    }
+    return mp_const_none;
+}
+static MP_DEFINE_CONST_FUN_OBJ_1(jfs_mkdir_obj, jfs_mkdir);
+
+static mp_obj_t jfs_rmdir(mp_obj_t path_obj) {
+    const char* path = mp_obj_str_get_str(path_obj);
+    int result = jl_fs_rmdir(path);
+    if (!result) {
+        mp_raise_OSError(2); // ENOENT - failed to remove directory
+    }
+    return mp_const_none;
+}
+static MP_DEFINE_CONST_FUN_OBJ_1(jfs_rmdir_obj, jfs_rmdir);
+
+static mp_obj_t jfs_remove(mp_obj_t path_obj) {
+    const char* path = mp_obj_str_get_str(path_obj);
+    int result = jl_fs_remove(path);
+    if (!result) {
+        mp_raise_OSError(2); // ENOENT - failed to remove file
+    }
+    return mp_const_none;
+}
+static MP_DEFINE_CONST_FUN_OBJ_1(jfs_remove_obj, jfs_remove);
+
+static mp_obj_t jfs_rename(mp_obj_t from_obj, mp_obj_t to_obj) {
+    const char* from_path = mp_obj_str_get_str(from_obj);
+    const char* to_path = mp_obj_str_get_str(to_obj);
+    int result = jl_fs_rename(from_path, to_path);
+    if (!result) {
+        mp_raise_OSError(2); // ENOENT - failed to rename file
+    }
+    return mp_const_none;
+}
+static MP_DEFINE_CONST_FUN_OBJ_2(jfs_rename_obj, jfs_rename);
+
+static mp_obj_t jfs_stat(mp_obj_t path_obj) {
+    const char* path = mp_obj_str_get_str(path_obj);
+    
+    // Simple stat implementation - just check if file exists and get basic info
+    if (!jl_fs_exists(path)) {
+        mp_raise_OSError(2); // ENOENT
+    }
+    
+    // Try to open file to get size info
+    void* file_handle = jl_fs_open_file(path, "r");
+    int size = 0;
+    if (file_handle) {
+        size = jl_fs_size(file_handle);
+        jl_fs_close_file(file_handle);
+    }
+    
+    // Return a simple tuple with (mode, ino, dev, nlink, uid, gid, size, atime, mtime, ctime)
+    mp_obj_t tuple[10];
+    tuple[0] = mp_obj_new_int(0x8000); // S_IFREG - regular file
+    tuple[1] = mp_obj_new_int(0); // inode
+    tuple[2] = mp_obj_new_int(0); // device
+    tuple[3] = mp_obj_new_int(1); // nlink
+    tuple[4] = mp_obj_new_int(0); // uid
+    tuple[5] = mp_obj_new_int(0); // gid
+    tuple[6] = mp_obj_new_int(size); // size
+    tuple[7] = mp_obj_new_int(0); // atime
+    tuple[8] = mp_obj_new_int(0); // mtime
+    tuple[9] = mp_obj_new_int(0); // ctime
+    
+    return mp_obj_new_tuple(10, tuple);
+}
+static MP_DEFINE_CONST_FUN_OBJ_1(jfs_stat_obj, jfs_stat);
+
+static mp_obj_t jfs_info(void) {
+    int total = jl_fs_total_bytes();
+    int used = jl_fs_used_bytes();
+    int free = total - used;
+    
+    mp_obj_t tuple[3];
+    tuple[0] = mp_obj_new_int(total);
+    tuple[1] = mp_obj_new_int(used);
+    tuple[2] = mp_obj_new_int(free);
+    
+    return mp_obj_new_tuple(3, tuple);
+}
+static MP_DEFINE_CONST_FUN_OBJ_0(jfs_info_obj, jfs_info);
+
+// File handle operations as module functions
+static mp_obj_t jfs_read(size_t n_args, const mp_obj_t *args) {
+    mp_obj_jfs_file_t *file = MP_OBJ_TO_PTR(args[0]);
+    if (!file->is_open || !file->file_handle) {
+        mp_raise_ValueError("I/O operation on closed file");
+    }
+    
+    size_t size = 1024; // Default read size
+    if (n_args > 1) {
+        size = mp_obj_get_int(args[1]);
+    }
+    
+    char* buffer = malloc(size + 1);
+    if (!buffer) {
+        mp_raise_OSError(12); // ENOMEM
+    }
+    
+    int bytes_read = jl_fs_read_bytes(file->file_handle, buffer, size);
+    if (bytes_read < 0) {
+        free(buffer);
+        mp_raise_OSError(5); // EIO
+    }
+    
+    buffer[bytes_read] = '\0';
+    mp_obj_t result = mp_obj_new_str(buffer, bytes_read);
+    free(buffer);
+    return result;
+}
+static MP_DEFINE_CONST_FUN_OBJ_VAR_BETWEEN(jfs_read_obj, 1, 2, jfs_read);
+
+static mp_obj_t jfs_write(mp_obj_t file_obj, mp_obj_t data_obj) {
+    mp_obj_jfs_file_t *file = MP_OBJ_TO_PTR(file_obj);
+    if (!file->is_open || !file->file_handle) {
+        mp_raise_ValueError("I/O operation on closed file");
+    }
+    
+    const char* data = mp_obj_str_get_str(data_obj);
+    size_t len = strlen(data);
+    
+    int bytes_written = jl_fs_write_bytes(file->file_handle, data, len);
+    if (bytes_written < 0) {
+        mp_raise_OSError(5); // EIO
+    }
+    
+    return mp_const_none;
+}
+static MP_DEFINE_CONST_FUN_OBJ_2(jfs_write_obj, jfs_write);
+
+static mp_obj_t jfs_close(mp_obj_t file_obj) {
+    mp_obj_jfs_file_t *file = MP_OBJ_TO_PTR(file_obj);
+    if (file->is_open && file->file_handle) {
+        jl_fs_close_file(file->file_handle);
+        file->file_handle = NULL;
+        file->is_open = false;
+    }
+    return mp_const_none;
+}
+static MP_DEFINE_CONST_FUN_OBJ_1(jfs_close_obj, jfs_close);
+
+static mp_obj_t jfs_seek(size_t n_args, const mp_obj_t *args) {
+    mp_obj_jfs_file_t *file = MP_OBJ_TO_PTR(args[0]);
+    if (!file->is_open || !file->file_handle) {
+        mp_raise_ValueError("I/O operation on closed file");
+    }
+    
+    int position = mp_obj_get_int(args[1]);
+    int whence = 0; // Default to SEEK_SET
+    if (n_args > 2) {
+        whence = mp_obj_get_int(args[2]);
+    }
+    
+    int result = jl_fs_seek(file->file_handle, position, whence);
+    return mp_obj_new_bool(result);
+}
+static MP_DEFINE_CONST_FUN_OBJ_VAR_BETWEEN(jfs_seek_obj, 2, 3, jfs_seek);
+
+static mp_obj_t jfs_tell(mp_obj_t file_obj) {
+    mp_obj_jfs_file_t *file = MP_OBJ_TO_PTR(file_obj);
+    if (!file->is_open || !file->file_handle) {
+        mp_raise_ValueError("I/O operation on closed file");
+    }
+    
+    int position = jl_fs_position(file->file_handle);
+    return mp_obj_new_int(position);
+}
+static MP_DEFINE_CONST_FUN_OBJ_1(jfs_tell_obj, jfs_tell);
+
+static mp_obj_t jfs_size(mp_obj_t file_obj) {
+    mp_obj_jfs_file_t *file = MP_OBJ_TO_PTR(file_obj);
+    if (!file->is_open || !file->file_handle) {
+        mp_raise_ValueError("I/O operation on closed file");
+    }
+    
+    int size = jl_fs_size(file->file_handle);
+    return mp_obj_new_int(size);
+}
+static MP_DEFINE_CONST_FUN_OBJ_1(jfs_size_obj, jfs_size);
+
+static mp_obj_t jfs_available(mp_obj_t file_obj) {
+    mp_obj_jfs_file_t *file = MP_OBJ_TO_PTR(file_obj);
+    if (!file->is_open || !file->file_handle) {
+        return mp_obj_new_int(0);
+    }
+    
+    int available = jl_fs_available(file->file_handle);
+    return mp_obj_new_int(available);
+}
+static MP_DEFINE_CONST_FUN_OBJ_1(jfs_available_obj, jfs_available);
+
+// JFS module globals
+static const mp_rom_map_elem_t jfs_module_globals_table[] = {
+    { MP_ROM_QSTR(MP_QSTR___name__), MP_ROM_QSTR(MP_QSTR_jfs) },
+    
+    // File operations
+    { MP_ROM_QSTR(MP_QSTR_open), MP_ROM_PTR(&jfs_open_obj) },
+    
+    // File handle operations (module-level functions)
+    { MP_ROM_QSTR(MP_QSTR_read), MP_ROM_PTR(&jfs_read_obj) },
+    { MP_ROM_QSTR(MP_QSTR_write), MP_ROM_PTR(&jfs_write_obj) },
+    { MP_ROM_QSTR(MP_QSTR_close), MP_ROM_PTR(&jfs_close_obj) },
+    { MP_ROM_QSTR(MP_QSTR_seek), MP_ROM_PTR(&jfs_seek_obj) },
+    { MP_ROM_QSTR(MP_QSTR_tell), MP_ROM_PTR(&jfs_tell_obj) },
+    { MP_ROM_QSTR(MP_QSTR_size), MP_ROM_PTR(&jfs_size_obj) },
+    { MP_ROM_QSTR(MP_QSTR_available), MP_ROM_PTR(&jfs_available_obj) },
+    
+    // Directory operations
+    { MP_ROM_QSTR(MP_QSTR_exists), MP_ROM_PTR(&jfs_exists_obj) },
+    { MP_ROM_QSTR(MP_QSTR_listdir), MP_ROM_PTR(&jfs_listdir_obj) },
+    { MP_ROM_QSTR(MP_QSTR_mkdir), MP_ROM_PTR(&jfs_mkdir_obj) },
+    { MP_ROM_QSTR(MP_QSTR_rmdir), MP_ROM_PTR(&jfs_rmdir_obj) },
+    { MP_ROM_QSTR(MP_QSTR_remove), MP_ROM_PTR(&jfs_remove_obj) },
+    { MP_ROM_QSTR(MP_QSTR_rename), MP_ROM_PTR(&jfs_rename_obj) },
+    { MP_ROM_QSTR(MP_QSTR_stat), MP_ROM_PTR(&jfs_stat_obj) },
+    
+    // Filesystem info
+    { MP_ROM_QSTR(MP_QSTR_info), MP_ROM_PTR(&jfs_info_obj) },
+    
+    // Constants
+    { MP_ROM_QSTR(MP_QSTR_SEEK_SET), MP_ROM_INT(0) },
+    { MP_ROM_QSTR(MP_QSTR_SEEK_CUR), MP_ROM_INT(1) },
+    { MP_ROM_QSTR(MP_QSTR_SEEK_END), MP_ROM_INT(2) },
+};
+static MP_DEFINE_CONST_DICT(jfs_module_globals, jfs_module_globals_table);
+
+const mp_obj_module_t jfs_user_cmodule = {
+    .base = { &mp_type_module },
+    .globals = (mp_obj_dict_t*)&jfs_module_globals,
+};
+
 // Module globals table
 static const mp_rom_map_elem_t jumperless_module_globals_table[] = {
     { MP_ROM_QSTR(MP_QSTR___name__), MP_ROM_QSTR(MP_QSTR_jumperless) },
     
     // Node creation function
     { MP_ROM_QSTR(MP_QSTR_node), MP_ROM_PTR(&jl_node_obj) },
+    
+    // GPIO State constants  
+    { MP_ROM_QSTR(MP_QSTR_HIGH), MP_ROM_PTR(&gpio_state_high_obj) },
+    { MP_ROM_QSTR(MP_QSTR_LOW), MP_ROM_PTR(&gpio_state_low_obj) },
+    { MP_ROM_QSTR(MP_QSTR_FLOATING), MP_ROM_PTR(&gpio_state_floating_obj) },
     
     // Common node constants
     { MP_ROM_QSTR(MP_QSTR_TOP_RAIL), MP_ROM_PTR(&node_top_rail_obj) },
@@ -2312,6 +2966,16 @@ static const mp_rom_map_elem_t jumperless_module_globals_table[] = {
     // Help functions
     { MP_ROM_QSTR(MP_QSTR_help), MP_ROM_PTR(&jl_help_obj) },
     { MP_ROM_QSTR(MP_QSTR_nodes_help), MP_ROM_PTR(&jl_help_nodes_obj) },
+    
+    // Filesystem functions 
+    { MP_ROM_QSTR(MP_QSTR_fs_exists), MP_ROM_PTR(&jl_fs_exists_obj) },
+    { MP_ROM_QSTR(MP_QSTR_fs_listdir), MP_ROM_PTR(&jl_fs_listdir_obj) },
+    { MP_ROM_QSTR(MP_QSTR_fs_read), MP_ROM_PTR(&jl_fs_read_file_obj) },
+    { MP_ROM_QSTR(MP_QSTR_fs_write), MP_ROM_PTR(&jl_fs_write_file_obj) },
+    { MP_ROM_QSTR(MP_QSTR_fs_cwd), MP_ROM_PTR(&jl_fs_get_current_dir_obj) },
+    
+    // JFS Module - Comprehensive filesystem API
+    { MP_ROM_QSTR(MP_QSTR_jfs), MP_ROM_PTR(&jfs_user_cmodule) },
 };
 
 static MP_DEFINE_CONST_DICT(jumperless_module_globals, jumperless_module_globals_table);
@@ -2321,5 +2985,45 @@ const mp_obj_module_t jumperless_user_cmodule = {
     .globals = (mp_obj_dict_t*)&jumperless_module_globals,
 };
 
-// Register the module with MicroPython
-MP_REGISTER_MODULE(MP_QSTR_jumperless, jumperless_user_cmodule); 
+//==============================================================================
+// Missing MicroPython VFS bridge functions for os module support
+//==============================================================================
+
+// Import stat function for module importing
+mp_import_stat_t mp_import_stat(const char *path) {
+    if (jl_fs_exists(path)) {
+        return MP_IMPORT_STAT_FILE;
+    }
+    return MP_IMPORT_STAT_NO_EXIST;
+}
+
+// Simple VFS open function stub for basic file operations
+mp_obj_t mp_vfs_open(size_t n_args, const mp_obj_t *args, mp_map_t *kwargs) {
+    // For now, just return None - we can implement file objects later if needed
+    return mp_const_none;
+}
+MP_DEFINE_CONST_FUN_OBJ_KW(mp_vfs_open_obj, 1, mp_vfs_open);
+
+// Register the modules with MicroPython
+MP_REGISTER_MODULE(MP_QSTR_jumperless, jumperless_user_cmodule);
+MP_REGISTER_MODULE(MP_QSTR_jfs, jfs_user_cmodule); 
+
+// Lexer function to read Python files for import system
+mp_lexer_t *mp_lexer_new_from_file(qstr filename) {
+    // Convert qstr to C string
+    const char *path = qstr_str(filename);
+    
+    // Read file contents using our filesystem bridge
+    char *content = jl_fs_read_file(path);
+    if (content == NULL) {
+        mp_raise_OSError(MP_ENOENT);
+    }
+    
+    // Create lexer from the file contents
+    // The lexer will take ownership of the content string
+    mp_lexer_t *lex = mp_lexer_new_from_str_len(filename, content, strlen(content), 0);
+    
+    // Note: content should not be freed here as lexer now owns it
+    // MicroPython will handle freeing when the lexer is destroyed
+    return lex;
+}

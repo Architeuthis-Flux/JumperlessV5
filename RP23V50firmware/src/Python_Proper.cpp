@@ -4,6 +4,8 @@
 #include "config.h"
 #include "FilesystemStuff.h"
 #include "EkiloEditor.h"
+#include "FileParsing.h"
+
 extern "C" {
 #include "py/gc.h"
 #include "py/runtime.h"
@@ -310,11 +312,15 @@ bool initMicroPythonProper(Stream *stream) {
 void deinitMicroPythonProper(void) {
   if (mp_initialized) {
     global_mp_stream->println("[MP] Deinitializing MicroPython...");
+    
+    // Close any open files before deinitializing MicroPython
+    closeAllOpenFiles();
+    
     mp_embed_deinit();
-      mp_initialized = false;
-  mp_repl_active = false;
-  jumperless_globals_loaded = false;  // Reset globals flag
-  mp_interrupt_requested = false;  // Clear any pending interrupt
+    mp_initialized = false;
+    mp_repl_active = false;
+    jumperless_globals_loaded = false;  // Reset globals flag
+    mp_interrupt_requested = false;  // Clear any pending interrupt
   }
 }
 
@@ -366,6 +372,10 @@ void stopMicroPythonREPL(void) {
   if (mp_repl_active) {
     changeTerminalColor(0, false, global_mp_stream);
     global_mp_stream->println("\n[MP] Exiting REPL...");
+    
+    // Close any open files before exiting REPL
+    closeAllOpenFiles();
+    
     mp_repl_active = false;
     mp_interrupt_requested = false; // Clear any pending interrupt
   }
@@ -2981,6 +2991,15 @@ void displayStringWithSyntaxHighlighting(const String& text, Stream* stream) {
     "CONNECT", "REMOVE", "NONE", nullptr
   };
   
+  const char* jfs_functions[] = {
+    // JFS module functions
+    "open", "read", "write", "close", "seek", "tell", "size", "available",
+    "exists", "listdir", "mkdir", "rmdir", "remove", "rename", "stat", "info",
+    "SEEK_SET", "SEEK_CUR", "SEEK_END",
+    // Basic filesystem functions
+    "fs_exists", "fs_listdir", "fs_read", "fs_write", "fs_cwd", nullptr
+  };
+  
   auto is_separator = [](char c) -> bool {
     return isspace(c) || c == '\0' || strchr(",.()+-/*=~%<>[];", c) != nullptr;
   };
@@ -3073,6 +3092,8 @@ void displayStringWithSyntaxHighlighting(const String& text, Stream* stream) {
         new_color = 214; // Orange for Python keywords
       } else if (is_keyword(text_cstr + start, word_len, python_builtins)) {
         new_color = 79; // Green for Python builtins
+      } else if (is_keyword(text_cstr + start, word_len, jfs_functions)) {
+        new_color = 45; // Cyan-blue for JFS filesystem functions
       } else if (is_keyword(text_cstr + start, word_len, jumperless_functions)) {
         new_color = 207; // Bright magenta for Jumperless functions
       } else if (is_keyword(text_cstr + start, word_len, jumperless_constants)) {
@@ -3725,39 +3746,40 @@ void testFormattedOutput(void) {
 void setupFilesystemAndPaths(void) {
   global_mp_stream->println("[MP] Setting up filesystem and module paths...");
   
-  // Set up sys.path for module imports
+  // Set up sys.path for module imports using our filesystem bridge
   mp_embed_exec_str(
     "try:\n"
     "    import sys\n"
-    "    import os\n"
+    "    import jumperless\n"
     "    \n"
     "    # Clear existing sys.path and set up Jumperless-specific paths\n"
     "    sys.path.clear()\n"
     "    sys.path.append('')  # Current directory\n"
     "    \n"
-    "    # Add Jumperless module directories\n"
+    "    # Add Jumperless module directories using our filesystem bridge\n"
     "    paths_to_add = [\n"
     "        '/python_scripts',\n"
     "        '/python_scripts/lib',\n"
     "        '/python_scripts/modules',\n"
+    "        '/python_scripts/examples',\n"
     "        '/lib',\n"
     "        '/modules'\n"
     "    ]\n"
     "    \n"
     "    for path in paths_to_add:\n"
     "        try:\n"
-    "            # Check if path exists before adding\n"
+    "            # Check if path exists using jumperless filesystem bridge\n"
     "            if path in ['', '/']:\n"
-    "                sys.path.append(path)\n"
-    "            else:\n"
-    "                # Try to access the directory to see if it exists\n"
-    "                try:\n"
-    "                    os.listdir(path)\n"
+    "                if path not in sys.path:\n"
+    "                    sys.path.append(path)\n"
+    "            elif jumperless.fs_exists(path):\n"
+    "                if path not in sys.path:\n"
     "                    sys.path.append(path)\n"
     "                    print('Added ' + path + ' to sys.path')\n"
-    "                except OSError:\n"
-    "                    # Directory doesn't exist, skip silently\n"
-    "                    pass\n"
+    "                else:\n"
+    "                    print('Path already in sys.path: ' + path)\n"
+    "            else:\n"
+    "                print('Skipping non-existent path: ' + path)\n"
     "        except Exception as e:\n"
     "            print('Error adding ' + path + ': ' + str(e))\n"
     "    \n"
@@ -3798,6 +3820,35 @@ void setupFilesystemAndPaths(void) {
     "except ImportError:\n"
     "    print('✗ gc module not available')\n"
   );
+}
+
+/**
+ * Comprehensive file cleanup function
+ * Closes all potentially open files across the entire system
+ */
+void closeAllOpenFiles(void) {
+  // if (global_mp_stream) {
+  //   global_mp_stream->println("[FS] Closing all open files...");
+  // }
+  
+  // 1. Close global file handles from FileParsing.cpp
+  closeAllFiles();
+  
+  // 2. File manager cleanup is handled automatically when it goes out of scope
+  // if (global_mp_stream) {
+  //   global_mp_stream->println("[FS] File manager cleanup handled automatically...");
+  // }
+  
+  // 3. JFS files are automatically cleaned up by Python garbage collection
+  // Skip MicroPython execution during cleanup to avoid crashes during shutdown
+  // if (global_mp_stream) {
+  //   // global_mp_stream->println("[FS] JFS files will be cleaned up by garbage collection");
+  // }
+  
+  // 4. Light filesystem sync - just flush without restarting the filesystem
+  // if (global_mp_stream) {
+  //   // global_mp_stream->println("[FS] File cleanup complete");
+  // }
 }
 
 

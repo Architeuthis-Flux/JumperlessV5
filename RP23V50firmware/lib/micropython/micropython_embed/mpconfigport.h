@@ -61,7 +61,7 @@ typedef uint32_t mp_hal_pin_obj_t;
 // Basic modules - minimal set
 #define MICROPY_PY_ARRAY            (1)
 #define MICROPY_PY_COLLECTIONS      (1)  // Disable to save memory
-#define MICROPY_PY_IO               (1)  // Disable to save memory
+// #define MICROPY_PY_IO               (1)  // Disabled below to remove VFS dependency
 #define MICROPY_PY_STRUCT           (1)
 #define MICROPY_PY_MATH             (1)
 #define MICROPY_PY_GC               (1)
@@ -120,11 +120,17 @@ typedef uint32_t mp_hal_pin_obj_t;
 #define MICROPY_ENABLE_SCHEDULER    (1)
 #define MICROPY_SCHEDULER_DEPTH     (8)
 
-// VFS support needed for extmod modules
-#define MICROPY_VFS                 (1)
+// VFS support disabled - using jumperless filesystem bridge instead
+#define MICROPY_VFS                 (0)
 #define MICROPY_VFS_FAT             (0)  // Disable FAT to save memory
 #define MICROPY_VFS_LFS2            (0)  // Disable LFS2 to save memory
 #define MICROPY_VFS_POSIX           (0)  // Disable POSIX VFS
+
+#define MICROPY_ENABLE_FINALIZER    (1)
+
+// Disable problematic modules that depend on VFS
+#define MICROPY_PY_IO_FILEIO        (0)
+#define MICROPY_PY_IO               (0)
 
 // Time module configuration
 #define MICROPY_PY_TIME_INCLUDEFILE "shared/timeutils/timeutils.h"

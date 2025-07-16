@@ -16,6 +16,21 @@ int saveChangedNetColorsToFile(int slot = 0, int flashOrLocal = 0);
 int loadChangedNetColorsFromFile(int slot = 0, int flashOrLocal = 0);
 int printChangedNetColorFile(int slot = 0, int flashOrLocal = 0);
 void printAllChangedNetColorFiles(void);
+
+// Net color tracking functions
+void ensureNetColorsDirectoryExists(void);
+bool slotHasNetColors(int slot);
+void setSlotHasNetColors(int slot, bool hasColors);
+void removeNetColorFile(int slot);
+void initializeNetColorTracking(void);
+void printNetColorTrackingStatus(void);
+void benchmarkSlotOperations(void);
+
+// Validation tracking functions
+bool slotIsValidated(int slot);
+void setSlotValidated(int slot, bool validated);
+void markSlotAsModified(int slot);
+void initializeValidationTracking(void);
 int checkIfBridgeExists(int node1, int node2 = -1, int slot = -1, int flashOrLocal = 1);
 
 void clearNodeFileString(void);
@@ -59,6 +74,7 @@ int isNodeValid(int node);
 
 // NodeFile validation functions
 int validateNodeFile(const String& content, bool verbose = false);
+int validateNodeFileFast(const char* content, int contentLen, bool verbose = false);
 int validateNodeFileSlot(int slot, bool verbose = false);
 const char* getNodeFileValidationError(int errorCode);
 
@@ -79,6 +95,12 @@ bool isSlotFileEmpty(int slot);
 // extern File nodeFile;
 // extern SafeString nodeFileString;
 // extern int netSlot;
+
+// External declaration for net color tracking
+extern uint32_t slotsWithNetColors;
+
+// External declaration for validation tracking
+extern uint32_t slotsValidated;
 
 // Buffer to store nodes that were removed in the last removeBridgeFromNodeFile call
 extern int lastRemovedNodes[20];

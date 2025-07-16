@@ -8,6 +8,8 @@
 #include <cstring>
 #include "Menus.h"
 #include "Python_Proper.h"
+#include "FatFS.h"
+#include "FileParsing.h"
 
 
 // External references
@@ -930,7 +932,7 @@ bool FileManager::editFile(const String& filename) {
 bool FileManager::editFileWithEkilo(const String& filename) {
     // Check available memory before opening file
     size_t freeHeap = rp2040.getFreeHeap();
-    if (freeHeap < 20480) { // Require at least 20KB free for editor
+    if (freeHeap < 2048) { // Require at least 2KB free for editor
         outputToArea("ERROR: Not enough memory to open editor (" + String(freeHeap / 1024) + "KB free)", FileColors::ERROR);
         return false;
     }
@@ -1045,6 +1047,8 @@ void FileManager::run() {
     while (running) {
         // In REPL mode, check if we should exit after content is ready
         if (replMode && shouldExitForREPL) {
+            // Close any open files before exiting
+            closeAllFiles();
             // Clear screen completely before exiting to avoid weird state
             clearScreen();
             running = false;
@@ -1116,6 +1120,8 @@ void FileManager::run() {
             case 'q':
             case 'Q':
             case 17: // Ctrl-Q
+                // Close any open files before exiting
+                closeAllFiles();
                 running = false;
                 break;
                 
@@ -1341,6 +1347,9 @@ void FileManager::run() {
         delay(100); // Give system time to switch modes
     }
     // If shouldExitForREPL is true, we're returning to main menu and want to keep interactive mode on
+    
+    // Close any open files before exiting file manager
+    closeAllFiles();
     
     changeTerminalColor(FileColors::STATUS, false);
     Serial.println("Exiting File Manager...");
@@ -1944,6 +1953,9 @@ void filesystemApp() {
     
     manager.run();
 
+    // Close any open files before exiting file manager
+    closeAllFiles();
+
     // Restore original screen state with all scrollback intact
     restoreScreenState(&Serial);
 
@@ -2008,6 +2020,9 @@ void launchEkilo(const char* filename) {
     
     // Launch eKilo editor
     int result = ekilo_main(filename);
+    
+    // Close any files that might have been opened by the editor
+    closeAllFiles();
     
     // Check if Ctrl+P was pressed (save and launch REPL)
     if (result == 2) {
@@ -2098,6 +2113,9 @@ String launchEkiloREPL(const char* filename) {
     
     // Launch eKilo editor in REPL mode
     String savedContent = ekilo_main_repl(finalFilename.c_str());
+    
+    // Close any files that might have been opened by the editor
+    closeAllFiles();
     
     // Restore original screen state with all scrollback intact
     restoreScreenState(&Serial);
@@ -2620,6 +2638,9 @@ String filesystemAppPythonScriptsREPL() {
     
     manager.run();
     String content = manager.getLastSavedFileContent();
+    
+    // Close any open files before exiting REPL mode file manager
+    closeAllFiles();
     
     // If we exited because REPL was launched, don't restore screen state
     // as the REPL has already modified the display

@@ -125,6 +125,7 @@ def package_linux_appimage():
             "--onefile", 
             "--console", 
             "--name", executable_name,
+            "--icon", "assets/icons/icon.png",
             "--distpath", dist_path,
             "--specpath", f"build/spec_{arch_name}",  # Unique spec path per architecture
             "JumperlessWokwiBridge.py"
@@ -659,8 +660,9 @@ rm ~/.local/share/icons/hicolor/256x256/apps/jumperless.png
 ## Support & Documentation
 
 - GitHub Repository: 	https://github.com/Architeuthis-Flux/JumperlessV5
-- Support:		https://discord.gg/TcjM5uEgb4
-- Getting Started: 	https://github.com/Architeuthis-Flux/JumperlessV5/blob/main/Docs/GettingStarted.md
+- Support:		        https://discord.gg/TcjM5uEgb4
+- Documentation: 	    https://jumperless-docs.readthedocs.io/en/latest/
+
 
 ---
 

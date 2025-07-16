@@ -56,6 +56,7 @@ static EditorConfig E;
 #define HL_MATCH 8
 #define HL_JUMPERLESS_FUNC 9
 #define HL_JUMPERLESS_TYPE 10
+#define HL_JFS_FUNC 11
 
 #define HL_HIGHLIGHT_STRINGS (1<<0)
 #define HL_HIGHLIGHT_NUMBERS (1<<1)
@@ -103,8 +104,18 @@ const char* python_keywords[] = {
     "A0|||", "A1|||", "A2|||", "A3|||", "A4|||", "A5|||", "A6|||", "A7|||",
     "D13_PAD|||", "TOP_RAIL_PAD|||", "BOTTOM_RAIL_PAD|||", "LOGO_PAD_TOP|||", "LOGO_PAD_BOTTOM|||",
     "CONNECT_BUTTON|||", "REMOVE_BUTTON|||", "BUTTON_NONE|||", "CONNECT|||", "REMOVE|||", "NONE|||",
+    
+    // JFS Functions (marked with ||||)
+    "open||||", "read||||", "write||||", "close||||", "seek||||", "tell||||", "size||||", "available||||",
+    "exists||||", "listdir||||", "mkdir||||", "rmdir||||", "remove||||", "rename||||", "stat||||", "info||||",
+    "SEEK_SET||||", "SEEK_CUR||||", "SEEK_END||||",
+    
+    // Basic filesystem functions (marked with ||||)
+    "fs_exists||||", "fs_listdir||||", "fs_read||||", "fs_write||||", "fs_cwd||||",
+    
     nullptr
 };
+
 
 SyntaxDefinition syntax_db[] = {
     {
@@ -445,7 +456,10 @@ void ekilo_update_syntax(EditorRow* row) {
                 int highlight_type = HL_KEYWORD1;
                 
                 // Check for different keyword types based on suffix
-                if (klen >= 3 && !strncmp(&keywords[j][klen - 3], "|||", 3)) {
+                if (klen >= 4 && !strncmp(&keywords[j][klen - 4], "||||", 4)) {
+                    highlight_type = HL_JFS_FUNC;
+                    klen -= 4;
+                } else if (klen >= 3 && !strncmp(&keywords[j][klen - 3], "|||", 3)) {
                     highlight_type = HL_JUMPERLESS_TYPE;
                     klen -= 3;
                 } else if (klen >= 2 && !strncmp(&keywords[j][klen - 2], "||", 2)) {
@@ -491,6 +505,7 @@ int ekilo_syntax_to_color(int hl) {
         case HL_MATCH: return 27;      
         case HL_JUMPERLESS_FUNC: return 207;  
         case HL_JUMPERLESS_TYPE: return 105; 
+        case HL_JFS_FUNC: return 45;   // Cyan-blue (distinct for filesystem functions)
         default: return 255;           // Bright white (default text)
     }
 }
@@ -1373,7 +1388,7 @@ void ekilo_process_keypress() {
             break;
     }
     
-    quit_times = 2;
+    quit_times = 1;
 }
 
 // OLED update batching functions
@@ -2310,7 +2325,10 @@ String ekilo_inline_edit(const String& initial_content) {
                         int highlight_type = HL_KEYWORD1;
                         
                         // Check for different keyword types based on suffix
-                        if (klen >= 3 && !strncmp(&keywords[j][klen - 3], "|||", 3)) {
+                        if (klen >= 4 && !strncmp(&keywords[j][klen - 4], "||||", 4)) {
+                            highlight_type = HL_JFS_FUNC;
+                            klen -= 4;
+                        } else if (klen >= 3 && !strncmp(&keywords[j][klen - 3], "|||", 3)) {
                             highlight_type = HL_JUMPERLESS_TYPE;
                             klen -= 3;
                         } else if (klen >= 2 && !strncmp(&keywords[j][klen - 2], "||", 2)) {

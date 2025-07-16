@@ -64,25 +64,42 @@ void refresh(int flashOrLocal, int ledShowOption, int fillUnused, int clean) {
 void refreshConnections(int ledShowOption, int fillUnused, int clean) {
 
  // waitCore2();
+
+  unsigned long start = millis();
   //core1busy = true;
   clearAllNTCC();
   //core1busy = true;
   // return;
   openNodeFile(netSlot, 0);
+      // Serial.print("refreshConnections openNodeFile = ");
+      // Serial.println(millis() - start);
 
   getNodesToConnect();
+  // Serial.print("refreshConnections getNodesToConnect = ");
+  // Serial.println(millis() - start);
 //core1busy = false;
   bridgesToPaths();
+  // Serial.print("refreshConnections bridgesToPaths = ");
+  // Serial.println(millis() - start);
   checkChangedNetColors(-1);
+  // Serial.print("refreshConnections checkChangedNetColors = ");
+  // Serial.println(millis() - start);
   assignNetColors();
+  // Serial.print("refreshConnections assignNetColors = ");
+  // Serial.println(millis() - start);
   chooseShownReadings();
+  // Serial.print("refreshConnections chooseShownReadings = ");
+  // Serial.println(millis() - start);
   assignTermColor();
+  // Serial.print("refreshConnections assignTermColor = ");
+  // Serial.println(millis() - start);
   //findChangedNetColors();
   //assignNetColors();
   
   // Restore GPIO configurations from jumperlessConfig after net processing
   setGPIO();
-
+  // Serial.print("refreshConnections time = ");
+  // Serial.println(millis() - start);
   // if (lastSlot != netSlot) {
   //   createLocalNodeFile(netSlot);
   //   lastSlot = netSlot;
@@ -113,6 +130,8 @@ void refreshConnections(int ledShowOption, int fillUnused, int clean) {
     sendAllPathsCore2 = 1;
   }
 
+  // Serial.print("after waitCore2 time = ");
+  // Serial.println(millis() - start);
   
   
   // sendPaths();

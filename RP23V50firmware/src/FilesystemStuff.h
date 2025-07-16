@@ -196,6 +196,9 @@ String generateNextScriptName(); // Helper to generate next available script nam
 String getFullPath(const String& basePath, const String& filename);
 bool isValidFilename(const String& filename);
 
+// File cleanup functions
+void closeAllOpenFiles(void); // Comprehensive file cleanup across all systems
+
 // Global utility functions for external use (e.g., USB filesystem)
 FileType getFileTypeFromFilename(const String& filename);
 String getFileIconFromType(FileType type);
