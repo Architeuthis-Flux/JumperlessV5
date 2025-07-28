@@ -152,6 +152,12 @@ void changeTerminalColor(int termColor = -1, bool flush = true,
 // void cycleTerminalColor(bool reset = false, bool reverse = false, int step = -1, bool flush = true, Stream *stream = &Serial);
 void cycleTerminalColor(bool reset = false, float step = 100.0, bool flush = true, Stream *stream = &Serial, int startColorIndex = 0, int bright = 1);
 
+// Printf-like function for menu items with automatic color cycling
+int printMenuLine(const char* format, ...);
+
+// Printf-like function for menu items with automatic color cycling and conditional display
+int printMenuLine(int showExtraMenu, int minLevel, const char* format, ...);
+
 void changeTerminalColorHighSat(int colorIndex = -1, bool flush = true, Stream *stream = &Serial, int bright = 0);
 
 void drawImage(int imageIndex = 0);

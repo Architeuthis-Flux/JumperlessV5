@@ -42,9 +42,9 @@ void addFilesystemMessage(const String& message, int color = 248) {
         return;
     }
     
-    // If we have a global file manager instance, use its output area
+    // If we have a global file manager instance, use its persistent message area
     if (globalFileManager != nullptr) {
-        globalFileManager->outputToArea(message, color);
+        globalFileManager->addPersistentMessage(message, color);
         return;
     }
     
@@ -81,7 +81,7 @@ void displayFilesystemMessages() {
         // Display messages at the bottom of screen (line 25+)
         for (int i = 0; i < fsMessageCount && i < 3; i++) {  // Show max 3 messages
             Serial.print("\033["); // Move cursor
-            Serial.print(25 + i);
+            Serial.print(DEFAULT_DISPLAY_LINES + i);
             Serial.print(";1H");
             
             changeTerminalColor(fsMessages[fsMessageCount - 1 - i].color, false);
@@ -143,12 +143,19 @@ FileManager::FileManager() {
     // Initialize filesystem
     initializeFilesystem();
     
-    // Initialize output area (positioned after help lines)
+    // Initialize output area (positioned after help lines and persistent messages)
     int fileListStartRow = 6;
     int fileListEndRow = fileListStartRow + textAreaLines - 1;
     int helpStartRow = fileListEndRow + 2; // Leave 1 line gap after file list
-    outputAreaStartRow = helpStartRow + 4;  // Start after help lines (3 lines) + border
-    outputAreaHeight = 5;
+    
+    // Initialize persistent message area (above output area)
+    persistentMessageHeight = 3;
+    persistentMessageStartRow = helpStartRow + 4; // Start after help lines (2 lines) + border (1 line) + gap (1 line)
+    persistentMessageCount = 0;
+    
+    // Position output area after persistent messages
+    outputAreaStartRow = persistentMessageStartRow + persistentMessageHeight + 2; // Add separator and gap
+    outputAreaHeight = 3; // Reduced to fit persistent messages
     outputAreaCurrentRow = 0;
     
     // Set global pointer for message routing
@@ -951,7 +958,7 @@ bool FileManager::editFileWithEkilo(const String& filename) {
                 // REPL was launched with Ctrl+P but no content was executed
                 // Still exit the file manager to return to main menu
                 lastOpenedFileContent = "";
-                shouldExitForREPL = true; // Signal to exit file manager
+               // shouldExitForREPL = true; // Signal to exit file manager
             } else {
                 // Check content size before storing
                 if (content.length() > 8192) { // Limit to 8KB
@@ -960,7 +967,7 @@ bool FileManager::editFileWithEkilo(const String& filename) {
                 }
                 // User saved new content
                 lastOpenedFileContent = content;
-                shouldExitForREPL = true; // Signal to exit file manager
+               // shouldExitForREPL = true; // Signal to exit file manager
             }
         } else {
             // User didn't save - try to load existing file content if it exists
@@ -977,7 +984,7 @@ bool FileManager::editFileWithEkilo(const String& filename) {
                 file.close();
                 if (existingContent.length() > 0) {
                     lastOpenedFileContent = existingContent;
-                    shouldExitForREPL = true; // Signal to exit file manager
+                   // shouldExitForREPL = true; // Signal to exit file manager
                 }
             }
         }
@@ -1004,7 +1011,7 @@ bool FileManager::viewFile(const String& filename) {
     Serial.println("│                              FILE VIEWER                                  │");
     Serial.println("╰───────────────────────────────────────────────────────────────────────────╯");
     Serial.println("File: " + filename);
-    Serial.println("╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌");
+    Serial.println("╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌");
     
     changeTerminalColor(248, true); // Light grey for content
     
@@ -1058,7 +1065,7 @@ void FileManager::run() {
         // Process any pending OLED updates
         processOLEDUpdate();
         
-        // Display any filesystem messages at bottom of screen
+        // Display any legacy filesystem messages at bottom of screen (fallback only)
         displayFilesystemMessages();
         
         // Note: Removed returnToMainMenu check - editor returns directly to file manager now
@@ -1447,6 +1454,10 @@ void FileManager::drawInterface(bool fullScreen) {
     
     // Show output area border
     showOutputAreaBorder();
+    
+    // Initialize and display persistent filesystem messages
+    initializePersistentMessageArea();
+    displayPersistentMessages();
     
     Serial.flush();
     
@@ -2197,284 +2208,6 @@ String generateNextScriptName() {
     return scripts_dir + "/script_" + String(next_script_number) + ".py";
 }
 
-// Note: Simple text editor replaced with full eKilo implementation
-// The following function is deprecated and will be removed
-int jumperless_simple_editor_deprecated(const char* filename) {
-    if (!filename) {
-        changeTerminalColor(FileColors::ERROR, true);
-        Serial.println("Error: No filename provided for editor");
-        changeTerminalColor(0, true);
-        return 1;
-    }
-    
-    String fullPath = filename;
-    if (!fullPath.startsWith("/")) {
-        fullPath = "/" + fullPath;
-    }
-    
-    changeTerminalColor(FileColors::HEADER, true);
-    Serial.print("\r\n╭───────────────────────────────────────────────────────────────────────────╮\r\n");
-    Serial.print("│                         JUMPERLESS TEXT EDITOR                            │\r\n");
-    Serial.print("╰───────────────────────────────────────────────────────────────────────────╯\r\n");
-    
-    changeTerminalColor(FileColors::STATUS, false);
-    Serial.print("File: " + fullPath + "\r\n");
-    Serial.print("Commands: :w = save, :q = quit, :wq = save & quit, :help = show help\r\n");
-    Serial.print("╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌\r\n");
-    changeTerminalColor(0, true);
-    
-    // Load file content
-    std::vector<String> lines;
-    bool fileExists = FatFS.exists(fullPath.c_str());
-    
-    if (fileExists) {
-        File file = FatFS.open(fullPath.c_str(), "r");
-        if (file) {
-            changeTerminalColor(155, false); // Green
-            Serial.println("\n\n\r⌘ Loading existing file...");
-            changeTerminalColor(0, false);
-            
-            while (file.available()) {
-                String line = file.readStringUntil('\n');
-                line.trim(); // Remove carriage returns
-                lines.push_back(line);
-            }
-            file.close();
-            
-            if (lines.empty()) {
-                lines.push_back(""); // Ensure at least one empty line
-            }
-        } else {
-            changeTerminalColor(FileColors::ERROR, true);
-            Serial.println("Error: Cannot open file for reading");
-            changeTerminalColor(0, true);
-            return 1;
-        }
-    } else {
-        changeTerminalColor(221, false); // Yellow
-        Serial.println("\n\n\r⍺ Creating new file...");
-        changeTerminalColor(0, false);
-        lines.push_back(""); // Start with one empty line
-    }
-    
-    // Display initial content
-    changeTerminalColor(248, false); // Light gray
-    Serial.print("\r\n\n\rCurrent content:\r\n");
-    for (int i = 0; i < lines.size(); i++) {
-        Serial.printf("%3d: %s\r\n", i + 1, lines[i].c_str());
-    }
-    changeTerminalColor(0, false);
-    
-    bool modified = false;
-    bool running = true;
-    
-    while (running) {
-        changeTerminalColor(FileColors::STATUS, false);
-        Serial.print("\r\nEditor> ");
-        changeTerminalColor(0, false);
-        Serial.flush();
-        
-        // Character-by-character input handling (like file manager)
-        String input = "";
-        bool inputComplete = false;
-        
-        while (!inputComplete) {
-            if (Serial.available() > 0) {
-                char c = Serial.read();
-                
-                if (c == '\r' || c == '\n') {
-                    // Enter pressed - complete input
-                    Serial.print("\r\n");
-                    inputComplete = true;
-                } else if (c == 127 || c == 8) {
-                    // Backspace (127 = DEL, 8 = BS)
-                    if (input.length() > 0) {
-                        input.remove(input.length() - 1);
-                        Serial.print("\b \b"); // Backspace, space, backspace
-                    }
-                } else if (c == 27) {
-                    // ESC sequence - might be arrow keys, ignore for now
-                    // Read and discard any following characters in the sequence
-                    delayMicroseconds(10);
-                    while (Serial.available() > 0) {
-                        Serial.read();
-                        delayMicroseconds(1);
-                    }
-                } else if (c >= 32 && c <= 126) {
-                    // Printable character
-                    input += c;
-                    Serial.print(c); // Echo the character
-                }
-                // Ignore other control characters
-            } else {
-                delayMicroseconds(10);
-            }
-        }
-        
-        input.trim();
-        
-        if (input.startsWith(":")) {
-            // Command mode
-            if (input == ":q") {
-                if (modified) {
-                    changeTerminalColor(221, false); // Yellow
-                    Serial.print("Warning: File has been modified. Use :q! to quit without saving or :wq to save and quit.\r\n");
-                    changeTerminalColor(0, false);
-                } else {
-                    running = false;
-                }
-            } else if (input == ":q!") {
-                running = false;
-            } else if (input == ":w") {
-                // Save file
-                File file = FatFS.open(fullPath.c_str(), "w");
-                if (file) {
-                    for (int i = 0; i < lines.size(); i++) {
-                        file.println(lines[i]);
-                    }
-                    file.close();
-                    modified = false;
-                    changeTerminalColor(155, false); // Green
-                    Serial.print("☺ File saved successfully\r\n");
-                    changeTerminalColor(0, false);
-                } else {
-                    changeTerminalColor(FileColors::ERROR, true);
-                    Serial.print("❌ Error: Cannot save file\r\n");
-                    changeTerminalColor(0, true);
-                }
-            } else if (input == ":wq") {
-                // Save and quit
-                File file = FatFS.open(fullPath.c_str(), "w");
-                if (file) {
-                    for (int i = 0; i < lines.size(); i++) {
-                        file.println(lines[i]);
-                    }
-                    file.close();
-                    changeTerminalColor(155, false); // Green
-                    Serial.print("☺ File saved successfully\r\n");
-                    changeTerminalColor(0, false);
-                    running = false;
-                } else {
-                    changeTerminalColor(FileColors::ERROR, true);
-                    Serial.print("❌ Error: Cannot save file\r\n");
-                    changeTerminalColor(0, true);
-                }
-            } else if (input == ":help") {
-                // eKilo has its own built-in help - this is placeholder for compatibility
-                Serial.print("eKilo editor help: Use Ctrl+S to save, Ctrl+Q to quit, Arrow keys to navigate\r\n");
-            } else if (input.startsWith(":d")) {
-                // Delete line - :d5 deletes line 5
-                String numStr = input.substring(2);
-                numStr.trim();
-                if (numStr.length() > 0) {
-                    int lineNum = numStr.toInt();
-                    if (lineNum > 0 && lineNum <= lines.size()) {
-                        lines.erase(lines.begin() + lineNum - 1);
-                        modified = true;
-                        changeTerminalColor(221, false); // Yellow
-                        Serial.print("Line " + String(lineNum) + " deleted\r\n");
-                        changeTerminalColor(0, false);
-                        
-                        // Show updated content
-                        changeTerminalColor(248, false);
-                        Serial.print("\r\nUpdated content:\r\n");
-                        for (int i = 0; i < lines.size(); i++) {
-                            Serial.printf("%3d: %s\r\n", i + 1, lines[i].c_str());
-                        }
-                        changeTerminalColor(0, false);
-                    } else {
-                        changeTerminalColor(FileColors::ERROR, true);
-                        Serial.print("Invalid line number\r\n");
-                        changeTerminalColor(0, true);
-                    }
-                } else {
-                    changeTerminalColor(FileColors::ERROR, true);
-                    Serial.print("Usage: :d<line_number> (e.g., :d5)\r\n");
-                    changeTerminalColor(0, true);
-                }
-            } else if (input == ":l") {
-                // List all lines
-                changeTerminalColor(248, false);
-                Serial.print("\r\nCurrent content:\r\n");
-                for (int i = 0; i < lines.size(); i++) {
-                    Serial.printf("%3d: %s\r\n", i + 1, lines[i].c_str());
-                }
-                changeTerminalColor(0, false);
-            } else {
-                changeTerminalColor(FileColors::ERROR, true);
-                Serial.print("Unknown command. Type :help for available commands.\r\n");
-                changeTerminalColor(0, true);
-            }
-        } else if (input.length() > 0) {
-            // Text input - add new line
-            lines.push_back(input);
-            modified = true;
-            changeTerminalColor(155, false); // Green
-            Serial.print("Line " + String(lines.size()) + " added\r\n");
-            changeTerminalColor(0, false);
-        }
-    }
-    
-    changeTerminalColor(FileColors::STATUS, true);
-    Serial.print("Exiting editor...\r\n");
-    changeTerminalColor(0, true);
-    
-    return 0;
-}
-
-void show_simple_editor_help() {
-    changeTerminalColor(FileColors::HEADER, true);
-    Serial.print("\r\n╭───────────────────────────────────────────────────────────────────────────╮\r\n");
-    Serial.print("│                         TEXT EDITOR HELP                                  │\r\n");
-    Serial.print("╰───────────────────────────────────────────────────────────────────────────╯\r\n");
-    
-    changeTerminalColor(FileColors::STATUS, true);
-    Serial.print("\r\n⍺ EDITING:\r\n");
-    changeTerminalColor(248, false);
-    Serial.print("  Type any text and press Enter to add a new line\r\n");
-    Serial.print("  Empty input (just Enter) does nothing\r\n");
-    
-    changeTerminalColor(FileColors::STATUS, true);
-    Serial.print("\r\n▣ COMMANDS:\r\n");
-    changeTerminalColor(155, false); // Green
-    Serial.print("  :w              ");
-    changeTerminalColor(248, false);
-    Serial.print("- Save file\r\n");
-    changeTerminalColor(155, false);
-    Serial.print("  :q              ");
-    changeTerminalColor(248, false);
-    Serial.print("- Quit (warns if unsaved)\r\n");
-    changeTerminalColor(155, false);
-    Serial.print("  :q!             ");
-    changeTerminalColor(248, false);
-    Serial.print("- Quit without saving\r\n");
-    changeTerminalColor(155, false);
-    Serial.print("  :wq             ");
-    changeTerminalColor(248, false);
-    Serial.print("- Save and quit\r\n");
-    changeTerminalColor(155, false);
-    Serial.print("  :l              ");
-    changeTerminalColor(248, false);
-    Serial.print("- List all lines with numbers\r\n");
-    changeTerminalColor(155, false);
-    Serial.print("  :d<num>         ");
-    changeTerminalColor(248, false);
-    Serial.print("- Delete line number (e.g., :d5)\r\n");
-    changeTerminalColor(155, false);
-    Serial.print("  :help           ");
-    changeTerminalColor(248, false);
-    Serial.print("- Show this help\r\n");
-    
-    changeTerminalColor(FileColors::STATUS, true);
-    Serial.print("\r\n○ TIPS:\r\n");
-    changeTerminalColor(248, false);
-    Serial.print("  • This is a simple line-based editor\r\n");
-    Serial.print("  • Each line of text must be entered separately\r\n");
-    Serial.print("  • Use :l to see line numbers for deletion\r\n");
-    Serial.print("  • Commands start with ':' (colon)\r\n");
-    
-    changeTerminalColor(0, true);
-}
 
 bool FileManager::createDirectory(const String& dirname) {
     String fullPath = getFullPath(currentPath, dirname);
@@ -2498,118 +2231,118 @@ String FileManager::promptForFilename(const String& prompt) {
     return promptInOutputArea(prompt);
 }
 
-void filesystemAppPythonScripts() {
-    bool showOledInTerminal = jumperlessConfig.top_oled.show_in_terminal;
-    jumperlessConfig.top_oled.show_in_terminal = false;
+// void filesystemAppPythonScripts() {
+//     bool showOledInTerminal = jumperlessConfig.top_oled.show_in_terminal;
+//     jumperlessConfig.top_oled.show_in_terminal = false;
     
-    changeTerminalColor(FileColors::HEADER, true);
-    Serial.println("\n\r  Starting Jumperless File Manager (Python Scripts)...");
-    Serial.println("   Navigate Python scripts with colorful interface");
-    Serial.println("   Create, edit, and manage Python files using eKilo editor\n\n\r");
-    changeTerminalColor(FileColors::STATUS, true);
-    Serial.println("   Press Enter to launch File Manager...");
-    changeTerminalColor(8, true);
+//     changeTerminalColor(FileColors::HEADER, true);
+//     Serial.println("\n\r  Starting Jumperless File Manager (Python Scripts)...");
+//     Serial.println("   Navigate Python scripts with colorful interface");
+//     Serial.println("   Create, edit, and manage Python files using eKilo editor\n\n\r");
+//     changeTerminalColor(FileColors::STATUS, true);
+//     Serial.println("   Press Enter to launch File Manager...");
+//     changeTerminalColor(8, true);
     
-    FileManager manager;
-    manager.initInteractiveMode();
+//     FileManager manager;
+//     manager.initInteractiveMode();
     
-    // Wait for user to press enter to break the input loop
-    while (Serial.available() == 0) {
-        delayMicroseconds(100);
-    }
-    // Clear the enter keypress
-    while (Serial.available() > 0) {
-        Serial.read();
-    }
+//     // Wait for user to press enter to break the input loop
+//     while (Serial.available() == 0) {
+//         delayMicroseconds(100);
+//     }
+//     // Clear the enter keypress
+//     while (Serial.available() > 0) {
+//         Serial.read();
+//     }
     
-    // Save current screen state and switch to alternate screen buffer
-    saveScreenState(&Serial);
+//     // Save current screen state and switch to alternate screen buffer
+//     saveScreenState(&Serial);
     
-    //manager.clearScreen();
-    //manager.hideCursor();
+//     //manager.clearScreen();
+//     //manager.hideCursor();
     
-    changeTerminalColor(FileColors::STATUS, true);
-    Serial.println("   Initializing filesystem...");
-    changeTerminalColor(8, true);
-    delayMicroseconds(100); // Give time for initialization messages to be seen
+//     changeTerminalColor(FileColors::STATUS, true);
+//     Serial.println("   Initializing filesystem...");
+//     changeTerminalColor(8, true);
+//     delayMicroseconds(100); // Give time for initialization messages to be seen
     
-    // Automatically create MicroPython examples if needed
-    initializeMicroPythonExamples();
+//     // Automatically create MicroPython examples if needed
+//     initializeMicroPythonExamples();
     
-    // Check if filesystem initialization was successful
-    if (manager.getCurrentPath() == "[NO_FS]") {
-        changeTerminalColor(FileColors::ERROR, true);
-        Serial.println();
-        Serial.println("   FILESYSTEM INITIALIZATION FAILED"); 
-        changeTerminalColor(FileColors::STATUS, false);
-        Serial.println("   The file manager cannot access the FatFS filesystem.");
-        Serial.println("   This may be because:");
-        Serial.println("   • FatFS is not properly initialized in the main firmware");
-        Serial.println("   • No filesystem has been formatted on the flash storage");
-        Serial.println("   • There is a hardware issue with the flash memory");
-        Serial.println();
-        Serial.println("   You can still use the file manager interface, but");
-        Serial.println("   file operations will not be available until the");
-        Serial.println("   filesystem is properly set up.");
-        Serial.println();
-        changeTerminalColor(FileColors::STATUS, true);
-        Serial.print("   Press 'q' to quit or any other key to continue...");
-        changeTerminalColor(0, false);
+//     // Check if filesystem initialization was successful
+//     if (manager.getCurrentPath() == "[NO_FS]") {
+//         changeTerminalColor(FileColors::ERROR, true);
+//         Serial.println();
+//         Serial.println("   FILESYSTEM INITIALIZATION FAILED"); 
+//         changeTerminalColor(FileColors::STATUS, false);
+//         Serial.println("   The file manager cannot access the FatFS filesystem.");
+//         Serial.println("   This may be because:");
+//         Serial.println("   • FatFS is not properly initialized in the main firmware");
+//         Serial.println("   • No filesystem has been formatted on the flash storage");
+//         Serial.println("   • There is a hardware issue with the flash memory");
+//         Serial.println();
+//         Serial.println("   You can still use the file manager interface, but");
+//         Serial.println("   file operations will not be available until the");
+//         Serial.println("   filesystem is properly set up.");
+//         Serial.println();
+//         changeTerminalColor(FileColors::STATUS, true);
+//         Serial.print("   Press 'q' to quit or any other key to continue...");
+//         changeTerminalColor(0, false);
         
-        while (Serial.available() == 0) {
-            delayMicroseconds(10);
-        }
-        char c = Serial.read();
-        Serial.println();
+//         while (Serial.available() == 0) {
+//             delayMicroseconds(10);
+//         }
+//         char c = Serial.read();
+//         Serial.println();
         
-        if (c == 'q' || c == 'Q') {
-            Serial.println("  File Manager cancelled.");
-            jumperlessConfig.top_oled.show_in_terminal = showOledInTerminal;
-            return;
-        }
-    } else {
-        // Try to navigate to python_scripts directory
-        changeTerminalColor(FileColors::STATUS, true);
-        //Serial.println("   Navigating to python_scripts directory...");
-        changeTerminalColor(8, true);
+//         if (c == 'q' || c == 'Q') {
+//             Serial.println("  File Manager cancelled.");
+//             jumperlessConfig.top_oled.show_in_terminal = showOledInTerminal;
+//             return;
+//         }
+//     } else {
+//         // Try to navigate to python_scripts directory
+//         changeTerminalColor(FileColors::STATUS, true);
+//         //Serial.println("   Navigating to python_scripts directory...");
+//         changeTerminalColor(8, true);
         
-        // Create python_scripts directory if it doesn't exist
-        if (!FatFS.exists("/python_scripts")) {
-            Serial.println("   Creating python_scripts directory...");
-            if (FatFS.mkdir("/python_scripts")) {
-                changeTerminalColor(FileColors::HEADER, false);
-                Serial.println("   ☺ Created /python_scripts directory");
-                changeTerminalColor(8, true);
-            } else {
-                changeTerminalColor(FileColors::ERROR, false);
-                Serial.println("   ☹ Failed to create /python_scripts directory");
-                Serial.println("   Starting in root directory instead...");
-                changeTerminalColor(8, true);
-            }
-        }
+//         // Create python_scripts directory if it doesn't exist
+//         if (!FatFS.exists("/python_scripts")) {
+//             Serial.println("   Creating python_scripts directory...");
+//             if (FatFS.mkdir("/python_scripts")) {
+//                 changeTerminalColor(FileColors::HEADER, false);
+//                 Serial.println("   ☺ Created /python_scripts directory");
+//                 changeTerminalColor(8, true);
+//             } else {
+//                 changeTerminalColor(FileColors::ERROR, false);
+//                 Serial.println("   ☹ Failed to create /python_scripts directory");
+//                 Serial.println("   Starting in root directory instead...");
+//                 changeTerminalColor(8, true);
+//             }
+//         }
         
-        // Navigate to python_scripts directory
-        if (FatFS.exists("/python_scripts")) {
-            if (manager.changeDirectory("/python_scripts")) {
-                changeTerminalColor(FileColors::HEADER, false);
-                //Serial.println("   ☺ Navigated to /python_scripts");
-                changeTerminalColor(8, true);
-            } else {
-                changeTerminalColor(FileColors::ERROR, false);
-                Serial.println("   ☹ Failed to navigate to /python_scripts");
-                Serial.println("   Starting in root directory instead...");
-                changeTerminalColor(8, true);
-            }
-        }
-    }
+//         // Navigate to python_scripts directory
+//         if (FatFS.exists("/python_scripts")) {
+//             if (manager.changeDirectory("/python_scripts")) {
+//                 changeTerminalColor(FileColors::HEADER, false);
+//                 //Serial.println("   ☺ Navigated to /python_scripts");
+//                 changeTerminalColor(8, true);
+//             } else {
+//                 changeTerminalColor(FileColors::ERROR, false);
+//                 Serial.println("   ☹ Failed to navigate to /python_scripts");
+//                 Serial.println("   Starting in root directory instead...");
+//                 changeTerminalColor(8, true);
+//             }
+//         }
+//     }
     
-    manager.run();
+//     manager.run();
     
-    // Restore original screen state with all scrollback intact
-    restoreScreenState(&Serial);
+//     // Restore original screen state with all scrollback intact
+//     restoreScreenState(&Serial);
     
-    jumperlessConfig.top_oled.show_in_terminal = showOledInTerminal;
-}
+//     jumperlessConfig.top_oled.show_in_terminal = showOledInTerminal;
+// }
 
 // REPL mode version - returns content if file was saved
 String filesystemAppPythonScriptsREPL() {
@@ -2655,6 +2388,7 @@ String filesystemAppPythonScriptsREPL() {
         // Normal exit - restore screen state
         restoreScreenState(&Serial);
     }
+    manager.setREPLMode(false);
     
     return content;
 }
@@ -2961,7 +2695,7 @@ void initializeMicroPythonExamples(bool forceInitialization) {
     // If no examples are enabled, exit early
     if (totalExamples == 0) {
         if (globalFileManager != nullptr) {
-            globalFileManager->outputToArea("[INIT] No examples enabled at compile time", 155);
+            //globalFileManager->outputToArea("[INIT] No examples enabled at compile time", 155);
         } else {
             addFilesystemMessage("[INIT] No examples enabled at compile time", 155);
         }
@@ -3176,30 +2910,27 @@ void initializeMicroPythonExamples(bool forceInitialization) {
     if (filesToCreate > 0) {
         if (forceInitialization) {
             if (filesCreated == filesToCreate) {
-                summary = "✓ All " + String(filesCreated) + " example files overwrote successfully!";
+                summary = "✓ All " + String(filesCreated) + " examples updated successfully";
             } else if (filesCreated > 0) {
-                summary = "⚠ Overwrote " + String(filesCreated) + "/" + String(filesToCreate) + " files (some failed)";
+                summary = "⚠ Updated " + String(filesCreated) + "/" + String(filesToCreate) + " examples";
             } else {
-                summary = "✗ Failed to overwrite any example files";
+                summary = "✗ Failed to update example files";
             }
         } else {
             if (filesCreated == filesToCreate) {
-                summary = "✓ All " + String(filesCreated) + " example files created successfully!";
+                summary = "✓ Created " + String(filesCreated) + " example files";
             } else if (filesCreated > 0) {
-                summary = "⚠ Created " + String(filesCreated) + "/" + String(filesToCreate) + " files (some failed)";
+                summary = "⚠ Created " + String(filesCreated) + "/" + String(filesToCreate) + " examples";
             } else {
-                summary = "✗ Failed to create any example files";
+                summary = "✗ Failed to create example files";
             }
         }
     } else {
-        summary = "✓ All " + String(filesSkipped) + " example files already exist";
+        summary = "✓ " + String(filesSkipped) + " examples already exist";
     }
     
-    if (useOutputArea) {
-        globalFileManager->outputToArea(summary, filesCreated > 0 || filesToCreate == 0 ? 155 : 196);
-    } else {
-        addFilesystemMessage(summary, filesCreated > 0 || filesToCreate == 0 ? 155 : 196);
-    }
+    // Always use addFilesystemMessage for consistency (it routes to persistent messages when file manager is active)
+    addFilesystemMessage(summary, filesCreated > 0 || filesToCreate == 0 ? 155 : 196);
     
     // Clear older messages to prevent memory buildup
     if (fsMessageCount > 5) {
@@ -3423,5 +3154,82 @@ String launchInlineEkilo(const String& initial_content) {
     Serial.flush();
     
     return result;
+}
+
+//==============================================================================
+// Persistent Filesystem Message Management Functions
+//==============================================================================
+
+void FileManager::addPersistentMessage(const String& message, int color) {
+    if (persistentMessageCount >= MAX_PERSISTENT_MESSAGES) {
+        // Shift messages up and add new one at end
+        for (int i = 0; i < MAX_PERSISTENT_MESSAGES - 1; i++) {
+            persistentMessages[i] = persistentMessages[i + 1];
+        }
+        persistentMessageCount = MAX_PERSISTENT_MESSAGES - 1;
+    }
+    
+    persistentMessages[persistentMessageCount].message = message;
+    persistentMessages[persistentMessageCount].color = color;
+    persistentMessages[persistentMessageCount].timestamp = millis();
+    persistentMessageCount++;
+    
+    // Immediately display the updated messages
+    displayPersistentMessages();
+}
+
+void FileManager::clearPersistentMessages() {
+    persistentMessageCount = 0;
+    
+    // Clear the persistent message area
+    for (int i = 0; i < persistentMessageHeight; i++) {
+        moveCursor(persistentMessageStartRow + i, 1);
+        clearCurrentLine();
+    }
+}
+
+void FileManager::displayPersistentMessages() {
+    // Auto-cleanup old messages (older than 30 seconds)
+    unsigned long currentTime = millis();
+    int validMessages = 0;
+    for (int i = 0; i < persistentMessageCount; i++) {
+        if (currentTime - persistentMessages[i].timestamp < 30000) { // 30 seconds
+            if (validMessages != i) {
+                persistentMessages[validMessages] = persistentMessages[i];
+            }
+            validMessages++;
+        }
+    }
+    persistentMessageCount = validMessages;
+    
+    // Clear the persistent message area first
+    for (int i = 0; i < persistentMessageHeight; i++) {
+        moveCursor(persistentMessageStartRow + i, 1);
+        clearCurrentLine();
+    }
+    
+    // Display messages (newest first, up to available lines)
+    int messagesToShow = min(persistentMessageCount, persistentMessageHeight);
+    for (int i = 0; i < messagesToShow; i++) {
+        moveCursor(persistentMessageStartRow + i, 1);
+        
+        // Show the most recent messages first
+        int messageIndex = persistentMessageCount - messagesToShow + i;
+        
+        changeTerminalColor(persistentMessages[messageIndex].color, false);
+        Serial.print("⟨ ");
+        Serial.print(persistentMessages[messageIndex].message);
+        changeTerminalColor(-1, false); // Reset colors
+    }
+    
+    Serial.flush();
+}
+
+void FileManager::initializePersistentMessageArea() {
+    // Draw separator line above persistent messages
+    moveCursor(persistentMessageStartRow - 1, 1);
+    changeTerminalColor(240, false); // Dark gray
+    Serial.print("⋯⋯⋯⋯⋯⋯⋯⋯⋯⋯⋯⋯⋯⋯⋯⋯⋯⋯⋯⋯⋯⋯⋯⋯⋯⋯⋯⋯⋯⋯⋯⋯⋯⋯⋯⋯⋯⋯⋯⋯⋯⋯⋯⋯⋯⋯⋯⋯⋯⋯⋯⋯⋯⋯⋯⋯⋯⋯⋯⋯⋯⋯⋯⋯⋯⋯⋯⋯⋯\n\r");
+    changeTerminalColor(-1, false); // Reset colors
 }
 

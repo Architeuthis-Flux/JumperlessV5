@@ -1,0 +1,3296 @@
+// SPDX-License-Identifier: MIT
+
+#include "Arduino.h"
+#include "LogicAnalyzer.h"
+#include "ArduinoStuff.h"
+#include "config.h"
+#include "Peripherals.h"
+
+// Hardware includes for RP2350B
+#include "hardware/pio.h"
+#include "hardware/dma.h"
+#include "hardware/gpio.h"
+#include "hardware/clocks.h"
+#include "hardware/adc.h"
+#include "pico/stdlib.h"
+
+#include "JumperlessDefines.h"
+
+#include "Graphics.h"
+
+// Add these includes at the top of the file after existing includes
+#include <hardware/timer.h>
+#include <hardware/irq.h>
+#include <pico/time.h>
+
+/*
+DATA FORMAT SPECIFICATION:
+
+Digital Mode (3 bytes per sample):
+------------------------------------
+[byte 0] GPIO data: (gpio1)(gpio2)(gpio3)(gpio4)(gpio5)(gpio6)(gpio7)(gpio8)
+[byte 1] UART data: (uart_tx)(uart_rx)(unused)(unused)(unused)(unused)(unused)(unused)
+[byte 2] Format marker:
+  - 0xDD: Digital only (end of sample)
+  - 0xDA: Mixed signal (expect 28 more analog bytes)
+  - 0xAA: Analog only (digital bytes are dummy, expect 28 more analog bytes)
+
+Analog/Mixed Mode (32 bytes per sample):
+---------------------------------------
+[bytes 0-2] Digital data (same as above)
+[bytes 3-30] Analog data (14 channels × 2 bytes each):
+  - Channel 0-7: ADC 0-7 (12-bit values, little-endian)
+  - Channel 8-9: DAC 0-1 values
+  - Channel 10-13: INA219 data (2 devices × 2 channels each)
+[byte 31] EOF marker: 0xA0
+
+Note: 12-bit ADC data uses LSB as validity flag (1=real, 0=dummy)
+*/
+
+// =============================================================================
+// PROTOCOL DEFINITIONS
+// =============================================================================
+
+volatile bool logicAnalyzing = false;
+
+// Jumperless Protocol Commands
+#define JUMPERLESS_CMD_RESET          0x00
+#define JUMPERLESS_CMD_RUN            0x01
+#define JUMPERLESS_CMD_ID             0xA2
+#define JUMPERLESS_CMD_GET_HEADER     0xA3
+#define JUMPERLESS_CMD_SET_CHANNELS   0xA4
+#define JUMPERLESS_CMD_ARM            0xA5
+#define JUMPERLESS_CMD_GET_STATUS     0xA6
+#define JUMPERLESS_CMD_CONFIGURE      0xA7
+#define JUMPERLESS_CMD_SET_SAMPLES    0xA8
+#define JUMPERLESS_CMD_SET_MODE       0xA9
+#define JUMPERLESS_CMD_SET_TRIGGER    0xAA
+#define JUMPERLESS_CMD_CLEAR_TRIGGER  0xAB
+#define JL_CMD_END_DATA               0xAC  // Signal end of data transmission
+
+// SUMP Protocol Commands
+#define SUMP_SET_DIVIDER              0x80
+#define SUMP_SET_READ_DELAY           0x81
+#define SUMP_SET_FLAGS                0x82
+#define SUMP_SET_TRIGGER_MASK_0       0xC0
+#define SUMP_SET_TRIGGER_VALUE_0      0xD0
+
+// Response codes
+#define JUMPERLESS_RESP_HEADER        0x80
+#define JUMPERLESS_RESP_DATA          0x81
+#define JUMPERLESS_RESP_STATUS        0x82
+#define JUMPERLESS_RESP_ERROR         0x83
+#define JUMPERLESS_RESP_END_DATA      0x84  // End of data transmission response
+
+// Data format markers
+#define DIGITAL_ONLY_MARKER    0xDD
+#define MIXED_SIGNAL_MARKER    0xDA
+#define ANALOG_ONLY_MARKER     0xAA
+#define ANALOG_EOF_MARKER      0xA0
+
+// Configuration constants
+#define JL_LA_MIN_SAMPLES       1
+#define JL_LA_DEFAULT_SAMPLES   1000
+#define JL_LA_MAX_SAMPLES_LIMIT 25000  // More conservative limit
+#define JL_LA_RESERVE_RAM       (24 * 1024) // Increased reserve for stability
+#define JL_LA_MAX_SAMPLE_RATE   50000000
+
+#define FORCE_5_CHANNELS 1
+
+// =============================================================================
+// GLOBAL STATE
+// =============================================================================
+
+// Debug flags
+bool debugLA = true;
+
+// Trigger system
+typedef enum {
+    TRIGGER_NONE = 0,       // No trigger, auto-start after ARM
+    TRIGGER_EXTERNAL = 1,   // External trigger via trigger_la variable
+    TRIGGER_GPIO = 2,       // GPIO trigger on specified pin/pattern
+    TRIGGER_THRESHOLD = 3   // Analog threshold trigger
+} trigger_type_t;
+
+// External trigger variables (accessible from Python/other modules)
+volatile bool trigger_la = false;              // Set this to true to trigger capture
+static trigger_type_t trigger_mode = TRIGGER_NONE;
+static uint32_t gpio_trigger_mask = 0x00;      // Which GPIO pins to monitor
+static uint32_t gpio_trigger_pattern = 0x00;   // Pattern to match (1=high, 0=low)
+static bool gpio_trigger_edge = false;         // true=edge trigger, false=level trigger
+static uint32_t last_gpio_state = 0x00;        // For edge detection
+
+// Threshold trigger variables
+static uint8_t threshold_channel = 0;          // ADC channel for threshold (0-7)
+static float threshold_voltage = 2.5f;         // Threshold voltage level
+static bool threshold_rising = true;           // true=rising edge, false=falling edge
+static bool threshold_triggered = false;       // To prevent multiple triggers
+static float last_adc_voltage = 0.0f;          // For edge detection
+#define DEBUG_LA_PRINTF(fmt, ...) do { if(debugLA) { Serial.printf(fmt, ##__VA_ARGS__); } } while(0)
+#define DEBUG_LA_PRINTLN(x) do { if(debugLA) { Serial.println(x); } } while(0)
+
+// Hardware resources
+static bool la_initialized = false;
+static bool la_enabled = false;
+static PIO la_pio = nullptr;
+static uint la_sm = 0;
+static uint la_dma_chan = 0;
+static uint la_prog_offset = -1;
+static uint32_t *la_buffer = nullptr;
+static mixed_signal_sample* mixed_signal_buffer = nullptr;
+
+// Analog capture buffer - separate from digital capture
+static uint16_t *analog_buffer = nullptr;
+static uint32_t analog_buffer_size = 0;
+static bool analog_capture_complete = false;
+
+// Capture state
+static volatile la_state_t la_capture_state = JL_LA_STOPPED;
+static volatile bool la_capturing = false;
+static LogicAnalyzerMode current_la_mode = LA_MODE_DIGITAL_ONLY;
+
+// Configuration
+static uint32_t sample_rate = 1000000;
+static uint32_t sample_count = JL_LA_DEFAULT_SAMPLES;
+static uint32_t analog_mask = 0x00;
+static uint8_t analog_chan_count = 0;
+static uint32_t jl_la_max_samples = JL_LA_DEFAULT_SAMPLES;
+static uint32_t jl_la_buffer_size = JL_LA_DEFAULT_SAMPLES;
+
+// Connection management
+static bool usb_was_connected = false;
+static uint32_t last_usb_activity = 0;
+static bool enhanced_mode = false;
+
+// PIO program for fast capture
+const uint16_t la_program_fast[] = { 0x4008 };  // in pins, 8
+const struct pio_program la_pio_program_fast = {
+    .instructions = la_program_fast,
+    .length = 1,
+    .origin = -1,
+};
+
+// Add these global variables for hardware timer control
+static volatile bool analog_sample_ready = false;
+static volatile uint32_t analog_samples_taken = 0;
+static volatile uint32_t analog_target_samples = 0;
+static volatile uint32_t analog_timer_ticks = 0;  // Hardware timer tick counter
+static uint32_t analog_sample_interval_us = 1000;
+static repeating_timer_t analog_repeating_timer;
+
+// DMA-based ADC variables
+static int adc_dma_channel = -1;
+static volatile bool adc_dma_complete = false;
+static uint16_t* adc_dma_buffer = nullptr;
+static uint adc_timer_num = 0;  // DMA timer used for pacing
+
+// Oversampling for high sample rates
+#define ADC_MAX_SAMPLE_RATE 100000   // 250 ksps maximum safe ADC rate for RP2350B
+static bool adc_oversampling_mode = false;  // Flag when sample rate > 250 ksps
+static uint32_t adc_actual_sample_rate = 0;  // Actual ADC sample rate (capped at max)
+static uint32_t adc_duplication_factor = 1;  // How many times to duplicate each sample
+
+// Persistent oversampling state (survives cleanup for data transmission)
+static bool capture_used_oversampling = false;
+static uint32_t capture_duplication_factor = 1;
+
+// =============================================================================
+// FORWARD DECLARATIONS
+// =============================================================================
+
+void sendJumperlessHeader();
+
+// Hardware timer-based precise analog sampling functions
+bool analogSampleTimerCallback(repeating_timer_t *rt);
+bool initAnalogSampleTimer(uint32_t sample_rate);
+bool startAnalogSampleTimer(uint32_t total_samples);
+void stopAnalogSampleTimer();
+bool isAnalogSampleReady(uint32_t sample_number);
+uint32_t getAnalogTimerTicks();
+
+// DMA-based ADC sampling functions
+void adcDmaHandler();
+bool initAdcDma(uint32_t sample_rate);
+bool captureAnalogDataDMA();
+void cleanupAdcDma();
+
+// Unified buffer requirements
+UnifiedBufferRequirements calculateUnifiedBufferRequirements(void);
+
+// =============================================================================
+// USB INTERFACE
+// =============================================================================
+
+bool la_usb_connected() {
+    #if USB_CDC_ENABLE_COUNT >= 3
+    // FIXED: Only check DTR signal - availableForWrite() can be 0 during normal flow control
+    // Don't confuse full USB buffers with actual disconnection
+    return USBSer2.dtr();
+    #else
+    return false;
+    #endif
+}
+
+void la_usb_write(uint8_t data) {
+    #if USB_CDC_ENABLE_COUNT >= 3
+    USBSer2.write(data);
+    #endif
+}
+
+void la_usb_write_buffer(const uint8_t* data, size_t len) {
+    #if USB_CDC_ENABLE_COUNT >= 3
+    // STABILITY: Break large writes into smaller chunks to prevent buffer overruns
+    const size_t MAX_CHUNK = 64;  // Smaller chunks for stability
+    size_t offset = 0;
+    
+    while (offset < len) {
+        size_t chunk_size = min(MAX_CHUNK, len - offset);
+        
+        // Wait for buffer space with timeout and yield
+        uint32_t start_time = millis();
+        while (USBSer2.availableForWrite() < chunk_size) {
+            if (millis() - start_time > 500) {  // Shorter timeout
+                DEBUG_LA_PRINTLN("◆ WARNING: USB buffer full - continuing");
+                return;
+            }
+            delayMicroseconds(50);  // Shorter delay
+            yield();  // Allow other cores to run
+        }
+        
+        USBSer2.write(data + offset, chunk_size);
+        offset += chunk_size;
+        
+        // Small delay between chunks for stability
+        if (offset < len) {
+            delayMicroseconds(10);
+        }
+    }
+    #endif
+}
+
+int la_usb_available() {
+    #if USB_CDC_ENABLE_COUNT >= 3
+    return USBSer2.available();
+    #else
+    return 0;
+    #endif
+}
+
+uint8_t la_usb_read() {
+    #if USB_CDC_ENABLE_COUNT >= 3
+    return USBSer2.read();
+    #else
+    return 0;
+    #endif
+}
+
+void la_usb_flush() {
+    #if USB_CDC_ENABLE_COUNT >= 3
+    USBSer2.flush();
+    #endif
+}
+
+// =============================================================================
+// RESOURCE MANAGEMENT
+// =============================================================================
+
+// Forward declaration
+void releaseLogicAnalyzerResources();
+
+uint32_t calculateTransmissionBytesPerSample() {
+    if (current_la_mode == LA_MODE_DIGITAL_ONLY) {
+        return 3;  // Digital only: 3 bytes per sample
+    } else {
+        // Mixed/Analog mode: Always 32 bytes per sample for driver compatibility
+        // This ensures the driver can parse the unified format correctly
+        return 32;  // 3 bytes digital + 28 bytes analog + 1 EOF byte = 32 bytes total
+    }
+}
+
+uint32_t calculateStorageBytesPerSample() {
+    // For capture storage, we only store digital data (1 byte per sample)
+    // Analog data is captured in real-time during transmission
+    Serial.println("calculateStorageBytesPerSample");
+    return 2;  // 1 byte digital data per sample
+}
+
+// Backward compatibility alias
+uint32_t calculateBytesPerSample() {
+    return calculateTransmissionBytesPerSample();
+}
+
+// Legacy struct removed - using atomic allocation system instead
+
+// =============================================================================
+// UNIFIED BUFFER MANAGEMENT SYSTEM
+// =============================================================================
+// This replaces multiple overlapping buffer calculation and allocation functions
+// with a single, comprehensive system that ensures consistency and prevents leaks.
+
+// Forward declarations
+void releaseAllLogicAnalyzerBuffers();
+bool allocateAllLogicAnalyzerBuffers();
+
+// Cached buffer configuration - calculated once at allocation, used throughout capture
+struct CachedBufferConfig {
+    bool is_valid;
+    uint32_t analog_channels_to_capture;
+    uint32_t max_samples;
+    size_t digital_buffer_size;
+    size_t analog_buffer_size;
+    size_t total_buffer_size;
+    uint32_t digital_bytes_per_sample;
+    uint32_t analog_bytes_per_sample;
+    uint32_t total_bytes_per_sample;
+};
+
+static CachedBufferConfig g_cached_config = {};
+
+// Single atomic function that calculates requirements AND allocates buffers
+// This eliminates confusion between separate calculation and allocation steps
+bool calculateAndAllocateBuffers() {
+    DEBUG_LA_PRINTLN("◆ Allocating all LA buffers...");
+
+    // Calculate requirements using the unified function
+    UnifiedBufferRequirements req = calculateUnifiedBufferRequirements();
+
+    // For memory allocation, use the physical sample count (what we actually store)
+    // For actual capture, use the effective sample count (what the driver will receive)
+    uint32_t physical_max_samples = req.max_samples_final;
+    uint32_t effective_max_samples = calculateEffectiveSampleCount(physical_max_samples);
+    
+    // Cap the requested sample count to what we can actually capture (physical memory limit)
+    // We need to cap based on physical memory, not effective samples
+    uint32_t memory_physical_max = req.max_samples_final;
+    uint32_t physical_requested = sample_count / calculateOversamplingFactor();
+    
+    DEBUG_LA_PRINTF("◆ CAPPING CHECK: Requested %lu effective samples (%lu physical) vs memory limit %lu\n", 
+                   sample_count, physical_requested, memory_physical_max);
+    
+    if (physical_requested > memory_physical_max) {
+        DEBUG_LA_PRINTF("◆ CAPPING: Physical requested %lu > memory limit %lu, capping to memory limit\n", 
+                       physical_requested, memory_physical_max);
+        sample_count = memory_physical_max * calculateOversamplingFactor();
+        DEBUG_LA_PRINTF("◆ CAPPING RESULT: Capped to %lu effective samples\n", sample_count);
+    } else {
+        DEBUG_LA_PRINTF("◆ NO CAPPING: Physical requested %lu <= memory limit %lu, using requested %lu effective\n", 
+                       physical_requested, memory_physical_max, sample_count);
+    }
+    
+    // Update the global max samples to the effective count (what driver sees)
+    jl_la_max_samples = effective_max_samples;
+
+    // Calculate buffer sizes based on what we actually need to store
+    // Digital: capture effective samples (full oversampled data)
+    // Analog: store physical samples (analog doesn't get oversampled)
+    uint32_t samples_to_capture = sample_count;  // Effective samples to capture
+    uint32_t digital_samples_to_store = samples_to_capture;  // Digital gets full oversampled data
+    uint32_t analog_samples_to_store = samples_to_capture / calculateOversamplingFactor();  // Analog gets physical samples
+    
+    // Safety check: ensure we don't exceed memory limits
+    if (digital_samples_to_store > memory_physical_max * calculateOversamplingFactor()) {
+        DEBUG_LA_PRINTF("◆ SAFETY CAPPING: Digital samples %lu > memory limit %lu, capping\n", 
+                       digital_samples_to_store, memory_physical_max * calculateOversamplingFactor());
+        digital_samples_to_store = memory_physical_max * calculateOversamplingFactor();
+        samples_to_capture = digital_samples_to_store;
+    }
+    if (analog_samples_to_store > memory_physical_max) {
+        DEBUG_LA_PRINTF("◆ SAFETY CAPPING: Analog samples %lu > memory limit %lu, capping\n", 
+                       analog_samples_to_store, memory_physical_max);
+        analog_samples_to_store = memory_physical_max;
+    }
+    
+    size_t actual_digital_bytes = digital_samples_to_store * req.digital_storage_per_sample;
+    size_t actual_analog_bytes = analog_samples_to_store * req.analog_storage_per_sample;
+    size_t total_needed = actual_digital_bytes + actual_analog_bytes;
+    
+    DEBUG_LA_PRINTF("◆ ALLOCATION CALC: Digital %lu samples × %lu bytes = %lu bytes\n", 
+                   digital_samples_to_store, req.digital_storage_per_sample, actual_digital_bytes);
+    DEBUG_LA_PRINTF("◆ ALLOCATION CALC: Analog %lu samples × %lu bytes = %lu bytes\n", 
+                   analog_samples_to_store, req.analog_storage_per_sample, actual_analog_bytes);
+    DEBUG_LA_PRINTF("◆ ALLOCATION CALC: Total needed = %lu + %lu = %lu bytes\n", 
+                   actual_digital_bytes, actual_analog_bytes, total_needed);
+    
+    // Final safety check: if total needed exceeds available memory, reduce both buffers proportionally
+    if (total_needed > req.usable_memory) {
+        DEBUG_LA_PRINTF("◆ FINAL SAFETY: Total %lu bytes > available %lu bytes, reducing buffers\n", 
+                       total_needed, req.usable_memory);
+        
+        // Calculate reduction factor with 20% margin for fragmentation and allocation overhead
+        float reduction_factor = (float)(req.usable_memory * 0.8) / total_needed;
+        uint32_t new_digital_samples = (uint32_t)(digital_samples_to_store * reduction_factor);
+        uint32_t new_analog_samples = (uint32_t)(analog_samples_to_store * reduction_factor);
+        
+        // Ensure we don't go below minimum
+        if (new_digital_samples < JL_LA_MIN_SAMPLES) new_digital_samples = JL_LA_MIN_SAMPLES;
+        if (new_analog_samples < JL_LA_MIN_SAMPLES) new_analog_samples = JL_LA_MIN_SAMPLES;
+        
+        digital_samples_to_store = new_digital_samples;
+        analog_samples_to_store = new_analog_samples;
+        samples_to_capture = digital_samples_to_store;
+        
+        // Recalculate buffer sizes
+        actual_digital_bytes = digital_samples_to_store * req.digital_storage_per_sample;
+        actual_analog_bytes = analog_samples_to_store * req.analog_storage_per_sample;
+        total_needed = actual_digital_bytes + actual_analog_bytes;
+        
+        DEBUG_LA_PRINTF("◆ FINAL SAFETY RESULT: Digital %lu samples, Analog %lu samples, Total %lu bytes (with 20%% margin)\n", 
+                       digital_samples_to_store, analog_samples_to_store, total_needed);
+    }
+
+    // Verify we can actually allocate this much memory
+    size_t current_free = rp2040.getFreeHeap();
+    if (total_needed > (current_free - req.safety_reserve)) {
+        DEBUG_LA_PRINTF("◆ ERROR: Cannot allocate %lu bytes (need %lu, have %lu, reserve %lu)\n",
+                       total_needed, total_needed, current_free, req.safety_reserve);
+        return false;
+    }
+
+    // Free existing buffers to ensure we have a clean slate
+    if (la_buffer) {
+        free(la_buffer);
+        la_buffer = nullptr;
+    }
+    if (analog_buffer) {
+        free(analog_buffer);
+        analog_buffer = nullptr;
+        analog_buffer_size = 0;
+    }
+
+
+    
+    // Verify we have enough memory for both buffers before allocating either
+    if (total_needed > (current_free - req.safety_reserve)) {
+        DEBUG_LA_PRINTF("◆ ERROR: Cannot allocate %lu bytes (need %lu, have %lu, reserve %lu)\n",
+                       total_needed, total_needed, current_free, req.safety_reserve);
+        return false;
+    }
+    
+    // Allocate digital buffer
+    if (actual_digital_bytes > 0) {
+        la_buffer = (uint32_t*)malloc(actual_digital_bytes);
+        if (!la_buffer) {
+            DEBUG_LA_PRINTF("◆ ERROR: Failed to allocate %lu byte digital buffer\n", actual_digital_bytes);
+            return false;
+        }
+        jl_la_buffer_size = actual_digital_bytes;
+        DEBUG_LA_PRINTF("◆ Digital buffer allocated: %lu bytes\n", actual_digital_bytes);
+    }
+
+    // Allocate analog buffer
+    if (actual_analog_bytes > 0) {
+        analog_buffer = (uint16_t*)malloc(actual_analog_bytes);
+        if (!analog_buffer) {
+            DEBUG_LA_PRINTF("◆ ERROR: Failed to allocate %lu byte analog buffer\n", actual_analog_bytes);
+            if (la_buffer) {
+                free(la_buffer);
+                la_buffer = nullptr;
+            }
+            return false;
+        }
+        analog_buffer_size = actual_analog_bytes;
+        DEBUG_LA_PRINTF("◆ Analog buffer allocated: %lu bytes\n", actual_analog_bytes);
+    }
+
+    DEBUG_LA_PRINTF("◆ Buffer allocation successful. Digital: %lu effective samples, Analog: %lu physical samples, Digital: %lu B, Analog: %lu B\n",
+                   digital_samples_to_store, analog_samples_to_store, actual_digital_bytes, actual_analog_bytes);
+
+    return true;
+}
+
+void invalidateBufferCache() {
+    DEBUG_LA_PRINTF("◆ CACHE INVALIDATED: Next calculation will be from scratch\n");
+    g_cached_config.is_valid = false;
+}
+
+
+
+
+
+
+bool allocateLogicAnalyzerResources() {
+    DEBUG_LA_PRINTF("◆ Allocating logic analyzer resources using atomic system...\n");
+    
+    // Use the new atomic calculate+allocate function (handles memory allocation)
+    if (!calculateAndAllocateBuffers()) {
+        DEBUG_LA_PRINTF("◆ ERROR: Atomic allocation failed\n");
+        return false;
+    }
+    
+    // Complete PIO/DMA reset to ensure clean state
+    DEBUG_LA_PRINTLN("◆ Performing complete PIO/DMA reset...");
+    
+    // Clean up any existing resources
+    if (la_pio && la_prog_offset != (uint)-1) {
+        pio_remove_program(la_pio, &la_pio_program_fast, la_prog_offset);
+        DEBUG_LA_PRINTF("◆ Removed program from PIO%d offset %d\n", pio_get_index(la_pio), la_prog_offset);
+        la_prog_offset = -1;
+    }
+    if (la_pio && la_sm != (uint)-1) {
+        pio_sm_set_enabled(la_pio, la_sm, false);  // Disable SM first
+        pio_sm_unclaim(la_pio, la_sm);
+        DEBUG_LA_PRINTF("◆ Unclaimed PIO%d SM%d\n", pio_get_index(la_pio), la_sm);
+        la_sm = -1;
+    }
+    if (la_dma_chan != -1) {
+        dma_channel_abort(la_dma_chan);  // Stop any active transfers
+        dma_channel_unclaim(la_dma_chan);
+        DEBUG_LA_PRINTF("◆ Unclaimed DMA channel %d\n", la_dma_chan);
+        la_dma_chan = -1;
+    }
+    
+    // Reset PIO pointers
+    la_pio = nullptr;
+    
+    DEBUG_LA_PRINTLN("◆ PIO/DMA reset complete");
+    
+    // Memory is now allocated - allocate PIO/DMA resources
+    
+    // Allocate PIO resources with detailed debugging
+    PIO pio_instances[] = { pio1, pio0, pio2 };
+    bool pio_allocated = false;
+    
+    DEBUG_LA_PRINTLN("◆ Attempting PIO allocation...");
+    
+    for (int i = 0; i < 3 && !pio_allocated; i++) {
+        la_pio = pio_instances[i];
+        DEBUG_LA_PRINTF("◆ Trying PIO%d...\n", pio_get_index(la_pio));
+        
+        int sm = pio_claim_unused_sm(la_pio, false);
+        if (sm < 0) {
+            DEBUG_LA_PRINTF("◆ PIO%d: No available state machines\n", pio_get_index(la_pio));
+            continue;
+        }
+        DEBUG_LA_PRINTF("◆ PIO%d: Claimed SM%d\n", pio_get_index(la_pio), sm);
+        
+        if (!pio_can_add_program(la_pio, &la_pio_program_fast)) {
+            DEBUG_LA_PRINTF("◆ PIO%d: Cannot add program, unclaiming SM%d\n", pio_get_index(la_pio), sm);
+            pio_sm_unclaim(la_pio, sm);  // Clean up claimed SM
+            continue;
+        }
+        
+        la_prog_offset = pio_add_program(la_pio, &la_pio_program_fast);
+        if (la_prog_offset < 0) {
+            DEBUG_LA_PRINTF("◆ PIO%d: Failed to add program, unclaiming SM%d\n", pio_get_index(la_pio), sm);
+            pio_sm_unclaim(la_pio, sm);  // Clean up claimed SM
+            continue;
+        }
+        
+        la_sm = sm;
+        pio_allocated = true;
+        DEBUG_LA_PRINTF("◆ SUCCESS: PIO%d SM%d offset=%d\n", pio_get_index(la_pio), sm, la_prog_offset);
+    }
+    
+    if (!pio_allocated) {
+        DEBUG_LA_PRINTLN("◆ ERROR: Failed to allocate PIO resources after trying all instances");
+        return false;
+    }
+    
+    // Allocate DMA channel
+    int dma = dma_claim_unused_channel(false);
+    if (dma < 0) {
+        DEBUG_LA_PRINTLN("◆ ERROR: No available DMA channels");
+        return false;
+    }
+    la_dma_chan = dma;
+    
+    // Memory buffers already allocated by calculateAndAllocateBuffers()
+    // Just verify they exist
+    if (!la_buffer) {
+        DEBUG_LA_PRINTF("◆ ERROR: Digital buffer not allocated by atomic function\n");
+        return false;
+    }
+    
+    if ((current_la_mode == LA_MODE_MIXED_SIGNAL || current_la_mode == LA_MODE_ANALOG_ONLY) && !analog_buffer) {
+        DEBUG_LA_PRINTF("◆ ERROR: Analog buffer not allocated by atomic function\n");
+        return false;
+    }
+    
+    const char* mode_str = (current_la_mode == LA_MODE_DIGITAL_ONLY) ? "digital-only" : 
+                           (current_la_mode == LA_MODE_MIXED_SIGNAL) ? "mixed-signal" : "analog-only";
+    
+    DEBUG_LA_PRINTF("◆ UNIFIED ALLOCATION SUCCESS: PIO%d SM%d DMA%d (mode: %s)\n", 
+                 pio_get_index(la_pio), la_sm, la_dma_chan, mode_str);
+    DEBUG_LA_PRINTF("  Digital: %d bytes, Analog: %zu bytes, Max samples: %d\n",
+                 jl_la_buffer_size, analog_buffer_size, jl_la_max_samples);
+    
+    return true;
+}
+
+void releaseLogicAnalyzerResources() {
+    // Clean up PIO resources first
+    if (la_pio && la_prog_offset != (uint)-1) {
+        pio_remove_program(la_pio, &la_pio_program_fast, la_prog_offset);
+        la_prog_offset = -1;
+    }
+    if (la_pio && la_sm != (uint)-1) {
+        pio_sm_unclaim(la_pio, la_sm);
+        la_sm = -1;
+    }
+    
+    // Clean up DMA resources  
+    if (la_dma_chan != -1) {
+        dma_channel_unclaim(la_dma_chan);
+        la_dma_chan = -1;
+    }
+    
+    // Clean up memory buffers (handled by atomic system, but kept for safety)
+    if (la_buffer) {
+        free(la_buffer);
+        la_buffer = nullptr;
+    }
+    
+    // Free analog buffer if it was separately allocated
+    if (analog_buffer) {
+        free(analog_buffer);
+        analog_buffer = nullptr;
+        analog_buffer_size = 0;
+    }
+    
+    DEBUG_LA_PRINTLN("◆ All logic analyzer resources released");
+}
+
+// =============================================================================
+// TRIGGER SYSTEM
+// =============================================================================
+
+bool checkTriggerCondition() {
+    switch (trigger_mode) {
+        case TRIGGER_NONE:
+            // In enhanced mode, don't auto-trigger - wait for RUN command
+            // In SUMP mode (non-enhanced), auto-trigger after ARM
+            return !enhanced_mode;  // Only auto-start in SUMP mode
+            
+        case TRIGGER_EXTERNAL:
+            if (trigger_la) {
+                trigger_la = false;  // Reset trigger flag
+                DEBUG_LA_PRINTLN("◆ External trigger activated");
+                return true;
+            }
+            return false;
+            
+        case TRIGGER_GPIO: {
+            if (gpio_trigger_mask == 0) return false;  // No pins configured
+            
+            uint32_t current_gpio = gpio_get_all() & gpio_trigger_mask;
+            
+            if (gpio_trigger_edge) {
+                // Edge trigger: detect change from last state
+                uint32_t edges = (current_gpio ^ last_gpio_state) & gpio_trigger_mask;
+                uint32_t rising_edges = edges & current_gpio;
+                uint32_t falling_edges = edges & (~current_gpio);
+                
+                // Check if trigger pattern matches rising or falling edges
+                bool triggered = ((gpio_trigger_pattern & rising_edges) != 0) || 
+                               ((~gpio_trigger_pattern & falling_edges) != 0);
+                
+                last_gpio_state = current_gpio;
+                
+                if (triggered) {
+                    DEBUG_LA_PRINTF("◆ GPIO edge trigger: 0x%08X\n", current_gpio);
+                    return true;
+                }
+            } else {
+                // Level trigger: match current pattern
+                if ((current_gpio & gpio_trigger_mask) == (gpio_trigger_pattern & gpio_trigger_mask)) {
+                    DEBUG_LA_PRINTF("◆ GPIO level trigger: 0x%08X\n", current_gpio);
+                    return true;
+                }
+            }
+            return false;
+        }
+        
+        case TRIGGER_THRESHOLD: {
+            // Read current ADC value from specified channel
+            if (threshold_channel >= 8) return false;  // Invalid channel
+            
+            adc_select_input(threshold_channel);
+            uint16_t adc_raw = adc_read();
+
+
+            
+            // Convert ADC reading to voltage using calibration
+            int16_t baseline = getAnalogBaseline(threshold_channel);
+            int32_t calibrated_adc = adc_raw + (2048 - baseline);
+            if (calibrated_adc < 0) calibrated_adc = 0;
+            if (calibrated_adc > 4095) calibrated_adc = 4095;
+            
+            // Convert to voltage (assuming 18.28V spread from calibration)
+            float current_voltage = ((float)calibrated_adc * 18.28f / 4095.0f) - 9.14f;
+            
+            bool triggered = false;
+            
+            if (threshold_rising) {
+                // Rising edge trigger: voltage crosses above threshold
+                triggered = (last_adc_voltage < threshold_voltage && current_voltage >= threshold_voltage);
+            } else {
+                // Falling edge trigger: voltage crosses below threshold
+                triggered = (last_adc_voltage > threshold_voltage && current_voltage <= threshold_voltage);
+            }
+            
+            last_adc_voltage = current_voltage;
+            
+            if (triggered && !threshold_triggered) {
+                threshold_triggered = true;  // Prevent multiple triggers
+                DEBUG_LA_PRINTF("◆ Threshold trigger: CH%d %.3fV crossed %.3fV (%s)\n", 
+                             threshold_channel, current_voltage, threshold_voltage, 
+                             threshold_rising ? "rising" : "falling");
+                return true;
+            }
+            return false;
+        }
+            
+        default:
+            return false;
+    }
+}
+
+void setTriggerMode(trigger_type_t mode) {
+    trigger_mode = mode;
+    trigger_la = false;  // Reset external trigger
+    last_gpio_state = gpio_get_all();  // Initialize GPIO state
+    threshold_triggered = false;  // Reset threshold trigger
+    
+    const char* mode_str = "UNKNOWN";
+    switch (mode) {
+        case TRIGGER_NONE: mode_str = "NONE (auto-start)"; break;
+        case TRIGGER_EXTERNAL: mode_str = "EXTERNAL (trigger_la variable)"; break;
+        case TRIGGER_GPIO: mode_str = "GPIO"; break;
+        case TRIGGER_THRESHOLD: mode_str = "THRESHOLD (analog)"; break;
+    }
+    DEBUG_LA_PRINTF("◆ Trigger mode set to: %s\n", mode_str);
+}
+
+void setGPIOTrigger(uint32_t pin_mask, uint32_t pattern, bool edge_trigger) {
+    gpio_trigger_mask = pin_mask;
+    gpio_trigger_pattern = pattern;
+    gpio_trigger_edge = edge_trigger;
+    last_gpio_state = gpio_get_all();
+    
+    DEBUG_LA_PRINTF("◆ GPIO trigger configured: mask=0x%08X, pattern=0x%08X, edge=%s\n",
+                 pin_mask, pattern, edge_trigger ? "YES" : "NO");
+}
+
+void setThresholdTrigger(uint8_t channel, float voltage, bool rising_edge) {
+    threshold_channel = channel;
+    threshold_voltage = voltage;
+    threshold_rising = rising_edge;
+    threshold_triggered = false;  // Reset trigger state
+    
+    // Initialize baseline reading
+    if (channel < 8) {
+        adc_select_input(channel);
+        uint16_t adc_raw = adc_read();
+        int16_t baseline = getAnalogBaseline(channel);
+        int32_t calibrated_adc = adc_raw + (2048 - baseline);
+        if (calibrated_adc < 0) calibrated_adc = 0;
+        if (calibrated_adc > 4095) calibrated_adc = 4095;
+        last_adc_voltage = ((float)calibrated_adc * 18.28f / 4095.0f) - 9.14f;
+    }
+    
+    DEBUG_LA_PRINTF("◆ Threshold trigger configured: CH%d, %.3fV %s edge (current: %.3fV)\n",
+                 channel, voltage, rising_edge ? "rising" : "falling", last_adc_voltage);
+}
+
+void clearTrigger() {
+    setTriggerMode(TRIGGER_NONE);
+    gpio_trigger_mask = 0x00;
+    gpio_trigger_pattern = 0x00;
+    gpio_trigger_edge = false;
+    threshold_channel = 0;
+    threshold_voltage = 2.5f;
+    threshold_rising = true;
+    threshold_triggered = false;
+    last_adc_voltage = 0.0f;
+    DEBUG_LA_PRINTLN("◆ All triggers cleared");
+}
+
+// =============================================================================
+// CONNECTION MANAGEMENT
+// =============================================================================
+
+void updateLastActivity() {
+    last_usb_activity = millis();
+}
+
+void handleConnectionStateChange(bool connected) {
+    if (connected && !usb_was_connected) {
+        DEBUG_LA_PRINTLN("◆ USB connection established");
+        updateLastActivity();
+        usb_was_connected = true;
+    } else if (!connected && usb_was_connected) {
+        uint32_t idle_time = millis() - last_usb_activity;
+        if (idle_time > 10000) {  // 10 second grace period
+            if (la_capture_state != JL_LA_STOPPED) {
+                la_capturing = false;
+                if (la_dma_chan >= 0 && la_dma_chan < 12) {
+                    dma_channel_abort(la_dma_chan);
+                }
+                if (la_pio && la_sm >= 0 && la_sm < 4) {
+                    pio_sm_clear_fifos(la_pio, la_sm);
+                }
+                la_capture_state = JL_LA_STOPPED;
+                DEBUG_LA_PRINTLN("◆ Capture safely stopped");
+            }
+        }
+    }
+}
+
+// =============================================================================
+// PROTOCOL HANDLERS
+// =============================================================================
+
+void configureModeAndChannels(LogicAnalyzerMode mode, uint32_t analog_channel_mask) {
+    //analog_mask = analog_channel_mask;
+    
+    // Count enabled analog channels
+    analog_chan_count = 0;
+    for (int i = 0; i < 32; i++) {
+        if (analog_mask & (1UL << i)) {
+            analog_chan_count++;
+        }
+    }
+    
+    // Determine mode based on actual channels enabled (override driver's suggestion)
+    if (analog_chan_count > 0) {
+        current_la_mode = LA_MODE_MIXED_SIGNAL;  // Any analog channels = mixed signal mode
+        DEBUG_LA_PRINTF("◆ Switching to mixed-signal mode (%d analog channels enabled)\n", analog_chan_count);
+    } else {
+        current_la_mode = LA_MODE_DIGITAL_ONLY;
+        DEBUG_LA_PRINTF("◆ Switching to digital-only mode (no analog channels)\n");
+    }
+    
+    // Stop any ongoing capture when mode changes
+    la_capture_state = JL_LA_STOPPED;
+    
+    // Recalculate buffer configuration based on new mode and channel settings
+    UnifiedBufferRequirements req = calculateUnifiedBufferRequirements();
+    uint32_t physical_max_samples = req.max_samples_final;
+    uint32_t effective_max_samples = calculateEffectiveSampleCount(physical_max_samples);
+    jl_la_max_samples = effective_max_samples;
+    if (sample_count > effective_max_samples) {
+        sample_count = effective_max_samples;
+    }
+    
+    DEBUG_LA_PRINTF("◆ Mode configured: %d, analog channels: %d (mask=0x%08X), max samples: %lu (physical: %lu, effective: %lu)\n", 
+                 current_la_mode, analog_chan_count, analog_mask, jl_la_max_samples, physical_max_samples, effective_max_samples);
+    
+    // Header will be sent by the command handler that triggered this configuration
+    // Don't send duplicate headers here to avoid confusing the driver
+}
+
+void sendSUMPID() {
+    const char sump_id[] = "1SLO";
+    la_usb_write_buffer((const uint8_t*)sump_id, 4);
+    la_usb_flush();
+    DEBUG_LA_PRINTLN("◆ Sent SUMP ID: 1SLO");
+}
+
+void sendJumperlessHeader() {
+    DEBUG_LA_PRINTLN("◆ Sending Jumperless header...");
+    
+    if (!la_usb_connected()) {
+        DEBUG_LA_PRINTLN("◆ ERROR: USB not connected");
+        return;
+    }
+    
+    struct {
+        char magic[8];
+        uint8_t version;
+        uint8_t capture_mode;
+        uint8_t max_digital_channels;
+        uint8_t max_analog_channels;
+        uint32_t sample_rate;
+        uint32_t sample_count;
+        uint32_t digital_channel_mask;
+        uint32_t analog_channel_mask;
+        uint8_t bytes_per_sample;
+        uint8_t digital_bytes_per_sample;
+        uint8_t analog_bytes_per_sample;
+        uint8_t adc_resolution_bits;
+        uint32_t trigger_channel_mask;
+        uint32_t trigger_pattern;
+        uint32_t trigger_edge_mask;
+        uint32_t pre_trigger_samples;
+        float analog_voltage_range;
+        uint64_t max_sample_rate;
+        uint64_t max_memory_depth;
+        uint8_t supports_triggers;
+        uint8_t supports_compression;
+        uint8_t supported_modes;
+        char firmware_version[16];
+        char device_id[16];
+        uint32_t checksum;
+    } __attribute__((packed)) header;
+    
+    memset(&header, 0, sizeof(header));
+    strncpy(header.magic, "$JLDATA", sizeof(header.magic));
+    header.version = 2;
+    header.capture_mode = current_la_mode;
+    header.max_digital_channels = 16;  // Updated to match driver expectations
+    header.max_analog_channels = 14;  // Updated to match actual hardware capability
+    header.sample_rate = sample_rate;
+    header.sample_count = sample_count;
+    header.digital_channel_mask = 0xFF;
+    header.analog_channel_mask = analog_mask;
+    
+    // ALWAYS use mixed-signal mode (32 bytes per sample)
+    current_la_mode = LA_MODE_MIXED_SIGNAL;
+    header.bytes_per_sample = 32;  // Always 32 bytes per sample
+    header.digital_bytes_per_sample = 3;  // Always 3 bytes for digital data
+    header.analog_bytes_per_sample = 29;  // Always 29 bytes for analog data
+    
+    header.adc_resolution_bits = 12;
+    header.analog_voltage_range = 18.28f;
+    header.max_sample_rate = JL_LA_MAX_SAMPLE_RATE;
+    
+    UnifiedBufferRequirements req_header = calculateUnifiedBufferRequirements();
+    uint32_t physical_max_samples = req_header.max_samples_final;
+    uint32_t effective_max_samples = calculateEffectiveSampleCount(physical_max_samples);
+    header.max_memory_depth = effective_max_samples;
+
+    header.supported_modes = 0x07;  // Digital, Analog, and Mixed
+    strncpy(header.firmware_version, "RP2350-v2.1", sizeof(header.firmware_version));
+    strncpy(header.device_id, "Jumperless-LA", sizeof(header.device_id));
+    
+    // Calculate checksum
+    uint8_t* header_bytes = (uint8_t*)&header;
+    uint32_t checksum = 0;
+    for (size_t i = 0; i < sizeof(header) - sizeof(header.checksum); i++) {
+        checksum ^= header_bytes[i];
+    }
+    header.checksum = checksum;
+    
+    // Send header response with SOH/EOH framing
+    la_usb_write(JUMPERLESS_RESP_HEADER);  // 0x80
+    la_usb_write(0xAF);  // SOH (Start of Header)
+    la_usb_write_buffer((uint8_t*)&header, sizeof(header));
+    la_usb_write(0xBF);  // EOH (End of Header)
+    la_usb_flush();
+    
+    DEBUG_LA_PRINTF("◆ Header sent: %d samples, %d bytes/sample, %d analog channels\n", 
+                 sample_count, header.bytes_per_sample, analog_chan_count);
+}
+
+void sendStatusResponse(uint8_t status) {
+    if (!enhanced_mode) return;
+    
+    la_usb_write(JUMPERLESS_RESP_STATUS);
+    la_usb_write(status);
+    la_usb_flush();
+    
+    DEBUG_LA_PRINTF("◆ Sending status response: 0x%02X with status 0x%02X\n", JUMPERLESS_RESP_STATUS, status);
+}
+
+void sendEndOfDataSignal() {
+    if (!enhanced_mode) return;
+    
+    DEBUG_LA_PRINTLN("◆ Sending end-of-data signal...");
+    la_usb_write(JUMPERLESS_RESP_END_DATA);
+    la_usb_write(0x00);  // Status: success
+    la_usb_flush();
+    DEBUG_LA_PRINTLN("◆ End-of-data signal sent");
+}
+
+void sendErrorResponse(uint8_t error_code) {
+   // la_usb_write(JUMPERLESS_RESP_ERROR);
+    la_usb_write(error_code);
+    la_usb_flush();
+}
+
+void processPulseViewCommand(uint8_t cmd) {
+    DEBUG_LA_PRINTF("◆ PulseView Command: 0x%02X\n", cmd);
+    updateLastActivity();
+    
+    switch (cmd) {
+        case JL_CMD_RESET:
+            la_capture_state = JL_LA_STOPPED;
+            la_capturing = false;
+            clearTrigger();  // Reset trigger state
+            DEBUG_LA_PRINTLN("◆ Device reset (triggers cleared)");
+            if (enhanced_mode) sendStatusResponse(0x00);
+            break;
+            
+        case JL_CMD_ID:
+            sendSUMPID();
+            break;
+            
+        case JL_CMD_GET_HEADER:
+            enhanced_mode = true;
+            sendJumperlessHeader();
+            break;
+            
+        case JL_CMD_SET_CHANNELS:
+            enhanced_mode = true;
+            delay(10);
+            if (la_usb_available() >= 8) {
+                // Read digital mask (4 bytes) - not used currently but consumed
+                uint32_t digital_mask = 0;
+                for (int i = 0; i < 4; i++) {
+                    digital_mask |= (la_usb_read() << (i * 8));
+
+                    
+                }
+                
+                // Read analog mask (4 bytes)
+                uint32_t analog_mask_new = 0;
+                for (int i = 0; i < 4; i++) {
+                    analog_mask_new |= (la_usb_read() << (i * 8));
+                }
+                
+                // Count enabled analog channels
+                uint8_t new_analog_chan_count = 0;
+                for (int i = 0; i < 32; i++) {
+                    if (analog_mask_new & (1UL << i)) {
+                        new_analog_chan_count++;
+                        DEBUG_LA_PRINTF("◆ Analog channel %d enabled in mask\n", i);
+                    }
+                }
+                DEBUG_LA_PRINTF("◆ Total analog channels detected: %d (mask=0x%08X)\n", 
+                             new_analog_chan_count, analog_mask_new);
+                analog_mask = analog_mask_new;
+                // Configure mode based on channel selection
+                if (analog_mask_new > 0) {
+                    configureModeAndChannels(LA_MODE_MIXED_SIGNAL, analog_mask_new);
+                    DEBUG_LA_PRINTF("◆ Channels configured: Mixed-signal mode with %d analog channels\n", analog_chan_count);
+                } else {
+                    configureModeAndChannels(LA_MODE_DIGITAL_ONLY, 0x00);
+                    DEBUG_LA_PRINTF("◆ Channels configured: Digital-only mode\n");
+                }
+                
+                sendStatusResponse(0x00);
+
+                // Give the driver a moment to process the status response before we send
+                // the unsolicited header. This helps prevent race conditions.
+                delay(50);
+                
+                // Send the updated header to inform the driver of new capabilities,
+                // such as a new maximum sample depth based on the channel config.
+                sendJumperlessHeader();
+                
+            } else {
+                sendErrorResponse(0x01);
+            }
+            break;
+        
+        case JL_CMD_ARM:
+            if (la_capture_state == JL_LA_STOPPED || la_capture_state == JL_LA_ARMED) {
+                // Allow arming from STOPPED state or re-arming from ARMED state
+                if (la_capture_state == JL_LA_STOPPED) {
+                    la_capture_state = JL_LA_ARMED;
+                }
+                
+                if (trigger_mode == TRIGGER_NONE) {
+                    DEBUG_LA_PRINTLN("◆ No triggers configured - starting capture immediately");
+                    
+                    if (setupCapture() && startCapture()) {
+                        DEBUG_LA_PRINTLN("◆ Auto-capture started successfully");
+                        sendStatusResponse(0x00);
+                    } else {
+                        DEBUG_LA_PRINTLN("◆ Auto-capture failed to start");
+                        sendStatusResponse(0x02); // Send proper status response with error code
+                    }
+                } else {
+                    const char* trigger_desc = "unknown";
+                    if (trigger_mode == TRIGGER_EXTERNAL) {
+                        trigger_desc = "external";
+                    } else if (trigger_mode == TRIGGER_GPIO) {
+                        trigger_desc = "GPIO";
+                    } else if (trigger_mode == TRIGGER_THRESHOLD) {
+                        trigger_desc = "threshold";
+                    }
+                    DEBUG_LA_PRINTF("◆ Device armed - waiting for trigger (mode: %s, protocol: %s)\n", 
+                                 trigger_desc, enhanced_mode ? "Enhanced" : "SUMP");
+                    sendStatusResponse(0x00);
+                }
+            } else {
+                DEBUG_LA_PRINTF("◆ Cannot arm in current state: %d\n", la_capture_state);
+                sendStatusResponse(0x02); // Send proper status response with error code
+            }
+            break;
+            
+        case JL_CMD_RUN:
+            if (la_capture_state == JL_LA_STOPPED || la_capture_state == JL_LA_ARMED) {
+                // RUN command always starts immediately, regardless of trigger settings
+                if (la_capture_state == JL_LA_STOPPED) {
+                    la_capture_state = JL_LA_ARMED;
+                }
+                
+                DEBUG_LA_PRINTLN("◆ RUN command - forcing immediate capture start");
+                
+                // Safety check: ensure valid sample count
+                if (sample_count == 0) {
+                    sample_count = JL_LA_DEFAULT_SAMPLES;
+                    DEBUG_LA_PRINTF("◆ SAFETY: Zero sample count, using default %lu\n", sample_count);
+                }
+                
+                DEBUG_LA_PRINTF("◆ Starting capture: rate=%lu Hz, samples=%lu, mode=%d\n", 
+                             sample_rate, sample_count, current_la_mode);
+                        
+                if (setupCapture() && startCapture()) {
+                    DEBUG_LA_PRINTLN("◆ RUN command: Capture started successfully");
+                    sendStatusResponse(0x00);
+                } else {
+                    DEBUG_LA_PRINTLN("◆ RUN command: ERROR - Failed to start capture");
+                    la_capture_state = JL_LA_STOPPED;
+                    sendStatusResponse(0x02); // Send proper status response with error code
+                }
+            } else if (la_capture_state == JL_LA_TRIGGERED) {
+                // If capture is in progress, acknowledge the RUN command
+                DEBUG_LA_PRINTLN("◆ RUN command: Capture already in progress, acknowledging");
+                sendStatusResponse(0x00);
+            } else if (la_capture_state == JL_LA_COMPLETE) {
+                // If capture is already complete, the data has already been sent.
+                // Just acknowledge the command.
+                DEBUG_LA_PRINTLN("◆ RUN command: Capture complete, acknowledging");
+                sendStatusResponse(0x00);
+            } else {
+                DEBUG_LA_PRINTF("◆ Cannot run in current state: %d\n", la_capture_state);
+                sendStatusResponse(0x02); // Send proper status response with error code
+            }
+            break;
+            
+        case JUMPERLESS_CMD_CONFIGURE:
+            enhanced_mode = true;
+            delay(10);
+            if (la_usb_available() >= 8) {
+                uint32_t new_sample_rate = 0;
+                uint32_t new_sample_count = 0;
+                
+                for (int i = 0; i < 4; i++) {
+                    new_sample_rate |= (la_usb_read() << (i * 8));
+                }
+                for (int i = 0; i < 4; i++) {
+                    new_sample_count |= (la_usb_read() << (i * 8));
+                }
+                
+                if (new_sample_rate > 0 && new_sample_rate <= JL_LA_MAX_SAMPLE_RATE) {
+                    sample_rate = new_sample_rate;
+                } else {
+                    sample_rate = 1000000;
+                }
+                
+                if (new_sample_count > 0 && new_sample_count <= jl_la_max_samples) {
+                    sample_count = new_sample_count;
+                } else if (new_sample_count == 0) {
+                    sample_count = JL_LA_MIN_SAMPLES;
+                } else {
+                    sample_count = jl_la_max_samples;
+                }
+                
+                DEBUG_LA_PRINTF("◆ Config: rate=%lu Hz, samples=%lu\n", 
+                             sample_rate, sample_count);
+                sendStatusResponse(0x00);
+                
+                // After configuring timing, send an updated header back to the driver
+                // so it knows about new capabilities (e.g., max samples with oversampling).
+                delay(20); // Give driver a moment to process status
+                sendJumperlessHeader();
+
+            } else {
+                sample_rate = 1000000;
+                sample_count = JL_LA_DEFAULT_SAMPLES;
+                sendStatusResponse(0x00);
+            }
+            break;
+            
+        case JUMPERLESS_CMD_SET_MODE:
+            enhanced_mode = true;
+            delay(10);
+            if (la_usb_available() >= 1) {
+                uint8_t new_mode = la_usb_read();
+                
+                // Set mode with sensible default channel configurations
+                switch (new_mode) {
+                    case 0:  // Digital only
+                        configureModeAndChannels(LA_MODE_DIGITAL_ONLY, 0x00);
+                        break;
+                    case 1:  // Mixed signal - enable first 8 ADC channels by default
+                        configureModeAndChannels(LA_MODE_MIXED_SIGNAL, 0xFF);
+                        break;
+                    case 2:  // Analog only - enable all 14 channels
+                        configureModeAndChannels(LA_MODE_ANALOG_ONLY, 0x3FFF);
+                        break;
+                    default:
+                        sendErrorResponse(0x01);
+                        return;
+                }
+                
+                DEBUG_LA_PRINTF("◆ Mode set via SET_MODE command: %d\n", new_mode);
+                DEBUG_LA_PRINTLN("◆ NOTE: Use SET_CHANNELS (0xA4) for precise channel control");
+                
+                // Send status response first
+                sendStatusResponse(0x00);
+                
+                // Small delay to ensure status response is processed, then send updated header
+                delay(10);
+                sendJumperlessHeader();
+                
+                DEBUG_LA_PRINTLN("◆ Mode configuration complete with updated header sent");
+            } else {
+                sendErrorResponse(0x01);
+            }
+            break;
+        
+        case JUMPERLESS_CMD_SET_TRIGGER:
+            enhanced_mode = true;
+            delay(10);
+            if (la_usb_available() >= 13) {  // Updated to handle threshold trigger data
+                uint8_t trigger_type = la_usb_read();
+                uint32_t mask = 0;
+                uint32_t pattern = 0;
+                
+                // Read mask (4 bytes)
+                for (int i = 0; i < 4; i++) {
+                    mask |= (la_usb_read() << (i * 8));
+                }
+                // Read pattern (4 bytes)
+                for (int i = 0; i < 4; i++) {
+                    pattern |= (la_usb_read() << (i * 8));
+                }
+                
+                switch (trigger_type) {
+                    case 0:  // No trigger (auto-start)
+                        setTriggerMode(TRIGGER_NONE);
+                        break;
+                    case 1:  // External trigger
+                        setTriggerMode(TRIGGER_EXTERNAL);
+                        break;
+                    case 2:  // GPIO level trigger
+                        setTriggerMode(TRIGGER_GPIO);
+                        setGPIOTrigger(mask, pattern, false);
+                        break;
+                    case 3:  // GPIO edge trigger
+                        setTriggerMode(TRIGGER_GPIO);
+                        setGPIOTrigger(mask, pattern, true);
+                        break;
+                    case 4:  // Threshold trigger (rising)
+                    case 5:  // Threshold trigger (falling)
+                        if (la_usb_available() >= 4) {  // Additional 4 bytes for threshold data
+                            setTriggerMode(TRIGGER_THRESHOLD);
+                            
+                            // Read threshold data: [channel:1][voltage:4 bytes float]
+                            uint8_t channel = mask & 0xFF;  // Use mask as channel
+                            
+                            // Read voltage as float (little-endian)
+                            union { uint32_t i; float f; } voltage_union;
+                            voltage_union.i = pattern;  // Use pattern as voltage bytes
+                            
+                            bool rising = (trigger_type == 4);
+                            setThresholdTrigger(channel, voltage_union.f, rising);
+                        } else {
+                            sendErrorResponse(0x01);  // Insufficient data
+                            return;
+                        }
+                        break;
+                    default:
+                        sendErrorResponse(0x01);  // Invalid trigger type
+                        return;
+                }
+                
+                DEBUG_LA_PRINTF("◆ Trigger configured: type=%d, mask=0x%08X, pattern=0x%08X\n", 
+                             trigger_type, mask, pattern);
+                sendStatusResponse(0x00);
+            } else {
+                sendErrorResponse(0x01);  // Insufficient data
+            }
+            break;
+            
+        case JUMPERLESS_CMD_CLEAR_TRIGGER:
+            enhanced_mode = true;
+            clearTrigger();
+            sendStatusResponse(0x00);
+            break;
+            
+        default:
+            DEBUG_LA_PRINTF("◆ Unknown PulseView command: 0x%02X\n", cmd);
+            if (enhanced_mode) sendErrorResponse(0xFF);
+            break;
+    }
+}
+
+void processCommand(uint8_t cmd) {
+    DEBUG_LA_PRINTF("◆ Command: 0x%02X\n", cmd);
+    updateLastActivity();
+
+    
+    
+    // Handle PulseView/Enhanced protocol commands
+    if (cmd >= 0xA0 && cmd <= 0xFF) {
+        processPulseViewCommand(cmd);
+        return;
+    }
+    
+    // Handle SUMP Protocol Commands
+    switch (cmd) {
+        case SUMP_SET_DIVIDER:
+            if (la_usb_available() >= 3) {
+                uint32_t divider = 0;
+                divider = (la_usb_read() << 16) | (la_usb_read() << 8) | la_usb_read();
+                uint32_t clock_freq = 100000000;
+                uint32_t new_sample_rate = (divider == 0) ? clock_freq : (clock_freq / (divider + 1));
+                if (new_sample_rate < 100) new_sample_rate = 100;
+                if (new_sample_rate > JL_LA_MAX_SAMPLE_RATE) new_sample_rate = JL_LA_MAX_SAMPLE_RATE;
+                sample_rate = new_sample_rate;
+                DEBUG_LA_PRINTF("◆ SUMP rate: %lu Hz\n", sample_rate);
+                updateLastActivity();
+            }
+            break;
+        
+        case SUMP_SET_READ_DELAY:
+            if (la_usb_available() >= 4) {
+                uint16_t read_count = (la_usb_read() << 8) | la_usb_read();
+                uint16_t delay_count = (la_usb_read() << 8) | la_usb_read();
+                uint32_t new_sample_count = (read_count + 1) * 4;
+                if (new_sample_count < JL_LA_MIN_SAMPLES) new_sample_count = JL_LA_MIN_SAMPLES;
+                if (new_sample_count > jl_la_max_samples) new_sample_count = jl_la_max_samples;
+                sample_count = new_sample_count;
+                DEBUG_LA_PRINTF("◆ SUMP samples: %lu\n", sample_count);
+                updateLastActivity();
+            }
+            break;
+        
+        case SUMP_SET_FLAGS:
+            if (la_usb_available() >= 4) {
+                uint32_t flags = 0;
+                for (int i = 0; i < 4; i++) {
+                    flags |= (la_usb_read() << (i * 8));
+                }
+                DEBUG_LA_PRINTF("◆ SUMP flags: 0x%08X\n", flags);
+            }
+            break;
+            
+        // SUMP Trigger commands (consume data but don't implement)
+        case SUMP_SET_TRIGGER_MASK_0:
+        case SUMP_SET_TRIGGER_VALUE_0:
+            if (la_usb_available() >= 4) {
+                for (int i = 0; i < 4; i++) la_usb_read();
+            }
+            break;
+            
+        default:
+            // Handle other SUMP trigger commands
+            if ((cmd >= 0xC0 && cmd <= 0xCF) || (cmd >= 0xD0 && cmd <= 0xDF)) {
+                if (la_usb_available() >= 4) {
+                    for (int i = 0; i < 4; i++) la_usb_read();
+                }
+            } else {
+                DEBUG_LA_PRINTF("◆ Unknown SUMP command: 0x%02X\n", cmd);
+            }
+            break;
+    }
+}
+
+// =============================================================================
+// CAPTURE IMPLEMENTATION
+// =============================================================================
+
+bool setupCapture() {
+    DEBUG_LA_PRINTLN("◆ Setting up capture...");
+    if (!allocateLogicAnalyzerResources()) {
+        DEBUG_LA_PRINTLN("◆ ERROR: Failed to allocate resources");
+        return false;
+    }
+    DEBUG_LA_PRINTLN("◆ Resources allocated successfully");
+    
+    // Determine the actual number of samples to DMA, capped by our buffer size.
+    uint32_t samples_to_capture = sample_count;
+    if (samples_to_capture > jl_la_max_samples) {
+        DEBUG_LA_PRINTF("◆ WARNING: Requested samples (%lu) exceeds buffer capacity (%lu). Capping capture.\n",
+                        samples_to_capture, jl_la_max_samples);
+        samples_to_capture = jl_la_max_samples;
+    }
+    
+    // For mixed-signal mode, analog buffer is already allocated by calculateAndAllocateBuffers()
+    if (current_la_mode == LA_MODE_MIXED_SIGNAL || current_la_mode == LA_MODE_ANALOG_ONLY) {
+        // Analog buffer is already allocated - just verify it exists
+        if (!analog_buffer) {
+            DEBUG_LA_PRINTLN("◆ ERROR: Analog buffer not allocated by atomic function");
+            return false;
+        }
+        
+        // The analog buffer was already allocated by calculateAndAllocateBuffers()
+        // Just verify it's the right size for what we need
+        size_t analog_buffer_size_needed = analog_buffer_size;  // Use the size that was already allocated
+        
+        DEBUG_LA_PRINTF("◆ Analog buffer verification: %lu bytes allocated for %d channels\n",
+                     analog_buffer_size_needed, analog_chan_count);
+        
+        // Verify the analog buffer is properly allocated
+        if (!analog_buffer || analog_buffer_size == 0) {
+            DEBUG_LA_PRINTLN("◆ ERROR: Analog buffer not properly allocated");
+            return false;
+        }
+        
+        DEBUG_LA_PRINTF("◆ Using pre-allocated analog buffer: %lu bytes (%d channels)\n", 
+                     analog_buffer_size, analog_chan_count);
+        
+        // Clear analog buffer
+        memset(analog_buffer, 0, analog_buffer_size);
+        analog_capture_complete = false;
+    }
+    
+    // Configure GPIO pins
+    for (int i = 0; i < JL_LA_PIN_COUNT; i++) {
+        gpio_init(JL_LA_PIN_BASE + i);
+    }
+    
+    // CRITICAL: Clear digital buffer to prevent contamination from previous captures
+    memset(la_buffer, 0, jl_la_buffer_size);
+    DEBUG_LA_PRINTLN("◆ Capture buffers cleared");
+    
+    // Configure PIO
+    pio_sm_set_enabled(la_pio, la_sm, false);
+    pio_sm_clear_fifos(la_pio, la_sm);
+    pio_sm_restart(la_pio, la_sm);
+    
+    pio_sm_config c = pio_get_default_sm_config();
+    sm_config_set_in_pins(&c, JL_LA_PIN_BASE);
+    sm_config_set_in_shift(&c, false, true, 8);
+    sm_config_set_fifo_join(&c, PIO_FIFO_JOIN_RX);
+    
+    uint program_end = la_prog_offset + la_pio_program_fast.length - 1;
+    sm_config_set_wrap(&c, la_prog_offset, program_end);
+    
+    uint32_t sys_clock = clock_get_hz(clk_sys);
+    float clock_div = (float)sys_clock / sample_rate;
+    if (clock_div < 1.0f) clock_div = 1.0f;
+    if (clock_div > 65536.0f) clock_div = 65536.0f;
+    
+    sm_config_set_clkdiv(&c, clock_div);
+    pio_sm_init(la_pio, la_sm, la_prog_offset, &c);
+    
+    // Configure DMA
+    dma_channel_config dma_config = dma_channel_get_default_config(la_dma_chan);
+    channel_config_set_transfer_data_size(&dma_config, DMA_SIZE_8);
+    channel_config_set_read_increment(&dma_config, false);
+    channel_config_set_write_increment(&dma_config, true);
+    channel_config_set_dreq(&dma_config, pio_get_dreq(la_pio, la_sm, false));
+    
+    dma_channel_configure(la_dma_chan, &dma_config, la_buffer,
+                         &la_pio->rxf[la_sm], samples_to_capture, false);
+    
+    DEBUG_LA_PRINTLN("◆ Capture setup complete");
+    return true;
+}
+
+bool startCapture() {
+    DEBUG_LA_PRINTF("◆ Starting capture (state=%d)...\n", la_capture_state);
+    if (la_capture_state != JL_LA_ARMED) {
+        DEBUG_LA_PRINTF("◆ ERROR: Cannot start capture in state %d\n", la_capture_state);
+        return false;
+    }
+    
+    la_capturing = true;
+    la_capture_state = JL_LA_TRIGGERED;
+    
+    pio_sm_set_enabled(la_pio, la_sm, true);
+    delayMicroseconds(10);
+    dma_channel_start(la_dma_chan);
+    
+    DEBUG_LA_PRINTLN("◆ Capture started - PIO and DMA active");
+    return true;
+}
+
+bool isCaptureDone() {
+    if (la_capture_state != JL_LA_TRIGGERED) return false;
+    
+    if (!dma_channel_is_busy(la_dma_chan)) {
+        DEBUG_LA_PRINTF("◆ Capture complete: %lu samples\n", sample_count);
+        la_capturing = false;
+        la_capture_state = JL_LA_COMPLETE;
+        return true;
+    }
+    return false;
+}
+
+int16_t getAnalogBaseline(int channel) {
+    int16_t analog_offset = 0;
+    
+    switch (channel) {
+        case 0:
+            if (jumperlessConfig.calibration.adc_0_spread != 0.0f) {
+                float offset_adc = (jumperlessConfig.calibration.adc_0_zero / 
+                                  jumperlessConfig.calibration.adc_0_spread) * 4095.0f;
+                analog_offset = (int16_t)round(offset_adc);
+            }
+            break;
+        case 1:
+            if (jumperlessConfig.calibration.adc_1_spread != 0.0f) {
+                float offset_adc = (jumperlessConfig.calibration.adc_1_zero / 
+                                  jumperlessConfig.calibration.adc_1_spread) * 4095.0f;
+                analog_offset = (int16_t)round(offset_adc);
+            }
+            break;
+        case 2:
+            if (jumperlessConfig.calibration.adc_2_spread != 0.0f) {
+                float offset_adc = (jumperlessConfig.calibration.adc_2_zero / 
+                                  jumperlessConfig.calibration.adc_2_spread) * 4095.0f;
+                analog_offset = (int16_t)round(offset_adc);
+            }
+            break;
+        case 3:
+            if (jumperlessConfig.calibration.adc_3_spread != 0.0f) {
+                float offset_adc = (jumperlessConfig.calibration.adc_3_zero / 
+                                  jumperlessConfig.calibration.adc_3_spread) * 4095.0f;
+                analog_offset = (int16_t)round(offset_adc);
+            }
+            break;
+        case 4:
+            if (jumperlessConfig.calibration.adc_4_spread != 0.0f) {
+                float offset_adc = (jumperlessConfig.calibration.adc_4_zero / 
+                                  jumperlessConfig.calibration.adc_4_spread) * 4095.0f;
+                analog_offset = (int16_t)round(offset_adc);
+            }
+            break;
+        case 5:
+            analog_offset = jumperlessConfig.calibration.probe_min - 2048;
+            break;
+        case 7:
+            if (jumperlessConfig.calibration.adc_7_spread != 0.0f) {
+                float offset_adc = (jumperlessConfig.calibration.adc_7_zero / 
+                                  jumperlessConfig.calibration.adc_7_spread) * 4095.0f;
+                analog_offset = (int16_t)round(offset_adc);
+            }
+            break;
+        case 8:
+            analog_offset = jumperlessConfig.calibration.dac_0_zero - 2048;
+            break;
+        case 9:
+            analog_offset = jumperlessConfig.calibration.dac_1_zero - 2048;
+            break;
+        default:
+            analog_offset = 0;
+            break;
+    }
+    
+    return analog_offset;
+}
+
+bool captureAnalogData() {
+    if (!analog_buffer) {
+        DEBUG_LA_PRINTLN("◆ ERROR: Analog buffer not allocated");
+        return false;
+    }
+    
+    // Reset persistent oversampling state for new capture
+    capture_used_oversampling = false;
+    capture_duplication_factor = 1;
+    
+    if (adc_oversampling_mode) {
+        DEBUG_LA_PRINTF("◆ Capturing analog data: %lu samples requested at %lu Hz, ADC runs at %lu Hz (OVERSAMPLING)\n", 
+                     sample_count, sample_rate, adc_actual_sample_rate);
+        DEBUG_LA_PRINTF("◆ %d channels (mask=0x%08X), capturing %lu ADC samples (dup_factor=%lu)\n", 
+                     analog_chan_count, analog_mask, (sample_count + adc_duplication_factor - 1) / adc_duplication_factor, adc_duplication_factor);
+    } else {
+        DEBUG_LA_PRINTF("◆ Capturing analog data: %lu samples at %lu Hz from %d channels (mask=0x%08X)\n", 
+                     sample_count, sample_rate, analog_chan_count, analog_mask);
+    }
+    
+    // Try DMA-based ADC capture first (fastest and most precise)
+    if (initAdcDma(sample_rate)) {
+        DEBUG_LA_PRINTLN("◆ Attempting DMA-based ADC capture...");
+        if (captureAnalogDataDMA()) {
+            DEBUG_LA_PRINTLN("◆ DMA analog capture successful!");
+            analog_capture_complete = true;
+            cleanupAdcDma();  // Clean up DMA resources
+            return true;
+        } else {
+            DEBUG_LA_PRINTLN("◆ DMA capture failed - falling back to timer method");
+            cleanupAdcDma();  // Clean up failed DMA attempt
+        }
+    } else {
+        DEBUG_LA_PRINTLN("◆ DMA initialization failed - using timer method");
+    }
+    return false;
+
+
+    
+    // Channel count was set by calculateAndAllocateBuffers()
+    analog_capture_complete = true;
+    DEBUG_LA_PRINTF("◆ Analog capture complete: %lu samples × %d channels = %lu total readings\n", 
+                 sample_count, analog_chan_count, sample_count * analog_chan_count);
+    return true;
+}
+
+void sendDigitalData() {
+    uint8_t* sample_buffer = (uint8_t*)la_buffer;
+    const uint32_t CHUNK_SIZE = 96;  // 32 samples * 3 bytes
+    static uint8_t chunk_buffer[96];  // Static buffer for stability
+    uint32_t chunk_pos = 0;
+    
+    DEBUG_LA_PRINTF("◆ Sending digital data: %lu samples (3-byte unified format)\n", sample_count);
+    
+    for (uint32_t sample = 0; sample < sample_count; sample++) {
+        if (chunk_pos + 3 > CHUNK_SIZE) {
+            la_usb_write_buffer(chunk_buffer, chunk_pos);
+            la_usb_flush();
+            delayMicroseconds(1000);
+            yield();  // Allow other cores to run
+            updateLastActivity();
+            chunk_pos = 0;
+        }
+        
+        // UNIFIED DIGITAL FORMAT: Always 3 bytes per sample
+        // [byte 0] GPIO data: 8 digital channels
+        chunk_buffer[chunk_pos++] = sample_buffer[sample];
+        // [byte 1] UART data: placeholder for future use  
+        chunk_buffer[chunk_pos++] = 0x00;
+        // [byte 2] Format marker: 0xDD = digital only
+        chunk_buffer[chunk_pos++] = DIGITAL_ONLY_MARKER;
+        
+        if (sample % 2000 == 0 && sample > 0) {
+            updateLastActivity();
+            yield();  // Allow other cores to run
+        }
+    }
+    
+    if (chunk_pos > 0) {
+        la_usb_write_buffer(chunk_buffer, chunk_pos);
+        la_usb_flush();
+        delayMicroseconds(1000);  // Final stability delay
+    }
+    
+    DEBUG_LA_PRINTLN("◆ Digital data sent (3-byte unified format)");
+}
+
+void sendMixedSignalData() {
+    uint8_t* digital_buffer = (uint8_t*)la_buffer;
+    const uint32_t UNIFIED_BYTES_PER_SAMPLE = 32;  // Always 32 bytes per sample for driver compatibility
+    const uint32_t CHUNK_SIZE = 512; // Smaller chunks for better stability - 16 samples per chunk
+
+    // Use static buffer to avoid malloc/free during critical transmission
+    static uint8_t chunk_buffer[512];
+    uint32_t chunk_pos = 0;
+    
+    // Calculate how many samples we actually have in the buffer
+    uint32_t actual_buffer_samples = capture_used_oversampling ? (sample_count + capture_duplication_factor - 1) / capture_duplication_factor : sample_count;
+    
+    if (capture_used_oversampling) {
+        DEBUG_LA_PRINTF("◆ Sending unified mixed-signal data: %lu samples, 32 bytes/sample (OVERSAMPLING: %lu buffer samples, dup_factor=%lu)\n", 
+                     sample_count, actual_buffer_samples, capture_duplication_factor);
+    } else {
+        DEBUG_LA_PRINTF("◆ Sending unified mixed-signal data: %lu samples, 32 bytes/sample\n", sample_count);
+    }
+    
+    // Debug: Show enabled channel mapping for transmission verification
+    DEBUG_LA_PRINTF("◆ CHANNEL MAPPING DEBUG: analog_mask=0x%08X\n", analog_mask);
+    for (int ch = 0; ch < 8; ch++) {
+        if (analog_mask & (1UL << ch)) {
+            uint8_t buffer_position = 0;
+            for (uint8_t i = 0; i < ch; i++) {
+                if (analog_mask & (1UL << i)) {
+                    buffer_position++;
+                }
+            }
+            DEBUG_LA_PRINTF("◆   Output Ch%d → Buffer pos %d\n", ch, buffer_position);
+        }
+    }
+    
+    // VERIFICATION: Channel count consistency check
+    uint32_t expected_analog_channels = __builtin_popcount(analog_mask & 0xFF);
+    size_t buffer_elements = analog_buffer_size / sizeof(uint16_t);
+    uint32_t buffer_samples = buffer_elements / analog_chan_count;
+    
+    DEBUG_LA_PRINTF("◆ CHANNEL VERIFICATION: mask=0x%08X, expected=%d, chan_count=%d\n", 
+                 analog_mask, expected_analog_channels, analog_chan_count);
+    DEBUG_LA_PRINTF("◆ BUFFER VERIFICATION: size=%zu bytes, elements=%zu, samples=%d\n",
+                 analog_buffer_size, buffer_elements, buffer_samples);
+    
+    if (expected_analog_channels != analog_chan_count) {
+        DEBUG_LA_PRINTF("◆ ERROR: Channel count mismatch! Expected %d, got %d\n", 
+                     expected_analog_channels, analog_chan_count);
+    }
+    
+    // Verify USB connection before starting
+    if (!la_usb_connected()) {
+        DEBUG_LA_PRINTLN("◆ ERROR: USB not connected at start of mixed-signal transmission");
+        return;
+    }
+    
+    // Check if analog data was captured
+    if (!analog_capture_complete || !analog_buffer) {
+        DEBUG_LA_PRINTLN("◆ ERROR: Analog data not captured - run captureAnalogData() first");
+        return;
+    }
+
+    // if (FORCE_5_CHANNELS) {
+    //     analog_chan_count = 5;
+    //     analog_mask = 0x1F;
+    // }
+
+
+    uint32_t lastSamples[14] = {2048, 2048, 2048, 2048, 2048, 2048, 2048, 2048, 2048, 2048, 2048, 2048, 2048, 2048};
+    for (uint32_t sample = 0; sample < sample_count; sample++) {
+        
+        // Check if we need to flush chunk
+        if (chunk_pos + UNIFIED_BYTES_PER_SAMPLE > CHUNK_SIZE) {
+            // STABILITY: Send chunk without excessive USB checks
+            la_usb_write_buffer(chunk_buffer, chunk_pos);
+            la_usb_flush();
+            
+            // STABILITY: Yield to other cores and prevent USB buffer saturation
+            delayMicroseconds(1000);  // Longer delay for stability
+            yield();  // Allow other cores to run
+            updateLastActivity();
+            chunk_pos = 0;
+        }
+        
+        // UNIFIED FORMAT: Always 32 bytes per sample
+        // [bytes 0-2] Digital data (GPIO, UART, format marker)
+        chunk_buffer[chunk_pos++] = digital_buffer[sample];
+        chunk_buffer[chunk_pos++] = 0x00;  // UART placeholder
+        chunk_buffer[chunk_pos++] = MIXED_SIGNAL_MARKER;  // 0xDA - mixed signal marker
+        
+        // [bytes 3-30] Analog data (14 channels × 2 bytes each = 28 bytes)
+        for (int channel = 0; channel < 14; channel++) {
+            uint16_t adc_value = 2048;  // Default center value
+            lastSamples[channel] = adc_value;
+            
+            // Check if this channel was captured (is enabled and < 8)
+            if (channel < 8 && (analog_mask & (1UL << channel))) {
+                // For round-robin DMA data, find the position of this channel in the enabled channels
+                uint8_t captured_channel_index = 0;
+
+                for (uint8_t i = 0; i < channel; i++) {
+                    if (analog_mask & (1UL << i)) {
+                        captured_channel_index++;
+                    }
+                }
+                
+                // Handle oversampling mode: map output sample to buffer sample
+                uint32_t buffer_sample = capture_used_oversampling ? sample / capture_duplication_factor : sample;
+                
+                // Round-robin buffer format: [ch0_s0, ch1_s0, ch2_s0, ch3_s0, ch0_s1, ch1_s1, ...]
+                // Buffer index = (buffer_sample * channels_per_sample) + channel_position_in_round_robin
+                
+                uint32_t buffer_index = buffer_sample * analog_chan_count + captured_channel_index;
+                
+                // CRITICAL: Add bounds checking to prevent memory corruption
+                size_t max_buffer_elements = analog_buffer_size / sizeof(uint16_t);
+                if (buffer_index < max_buffer_elements && analog_buffer) {
+
+                    adc_value = analog_buffer[buffer_index];
+                    
+                    // Debug: Show what we're reading for first few samples
+                    if (sample > 118 && sample < 120 || sample == 0) {
+                        if (channel == 0) {
+                            DEBUG_LA_PRINTLN();
+                        }
+                        if (capture_used_oversampling) {
+                            DEBUG_LA_PRINTF("◆ Sample %lu Ch %d: buffer[%lu] = %d (oversampling: buf_sample=%lu, dup_factor=%lu)\n", 
+                                         sample, channel, buffer_index, adc_value, buffer_sample, capture_duplication_factor);
+                        } else {
+                            DEBUG_LA_PRINTF("◆ Sample %lu Ch %d: buffer[%lu] = %d (buffer_pos=%d, max=%zu)\n", 
+                                         sample, channel, buffer_index, adc_value, captured_channel_index, max_buffer_elements);
+                        }
+                        
+                        // // Additional verification: check if this channel value makes sense
+                        // if (sample < 3 && channel < 8 && (analog_mask & (1UL << channel))) {
+                        //     // Cross-check: what would we expect at this buffer position?
+                        //     uint16_t raw_buffer_value = analog_buffer[buffer_index];
+                        //     if (raw_buffer_value != adc_value) {
+                        //         DEBUG_LA_PRINTF("◆   MISMATCH: expected buffer[%lu]=%d, got %d\n", 
+                        //                      buffer_index, raw_buffer_value, adc_value);
+                        //     }
+                        // }
+                    }
+                } else {
+                    // Buffer overflow detected - use safe default
+                    // adc_value = 2048;
+                    // if (sample < 3) {
+                    //     if (capture_used_oversampling) {
+                    //         DEBUG_LA_PRINTF("◆ BUFFER OVERFLOW: Sample %lu Ch %d: index %lu >= max %zu (buf_sample=%lu, dup_factor=%lu)\n",
+                    //                      sample, channel, buffer_index, max_buffer_elements, buffer_sample, capture_duplication_factor);
+                    //     } else {
+                    //         DEBUG_LA_PRINTF("◆ BUFFER OVERFLOW: Sample %lu Ch %d: index %lu >= max %zu\n",
+                    //                      sample, channel, buffer_index, max_buffer_elements);
+                    //     }
+                    // }
+                }
+                
+            } else if (sample_count > 1 && sample_rate > 0) {
+                // // Generate test pattern for virtual channels (DAC, INA219, etc.)
+                // float time_seconds = (float)sample / (float)sample_rate;
+                // float channel_frequency = 1.0f * channel;  // Different frequency per channel
+                
+                // float sine_wave = sin(2.0f * 3.14159f * channel_frequency * time_seconds);
+                // int variation = (int)(300.0f * sine_wave);  // ±300 ADC counts variation
+                
+                // int new_value = 2048 + variation;
+                // if (new_value < 0) new_value = 0;
+                // if (new_value > 4095) new_value = 4095;
+                // adc_value = new_value;
+            }
+            
+            // Store as little-endian 16-bit values
+            // chunk_buffer[chunk_pos++] = channel & 0xFF;
+            // chunk_buffer[chunk_pos++] = channel & 0xFF;
+
+            chunk_buffer[chunk_pos++] = adc_value & 0xFF;
+            chunk_buffer[chunk_pos++] = (adc_value >> 8) & 0xFF;
+        }
+        
+        // [byte 31] EOF marker: 0xA0
+        chunk_buffer[chunk_pos++] = ANALOG_EOF_MARKER;
+        
+        // STABILITY: Periodic checks for transmission integrity (reduced frequency)
+        if (sample % 4000 == 0 && sample > 0) {
+            updateLastActivity();
+            yield();  // Allow other cores to run
+            
+            // Progress reporting for large captures
+            DEBUG_LA_PRINTF("◆ Progress: %lu/%lu samples (%d%% complete)\n", 
+                         sample, sample_count, (int)((sample * 100) / sample_count));
+        }
+    }
+    
+    // Send any remaining data
+    if (chunk_pos >= 32) {
+        la_usb_write_buffer(chunk_buffer, chunk_pos);
+        la_usb_flush();
+        delayMicroseconds(1000);  // Final stability delay
+    }
+    
+    DEBUG_LA_PRINTF("◆ Unified mixed-signal data sent: 32 bytes/sample format\n");
+}
+
+void sendCaptureData() {
+    if (la_capture_state != JL_LA_COMPLETE || !la_buffer) {
+        DEBUG_LA_PRINTLN("◆ ERROR: Cannot send data");
+        return;
+    }
+    
+    DEBUG_LA_PRINTF("◆ Sending data: %lu samples, mode=%d\n", sample_count, current_la_mode);
+    
+    if (!la_usb_connected()) {
+        DEBUG_LA_PRINTLN("◆ ERROR: USB not connected");
+        return;
+    }
+    
+    // Send data response header
+    la_usb_write(JUMPERLESS_RESP_DATA);
+    
+    // ALWAYS use 32 bytes per sample (mixed-signal format)
+    uint32_t transmission_bytes_per_sample = 32;
+    uint32_t total_data_size = sample_count * transmission_bytes_per_sample;
+    
+    // Verify sample count is valid for our captured buffer
+    // (Buffer stores 1 byte per sample regardless of mode)
+    uint32_t max_captured_samples = jl_la_buffer_size;  // 1 byte storage per sample
+    if (sample_count > max_captured_samples) {
+        sample_count = max_captured_samples;
+        total_data_size = sample_count * transmission_bytes_per_sample;
+        DEBUG_LA_PRINTF("◆ Adjusted sample count to captured amount: %lu samples\n", sample_count);
+    }
+    
+    DEBUG_LA_PRINTF("◆ Data header: %lu bytes (%lu samples × %lu bytes/sample transmission)\n", 
+                 total_data_size, sample_count, transmission_bytes_per_sample);
+    
+    // Send data length (what the driver will receive)
+    la_usb_write_buffer((uint8_t*)&total_data_size, 4);
+    la_usb_flush();
+    delay(10);  // Allow driver to prepare
+    
+    // ALWAYS send mixed-signal data (32-byte format)
+    sendMixedSignalData();
+    
+    // Send end-of-data signal to notify driver that transmission is complete
+    sendEndOfDataSignal();
+    
+    // Reset for next capture
+    la_capture_state = JL_LA_STOPPED;
+    DEBUG_LA_PRINTLN("◆ Data transmission complete, freeing buffers...");
+    releaseLogicAnalyzerResources();
+    DEBUG_LA_PRINTLN("◆ Buffers freed.\n\n\n\n\r");
+}
+
+// =============================================================================
+// MAIN INTERFACE FUNCTIONS
+// =============================================================================
+
+void setupLogicAnalyzer() {
+    DEBUG_LA_PRINTLN("◆ Setting up Logic Analyzer...");
+    
+    // Do not allocate buffers on startup. They will be allocated on-demand.
+    
+    // Configure GPIO pins
+    for (int i = 0; i < JL_LA_PIN_COUNT; i++) {
+        gpio_init(JL_LA_PIN_BASE + i);
+    }
+    
+    current_la_mode = LA_MODE_DIGITAL_ONLY;
+    la_initialized = true;
+    la_enabled = true;
+    la_capture_state = JL_LA_STOPPED;
+    
+    DEBUG_LA_PRINTF("◆ Logic Analyzer ready - pins %d-%d\n", 
+                 JL_LA_PIN_BASE, JL_LA_PIN_BASE + JL_LA_PIN_COUNT - 1);
+}
+
+void handleLogicAnalyzer() {
+    if (!la_initialized || !la_enabled) return;
+    logicAnalyzing = true;
+    bool usb_connected = la_usb_connected();
+    handleConnectionStateChange(usb_connected);
+    
+    if (!usb_connected) {
+        enhanced_mode = false;
+        return;
+    }
+    
+    // Process commands
+    if (la_usb_available()) {
+        uint8_t cmd = la_usb_read();
+        
+        // Filter valid commands
+        if ((cmd >= 0xA0 && cmd <= 0xAB) ||  // Enhanced Jumperless commands (0xA0-0xAB)
+            (cmd >= 0x80 && cmd <= 0x82) ||  // SUMP commands
+            (cmd >= 0xC0 && cmd <= 0xCF) ||  // Other commands
+            (cmd >= 0xD0 && cmd <= 0xDF)) {  // Other commands
+            if (!enhanced_mode) {
+                enhanced_mode = true;
+                DEBUG_LA_PRINTLN("◆ Protocol detected");
+            }
+            processCommand(cmd);
+        }
+        
+        updateLastActivity();
+    }
+    
+    // Handle capture completion
+    if (la_capture_state == JL_LA_TRIGGERED && isCaptureDone()) {
+        DEBUG_LA_PRINTLN("◆ Capture completed");
+        
+        // For mixed-signal mode, capture analog data after digital capture is done
+        if (current_la_mode == LA_MODE_MIXED_SIGNAL || current_la_mode == LA_MODE_ANALOG_ONLY) {
+            DEBUG_LA_PRINTLN("◆ Starting analog data capture...");
+            if (captureAnalogData()) {
+                DEBUG_LA_PRINTLN("◆ Analog capture completed");
+            } else {
+                DEBUG_LA_PRINTLN("◆ ERROR: Analog capture failed");
+            }
+        }
+        
+        // After capture is complete, send the data packet immediately.
+        // The driver's receive_data callback will be listening for this.
+        sendCaptureData();
+        logicAnalyzing = false;
+        }
+    
+    // Check for trigger conditions when armed
+    if (la_capture_state == JL_LA_ARMED && !la_capturing) {
+        if (checkTriggerCondition()) {
+            DEBUG_LA_PRINTLN("◆ Trigger condition met - starting capture");
+            
+            // Safety check: ensure valid sample count
+        if (sample_count == 0) {
+            sample_count = JL_LA_DEFAULT_SAMPLES;
+                DEBUG_LA_PRINTF("◆ SAFETY: Zero sample count, using default %lu\n", sample_count);
+            }
+            
+            DEBUG_LA_PRINTF("◆ Auto-triggered capture: rate=%lu Hz, samples=%lu, mode=%d, trigger=%s\n", 
+                         sample_rate, sample_count, current_la_mode,
+                         trigger_mode == TRIGGER_NONE ? "auto" : 
+                         trigger_mode == TRIGGER_EXTERNAL ? "external" : 
+                         trigger_mode == TRIGGER_GPIO ? "GPIO" : 
+                         trigger_mode == TRIGGER_THRESHOLD ? "threshold" : "unknown");
+            
+            if (setupCapture() && startCapture()) {
+                DEBUG_LA_PRINTLN("◆ Auto-triggered capture started successfully");
+            } else {
+                DEBUG_LA_PRINTLN("◆ ERROR: Failed to start auto-triggered capture");
+                la_capture_state = JL_LA_STOPPED;
+            }
+        }
+    }
+   // logicAnalyzing = false;
+}
+
+// =============================================================================
+// PUBLIC API FUNCTIONS
+// =============================================================================
+
+bool isLogicAnalyzerAvailable() {
+    return la_initialized && la_enabled;
+}
+
+bool isLogicAnalyzerCapturing() {
+    return la_capturing;
+}
+
+void enableLogicAnalyzer() {
+    if (la_initialized) {
+        la_enabled = true;
+        DEBUG_LA_PRINTLN("◆ Logic Analyzer enabled");
+    }
+}
+
+void disableLogicAnalyzer() {
+    la_enabled = false;
+    la_capture_state = JL_LA_STOPPED;
+    DEBUG_LA_PRINTLN("◆ Logic Analyzer disabled");
+}
+
+void setLogicAnalyzerMode(LogicAnalyzerMode mode) {
+    if (current_la_mode != mode && la_capture_state == JL_LA_STOPPED) {
+        current_la_mode = mode;
+        
+        if (mode == LA_MODE_MIXED_SIGNAL) {
+            analog_mask = 0xFF;
+            analog_chan_count = 8;
+            DEBUG_LA_PRINTLN("◆ Switched to Mixed-Signal mode");
+        } else {
+            analog_mask = 0x00;
+            analog_chan_count = 0;
+            DEBUG_LA_PRINTLN("◆ Switched to Digital-Only mode");
+        }
+    }
+}
+
+LogicAnalyzerMode getLogicAnalyzerMode() {
+    return current_la_mode;
+}
+
+// =============================================================================
+// TRIGGER API FUNCTIONS
+// =============================================================================
+
+void setExternalTrigger() {
+    setTriggerMode(TRIGGER_EXTERNAL);
+    DEBUG_LA_PRINTLN("◆ External trigger mode enabled - use trigger_la variable");
+}
+
+void triggerCapture() {
+    trigger_la = true;
+    DEBUG_LA_PRINTLN("◆ External trigger activated");
+}
+
+void setGPIOLevelTrigger(uint32_t pin_mask, uint32_t pattern) {
+    setTriggerMode(TRIGGER_GPIO);
+    setGPIOTrigger(pin_mask, pattern, false);
+    DEBUG_LA_PRINTF("◆ GPIO level trigger enabled: pins=0x%08X, pattern=0x%08X\n", pin_mask, pattern);
+}
+
+void setGPIOEdgeTrigger(uint32_t pin_mask, uint32_t pattern) {
+    setTriggerMode(TRIGGER_GPIO);
+    setGPIOTrigger(pin_mask, pattern, true);
+    DEBUG_LA_PRINTF("◆ GPIO edge trigger enabled: pins=0x%08X, pattern=0x%08X\n", pin_mask, pattern);
+}
+
+void setThresholdRisingTrigger(uint8_t channel, float voltage) {
+    setTriggerMode(TRIGGER_THRESHOLD);
+    setThresholdTrigger(channel, voltage, true);
+    DEBUG_LA_PRINTF("◆ Threshold rising trigger enabled: CH%d %.3fV\n", channel, voltage);
+}
+
+void setThresholdFallingTrigger(uint8_t channel, float voltage) {
+    setTriggerMode(TRIGGER_THRESHOLD);
+    setThresholdTrigger(channel, voltage, false);
+    DEBUG_LA_PRINTF("◆ Threshold falling trigger enabled: CH%d %.3fV\n", channel, voltage);
+}
+
+void disableTrigger() {
+    clearTrigger();
+    DEBUG_LA_PRINTLN("◆ Trigger disabled - auto-start mode");
+}
+
+bool isTriggerActive() {
+    return trigger_mode != TRIGGER_NONE;
+}
+
+const char* getTriggerModeString() {
+    switch (trigger_mode) {
+        case TRIGGER_NONE: return "NONE";
+        case TRIGGER_EXTERNAL: return "EXTERNAL";
+        case TRIGGER_GPIO: return "GPIO";
+        case TRIGGER_THRESHOLD: return "THRESHOLD";
+        default: return "UNKNOWN";
+    }
+}
+
+void stopLogicAnalyzer() {
+    DEBUG_LA_PRINTLN("◆ Stopping Logic Analyzer...");
+    
+    la_capturing = false;
+    disableLogicAnalyzer();
+    
+    if (la_usb_connected()) {
+        sendStatusResponse(0xFF);  // Disconnect signal
+        delay(100);
+    }
+    
+    handleConnectionStateChange(false);
+    releaseLogicAnalyzerResources();
+    la_initialized = false;
+    
+    DEBUG_LA_PRINTLN("◆ Logic Analyzer stopped");
+}
+
+void gracefulLogicAnalyzerShutdown() {
+    DEBUG_LA_PRINTLN("◆ Graceful shutdown");
+    
+    if (la_initialized && la_usb_connected()) {
+        sendStatusResponse(0xFE);  // Shutdown signal
+        delay(100);
+    }
+    
+    stopLogicAnalyzer();
+}
+
+void printLogicAnalyzerStatus() {
+    Serial.println("◆ Logic Analyzer Status:");
+    Serial.printf("  Initialized: %s\n", la_initialized ? "YES" : "NO");
+    Serial.printf("  Enabled: %s\n", la_enabled ? "YES" : "NO");
+    Serial.printf("  Mode: %s\n", current_la_mode == LA_MODE_MIXED_SIGNAL ? "Mixed-Signal" : "Digital-Only");
+    Serial.printf("  USB Connected: %s\n", la_usb_connected() ? "YES" : "NO");
+    
+    if (la_initialized) {
+        const char* state_str = "UNKNOWN";
+        switch (la_capture_state) {
+            case JL_LA_STOPPED: state_str = "STOPPED"; break;
+            case JL_LA_ARMED: state_str = "ARMED"; break;
+            case JL_LA_TRIGGERED: state_str = "TRIGGERED"; break;
+            case JL_LA_COMPLETE: state_str = "COMPLETE"; break;
+        }
+        
+        Serial.printf("  State: %s\n", state_str);
+        Serial.printf("  Sample Rate: %lu Hz\n", sample_rate);
+        Serial.printf("  Sample Count: %lu\n", sample_count);
+        
+        if (current_la_mode == LA_MODE_MIXED_SIGNAL) {
+            Serial.printf("  Analog Channels: %d (mask=0x%02X)\n", analog_chan_count, analog_mask);
+        }
+        
+        // Trigger information
+        Serial.printf("  Trigger Mode: %s\n", getTriggerModeString());
+        if (trigger_mode == TRIGGER_GPIO) {
+            Serial.printf("  GPIO Trigger: mask=0x%08X, pattern=0x%08X, edge=%s\n", 
+                         gpio_trigger_mask, gpio_trigger_pattern, gpio_trigger_edge ? "YES" : "NO");
+        }
+        if (trigger_mode == TRIGGER_EXTERNAL) {
+            Serial.printf("  External Trigger Ready: %s\n", trigger_la ? "WAITING" : "ARMED");
+        }
+        if (trigger_mode == TRIGGER_THRESHOLD) {
+            Serial.printf("  Threshold Trigger: CH%d %.3fV %s edge (current: %.3fV)\n", 
+                         threshold_channel, threshold_voltage, threshold_rising ? "rising" : "falling", 
+                         last_adc_voltage);
+        }
+    }
+}
+
+void printLogicAnalyzerMemoryInfo() {
+    size_t freeHeap = rp2040.getFreeHeap();
+    uint32_t storage_bytes = calculateStorageBytesPerSample();
+    uint32_t transmission_bytes = calculateTransmissionBytesPerSample();
+    
+    Serial.println("◆ Logic Analyzer Memory & Optimization:");
+    Serial.printf("  Free RAM: %lu KB\n", freeHeap / 1024);
+    Serial.printf("  Buffer Size: %lu KB (%lu samples)\n", jl_la_buffer_size / 1024, jl_la_max_samples);
+    Serial.printf("  Mode: %s\n", current_la_mode == LA_MODE_MIXED_SIGNAL ? "Mixed-Signal" : "Digital-Only");
+    
+    if (current_la_mode == LA_MODE_MIXED_SIGNAL) {
+        Serial.printf("  Analog Channels: %d enabled (mask=0x%08X)\n", analog_chan_count, analog_mask);
+        Serial.printf("  Storage Efficiency: %d bytes/sample (capture) vs %d bytes/sample (transmission)\n", 
+                     storage_bytes, transmission_bytes);
+        
+        // Calculate memory savings
+        uint32_t old_bytes_per_sample = 32;  // Old fixed size
+        uint32_t memory_saved_per_sample = old_bytes_per_sample - transmission_bytes;
+        uint32_t total_memory_saved = memory_saved_per_sample * jl_la_max_samples;
+        
+        if (memory_saved_per_sample > 0) {
+            Serial.printf("  Memory Savings: %d bytes/sample (%lu KB total saved)\n", 
+                         memory_saved_per_sample, total_memory_saved / 1024);
+            Serial.printf("  Sample Count Improvement: %lu samples vs %lu samples (old method)\n",
+                         jl_la_max_samples, (jl_la_buffer_size / old_bytes_per_sample));
+        }
+    }
+}
+
+void startLogicAnalyzerCapture() {
+    if (la_initialized && la_enabled && la_capture_state == JL_LA_STOPPED) {
+        if (setupCapture()) {
+            la_capture_state = JL_LA_ARMED;
+            startCapture();
+        }
+    } else {
+        DEBUG_LA_PRINTLN("◆ ERROR: Logic analyzer not ready");
+    }
+}
+
+
+// Hardware timer callback for precise analog sampling
+// Use __not_in_flash_func to avoid XIP cache delays on first call
+bool __not_in_flash_func(analogSampleTimerCallback)(repeating_timer_t *rt) {
+    // Just increment the time reference counter - don't sync with main thread
+    analog_timer_ticks++;
+    
+    // Debug output for first few ticks only to avoid spam
+    if (analog_timer_ticks <= 10) {
+        DEBUG_LA_PRINTF("◆ Timer tick %lu (interval: %lu μs)\n", 
+                     analog_timer_ticks, analog_sample_interval_us);
+    }
+    
+    // Continue until manually stopped
+    return true;
+}
+
+// Initialize hardware timer for precise analog sampling
+bool initAnalogSampleTimer(uint32_t sample_rate) {
+    if (sample_rate == 0) {
+        DEBUG_LA_PRINTLN("◆ ERROR: Invalid sample rate (0)");
+        return false;
+    }
+    
+    analog_sample_interval_us = 1000000UL / sample_rate;
+    if (analog_sample_interval_us > 100000) analog_sample_interval_us = 100000;  // Cap at 10 Hz minimum
+    if (analog_sample_interval_us < 1) analog_sample_interval_us = 1;  // Cap at 1 MHz maximum
+    
+    analog_sample_ready = false;
+    analog_samples_taken = 0;
+    
+    // Check if alarm pool is available
+#ifdef PICO_TIME_DEFAULT_ALARM_POOL_DISABLED
+    #if PICO_TIME_DEFAULT_ALARM_POOL_DISABLED
+        DEBUG_LA_PRINTLN("◆ WARNING: Default alarm pool is disabled in build configuration");
+        return false;
+    #else
+        DEBUG_LA_PRINTLN("◆ INFO: Default alarm pool is enabled in build configuration");
+    #endif
+#else
+    DEBUG_LA_PRINTLN("◆ INFO: Default alarm pool setting not explicitly defined (should be enabled)");
+#endif
+    
+    // Try to get the default alarm pool to verify it's working
+    alarm_pool_t *default_pool = alarm_pool_get_default();
+    if (default_pool == NULL) {
+        DEBUG_LA_PRINTLN("◆ ERROR: Default alarm pool is NULL - hardware timers not available");
+        return false;
+    }
+    
+    DEBUG_LA_PRINTF("◆ Hardware timer initialized: %lu μs intervals (%lu Hz), alarm pool @ %p\n", 
+                 analog_sample_interval_us, 1000000UL / analog_sample_interval_us, default_pool);
+    return true;
+}
+
+// Start hardware timer for analog sampling
+bool startAnalogSampleTimer(uint32_t total_samples) {
+    // Stop any existing timer
+    cancel_repeating_timer(&analog_repeating_timer);
+    
+    analog_target_samples = total_samples;
+    analog_samples_taken = 0;
+    analog_timer_ticks = 0;  // Reset timer tick counter
+    analog_sample_ready = false;
+    
+    DEBUG_LA_PRINTF("◆ Creating repeating timer with %ld μs interval (time reference mode)\n", 
+                 ((int64_t)analog_sample_interval_us));
+    
+    // Use negative interval for precise "start-to-start" timing
+    bool success = add_repeating_timer_us(-((int64_t)analog_sample_interval_us), 
+                                          analogSampleTimerCallback, NULL, 
+                                          &analog_repeating_timer);
+    if (!success) {
+        DEBUG_LA_PRINTLN("◆ ERROR: Failed to create repeating timer");
+        return false;
+    }
+    
+    DEBUG_LA_PRINTF("◆ Hardware timer started as time reference (%lu μs intervals)\n", 
+                 analog_sample_interval_us);
+    
+    return true;
+}
+
+// Stop hardware timer
+void stopAnalogSampleTimer() {
+    cancel_repeating_timer(&analog_repeating_timer);
+    analog_sample_ready = false;
+    analog_timer_ticks = 0;
+}
+
+// Check if it's time for the next analog sample based on timer ticks
+bool isAnalogSampleReady(uint32_t sample_number) {
+    // Sample is ready when timer has ticked enough times for this sample
+    // Sample 0 is ready immediately, sample 1 needs 1 tick, etc.
+    return analog_timer_ticks >= sample_number;
+}
+
+// Get current timer ticks (for debugging)
+uint32_t getAnalogTimerTicks() {
+    return analog_timer_ticks;
+}
+
+// =============================================================================
+// DMA-BASED ADC SAMPLING FUNCTIONS (RP2350B)
+// =============================================================================
+//
+// RP2350B ADC Pin Mapping:
+// - Channel 0: GPIO 40 (Pin 40)
+// - Channel 1: GPIO 41 (Pin 41)  
+// - Channel 2: GPIO 42 (Pin 42)
+// - Channel 3: GPIO 43 (Pin 43)
+// - Channel 4: GPIO 44 (Pin 44)
+// - Channel 5: GPIO 45 (Pin 45)
+// - Channel 6: GPIO 46 (Pin 46)
+// - Channel 7: GPIO 47 (Pin 47)
+//
+// The RP2350B supports up to 8 ADC channels with hardware round-robin sampling.
+// DMA automatically captures samples from all enabled channels in sequence.
+//
+
+// DMA interrupt handler for ADC completion
+void __not_in_flash_func(adcDmaHandler)() {
+    // Clear DMA interrupt
+    if (adc_dma_channel >= 0) {
+        dma_hw->ints0 = 1u << adc_dma_channel;
+        adc_dma_complete = true;
+        // Note: Only print debug message for the final chunk completion
+        // Individual chunk completions are handled silently for efficiency
+    }
+}
+
+// Initialize DMA-based ADC capture for RP2350B
+bool initAdcDma(uint32_t sample_rate) {
+    // Channel count was set by calculateAndAllocateBuffers()
+    DEBUG_LA_PRINTF("◆ Initializing RP2350B DMA-based ADC: %lu Hz, %d channels (mask=0x%08X)\n", 
+                 sample_rate, analog_chan_count, analog_mask);
+    
+    // Initialize ADC if not already done
+    adc_init();
+    startAnalogSampleTimer(sample_count);
+    // Set up GPIO pins for enabled channels (RP2350B: 8 channels starting at pin 40)
+    for (int i = 0; i < 8; i++) {
+        if (analog_mask & (1 << i)) {
+            uint32_t gpio_pin = 40 + i;  // RP2350B ADC channels: pin 40-47 = ADC 0-7
+            adc_gpio_init(gpio_pin);
+            DEBUG_LA_PRINTF("◆ ADC GPIO %lu (channel %d) initialized\n", gpio_pin, i);
+        }
+    }
+    
+    // Build round-robin mask from enabled channels (RP2350B supports all 8 channels)
+    uint32_t round_robin_mask = analog_mask & 0xFF;  // All 8 channels (0-7)
+    if (round_robin_mask == 0) {
+        DEBUG_LA_PRINTLN("◆ ERROR: No valid ADC channels in mask");
+        return false;
+    }
+    
+    DEBUG_LA_PRINTF("◆ Setting round-robin mask: 0x%02X (%d enabled channels)\n", 
+                 round_robin_mask, __builtin_popcount(round_robin_mask));
+
+    // Debug: Show exact round-robin channel order
+    DEBUG_LA_PRINTF("◆ Round-robin order will be: ");
+    for (int i = 0; i < 8; i++) {
+        if (round_robin_mask & (1 << i)) {
+            DEBUG_LA_PRINTF("Ch%d ", i);
+        }
+    }
+    DEBUG_LA_PRINTF("\n");
+
+   // adc_set_round_robin(round_robin_mask);
+    
+    // Configure ADC FIFO for DMA with improved buffering
+    adc_fifo_setup(
+        true,    // Write each completed conversion to the sample FIFO
+        true,    // Enable DMA data request (DREQ)  
+        analog_chan_count,       // DREQ asserted when at least 8 samples present (better buffering)
+        false,   // Don't include ERR bit (we're using 16-bit reads)
+        false    // Keep full 12-bit resolution (don't shift to 8-bit)
+    );
+    
+    // Clear any existing FIFO data to start fresh
+    //adc_fifo_drain();
+    
+    // CRITICAL: Properly reset round-robin counter
+    // The RP2350B round-robin counter needs explicit reset to start from channel 0
+    //adc_run(false);  // Stop ADC completely
+    //delayMicroseconds(100);  // Allow ADC to fully stop
+    
+    // Reset round-robin by disabling and re-enabling it
+   // adc_set_round_robin(0);  // Disable round-robin
+    //delayMicroseconds(50);
+    
+    // Re-enable round-robin with our mask - this resets the internal counter
+   // adc_set_round_robin(round_robin_mask);
+    //delayMicroseconds(50);
+    
+    // Clear FIFO again after reset
+    //adc_fifo_drain();
+    
+    DEBUG_LA_PRINTF("◆ Round-robin counter reset: disabled->enabled with mask 0x%02X\n", round_robin_mask);
+    
+    // Set ADC clock divider for desired sample rate
+    // ADC runs at 48MHz, each conversion takes 96 cycles (2µs minimum)
+    // CRITICAL: Round-robin is SEQUENTIAL, not parallel - each channel needs full conversion time
+    uint32_t actual_adc_channels = __builtin_popcount(analog_mask & 0xFF);  // Only count enabled ADC channels
+    
+    // FIXED CALCULATION: Account for sequential nature of round-robin
+    float min_conversion_cycles = 96.0f;  // Minimum cycles per conversion
+    float total_cycles_per_round_robin = min_conversion_cycles * actual_adc_channels;
+    float clk_div = (48000000.0f / sample_rate) / total_cycles_per_round_robin - 1.0f;
+    
+    // // Ensure we don't violate hardware timing limits
+    // if (clk_div < 0.0f) {
+    //     clk_div = 0.0f;  // Maximum speed - will limit actual sample rate
+    //     float max_sample_rate = 48000000.0f / total_cycles_per_round_robin;
+    //     DEBUG_LA_PRINTF("◆ WARNING: Requested sample rate too high, limited to %.0f Hz\n", max_sample_rate);
+    // }
+    
+    adc_set_clkdiv(0);
+    
+    float actual_sample_rate = 48000000.0f / ((clk_div + 1.0f) * total_cycles_per_round_robin);
+    DEBUG_LA_PRINTF("◆ ADC timing: clk_div=%.2f, %d channels, %.0f Hz actual rate (requested %.0f Hz)\n", 
+                 clk_div, actual_adc_channels, actual_sample_rate, (float)sample_rate);
+    
+    // Claim DMA channel
+    adc_dma_channel = dma_claim_unused_channel(true);
+    if (adc_dma_channel < 0) {
+        DEBUG_LA_PRINTLN("◆ ERROR: Could not claim DMA channel for ADC");
+        return false;
+    }
+    
+    DEBUG_LA_PRINTF("◆ Claimed DMA channel %d for ADC\n", adc_dma_channel);
+    
+    // // Set up DMA interrupt
+    dma_channel_set_irq0_enabled(adc_dma_channel, true);
+    irq_set_exclusive_handler(DMA_IRQ_0, adcDmaHandler);
+    irq_set_enabled(DMA_IRQ_0, true);
+    
+    return true;
+}
+
+// Capture analog data using DMA
+bool captureAnalogDataDMA() {
+    if (adc_dma_channel < 0) {
+        DEBUG_LA_PRINTLN("◆ ERROR: DMA not initialized");
+        return false;
+    }
+    
+    // Analog buffer should already be allocated by setupCapture()
+    if (!analog_buffer) {
+        DEBUG_LA_PRINTLN("◆ ERROR: Analog buffer not pre-allocated");
+        return false;
+    }
+    
+    // Calculate how many ADC samples we actually need to capture
+    // Use the actual allocated buffer size to determine how many samples we can capture
+    size_t allocated_buffer_size = malloc_usable_size(analog_buffer);
+    uint32_t actual_adc_samples = allocated_buffer_size / (analog_chan_count * sizeof(uint16_t));
+    
+    // Ensure we don't exceed the requested sample count (converted to physical)
+    uint32_t requested_physical_samples = sample_count / calculateOversamplingFactor();
+    if (actual_adc_samples > requested_physical_samples) {
+        actual_adc_samples = requested_physical_samples;
+    }
+    
+    // Channel count was set by calculateAndAllocateBuffers()
+    // Calculate total DMA buffer size needed (use actual ADC samples, not requested samples)
+    uint32_t total_transfers = actual_adc_samples * analog_chan_count;
+    size_t dma_buffer_size = total_transfers * sizeof(uint16_t);
+    
+    if (adc_oversampling_mode) {
+        DEBUG_LA_PRINTF("◆ DMA transfer calculation: %lu ADC samples × %d channels = %lu transfers (%lu bytes)\n",
+                     actual_adc_samples, analog_chan_count, total_transfers, dma_buffer_size);
+        DEBUG_LA_PRINTF("◆ Will generate %lu output samples by duplicating each ADC sample %lu times\n",
+                     sample_count, adc_duplication_factor);
+    } else {
+        DEBUG_LA_PRINTF("◆ DMA transfer calculation: %lu samples (from %lu byte buffer) × %d channels = %lu transfers (%lu bytes)\n",
+                     actual_adc_samples, allocated_buffer_size, analog_chan_count, total_transfers, dma_buffer_size);
+    }
+    
+    // Verify the pre-allocated buffer is large enough
+    size_t existing_size = malloc_usable_size(analog_buffer);
+    if (existing_size < dma_buffer_size) {
+        DEBUG_LA_PRINTF("◆ ERROR: Pre-allocated buffer too small: have %lu bytes, need %lu bytes\n", 
+                     existing_size, dma_buffer_size);
+        return false;
+    }
+    
+    DEBUG_LA_PRINTF("◆ Using pre-allocated analog buffer: %lu bytes for %lu transfers\n", 
+                 existing_size, total_transfers);
+    
+    // Use analog_buffer directly as DMA target (no separate DMA buffer!)
+    adc_dma_buffer = analog_buffer;
+    
+    startAnalogSampleTimer(actual_adc_samples);
+    
+    // Configure DMA timer for precise pacing instead of relying on ADC DREQ
+    // Use DMA timer 0 for this purpose
+    adc_timer_num = 0;
+    dma_timer_claim(adc_timer_num);
+    
+    // Check if we need oversampling mode (sample rate > max ADC rate)
+    if (sample_rate > ADC_MAX_SAMPLE_RATE) {
+        adc_oversampling_mode = true;
+        adc_actual_sample_rate = ADC_MAX_SAMPLE_RATE;  // Cap ADC at maximum safe rate
+        adc_duplication_factor = (sample_rate + ADC_MAX_SAMPLE_RATE - 1) / ADC_MAX_SAMPLE_RATE;  // Round up
+        
+        // Store persistent state for data transmission
+        capture_used_oversampling = true;
+        capture_duplication_factor = adc_duplication_factor;
+        
+        DEBUG_LA_PRINTF("◆ OVERSAMPLING: Requested %lu Hz > %d Hz limit, using %lu Hz ADC\n",
+                     sample_rate, ADC_MAX_SAMPLE_RATE, adc_actual_sample_rate);
+        DEBUG_LA_PRINTF("◆ Each ADC sample will be duplicated %lu times to match timing\n", adc_duplication_factor);
+    } else {
+        adc_oversampling_mode = false;
+        adc_actual_sample_rate = sample_rate;  // Use requested rate directly
+        adc_duplication_factor = 1;  // No duplication needed
+        
+        // Store persistent state for data transmission
+        capture_used_oversampling = false;
+        capture_duplication_factor = 1;
+        
+        DEBUG_LA_PRINTF("◆ NORMAL SAMPLING: Using %lu Hz ADC rate\n", adc_actual_sample_rate);
+    }
+    
+    // Calculate DMA timer fraction for the actual ADC sample rate
+    // The DMA timer runs at system_clock_freq * numerator / denominator
+    // We want: timer_freq = adc_actual_sample_rate * analog_chan_count  (for round-robin)
+    uint32_t sys_clock = clock_get_hz(clk_sys);
+    uint32_t target_freq = adc_actual_sample_rate * analog_chan_count;  // Account for round-robin
+    
+    // Find best numerator/denominator pair within 16-bit limits
+    uint16_t numerator = 1;
+    uint16_t denominator = sys_clock / target_freq;
+    
+    // Adjust if denominator is too large or for better precision
+    while (denominator > 65535) {
+        numerator++;
+        denominator = (sys_clock * numerator) / target_freq;
+        if (numerator > 65535) {
+            // Fallback: use maximum precision possible
+            numerator = 65535;
+            denominator = (sys_clock * numerator) / target_freq;
+            if (denominator > 65535) denominator = 65535;
+            break;
+        }
+    }
+    
+    // Set the DMA timer frequency
+    dma_timer_set_fraction(adc_timer_num, numerator, denominator);
+    
+    float actual_freq = (float)sys_clock * numerator / denominator;
+    DEBUG_LA_PRINTF("◆ DMA timer pacing: timer %d, %d/%d, freq=%.0f Hz (target=%.0f Hz)\n",
+                 adc_timer_num, numerator, denominator, actual_freq, (float)target_freq);
+    
+    if (adc_oversampling_mode) {
+        DEBUG_LA_PRINTF("◆ OVERSAMPLING: ADC samples at %lu Hz, each sample sent %lu times to match %lu Hz\n",
+                     adc_actual_sample_rate, adc_duplication_factor, sample_rate);
+    }
+    
+    // Configure DMA transfer for single continuous capture
+    dma_channel_config cfg = dma_channel_get_default_config(adc_dma_channel);
+    channel_config_set_transfer_data_size(&cfg, DMA_SIZE_16);  // 16-bit transfers
+    channel_config_set_read_increment(&cfg, false);           // Read from ADC FIFO (fixed address)
+    channel_config_set_write_increment(&cfg, true);           // Write to buffer (incrementing)
+    channel_config_set_dreq(&cfg, dma_get_timer_dreq(adc_timer_num));  // Paced by DMA timer
+
+    
+    
+    DEBUG_LA_PRINTF("◆ Starting continuous DMA ADC capture: %lu samples, %lu total transfers\n", 
+                 sample_count, total_transfers);
+    
+    // Configure single DMA transfer for entire capture
+    dma_channel_configure(
+        adc_dma_channel,
+        &cfg,
+        adc_dma_buffer,         // Destination: our DMA buffer
+        &adc_hw->fifo,          // Source: ADC FIFO
+        total_transfers,        // Total transfer count
+        false                   // Don't start immediately
+    );
+    
+
+    uint32_t round_robin_mask = analog_mask & 0xFF;  // All 8 channels (0-7)
+
+    // Reset completion flag and start continuous capture
+    adc_dma_complete = false;
+    uint32_t start_time = millis();
+    
+    // CRITICAL: Proper ADC/DMA synchronization to prevent channel misalignment
+    // Stop ADC to ensure clean state
+    //adc_run(false);
+   // delayMicroseconds(100);  // Extended delay for complete ADC stop
+    
+    // Clear FIFO multiple times to ensure it's completely empty
+    //for (int i = 0; i < 5; i++) {
+        adc_fifo_drain();
+      //  delayMicroseconds(20);  // Longer delays between clears
+   // }
+    
+    // Verify FIFO is actually empty
+    // while (adc_fifo_get_level() > 0) {
+    //     adc_fifo_get_blocking();  // Remove any remaining data
+    // }
+    
+    // NOTE: Don't call adc_select_input() in round-robin mode - it interferes with the hardware counter
+    
+
+    adc_set_round_robin(0);  // Disable round-robin
+    //delayMicroseconds(50);
+    
+    // Re-enable round-robin with our mask - this resets the internal counter
+    adc_set_round_robin(round_robin_mask);
+    //delayMicroseconds(50);
+    adc_run(true);
+    //delayMicroseconds(1000);
+
+    // Start DMA BEFORE starting ADC to ensure it's ready
+    dma_channel_start(adc_dma_channel);
+    //delayMicroseconds(10000);
+    //delayMicroseconds(50);  // Give DMA time to initialize
+    
+    // Now start ADC - round-robin will begin from channel 0 (due to reset above)
+    //adc_run(true);
+    //delayMicroseconds(100);  // Allow first conversion to begin
+    
+    DEBUG_LA_PRINTF("◆ Enhanced ADC/DMA start: ADC stopped, FIFO verified empty, round-robin reset, DMA ready, ADC started\n");
+    
+    
+    // Wait for entire capture to complete
+    uint32_t timeout_ms = (sample_count * 1000) / adc_actual_sample_rate + 2000;  // Sample time + 2s margin
+    
+    while (!adc_dma_complete && (millis() - start_time) < timeout_ms) {
+        tight_loop_contents();
+        
+        // // Check for manual cancellation
+        // if (USBSer2.available() > 0) {
+        //     DEBUG_LA_PRINTLN("◆ DMA capture cancelled by driver");
+        //     adc_run(false);
+        //     return false;
+        // }
+        
+        // // Periodic progress (without stopping capture)
+        // if ((millis() - start_time) % 1000 == 0) {
+        //     uint32_t elapsed_ms = millis() - start_time;
+        //     uint32_t expected_samples = (elapsed_ms * sample_rate) / 1000;
+        //     if (expected_samples > 0 && expected_samples % 1000 == 0) {
+        //         DEBUG_LA_PRINTF("◆ DMA progress: ~%lu samples captured (%lu ms)\n", 
+        //                      min(expected_samples, sample_count), elapsed_ms);
+        //     }
+        // }
+    }
+    
+    // Stop ADC and check completion
+    adc_run(false);
+    adc_fifo_drain();
+    
+    if (!adc_dma_complete) {
+        DEBUG_LA_PRINTF("◆ ERROR: DMA capture timeout after %lu ms\n", millis() - start_time);
+        return false;
+    }
+    
+    // DETAILED BUFFER ANALYSIS: Examine raw DMA buffer immediately after capture
+    DEBUG_LA_PRINTF("◆ RAW DMA BUFFER ANALYSIS (first 80 values = 16 samples × %d channels):\n", analog_chan_count  );
+    uint16_t* raw_buffer = (uint16_t*)adc_dma_buffer;
+    
+    for (int i = 0; i < 80; i += analog_chan_count) {
+        int sample_num = i / analog_chan_count;
+        DEBUG_LA_PRINTF("  Raw[%2d]:", sample_num);
+        for (int j = 0; j < analog_chan_count; j++) {
+            DEBUG_LA_PRINTF(", [%4u]", raw_buffer[i + j]);
+        }
+        DEBUG_LA_PRINTF("\n");
+    }
+    
+    // Check for obvious round-robin failures in raw buffer
+    // bool raw_round_robin_ok = true;
+    // if (total_transfers >= 5) {
+    //     uint16_t first_sample[5] = {raw_buffer[0], raw_buffer[1], raw_buffer[2], raw_buffer[3], raw_buffer[4]};
+    //     int identical_channels = 0;
+    //     for (int ch = 1; ch < 5; ch++) {
+    //         if (first_sample[ch] == first_sample[0]) identical_channels++;
+    //     }
+    //     if (identical_channels >= 3) {
+    //         raw_round_robin_ok = false;
+    //         DEBUG_LA_PRINTF("◆ RAW BUFFER: Round-robin failure detected - %d/5 channels identical in first sample\n", identical_channels + 1);
+    //     }
+    // }
+    
+    // // Check for channel consistency across first few samples
+    // if (total_transfers >= 25) {  // 5 samples × 5 channels
+    //     DEBUG_LA_PRINTF("◆ RAW BUFFER: Channel consistency analysis:\n");
+    //     for (int ch = 0; ch < 5; ch++) {
+    //         int very_low_count = 0;
+    //         int reasonable_count = 0;
+    //         for (int sample = 0; sample < 5; sample++) {
+    //             uint16_t value = raw_buffer[sample * 5 + ch];
+    //             if (value < 20) very_low_count++;
+    //             else if (value > 100) reasonable_count++;
+    //         }
+    //         DEBUG_LA_PRINTF("  Ch%d: %d very low (<20), %d reasonable (>100) out of 5 samples\n", 
+    //                      ch, very_low_count, reasonable_count);
+    //     }
+    //      }
+     
+     // ADC HARDWARE STATE DEBUGGING
+     DEBUG_LA_PRINTF("◆ ADC HARDWARE STATE after capture:\n");
+     DEBUG_LA_PRINTF("  FIFO level: %u\n", adc_fifo_get_level());
+     DEBUG_LA_PRINTF("  ADC enabled: %s\n", (adc_hw->cs & ADC_CS_EN_BITS) ? "YES" : "NO");
+     DEBUG_LA_PRINTF("  Round-robin mask: 0x%02X\n", (adc_hw->cs & ADC_CS_RROBIN_BITS) >> ADC_CS_RROBIN_LSB);
+           DEBUG_LA_PRINTF("  Current ADC input: %u\n", (adc_hw->cs & ADC_CS_AINSEL_BITS) >> ADC_CS_AINSEL_LSB);
+      
+      // DMA TIMER STATE DEBUGGING
+      if (adc_timer_num >= 0) {
+          // Note: Can't easily read DMA timer state, but we can verify it was configured
+                 DEBUG_LA_PRINTF("  DMA timer %d: configured for %lu Hz target (%d channels × %lu Hz)\n", 
+                        adc_timer_num, target_freq, analog_chan_count, adc_actual_sample_rate);
+           DEBUG_LA_PRINTF("  DMA transfers completed: %lu (expected %lu)\n", 
+                        total_transfers, total_transfers);
+           
+           // CRITICAL TIMING ANALYSIS
+           float dma_period_us = 1000000.0f / target_freq;  // Time between DMA requests
+           float adc_conversion_time_us = 96.0f / 48.0f;    // 96 cycles at 48MHz = 2µs per conversion
+           float full_round_robin_time_us = adc_conversion_time_us * analog_chan_count;
+           
+           DEBUG_LA_PRINTF("  TIMING ANALYSIS:\n");
+           DEBUG_LA_PRINTF("    DMA requests sample every: %.2f µs\n", dma_period_us);
+           DEBUG_LA_PRINTF("    ADC conversion time: %.2f µs per channel\n", adc_conversion_time_us);
+           DEBUG_LA_PRINTF("    Full round-robin cycle: %.2f µs (%d channels)\n", full_round_robin_time_us, analog_chan_count);
+           
+           if (dma_period_us < full_round_robin_time_us) {
+               DEBUG_LA_PRINTF("    *** TIMING ERROR: DMA too fast! Requesting samples %.2f µs faster than ADC can provide ***\n", 
+                            full_round_robin_time_us - dma_period_us);
+           } else {
+               DEBUG_LA_PRINTF("    Timing OK: DMA period %.2f µs >= round-robin time %.2f µs\n", 
+                            dma_period_us, full_round_robin_time_us);
+           }
+      }
+     
+     // Drain any remaining FIFO data for analysis
+     int remaining_fifo_samples = 0;
+     DEBUG_LA_PRINTF("◆ REMAINING FIFO DATA: ");
+     while (adc_fifo_get_level() > 0 && remaining_fifo_samples < 10) {
+         uint16_t fifo_value = adc_fifo_get_blocking();
+         DEBUG_LA_PRINTF("[%u] ", fifo_value);
+         remaining_fifo_samples++;
+     }
+     if (remaining_fifo_samples == 0) {
+         DEBUG_LA_PRINTF("(empty)");
+     }
+     DEBUG_LA_PRINTF("\n");
+     
+     // VERIFY BUFFER CONSISTENCY: Compare adc_dma_buffer vs analog_buffer
+     if (adc_dma_buffer == analog_buffer) {
+         DEBUG_LA_PRINTF("◆ BUFFER VERIFICATION: adc_dma_buffer and analog_buffer are the same pointer (good)\n");
+     } else {
+         DEBUG_LA_PRINTF("◆ BUFFER WARNING: adc_dma_buffer != analog_buffer - data may have been copied/moved\n");
+         DEBUG_LA_PRINTF("  adc_dma_buffer = %p, analog_buffer = %p\n", adc_dma_buffer, analog_buffer);
+     }
+     
+     // No copy needed! DMA wrote directly to analog_buffer
+    // DMA buffer format: [ch0_s0, ch1_s0, ch2_s0, ch3_s0, ch0_s1, ch1_s1, ...] (round-robin)
+    // This is exactly what we want for PulseView!
+    
+    // ENHANCED VERIFICATION: Check for channel misalignment issues
+    uint16_t* data = (uint16_t*)analog_buffer;
+    bool pattern_valid = true;
+    uint32_t suspicious_samples = 0;
+    
+    // Detailed first sample analysis to catch misalignment early
+    if (sample_count >= 3 && analog_chan_count > 1) {
+        DEBUG_LA_PRINTLN("◆ DMA capture - first samples:");
+        for (uint32_t sample = 0; sample < min(3u, sample_count); sample++) {
+            uint32_t base_idx = sample * analog_chan_count;
+            DEBUG_LA_PRINTF("  Sample %lu: ", sample);
+            for (uint32_t ch = 0; ch < analog_chan_count; ch++) {
+                uint16_t value = data[base_idx + ch];
+                DEBUG_LA_PRINTF("Ch%lu=%u ", ch, value);
+            }
+            DEBUG_LA_PRINTF("\n");
+        }
+        
+                 // Enhanced channel alignment verification
+         bool alignment_suspicious = false;
+         bool round_robin_failed = false;
+         
+         if (sample_count >= 10) {
+             // Check for round-robin failure (all channels identical in first sample)
+             if (sample_count >= 1 && analog_chan_count >= 4) {
+                 uint32_t base_idx = 0;  // First sample
+                 uint16_t first_ch_value = data[base_idx];
+                 bool all_identical = true;
+                 
+                 for (uint32_t ch = 1; ch < min((uint32_t)analog_chan_count, 4u); ch++) {
+                     if (data[base_idx + ch] != first_ch_value) {
+                         all_identical = false;
+                         break;
+                     }
+                 }
+                 
+                 if (all_identical) {
+                     round_robin_failed = true;
+                     DEBUG_LA_PRINTF("◆ ROUND-ROBIN FAILURE: All channels identical in first sample (value=%u)\n", first_ch_value);
+                 }
+             }
+             
+             // Check for channel misalignment patterns
+             for (uint32_t sample = 0; sample < min(10u, sample_count); sample++) {
+                 uint32_t base_idx = sample * analog_chan_count;
+                 for (uint32_t ch = 0; ch < analog_chan_count; ch++) {
+                     uint16_t value = data[base_idx + ch];
+                     
+                     // Flag suspicious values (too low suggests digital noise or wrong channel)
+                     if (value < 5 && ch < 4) {  // ADC channels 0-3 shouldn't be near 0 unless grounded
+                         alignment_suspicious = true;
+                     }
+                 }
+             }
+             
+             // Additional pattern analysis: check for consistent low values on specific channels
+             if (sample_count >= 5) {
+                 for (uint32_t ch = 0; ch < analog_chan_count && ch < 4; ch++) {
+                     int low_value_count = 0;
+                     for (uint32_t sample = 1; sample < min(5u, sample_count); sample++) {
+                         uint32_t base_idx = sample * analog_chan_count;
+                         if (data[base_idx + ch] < 15) {
+                             low_value_count++;
+                         }
+                     }
+                     if (low_value_count >= 3) {  // 3+ out of 4 samples very low
+                         DEBUG_LA_PRINTF("◆ CHANNEL OFFSET DETECTED: Ch%lu consistently low (%d/4 samples < 15)\n", ch, low_value_count);
+                         alignment_suspicious = true;
+                     }
+                 }
+             }
+         }
+        
+            if (alignment_suspicious || round_robin_failed) {
+              if (round_robin_failed) {
+                  DEBUG_LA_PRINTF("◆ WARNING: Round-robin counter failed to start properly\n");
+              }
+              if (alignment_suspicious) {
+                  DEBUG_LA_PRINTF("◆ WARNING: Channel misalignment detected - some channels have unexpected values\n");
+              }
+             
+             // Option to skip first few samples if they're clearly garbage
+             bool should_skip_samples = false;
+             uint32_t samples_to_skip = 0;
+             
+             // Check if first 1-3 samples are garbage while later ones are good
+             if (sample_count >= 6) {
+                 bool first_samples_bad = false;
+                 bool later_samples_good = true;
+                 
+                 // Check first 2 samples
+                 for (uint32_t sample = 0; sample < 2; sample++) {
+                     uint32_t base_idx = sample * analog_chan_count;
+                     for (uint32_t ch = 0; ch < analog_chan_count && ch < 4; ch++) {
+                         uint16_t value = data[base_idx + ch];
+                         if (value < 5) first_samples_bad = true;
+                     }
+                 }
+                 
+                 // Check samples 3-5 for good data
+                 for (uint32_t sample = 3; sample < 6; sample++) {
+                     uint32_t base_idx = sample * analog_chan_count;
+                     for (uint32_t ch = 0; ch < analog_chan_count && ch < 4; ch++) {
+                         uint16_t value = data[base_idx + ch];
+                         if (value < 5) later_samples_good = false;
+                     }
+                 }
+                 
+                 if (first_samples_bad && later_samples_good) {
+                     should_skip_samples = true;
+                     samples_to_skip = 3;  // Skip first 3 samples
+                     DEBUG_LA_PRINTF("◆ GARBAGE SAMPLE RECOVERY: First %lu samples appear corrupted, will skip them\n", samples_to_skip);
+                 }
+             }
+             
+             // Implement sample skipping by shifting buffer data
+             if (should_skip_samples && samples_to_skip < sample_count / 2) {
+                 uint32_t bytes_to_skip = samples_to_skip * analog_chan_count * sizeof(uint16_t);
+                 uint32_t bytes_to_keep = (sample_count - samples_to_skip) * analog_chan_count * sizeof(uint16_t);
+                 memmove(analog_buffer, (uint8_t*)analog_buffer + bytes_to_skip, bytes_to_keep);
+                 
+                 // Clear the end of the buffer
+                 memset((uint8_t*)analog_buffer + bytes_to_keep, 0, bytes_to_skip);
+                 
+                 DEBUG_LA_PRINTF("◆ Skipped %lu garbage samples, shifted buffer by %lu bytes\n", samples_to_skip, bytes_to_skip);
+                 
+                 // Verify the fix worked
+                 DEBUG_LA_PRINTLN("◆ After garbage removal - first samples:");
+                 for (uint32_t sample = 0; sample < min(3u, sample_count - samples_to_skip); sample++) {
+                     uint32_t base_idx = sample * analog_chan_count;
+                     DEBUG_LA_PRINTF("  Sample %lu: ", sample);
+                     for (uint32_t ch = 0; ch < analog_chan_count; ch++) {
+                         uint16_t value = data[base_idx + ch];
+                         DEBUG_LA_PRINTF("Ch%lu=%u ", ch, value);
+                     }
+                     DEBUG_LA_PRINTF("\n");
+                 }
+             }
+         } else {
+             DEBUG_LA_PRINTF("◆ Sample verification passed - data pattern looks good\n");
+         }
+     }
+    
+    // if (sample_count >= 10 && analog_chan_count > 1) {
+    //     DEBUG_LA_PRINTLN("◆ Verifying sample integrity...");
+        
+    //     // Check first few samples for reasonable values and channel consistency
+    //     for (uint32_t sample = 0; sample < min(10, sample_count); sample++) {
+    //         uint32_t base_idx = sample * analog_chan_count;
+    //         bool sample_suspicious = false;
+            
+    //         for (uint32_t ch = 0; ch < analog_chan_count; ch++) {
+    //             uint16_t value = data[base_idx + ch];
+                
+    //             // Check for completely invalid values (should be 12-bit: 0-4095)
+    //             if (value > 4095) {
+    //                 sample_suspicious = true;
+    //                 pattern_valid = false;
+    //             }
+                
+    //             // For multi-channel captures, check for identical values across all channels
+    //             // (which would indicate synchronization issues)
+    //             if (ch > 0 && analog_chan_count > 2) {
+    //                 bool all_identical = true;
+    //                 uint16_t first_value = data[base_idx];
+    //                 for (uint32_t ch_check = 1; ch_check < analog_chan_count; ch_check++) {
+    //                     if (data[base_idx + ch_check] != first_value) {
+    //                         all_identical = false;
+    //                         break;
+    //                     }
+    //                 }
+    //                 if (all_identical && first_value != 0 && first_value != 4095) {
+    //                     sample_suspicious = true; // Suspicious unless all channels are at rail
+    //                 }
+    //             }
+    //         }
+            
+    //         if (sample_suspicious) {
+    //             suspicious_samples++;
+    //             if (sample < 3) {  // Show details for first few problematic samples
+    //                 DEBUG_LA_PRINTF("◆ SUSPICIOUS Sample %lu: ", sample);
+    //                 for (uint32_t ch = 0; ch < analog_chan_count; ch++) {
+    //                     DEBUG_LA_PRINTF("Ch%lu=%d ", ch, data[base_idx + ch]);
+    //                 }
+    //                 DEBUG_LA_PRINTLN("");
+    //             }
+    //         }
+    //     }
+    // }
+    
+    // Show first few samples for verification (regardless of suspicion)
+    if (sample_count >= 3) {
+        DEBUG_LA_PRINTLN("◆ DMA capture - first samples:");
+        for (uint32_t sample = 0; sample < min(3, sample_count); sample++) {
+            uint32_t base_idx = sample * analog_chan_count;
+            DEBUG_LA_PRINTF("  Sample %lu: ", sample);
+            for (uint32_t ch = 0; ch < analog_chan_count; ch++) {
+                DEBUG_LA_PRINTF("Ch%lu=%d ", ch, data[base_idx + ch]);
+            }
+            DEBUG_LA_PRINTLN("");
+        }
+    }
+    
+    // Report verification results and handle retries if needed
+    if (suspicious_samples > 0) {
+        DEBUG_LA_PRINTF("◆ WARNING: Found %lu suspicious samples out of %lu checked\n", 
+                     suspicious_samples, min(10, sample_count));
+        if (!pattern_valid) {
+            DEBUG_LA_PRINTLN("◆ CRITICAL: Invalid data pattern detected - possible missed samples!");
+            
+            // For now, just warn but don't retry automatically
+            // Future enhancement: Could retry with slower sample rate
+            DEBUG_LA_PRINTLN("◆ CONTINUING: Data may have alignment issues but proceeding with transmission");
+        }
+    } else {
+        DEBUG_LA_PRINTLN("◆ Sample verification passed - data pattern looks good");
+    }
+    
+    DEBUG_LA_PRINTF("◆ DMA analog capture complete: %lu samples × %d channels in %lu ms\n", 
+                 sample_count, analog_chan_count, millis() - start_time);
+    
+    return true;
+}
+
+// Clean up DMA resources
+void cleanupAdcDma() {
+    if (adc_dma_channel >= 0) {
+        // Stop DMA and disable interrupt
+        dma_channel_abort(adc_dma_channel);
+        dma_channel_set_irq0_enabled(adc_dma_channel, false);
+        dma_channel_unclaim(adc_dma_channel);
+        adc_dma_channel = -1;
+        
+        DEBUG_LA_PRINTLN("◆ DMA ADC resources cleaned up");
+    }
+    
+    // Clean up DMA timer
+    if (adc_timer_num >= 0) {
+        dma_timer_unclaim(adc_timer_num);
+        adc_timer_num = -1;
+        DEBUG_LA_PRINTLN("◆ DMA timer unclaimed");
+    }
+    
+    // Reset temporary oversampling state (persistent state survives for data transmission)
+    adc_oversampling_mode = false;
+    adc_actual_sample_rate = 0;
+    adc_duplication_factor = 1;
+    
+    if (capture_used_oversampling) {
+        DEBUG_LA_PRINTF("◆ Preserving oversampling state for data transmission (dup_factor=%lu)\n", capture_duplication_factor);
+    }
+    
+    // Reset DMA buffer pointer (it points to analog_buffer, don't free it here)
+    adc_dma_buffer = nullptr;
+    
+    // Stop ADC
+    adc_run(false);
+    adc_fifo_drain();
+}
+
+// =============================================================================
+// UNIFIED BUFFER MANAGEMENT SYSTEM
+// =============================================================================
+// This replaces multiple overlapping buffer calculation and allocation functions
+// with a single, comprehensive system that ensures consistency and prevents leaks.
+
+// Forward declarations
+void releaseAllLogicAnalyzerBuffers();
+bool allocateAllLogicAnalyzerBuffers();
+
+struct LogicAnalyzerBuffers {
+    // Digital capture buffer
+    uint32_t* digital_buffer;
+    size_t digital_buffer_size;
+    uint32_t digital_max_samples;
+    
+    // Analog capture buffer  
+    uint16_t* analog_buffer;
+    size_t analog_buffer_size;
+    uint32_t analog_max_samples;
+    uint32_t analog_channels_active;
+    
+    // DMA resources
+    int dma_channel_digital;
+    int dma_channel_analog;
+    
+    // PIO resources
+    PIO pio_instance;
+    uint pio_state_machine;
+    uint pio_program_offset;
+    
+    // Buffer allocation tracking
+    bool digital_allocated;
+    bool analog_allocated;
+    bool hardware_allocated;
+    
+    // Memory usage tracking
+    size_t total_allocated_bytes;
+    size_t available_memory_at_allocation;
+};
+
+// Global unified buffer manager
+static LogicAnalyzerBuffers g_la_buffers = {};
+
+// Single source of truth for all buffer calculations
+
+UnifiedBufferRequirements calculateUnifiedBufferRequirements() {
+    UnifiedBufferRequirements req = {};
+
+    // Get available memory with more conservative safety margin
+    size_t free_heap = rp2040.getFreeHeap();
+    req.safety_reserve = JL_LA_RESERVE_RAM;
+    if (free_heap > req.safety_reserve) {
+        req.usable_memory = free_heap - req.safety_reserve;
+    } else {
+        req.usable_memory = 1024;
+    }
+
+    // Calculate bytes per sample for storage
+    req.driver_analog_channels = __builtin_popcount(analog_mask & 0xFF);
+    req.digital_storage_per_sample = 1;
+    req.analog_storage_per_sample = (current_la_mode == LA_MODE_DIGITAL_ONLY) ? 0 : req.driver_analog_channels * 2;
+    size_t total_storage_per_sample = req.digital_storage_per_sample + req.analog_storage_per_sample;
+    if (total_storage_per_sample == 0) total_storage_per_sample = 1;
+
+    // Calculate max samples based on memory - be more conservative
+    req.max_samples_memory_limit = req.usable_memory / total_storage_per_sample;
+    
+    // Apply system limits
+    if (req.max_samples_memory_limit > JL_LA_MAX_SAMPLES_LIMIT) {
+        req.max_samples_memory_limit = JL_LA_MAX_SAMPLES_LIMIT;
+    }
+    if (req.max_samples_memory_limit < JL_LA_MIN_SAMPLES) {
+        req.max_samples_memory_limit = JL_LA_MIN_SAMPLES;
+    }
+    
+    req.max_samples_final = req.max_samples_memory_limit;
+
+    // Calculate actual buffer sizes needed
+    req.digital_buffer_bytes = req.max_samples_final * req.digital_storage_per_sample;
+    req.analog_buffer_bytes = req.max_samples_final * req.analog_storage_per_sample;
+    req.total_buffer_bytes = req.digital_buffer_bytes + req.analog_buffer_bytes;
+
+    DEBUG_LA_PRINTF("◆ UNIFIED BUFFER CALC:\n");
+    DEBUG_LA_PRINTF("  Driver config: 8 digital, %lu analog channels\n", req.driver_analog_channels);
+    DEBUG_LA_PRINTF("  Memory: %lu free, %lu usable, %lu safety reserve\n", 
+                   free_heap, req.usable_memory, req.safety_reserve);
+    DEBUG_LA_PRINTF("  Storage: %lu bytes/sample (%lu digital + %lu analog)\n", 
+                   total_storage_per_sample, req.digital_storage_per_sample, req.analog_storage_per_sample);
+    DEBUG_LA_PRINTF("  Max samples: %lu (memory limit: %lu)\n", 
+                   req.max_samples_final, req.max_samples_memory_limit);
+    DEBUG_LA_PRINTF("  Buffers: %lu digital + %lu analog = %lu total bytes\n", 
+                   req.digital_buffer_bytes, req.analog_buffer_bytes, req.total_buffer_bytes);
+    
+    // Show oversampling information
+    uint32_t oversampling_factor = calculateOversamplingFactor();
+    uint32_t effective_samples = calculateEffectiveSampleCount(req.max_samples_final);
+    DEBUG_LA_PRINTF("  Oversampling: %lux factor → %lu effective samples for driver\n", 
+                   oversampling_factor, effective_samples);
+
+    return req;
+}
+
+bool allocateAllLogicAnalyzerBuffers() {
+    // Calculate unified requirements
+    UnifiedBufferRequirements req = calculateUnifiedBufferRequirements();
+    
+    // Check if we can satisfy the memory requirement
+    if (req.total_buffer_bytes > req.usable_memory) {
+        DEBUG_LA_PRINTF("◆ ERROR: Cannot allocate %zu bytes (only %zu available)\n", 
+                     req.total_buffer_bytes, req.usable_memory);
+        return false;
+    }
+    
+    // Free any existing allocations first
+    releaseAllLogicAnalyzerBuffers();  // Forward reference - defined below
+    
+    // Allocate digital buffer (always needed)
+    g_la_buffers.digital_buffer = (uint32_t*)malloc(req.digital_buffer_bytes);
+    if (!g_la_buffers.digital_buffer) {
+        DEBUG_LA_PRINTF("◆ ERROR: Failed to allocate %zu byte digital buffer\n", req.digital_buffer_bytes);
+        return false;
+    }
+    g_la_buffers.digital_buffer_size = req.digital_buffer_bytes;
+    g_la_buffers.digital_max_samples = req.max_samples_final;
+    g_la_buffers.digital_allocated = true;
+    
+    // Clear digital buffer
+    memset(g_la_buffers.digital_buffer, 0, req.digital_buffer_bytes);
+    
+    // Allocate analog buffer if needed
+    if (req.analog_buffer_bytes > 0) {
+        g_la_buffers.analog_buffer = (uint16_t*)malloc(req.analog_buffer_bytes);
+        if (!g_la_buffers.analog_buffer) {
+            DEBUG_LA_PRINTF("◆ ERROR: Failed to allocate %zu byte analog buffer\n", req.analog_buffer_bytes);
+            releaseAllLogicAnalyzerBuffers();  // Clean up digital buffer
+            return false;
+        }
+        g_la_buffers.analog_buffer_size = req.analog_buffer_bytes;
+        g_la_buffers.analog_max_samples = req.max_samples_final;
+        g_la_buffers.analog_channels_active = req.driver_analog_channels;
+        g_la_buffers.analog_allocated = true;
+        
+        // Clear analog buffer
+        memset(g_la_buffers.analog_buffer, 0, req.analog_buffer_bytes);
+    }
+    
+    // Track total allocation
+    g_la_buffers.total_allocated_bytes = req.total_buffer_bytes;
+    g_la_buffers.available_memory_at_allocation = req.available_memory;
+    
+    // Update global state to match unified calculation
+    jl_la_max_samples = req.max_samples_final;
+    jl_la_buffer_size = req.digital_buffer_bytes;
+    
+    // Update legacy pointers for compatibility
+    la_buffer = g_la_buffers.digital_buffer;
+    analog_buffer = g_la_buffers.analog_buffer;
+    analog_buffer_size = g_la_buffers.analog_buffer_size;
+    
+    DEBUG_LA_PRINTF("◆ UNIFIED ALLOCATION SUCCESS: %zu bytes total (%zu free memory remaining)\n",
+                 req.total_buffer_bytes, rp2040.getFreeHeap());
+    
+    return true;
+}
+
+void releaseAllLogicAnalyzerBuffers() {
+    // This function will handle freeing all allocated buffers
+    // It should be the single point of truth for de-allocation
+}
+
+// Legacy function compatibility - these now use the unified system
+
+
+
+// UnifiedBufferRequirements calculateUnifiedBufferRequirements() {
+//     UnifiedBufferRequirements req = {};
+
+//     // Get available memory
+//     size_t free_heap = rp2040.getFreeHeap();
+//     req.safety_reserve = JL_LA_RESERVE_RAM + 4096;
+//     if (free_heap > req.safety_reserve) {
+//         req.usable_memory = free_heap - req.safety_reserve;
+//     } else {
+//         req.usable_memory = 1024;
+//     }
+
+//     // Calculate bytes per sample for storage
+//     req.driver_analog_channels = __builtin_popcount(analog_mask & 0xFF);
+//     req.digital_storage_per_sample = 1;
+//     req.analog_storage_per_sample = (current_la_mode == LA_MODE_DIGITAL_ONLY) ? 0 : req.driver_analog_channels * 2;
+//     size_t total_storage_per_sample = req.digital_storage_per_sample + req.analog_storage_per_sample;
+//     if (total_storage_per_sample == 0) total_storage_per_sample = 1;
+
+//     // Calculate max samples based on memory
+//     req.max_samples_memory_limit = req.usable_memory / total_storage_per_sample;
+    
+//     // Adjust for oversampling
+//     if (sample_rate > ADC_MAX_SAMPLE_RATE) {
+//         float decimation_factor = (float)sample_rate / ADC_MAX_SAMPLE_RATE;
+//         req.max_samples_memory_limit = (uint32_t)((float)req.max_samples_memory_limit * decimation_factor);
+//     }
+  
+//     // Apply hard limit
+//     req.max_samples_final = req.max_samples_memory_limit;
+//     // if (req.max_samples_final > JL_LA_MAX_SAMPLES_LIMIT) {
+//     //     req.max_samples_final = JL_LA_MAX_SAMPLES_LIMIT;
+//     // }
+    
+//     // Calculate final buffer sizes
+//     req.digital_buffer_bytes = req.max_samples_final * req.digital_storage_per_sample;
+//     req.analog_buffer_bytes = req.max_samples_final * req.analog_storage_per_sample;
+//     req.total_buffer_bytes = req.digital_buffer_bytes + req.analog_buffer_bytes;
+
+//     return req;
+// }
+
+// Calculate oversampling factor based on current sample rate
+uint32_t calculateOversamplingFactor() {
+    DEBUG_LA_PRINTF("◆ OVERSAMPLING CALC: sample_rate = %lu Hz\n", sample_rate);
+    
+    if (sample_rate <= 100000) {
+        DEBUG_LA_PRINTF("◆ OVERSAMPLING: Rate %lu <= 100000 Hz. Factor: 1\n", sample_rate);
+        return 1;  // No oversampling below 100kHz
+    }
+    
+    // Calculate oversampling factor: higher sample rates get more oversampling
+    uint32_t factor = 1;
+    if (sample_rate >= 1000000) {
+        factor = 10;  // 1MHz+ gets 10x oversampling
+        DEBUG_LA_PRINTF("◆ OVERSAMPLING: Rate %lu >= 1000000 Hz. Factor: %lu\n", sample_rate, factor);
+    } else if (sample_rate >= 500000) {
+        factor = 5;   // 500kHz+ gets 5x oversampling
+        DEBUG_LA_PRINTF("◆ OVERSAMPLING: Rate %lu >= 500000 Hz. Factor: %lu\n", sample_rate, factor);
+    } else if (sample_rate >= 200000) {
+        factor = 2;   // 200kHz+ gets 2x oversampling
+        DEBUG_LA_PRINTF("◆ OVERSAMPLING: Rate %lu >= 200000 Hz. Factor: %lu\n", sample_rate, factor);
+    }
+    
+    return factor;
+}
+
+// Calculate effective sample count for driver (accounts for oversampling)
+uint32_t calculateEffectiveSampleCount(uint32_t physical_samples) {
+    uint32_t oversampling_factor = calculateOversamplingFactor();
+    uint32_t effective_samples = physical_samples * oversampling_factor;
+    
+    DEBUG_LA_PRINTF("◆ EFFECTIVE SAMPLES: %lu physical × %lu factor = %lu effective\n", 
+                   physical_samples, oversampling_factor, effective_samples);
+    return effective_samples;
+}

@@ -11,6 +11,7 @@
 #include "CH446Q.h"
 #include "Commands.h"
 #include "FileParsing.h"
+#include "LogicAnalyzer.h"  // Add logic analyzer awareness
 #include "NetManager.h"
 #include "config.h"
 #include "configManager.h"
@@ -101,13 +102,15 @@ void initSecondSerial(void) {
 #endif
 
 #if USB_CDC_ENABLE_COUNT >= 3
-  // USBSer2 maps to CDC interface 2 (Routable Serial) - conditionally
+  // USBSer2 maps to CDC interface 2 - ALWAYS initialize for logic analyzer compatibility
+  // This ensures PulseView can always connect to the logic analyzer on CDC interface 2
+  USBSer2.begin(115200);  // Always initialize at 115200 for SUMP protocol compatibility
+  // Serial.println("  USBSer2 initialized for logic analyzer");
+  
+  // Only initialize Serial2 (hardware UART) if serial function is enabled
   if (jumperlessConfig.serial_2.function != 0) {
-    USBSer2.begin(baudRateUSBSer2, makeSerialConfig(8, 0, 0));
-    // Serial.println("  USBSer2 (Routable) initialized");
     Serial2.begin(baudRateUSBSer2, makeSerialConfig(8, 0, 0));
-  } else {
-    // Serial.println("  USBSer2 disabled by config");
+    // Serial.println("  Serial2 (hardware UART) also initialized for passthrough");
   }
 #endif
 
@@ -863,7 +866,9 @@ int handleSerialPassthrough(int serial, int print, int printPassthroughFlashing,
     //}
   }
 
-  if (jumperlessConfig.serial_2.function == 1 && (serial == 1 || serial == 2)) {
+  // Skip USBSer2 passthrough when logic analyzer is active to prevent SUMP protocol interference
+  // Only do passthrough when serial_2.function == 1 (passthrough mode) AND logic analyzer is not active
+  if (jumperlessConfig.serial_2.function == 1 && (serial == 1 || serial == 2) && logicAnalyzing == false) {
 
     unsigned long serial2Timeout = millis();
     int usbSer2Available = USBSer2.available();
@@ -1351,6 +1356,10 @@ void checkForConfigChangesUSBSer1(int print) {
 }
 
 void checkForConfigChangesUSBSer2(int print) {
+  // Don't modify USBSer2 configuration when logic analyzer is active to prevent SUMP protocol disruption
+  // if (isLogicAnalyzerAvailable()) {
+  //   return;
+  // }
 
   if (USBSer2.numbits() != numbitsUSBSer2) {
     numbitsUSBSer2 = USBSer2.numbits();
@@ -1465,30 +1474,30 @@ void replyWithSerialInfo(void) {
       }
 #endif
 
-#if USB_CDC_ENABLE_COUNT >= 3
-      if (jumperlessConfig.serial_2.function != 0) {
-        const char *func2_name = getStringFromTable(
-            jumperlessConfig.serial_2.function, uartFunctionTable);
-        if (func2_name && strcmp(func2_name, "off") != 0 &&
-            strcmp(func2_name, "disable") != 0) {
-          Serial.print("CDC2: JL ");
-          // Print with first letter capitalized and underscores as spaces
-          char c = func2_name[0];
-          if (c >= 'a' && c <= 'z')
-            c = c - 'a' + 'A';
-          Serial.print(c);
-          for (int i = 1; func2_name[i]; i++) {
-            Serial.print(func2_name[i] == '_' ? ' ' : func2_name[i]);
-          }
-          Serial.println();
-        } else {
-          Serial.println("CDC2: Jumperless Serial 2");
-        }
-      } else {
-        Serial.println("CDC2: Disabled");
-      }
+// #if USB_CDC_ENABLE_COUNT >= 3
+//       if (jumperlessConfig.serial_2.function != 0) {
+//         const char *func2_name = getStringFromTable(
+//             jumperlessConfig.serial_2.function, uartFunctionTable);
+//         if (func2_name && strcmp(func2_name, "off") != 0 &&
+//             strcmp(func2_name, "disable") != 0) {
+//           Serial.print("CDC2: JL ");
+//           // Print with first letter capitalized and underscores as spaces
+//           char c = func2_name[0];
+//           if (c >= 'a' && c <= 'z')
+//             c = c - 'a' + 'A';
+//           Serial.print(c);
+//           for (int i = 1; func2_name[i]; i++) {
+//             Serial.print(func2_name[i] == '_' ? ' ' : func2_name[i]);
+//           }
+//           Serial.println();
+//         } else {
+//           Serial.println("CDC2: Jumperless Serial 2");
+//         }
+//       } else {
+//         Serial.println("CDC2: Disabled");
+//       }
     
-#endif
+// #endif
 
 #if USB_CDC_ENABLE_COUNT >= 4
       Serial.println("CDC3: Jumperless Debug");
@@ -1527,35 +1536,36 @@ void replyWithSerialInfo(void) {
     }
 #endif
 
-#if USB_CDC_ENABLE_COUNT >= 3
-   // delay(100);
-    // Check USBSer2 (CDC 2) for ENQ character - responds only for itself
-    if (jumperlessConfig.serial_2.function != 0 && USBSer2.available() > 0) {
-      char c = USBSer2.peek(); // Look at the character without removing it
-      if (c == 0x05) {         // ENQ character
-        USBSer2.read();        // Remove the ENQ character from buffer
+// #if USB_CDC_ENABLE_COUNT >= 3
+//    // delay(100);
+//     // Check USBSer2 (CDC 2) for ENQ character - responds only for itself
+//     // Skip ENQ response when logic analyzer is active to prevent SUMP protocol interference
+//     if (jumperlessConfig.serial_2.function != 0 && USBSer2.available() > 0 && !isLogicAnalyzerAvailable()) {
+//       char c = USBSer2.peek(); // Look at the character without removing it
+//       if (c == 0x05) {         // ENQ character
+//         USBSer2.read();        // Remove the ENQ character from buffer
 
-        // Generate dynamic name based on config
-        const char *func2_name = getStringFromTable(
-            jumperlessConfig.serial_2.function, uartFunctionTable);
-        if (func2_name && strcmp(func2_name, "off") != 0 &&
-            strcmp(func2_name, "disable") != 0) {
-          USBSer2.print("CDC2: JL ");
-          // Print with first letter capitalized and underscores as spaces
-          char c = func2_name[0];
-          if (c >= 'a' && c <= 'z')
-            c = c - 'a' + 'A';
-          USBSer2.print(c);
-          for (int i = 1; func2_name[i]; i++) {
-            USBSer2.print(func2_name[i] == '_' ? ' ' : func2_name[i]);
-          }
-          USBSer2.println();
-        } else {
-          USBSer2.println("CDC2: Jumperless Serial 2");
-        }
-        USBSer2.flush();
-      }
-    }
+//         // Generate dynamic name based on config
+//         const char *func2_name = getStringFromTable(
+//             jumperlessConfig.serial_2.function, uartFunctionTable);
+//         if (func2_name && strcmp(func2_name, "off") != 0 &&
+//             strcmp(func2_name, "disable") != 0) {
+//           USBSer2.print("CDC2: JL ");
+//           // Print with first letter capitalized and underscores as spaces
+//           char c = func2_name[0];
+//           if (c >= 'a' && c <= 'z')
+//             c = c - 'a' + 'A';
+//           USBSer2.print(c);
+//           for (int i = 1; func2_name[i]; i++) {
+//             USBSer2.print(func2_name[i] == '_' ? ' ' : func2_name[i]);
+//           }
+//           USBSer2.println();
+//         } else {
+//           USBSer2.println("CDC2: Jumperless Serial 2");
+//         }
+//         USBSer2.flush();
+//       }
+//     }
   
-#endif
+// #endif
 }

@@ -25,9 +25,11 @@ KevinC@ppucc.io
 // #include <Adafruit_TinyUSB.h>
 
 #ifdef USE_TINYUSB
+#include "tusb.h" // For tud_task() function
 #include <Adafruit_TinyUSB.h>
-#include "tusb.h"  // For tud_task() function
 #endif
+
+#include "LogicAnalyzer.h"
 
 #include <Adafruit_NeoPixel.h>
 #include <EEPROM.h>
@@ -67,11 +69,11 @@ KevinC@ppucc.io
 #endif
 #include "UserCode.h"
 // #include "SerialWrapper.h"
+#include "FilesystemStuff.h"
 #include "HelpDocs.h"
 #include "Highlighting.h"
 #include "Python_Proper.h"
 #include "USBfs.h"
-#include "FilesystemStuff.h"
 
 // #define Serial SerialWrap
 // #define USBSer1 SerialWrap
@@ -114,13 +116,10 @@ volatile int dumpLED = 0;
 unsigned long dumpLEDTimer = 0;
 unsigned long dumpLEDrate = 50;
 
+const char firmwareVersion[] = "5.2.2.1"; // remember to update this
+bool newConfigOptions = false; // set to true with new config options //!
+                               // fix the saving every boot thing
 
-
-const char firmwareVersion[] = "5.2.2.0"; // remember to update this
- bool newConfigOptions = false; // set to true with new config options //!
-                                     // fix the saving every boot thing
-
-                                     
 void setup() {
   pinMode(RESETPIN, OUTPUT_12MA);
 
@@ -133,19 +132,16 @@ void setup() {
     Serial.println("FatFS initialized successfully");
   }
 
-
   startupTimers[0] = millis();
-
 
   loadConfig();
 
   // readSettingsFromConfig();
   configLoaded = 1;
-  //Serial.println("Configuration loaded!");
+  // Serial.println("Configuration loaded!");
   startupTimers[1] = millis();
   delayMicroseconds(200);
 
-  
   initNets();
   backpowered = 0;
 
@@ -168,7 +164,6 @@ void setup() {
       jumperlessConfig.serial_2.function == 6) {
     jumperlessConfig.top_oled.show_in_terminal = 3;
   }
-
 
   if (jumperlessConfig.serial_2.function != 0) {
     // Serial.begin(jumperlessConfig.serial_2.baud_rate);
@@ -228,11 +223,13 @@ void setup() {
   getNothingTouched();
   startupTimers[8] = millis();
   createSlots(-1, 0);
-  initializeNetColorTracking(); // Initialize net color tracking after slots are created
+  initializeNetColorTracking(); // Initialize net color tracking after slots are
+                                // created
   initializeValidationTracking(); // Initialize validation tracking
   startupTimers[9] = millis();
-}
 
+//  setupLogicAnalyzer();
+}
 
 unsigned long startupCore2timers[10];
 
@@ -306,14 +303,17 @@ extern volatile bool flashingArduino; // Defined in ArduinoStuff.cpp
 int attract = 0;
 
 unsigned long switchPositionCheckTimer = 0;
-//int switchPosition = 0;
+// int switchPosition = 0;
 unsigned long switchPositionCheckInterval = 500;
-
 
 unsigned long mscModeRefreshTimer = 0;
 unsigned long mscModeRefreshInterval = 2000;
 
 volatile int core1passthrough = 1;
+
+int shownMenuItems = 0;
+int menuItemCount[4] = {0, 0, 0, 0};
+int menuItemCounts[4] = {14, 22, 37, 46};
 
 #include <pico/stdlib.h>
 
@@ -326,7 +326,8 @@ menu:
 
     if (firstStart == true || autoCalibrationNeeded == true) {
       if (autoCalibrationNeeded == true) {
-        Serial.println("New calibration options detected in config.txt. Running automatic calibration...");
+        Serial.println("New calibration options detected in config.txt. "
+                       "Running automatic calibration...");
         delay(2000);
       }
       calibrateDacs();
@@ -382,127 +383,94 @@ menu:
   if (dontShowMenu == 0) {
   forceprintmenu:
 
+    // Serial.print("showExtraMenu = ");
+    // Serial.println(showExtraMenu);
+    // Serial.print("shownMenuItems = ");
+    // Serial.println(shownMenuItems);
 
-    int numberOfMenuItems = 31 + (showExtraMenu == 1 ? 12 : 0) ;
-    float steps = (float)highSaturationBrightColorsCount / (float)numberOfMenuItems;
+    int numberOfMenuItems = menuItemCounts[showExtraMenu];
+    float steps =
+        (float)highSaturationBrightColorsCount / ((float)numberOfMenuItems);
     // Serial.print("steps = ");
     // Serial.println(steps);
+    shownMenuItems = 0;
+    // printSpectrumOrderedColorCube();
+    cycleTerminalColor(true, steps, true, &Serial);
+    shownMenuItems += printMenuLine("\n\n\r\t\tMenu\n\r\n\r");
+    shownMenuItems += printMenuLine("\t'help' for docs or [command]?\n\r");
+    shownMenuItems += printMenuLine("\n\r");
+    shownMenuItems += printMenuLine("\tm = show this menu\n\r");
 
-   // printSpectrumOrderedColorCube();
-    cycleTerminalColor(true,  steps, true, &Serial);
-    Serial.print("\n\n\r\t\tMenu\n\r\n\r");
-    cycleTerminalColor();
-    Serial.print("\t'help' for docs or [command]?\n\r");
-    cycleTerminalColor();
-    Serial.print("\n\r");
-    cycleTerminalColor();
-    Serial.print("\tm = show this menu\n\r");
-    cycleTerminalColor();
-    // Serial.println();
+    shownMenuItems += printMenuLine(showExtraMenu, 0, "\te = show extra options (%d)\n\r", showExtraMenu);
 
-    Serial.print("\tn = show net list\n\r");
-    cycleTerminalColor();
-    Serial.print("\tb = show bridge array\n\r");
-    cycleTerminalColor();
-    Serial.print("\tc = show crossbar status\n\r");
-    cycleTerminalColor();
-    // Serial.print("\t! = print node file\n\r");
-    Serial.print("\ts = show all slot files\n\r");
-    cycleTerminalColor();
+    //  Serial.println();
 
-    Serial.print("\t< = cycle slots\n\r");
-    cycleTerminalColor();
-    Serial.println();
-
-    Serial.print("\t? = show firmware version\n\r");
-    cycleTerminalColor();
-    Serial.print("\t' = show startup animation\n\r");
-    cycleTerminalColor();
-    Serial.print("\td = set debug flags\n\r");
-    cycleTerminalColor();
-    Serial.print("\tl = LED brightness / test\n\r");
-    cycleTerminalColor();
-    Serial.print("\t\b\b`/~ = edit / print config\n\r");
-    cycleTerminalColor();
-    Serial.print("\tp = microPython REPL\n\r");
-    cycleTerminalColor();
-    Serial.print("\t/ = show filesystem\n\r");
-    cycleTerminalColor();
-          Serial.print("\t\b\bU/u = enable/disable USB Mass Storage\n\r");
-    cycleTerminalColor();
-    //Serial.print("\tu = disable USB Mass Storage drive\n\r");
-    //cycleTerminalColor();
-     if (showExtraMenu == 0) {
-    Serial.print("\te = show extra options\n\r");
-     } else {
-      Serial.print("\te = hide extra options\n\r");
-     }
-     
-    if (showExtraMenu == 1) {
+    shownMenuItems +=   printMenuLine(showExtraMenu, 0, "\tn = show net list\n\r");
+    shownMenuItems += printMenuLine(showExtraMenu, 1, "\tb = show bridge array\n\r");
+    shownMenuItems += printMenuLine(showExtraMenu, 1, "\tc = show crossbar status\n\r");
+    shownMenuItems += printMenuLine(showExtraMenu, 1, "\ts = show all slot files\n\r");
+    if (showExtraMenu >= 0) {
       Serial.println();
-      Serial.print("\ty = refresh connections\n\r");
-      cycleTerminalColor();
-      Serial.print("\tG = reload config.txt\n\r");
-      cycleTerminalColor();
-      Serial.print("\to = load node file by slot\n\r");
-      cycleTerminalColor();
-      Serial.print("\tP = print all connectable nodes\n\r");
-      cycleTerminalColor();
-      Serial.print("\tF = cycle font\n\r");
-      cycleTerminalColor();
-      Serial.print("\t_ = print micros per byte\n\r");
-      cycleTerminalColor();
-      Serial.print("\t@ = scan I2C (@[sda],[scl] or @[row])\n\r");
-      cycleTerminalColor();
-      Serial.print("\t$ = calibrate DACs\n\r");
-      cycleTerminalColor();
-      Serial.print("\t= = dump oled frame buffer\n\r");
-      cycleTerminalColor();
-      Serial.print("\tk = show oled in terminal\n\r");
-      cycleTerminalColor();
-      Serial.print("\tR = show board LEDs\n\r");
-      cycleTerminalColor();
-      Serial.print("\t% = list all filesystem contents\n\r");
-      cycleTerminalColor();
-      Serial.print("\tE = don't show this menu\n\r");
-      cycleTerminalColor();
-      Serial.print("\tC = disable terminal colors\n\r");
-      cycleTerminalColor();
+    }
+
+
+    // Serial.println();
+   
+    shownMenuItems += printMenuLine(showExtraMenu, 2, "\t? = show firmware version\n\r");
+    shownMenuItems += printMenuLine(showExtraMenu, 2, "\t' = show startup animation\n\r");
+    shownMenuItems += printMenuLine(showExtraMenu, 2, "\td = set debug flags\n\r");
+    shownMenuItems += printMenuLine(showExtraMenu, 2, "\tl = LED brightness / test\n\r");
+    shownMenuItems += printMenuLine(showExtraMenu, 0, "\t\b\b`/~ = edit / print config\n\r");
+    shownMenuItems += printMenuLine(showExtraMenu, 0, "\tp = microPython REPL\n\r");
+    shownMenuItems += printMenuLine(showExtraMenu, 0, "\t> = send Python formatted command\n\r");
+    shownMenuItems += printMenuLine(showExtraMenu, 0, "\t/ = show filesystem\n\r");
+    shownMenuItems += printMenuLine(showExtraMenu, 0, "\t\b\bU/u = enable/disable USB Mass Storage\n\r");
+    shownMenuItems += printMenuLine(showExtraMenu, 0, "\tw = enable logic analyzer\n\r");
+    // Serial.print("\tu = disable USB Mass Storage drive\n\r");
+    // cycleTerminalColor();
+
+
+    shownMenuItems +=   printMenuLine(showExtraMenu, 2, "\n\r");
+    shownMenuItems += printMenuLine(showExtraMenu, 2, "\ty = refresh connections\n\r");
+    //shownMenuItems++;
+    shownMenuItems += printMenuLine(showExtraMenu, 2, "\t< = cycle slots\n\r");
+    shownMenuItems += printMenuLine(showExtraMenu, 2, "\tG = reload config.txt\n\r");
+    shownMenuItems += printMenuLine(showExtraMenu, 2, "\to = load node file by slot\n\r");
+    shownMenuItems += printMenuLine(showExtraMenu, 2, "\tP = deinitialize MicroPython (free memory)\n\r");
+    shownMenuItems += printMenuLine(showExtraMenu, 3, "\tF = cycle font\n\r");
+    shownMenuItems += printMenuLine(showExtraMenu, 3, "\t_ = print micros per byte\n\r");
+    shownMenuItems += printMenuLine(showExtraMenu, 2, "\t@ = scan I2C (@[sda],[scl] or @[row])\n\r");
+    shownMenuItems += printMenuLine(showExtraMenu, 3, "\t$ = calibrate DACs\n\r");
+    shownMenuItems += printMenuLine(showExtraMenu, 3, "\t= = dump oled frame buffer\n\r");
+    shownMenuItems += printMenuLine(showExtraMenu, 2, "\tk = show oled in terminal\n\r");
+    shownMenuItems += printMenuLine(showExtraMenu, 2, "\tR = show board LEDs\n\r");
+    shownMenuItems += printMenuLine(showExtraMenu, 3, "\t% = list all filesystem contents\n\r");
+    shownMenuItems += printMenuLine(showExtraMenu, 3, "\tE = don't show this menu\n\r");
+    shownMenuItems += printMenuLine(showExtraMenu, 3, "\tC = disable terminal colors\n\r");
+
+
+    if (showExtraMenu >= 2) {
 
       // Serial.print("\n\r");
     }
-    cycleTerminalColor();
-    Serial.println();
-
+  Serial.println();
+    //shownMenuItems += printMenuLine(showExtraMenu, 1, "\n\r");
     // Serial.print("\t$ = calibrate DACs\n\r");
     if (probePowerDAC == 0) {
-      cycleTerminalColor();
-      Serial.print("\t^ = set DAC 1 voltage\n\r");
-      cycleTerminalColor();
+      shownMenuItems += printMenuLine(showExtraMenu, 3, "\t^ = set DAC 1 voltage\n\r");
     } else if (probePowerDAC == 1) {
-      cycleTerminalColor();
-      Serial.print("\t^ = set DAC 0 voltage\n\r");
-      cycleTerminalColor();
+        shownMenuItems += printMenuLine(showExtraMenu, 3, "\t^ = set DAC 0 voltage\n\r");
     }
-    cycleTerminalColor();
-    Serial.print("\tv = get ADC reading\n\r");
-    cycleTerminalColor();
-
+    shownMenuItems += printMenuLine(showExtraMenu, 1, "\tv = get ADC reading\n\r");
     // Serial.println();
 
-    Serial.print("\t# = print text from menu\n\r");
-    cycleTerminalColor();
-    Serial.print("\tg = print gpio state\n\r");
+    shownMenuItems += printMenuLine(showExtraMenu, 3, "\t# = print text from menu\n\r");
+    shownMenuItems += printMenuLine(showExtraMenu, 2, "\tg = print gpio state\n\r");
     // Serial.print("\t\b\b\b\b[0-9] = run app by index\n\r");
-    Serial.print("\t. = connect oled\n\r");
-    cycleTerminalColor();
-    Serial.print("\tr = reset Arduino (rt/rb)\n\r");
-    cycleTerminalColor();
+    shownMenuItems += printMenuLine(showExtraMenu, 1, "\t. = connect oled\n\r");
+    shownMenuItems += printMenuLine(showExtraMenu, 2, "\tr = reset Arduino (rt/rb)\n\r");
 
-    cycleTerminalColor();
-    Serial.print("\t\b\ba/A = dis/connect UART to D0/D1\n\r");
-    cycleTerminalColor();
-    Serial.print("\t> = send Python formatted command\n\r");
+    shownMenuItems += printMenuLine(showExtraMenu, 1, "\t\b\ba/A = dis/connect UART to D0/D1\n\r");
 
     // Serial.print("\t    print passthrough");
     // if (printSerial1Passthrough == 1) {
@@ -514,33 +482,35 @@ menu:
     //       } else {
     //       Serial.print(" - off");
     //       }
-
-    Serial.println();
-    cycleTerminalColor();
-    Serial.print("\tf = load node file\n\r");
-    cycleTerminalColor();
-    Serial.print("\tx = clear all connections\n\r");
-    cycleTerminalColor();
-    Serial.print("\t+ = add connections\n\r");
-    cycleTerminalColor();
-    Serial.print("\t- = remove connections\n\r");
-    cycleTerminalColor();
+    shownMenuItems += printMenuLine(showExtraMenu, 1, "\n\r");
+    shownMenuItems += printMenuLine(showExtraMenu, 1, "\tf = load node file\n\r");
+    shownMenuItems += printMenuLine(showExtraMenu, 0, "\tx = clear all connections\n\r");
+    shownMenuItems += printMenuLine(showExtraMenu, 0, "\t+ = add connections\n\r");
+    shownMenuItems += printMenuLine(showExtraMenu, 0, "\t- = remove connections\n\r");
     // Serial.print("\te = extra menu options\n\r");
-    Serial.println();
+    // Serial.println();
 
     Serial.println();
 
     Serial.flush();
   }
   if (configChanged == true && millis() > 2000) {
-    //Serial.print("config changed, saving...");
+    // Serial.print("config changed, saving...");
     saveConfig();
-    //Serial.println("\r                             \rconfig saved!\n\r");
-    //Serial.flush();
+    // Serial.println("\r                             \rconfig saved!\n\r");
+    // Serial.flush();
     configChanged = false;
   }
+  menuItemCount[showExtraMenu] = shownMenuItems;
 
-  //Serial.println(millis());
+  // for (int i = 0; i < 4; i++) {
+  //   Serial.print("menuItemCount[");
+  //   Serial.print(i);
+  //   Serial.print("] = ");
+  //   Serial.println(menuItemCount[i]);
+  // }
+ // Serial.flush();
+  // Serial.println(millis());
 dontshowmenu:
 
   connectFromArduino = '\0';
@@ -570,7 +540,7 @@ dontshowmenu:
   while (Serial.available() == 0 && connectFromArduino == '\0' &&
          slotChanged == 0) {
 
-          unsigned long busyTimer = millis();
+    unsigned long busyTimer = millis();
     // warningNet = 7;
     // firstConnection = -1;
     checkPads();
@@ -583,18 +553,22 @@ dontshowmenu:
     }
 
     secondSerialHandler();
-    
+
     // Handle USB tasks (required for MSC and other USB interfaces)
-    //#ifdef USE_TINYUSB
+    // #ifdef USE_TINYUSB
     tud_task();
-    //#endif
-    // //core1passthrough = 0;
+    // #endif
+    //  //core1passthrough = 0;
 
     if (clickMenu() >= 0) {
       // defconDisplay = -1;
       core1passthrough = 0;
       goto loadfile;
     }
+
+    //     // **NORMAL MODE**: Single call when not in connection mode
+    // handleLogicAnalyzer();
+    //}
 
     int probeReading = justReadProbe(true);
 
@@ -766,63 +740,62 @@ dontshowmenu:
       showMeasurements(16, 0, 0);
     }
 
-  if (mscModeEnabled == true) {
-    if (millis() - mscModeRefreshTimer > mscModeRefreshInterval) {
-      mscModeRefreshTimer = millis();
-      //refreshUSBFilesystem();
-      //refreshConnections(-1);
-      //Serial.println("Periodic filesystem refresh completed");
-   //   refreshUSBFilesystem();
+    if (mscModeEnabled == true) {
+      if (millis() - mscModeRefreshTimer > mscModeRefreshInterval) {
+        mscModeRefreshTimer = millis();
+        // refreshUSBFilesystem();
+        // refreshConnections(-1);
+        // Serial.println("Periodic filesystem refresh completed");
+        //   refreshUSBFilesystem();
+      }
     }
-  }
 
     if (millis() - oled.lastConnectionCheck > oled.connectionCheckInterval &&
-    jumperlessConfig.top_oled.enabled == 1) {
-      //Serial.println("checking oled connection");
-      //Serial.println(oled.checkConnection());
+        jumperlessConfig.top_oled.enabled == 1) {
+      // Serial.println("checking oled connection");
+      // Serial.println(oled.checkConnection());
       oled.lastConnectionCheck = millis();
-      if (checkIfBridgeExists(jumperlessConfig.top_oled.sda_row, jumperlessConfig.top_oled.gpio_sda) == true) {
-        if (checkIfBridgeExists(jumperlessConfig.top_oled.scl_row, jumperlessConfig.top_oled.gpio_scl) == true) {
+      if (checkIfBridgeExists(jumperlessConfig.top_oled.sda_row,
+                              jumperlessConfig.top_oled.gpio_sda) == true) {
+        if (checkIfBridgeExists(jumperlessConfig.top_oled.scl_row,
+                                jumperlessConfig.top_oled.gpio_scl) == true) {
 
-      if (oled.checkConnection() == false) {
-         Serial.print("\r                                             \roled connection lost, retrying...");
-        oled.oledConnected = false;
-        //oled.disconnect();
-        //jumperlessConfig.top_oled.enabled = 0;
+          if (oled.checkConnection() == false) {
+            Serial.print("\r                                             "
+                         "\roled connection lost, retrying...");
+            oled.oledConnected = false;
+            // oled.disconnect();
+            // jumperlessConfig.top_oled.enabled = 0;
 
-        // if (jumperlessConfig.top_oled.lock_connection == 1 &&
-        if (oled.connectionRetries < oled.maxConnectionRetries) {
-          //oled.connectionRetries++;
-          // if (oled.connectionRetries > oled.maxConnectionRetries) {
-          //   oled.connectionRetries = 0;
-          //Serial.println("retrying oled connection");
-          if (oled.init() != 0) {
-            Serial.print("\r                                          \r");
-            Serial.flush();
+            // if (jumperlessConfig.top_oled.lock_connection == 1 &&
+            if (oled.connectionRetries < oled.maxConnectionRetries) {
+              // oled.connectionRetries++;
+              //  if (oled.connectionRetries > oled.maxConnectionRetries) {
+              //    oled.connectionRetries = 0;
+              // Serial.println("retrying oled connection");
+              if (oled.init() != 0) {
+                Serial.print("\r                                          \r");
+                Serial.flush();
+              }
+            }
           }
-          }
+
+          oled.connectionRetries = 0;
         }
-
-        
-        oled.connectionRetries = 0;
-        
-      }
       }
     }
-  
 
-  if (millis() - switchPositionCheckTimer > switchPositionCheckInterval) {
-    switchPositionCheckTimer = millis();
-    switchPosition = checkSwitchPosition();
-    // Serial.print("switchPosition = ");
-    // Serial.println(switchPosition);
-    // Serial.flush();
+    if (millis() - switchPositionCheckTimer > switchPositionCheckInterval) {
+      switchPositionCheckTimer = millis();
+      switchPosition = checkSwitchPosition();
+      // Serial.print("switchPosition = ");
+      // Serial.println(switchPosition);
+      // Serial.flush();
+    }
+
+    // Serial.print("busyTimer = ");
+    // Serial.println(millis() - busyTimer);
   }
-
-
-  // Serial.print("busyTimer = ");
-  // Serial.println(millis() - busyTimer);
-         }
 
   // if (slotChanged == 1) {
   //   // Serial.println("slotChanged");
@@ -903,16 +876,23 @@ skipinput:
 
   switch (input) {
 
-    case 'G': { //! G - Load config.txt changes
-     Serial.println("Reloading config.txt...");
-      configChanged = true;
 
-     /// loadConfigChanges();
-     // goto dontshowmenu;
+    case 'w': //! w - Setup logic analyzer
+    {
+      setupLogicAnalyzer();
       break;
     }
 
-    case 'j':
+  case 'G': { //! G - Load config.txt changes
+    Serial.println("Reloading config.txt...");
+    configChanged = true;
+
+    /// loadConfigChanges();
+    // goto dontshowmenu;
+    break;
+  }
+
+  case 'j':
 
     for (int i = 0; i < highSaturationSpectrumColorsCount; i++) {
       changeTerminalColorHighSat(i, true, &Serial, 0);
@@ -925,116 +905,114 @@ skipinput:
 
       Serial.print("\t\t");
       if (i < highSaturationBrightColorsCount) {
-      changeTerminalColorHighSat(i, true, &Serial, 1);
-      Serial.print(i);
-      Serial.print(": ");
-      if (i < 10) {
-        Serial.print(" ");
-      }
-      Serial.print(highSaturationBrightColors[i]);
+        changeTerminalColorHighSat(i, true, &Serial, 1);
+        Serial.print(i);
+        Serial.print(": ");
+        if (i < 10) {
+          Serial.print(" ");
+        }
+        Serial.print(highSaturationBrightColors[i]);
       }
       Serial.println();
-
     }
 
-  
-    
     goto dontshowmenu;
     break;
 
-      case 'U': { //! U - Enable USB Mass Storage drive\n    
+  case 'U': { //! U - Enable USB Mass Storage drive\n
 
-if (mscModeEnabled == false) {
-  Serial.println("Enabling USB Mass Storage drive...");
-  if (initUSBMassStorage()) {
-    Serial.println("USB Mass Storage enabled - device will appear as 'JUMPERLESS' drive\n\r");
-    Serial.println("\tu = disable USB Mass Storage");
-    Serial.println("\tG = reload config.txt");
-    Serial.println("\ty = refresh connections when files change");
-    Serial.println("\tS = show status");
-    Serial.println("\n\r");
-    Serial.flush();
+    if (mscModeEnabled == false) {
+      Serial.println("Enabling USB Mass Storage drive...");
+      if (initUSBMassStorage()) {
+        Serial.println("USB Mass Storage enabled - device will appear as "
+                       "'JUMPERLESS' drive\n\r");
+        Serial.println("\tu = disable USB Mass Storage");
+        Serial.println("\tG = reload config.txt");
+        Serial.println("\ty = refresh connections when files change");
+        Serial.println("\tS = show status");
+        Serial.println("\n\r");
+        Serial.flush();
+        delay(3000);
+      } else {
+        Serial.println("USB Mass Storage initialization failed");
+        Serial.flush();
+      }
+    } else {
+      Serial.println("USB Mass Storage is already enabled");
+      printUSBMassStorageStatus();
+      refreshConnections(-1);
+      Serial.flush();
+    }
+
     delay(3000);
-  } else {
-    Serial.println("USB Mass Storage initialization failed");
-    Serial.flush();
-  }
-} else {
-  Serial.println("USB Mass Storage is already enabled");
-  printUSBMassStorageStatus();
- refreshConnections(-1);
- Serial.flush();
-}
+    unsigned long mscModeTimer = millis();
+    while (mscModeEnabled == true) {
+      while (Serial.available() == 0) {
+        // if (millis() - mscModeTimer > 3000) {
+        //   manualRefreshFromUSB();
+        //   refreshConnections(-1);
+        //   mscModeTimer = millis();
+        // }
+      }
+      if (Serial.available() > 0) {
+        char c = Serial.read();
+        if (c == 'u') {
+          Serial.println("Disabling USB Mass Storage");
+          disableUSBMassStorage();
+          mscModeEnabled = false;
+          Serial.flush();
+          refreshConnections(-1, 1, 1);
+        }
+        if (c == 'U') {
+          Serial.println("Enabling USB Mass Storage");
+          initUSBMassStorage();
+          printUSBMassStorageStatus();
+          Serial.flush();
+        }
+        if (c == 'y' || c == 'Y') {
+          Serial.println("Refreshing connections");
+          manualRefreshFromUSB();
+          delay(100);
+          refreshConnections(-1);
 
-delay(3000);
-unsigned long mscModeTimer = millis();
-while (mscModeEnabled == true) {  
-while (Serial.available() == 0) {
-  // if (millis() - mscModeTimer > 3000) {
-  //   manualRefreshFromUSB();
-  //   refreshConnections(-1);
-  //   mscModeTimer = millis();
-  // }
-}
-if (Serial.available() > 0) {
-  char c = Serial.read();
-  if (c == 'u') {
-    Serial.println("Disabling USB Mass Storage");
-    disableUSBMassStorage();
-    mscModeEnabled = false;
-    Serial.flush();
-    refreshConnections(-1, 1, 1);
-  }
-  if (c == 'U') {
-    Serial.println("Enabling USB Mass Storage");
-    initUSBMassStorage();
-    printUSBMassStorageStatus();
-    Serial.flush();
-  }
-  if (c == 'y' || c == 'Y') {
-    Serial.println("Refreshing connections");
-    manualRefreshFromUSB();
-    delay(100);
-    refreshConnections(-1);
-    
-    Serial.flush();
-  }
-  if (c == 'G' || c == 'g') {
-    Serial.println("Reloading config.txt");
+          Serial.flush();
+        }
+        if (c == 'G' || c == 'g') {
+          Serial.println("Reloading config.txt");
 
-    Serial.flush();
-    manualRefreshFromUSB();
-    delay(100);
-    loadConfig();
-    Serial.flush();
+          Serial.flush();
+          manualRefreshFromUSB();
+          delay(100);
+          loadConfig();
+          Serial.flush();
+        }
+        if (c == 's' || c == 'S') {
+          Serial.println("Showing status");
+          printUSBMassStorageStatus();
+          Serial.flush();
+        }
+      }
+    }
+    //  Serial.println("\n╭─────────────────────────────────────╮");
+    //    Serial.println("│       USB Mass Storage Control      │");
+    //    Serial.println("╰─────────────────────────────────────╯");
+    //    printUSBMassStorageStatus();
+    //    Serial.println("Usage:");
+    //    Serial.println("  • Device appears as mass storage automatically");
+    //    Serial.println("  • No special mode needed (CircuitPython-style)");
+    //    Serial.println("  • Device remains responsive during file access");
+    //    Serial.println("  • Use 'U' command to check status anytime");
+    //    if (isUSBMassStorageMounted()) {
+    //      Serial.println("Currently mounted by host - ready for file access");
+    //    } else if (isUSBMassStorageEjected()) {
+    //      Serial.println("Device was ejected by host");
+    //    } else {
+    //      Serial.println("Waiting for host to mount device");
+    //    }
+    //    Serial.flush();
+    goto dontshowmenu;
+    break;
   }
-  if (c == 's' || c == 'S') {
-    Serial.println("Showing status");
-    printUSBMassStorageStatus();
-    Serial.flush();
-  }
-}
-}
-      //  Serial.println("\n╭─────────────────────────────────────╮");
-      //    Serial.println("│       USB Mass Storage Control      │");
-      //    Serial.println("╰─────────────────────────────────────╯");
-      //    printUSBMassStorageStatus();
-      //    Serial.println("Usage:");
-      //    Serial.println("  • Device appears as mass storage automatically");
-      //    Serial.println("  • No special mode needed (CircuitPython-style)");
-      //    Serial.println("  • Device remains responsive during file access");
-      //    Serial.println("  • Use 'U' command to check status anytime");
-      //    if (isUSBMassStorageMounted()) {
-      //      Serial.println("Currently mounted by host - ready for file access");
-      //    } else if (isUSBMassStorageEjected()) {
-      //      Serial.println("Device was ejected by host");
-      //    } else {
-      //      Serial.println("Waiting for host to mount device");
-      //    }
-      //    Serial.flush();
-         goto dontshowmenu;
-         break;
-       }
 
   case 'Z': { //! Z - Toggle USB debug mode
     Serial.println("╭─────────────────────────────────╮");
@@ -1047,36 +1025,36 @@ if (Serial.available() > 0) {
     Serial.println("╰─────────────────────────────────╯");
     Serial.print("Choose option: ");
     Serial.flush();
-    
+
     // Wait for input
     while (Serial.available() == 0) {
       delay(1);
     }
     char choice = Serial.read();
     Serial.println(choice);
-    
+
     switch (choice) {
-      case '1':
-        Serial.println("\nToggling USB debug mode...");
-        setUSBDebug(!usb_debug_enabled);
-        break;
-      case '2':
-        if (isUSBMassStorageMounted()) {
-          Serial.println("\nPerforming manual refresh from USB...");
-          manualRefreshFromUSB();
-        } else {
-          Serial.println("\nUSB drive not mounted");
-        }
-        break;
-      case '3':
-        Serial.println("\nValidating all slot files...");
-        //validateAllSlots(true);
-        break;
-      default:
-        Serial.println("\nCancelled");
-        break;
+    case '1':
+      Serial.println("\nToggling USB debug mode...");
+      setUSBDebug(!usb_debug_enabled);
+      break;
+    case '2':
+      if (isUSBMassStorageMounted()) {
+        Serial.println("\nPerforming manual refresh from USB...");
+        manualRefreshFromUSB();
+      } else {
+        Serial.println("\nUSB drive not mounted");
+      }
+      break;
+    case '3':
+      Serial.println("\nValidating all slot files...");
+      // validateAllSlots(true);
+      break;
+    default:
+      Serial.println("\nCancelled");
+      break;
     }
-    
+
     Serial.flush();
     goto dontshowmenu;
     break;
@@ -1086,7 +1064,8 @@ if (Serial.available() > 0) {
     if (mscModeEnabled == true) {
       Serial.println("Disabling USB Mass Storage drive...");
       if (disableUSBMassStorage()) {
-        Serial.println("USB Mass Storage disabled - device no longer appears as drive");
+        Serial.println(
+            "USB Mass Storage disabled - device no longer appears as drive");
         Serial.println("Use 'U' command to re-enable when needed");
       } else {
         Serial.println("USB Mass Storage disable failed");
@@ -1095,17 +1074,17 @@ if (Serial.available() > 0) {
       Serial.println("USB Mass Storage is already disabled");
       Serial.println("Use 'U' command to enable");
     }
-    
+
     goto dontshowmenu;
     break;
   }
-  
+
   case 'D': { //! D - Run USB MSC diagnostic test
     // Serial.println("Running USB Mass Storage diagnostic test...");
     // Serial.flush();
-    
+
     // quickUSBMSCDiagnostic();
-    
+
     // Serial.println("\nDiagnostic complete. Press any key to continue...");
     // Serial.flush();
     // while (Serial.available() == 0) {
@@ -1116,13 +1095,16 @@ if (Serial.available() > 0) {
     //   Serial.read();
     // }
     // goto dontshowmenu;
+    // printUSBDeviceInfo();            // Shows updated port detection info
+    // testSUMPProtocol();            // Tests SUMP protocol on USBSer2
+    // testUSBSer1Alternative();      // Tests Bus Pirate-style CDC Interface 1
+    // printLogicAnalyzerConflictDiagnosis();  // Shows conflicts
     break;
   }
 
-
   case '/': { //!  /
 
-    runApp(-1, (char*)"File Manager");
+    runApp(-1, (char *)"File Manager");
     Serial.write(0x0F);
     Serial.flush();
     break;
@@ -1136,7 +1118,7 @@ if (Serial.available() > 0) {
       Serial.println("Terminal colors enabled");
     }
     Serial.flush();
-    //goto dontshowmenu;
+    // goto dontshowmenu;
     break;
   }
   case 'E': { //!  E
@@ -1198,10 +1180,17 @@ if (Serial.available() > 0) {
   }
 
   // Modify the existing P case for Python command mode
-  case 'P': { //! P - Enter Python command mode
-              // pythonCommandMode();
-    // enterMicroPythonREPL();
-    printAllConnectableNodes();
+  case 'P': { //! P - Deinitialize MicroPython to free memory
+    Serial.println(
+        "Deinitializing MicroPython to free memory... Total memory: " +
+        String(rp2040.getTotalHeap()));
+    Serial.println("Free memory: " + String(rp2040.getFreeHeap()));
+    deinitMicroPythonProper();
+    Serial.println("MicroPython deinitialized. Memory freed.");
+
+    Serial.println("Total memory: " + String(rp2040.getTotalHeap()));
+    Serial.println("Free memory: " + String(rp2040.getFreeHeap()));
+    Serial.println("Use 'p' to reinitialize and enter REPL again.");
     goto dontshowmenu;
     break;
   }
@@ -1234,6 +1223,8 @@ if (Serial.available() > 0) {
     // }
     // Serial.println("Using stream: " + String(streamChoice));
     enterMicroPythonREPL();
+
+    refreshConnections(-1, 1, 1);
     Serial.write(0x0F);
     Serial.flush();
     // printAllConnectableNodes();
@@ -1250,12 +1241,11 @@ if (Serial.available() > 0) {
       oled.disconnect();
       jumperlessConfig.top_oled.enabled = 0;
       oled.oledConnected = false;
-      
+
       configChanged = true;
       Serial.println("oled disconnected");
     }
 
-    
     // oled.print("FUCK");
     // oled.show();
     // oled.test();
@@ -1323,7 +1313,7 @@ if (Serial.available() > 0) {
     delay(1);
     refreshPaths();
     clearAllNTCC();
-    //oled.oledConnected = false;
+    // oled.oledConnected = false;
 
     clearNodeFile(netSlot, 0);
     refreshConnections(-1, 1, 1);
@@ -1656,14 +1646,14 @@ if (Serial.available() > 0) {
     oled.cycleFont();
     break;
 
-  // case '%': { //!  %
-  //   // Print entire filesystem
-  //   Serial.println("\n\rFilesystem Contents:");
-  //   Serial.println("====================");
-  //   printDirectoryContents("/", 0);
-  //   Serial.println("====================");
-  //   break;
-  // }
+    // case '%': { //!  %
+    //   // Print entire filesystem
+    //   Serial.println("\n\rFilesystem Contents:");
+    //   Serial.println("====================");
+    //   printDirectoryContents("/", 0);
+    //   Serial.println("====================");
+    //   break;
+    // }
 
   case '=': { //!  =
     //  while (SerialWrap.available() == 0) {
@@ -1731,9 +1721,8 @@ if (Serial.available() > 0) {
     break;
   }
   case 'e': { //!  e
-    if (showExtraMenu == 0) {
-      showExtraMenu = 1;
-    } else {
+    showExtraMenu++;
+    if (showExtraMenu > 3) {
       showExtraMenu = 0;
     }
     break;
@@ -1934,11 +1923,7 @@ if (Serial.available() > 0) {
     printNodeFile(netSlot, 0, 0, 0, true);
     break;
 
-  case 'w':
 
-    if (waveGen() == 1) {
-      break;
-    }
   case 'o': {
     // probeActive = 1;
     inputNodeFileList(rotaryEncoderMode);
@@ -1977,7 +1962,7 @@ if (Serial.available() > 0) {
     }
     // Serial.print("slotChanged = ");
     // Serial.println(millis() - timer);
-   // Serial.print("\r                                         \r");
+    // Serial.print("\r                                         \r");
     Serial.print("Slot ");
     Serial.println(netSlot);
     slotPreview = netSlot;
@@ -1999,12 +1984,12 @@ if (Serial.available() > 0) {
 
     slotChanged = 0;
     loadingFile = 0;
-    
+
     // Check if this is a USB refresh request
     // if (isUSBMassStorageMounted()) {
     //   manualRefreshFromUSB();
     // } else {
-      refreshConnections(-1);
+    refreshConnections(-1);
     //}
     // chooseShownReadings();
     //  setGPIO();
@@ -2036,7 +2021,8 @@ if (Serial.available() > 0) {
       Serial.println("NodeFile validated successfully");
       refreshConnections(-1);
     } else {
-      Serial.println("NodeFile validation failed: " + String(getNodeFileValidationError(validation_result)));
+      Serial.println("NodeFile validation failed: " +
+                     String(getNodeFileValidationError(validation_result)));
       Serial.println("Connections not refreshed due to invalid node file");
     }
 
@@ -2074,7 +2060,7 @@ if (Serial.available() > 0) {
     goto dontshowmenu;
     break;
   }
-  
+
   case 'T': { //! T - Show netlist info
 #ifdef FSSTUFF
     openNodeFile();
@@ -2138,9 +2124,11 @@ if (Serial.available() > 0) {
     Serial.print(debugNTCC2);
     Serial.print("\n\r5. LEDs                       =    ");
     Serial.print(debugLEDs);
-    Serial.print("\n\r6. show probe current         =    ");
+    Serial.print("\n\r6. logic analyzer debug       =    ");
+    Serial.print(debugLA);
+    Serial.print("\n\r7. show probe current         =    ");
     Serial.print(showProbeCurrent);
-    Serial.print("\n\n\r7. print serial 1 passthrough =    ");
+    Serial.print("\n\n\r8. print serial 1 passthrough =    ");
     if (jumperlessConfig.serial_1.print_passthrough == 1) {
       Serial.print("on");
     } else if (jumperlessConfig.serial_1.print_passthrough == 2) {
@@ -2148,14 +2136,7 @@ if (Serial.available() > 0) {
     } else if (jumperlessConfig.serial_1.print_passthrough == 0) {
       Serial.print("off");
     }
-    Serial.print("\n\r8. print serial 2 passthrough =    ");
-    if (jumperlessConfig.serial_2.print_passthrough == 1) {
-      Serial.print("on");
-    } else if (jumperlessConfig.serial_2.print_passthrough == 2) {
-      Serial.print("flashing only");
-    } else if (jumperlessConfig.serial_2.print_passthrough == 0) {
-      Serial.print("off");
-    }
+
     // Serial.print("\n\n\r6. swap probe pin         =    ");
     // if (probeSwap == 0) {
     //   Serial.print("19");
@@ -2186,8 +2167,6 @@ if (Serial.available() > 0) {
       break;
     }
   }
-
-
 
   case ':':
 
@@ -2250,11 +2229,29 @@ void loop1() {
   // while (startupAnimationFinished == 0) {
 
   //   }
-  
+
   // Handle USB tasks on core1 as well (important for MSC interface)
   // #ifdef USE_TINYUSB
   //  tud_task();
   // #endif
+  
+  // Only call logic analyzer if it's enabled and there's USB activity
+  static uint32_t last_la_check = 0;
+  uint32_t current_time = millis();
+  
+  // Check for USB activity every 10ms to avoid overwhelming the system
+  if (current_time - last_la_check >= 10) {
+    last_la_check = current_time;
+    
+    if (isLogicAnalyzerAvailable() && (la_usb_available() > 0 || la_usb_connected())) {
+      handleLogicAnalyzer();
+    }
+  }
+
+  // while (logicAnalyzing == true) {
+  //   //handleLogicAnalyzer();
+  //   delayMicroseconds(1000);
+  // }
 
   if (doomOn == 1) {
     playDoom();
@@ -2273,7 +2270,6 @@ void loop1() {
 
   replyWithSerialInfo();
 
-
   if (dumpLED == 1) {
 
     if (millis() - dumpLEDTimer > dumpLEDrate) {
@@ -2290,26 +2286,6 @@ void loop1() {
       dumpLEDTimer = millis();
     }
   }
-  //     } else {
-  //      //core1passthrough = 0;
-  //      }
-
-  // //core1passthrough = 0;
-  // int passthroughCount = 0;
-  //    while (passthroughStatus == 1) {
-  //     passthroughStatus = secondSerialHandler();
-  //     // Serial.println("Serial2 passthrough");
-  //     // Serial.println(passthroughStatus);
-  //     // Serial.flush();
-  //     if (passthroughStatus == 0) {
-  //        passthroughCount++;
-  //       //break;
-  //       }
-
-  //     if (passthroughCount > 100) {
-  //       break;
-  //       }
-  // }
 
   if (blockProbingTimer > 0) {
     if (millis() - blockProbingTimer > blockProbing) {
@@ -2318,32 +2294,6 @@ void loop1() {
       // Serial.println("probing unblocked");
     }
   }
-
-  // if( millis() - probeRainbowTimer > 7)
-  // {
-  // hsvProbe++;
-  // showProbeLEDs = 7;
-  // probeRainbowTimer = millis();
-
-  // }
-
-  // if (millis() - tempTimer > 5000) {
-  //     tempTimer = millis();
-  //     Serial.print(" ");
-
-  //     float temp = 0;
-  //     for (int i = 0; i < 20; i++) {
-  //       temp += analogReadTemp();
-  //       delay(10);
-  //     }
-  //     temp = temp / 20;
-  //     float tempF = (temp * 1.8) + 32;
-  //     Serial.print(tempF);
-  //     Serial.print(" F  \t");
-  //     Serial.print(millis()/1000);
-
-  //     for (int i = 0; i < ((tempF - 100.0)*5); i++) {
-  // Serial.print(" ");
 }
 
 void core2stuff() // core 2 handles the LEDs and the CH446Q8
@@ -2362,6 +2312,14 @@ void core2stuff() // core 2 handles the LEDs and the CH446Q8
     //  probeLEDs.clear();
   }
 
+  // if (showLEDsCore2 != 0 || core1busy != false || core1request != 0 ||
+  // sendAllPathsCore2 != 0) { Serial.println("showLEDsCore2 = " +
+  // String(showLEDsCore2)); Serial.println("core1busy = " + String(core1busy));
+  // Serial.println("core1request = " + String(core1request));
+  // Serial.println("sendAllPathsCore2 = " + String(sendAllPathsCore2));
+  // Serial.println();
+
+  // }
   if (micros() - schedulerTimer > schedulerUpdateTime || showLEDsCore2 == 3 ||
       showLEDsCore2 == 4 ||
       showLEDsCore2 == 6 && core1busy == false && core1request == 0) {

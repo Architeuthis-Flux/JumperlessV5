@@ -3677,3 +3677,53 @@ void restoreScreenState(Stream *stream) {
   // Add delay for Windows terminals to process the command
   delay(50);
 }
+
+// Printf-like function for menu items with automatic color cycling
+int printMenuLine(const char* format, ...) {
+  if (!format) return 0;
+  
+  int printed = 0;
+  // Format the string
+  char buffer[256];
+  va_list args;
+  va_start(args, format);
+  int len = vsnprintf(buffer, sizeof(buffer), format, args);
+  va_end(args);
+  
+  if (len > 0 && len < sizeof(buffer)) {
+    // Print the formatted string
+    Serial.print(buffer);
+    printed = len;
+    // Cycle to next color
+   // cycleTerminalColor();
+  }
+  if (printed > 0) {
+    cycleTerminalColor();
+    printed = 1;
+  }
+  return printed;
+}
+
+// Printf-like function for menu items with automatic color cycling and conditional display
+int printMenuLine(int showExtraMenu, int minLevel, const char* format, ...) {
+  if (!format || showExtraMenu < minLevel) return 0;
+  
+  int printed = 0;
+  // Format the string
+  char buffer[256];
+  va_list args;
+  va_start(args, format);
+  int len = vsnprintf(buffer, sizeof(buffer), format, args);
+  va_end(args);
+  
+  if (len > 0 && len < sizeof(buffer)) {
+    // Print the formatted string
+    Serial.print(buffer);
+    printed = len;
+  }
+  if (printed > 0) {
+    cycleTerminalColor();
+    printed = 1;
+  }
+  return printed;
+}

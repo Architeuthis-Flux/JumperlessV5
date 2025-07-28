@@ -5,6 +5,8 @@
 #include "FilesystemStuff.h"
 #include "EkiloEditor.h"
 #include "FileParsing.h"
+#include "CH446Q.h"
+#include "Commands.h"
 
 extern "C" {
 #include "py/gc.h"
@@ -17,7 +19,7 @@ extern "C" {
 }
 
 // Global state for proper MicroPython integration
-static char mp_heap[128 * 1024]; // 128KB heap for MicroPython (reduced for RP2350B)
+static char mp_heap[64 * 1024]; // 64KB heap for MicroPython (reduced to free memory for editor)
 static bool mp_initialized = false;
 static bool mp_repl_active = false;
 static bool jumperless_globals_loaded = false;
@@ -373,6 +375,9 @@ void stopMicroPythonREPL(void) {
     changeTerminalColor(0, false, global_mp_stream);
     global_mp_stream->println("\n[MP] Exiting REPL...");
     
+    // Restore to entry state (discard Python changes by default)
+    jl_exit_micropython_restore_entry_state();
+    
     // Close any open files before exiting REPL
     closeAllOpenFiles();
     
@@ -409,6 +414,9 @@ void enterMicroPythonREPLWithFile(Stream *stream, const String& filepath) {
   // Always add jumperless functions to global namespace when entering REPL
   // This makes all functions available without the jumperless. prefix
   addJumperlessPythonFunctions();
+
+  // Initialize local copy of current nodefile for faster operations
+  jl_init_micropython_local_copy();
 
   // Automatically create MicroPython examples if needed
   initializeMicroPythonExamples();
@@ -1338,6 +1346,9 @@ void processMicroPythonInput(Stream *stream) {
 
               // Reset history navigation now that we're executing
               history.resetHistoryNavigation();
+
+              // Reset local nodefile copy for multiline scripts (start fresh each time)
+              jl_init_micropython_local_copy();
 
               // Execute the complete script
               mp_embed_exec_str(script_to_execute.c_str());

@@ -45,11 +45,18 @@ int jl_gpio_get_pull(int pin);
 int jl_nodes_connect(int node1, int node2, int save);
 int jl_nodes_disconnect(int node1, int node2);
 int jl_nodes_is_connected(int node1, int node2);
+int jl_nodes_save(int slot);
 int jl_nodes_print_bridges(void);
 int jl_nodes_print_paths(void);
 int jl_nodes_print_crossbars(void);
 int jl_nodes_print_nets(void);
 int jl_nodes_print_chip_status(void);
+void jl_init_micropython_local_copy(void);
+void jl_send_raw(int chip, int x, int y, int setOrClear);
+void jl_send_raw_str(const char* chip_str, int x, int y, int setOrClear);
+int jl_switch_slot(int slot);
+void jl_restore_micropython_entry_state(void);
+int jl_has_unsaved_changes(void);
 
 // Filesystem functions - bridge to existing FatFS 
 int jl_fs_exists(const char* path);
@@ -126,6 +133,11 @@ static mp_obj_t gpio_pull_make_new(const mp_obj_type_t *type, size_t n_args, siz
 static void connection_state_print(const mp_print_t *print, mp_obj_t self_in, mp_print_kind_t kind);
 static mp_obj_t connection_state_unary_op(mp_unary_op_t op, mp_obj_t self_in);
 static mp_obj_t connection_state_make_new(const mp_obj_type_t *type, size_t n_args, size_t n_kw, const mp_obj_t *args);
+
+// Helper function declarations
+static int get_direction_value(mp_obj_t obj);
+static int get_pull_value(mp_obj_t obj);
+static int get_gpio_state_value(mp_obj_t obj);
 static void node_print(const mp_print_t *print, mp_obj_t self_in, mp_print_kind_t kind);
 static mp_obj_t node_unary_op(mp_unary_op_t op, mp_obj_t self_in);
 static mp_obj_t node_make_new(const mp_obj_type_t *type, size_t n_args, size_t n_kw, const mp_obj_t *args);
@@ -1122,18 +1134,10 @@ static MP_DEFINE_CONST_FUN_OBJ_1(jl_ina_get_power_obj, jl_ina_get_power_func);
 // GPIO Functions
 static mp_obj_t jl_gpio_set_func(mp_obj_t pin_obj, mp_obj_t value_obj) {
     int pin = mp_obj_get_int(pin_obj);
-    int value;
+    int value = get_gpio_state_value(value_obj);
     
     if (pin < 1 || pin > 10) {
         mp_raise_ValueError(MP_ERROR_TEXT("GPIO pin must be 1-10"));
-    }
-    
-    // Handle both int and bool values
-    if (mp_obj_is_bool(value_obj)) {
-        value = mp_obj_is_true(value_obj) ? 1 : 0;
-    } else {
-        value = mp_obj_get_int(value_obj);
-        value = value ? 1 : 0; // Normalize to 0 or 1
     }
     
     jl_gpio_set(pin, value);
@@ -1143,16 +1147,12 @@ static MP_DEFINE_CONST_FUN_OBJ_2(jl_gpio_set_obj, jl_gpio_set_func);
 
 static mp_obj_t jl_gpio_set_dir_func(mp_obj_t pin_obj, mp_obj_t direction_obj) {
     int pin = mp_obj_get_int(pin_obj);
-    int direction = mp_obj_get_int(direction_obj);
+    int direction = get_direction_value(direction_obj);
     
     // if (pin < 1 || pin > 10) {
     //     mp_raise_ValueError(MP_ERROR_TEXT("GPIO pin must be 1-10"));
     // }
     
-   // if (direction != 0 && direction != 1) {
-        // mp_printf(&mp_plat_print, "direction: %d\n", direction);
-       // mp_raise_ValueError(MP_ERROR_TEXT("GPIO direction must be 0 or 1"));
-   // }
     jl_gpio_set_dir(pin, direction);
     return mp_const_none;
 }
@@ -1192,7 +1192,7 @@ static MP_DEFINE_CONST_FUN_OBJ_1(jl_gpio_get_dir_obj, jl_gpio_get_dir_func);
 
 static mp_obj_t jl_gpio_set_pull_func(mp_obj_t pin_obj, mp_obj_t pull_obj) {
     int pin = mp_obj_get_int(pin_obj);
-    int pull = mp_obj_get_int(pull_obj);
+    int pull = get_pull_value(pull_obj);
     
     jl_gpio_set_pull(pin, pull);
     return mp_const_none;
@@ -1328,7 +1328,7 @@ static MP_DEFINE_CONST_FUN_OBJ_1(jl_pwm_stop_obj, jl_pwm_stop_func);
 static mp_obj_t jl_nodes_connect_func(size_t n_args, const mp_obj_t *args) {
     int node1 = get_node_value(args[0]);
     int node2 = get_node_value(args[1]);
-    int save = (n_args > 2) ? mp_obj_is_true(args[2]) ? 1 : 0 : 1; // Default save=True
+    int save = (n_args > 2) ? mp_obj_is_true(args[2]) ? 1 : 0 : 0; // Default save=False (use local copy)
     
     jl_nodes_connect(node1, node2, save);
     return mp_const_none;
@@ -1361,7 +1361,60 @@ static mp_obj_t jl_nodes_is_connected_func(mp_obj_t node1_obj, mp_obj_t node2_ob
 }
 static MP_DEFINE_CONST_FUN_OBJ_2(jl_nodes_is_connected_obj, jl_nodes_is_connected_func);
 
+static mp_obj_t jl_nodes_save_func(size_t n_args, const mp_obj_t *args) {
+    int slot = (n_args > 0) ? mp_obj_get_int(args[0]) : -1; // Default to current slot if not specified
+    
+    int result = jl_nodes_save(slot);
+    return mp_obj_new_int(result);
+}
+static MP_DEFINE_CONST_FUN_OBJ_VAR_BETWEEN(jl_nodes_save_obj, 0, 1, jl_nodes_save_func);
 
+// Raw Hardware Functions
+static mp_obj_t jl_send_raw_func(size_t n_args, const mp_obj_t *args) {
+    int x = mp_obj_get_int(args[1]);
+    int y = mp_obj_get_int(args[2]);
+    int setOrClear = (n_args > 3) ? mp_obj_get_int(args[3]) : 1; // Default to set (1)
+    
+    // Handle chip parameter (can be int, string, or char)
+    if (mp_obj_is_int(args[0])) {
+        // Integer chip number (0-11)
+        int chip = mp_obj_get_int(args[0]);
+        jl_send_raw(chip, x, y, setOrClear);
+    } else if (mp_obj_is_str(args[0])) {
+        // String chip identifier ("A"-"L" or "0"-"11")
+        const char* chip_str = mp_obj_str_get_str(args[0]);
+        jl_send_raw_str(chip_str, x, y, setOrClear);
+    } else {
+        mp_raise_ValueError(MP_ERROR_TEXT("Chip must be integer (0-11) or string ('A'-'L')"));
+    }
+    
+    return mp_const_none;
+}
+static MP_DEFINE_CONST_FUN_OBJ_VAR_BETWEEN(jl_send_raw_obj, 3, 4, jl_send_raw_func);
+
+static mp_obj_t jl_switch_slot_func(mp_obj_t slot_obj) {
+    int slot = mp_obj_get_int(slot_obj);
+    int result = jl_switch_slot(slot);
+    
+    if (result == -1) {
+        mp_raise_ValueError(MP_ERROR_TEXT("Invalid slot number"));
+    }
+    
+    return mp_obj_new_int(result);
+}
+static MP_DEFINE_CONST_FUN_OBJ_1(jl_switch_slot_obj, jl_switch_slot_func);
+
+static mp_obj_t jl_nodes_discard_func(void) {
+    jl_restore_micropython_entry_state();
+    return mp_const_none;
+}
+static MP_DEFINE_CONST_FUN_OBJ_0(jl_nodes_discard_obj, jl_nodes_discard_func);
+
+static mp_obj_t jl_nodes_has_changes_func(void) {
+    int has_changes = jl_has_unsaved_changes();
+    return mp_obj_new_bool(has_changes);
+}
+static MP_DEFINE_CONST_FUN_OBJ_0(jl_nodes_has_changes_obj, jl_nodes_has_changes_func);
 
 // OLED Functions
 static mp_obj_t jl_oled_print_func(size_t n_args, const mp_obj_t *args) {
@@ -1889,6 +1942,94 @@ static const node_obj_t node_buffer_out_obj = { .base = { &node_type }, .value =
 static const gpio_state_obj_t gpio_state_high_obj = { .base = { &gpio_state_type }, .value = GPIO_STATE_HIGH };
 static const gpio_state_obj_t gpio_state_low_obj = { .base = { &gpio_state_type }, .value = GPIO_STATE_LOW };
 static const gpio_state_obj_t gpio_state_floating_obj = { .base = { &gpio_state_type }, .value = GPIO_STATE_FLOATING };
+
+// GPIO Direction constants (INPUT=0, OUTPUT=1)
+static const gpio_direction_obj_t gpio_direction_input_obj = { .base = { &gpio_direction_type }, .value = false };
+static const gpio_direction_obj_t gpio_direction_output_obj = { .base = { &gpio_direction_type }, .value = true };
+
+// Helper function to get direction value from various input types
+static int get_direction_value(mp_obj_t obj) {
+    if (mp_obj_is_int(obj)) {
+        // Integer: 0=INPUT, 1=OUTPUT
+        return mp_obj_get_int(obj) ? 1 : 0;
+    } else if (mp_obj_is_bool(obj)) {
+        // Boolean: False=INPUT, True=OUTPUT
+        return mp_obj_is_true(obj) ? 1 : 0;
+    } else if (mp_obj_is_str(obj)) {
+        // String: "INPUT"/"OUTPUT" (case insensitive)
+        const char* str = mp_obj_str_get_str(obj);
+        if (strcmp(str, "OUTPUT") == 0 || strcmp(str, "output") == 0 || strcmp(str, "OUT") == 0 || strcmp(str, "out") == 0) {
+            return 1;
+        } else if (strcmp(str, "INPUT") == 0 || strcmp(str, "input") == 0 || strcmp(str, "IN") == 0 || strcmp(str, "in") == 0) {
+            return 0;
+        } else {
+            mp_raise_ValueError(MP_ERROR_TEXT("Direction string must be 'INPUT' or 'OUTPUT'"));
+        }
+    } else if (mp_obj_get_type(obj) == &gpio_direction_type) {
+        // GPIO Direction object
+        gpio_direction_obj_t *dir = MP_OBJ_TO_PTR(obj);
+        return dir->value ? 1 : 0;
+    } else {
+        // Try to convert to int as fallback
+        return mp_obj_get_int(obj) ? 1 : 0;
+    }
+}
+
+// Helper function to get pull value from various input types
+static int get_pull_value(mp_obj_t obj) {
+    if (mp_obj_is_int(obj)) {
+        // Integer: 0=NONE, 1=PULLUP, 2=PULLDOWN
+        return mp_obj_get_int(obj);
+    } else if (mp_obj_is_bool(obj)) {
+        // Boolean: False=NONE, True=PULLUP
+        return mp_obj_is_true(obj) ? 1 : 0;
+    } else if (mp_obj_is_str(obj)) {
+        // String: "NONE"/"PULLUP"/"PULLDOWN" (case insensitive)
+        const char* str = mp_obj_str_get_str(obj);
+        if (strcmp(str, "PULLUP") == 0 || strcmp(str, "pullup") == 0 || strcmp(str, "UP") == 0 || strcmp(str, "up") == 0) {
+            return 1;
+        } else if (strcmp(str, "PULLDOWN") == 0 || strcmp(str, "pulldown") == 0 || strcmp(str, "DOWN") == 0 || strcmp(str, "down") == 0) {
+            return 2;
+        } else if (strcmp(str, "NONE") == 0 || strcmp(str, "none") == 0 || strcmp(str, "OFF") == 0 || strcmp(str, "off") == 0) {
+            return 0;
+        } else {
+            mp_raise_ValueError(MP_ERROR_TEXT("Pull string must be 'NONE', 'PULLUP', or 'PULLDOWN'"));
+        }
+    } else {
+        // Try to convert to int as fallback
+        return mp_obj_get_int(obj);
+    }
+}
+
+// Helper function to get GPIO state value from various input types
+static int get_gpio_state_value(mp_obj_t obj) {
+    if (mp_obj_is_int(obj)) {
+        // Integer: 0=LOW, 1=HIGH, 2=FLOATING
+        return mp_obj_get_int(obj);
+    } else if (mp_obj_is_bool(obj)) {
+        // Boolean: False=LOW, True=HIGH
+        return mp_obj_is_true(obj) ? 1 : 0;
+    } else if (mp_obj_is_str(obj)) {
+        // String: "HIGH"/"LOW"/"FLOATING" (case insensitive)
+        const char* str = mp_obj_str_get_str(obj);
+        if (strcmp(str, "HIGH") == 0 || strcmp(str, "high") == 0 || strcmp(str, "1") == 0) {
+            return 1;
+        } else if (strcmp(str, "LOW") == 0 || strcmp(str, "low") == 0 || strcmp(str, "0") == 0) {
+            return 0;
+        } else if (strcmp(str, "FLOATING") == 0 || strcmp(str, "floating") == 0 || strcmp(str, "Z") == 0 || strcmp(str, "z") == 0) {
+            return 2;
+        } else {
+            mp_raise_ValueError(MP_ERROR_TEXT("GPIO state string must be 'HIGH', 'LOW', or 'FLOATING'"));
+        }
+    } else if (mp_obj_get_type(obj) == &gpio_state_type) {
+        // GPIO State object
+        gpio_state_obj_t *state = MP_OBJ_TO_PTR(obj);
+        return state->value;
+    } else {
+        // Try to convert to int as fallback
+        return mp_obj_get_int(obj) ? 1 : 0;
+    }
+}
 
 
 // Nodes Help Function
@@ -2641,9 +2782,20 @@ const mp_obj_module_t jfs_user_cmodule = {
     .globals = (mp_obj_dict_t*)&jfs_module_globals,
 };
 
+// Function to get current slot for MicroPython
+extern int netSlot; // Reference to global netSlot variable
+
+static mp_obj_t jl_get_current_slot(void) {
+    return mp_obj_new_int(netSlot);
+}
+static MP_DEFINE_CONST_FUN_OBJ_0(jl_get_current_slot_obj, jl_get_current_slot);
+
 // Module globals table
 static const mp_rom_map_elem_t jumperless_module_globals_table[] = {
     { MP_ROM_QSTR(MP_QSTR___name__), MP_ROM_QSTR(MP_QSTR_jumperless) },
+    
+    // Global variables
+    { MP_ROM_QSTR(MP_QSTR_CURRENT_SLOT), MP_ROM_PTR(&jl_get_current_slot_obj) },
     
     // Node creation function
     { MP_ROM_QSTR(MP_QSTR_node), MP_ROM_PTR(&jl_node_obj) },
@@ -2652,6 +2804,10 @@ static const mp_rom_map_elem_t jumperless_module_globals_table[] = {
     { MP_ROM_QSTR(MP_QSTR_HIGH), MP_ROM_PTR(&gpio_state_high_obj) },
     { MP_ROM_QSTR(MP_QSTR_LOW), MP_ROM_PTR(&gpio_state_low_obj) },
     { MP_ROM_QSTR(MP_QSTR_FLOATING), MP_ROM_PTR(&gpio_state_floating_obj) },
+    
+    // GPIO Direction constants
+    { MP_ROM_QSTR(MP_QSTR_INPUT), MP_ROM_PTR(&gpio_direction_input_obj) },
+    { MP_ROM_QSTR(MP_QSTR_OUTPUT), MP_ROM_PTR(&gpio_direction_output_obj) },
     
     // Common node constants
     { MP_ROM_QSTR(MP_QSTR_TOP_RAIL), MP_ROM_PTR(&node_top_rail_obj) },
@@ -2910,7 +3066,15 @@ static const mp_rom_map_elem_t jumperless_module_globals_table[] = {
     { MP_ROM_QSTR(MP_QSTR_disconnect), MP_ROM_PTR(&jl_nodes_disconnect_obj) },
     { MP_ROM_QSTR(MP_QSTR_nodes_clear), MP_ROM_PTR(&jl_nodes_clear_obj) },
     { MP_ROM_QSTR(MP_QSTR_is_connected), MP_ROM_PTR(&jl_nodes_is_connected_obj) },
-
+    { MP_ROM_QSTR(MP_QSTR_nodes_save), MP_ROM_PTR(&jl_nodes_save_obj) },
+    
+    // Raw hardware functions
+    { MP_ROM_QSTR(MP_QSTR_send_raw), MP_ROM_PTR(&jl_send_raw_obj) },
+    { MP_ROM_QSTR(MP_QSTR_switch_slot), MP_ROM_PTR(&jl_switch_slot_obj) },
+    
+    // Session management functions
+    { MP_ROM_QSTR(MP_QSTR_nodes_discard), MP_ROM_PTR(&jl_nodes_discard_obj) },
+    { MP_ROM_QSTR(MP_QSTR_nodes_has_changes), MP_ROM_PTR(&jl_nodes_has_changes_obj) },
 
     
     // OLED functions

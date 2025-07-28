@@ -226,7 +226,7 @@ struct Buffer {
 
 // Safe memory allocation with size limits
 #define MAX_EDITOR_MEMORY (32 * 1024)  // 32KB limit for editor content
-#define MIN_FREE_HEAP (10 * 1024)      // Keep 10KB free
+#define MIN_FREE_HEAP (5 * 1024)      // Reduce to 5KB free (was 10KB)
 
 bool check_memory_available(size_t needed) {
     size_t freeHeap = rp2040.getFreeHeap();
@@ -797,6 +797,11 @@ void ekilo_set_status_message(const char* fmt, ...) {
     va_end(ap);
     E.statusmsg_time = millis();
     
+    // Make error messages persist much longer (30 seconds vs 5 seconds)
+    if (strstr(E.statusmsg, "ERROR:") || strstr(E.statusmsg, "WARNING:")) {
+        E.statusmsg_time = millis() - 25000; // Show for 30 seconds instead of 5
+    }
+    
     // Mark screen as dirty for refresh
     E.screen_dirty = true;
 }
@@ -885,8 +890,9 @@ int ekilo_open(const char* filename) {
     
     // Check available memory
     if (!check_memory_available(file_size + 1024)) { // Extra 1KB for overhead
-        ekilo_set_status_message("ERROR: Not enough memory to load file (%d KB needed)", 
-                                (file_size + 1024) / 1024);
+        size_t freeHeap = rp2040.getFreeHeap();
+        ekilo_set_status_message("ERROR: Not enough memory (%dKB free, need %dKB+%dKB reserve)", 
+                                freeHeap / 1024, (file_size + 1024) / 1024, MIN_FREE_HEAP / 1024);
         return -1;
     }
     
@@ -934,12 +940,23 @@ int ekilo_open(const char* filename) {
         total_loaded += line.length() + 1; // +1 for newline
         line_count++;
         
-        // Check memory every 10 lines
+        // Check memory every 10 lines and show progress for large files
         if (line_count % 10 == 0) {
             if (!check_memory_available(1024)) { // Keep 1KB free
                 file.close();
-                ekilo_set_status_message("ERROR: Out of memory while loading (line %d)", line_count);
+                size_t freeHeap = rp2040.getFreeHeap();
+                ekilo_set_status_message("ERROR: Out of memory at line %d (%dKB free)", line_count, freeHeap / 1024);
                 return -1;
+            }
+            
+            // Show loading progress for files with many lines
+            if (line_count > 100 && line_count % 50 == 0) {
+                ekilo_set_status_message("Loading... %d lines (%d bytes)", line_count, total_loaded);
+                // Force a quick screen update to show progress
+                if (E.screen_dirty) {
+                    ekilo_refresh_screen();
+                    E.screen_dirty = false;
+                }
             }
         }
         
@@ -1210,7 +1227,9 @@ void ekilo_refresh_screen() {
     // Message bar (first line - status or temp messages)
     int msglen = strlen(E.statusmsg);
     if (msglen > E.screencols) msglen = E.screencols;
-    if (msglen && millis() - E.statusmsg_time < 5000) {
+    // Show error/warning messages for 30 seconds, normal messages for 5 seconds
+    uint32_t timeout = (strstr(E.statusmsg, "ERROR:") || strstr(E.statusmsg, "WARNING:")) ? 30000 : 5000;
+    if (msglen && millis() - E.statusmsg_time < timeout) {
         buffer_append(&ab, E.statusmsg, msglen);
     }
     // Pad message bar to full width
@@ -1227,7 +1246,7 @@ void ekilo_refresh_screen() {
     snprintf(help_line1, sizeof(help_line1), 
              "Ctrl-S = Save │ Ctrl-Q = Quit │ ↑/↓ = Navigate | CTRL-P = Save and load in MicroPython");
     snprintf(help_line2, sizeof(help_line2),
-             "Tab = Indent │ Backspace = Delete │ Wheel=Move/Type");
+             "Tab = Indent │ Backspace = Delete │ Wheel=Move/Type │ Ctrl-U = Memory Status");
     
     int help1_len = strlen(help_line1);
     if (help1_len > E.screencols) help1_len = E.screencols;
@@ -1312,8 +1331,21 @@ void ekilo_process_keypress() {
             break;
             
         case CTRL_U:
-            // Show memory status
-            ekilo_show_memory_status();
+            // Show detailed memory status including logic analyzer and MicroPython usage
+            {
+                size_t freeHeap = rp2040.getFreeHeap();
+                size_t usedByEditor = 0;
+                
+                // Calculate memory used by editor content
+                for (int i = 0; i < E.numrows; i++) {
+                    if (E.row[i].chars) usedByEditor += E.row[i].size;
+                    if (E.row[i].render) usedByEditor += E.row[i].rsize;
+                    if (E.row[i].hl) usedByEditor += E.row[i].rsize;
+                }
+                
+                ekilo_set_status_message("Memory: %dKB free, Editor:%dKB, MP:64KB, LA:~24KB, Need:%dKB reserve", 
+                                       freeHeap / 1024, usedByEditor / 1024, MIN_FREE_HEAP / 1024);
+            }
             E.screen_dirty = true;
             break;
             

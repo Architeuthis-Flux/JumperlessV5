@@ -126,24 +126,21 @@ uint8_t const desc_hid_report[] =
 #define EPNUM_CDC_2_IN      0x86
 #endif
 
-#if USB_CDC_ENABLE_COUNT >= 4
-#define EPNUM_CDC_3_NOTIF   0x87
-#define EPNUM_CDC_3_OUT     0x08
-#define EPNUM_CDC_3_IN      0x88
-#endif
-
 // Other interface endpoints (start after CDC endpoints)
-#define EPNUM_NEXT_OUT      (0x02 + (USB_CDC_ENABLE_COUNT * 2))
-#define EPNUM_NEXT_IN       (0x82 + (USB_CDC_ENABLE_COUNT * 2))
+// Each CDC uses 3 endpoints: 1 notification IN + 1 data OUT + 1 data IN
+// But they share the data endpoints (same number for IN/OUT)
+// So we need: CDC_COUNT notification endpoints + CDC_COUNT data endpoint pairs
+#define EPNUM_NEXT_OUT      (0x02 + (USB_CDC_ENABLE_COUNT * 2))   // Skip notification endpoints, count data pairs
+#define EPNUM_NEXT_IN       (0x82 + (USB_CDC_ENABLE_COUNT * 2))   // Skip notification endpoints, count data pairs
 
 #if USB_MSC_ENABLE
-#define EPNUM_MSC_OUT       EPNUM_NEXT_OUT
-#define EPNUM_MSC_IN        (EPNUM_NEXT_IN)
+#define EPNUM_MSC_OUT       0x07    // EP7 OUT (manually assigned)
+#define EPNUM_MSC_IN        0x87    // EP7 IN (manually assigned)
 #define EPNUM_AFTER_MSC_OUT (EPNUM_MSC_OUT + 1)
 #define EPNUM_AFTER_MSC_IN  (EPNUM_MSC_IN + 1)
 #else
-#define EPNUM_AFTER_MSC_OUT EPNUM_NEXT_OUT
-#define EPNUM_AFTER_MSC_IN  EPNUM_NEXT_IN
+#define EPNUM_AFTER_MSC_OUT 0x07    // Next available if no MSC
+#define EPNUM_AFTER_MSC_IN  0x87    // Next available if no MSC
 #endif
 
 #if USB_HID_ENABLE_COUNT >= 1
@@ -184,10 +181,6 @@ uint8_t const desc_fs_configuration[] =
 
 #if USB_CDC_ENABLE_COUNT >= 3
   TUD_CDC_DESCRIPTOR(ITF_NUM_CDC_2, 6, EPNUM_CDC_2_NOTIF, 8, EPNUM_CDC_2_OUT, EPNUM_CDC_2_IN, 64),
-#endif
-
-#if USB_CDC_ENABLE_COUNT >= 4
-  TUD_CDC_DESCRIPTOR(ITF_NUM_CDC_3, 7, EPNUM_CDC_3_NOTIF, 8, EPNUM_CDC_3_OUT, EPNUM_CDC_3_IN, 64),
 #endif
 
   // MSC interface - place after CDC interfaces for better compatibility
@@ -262,7 +255,6 @@ enum {
   STRID_CDC_0,
   STRID_CDC_1,
   STRID_CDC_2,
-  STRID_CDC_3,
   STRID_MSC,
   STRID_HID,
   STRID_MIDI,
@@ -276,6 +268,7 @@ static const char* string_desc_arr [] =
   "Architeuthis Flux",           // 1: Manufacturer
   "Jumperless V5",               // 2: Product  
   "JLV5port",                     // 3: Serials, should use chip ID
+  //"JLLA",            // 4: Logic Analyzer
   
   // CDC interface names (only include if enabled)
 #if USB_CDC_ENABLE_COUNT >= 1
@@ -287,22 +280,19 @@ static const char* string_desc_arr [] =
 #if USB_CDC_ENABLE_COUNT >= 3
   USB_CDC_NAMES[2],              // 6: CDC Interface 2
 #endif
-#if USB_CDC_ENABLE_COUNT >= 4
-  USB_CDC_NAMES[3],              // 7: CDC Interface 3
-#endif
 
   // Other interface names
 #if USB_MSC_ENABLE
-  USB_MSC_NAME,                  // 8: MSC Interface
+  USB_MSC_NAME,                  // 7: MSC Interface
 #endif
 #if USB_HID_ENABLE_COUNT > 0
-  USB_HID_NAME,                  // 9: HID Interface
+  USB_HID_NAME,                  // 8: HID Interface
 #endif
 #if USB_MIDI_ENABLE
-  USB_MIDI_NAME,                 // 10: MIDI Interface
+  USB_MIDI_NAME,                 // 9: MIDI Interface
 #endif
 #if USB_VENDOR_ENABLE
-  USB_VENDOR_NAME,               // 11: Vendor Interface
+  USB_VENDOR_NAME,               // 10: Vendor Interface
 #endif
 };
 

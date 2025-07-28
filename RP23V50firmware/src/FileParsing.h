@@ -38,7 +38,16 @@ void closeAllFiles(void);
 void usbFSbegin(void);
 int openFileThreadSafe(int openTypeEnum, int slot = 0, int flashOrLocal = 0);
 void createLocalNodeFile(int slot = 0);
-void saveLocalNodeFile(int slot = 0);   
+void saveLocalNodeFile(int slot = 0);
+
+// General-purpose nodeFileString backup/restore functions
+void storeNodeFileBackup(void);
+void restoreNodeFileBackup(void);
+void restoreAndSaveNodeFileBackup(void);
+void clearNodeFileBackup(void);
+bool hasNodeFileBackup(void);
+bool hasNodeFileChanges(void);
+const char* getNodeFileBackup(void);   
 void writeMenuTree(void);
 void createSlots(int slot = -1,  int overwrite = 0);
 void inputNodeFileList(int addRotaryConnections = 0);

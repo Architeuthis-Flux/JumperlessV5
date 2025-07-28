@@ -7,16 +7,21 @@
 
 #include "ArduinoStuff.h"
 #include "Commands.h"
+#include "CH446Q.h"
+#include "FileParsing.h"
 
 #include "Graphics.h"
 #include "NetsToChipConnections.h"
 #include "Oled.h"
 #include "RotaryEncoder.h"
 #include "Peripherals.h"
-#include "FileParsing.h"
 
 #include "JumperlessDefines.h"
 #include "hardware/gpio.h"
+#include "SafeString.h"
+
+// External declarations
+extern SafeString nodeFileString;
 
 #include "CH446Q.h"
 #include "NetManager.h"
@@ -239,12 +244,111 @@ int jl_nodes_is_connected(int node1, int node2) {
     //return checkIfBridgeExists(node1, node2, netSlot, 0 );
 }
 
+int jl_nodes_save(int slot) {
+    int target_slot = (slot == -1) ? netSlot : slot;  // Use current slot if -1
+    
+    // Save the local nodeFileString to the specified slot
+    saveLocalNodeFile(target_slot);
+    
+    // Refresh connections to make sure everything is in sync
+    refreshConnections();
+    
+    return target_slot;  // Return the slot that was saved to
+}
+
+void jl_init_micropython_local_copy(void) {
+    // Use the generalized backup system to store entry state
+    storeNodeFileBackup();
+}
+
+void jl_exit_micropython_restore_entry_state(void) {
+    // By default, restore to entry state (discard Python changes)
+    // This makes Python connections temporary unless explicitly saved
+    restoreAndSaveNodeFileBackup();
+    
+    // Refresh connections to match the restored state
+    refreshLocalConnections();
+}
+
+void jl_restore_micropython_entry_state(void) {
+    // Use the generalized backup system to restore entry state
+    restoreAndSaveNodeFileBackup();
+    
+    // Refresh connections to match the restored state
+    refreshLocalConnections();
+}
+
+int jl_has_unsaved_changes(void) {
+    // Use the generalized backup system to check for changes
+    return hasNodeFileChanges() ? 1 : 0;
+}
+
+// Helper function to convert chip identifier to chip number
+int parseChipIdentifier(const char* chip_str) {
+    if (strlen(chip_str) == 1) {
+        char c = chip_str[0];
+        if (c >= 'A' && c <= 'L') {
+            return c - 'A';  // A=0, B=1, ..., L=11
+        } else if (c >= 'a' && c <= 'l') {
+            return c - 'a';  // a=0, b=1, ..., l=11
+        }
+    }
+    // If not a letter, try to parse as number
+    int chip_num = atoi(chip_str);
+    if (chip_num >= 0 && chip_num <= 11) {
+        return chip_num;
+    }
+    return -1; // Invalid chip identifier
+}
+
+void jl_send_raw(int chip, int x, int y, int setOrClear) {
+    // Validate chip number (0-11)
+    if (chip < 0 || chip > 11) {
+        return; // Invalid chip number
+    }
+    
+    // Validate x,y coordinates (assuming 0-15 range based on typical crossbar chips)
+    if (x < 0 || x > 15 || y < 0 || y > 15) {
+        return; // Invalid coordinates
+    }
+    
+    // Call the existing sendXYraw function with setOrClear=1 (set path)
+    sendXYraw(chip, x, y, setOrClear);
+}
+
+void jl_send_raw_str(const char* chip_str, int x, int y, int setOrClear) {
+    int chip = parseChipIdentifier(chip_str);
+    if (chip >= 0) {
+        jl_send_raw(chip, x, y, setOrClear);
+    }
+}
+
+int jl_switch_slot(int slot) {
+    // Validate slot number
+    if (slot < 0 || slot >= NUM_SLOTS) {
+        return -1; // Invalid slot number
+    }
+    
+    // Save current slot if different
+    if (netSlot != slot) {
+        int old_slot = netSlot;
+        netSlot = slot;
+        
+        // Refresh connections for the new slot
+        refreshConnections(-1);
+        
+        return old_slot; // Return the previous slot number
+    }
+    
+    return slot; // Already in this slot
+}
+
 
 
 // OLED Functions
 int jl_oled_print(const char* text, int size) {
     mp_hal_check_interrupt();
-    if (jumperlessConfig.top_oled.enabled == 1) {
+    if (jumperlessConfig.top_oled.enabled == 1 && oled.isConnected()) {
         oled.clearPrintShow(text, size, true, true, true, -1, -1, 1500);
         return 1;
     } else {
@@ -253,7 +357,7 @@ int jl_oled_print(const char* text, int size) {
 }
 
 int jl_oled_clear(void) {
-    if (jumperlessConfig.top_oled.enabled == 1) {
+    if (jumperlessConfig.top_oled.enabled == 1 && oled.isConnected()) {
         oled.clear(1000);
         return 1;
     } else {
@@ -262,7 +366,7 @@ int jl_oled_clear(void) {
 }
 
 int jl_oled_show(void) {
-    if (jumperlessConfig.top_oled.enabled == 1) {
+    if (jumperlessConfig.top_oled.enabled == 1 && oled.isConnected()) {
         oled.show(1000);
         return 1;
     } else {

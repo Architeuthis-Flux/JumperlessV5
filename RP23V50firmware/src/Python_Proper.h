@@ -8,6 +8,12 @@ extern Stream *global_mp_stream;
 // Forward declaration from existing Python.cpp
 extern int parseAndExecutePythonCommand(char* command, char* response);
 
+// Forward declarations from JumperlessMicroPythonAPI.cpp
+extern "C" void jl_init_micropython_local_copy(void);
+extern "C" void jl_exit_micropython_restore_entry_state(void);
+extern "C" void jl_restore_micropython_entry_state(void);
+extern "C" int jl_has_unsaved_changes(void);
+
 // Command history and filesystem support
 class ScriptHistory {
 private:

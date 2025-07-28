@@ -16,6 +16,8 @@
 #include "Menus.h"
 #include "Commands.h"
 
+#include "LogicAnalyzer.h"
+
 volatile int slotChanged = 0;
 PIO pioEnc = pio1;
 
@@ -152,7 +154,9 @@ volatile encoderDirectionStates lastDirectionState = NONE;
 void rotaryEncoderStuff(void) {
 
 
-
+if (logicAnalyzing == 1) {
+  return;
+}
 
   if (encoderOverride > 0) {
     encoderOverride--;

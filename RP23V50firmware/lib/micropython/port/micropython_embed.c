@@ -14,9 +14,14 @@
 #include "py/cstack.h"  // Use newer cstack API instead of deprecated stackctrl
 #include "py/nlr.h"
 #include "py/builtin.h"
+#include "JumperlessDefines.h"
 
 // Static allocation for heap - adjust size as needed
+#if OG_JUMPERLESS == 1
+#define MICROPY_HEAP_SIZE (0 * 1024)
+#else
 #define MICROPY_HEAP_SIZE (32 * 1024)
+#endif
 static char heap[MICROPY_HEAP_SIZE];
 
 // Note: HAL functions (arduino_serial_write, arduino_serial_read) are implemented
@@ -26,7 +31,11 @@ static char heap[MICROPY_HEAP_SIZE];
 int mp_embed_init(void *heap, size_t heap_size, void *stack_top) {
     // Use the newer cstack API with proper stack limit initialization
     // Define a reasonable stack size for embedded systems (8KB)
-    const size_t stack_size = 16 * 1024;  // 16KB stack size
+    #if OG_JUMPERLESS == 1
+    const size_t stack_size = 0 * 1024;  // 16KB stack size
+    #else
+    const size_t stack_size = 16 * 1024;  // 8KB stack size
+    #endif
     mp_cstack_init_with_top(stack_top, stack_size);
     
     gc_init(heap, (char*)heap + heap_size);

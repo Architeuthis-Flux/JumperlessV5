@@ -73,8 +73,8 @@ private:
     static const int OLED_SCROLL_MARGIN = 3; // Start scrolling when within 3 chars of edge
     
     // REPL mode and positioning
-    bool replMode;
-    bool shouldExitForREPL;  // Flag to exit file manager when content is ready for REPL
+    bool replMode = false;
+    bool shouldExitForREPL = false;  // Flag to exit file manager when content is ready for REPL
     int originalCursorRow;
     int originalCursorCol;
     int startRow;
@@ -87,6 +87,18 @@ private:
     int outputAreaStartRow;
     int outputAreaHeight;
     int outputAreaCurrentRow;
+    
+    // Persistent filesystem messages that survive interface refreshes
+    struct PersistentMessage {
+        String message;
+        int color;
+        unsigned long timestamp;
+    };
+    static const int MAX_PERSISTENT_MESSAGES = 5;
+    PersistentMessage persistentMessages[MAX_PERSISTENT_MESSAGES];
+    int persistentMessageCount;
+    int persistentMessageStartRow;
+    int persistentMessageHeight;
     
     // Input blocking to prevent accidental double-presses
     unsigned long lastDisplayUpdate;
@@ -159,7 +171,7 @@ public:
     
     // File content tracking
     String getLastSavedFileContent();
-    void setREPLMode(bool isREPLMode) { replMode = isREPLMode; }
+    void setREPLMode(bool isREPLMode = false) { replMode = isREPLMode; }
     
     // Getters
     String getCurrentPath() const { return currentPath; }
@@ -175,6 +187,12 @@ public:
     void outputToArea(const String& text, int color = 248);
     void showOutputAreaBorder();
     String promptInOutputArea(const String& prompt);
+    
+    // Persistent filesystem message management
+    void addPersistentMessage(const String& message, int color = 248);
+    void clearPersistentMessages();
+    void displayPersistentMessages();
+    void initializePersistentMessageArea();
     
     // Input management
     void blockInputBriefly();

@@ -53,3 +53,15 @@ JumperlessWokwiBridge/JumperlessWindows/
 
 
 
+RP23V50firmware/examples/logic-analyzer-main/*
+RP23V50firmware/examples/BusPirate5-firmware-main/*
+
+# PulseView Build Artifacts (should be in libsigrok-falaj repo instead)
+build_pulseview_*.sh
+PULSEVIEW_*_README.md
+PulseView-*.app/
+pulseview_*_build/
+*.dmg
+RP23V50firmware/examples/libsigrok-master/*
+RP23V50firmware/examples/libsigrok-falaj/*
+RP23V50firmware/examples/pulseview-master/*

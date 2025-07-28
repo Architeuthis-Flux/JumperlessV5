@@ -212,7 +212,7 @@ if (setOrClear == 1 && firstConnection == -1) {
 
 
   clearColorOverrides(1, 1, 0);
-  routableBufferPower(1, 0);
+  routableBufferPower(1, 1);
 
   probeHighlight = -1;
 
@@ -955,7 +955,7 @@ if (setOrClear == 1 && firstConnection == -1) {
   // showLEDsCore2 = -1;
   //refreshLocalConnections(-1);
   // delay(10);
-  if (firstConnection != -3 && numberOfLocalChanges > 0) {
+  if (firstConnection != -3 && numberOfLocalChanges >= 0) {
     saveLocalNodeFile();
     }
   // delay(10);

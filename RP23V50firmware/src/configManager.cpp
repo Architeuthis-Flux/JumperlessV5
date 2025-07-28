@@ -352,7 +352,7 @@ void updateConfigFromFile(const char* filename) {
                 //Serial.println(strcmp(configFirmwareVersion, firmwareVersion));
                 foundConfigVersion = true;
             }
-            
+            //! this is a place to add new config options
         } else if (strcmp(section, "hardware") == 0) {
             if (strcmp(key, "generation") == 0) jumperlessConfig.hardware.generation = parseInt(value);
             else if (strcmp(key, "revision") == 0) jumperlessConfig.hardware.revision = parseInt(value);
@@ -373,6 +373,7 @@ void updateConfigFromFile(const char* filename) {
             else if (strcmp(key, "nets_to_chips") == 0) jumperlessConfig.debug.nets_to_chips = parseBool(value);
             else if (strcmp(key, "nets_to_chips_alt") == 0) jumperlessConfig.debug.nets_to_chips_alt = parseBool(value);
             else if (strcmp(key, "leds") == 0) jumperlessConfig.debug.leds = parseBool(value);
+            else if (strcmp(key, "logic_analyzer") == 0) jumperlessConfig.debug.logic_analyzer = parseBool(value);
         } else if (strcmp(section, "routing") == 0) {
             if (strcmp(key, "stack_paths") == 0) {
                 jumperlessConfig.routing.stack_paths = parseInt(value);
@@ -598,7 +599,7 @@ void saveConfigToFile(const char* filename) {
         Serial.println("Failed to create config file");
         return;
     }
-
+ //! this is a place to add new config options
     // Write config metadata section
     file.println("[config]");
     file.print("firmware_version = "); file.print(firmwareVersion); file.println(";");
@@ -631,6 +632,7 @@ void saveConfigToFile(const char* filename) {
     file.print("nets_to_chips = "); file.print(jumperlessConfig.debug.nets_to_chips ? 1:0); file.println(";");
     file.print("nets_to_chips_alt = "); file.print(jumperlessConfig.debug.nets_to_chips_alt ? 1:0); file.println(";");
     file.print("leds = "); file.print(jumperlessConfig.debug.leds ? 1:0); file.println(";");
+    file.print("logic_analyzer = "); file.print(jumperlessConfig.debug.logic_analyzer ? 1:0); file.println(";");
     file.println();
 
     // Write routing settings section
@@ -804,7 +806,7 @@ void printConfigSectionToSerial(int section, bool showNames, bool pasteable) {
     else {
         showNames = 0;
     }
-
+ //! this is a place to add new config options
     if (pasteable == true) {
         Serial.println("\n\rcopy / edit / paste any of these lines \n\rinto the main menu to change a setting\n\r");
     }
@@ -866,6 +868,8 @@ void printConfigSectionToSerial(int section, bool showNames, bool pasteable) {
         Serial.print("nets_to_chips_alt = "); Serial.print(getStringFromTable(jumperlessConfig.debug.nets_to_chips_alt, boolTable)); Serial.println(";");
         if (pasteable == true) Serial.print("`[debug] ");
         Serial.print("leds = "); Serial.print(getStringFromTable(jumperlessConfig.debug.leds, boolTable)); Serial.println(";");
+        if (pasteable == true) Serial.print("`[debug] ");
+        Serial.print("logic_analyzer = "); Serial.print(getStringFromTable(jumperlessConfig.debug.logic_analyzer, boolTable)); Serial.println(";");
     }
     cycleTerminalColor();
     // Print routing settings section
@@ -1218,6 +1222,9 @@ void printSettingChange(const char* section, const char* key, const char* oldVal
     } else if (strcmp(section, "display") == 0 && strcmp(key, "dump_format") == 0) {
         oldName = getStringFromTable(atoi(oldValue), dumpFormatTable);
         newName = getStringFromTable(atoi(newValue), dumpFormatTable);
+    } else if (strcmp(section, "debug") == 0 && strcmp(key, "logic_analyzer") == 0) {
+        oldName = getStringFromTable(atoi(oldValue), boolTable);
+        newName = getStringFromTable(atoi(newValue), boolTable);
     } else if (
         (strcmp(section, "dacs") == 0 && (strcmp(key, "set_dacs_on_startup") == 0 || strcmp(key, "set_rails_on_startup") == 0)) ||
         (strcmp(section, "debug") == 0) ||
@@ -1612,6 +1619,7 @@ int parseTrueFalse(const char* value) {
 
 void updateConfigValue(const char* section, const char* key, const char* value) {
     char oldValue[64] = {0};
+     //! this is a place to add new config options
     // Get old value
     if (strcmp(section, "hardware") == 0) {
         if (strcmp(key, "generation") == 0) sprintf(oldValue, "%d", jumperlessConfig.hardware.generation);
@@ -1635,6 +1643,7 @@ void updateConfigValue(const char* section, const char* key, const char* value) 
         else if (strcmp(key, "nets_to_chips") == 0) sprintf(oldValue, "%d", jumperlessConfig.debug.nets_to_chips);
         else if (strcmp(key, "nets_to_chips_alt") == 0) sprintf(oldValue, "%d", jumperlessConfig.debug.nets_to_chips_alt);
         else if (strcmp(key, "leds") == 0) sprintf(oldValue, "%d", jumperlessConfig.debug.leds);
+        else if (strcmp(key, "logic_analyzer") == 0) sprintf(oldValue, "%d", jumperlessConfig.debug.logic_analyzer);
     }
     else if (strcmp(section, "routing") == 0) {
         if (strcmp(key, "stack_paths") == 0) sprintf(oldValue, "%d", jumperlessConfig.routing.stack_paths);

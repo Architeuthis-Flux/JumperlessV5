@@ -421,8 +421,20 @@ void debugFlagSet(int flag) {
     break;
     }
 
-
     case 6: {
+    // **CONFIG FILE APPROACH**: Toggle logic analyzer debug in config
+    debugLA = !debugLA;
+    jumperlessConfig.debug.logic_analyzer = debugLA;
+    
+    // Save the updated config to file
+    saveConfig();
+    
+    // Serial.printf("◆ Logic Analyzer debug %s (saved to config.txt)\n", 
+    //              debugLA ? "enabled" : "disabled");
+    break;
+    }
+
+    case 7: {
     flagStatus = EEPROM.read(SHOW_PROBE_CURRENT_ADDRESS);
 
     if (flagStatus == 0) {
@@ -438,7 +450,7 @@ void debugFlagSet(int flag) {
     break;
     }
 
-    case 7: {
+    case 8: {
     if (jumperlessConfig.serial_1.print_passthrough == 0) {
       jumperlessConfig.serial_1.print_passthrough = 2;
       } else if (jumperlessConfig.serial_1.print_passthrough == 1) {
@@ -448,18 +460,7 @@ void debugFlagSet(int flag) {
           }
         // printSerial1Passthrough = jumperlessConfig.serial.serial_1.print_passthrough;
         break;
-    }
-    case 8: {
-    if (jumperlessConfig.serial_2.print_passthrough == 0) {
-      jumperlessConfig.serial_2.print_passthrough = 2;
-      } else if (jumperlessConfig.serial_2.print_passthrough == 1) {
-        jumperlessConfig.serial_2.print_passthrough = 0;
-        } else if (jumperlessConfig.serial_2.print_passthrough == 2) {
-          jumperlessConfig.serial_2.print_passthrough = 1;
-          }
-        //printSerial2Passthrough = jumperlessConfig.serial.serial_2.print_passthrough;
-        break;
-    }
+        }
 
 
     case 0: {
@@ -479,13 +480,19 @@ void debugFlagSet(int flag) {
     debugNTCC = false;
     debugNTCC2 = false;
     debugLEDs = false;
+    debugLA = false;
     showProbeCurrent = 0;
     jumperlessConfig.debug.file_parsing = false;
     jumperlessConfig.debug.net_manager = false;
     jumperlessConfig.debug.nets_to_chips = false;
     jumperlessConfig.debug.nets_to_chips_alt = false;
     jumperlessConfig.debug.leds = false;
+    jumperlessConfig.debug.logic_analyzer = false;
     //jumperlessConfig.debug_flags.show_probe_current = false;
+
+    // **CONFIG FILE**: Save all debug flags to config file
+    saveConfig();
+    Serial.println("◆ All debug flags disabled (saved to config.txt)");
 
     break;
     }
@@ -506,13 +513,20 @@ void debugFlagSet(int flag) {
     debugNTCC = true;
     debugNTCC2 = true;
     debugLEDs = true;
+    debugLA = true;
     showProbeCurrent = 1;
     jumperlessConfig.debug.file_parsing = true;
     jumperlessConfig.debug.net_manager = true;
     jumperlessConfig.debug.nets_to_chips = true;
     jumperlessConfig.debug.nets_to_chips_alt = true;
     jumperlessConfig.debug.leds = true;
+    jumperlessConfig.debug.logic_analyzer = true;
     //jumperlessConfig.debug_flags.show_probe_current = true;
+    
+    // **CONFIG FILE**: Save all debug flags to config file
+    saveConfig();
+    Serial.println("◆ All debug flags enabled (saved to config.txt)");
+    
     break;
     }
     case 10: {
@@ -958,6 +972,7 @@ void readSettingsFromConfig() {
   debugNTCC = jumperlessConfig.debug.nets_to_chips;
   debugNTCC2 = jumperlessConfig.debug.nets_to_chips_alt;
   debugLEDs = jumperlessConfig.debug.leds;
+  debugLA = jumperlessConfig.debug.logic_analyzer;
   // showProbeCurrent = jumperlessConfig.debug_flags.show_probe_current;
 
   // Display settings

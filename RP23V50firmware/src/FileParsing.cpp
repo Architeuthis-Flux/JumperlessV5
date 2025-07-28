@@ -34,6 +34,10 @@ bool debugFPtime = EEPROM.read(TIME_FILEPARSINGADDRESS);
 
 createSafeString(nodeFileString, 1800);
 
+// General-purpose nodeFileString backup/restore system
+static char nodeFileStringBackup[1800];
+static bool nodeFileBackupStored = false;
+
 createSafeString(currentColorSlotColorsString,
                  1500); // Cache for current slot's net colors
 
@@ -48,8 +52,8 @@ createSafeString(specialFunctionsString, 2800);
 
 char inputBuffer[INPUTBUFFERLENGTH] = {0};
 
-ArduinoJson::StaticJsonDocument<8000> wokwiJson;
-;
+// ArduinoJson::StaticJsonDocument<8000> wokwiJson;
+// ;
 
 String connectionsW[MAX_BRIDGES][5];
 
@@ -91,12 +95,18 @@ void closeAllFiles() {
 }
 
 int openFileThreadSafe(int openTypeEnum, int slot, int flashOrLocal) {
+
+  // Serial.print("openFileThreadSafe   ");
+  // unsigned long start = micros();
+
+
   core1request = 1;
   while (core2busy == true) {
   }
   core1request = 0;
   core1busy = true;
 
+  // Serial.println(micros() - start);
   if (nodeFile) {
     // Serial.println("nodeFile is open");
     nodeFile.close();
@@ -138,7 +148,8 @@ int openFileThreadSafe(int openTypeEnum, int slot, int flashOrLocal) {
       Serial.println(
           "\n\ropened nodeFile.txt\n\n\rloading bridges from file\n\r");
   }
-
+  // Serial.print("openFileThreadSafe done   ");
+  // Serial.println(micros() - start);
   return 1;
 }
 
@@ -224,6 +235,83 @@ void saveLocalNodeFile(int slot) {
   core1busy = false;
   markSlotAsModified(slot); // Mark slot as needing re-validation
   // Serial.println("\n\n\rsaved local node file");
+}
+
+//==============================================================================
+// General-purpose nodeFileString backup/restore functions
+// These can be used from anywhere to temporarily save and restore nodeFileString state
+//==============================================================================
+
+void storeNodeFileBackup(void) {
+    // Store the current nodeFileString state in backup buffer
+    
+    // If nodeFileString is empty, load from current slot first
+    if (nodeFileString.isEmpty()) {
+        createLocalNodeFile(netSlot);
+    }
+    
+    // Store the current state in our backup buffer
+    if (nodeFileString.length() < sizeof(nodeFileStringBackup)) {
+        strcpy(nodeFileStringBackup, nodeFileString.c_str());
+        nodeFileBackupStored = true;
+    } else {
+        // If string is too long, just mark as not stored
+        nodeFileBackupStored = false;
+    }
+}
+
+void restoreNodeFileBackup(void) {
+    // Restore the nodeFileString from backup buffer
+    if (nodeFileBackupStored) {
+        nodeFileString.clear();
+        nodeFileString.concat(nodeFileStringBackup);
+        
+        // Optionally save the restored state back to the current slot
+        // saveLocalNodeFile(netSlot);
+        
+        // Clear the backup since we've restored it
+        nodeFileBackupStored = false;
+    }
+}
+
+void restoreAndSaveNodeFileBackup(void) {
+    // Restore the nodeFileString from backup and save to slot
+    if (nodeFileBackupStored) {
+        nodeFileString.clear();
+        nodeFileString.concat(nodeFileStringBackup);
+        
+        // Save the restored state back to the current slot
+        saveLocalNodeFile(netSlot);
+        
+        // Clear the backup since we've restored it
+        nodeFileBackupStored = false;
+    }
+}
+
+void clearNodeFileBackup(void) {
+    // Clear the backup buffer
+    nodeFileBackupStored = false;
+    memset(nodeFileStringBackup, 0, sizeof(nodeFileStringBackup));
+}
+
+bool hasNodeFileBackup(void) {
+    // Check if we have a backup stored
+    return nodeFileBackupStored;
+}
+
+bool hasNodeFileChanges(void) {
+    // Check if current nodeFileString differs from backup
+    if (!nodeFileBackupStored) {
+        return false; // No backup to compare against
+    }
+    
+    // Compare current state with backup
+    return (strcmp(nodeFileString.c_str(), nodeFileStringBackup) != 0);
+}
+
+const char* getNodeFileBackup(void) {
+    // Get read-only access to the backup buffer
+    return nodeFileBackupStored ? nodeFileStringBackup : nullptr;
 }
 
 void createSlots(int slot, int overwrite) {
@@ -776,7 +864,8 @@ void printNodeFile(int slot, int printOrString, int flashOrLocal,
     specialFunctionsString.replace("111", "ADC1");
     specialFunctionsString.replace("112", "ADC2");
     specialFunctionsString.replace("113", "ADC3");
-    specialFunctionsString.replace("114", "GPIO_0");
+    specialFunctionsString.replace("114", "ADC4");
+    specialFunctionsString.replace("115", "PROBE_MEASURE");
     specialFunctionsString.replace("116", "UART_TX");
     specialFunctionsString.replace("117", "UART_RX");
     specialFunctionsString.replace("118", "GPIO_18");
@@ -809,27 +898,28 @@ void printNodeFile(int slot, int printOrString, int flashOrLocal,
     specialFunctionsString.replace("93", "A7");
     specialFunctionsString.replace("94", "RESET_0");
     specialFunctionsString.replace("95", "RESET_1");
-    specialFunctionsString.replace("96", "GND_1");
-    specialFunctionsString.replace("97", "GND_0");
-    specialFunctionsString.replace("98", "3V3");
-    specialFunctionsString.replace("99", "5V");
-    specialFunctionsString.replace("128", "LOGO_PAD_TOP");
-    specialFunctionsString.replace("129", "LOGO_PAD_BOTTOM");
-    specialFunctionsString.replace("130", "GPIO_PAD");
-    specialFunctionsString.replace("131", "DAC_PAD");
-    specialFunctionsString.replace("132", "ADC_PAD");
-    specialFunctionsString.replace("133", "BUILDING_PAD_TOP");
-    specialFunctionsString.replace("134", "BUILDING_PAD_BOTTOM");
-    specialFunctionsString.replace("126", "BOTTOM_RAIL_GND");
-    specialFunctionsString.replace("104", "TOP_RAIL_GND");
-    specialFunctionsString.replace("122", "GPIO_5");
-    specialFunctionsString.replace("123", "GPIO_6");
-    specialFunctionsString.replace("124", "GPIO_7");
-    specialFunctionsString.replace("125", "GPIO_8");
-    specialFunctionsString.replace("135", "GPIO_1");
-    specialFunctionsString.replace("136", "GPIO_2");
-    specialFunctionsString.replace("137", "GPIO_3");
-    specialFunctionsString.replace("138", "GPIO_4");
+    // specialFunctionsString.replace("96", "GND_1");
+    // specialFunctionsString.replace("97", "GND_0");
+    // specialFunctionsString.replace("98", "3V3");
+    // specialFunctionsString.replace("99", "5V");
+    // specialFunctionsString.replace("128", "LOGO_PAD_TOP");
+    // specialFunctionsString.replace("129", "LOGO_PAD_BOTTOM");
+    // specialFunctionsString.replace("130", "GPIO_PAD");
+    // specialFunctionsString.replace("131", "DAC_PAD");
+    // specialFunctionsString.replace("132", "ADC_PAD");
+    // specialFunctionsString.replace("133", "BUILDING_PAD_TOP");
+    // specialFunctionsString.replace("134", "BUILDING_PAD_BOTTOM");
+    // specialFunctionsString.replace("126", "BOTTOM_RAIL_GND");
+    // specialFunctionsString.replace("104", "TOP_RAIL_GND");
+
+    specialFunctionsString.replace("131", "GPIO_1");
+    specialFunctionsString.replace("132", "GPIO_2");
+    specialFunctionsString.replace("133", "GPIO_3");
+    specialFunctionsString.replace("134", "GPIO_4");
+    specialFunctionsString.replace("135", "GPIO_5");
+    specialFunctionsString.replace("136", "GPIO_6");
+    specialFunctionsString.replace("137", "GPIO_7");
+    specialFunctionsString.replace("138", "GPIO_8");
     specialFunctionsString.replace("139", "BUFFER_IN");
     specialFunctionsString.replace("140", "BUFFER_OUT");
   }
@@ -861,236 +951,236 @@ void printNodeFile(int slot, int printOrString, int flashOrLocal,
   }
 }
 
-void parseWokwiFileToNodeFile(void) {
+// void parseWokwiFileToNodeFile(void) {
 
-  // delay(3000);
-  // FatFS.begin();
-  timeToFP = millis();
+//   // delay(3000);
+//   // FatFS.begin();
+//   timeToFP = millis();
 
-  wokwiFile = FatFS.open("wokwi.txt", "w+");
-  if (!wokwiFile) {
-    if (debugFP)
-      Serial.println("Failed to open wokwi.txt");
-    return;
-  } else {
-    if (debugFP) {
-      Serial.println("\n\ropened wokwi.txt\n\r");
-    } else {
-      // Serial.println("\n\r");
-    }
-  }
+//   wokwiFile = FatFS.open("wokwi.txt", "w+");
+//   if (!wokwiFile) {
+//     if (debugFP)
+//       Serial.println("Failed to open wokwi.txt");
+//     return;
+//   } else {
+//     if (debugFP) {
+//       Serial.println("\n\ropened wokwi.txt\n\r");
+//     } else {
+//       // Serial.println("\n\r");
+//     }
+//   }
 
-  Serial.println("paste Wokwi diagram.json here\n\r");
-  while (Serial.available() == 0) {
-  }
+//   Serial.println("paste Wokwi diagram.json here\n\r");
+//   while (Serial.available() == 0) {
+//   }
 
-  int numCharsRead = 0;
+//   int numCharsRead = 0;
 
-  char firstChar = Serial.read();
+//   char firstChar = Serial.read();
 
-  if (firstChar != '{') // in case you just paste a wokwi file in from the menu,
-                        // the opening brace will have already been read
-  {
-    inputBuffer[numCharsRead] = '{';
-    numCharsRead++;
-  } else {
-    inputBuffer[numCharsRead] = firstChar;
-    numCharsRead++;
-  }
-  /*
-      Serial.println(firstChar);
-    Serial.println(firstChar);
-      Serial.println(firstChar);
-     Serial.println(firstChar);
-     Serial.println(firstChar);
-     Serial.print(firstChar);
-  */
-  delay(1);
-  while (Serial.available() > 0) {
-    char c = Serial.read();
-    inputBuffer[numCharsRead] = c;
+//   if (firstChar != '{') // in case you just paste a wokwi file in from the menu,
+//                         // the opening brace will have already been read
+//   {
+//     inputBuffer[numCharsRead] = '{';
+//     numCharsRead++;
+//   } else {
+//     inputBuffer[numCharsRead] = firstChar;
+//     numCharsRead++;
+//   }
+//   /*
+//       Serial.println(firstChar);
+//     Serial.println(firstChar);
+//       Serial.println(firstChar);
+//      Serial.println(firstChar);
+//      Serial.println(firstChar);
+//      Serial.print(firstChar);
+//   */
+//   delay(1);
+//   while (Serial.available() > 0) {
+//     char c = Serial.read();
+//     inputBuffer[numCharsRead] = c;
 
-    numCharsRead++;
+//     numCharsRead++;
 
-    delayMicroseconds(1000);
-  }
+//     delayMicroseconds(1000);
+//   }
 
-  createSafeStringFromCharArray(wokwiFileString, inputBuffer);
-  delay(3);
-  wokwiFile.write(inputBuffer, numCharsRead);
+//   createSafeStringFromCharArray(wokwiFileString, inputBuffer);
+//   delay(3);
+//   wokwiFile.write(inputBuffer, numCharsRead);
 
-  delay(3);
+//   delay(3);
 
-  wokwiFile.seek(0);
+//   wokwiFile.seek(0);
 
-  if (debugFP)
-    Serial.println("\n\n\rwokwiFile\n\n\r");
+//   if (debugFP)
+//     Serial.println("\n\n\rwokwiFile\n\n\r");
 
-  /* for (int i = 0; i < numCharsRead; i++)
-   {
-       Serial.print((char)wokwiFile.read());
-   }*/
-  if (debugFP) {
-    Serial.print(wokwiFileString);
+//   /* for (int i = 0; i < numCharsRead; i++)
+//    {
+//        Serial.print((char)wokwiFile.read());
+//    }*/
+//   if (debugFP) {
+//     Serial.print(wokwiFileString);
 
-    Serial.println("\n\n\rnumCharsRead = ");
+//     Serial.println("\n\n\rnumCharsRead = ");
 
-    Serial.print(numCharsRead);
+//     Serial.print(numCharsRead);
 
-    Serial.println("\n\n\r");
-  }
-  wokwiFile.close();
+//     Serial.println("\n\n\r");
+//   }
+//   wokwiFile.close();
 
-  deserializeJson(wokwiJson, inputBuffer);
+//   deserializeJson(wokwiJson, inputBuffer);
 
-  if (debugFP) {
+//   if (debugFP) {
 
-    Serial.println("\n\n\rwokwiJson\n\n\r");
+//     Serial.println("\n\n\rwokwiJson\n\n\r");
 
-    Serial.println("\n\n\rconnectionsW\n\n\r");
-  }
+//     Serial.println("\n\n\rconnectionsW\n\n\r");
+//   }
 
-  numConnsJson = wokwiJson["connections"].size();
+//   numConnsJson = wokwiJson["connections"].size();
 
-  copyArray(wokwiJson["connections"], connectionsW);
+//   copyArray(wokwiJson["connections"], connectionsW);
 
-  // deserializeJson(connectionsW, Serial);
-  if (debugFP) {
-    Serial.println(wokwiJson["connections"].size());
+//   // deserializeJson(connectionsW, Serial);
+//   if (debugFP) {
+//     Serial.println(wokwiJson["connections"].size());
 
-    for (int i = 0; i < MAX_BRIDGES; i++) {
-      // Serial.println(wokwiJson["connections"].size());
-      if (connectionsW[i][0] == "") {
-        break;
-      }
-      Serial.print(connectionsW[i][0]);
-      Serial.print(",   \t ");
+//     for (int i = 0; i < MAX_BRIDGES; i++) {
+//       // Serial.println(wokwiJson["connections"].size());
+//       if (connectionsW[i][0] == "") {
+//         break;
+//       }
+//       Serial.print(connectionsW[i][0]);
+//       Serial.print(",   \t ");
 
-      Serial.print(connectionsW[i][1]);
-      Serial.print(",   \t ");
+//       Serial.print(connectionsW[i][1]);
+//       Serial.print(",   \t ");
 
-      Serial.print(connectionsW[i][2]);
-      Serial.print(",   \t ");
+//       Serial.print(connectionsW[i][2]);
+//       Serial.print(",   \t ");
 
-      Serial.print(connectionsW[i][3]);
-      Serial.print(",   \t ");
+//       Serial.print(connectionsW[i][3]);
+//       Serial.print(",   \t ");
 
-      Serial.print(connectionsW[i][4]);
-      Serial.print(",   \t ");
+//       Serial.print(connectionsW[i][4]);
+//       Serial.print(",   \t ");
 
-      Serial.println();
-    }
+//       Serial.println();
+//     }
 
-    Serial.println("\n\n\rRedefining\n\n\r");
-  }
+//     Serial.println("\n\n\rRedefining\n\n\r");
+//   }
 
-  changeWokwiDefinesToJumperless();
+//   changeWokwiDefinesToJumperless();
 
-  writeToNodeFile();
-  // while(1);
-  openNodeFile();
-}
+//   writeToNodeFile();
+//   // while(1);
+//   openNodeFile();
+// }
 
-void changeWokwiDefinesToJumperless(void) {
+// void changeWokwiDefinesToJumperless(void) {
 
-  String connString1 = "                               ";
-  String connString2 = "                               ";
-  String connStringColor = "                               ";
-  String bb = "bb1:";
+//   String connString1 = "                               ";
+//   String connString2 = "                               ";
+//   String connStringColor = "                               ";
+//   String bb = "bb1:";
 
-  int nodeNumber;
+//   int nodeNumber;
 
-  for (int i = 0; i < numConnsJson; i++) {
-    if (debugFP) {
-      Serial.println(' ');
-    }
-    for (int j = 0; j < 2; j++) {
-      nodeNumber = -1;
-      connString1 = connectionsW[i][j];
-      if (debugFP) {
-        Serial.print(connString1);
-        Serial.print("   \t\t  ");
-      }
-      if (connString1.startsWith("bb1:") || connString1.startsWith("bb2:")) {
-        // Serial.print("bb1 or bb2  ");
+//   for (int i = 0; i < numConnsJson; i++) {
+//     if (debugFP) {
+//       Serial.println(' ');
+//     }
+//     for (int j = 0; j < 2; j++) {
+//       nodeNumber = -1;
+//       connString1 = connectionsW[i][j];
+//       if (debugFP) {
+//         Serial.print(connString1);
+//         Serial.print("   \t\t  ");
+//       }
+//       if (connString1.startsWith("bb1:") || connString1.startsWith("bb2:")) {
+//         // Serial.print("bb1 or bb2  ");
 
-        int periodIndex = connString1.indexOf(".");
-        connString1 = connString1.substring(4, periodIndex);
+//         int periodIndex = connString1.indexOf(".");
+//         connString1 = connString1.substring(4, periodIndex);
 
-        if (connString1.endsWith("b")) {
-          nodeNumber = 30;
-          // Serial.println("bottom");
-          connString1.substring(0, connString1.length() - 1);
-          nodeNumber += connString1.toInt();
-        } else if (connString1.endsWith("t")) {
-          nodeNumber = 0;
-          // Serial.println("top");
-          connString1.substring(0, connString1.length() - 1);
-          nodeNumber += connString1.toInt();
-        } else if (connString1.endsWith("n")) {
-          nodeNumber = GND;
-        } else if (connString1.endsWith("p")) {
-          nodeNumber = SUPPLY_5V;
-        }
-      } else if (connString1.startsWith("nano:")) {
-        // Serial.print("nano\t");
-        int periodIndex = connString1.indexOf(".");
-        connString1 = connString1.substring(5, periodIndex);
+//         if (connString1.endsWith("b")) {
+//           nodeNumber = 30;
+//           // Serial.println("bottom");
+//           connString1.substring(0, connString1.length() - 1);
+//           nodeNumber += connString1.toInt();
+//         } else if (connString1.endsWith("t")) {
+//           nodeNumber = 0;
+//           // Serial.println("top");
+//           connString1.substring(0, connString1.length() - 1);
+//           nodeNumber += connString1.toInt();
+//         } else if (connString1.endsWith("n")) {
+//           nodeNumber = GND;
+//         } else if (connString1.endsWith("p")) {
+//           nodeNumber = SUPPLY_5V;
+//         }
+//       } else if (connString1.startsWith("nano:")) {
+//         // Serial.print("nano\t");
+//         int periodIndex = connString1.indexOf(".");
+//         connString1 = connString1.substring(5, periodIndex);
 
-        nodeNumber = NANO_D0;
+//         nodeNumber = NANO_D0;
 
-        if (isDigit(connString1[connString1.length() - 1])) {
+//         if (isDigit(connString1[connString1.length() - 1])) {
 
-          nodeNumber += connString1.toInt();
-        } else if (connString1.equals("5V")) {
-          nodeNumber = SUPPLY_5V;
-        } else if (connString1.equalsIgnoreCase("AREF")) {
+//           nodeNumber += connString1.toInt();
+//         } else if (connString1.equals("5V")) {
+//           nodeNumber = SUPPLY_5V;
+//         } else if (connString1.equalsIgnoreCase("AREF")) {
 
-          nodeNumber = NANO_AREF;
-        } else if (connString1.equalsIgnoreCase("GND")) {
-          nodeNumber = GND;
-        } else if (connString1.equalsIgnoreCase("RESET")) {
+//           nodeNumber = NANO_AREF;
+//         } else if (connString1.equalsIgnoreCase("GND")) {
+//           nodeNumber = GND;
+//         } else if (connString1.equalsIgnoreCase("RESET")) {
 
-          nodeNumber = NANO_RESET;
-        } else if (connString1.equalsIgnoreCase("3.3V")) {
-          nodeNumber = SUPPLY_3V3;
-        } else if (connString1.startsWith("A")) {
-          nodeNumber = NANO_A0;
-          nodeNumber += connString1.toInt();
-        }
-      } else if (connString1.startsWith("vcc1:")) {
-        // Serial.print("vcc1\t");
-        nodeNumber = SUPPLY_5V;
-      } else if (connString1.startsWith("vcc2:")) {
-        // Serial.print("vcc2\t");
-        nodeNumber = SUPPLY_3V3;
-      } else if (connString1.startsWith("gnd1:")) {
-        // Serial.print("gnd1\t");
-        nodeNumber = GND;
-      } else if (connString1.startsWith("gnd2:")) {
-        // Serial.print("gnd2\t");
-        nodeNumber = GND;
-      } else if (connString1.startsWith("gnd3:")) {
-        nodeNumber = GND;
-      } else if (connString1.startsWith("pot1:")) {
-        nodeNumber = DAC0;
-      } else {
+//           nodeNumber = NANO_RESET;
+//         } else if (connString1.equalsIgnoreCase("3.3V")) {
+//           nodeNumber = SUPPLY_3V3;
+//         } else if (connString1.startsWith("A")) {
+//           nodeNumber = NANO_A0;
+//           nodeNumber += connString1.toInt();
+//         }
+//       } else if (connString1.startsWith("vcc1:")) {
+//         // Serial.print("vcc1\t");
+//         nodeNumber = SUPPLY_5V;
+//       } else if (connString1.startsWith("vcc2:")) {
+//         // Serial.print("vcc2\t");
+//         nodeNumber = SUPPLY_3V3;
+//       } else if (connString1.startsWith("gnd1:")) {
+//         // Serial.print("gnd1\t");
+//         nodeNumber = GND;
+//       } else if (connString1.startsWith("gnd2:")) {
+//         // Serial.print("gnd2\t");
+//         nodeNumber = GND;
+//       } else if (connString1.startsWith("gnd3:")) {
+//         nodeNumber = GND;
+//       } else if (connString1.startsWith("pot1:")) {
+//         nodeNumber = DAC0;
+//       } else {
 
-        connectionsW[i][j] = "-1";
-      }
+//         connectionsW[i][j] = "-1";
+//       }
 
-      // nodeNumber += connString1.toInt();
-      String nodeNumberString = String(nodeNumber);
-      connectionsW[i][j] = nodeNumberString;
-      // connectionsW[i][j] = nodeNumber;
-      if (debugFP) {
-        Serial.print(connectionsW[i][j]);
+//       // nodeNumber += connString1.toInt();
+//       String nodeNumberString = String(nodeNumber);
+//       connectionsW[i][j] = nodeNumberString;
+//       // connectionsW[i][j] = nodeNumber;
+//       if (debugFP) {
+//         Serial.print(connectionsW[i][j]);
 
-        Serial.print("   \t ");
-      }
-    }
-  }
-}
+//         Serial.print("   \t ");
+//       }
+//     }
+//   }
+// }
 void clearNodeFile(int slot, int flashOrLocal) {
   if (flashOrLocal == 0) {
     openFileThreadSafe(w, slot);
@@ -1662,6 +1752,8 @@ createSafeString(serialString, 100);
 createSafeString(dash, 2);
 
 createSafeString(comma, 2);
+
+
 void readStringFromSerial(int source, int addRemove) {
 
   int node1 = 0;
@@ -2332,14 +2424,14 @@ void replaceSFNamesWithDefinedInts(void) {
   specialFunctionsString.replace("ADC2_8V", "112");
   specialFunctionsString.replace("ADC3_8V", "113");
   specialFunctionsString.replace("ADC4_5V", "114");
-  specialFunctionsString.replace("ADC7_PROBE", "139");
-  specialFunctionsString.replace("PROBE", "139");
+  specialFunctionsString.replace("PROBE_MEASURE", "115");
+  specialFunctionsString.replace("115", "139");
   specialFunctionsString.replace("ADC0", "110");
   specialFunctionsString.replace("ADC1", "111");
   specialFunctionsString.replace("ADC2", "112");
   specialFunctionsString.replace("ADC3", "113");
   specialFunctionsString.replace("ADC4", "114");
-  specialFunctionsString.replace("ADC7", "139");
+  specialFunctionsString.replace("PROBE_MEASURE", "139");
 
   specialFunctionsString.replace("ADC_0", "110");
   specialFunctionsString.replace("ADC_1", "111");
