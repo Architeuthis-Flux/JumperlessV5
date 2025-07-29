@@ -44,9 +44,28 @@
     "clang-format.language.cpp.style": "file",
     "C_Cpp.clang_format_style": "Visual Studio",
     "cmake.ignoreCMakeListsMissing": true,
-    "C_Cpp.formatting": "vcFormat",
+    "C_Cpp.formatting": "clangFormat",
     "cortex-debug.variableUseNaturalFormat": false,
     "files.trimTrailingWhitespace": false,
+    
+    // Disable auto-formatting to prevent unwanted wrapping
+    "editor.formatOnSave": false,
+    "editor.formatOnPaste": false,
+    "editor.formatOnType": false,
+    
+    // Ensure clang-format is used
+    "clang-format.executable": "clang-format",
+    "clang-format.style": "file",
+    "clang-format.fallbackStyle": "none",
+    
+    // Explicitly set the default formatter for C++
+    "[cpp]": {
+        "editor.defaultFormatter": "llvm-vs-code-extensions.vscode-clangd"
+    },
+    "[c]": {
+        "editor.defaultFormatter": "ms-vscode.cpptools"
+    },
+    
     "C_Cpp.vcFormat.indent.preserveWithinParentheses": true,
     "C_Cpp.enhancedColorization": "enabled",
     "C_Cpp.doxygen.generateOnType": true,
@@ -72,6 +91,12 @@
     "C_Cpp.vcFormat.space.aroundAssignmentOperators": "insert",
     "C_Cpp.vcFormat.space.pointerReferenceAlignment": "left",
     "C_Cpp.vcFormat.space.aroundTernaryOperators": "insert",
+    
+    // Disable line wrapping in VS formatter
+    "C_Cpp.vcFormat.wrap.lineLength": 0,
+    "C_Cpp.vcFormat.wrap.preserveBlocks": "allOneLineScopes",
+    "C_Cpp.vcFormat.wrap.preserveBlocksOnSeparateLines": false,
+    "C_Cpp.vcFormat.wrap.ColumnLimit": 0,
     
     // Use default IntelliSense engine
     "C_Cpp.intelliSenseEngine": "disabled"

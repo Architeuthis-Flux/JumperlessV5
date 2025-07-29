@@ -25,6 +25,7 @@ extern uint8_t stopbitsUSBSer1, stopbitsUSBSer2;
 extern int baudRateUSBSer1, baudRateUSBSer2;
 extern volatile int backpowered;
 
+extern unsigned long lastPortInquiry;
 
 #ifdef USE_TINYUSB
 #include "usb_interface_config.h"

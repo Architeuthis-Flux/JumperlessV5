@@ -105,3 +105,16 @@ Diagnostics:
     Remove: 
       - misc-definitions-in-headers
   UnusedIncludes: None
+
+---
+Format:
+  BasedOnStyle: LLVM
+  ColumnLimit: 0
+  AllowShortIfStatementsOnASingleLine: false
+  AllowShortLoopsOnASingleLine: false
+  AllowShortFunctionsOnASingleLine: Empty
+  AlwaysBreakTemplateDeclarations: Yes
+  BreakBeforeBraces: Attach
+  IndentWidth: 2
+  TabWidth: 2
+  UseTab: Never

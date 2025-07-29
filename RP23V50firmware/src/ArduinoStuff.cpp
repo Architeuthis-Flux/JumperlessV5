@@ -340,12 +340,12 @@ int secondSerialHandler(void) {
     SetArduinoResetLine(HIGH);
   }
 
-  if (LastArduinoDTR == 0 && actArduinoDTR == 1) {
+  if (LastArduinoDTR == 1 && actArduinoDTR == 0 && USBSer1.available() > 0) {
 
     // resetArduino();
     LastArduinoDTR = actArduinoDTR;
 
-    if (millis() > 1500) {
+    if (millis() > 2500) {
 
       arduinoConnected = checkIfArduinoIsConnected();
       int arduinoWasConnected = arduinoConnected;
@@ -353,6 +353,7 @@ int secondSerialHandler(void) {
       Serial.printf("Arduino %s connected%s\n", arduinoConnected?"":"not", arduinoConnected?"":"...  connecting automatically");
       Serial.println();
       Serial.flush();
+
       if (arduinoConnected == 0) {
         // flashArduinoNextLoop = 1;
         // connectArduino();
@@ -1437,20 +1438,21 @@ void checkForConfigChangesUSBSer2(int print) {
 void replyWithSerialInfo(void) {
 
 
-  // if (flashingArduino == true) {
-  //   return;
-  // }
+  if (flashingArduino == true || logicAnalyzing == true) {
+    return;
+  }
 
   // Check main Serial (CDC 0) for ENQ character - responds for ALL ports
   if (Serial.available() > 0) {
     char c = Serial.peek(); // Look at the character without removing it
     if (c == 0x05) {        // ENQ character
-      Serial.read();        // Remove the ENQ character from buffer
+      uint8_t port = Serial.read();        // Remove the ENQ character from buffer
 
       // Report all enabled serial ports
       Serial.println("CDC0: Jumperless Main");
+
     
-#if USB_CDC_ENABLE_COUNT >= 2
+  #if USB_CDC_ENABLE_COUNT >= 2
       if (jumperlessConfig.serial_1.function != 0) {
         const char *func1_name = getStringFromTable(
             jumperlessConfig.serial_1.function, uartFunctionTable);
@@ -1472,39 +1474,39 @@ void replyWithSerialInfo(void) {
       } else {
         Serial.println("CDC1: Disabled");
       }
-#endif
-
-// #if USB_CDC_ENABLE_COUNT >= 3
-//       if (jumperlessConfig.serial_2.function != 0) {
-//         const char *func2_name = getStringFromTable(
-//             jumperlessConfig.serial_2.function, uartFunctionTable);
-//         if (func2_name && strcmp(func2_name, "off") != 0 &&
-//             strcmp(func2_name, "disable") != 0) {
-//           Serial.print("CDC2: JL ");
-//           // Print with first letter capitalized and underscores as spaces
-//           char c = func2_name[0];
-//           if (c >= 'a' && c <= 'z')
-//             c = c - 'a' + 'A';
-//           Serial.print(c);
-//           for (int i = 1; func2_name[i]; i++) {
-//             Serial.print(func2_name[i] == '_' ? ' ' : func2_name[i]);
-//           }
-//           Serial.println();
-//         } else {
-//           Serial.println("CDC2: Jumperless Serial 2");
-//         }
-//       } else {
-//         Serial.println("CDC2: Disabled");
-//       }
-    
-// #endif
-
-#if USB_CDC_ENABLE_COUNT >= 4
-      Serial.println("CDC3: Jumperless Debug");
-#endif
       Serial.flush();
+    
+  
+  #endif
+
+ #if USB_CDC_ENABLE_COUNT >= 3
+      if (jumperlessConfig.serial_2.function != 0) {
+        const char *func2_name = getStringFromTable(
+            jumperlessConfig.serial_2.function, uartFunctionTable);
+        if (func2_name && strcmp(func2_name, "off") != 0 &&
+            strcmp(func2_name, "disable") != 0) {
+          Serial.print("CDC2: JL ");
+          // Print with first letter capitalized and underscores as spaces
+          char c = func2_name[0];
+          if (c >= 'a' && c <= 'z')
+            c = c - 'a' + 'A';
+          Serial.print(c);
+          for (int i = 1; func2_name[i]; i++) {
+            Serial.print(func2_name[i] == '_' ? ' ' : func2_name[i]);
+          }
+          Serial.println();
+        } else {
+          Serial.println("CDC2: Jumperless Serial 2");
+        }
+      } else {
+        Serial.println("CDC2: JL Logic Analyzer");
+      }
     }
   }
+ #endif
+
+
+#if RESPOND_TO_ENQ_ON_USB_SER1 == 1
 #if USB_CDC_ENABLE_COUNT >= 2
    // delay(100);
     // Check USBSer1 (CDC 1) for ENQ character - responds only for itself
@@ -1535,7 +1537,9 @@ void replyWithSerialInfo(void) {
       }
     }
 #endif
+#endif
 
+#if RESPOND_TO_ENQ_ON_USB_SER2 == 1
 // #if USB_CDC_ENABLE_COUNT >= 3
 //    // delay(100);
 //     // Check USBSer2 (CDC 2) for ENQ character - responds only for itself
@@ -1566,6 +1570,7 @@ void replyWithSerialInfo(void) {
 //         USBSer2.flush();
 //       }
 //     }
-  
+
 // #endif
+#endif
 }

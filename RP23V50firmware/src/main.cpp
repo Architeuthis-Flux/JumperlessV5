@@ -74,6 +74,7 @@ KevinC@ppucc.io
 #include "Highlighting.h"
 #include "Python_Proper.h"
 #include "USBfs.h"
+#include <hardware/adc.h>
 
 // #define Serial SerialWrap
 // #define USBSer1 SerialWrap
@@ -116,7 +117,7 @@ volatile int dumpLED = 0;
 unsigned long dumpLEDTimer = 0;
 unsigned long dumpLEDrate = 50;
 
-const char firmwareVersion[] = "5.2.2.1"; // remember to update this
+const char firmwareVersion[] = "5.2.2.2"; // remember to update this
 bool newConfigOptions = false; // set to true with new config options //!
                                // fix the saving every boot thing
 
@@ -317,8 +318,14 @@ int menuItemCounts[4] = {14, 22, 37, 46};
 
 #include <pico/stdlib.h>
 
-#include <hardware/adc.h>
+
 #include <hardware/gpio.h>
+
+
+
+#define SETUP_LOGIC_ANALYZER_ON_BOOT 1
+
+
 void loop() {
 
 menu:
@@ -356,8 +363,12 @@ menu:
       // Serial.println("Initializing OLED");
       oled.init();
     }
+    
 
     firstLoop = 0;
+#if SETUP_LOGIC_ANALYZER_ON_BOOT == 1
+    goto setupla;
+#endif
   }
 
   if (Serial.available() >
@@ -797,14 +808,6 @@ dontshowmenu:
     // Serial.println(millis() - busyTimer);
   }
 
-  // if (slotChanged == 1) {
-  //   // Serial.println("slotChanged");
-  //   refreshPaths();
-  //   // clearChangedNetColors(0);
-  //   loadChangedNetColorsFromFile(netSlot, 0);
-  //   Serial.println(millis());
-  //   goto loadfile;
-  // }
 
   input = Serial.read();
 
@@ -867,19 +870,32 @@ dontshowmenu:
   }
 skipinput:
 
-  // if (isDigit(input)) {
-  //   runApp(input - '0');
-  //   return;
-  //   }
-  // Serial.print("before switch = ");
-  // Serial.println (millis() - timer);
+
 
   switch (input) {
 
 
     case 'w': //! w - Setup logic analyzer
     {
+      // int tempReading = adc_read_blocking(8);
+setupla:
+      // for (int i = 0; i < 8; i++) {
+      //   adc_select_input(8);
+      //   int tempReading = adc_read();
+      //   Serial.print(tempReading);
+      //   Serial.println(" ");
+      // }
+
+
+      Serial.println();
       setupLogicAnalyzer();
+
+      // for (int i = 0; i < 8; i++) {
+      //   adc_select_input(8);
+      //   int tempReading = adc_read();
+      //   Serial.print(tempReading);
+      //   Serial.println(" ");
+      // }
       break;
     }
 

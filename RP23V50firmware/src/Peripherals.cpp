@@ -775,7 +775,11 @@ gpio_function_t gpio_function_map[10] = {
 int gpioOutput[10] = {0, 0, 0, 0, 0, 0, 0, 0, 0, 0};
 volatile bool readingGPIO = false;
 void readGPIO(void) {
-  // **IMPROVED**: Only skip GPIO reading for logic analyzer pins during capture
+
+
+  if (logicAnalyzing == true) {
+    return;
+  }
   // Allow normal GPIO reading for non-logic analyzer pins
   bool logic_analyzer_active = logicAnalyzing;
   
