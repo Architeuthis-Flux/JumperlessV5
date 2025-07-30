@@ -31,6 +31,8 @@ typedef uint32_t mp_hal_pin_obj_t;
 #define MICROPY_MEM_STATS           (1)  // Disable to save memory
 #define MICROPY_KBD_EXCEPTION      (1)
 
+#define MICROPY_CONFIG_ROM_LEVEL  MICROPY_CONFIG_ROM_LEVEL_FULL_FEATURES
+
 // REPL configuration - basic only
 #define MICROPY_REPL_AUTO_INDENT    (1)  // Disable to save memory
 #define MICROPY_REPL_EMACS_KEYS     (1)  // Disable to save memory
@@ -51,7 +53,7 @@ typedef uint32_t mp_hal_pin_obj_t;
 #define MICROPY_PY_SYS_STDIO_BUFFER (1)  
 #define MICROPY_PY_SYS_ATTR_DELEGATION (1)  
 
-
+#define MICROPY_PY_BUILTINS_INPUT   (1)
 #define MICROPY_PY_FSTRINGS         (1)
 
 

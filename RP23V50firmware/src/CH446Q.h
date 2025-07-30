@@ -10,6 +10,11 @@ extern int brightnessC2;
 extern int hueShiftC2;
 extern int lightUpNetCore2;
 
+struct justXY {
+    bool connected[16][8]; // 16 X values, 8 Y values, stores whether a connection exists
+    };
+  
+extern struct justXY lastChipXY[12];
 
 void sendPaths(int clean = 0);
 void initCH446Q(void);

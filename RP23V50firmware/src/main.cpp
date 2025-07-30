@@ -117,7 +117,7 @@ volatile int dumpLED = 0;
 unsigned long dumpLEDTimer = 0;
 unsigned long dumpLEDrate = 50;
 
-const char firmwareVersion[] = "5.2.2.2"; // remember to update this
+const char firmwareVersion[] = "5.2.2.3"; // remember to update this
 bool newConfigOptions = false; // set to true with new config options //!
                                // fix the saving every boot thing
 
@@ -323,7 +323,7 @@ int menuItemCounts[4] = {14, 22, 37, 46};
 
 
 
-#define SETUP_LOGIC_ANALYZER_ON_BOOT 1
+//#define SETUP_LOGIC_ANALYZER_ON_BOOT 1
 
 
 void loop() {
@@ -905,6 +905,41 @@ setupla:
 
     /// loadConfigChanges();
     // goto dontshowmenu;
+    break;
+  }
+  case 'S': { //! S - raw speed test
+    Serial.println("Raw speed test...");
+    Serial.println("Read frequency on row 29\n\n\r");
+
+    pauseCore2 = true;
+unsigned long cycles = 1000000;
+    unsigned long start = micros();
+    sendXYraw(10, 0, 4, 1);
+    for (int i = 0; i < cycles; i++) {
+      sendXYraw(10, 0, 0, 1);
+      //delayMicroseconds(1);
+      sendXYraw(10, 0,0,0);
+      //delayMicroseconds(1);
+    }
+    unsigned long end = micros();
+    Serial.print("Time for ");
+    Serial.print(cycles);
+    Serial.print(" on off cycles: ");
+    Serial.print(end - start);
+    Serial.println(" microseconds");
+    Serial.print("Time per cycle: ");
+    Serial.print((end - start) / cycles);
+    Serial.println(" microseconds");
+    Serial.print("Frequency: ");
+    Serial.print(((float)cycles / (float)(end - start)) * 1000);
+    Serial.println(" kHz\n\r");
+    Serial.flush();
+    pauseCore2 = false;
+
+
+
+
+
     break;
   }
 
@@ -2250,19 +2285,23 @@ void loop1() {
   // #ifdef USE_TINYUSB
   //  tud_task();
   // #endif
+
+  while (pauseCore2 == true) {
+    tight_loop_contents();
+  }
   
   // Only call logic analyzer if it's enabled and there's USB activity
   static uint32_t last_la_check = 0;
   uint32_t current_time = millis();
   
   // Check for USB activity every 10ms to avoid overwhelming the system
-  if (current_time - last_la_check >= 10) {
-    last_la_check = current_time;
+  // if (current_time - last_la_check >= 10) {
+  //   last_la_check = current_time;
     
     if (isLogicAnalyzerAvailable() && (la_usb_available() > 0 || la_usb_connected())) {
       handleLogicAnalyzer();
     }
-  }
+  
 
   // while (logicAnalyzing == true) {
   //   //handleLogicAnalyzer();

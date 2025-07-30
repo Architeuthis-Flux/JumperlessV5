@@ -57,13 +57,29 @@ mp_uint_t mp_hal_stdout_tx_strn(const char *str, size_t len) {
     return len;
 }
 
+// Send string to stdout (raw).
+void mp_hal_stdout_tx_str(const char *str) {
+    mp_hal_stdout_tx_strn(str, strlen(str));
+}
+
 // Note: mp_hal_set_interrupt_char is implemented in Python_Proper.cpp
 // to integrate with our custom interrupt handling system
 
 // Receive single character from stdin, non-blocking.
 int mp_hal_stdin_rx_chr(void) {
     if (global_mp_stream_ptr) {
-        return arduino_serial_read(global_mp_stream_ptr);
+        // When MicroPython is calling this function (e.g., from input() or readline),
+        // we need to bypass the custom REPL editor and read directly from the stream
+        // This ensures that input() works properly even when the custom REPL is active
+        int c = arduino_serial_read(global_mp_stream_ptr);
+        
+        // Convert newline (\n) to carriage return (\r) for MicroPython readline compatibility
+        // This handles the case where the app converts \r to \n before sending
+        if (c == '\n') {
+            return '\r';
+        }
+        
+        return c;
     }
     // For embedded use, we don't support stdin input
     return -1; // No character available

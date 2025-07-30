@@ -29,9 +29,9 @@ uint sm = pio_claim_unused_sm(pio, true);
 volatile int chipSelect = 0;
 volatile uint32_t irq_flags = 0;
 
-struct justXY {
-  bool connected[16][8]; // 16 X values, 8 Y values, stores whether a connection exists
-  };
+// struct justXY {
+//   bool connected[16][8]; // 16 X values, 8 Y values, stores whether a connection exists
+//   };
 
 struct justXY lastChipXY[12];
 
@@ -42,15 +42,17 @@ void isrFromPio(void) {
   //  Serial.println("interrupt from pio  ");
   // Serial.print(chipSelect);
   // Serial.print(" \n\r");
-  delayMicroseconds(10);
+  //delayMicroseconds(10);
 
   setCSex(chipSelect, 0);
 
   // delayMicroseconds(40);
+  chipSelect = -1;
 
   irq_flags = pio0_hw->irq;
   pio_interrupt_clear(pio, PIO0_IRQ_0);
   hw_clear_bits(&pio0_hw->irq, irq_flags);
+  
   }
 
 struct pathStruct lastPath[MAX_BRIDGES];
@@ -83,10 +85,10 @@ void initCH446Q(void) {
   // Serial.print("offset: ");
   // Serial.println(offset);
 
-  pio_spi_ch446_multi_cs_init(pio, sm, offset, 8, 16, 0, 1, clk, dat);
+  pio_spi_ch446_multi_cs_init(pio, sm, offset, 8, 2, 0, 1, clk, dat);
 
   for (int i = 0; i < 12; i++) {
-    pinMode(28 + i, OUTPUT);
+    pinMode(28 + i, OUTPUT_12MA);
     // digitalWrite(28+i, LOW);
     }
   // pio_spi_ch446_cs_handler_init(pio, smCS, offsetCS, 256, 1, 8, 20, 6);
@@ -134,7 +136,7 @@ void sendPaths(int clean) {
     // digitalWrite(RESETPIN, LOW);
 
   while (core1busy == true) {
-    delayMicroseconds(10);  // Small delay to prevent tight loop
+    delayMicroseconds(1);  // Small delay to prevent tight loop
     }
   core2busy = true;
 
@@ -145,7 +147,7 @@ void sendPaths(int clean) {
 
   if (clean == 1) {
     digitalWrite(RESETPIN, HIGH);
-    delayMicroseconds(10000);
+    delayMicroseconds(1000);
     digitalWrite(RESETPIN, LOW);
     }
   sendAllPaths(clean);
@@ -387,6 +389,7 @@ void printChipStateArray(void) {
       }
     Serial.println("\n\n\r"); // extra space between block rows
     }
+    Serial.flush();
   }
 
 void printLastChipStateArray(void) {
@@ -511,6 +514,17 @@ void sendXYraw(int chip, int x, int y, int setOrClear) {
   uint32_t chAddress = 0;
   chipSelect = chip;
 
+  // Serial.print("sendXYraw: chip = ");
+  // Serial.print(chip);
+  // Serial.print(", x = ");
+  // Serial.print(x);
+  // Serial.print(", y = ");
+  // Serial.print(y);
+  // Serial.print(", setOrClear = ");
+  // Serial.println(setOrClear);
+
+  //unsigned long start = micros();
+
   int chYdata = y;
   int chXdata = x;
 
@@ -523,18 +537,48 @@ void sendXYraw(int chip, int x, int y, int setOrClear) {
   chAddress = chYdata | chXdata;
 
   if (setOrClear == 1) {
-    chAddress =
-      chAddress |
-      0b00000001; // this last bit determines whether we set or unset the path
+    chAddress = chAddress | 0b00000001; // this last bit determines whether we set or unset the path
     }
 
   chAddress = chAddress << 24;
 
-  delayMicroseconds(50);
+  //delayMicroseconds(10);
+  // Serial.print("fifo: ");
+  // Serial.println(pio_sm_get_tx_fifo_level(pio, sm));
 
   pio_sm_put(pio, sm, chAddress);
 
-  delayMicroseconds(80);
+
+  // while (pio_interrupt_get(pio, PIO0_IRQ_0) == 0){
+  //   delayMicroseconds(1);
+  //   // Serial.print(".");
+  //   // Serial.flush();
+  //   }
+
+
+
+  // while (pio_interrupt_get(pio, PIO0_IRQ_0)){
+  //   tight_loop_contents();
+  //   Serial.print("x");
+  //   Serial.flush();
+  //   }
+
+  while (chipSelect != -1) {
+    //delayMicroseconds(1);
+    tight_loop_contents();
+    }
+
+    // unsigned long end = micros();
+    // Serial.print("time: ");
+    // Serial.println(end - start);
+    // Serial.flush();
+
+  // while (pio_interrupt_get(pio, sm)) {
+  //   //delayMicroseconds(1);
+  //   tight_loop_contents();
+  //   }
+
+  //delayMicroseconds(10);
   // isrFromPio();
   }
 

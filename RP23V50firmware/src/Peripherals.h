@@ -282,4 +282,10 @@ int setPWMFrequency(int gpio_pin, float frequency);
 int stopPWM(int gpio_pin);
 void printPWMState(void);
 
+// Slow PWM functions (for frequencies below 10Hz)
+int setupSlowPWM(int gpio_pin, float frequency, float duty_cycle);
+int setSlowPWMDutyCycle(int gpio_pin, float duty_cycle);
+int setSlowPWMFrequency(int gpio_pin, float frequency);
+int stopSlowPWM(int gpio_pin);
+
 #endif

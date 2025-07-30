@@ -115,10 +115,17 @@ include $(TOP)/py/py.mk
 SRC_EXTMOD_C = \
 	extmod/modtime.c \
 	extmod/modplatform.c \
+	extmod/moductypes.c \
+
+# Define shared source files we want
+SRC_SHARED_C = \
+	shared/readline/readline.c \
 
 # Process extmod sources like regular sources
 PY_O += $(addprefix $(BUILD)/, $(SRC_EXTMOD_C:.c=.o))
+PY_O += $(addprefix $(BUILD)/, $(SRC_SHARED_C:.c=.o))
 SRC_QSTR += $(SRC_EXTMOD_C)
+SRC_QSTR += $(SRC_SHARED_C)
 
 # Set the location of the MicroPython embed port.
 MICROPYTHON_EMBED_PORT = $(MICROPYTHON_TOP)/ports/embed
@@ -149,7 +156,7 @@ clean-micropython-embed-package:
 	$(RM) -rf $(PACKAGE_DIR)
 
 PACKAGE_DIR ?= micropython_embed
-PACKAGE_DIR_LIST = $(addprefix $(PACKAGE_DIR)/,py extmod shared/runtime shared/timeutils genhdr port)
+PACKAGE_DIR_LIST = $(addprefix $(PACKAGE_DIR)/,py extmod shared/runtime shared/timeutils shared/readline genhdr port)
 
 .PHONY: micropython-embed-package
 micropython-embed-package: $(GENHDR_OUTPUT)
@@ -163,6 +170,7 @@ micropython-embed-package: $(GENHDR_OUTPUT)
 	$(Q)$(CP) $(TOP)/extmod/modtime.h $(PACKAGE_DIR)/extmod
 	$(Q)$(CP) $(TOP)/extmod/modplatform.c $(PACKAGE_DIR)/extmod
 	$(Q)$(CP) $(TOP)/extmod/modplatform.h $(PACKAGE_DIR)/extmod
+	$(Q)$(CP) $(TOP)/extmod/moductypes.c $(PACKAGE_DIR)/extmod
 	$(Q)$(CP) $(TOP)/extmod/misc.h $(PACKAGE_DIR)/extmod
 
 	$(ECHO) "- shared"
@@ -173,6 +181,10 @@ micropython-embed-package: $(GENHDR_OUTPUT)
 	$(Q)$(MKDIR) -p $(PACKAGE_DIR)/shared/timeutils || true
 	$(Q)$(CP) $(TOP)/shared/timeutils/*.h $(PACKAGE_DIR)/shared/timeutils || true
 	$(Q)$(CP) $(TOP)/shared/timeutils/*.c $(PACKAGE_DIR)/shared/timeutils || true
+	$(ECHO) "- shared/readline"
+	$(Q)$(MKDIR) -p $(PACKAGE_DIR)/shared/readline || true
+	$(Q)$(CP) $(TOP)/shared/readline/*.h $(PACKAGE_DIR)/shared/readline || true
+	$(Q)$(CP) $(TOP)/shared/readline/*.c $(PACKAGE_DIR)/shared/readline || true
 	$(ECHO) "- genhdr"
 	$(Q)$(CP) $(GENHDR_OUTPUT) $(PACKAGE_DIR)/genhdr
 	$(ECHO) "- port"

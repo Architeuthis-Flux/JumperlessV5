@@ -41,6 +41,10 @@ extern const struct _mp_obj_module_t mp_module_builtins;
 #undef MODULE_DEF_BUILTINS
 #define MODULE_DEF_BUILTINS { MP_ROM_QSTR(MP_QSTR_builtins), MP_ROM_PTR(&mp_module_builtins) },
 
+extern const struct _mp_obj_module_t mp_module_cmath;
+#undef MODULE_DEF_CMATH
+#define MODULE_DEF_CMATH { MP_ROM_QSTR(MP_QSTR_cmath), MP_ROM_PTR(&mp_module_cmath) },
+
 extern const struct _mp_obj_module_t mp_module_gc;
 #undef MODULE_DEF_GC
 #define MODULE_DEF_GC { MP_ROM_QSTR(MP_QSTR_gc), MP_ROM_PTR(&mp_module_gc) },
@@ -66,15 +70,21 @@ extern const struct _mp_obj_module_t mp_module_sys;
 #undef MODULE_DEF_SYS
 #define MODULE_DEF_SYS { MP_ROM_QSTR(MP_QSTR_sys), MP_ROM_PTR(&mp_module_sys) },
 
+extern const struct _mp_obj_module_t mp_module_uctypes;
+#undef MODULE_DEF_UCTYPES
+#define MODULE_DEF_UCTYPES { MP_ROM_QSTR(MP_QSTR_uctypes), MP_ROM_PTR(&mp_module_uctypes) },
+
 
 #define MICROPY_REGISTERED_MODULES \
     MODULE_DEF_BUILTINS \
+    MODULE_DEF_CMATH \
     MODULE_DEF_GC \
     MODULE_DEF_JFS \
     MODULE_DEF_JUMPERLESS \
     MODULE_DEF_MATH \
     MODULE_DEF_MICROPYTHON \
     MODULE_DEF_SYS \
+    MODULE_DEF_UCTYPES \
     MODULE_DEF___MAIN__ \
 // MICROPY_REGISTERED_MODULES
 

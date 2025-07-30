@@ -11,6 +11,7 @@
 #include "hardware/adc.h"
 #include "hardware/gpio.h"
 #include "hardware/pwm.h"
+#include "pico/time.h"  // For hardware timer support
 // #include "pico/cyw43_arch.h"
 // #include "pico/stdlib.h"
 // #include <Arduino.h>
@@ -156,6 +157,14 @@ float gpioPWMDutyCycle[10] = {0.5, 0.5, 0.5, 0.5, 0.5, 0.5, 0.5, 0.5, 0.5, 0.5};
 bool gpioPWMEnabled[10] = {false, false, false, false, false,
                            false, false, false, false, false};
 
+// Slow PWM state tracking (for frequencies below 10Hz)
+bool gpioSlowPWMEnabled[10] = {false, false, false, false, false,
+                               false, false, false, false, false};
+repeating_timer_t gpioSlowPWMTimers[10];
+volatile uint32_t gpioSlowPWMCounter[10] = {0, 0, 0, 0, 0, 0, 0, 0, 0, 0};
+volatile uint32_t gpioSlowPWMPeriod[10] = {0, 0, 0, 0, 0, 0, 0, 0, 0, 0};
+volatile uint32_t gpioSlowPWMDutyTicks[10] = {0, 0, 0, 0, 0, 0, 0, 0, 0, 0};
+
 void initGPIO(void) {
   for (int i = 0; i < 8; i++) {
     int gpio_pin = 0;
@@ -213,10 +222,7 @@ void initADC(void) {
   adc_init();
   
   // Make sure GPIO pins are set up for ADC
-  adc_gpio_init(26);  // ADC0
-  adc_gpio_init(27);  // ADC1  
-  adc_gpio_init(28);  // ADC2
-  adc_gpio_init(29);  // ADC3
+
   // Note: ADC4 is temperature sensor (internal)
   
   // Set Arduino ADC resolution to 12 bits for compatibility
@@ -2665,6 +2671,184 @@ void refillTable(int amplitude, int offset, int dac) {
 //                 i, gpio29Function, pd, h, slew, drive, irqmask, out);
 // }
 
+// Slow PWM Functions (for frequencies below 10Hz)
+// Hardware timer callback for slow PWM
+bool __not_in_flash_func(slowPWMTimerCallback)(repeating_timer_t* rt) {
+  // Get the GPIO index from the user data
+  int gpio_index = (int)(uintptr_t)rt->user_data;
+  
+  // Increment counter
+  gpioSlowPWMCounter[gpio_index]++;
+  
+  // Check if we've reached the period
+  if (gpioSlowPWMCounter[gpio_index] >= gpioSlowPWMPeriod[gpio_index]) {
+    gpioSlowPWMCounter[gpio_index] = 0; // Reset counter
+  }
+  
+  // Set pin state based on duty cycle
+  int physical_pin = gpioDef[gpio_index][0];
+  if (gpioSlowPWMCounter[gpio_index] < gpioSlowPWMDutyTicks[gpio_index]) {
+    gpio_put(physical_pin, 1); // HIGH
+  } else {
+    gpio_put(physical_pin, 0); // LOW
+  }
+  
+  return true; // Continue timer
+}
+
+// Setup slow PWM using hardware timer
+int setupSlowPWM(int gpio_pin, float frequency, float duty_cycle) {
+  // Validate GPIO pin number (1-8 for regular GPIO pins)
+  if (gpio_pin < 1 || gpio_pin > 8) {
+    return -1; // Invalid pin
+  }
+
+  // Validate frequency (0.01Hz to 10Hz for slow PWM)
+  if (frequency < 0.01 || frequency > 10.0) {
+    return -2; // Invalid frequency
+  }
+
+  // Validate duty cycle (0.0 to 1.0)
+  if (duty_cycle < 0.0 || duty_cycle > 1.0) {
+    return -3; // Invalid duty cycle
+  }
+
+  int gpio_index = gpio_pin - 1;             // Convert to 0-based index
+  int physical_pin = gpioDef[gpio_index][0]; // Get physical pin number
+
+  // Stop any existing slow PWM on this pin
+  if (gpioSlowPWMEnabled[gpio_index]) {
+    cancel_repeating_timer(&gpioSlowPWMTimers[gpio_index]);
+    gpioSlowPWMEnabled[gpio_index] = false;
+  }
+
+  // Configure pin as output
+  gpio_set_function(physical_pin, GPIO_FUNC_SIO);
+  gpio_set_dir(physical_pin, true);
+  gpio_put(physical_pin, 0); // Start low
+
+  // Calculate timer parameters
+  // Use 1ms timer resolution for good precision
+  uint32_t timer_interval_us = 1000; // 1ms intervals
+  uint32_t period_ms = (uint32_t)(1000.0f / frequency);
+  uint32_t duty_ms = (uint32_t)(period_ms * duty_cycle);
+  
+  // Convert to timer ticks
+  gpioSlowPWMPeriod[gpio_index] = period_ms; // Period in ms
+  gpioSlowPWMDutyTicks[gpio_index] = duty_ms; // Duty cycle in ms
+  gpioSlowPWMCounter[gpio_index] = 0;
+
+  // Start the repeating timer
+  bool success = add_repeating_timer_ms(-1, slowPWMTimerCallback, 
+                                       (void*)(uintptr_t)gpio_index, 
+                                       &gpioSlowPWMTimers[gpio_index]);
+  if (!success) {
+    return -4; // Timer setup failed
+  }
+
+  // Update state tracking
+  gpioPWMFrequency[gpio_index] = frequency;
+  gpioPWMDutyCycle[gpio_index] = duty_cycle;
+  gpioSlowPWMEnabled[gpio_index] = true;
+  gpioPWMEnabled[gpio_index] = false; // Not using hardware PWM
+
+  // Update config
+  jumperlessConfig.gpio.pwm_frequency[gpio_index] = frequency;
+  jumperlessConfig.gpio.pwm_duty_cycle[gpio_index] = duty_cycle;
+  jumperlessConfig.gpio.pwm_enabled[gpio_index] = true;
+
+  return 0; // Success
+}
+
+// Set slow PWM duty cycle
+int setSlowPWMDutyCycle(int gpio_pin, float duty_cycle) {
+  // Validate GPIO pin number (1-8 for regular GPIO pins)
+  if (gpio_pin < 1 || gpio_pin > 8) {
+    return -1; // Invalid pin
+  }
+
+  // Validate duty cycle (0.0 to 1.0)
+  if (duty_cycle < 0.0 || duty_cycle > 1.0) {
+    return -2; // Invalid duty cycle
+  }
+
+  int gpio_index = gpio_pin - 1; // Convert to 0-based index
+
+  // Check if slow PWM is enabled
+  if (!gpioSlowPWMEnabled[gpio_index]) {
+    // Set up slow PWM with default frequency if not already enabled
+    float default_freq = (gpioPWMFrequency[gpio_index] < 0.01)
+                             ? 1.0
+                             : gpioPWMFrequency[gpio_index];
+    return setupSlowPWM(gpio_pin, default_freq, duty_cycle);
+  }
+
+  // Update duty cycle
+  uint32_t period_ms = gpioSlowPWMPeriod[gpio_index];
+  uint32_t duty_ms = (uint32_t)(period_ms * duty_cycle);
+  gpioSlowPWMDutyTicks[gpio_index] = duty_ms;
+  gpioPWMDutyCycle[gpio_index] = duty_cycle;
+  jumperlessConfig.gpio.pwm_duty_cycle[gpio_index] = duty_cycle;
+
+  return 0; // Success
+}
+
+// Set slow PWM frequency
+int setSlowPWMFrequency(int gpio_pin, float frequency) {
+  // Validate GPIO pin number (1-8 for regular GPIO pins)
+  if (gpio_pin < 1 || gpio_pin > 8) {
+    return -1; // Invalid pin
+  }
+
+  // Validate frequency (0.01Hz to 10Hz for slow PWM)
+  if (frequency < 0.01 || frequency > 10.0) {
+    return -2; // Invalid frequency
+  }
+
+  int gpio_index = gpio_pin - 1; // Convert to 0-based index
+
+  // Check if slow PWM is enabled
+  if (!gpioSlowPWMEnabled[gpio_index]) {
+    // Set up slow PWM with default duty cycle if not already enabled
+    float default_duty = (gpioPWMDutyCycle[gpio_index] < 0.0 ||
+                          gpioPWMDutyCycle[gpio_index] > 1.0)
+                             ? 0.5
+                             : gpioPWMDutyCycle[gpio_index];
+    return setupSlowPWM(gpio_pin, frequency, default_duty);
+  }
+
+  // Re-setup slow PWM with new frequency
+  return setupSlowPWM(gpio_pin, frequency, gpioPWMDutyCycle[gpio_index]);
+}
+
+// Stop slow PWM
+int stopSlowPWM(int gpio_pin) {
+  // Validate GPIO pin number (1-8 for regular GPIO pins)
+  if (gpio_pin < 1 || gpio_pin > 8) {
+    return -1; // Invalid pin
+  }
+
+  int gpio_index = gpio_pin - 1;             // Convert to 0-based index
+  int physical_pin = gpioDef[gpio_index][0]; // Get physical pin number
+
+  // Stop the timer
+  if (gpioSlowPWMEnabled[gpio_index]) {
+    cancel_repeating_timer(&gpioSlowPWMTimers[gpio_index]);
+    gpioSlowPWMEnabled[gpio_index] = false;
+  }
+
+  // Set pin low and back to input
+  gpio_put(physical_pin, 0);
+  gpio_set_function(physical_pin, GPIO_FUNC_SIO);
+  gpio_set_dir(physical_pin, false);
+
+  // Update state tracking
+  gpioPWMEnabled[gpio_index] = false;
+  jumperlessConfig.gpio.pwm_enabled[gpio_index] = false;
+
+  return 0; // Success
+}
+
 // PWM Functions
 int setupPWM(int gpio_pin, float frequency, float duty_cycle) {
   // Validate GPIO pin number (1-8 for regular GPIO pins)
@@ -2673,8 +2857,13 @@ int setupPWM(int gpio_pin, float frequency, float duty_cycle) {
   }
 
   // Validate frequency (0.01Hz to 62.5MHz)
-  if (frequency < 10.0 || frequency > 62500000.0) {
+  if (frequency < 0.01 || frequency > 62500000.0) {
     return -2; // Invalid frequency
+  }
+
+  // For frequencies below 10Hz, use slow PWM with hardware timer
+  if (frequency < 10.0) {
+    return setupSlowPWM(gpio_pin, frequency, duty_cycle);
   }
 
   int gpio_index = gpio_pin - 1;             // Convert to 0-based index
@@ -2735,7 +2924,12 @@ int setPWMDutyCycle(int gpio_pin, float duty_cycle) {
   int gpio_index = gpio_pin - 1;             // Convert to 0-based index
   int physical_pin = gpioDef[gpio_index][0]; // Get physical pin number
 
-  // Check if PWM is enabled
+  // Check if slow PWM is enabled
+  if (gpioSlowPWMEnabled[gpio_index]) {
+    return setSlowPWMDutyCycle(gpio_pin, duty_cycle);
+  }
+
+  // Check if regular PWM is enabled
   if (!gpioPWMEnabled[gpio_index]) {
     // Set up PWM with default frequency if not already enabled
     float default_freq = (gpioPWMFrequency[gpio_index] < 0.01)
@@ -2761,7 +2955,12 @@ int setPWMFrequency(int gpio_pin, float frequency) {
 
   int gpio_index = gpio_pin - 1; // Convert to 0-based index
 
-  // Check if PWM is enabled
+  // Check if slow PWM is enabled
+  if (gpioSlowPWMEnabled[gpio_index]) {
+    return setSlowPWMFrequency(gpio_pin, frequency);
+  }
+
+  // Check if regular PWM is enabled
   if (!gpioPWMEnabled[gpio_index]) {
     // Set up PWM with default duty cycle if not already enabled
     float default_duty = (gpioPWMDutyCycle[gpio_index] < 0.0 ||
@@ -2784,6 +2983,12 @@ int stopPWM(int gpio_pin) {
   int gpio_index = gpio_pin - 1;             // Convert to 0-based index
   int physical_pin = gpioDef[gpio_index][0]; // Get physical pin number
 
+  // Check if slow PWM is enabled
+  if (gpioSlowPWMEnabled[gpio_index]) {
+    return stopSlowPWM(gpio_pin);
+  }
+
+  // Regular hardware PWM
   // Find out which PWM slice is connected to this GPIO
   uint slice_num = pwm_gpio_to_slice_num(physical_pin);
 
@@ -2806,15 +3011,19 @@ void printPWMState(void) {
 
   Serial.print("  enabled:\t");
   for (int i = 0; i < 8; i++) {
-    Serial.print(gpioPWMEnabled[i] ? "yes" : "no");
+    bool is_enabled = gpioPWMEnabled[i] || gpioSlowPWMEnabled[i];
+    Serial.print(is_enabled ? "yes" : "no");
     Serial.print("\t");
   }
   Serial.println();
 
   Serial.print("frequency:\t");
   for (int i = 0; i < 8; i++) {
-    if (gpioPWMEnabled[i]) {
+    if (gpioPWMEnabled[i] || gpioSlowPWMEnabled[i]) {
       Serial.print(gpioPWMFrequency[i], 1);
+      if (gpioSlowPWMEnabled[i]) {
+        Serial.print("(S)"); // Mark slow PWM
+      }
     } else {
       Serial.print("-");
     }
@@ -2824,8 +3033,21 @@ void printPWMState(void) {
 
   Serial.print("duty_cycle:\t");
   for (int i = 0; i < 8; i++) {
-    if (gpioPWMEnabled[i]) {
+    if (gpioPWMEnabled[i] || gpioSlowPWMEnabled[i]) {
       Serial.print(gpioPWMDutyCycle[i], 2);
+    } else {
+      Serial.print("-");
+    }
+    Serial.print("\t");
+  }
+  Serial.println();
+
+  Serial.print("    type:\t");
+  for (int i = 0; i < 8; i++) {
+    if (gpioSlowPWMEnabled[i]) {
+      Serial.print("slow");
+    } else if (gpioPWMEnabled[i]) {
+      Serial.print("hw");
     } else {
       Serial.print("-");
     }

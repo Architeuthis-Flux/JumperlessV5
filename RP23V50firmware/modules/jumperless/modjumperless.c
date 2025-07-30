@@ -16,6 +16,8 @@
  * all copies or substantial portions of the Software.
  */
 
+
+
 #include "py/obj.h"
 #include "py/runtime.h"
 #include "py/lexer.h"
@@ -24,6 +26,14 @@
 #include <string.h>
 #include <stdio.h>
 #include <stdlib.h>
+#include <ctype.h>
+
+
+
+
+// Terminal color functions
+extern void jl_change_terminal_color(int color, bool flush);
+extern void jl_cycle_term_color(bool reset, float step, bool flush);
 
 // Note: GPIO functions now always return formatted strings like HIGH/LOW, INPUT/OUTPUT, etc.
 // Voltage/current functions still return floats for backward compatibility
@@ -102,6 +112,8 @@ void jl_clickwheel_down(int clicks);
 void jl_clickwheel_press(void);
 void jl_run_app(char* appName);
 void jl_help(void);
+void jl_help_section(const char* section);
+void jl_pause_core2(bool pause);
 int jl_pwm_setup(int gpio_pin, float frequency, float duty_cycle);
 int jl_pwm_set_duty_cycle(int gpio_pin, float duty_cycle);
 int jl_pwm_set_frequency(int gpio_pin, float frequency);
@@ -1230,8 +1242,8 @@ static mp_obj_t jl_pwm_func(size_t n_args, const mp_obj_t *args) {
         mp_raise_ValueError(MP_ERROR_TEXT("GPIO pin must be 1-8 or GPIO_1-GPIO_8"));
     }
     
-    if (frequency < 10.0 || frequency > 62500000.0) {
-        mp_raise_ValueError(MP_ERROR_TEXT("PWM frequency must be 10Hz to 62.5MHz"));
+    if (frequency < 0.0009 || frequency > 62500000.0) {
+        mp_raise_ValueError(MP_ERROR_TEXT("PWM frequency must be 0.001Hz to 62.5MHz"));
     }
     
     if (duty_cycle < 0.0 || duty_cycle > 1.0) {
@@ -1288,8 +1300,8 @@ static mp_obj_t jl_pwm_set_frequency_func(mp_obj_t pin_obj, mp_obj_t frequency_o
         mp_raise_ValueError(MP_ERROR_TEXT("GPIO pin must be 1-8 or GPIO_1-GPIO_8"));
     }
     
-    if (frequency < 10.0 || frequency > 62500000.0) {
-        mp_raise_ValueError(MP_ERROR_TEXT("PWM frequency must be 10Hz to 62.5MHz"));
+    if (frequency < 0.0009 || frequency > 62500000.0) {
+        mp_raise_ValueError(MP_ERROR_TEXT("PWM frequency must be 0.001Hz to 62.5MHz"));
     }
     
     int result = jl_pwm_set_frequency(gpio_pin, frequency);
@@ -1537,6 +1549,65 @@ static mp_obj_t jl_arduino_reset_func(void) {
 }
 static MP_DEFINE_CONST_FUN_OBJ_0(jl_arduino_reset_obj, jl_arduino_reset_func);
 
+// Core2 Functions
+static mp_obj_t jl_pause_core2_func(mp_obj_t pause_obj) {
+    bool pause;
+    
+    // Handle different input types: bool, int, or string
+    if (mp_obj_is_bool(pause_obj)) {
+        pause = mp_obj_is_true(pause_obj);
+    } else if (mp_obj_is_int(pause_obj)) {
+        pause = mp_obj_get_int(pause_obj) != 0;
+    } else if (mp_obj_is_str(pause_obj)) {
+        const char* str = mp_obj_str_get_str(pause_obj);
+        // Accept "true", "1", "on", "yes" as true, everything else as false
+        pause = (strcmp(str, "true") == 0 || strcmp(str, "1") == 0 || 
+                strcmp(str, "on") == 0 || strcmp(str, "yes") == 0);
+    } else {
+        mp_raise_TypeError("pause_core2() argument must be bool, int, or string");
+    }
+    
+    jl_pause_core2(pause);
+    return mp_const_none;
+}
+static MP_DEFINE_CONST_FUN_OBJ_1(jl_pause_core2_obj, jl_pause_core2_func);
+
+// Terminal Color Functions
+static mp_obj_t jl_change_terminal_color_func(size_t n_args, const mp_obj_t *args) {
+    int color = -1;
+    bool flush = true;
+    
+    if (n_args >= 1) {
+        color = mp_obj_get_int(args[0]);
+    }
+    if (n_args >= 2) {
+        flush = mp_obj_is_true(args[1]);
+    }
+    
+    jl_change_terminal_color(color, flush);
+    return mp_const_none;
+}
+static MP_DEFINE_CONST_FUN_OBJ_VAR_BETWEEN(jl_change_terminal_color_obj, 0, 2, jl_change_terminal_color_func);
+
+static mp_obj_t jl_cycle_term_color_func(size_t n_args, const mp_obj_t *args) {
+    bool reset = false;
+    float step = 100.0;
+    bool flush = true;
+    
+    if (n_args >= 1) {
+        reset = mp_obj_is_true(args[0]);
+    }
+    if (n_args >= 2) {
+        step = mp_obj_get_float(args[1]);
+    }
+    if (n_args >= 3) {
+        flush = mp_obj_is_true(args[2]);
+    }
+    
+    jl_cycle_term_color(reset, step, flush);
+    return mp_const_none;
+}
+static MP_DEFINE_CONST_FUN_OBJ_VAR_BETWEEN(jl_cycle_term_color_obj, 0, 3, jl_cycle_term_color_func);
 
 // Status Functions
 
@@ -2075,6 +2146,8 @@ static mp_obj_t jl_help_nodes_func(void) {
     mp_printf(&mp_plat_print, "   \"DAC0\" = \"DAC_0\"\n");
     mp_printf(&mp_plat_print, "   \"UART_TX\" = \"TX\"\n\n");
     
+
+
     mp_printf(&mp_plat_print, "NOTES:\n");
     mp_printf(&mp_plat_print, "  - String names are case-insensitive: \"d13\" = \"D13\" = \"nAnO_d13\"\n");
     mp_printf(&mp_plat_print, "  - Constants are case-sensitive: use D13, not d13\n");
@@ -2086,146 +2159,271 @@ static mp_obj_t jl_help_nodes_func(void) {
 static MP_DEFINE_CONST_FUN_OBJ_0(jl_help_nodes_obj, jl_help_nodes_func);
 
 // Help Function
-static mp_obj_t jl_help_func(void) {
-    mp_printf(&mp_plat_print, "Jumperless Native MicroPython Module\n");
-    mp_printf(&mp_plat_print, "Hardware Control Functions with Formatted Output:\n");
-    mp_printf(&mp_plat_print, "(GPIO functions return formatted strings like HIGH/LOW, INPUT/OUTPUT, PULLUP/NONE, CONNECTED/DISCONNECTED)\n\n");
-    mp_printf(&mp_plat_print, "DAC (Digital-to-Analog Converter):\n");
-    mp_printf(&mp_plat_print, "  jumperless.dac_set(channel, voltage)         - Set DAC output voltage\n");
-    mp_printf(&mp_plat_print, "  jumperless.dac_get(channel)                  - Get DAC output voltage\n");
-    mp_printf(&mp_plat_print, "  jumperless.set_dac(channel, voltage)         - Alias for dac_set\n");
-    mp_printf(&mp_plat_print, "  jumperless.get_dac(channel)                  - Alias for dac_get\n\n");
-    mp_printf(&mp_plat_print, "          channel: 0-3, DAC0, DAC1, TOP_RAIL, BOTTOM_RAIL\n");    
-    mp_printf(&mp_plat_print, "          channel 0/DAC0: DAC 0\n");    
-    mp_printf(&mp_plat_print, "          channel 1/DAC1: DAC 1\n");   
-    mp_printf(&mp_plat_print, "          channel 2/TOP_RAIL: top rail\n");    
-    mp_printf(&mp_plat_print, "          channel 3/BOTTOM_RAIL: bottom rail\n");    
-    mp_printf(&mp_plat_print, "          voltage: -8.0 to 8.0V\n\n");
-    mp_printf(&mp_plat_print, "ADC (Analog-to-Digital Converter):\n");
-    mp_printf(&mp_plat_print, "  jumperless.adc_get(channel)                  - Read ADC input voltage\n");
-    mp_printf(&mp_plat_print, "  jumperless.get_adc(channel)                  - Alias for adc_get\n\n");
-    mp_printf(&mp_plat_print, "                                              channel: 0-4\n\n");
-    mp_printf(&mp_plat_print, "INA (Current/Power Monitor):\n");
-    mp_printf(&mp_plat_print, "  jumperless.ina_get_current(sensor)          - Read current in amps\n");
-    mp_printf(&mp_plat_print, "  jumperless.ina_get_voltage(sensor)          - Read shunt voltage\n");
-    mp_printf(&mp_plat_print, "  jumperless.ina_get_bus_voltage(sensor)      - Read bus voltage\n");
-    mp_printf(&mp_plat_print, "  jumperless.ina_get_power(sensor)            - Read power in watts\n");
-    mp_printf(&mp_plat_print, "  Aliases: get_current, get_voltage, get_bus_voltage, get_power\n\n");
-    mp_printf(&mp_plat_print, "             sensor: 0 or 1\n\n");
-    mp_printf(&mp_plat_print, "GPIO:\n");
-    mp_printf(&mp_plat_print, "  jumperless.gpio_set(pin, value)             - Set GPIO pin state\n");
-    mp_printf(&mp_plat_print, "  jumperless.gpio_get(pin)                    - Read GPIO pin state\n");
-    mp_printf(&mp_plat_print, "  jumperless.gpio_set_dir(pin, direction)     - Set GPIO pin direction\n");
-    mp_printf(&mp_plat_print, "  jumperless.gpio_get_dir(pin)                - Get GPIO pin direction\n");
-    mp_printf(&mp_plat_print, "  jumperless.gpio_set_pull(pin, pull)         - Set GPIO pull-up/down\n");
-    mp_printf(&mp_plat_print, "  jumperless.gpio_get_pull(pin)               - Get GPIO pull-up/down\n");
-    mp_printf(&mp_plat_print, "  Aliases: set_gpio, get_gpio, set_gpio_dir, get_gpio_dir, etc.\n\n");
-    mp_printf(&mp_plat_print, "            pin 1-8: GPIO 1-8\n");
-    mp_printf(&mp_plat_print, "            pin   9: UART Tx\n");
-    mp_printf(&mp_plat_print, "            pin  10: UART Rx\n");
-    mp_printf(&mp_plat_print, "              value: True/False   for HIGH/LOW\n");
-    mp_printf(&mp_plat_print, "          direction: True/False   for OUTPUT/INPUT\n");
-    mp_printf(&mp_plat_print, "               pull: -1/0/1       for PULL_DOWN/NONE/PULL_UP\n\n");
-    mp_printf(&mp_plat_print, "PWM (Pulse Width Modulation):\n");
-    mp_printf(&mp_plat_print, "  jumperless.pwm(pin, [frequency], [duty])    - Setup PWM on GPIO pin\n");
-    mp_printf(&mp_plat_print, "  jumperless.pwm_set_duty_cycle(pin, duty)    - Set PWM duty cycle\n");
-    mp_printf(&mp_plat_print, "  jumperless.pwm_set_frequency(pin, freq)     - Set PWM frequency\n");
-    mp_printf(&mp_plat_print, "  jumperless.pwm_stop(pin)                    - Stop PWM on pin\n");
-    mp_printf(&mp_plat_print, "  Pin: 1-8 (numeric) or GPIO_1-GPIO_8 (constants)\n");
-    mp_printf(&mp_plat_print, "  Frequency: 10Hz to 62.5MHz, Duty: 0.0 to 1.0\n");
-    mp_printf(&mp_plat_print, "  Aliases: set_pwm, set_pwm_duty_cycle, set_pwm_frequency, stop_pwm\n\n");
-    mp_printf(&mp_plat_print, "             pin: 1-8       GPIO pins only\n");
-    mp_printf(&mp_plat_print, "       frequency: 1-62.5MHz default 1000Hz\n");
-    mp_printf(&mp_plat_print, "      duty_cycle: 0.0-1.0   default 0.5 (50%%)\n\n");
-    mp_printf(&mp_plat_print, "Node Connections:\n");
-    mp_printf(&mp_plat_print, "  jumperless.connect(node1, node2)            - Connect two nodes\n");
-    mp_printf(&mp_plat_print, "  jumperless.disconnect(node1, node2)         - Disconnect nodes\n");
-    mp_printf(&mp_plat_print, "  jumperless.is_connected(node1, node2)       - Check if nodes are connected\n\n");
-    mp_printf(&mp_plat_print, "  jumperless.nodes_clear()                    - Clear all connections\n");
-    mp_printf(&mp_plat_print, "         set node2 to -1 to disconnect everything connected to node1\n\n");
-    mp_printf(&mp_plat_print, "OLED Display:\n");
-    mp_printf(&mp_plat_print, "  jumperless.oled_print(\"text\")               - Display text\n");
-    mp_printf(&mp_plat_print, "  jumperless.oled_clear()                     - Clear display\n");
-    // mp_printf(&mp_plat_print, "  jumperless.oled_show()                      - Update display\n");
-    mp_printf(&mp_plat_print, "  jumperless.oled_connect()                   - Connect OLED\n");
-    mp_printf(&mp_plat_print, "  jumperless.oled_disconnect()                - Disconnect OLED\n\n");
-    // mp_printf(&mp_plat_print, "    size: 1 or 2 (default 2)\n\n");
-
-    mp_printf(&mp_plat_print, "Clickwheel:\n");
-    mp_printf(&mp_plat_print, "  jumperless.clickwheel_up([clicks])          - Scroll up\n");
-    mp_printf(&mp_plat_print, "  jumperless.clickwheel_down([clicks])        - Scroll down\n");
-    mp_printf(&mp_plat_print, "  jumperless.clickwheel_press()               - Press button\n");
-    mp_printf(&mp_plat_print, "           clicks: number of steps\n\n");
-    mp_printf(&mp_plat_print, "Status:\n");
-    mp_printf(&mp_plat_print, "  jumperless.print_bridges()                  - Print all bridges\n");
-    mp_printf(&mp_plat_print, "  jumperless.print_paths()                    - Print path between nodes\n");
-    mp_printf(&mp_plat_print, "  jumperless.print_crossbars()                - Print crossbar array\n");
-    mp_printf(&mp_plat_print, "  jumperless.print_nets()                     - Print nets\n");
-    mp_printf(&mp_plat_print, "  jumperless.print_chip_status()              - Print chip status\n\n");
-
-    mp_printf(&mp_plat_print, "Probe Functions:\n");
-    mp_printf(&mp_plat_print, "  jumperless.probe_read([blocking=True])      - Read probe (default: blocking)\n");
-    mp_printf(&mp_plat_print, "  jumperless.read_probe([blocking=True])      - Read probe (default: blocking)\n");
-    mp_printf(&mp_plat_print, "  jumperless.probe_read_blocking()            - Wait for probe touch (explicit)\n");
-    mp_printf(&mp_plat_print, "  jumperless.probe_read_nonblocking()         - Check probe immediately (explicit)\n");
-    mp_printf(&mp_plat_print, "  jumperless.get_button([blocking=True])      - Get button state (default: blocking)\n");
-    mp_printf(&mp_plat_print, "  jumperless.probe_button([blocking=True])    - Get button state (default: blocking)\n");
-    mp_printf(&mp_plat_print, "  jumperless.probe_button_blocking()          - Wait for button press (explicit)\n");
-    mp_printf(&mp_plat_print, "  jumperless.probe_button_nonblocking()       - Check buttons immediately (explicit)\n");
-    mp_printf(&mp_plat_print, "  Touch aliases: probe_wait, wait_probe, probe_touch, wait_touch (always blocking)\n");
-    mp_printf(&mp_plat_print, "  Button aliases: button_read, read_button (parameterized)\n");
-    mp_printf(&mp_plat_print, "  Non-blocking only: check_button, button_check\n");
-    mp_printf(&mp_plat_print, "  Touch returns: ProbePad object (1-60, D13_PAD, TOP_RAIL_PAD, LOGO_PAD_TOP, etc.)\n");
-    mp_printf(&mp_plat_print, "  Button returns: CONNECT, REMOVE, or NONE (front=connect, rear=remove)\n\n");
-    mp_printf(&mp_plat_print, "Misc:\n");
-    mp_printf(&mp_plat_print, "  jumperless.arduino_reset()                  - Reset Arduino\n");
-    mp_printf(&mp_plat_print, "  jumperless.probe_tap(node)                  - Tap probe on node (unimplemented)\n");
-    mp_printf(&mp_plat_print, "  jumperless.run_app(appName)                 - Run app\n");
-    mp_printf(&mp_plat_print, "  jumperless.format_output(True/False)        - Enable/disable formatted output\n\n");
-    mp_printf(&mp_plat_print, "Help:\n");
-    mp_printf(&mp_plat_print, "  jumperless.help()                           - Display this help\n\n");
-    mp_printf(&mp_plat_print, "Node Names:\n");
-    mp_printf(&mp_plat_print, "  jumperless.node(\"TOP_RAIL\")                  - Create node from string name\n");
-    mp_printf(&mp_plat_print, "  jumperless.TOP_RAIL                        - Pre-defined node constant\n");
-    mp_printf(&mp_plat_print, "  jumperless.D2, jumperless.A0, etc.         - Arduino pin constants\n");
-    mp_printf(&mp_plat_print, "  For global access: from jumperless_nodes import *\n");
-    mp_printf(&mp_plat_print, "  Node names: All standard names like \"D13\", \"A0\", \"GPIO_1\", etc.\n\n");
-    mp_printf(&mp_plat_print, "Examples (all functions available globally):\n");
-    mp_printf(&mp_plat_print, "  dac_set(TOP_RAIL, 3.3)                     # Set Top Rail to 3.3V using node\n");
-    mp_printf(&mp_plat_print, "  set_dac(3, 3.3)                            # Same as above using alias\n");
-    mp_printf(&mp_plat_print, "  dac_set(DAC0, 5.0)                         # Set DAC0 using node constant\n");
-    mp_printf(&mp_plat_print, "  voltage = get_adc(1)                       # Read ADC1 using alias\n");
-    mp_printf(&mp_plat_print, "  connect(TOP_RAIL, D13)                     # Connect using constants\n");
-    mp_printf(&mp_plat_print, "  connect(\"TOP_RAIL\", 5)                      # Connect using strings\n");
-    mp_printf(&mp_plat_print, "  connect(4, 20)                             # Connect using numbers\n");
-    mp_printf(&mp_plat_print, "  top_rail = node(\"TOP_RAIL\")                 # Create node object\n");
-    mp_printf(&mp_plat_print, "  connect(top_rail, D13)                     # Mix objects and constants\n");
-    mp_printf(&mp_plat_print, "  oled_print(\"Fuck you!\")                    # Display text\n");
-    mp_printf(&mp_plat_print, "  current = get_current(0)                   # Read current using alias\n");
-    mp_printf(&mp_plat_print, "  set_gpio(1, True)                          # Set GPIO pin high using alias\n");
-    mp_printf(&mp_plat_print, "  pwm(1, 1000, 0.5)                         # 1kHz PWM, 50%% duty cycle on pin 1\n");
-    mp_printf(&mp_plat_print, "  pwm(GPIO_2, 0.5, 0.25)                    # 0.5Hz PWM, 25%% duty (LED blink)\n");
-    mp_printf(&mp_plat_print, "  pwm_set_duty_cycle(GPIO_1, 0.75)          # Change to 75%% duty cycle\n");
-    mp_printf(&mp_plat_print, "  pwm_set_frequency(2, 0.1)                 # Very slow 0.1Hz frequency\n");
-    mp_printf(&mp_plat_print, "  pwm_stop(GPIO_1)                          # Stop PWM on GPIO_1\n");
-    mp_printf(&mp_plat_print, "  pad = probe_read()                         # Wait for probe touch\n");
-    mp_printf(&mp_plat_print, "  if pad == 25: print('Touched pad 25!')    # Check specific pad\n");
-    mp_printf(&mp_plat_print, "  if pad == D13_PAD: connect(D13, TOP_RAIL)  # Auto-connect Arduino pin\n");
-    mp_printf(&mp_plat_print, "  if pad == TOP_RAIL_PAD: show_voltage()     # Show rail voltage\n");
-    mp_printf(&mp_plat_print, "  if pad == LOGO_PAD_TOP: print('Logo!')    # Check logo pad\n");
-    mp_printf(&mp_plat_print, "  button = get_button()                      # Wait for button press (blocking)\n");
-    mp_printf(&mp_plat_print, "  if button == CONNECT_BUTTON: ...          # Front button pressed\n");
-    mp_printf(&mp_plat_print, "  if button == REMOVE_BUTTON: ...           # Rear button pressed\n");
-    mp_printf(&mp_plat_print, "  button = check_button()                   # Check buttons immediately\n");
-    mp_printf(&mp_plat_print, "  if button == BUTTON_NONE: print('None')   # No button pressed\n");
-    mp_printf(&mp_plat_print, "  pad = wait_touch()                        # Wait for touch\n");
-    mp_printf(&mp_plat_print, "  btn = check_button()                      # Check button immediately\n");
-    mp_printf(&mp_plat_print, "  if pad == D13_PAD and btn == CONNECT_BUTTON: connect(D13, TOP_RAIL)\n\n");
-    mp_printf(&mp_plat_print, "Note: All functions and constants are available globally!\n");
-    mp_printf(&mp_plat_print, "No need for 'jumperless.' prefix in REPL or single commands.\n\n");
+static mp_obj_t jl_help_func(size_t n_args, const mp_obj_t *args) {
+    if (n_args == 0) {
+        // Show all sections
+        mp_printf(&mp_plat_print, "Jumperless Native MicroPython Module\n");
+        // mp_printf(&mp_plat_print, "Hardware Control Functions with Formatted Output:\n");
+        // mp_printf(&mp_plat_print, "(GPIO functions return formatted strings like HIGH/LOW, INPUT/OUTPUT, PULLUP/NONE, CONNECTED/DISCONNECTED)\n\n");
+        jl_cycle_term_color(true, 5.0, 1);
+        mp_printf(&mp_plat_print, "Available help sections:\n\n");
+          
+        mp_printf(&mp_plat_print, "  help() or help(\"all\")     - Show all functions\n");
+        jl_cycle_term_color(false, 100.0, 1); 
+        mp_printf(&mp_plat_print, "  help(\"DAC\")              - DAC functions\n");
+        jl_cycle_term_color(false, 100.0, 1); 
+        mp_printf(&mp_plat_print, "  help(\"ADC\")              - ADC functions\n");
+        jl_cycle_term_color(false, 100.0, 1); 
+        mp_printf(&mp_plat_print, "  help(\"GPIO\")             - GPIO functions\n");
+        jl_cycle_term_color(false, 100.0, 1); 
+        mp_printf(&mp_plat_print, "  help(\"PWM\")              - PWM functions\n");
+        jl_cycle_term_color(false, 100.0, 1); 
+        mp_printf(&mp_plat_print, "  help(\"INA\")              - INA current/power monitor\n");
+        jl_cycle_term_color(false, 100.0, 1); 
+        mp_printf(&mp_plat_print, "  help(\"NODES\")            - Node connections\n");
+        jl_cycle_term_color(false, 100.0, 1); 
+        mp_printf(&mp_plat_print, "  help(\"OLED\")             - OLED display\n");
+        jl_cycle_term_color(false, 100.0, 1); 
+        mp_printf(&mp_plat_print, "  help(\"PROBE\")            - Probe and button functions\n");
+        // jl_cycle_term_color(false, 100.0, 1); 
+        // mp_printf(&mp_plat_print, "  help(\"CLICKWHEEL\")       - Clickwheel functions\n");
+        jl_cycle_term_color(false, 100.0, 1); 
+        mp_printf(&mp_plat_print, "  help(\"STATUS\")           - Status and debug functions\n");
+        jl_cycle_term_color(false, 100.0, 1); 
+        mp_printf(&mp_plat_print, "  help(\"FILESYSTEM\")       - Filesystem functions\n");
+        jl_cycle_term_color(false, 100.0, 1); 
+        // mp_printf(&mp_plat_print, "  help(\"CORE2\")            - Core2 control functions\n");
+        mp_printf(&mp_plat_print, "  help(\"MISC\")             - Miscellaneous functions\n");
+        jl_cycle_term_color(false, 100.0, 1); 
+        mp_printf(&mp_plat_print, "  help(\"EXAMPLES\")         - Usage examples\n\n");
+        
+        // Show all sections with colors
+        jl_help_section("DAC");
+        jl_help_section("ADC");
+        jl_help_section("GPIO");
+        jl_help_section("PWM");
+        jl_help_section("INA");
+        jl_help_section("NODES");
+        jl_help_section("OLED");
+        jl_help_section("PROBE");
+        // jl_help_section("CLICKWHEEL");
+        jl_help_section("STATUS");
+        jl_help_section("FILESYSTEM");
+        jl_help_section("MISC");
+        jl_help_section("EXAMPLES");
+    } else {
+        // Show specific section
+        const char* section = mp_obj_str_get_str(args[0]);
+        jl_help_section(section);
+    }
     return mp_const_none;
 }
-static MP_DEFINE_CONST_FUN_OBJ_0(jl_help_obj, jl_help_func);
+static MP_DEFINE_CONST_FUN_OBJ_VAR_BETWEEN(jl_help_obj, 0, 1, jl_help_func);
+
+// Help section function implementation
+void jl_help_section(const char* section) {
+    // Color cycling for different sections (disabled for now)
+    static int color_index = 0;
+    int colors[] = {31, 32, 33, 34, 35, 36, 37, 38, 39, 40, 41, 42, 43, 44, 45}; // ANSI colors
+    int color = colors[color_index % 15];
+    color_index++;
+    jl_cycle_term_color(true, 5.0, 1);
+            
+    // Convert section to uppercase for comparison
+    char section_upper[32];
+    strcpy(section_upper, section);
+    for (int i = 0; section_upper[i]; i++) {
+        section_upper[i] = toupper(section_upper[i]);
+    }
+    jl_cycle_term_color(false, 100.0, 1);
+    if (strcmp(section_upper, "DAC") == 0 || strcmp(section_upper, "ALL") == 0) {
+        mp_printf(&mp_plat_print, "DAC (Digital-to-Analog Converter):\n\n");
+        mp_printf(&mp_plat_print, "   dac_set(channel, voltage)         - Set DAC output voltage\n");
+        mp_printf(&mp_plat_print, "   dac_get(channel)                  - Get DAC output voltage\n");
+        mp_printf(&mp_plat_print, "   set_dac(channel, voltage)         - Alias for dac_set\n");
+        mp_printf(&mp_plat_print, "   get_dac(channel)                  - Alias for dac_get\n\n");
+        mp_printf(&mp_plat_print, "          channel: 0-3, DAC0, DAC1, TOP_RAIL, BOTTOM_RAIL\n");    
+        mp_printf(&mp_plat_print, "          channel 0/DAC0: DAC 0\n");    
+        mp_printf(&mp_plat_print, "          channel 1/DAC1: DAC 1\n");   
+        mp_printf(&mp_plat_print, "          channel 2/TOP_RAIL: top rail\n");    
+        mp_printf(&mp_plat_print, "          channel 3/BOTTOM_RAIL: bottom rail\n");    
+        mp_printf(&mp_plat_print, "          voltage: -8.0 to 8.0V\n\n");
+    }
+    jl_cycle_term_color(false, 100.0, 1);
+    
+    if (strcmp(section_upper, "ADC") == 0 || strcmp(section_upper, "ALL") == 0) {
+        mp_printf(&mp_plat_print, "ADC (Analog-to-Digital Converter):\n\n");
+        mp_printf(&mp_plat_print, "   adc_get(channel)                  - Read ADC input voltage\n");
+        mp_printf(&mp_plat_print, "   get_adc(channel)                  - Alias for adc_get\n\n");
+        mp_printf(&mp_plat_print, "                                              channel: 0-4\n\n");
+    }
+    jl_cycle_term_color(false, 100.0, 1);
+    if (strcmp(section_upper, "GPIO") == 0 || strcmp(section_upper, "ALL") == 0) {
+
+        mp_printf(&mp_plat_print, "GPIO:\n\n");
+        mp_printf(&mp_plat_print, "   gpio_set(pin, value)             - Set GPIO pin state\n");
+        mp_printf(&mp_plat_print, "   gpio_get(pin)                    - Read GPIO pin state\n");
+        mp_printf(&mp_plat_print, "   gpio_set_dir(pin, direction)     - Set GPIO pin direction\n");
+        mp_printf(&mp_plat_print, "   gpio_get_dir(pin)                - Get GPIO pin direction\n");
+        mp_printf(&mp_plat_print, "   gpio_set_pull(pin, pull)         - Set GPIO pull-up/down\n");
+        mp_printf(&mp_plat_print, "   gpio_get_pull(pin)               - Get GPIO pull-up/down\n\n");
+        mp_printf(&mp_plat_print, "  Aliases: set_gpio, get_gpio, set_gpio_dir, get_gpio_dir, etc.\n\n");
+        mp_printf(&mp_plat_print, "            pin 1-8: GPIO 1-8\n");
+        mp_printf(&mp_plat_print, "            pin   9: UART Tx\n");
+        mp_printf(&mp_plat_print, "            pin  10: UART Rx\n");
+        mp_printf(&mp_plat_print, "              value: True/False   for HIGH/LOW\n");
+        mp_printf(&mp_plat_print, "          direction: True/False   for OUTPUT/INPUT\n");
+        mp_printf(&mp_plat_print, "               pull: -1/0/1       for PULL_DOWN/NONE/PULL_UP\n\n");
+    }
+        jl_cycle_term_color(false, 100.0, 1);
+    if (strcmp(section_upper, "PWM") == 0 || strcmp(section_upper, "ALL") == 0) {
+        mp_printf(&mp_plat_print, "PWM (Pulse Width Modulation):\n\n");
+        mp_printf(&mp_plat_print, "   pwm(pin, [frequency], [duty])    - Setup PWM on GPIO pin\n");
+        mp_printf(&mp_plat_print, "   pwm_set_duty_cycle(pin, duty)    - Set PWM duty cycle\n");
+        mp_printf(&mp_plat_print, "   pwm_set_frequency(pin, freq)     - Set PWM frequency\n");
+        mp_printf(&mp_plat_print, "   pwm_stop(pin)                    - Stop PWM on pin\n\n");
+        // mp_printf(&mp_plat_print, "  Pin: 1-8 (numeric) or GPIO_1-GPIO_8 (constants)\n");
+        // mp_printf(&mp_plat_print, "  Frequency: 10Hz to 62.5MHz, Duty: 0.0 to 1.0\n");
+        mp_printf(&mp_plat_print, "  Aliases: set_pwm, set_pwm_duty_cycle, set_pwm_frequency, stop_pwm\n\n");
+        mp_printf(&mp_plat_print, "             pin: 1-8       GPIO pins only\n");
+        mp_printf(&mp_plat_print, "       frequency: 0.001Hz-62.5MHz default 1000Hz\n");
+        mp_printf(&mp_plat_print, "      duty_cycle: 0.0-1.0   default 0.5 (50%%)\n\n");
+    }
+    jl_cycle_term_color(false, 100.0, 1);
+    if (strcmp(section_upper, "INA") == 0 || strcmp(section_upper, "ALL") == 0) {
+        mp_printf(&mp_plat_print, "INA (Current/Power Monitor):\n\n");
+        mp_printf(&mp_plat_print, "   ina_get_current(sensor)          - Read current in amps\n");
+        mp_printf(&mp_plat_print, "   ina_get_voltage(sensor)          - Read shunt voltage\n");
+        mp_printf(&mp_plat_print, "   ina_get_bus_voltage(sensor)      - Read bus voltage\n");
+        mp_printf(&mp_plat_print, "   ina_get_power(sensor)            - Read power in watts\n\n");
+        mp_printf(&mp_plat_print, "  Aliases: get_current, get_voltage, get_bus_voltage, get_power\n\n");
+        mp_printf(&mp_plat_print, "             sensor: 0 or 1\n\n");
+    }
+    jl_cycle_term_color(false, 100.0, 1);
+    if (strcmp(section_upper, "NODES") == 0 || strcmp(section_upper, "ALL") == 0) {
+        mp_printf(&mp_plat_print, "Node Connections:\n\n");
+        mp_printf(&mp_plat_print, "   connect(node1, node2)            - Connect two nodes\n");
+        mp_printf(&mp_plat_print, "   disconnect(node1, node2)         - Disconnect nodes\n");
+        mp_printf(&mp_plat_print, "   is_connected(node1, node2)       - Check if nodes are connected\n");
+        mp_printf(&mp_plat_print, "   nodes_clear()                    - Clear all connections\n\n");
+        mp_printf(&mp_plat_print, "         set node2 to -1 to disconnect everything connected to node1\n\n");
+    }
+    // cycleTermColor(false, 100.0, 1);
+    jl_cycle_term_color(false, 100.0, 1);
+    if (strcmp(section_upper, "OLED") == 0 || strcmp(section_upper, "ALL") == 0) {
+        mp_printf(&mp_plat_print, "OLED Display:\n\n");
+        mp_printf(&mp_plat_print, "   oled_print(\"text\")               - Display text\n");
+        mp_printf(&mp_plat_print, "   oled_clear()                     - Clear display\n");
+        mp_printf(&mp_plat_print, "   oled_connect()                   - Connect OLED\n");
+        mp_printf(&mp_plat_print, "   oled_disconnect()                - Disconnect OLED\n\n");
+    }
+  
+    jl_cycle_term_color(false, 100.0, 1);
+    if (strcmp(section_upper, "PROBE") == 0 || strcmp(section_upper, "ALL") == 0) {
+        mp_printf(&mp_plat_print, "Probe Functions:\n\n");
+        mp_printf(&mp_plat_print, "   probe_read([blocking=True])      - Read probe (default: blocking)\n");
+        mp_printf(&mp_plat_print, "   read_probe([blocking=True])      - Read probe (default: blocking)\n");
+        mp_printf(&mp_plat_print, "   probe_read_blocking()            - Wait for probe touch (explicit)\n");
+        mp_printf(&mp_plat_print, "   probe_read_nonblocking()         - Check probe immediately (explicit)\n");
+        mp_printf(&mp_plat_print, "   get_button([blocking=True])      - Get button state (default: blocking)\n");
+        mp_printf(&mp_plat_print, "   probe_button([blocking=True])    - Get button state (default: blocking)\n");
+        mp_printf(&mp_plat_print, "   probe_button_blocking()          - Wait for button press (explicit)\n");
+        mp_printf(&mp_plat_print, "   probe_button_nonblocking()       - Check buttons immediately (explicit)\n\n");
+        // mp_printf(&mp_plat_print, "  Touch aliases: probe_wait, wait_probe, probe_touch, wait_touch (always blocking)\n");
+        // mp_printf(&mp_plat_print, "  Button aliases: button_read, read_button (parameterized)\n");
+        // mp_printf(&mp_plat_print, "  Non-blocking only: check_button, button_check\n");
+        mp_printf(&mp_plat_print, "       Touch returns: ProbePad object (1-60, D13_PAD, TOP_RAIL_PAD, LOGO_PAD_TOP, etc.)\n");
+        mp_printf(&mp_plat_print, "       Button returns: CONNECT, REMOVE, or NONE (front=connect, rear=remove)\n\n");
+    }
+    // jl_cycle_term_color(false, 100.0, 1);
+    // if (strcmp(section_upper, "CLICKWHEEL") == 0) {
+    //     mp_printf(&mp_plat_print, "Clickwheel:\n");
+    //     mp_printf(&mp_plat_print, "   clickwheel_up([clicks])          - Scroll up\n");
+    //     mp_printf(&mp_plat_print, "   clickwheel_down([clicks])        - Scroll down\n");
+    //     mp_printf(&mp_plat_print, "   clickwheel_press()               - Press button\n");
+    //     mp_printf(&mp_plat_print, "           clicks: number of steps\n\n");
+    // }
+    jl_cycle_term_color(false, 100.0, 1);
+    if (strcmp(section_upper, "STATUS") == 0 || strcmp(section_upper, "ALL") == 0) {
+        mp_printf(&mp_plat_print, "Status:\n\n");
+        mp_printf(&mp_plat_print, "   print_bridges()                  - Print all bridges\n");
+        mp_printf(&mp_plat_print, "   print_paths()                    - Print path between nodes\n");
+        mp_printf(&mp_plat_print, "   print_crossbars()                - Print crossbar array\n");
+        mp_printf(&mp_plat_print, "   print_nets()                     - Print nets\n");
+        mp_printf(&mp_plat_print, "   print_chip_status()              - Print chip status\n\n");
+    }
+    jl_cycle_term_color(false, 100.0, 1);
+    if (strcmp(section_upper, "FILESYSTEM") == 0 || strcmp(section_upper, "ALL") == 0) {
+        mp_printf(&mp_plat_print, "Filesystem:\n\n");
+        mp_printf(&mp_plat_print, "  jfs.open(path, mode)              - Open file\n");
+        mp_printf(&mp_plat_print, "  jfs.read(file, size)              - Read from file\n");
+        mp_printf(&mp_plat_print, "  jfs.write(file, data)             - Write to file\n");
+        mp_printf(&mp_plat_print, "  jfs.close(file)                   - Close file\n");
+        mp_printf(&mp_plat_print, "  jfs.exists(path)                  - Check if file exists\n");
+        mp_printf(&mp_plat_print, "  jfs.listdir(path)                 - List directory\n");
+        mp_printf(&mp_plat_print, "  jfs.mkdir(path)                   - Create directory\n");
+        mp_printf(&mp_plat_print, "  jfs.remove(path)                  - Remove file\n");
+        mp_printf(&mp_plat_print, "  jfs.rename(from, to)              - Rename file\n");
+        mp_printf(&mp_plat_print, "  jfs.info()                        - Get filesystem info\n\n");
+    }
+    jl_cycle_term_color(false, 100.0, 1);
+    if (strcmp(section_upper, "MISC") == 0 || strcmp(section_upper, "ALL") == 0) {
+        mp_printf(&mp_plat_print, "Misc:\n\n");
+        mp_printf(&mp_plat_print, "   arduino_reset()                  - Reset Arduino\n");
+        mp_printf(&mp_plat_print, "   pause_core2(bool/int/str)        - Pause/unpause Core2\n");
+        mp_printf(&mp_plat_print, "   probe_tap(node)                  - Tap probe on node (unimplemented)\n");
+        mp_printf(&mp_plat_print, "   run_app(appName)                 - Run app\n");
+        mp_printf(&mp_plat_print, "   format_output(True/False)        - Enable/disable formatted output\n\n");
+    }
+    jl_cycle_term_color(false, 100.0, 1);
+    if (strcmp(section_upper, "EXAMPLES") == 0 || strcmp(section_upper, "ALL") == 0) {
+         mp_printf(&mp_plat_print, "Examples (all functions available globally):\n\n");
+        // mp_printf(&mp_plat_print, "  dac_set(TOP_RAIL, 3.3)                     # Set Top Rail to 3.3V using node\n");
+        // mp_printf(&mp_plat_print, "  set_dac(3, 3.3)                            # Same as above using alias\n");
+        mp_printf(&mp_plat_print, "  dac_set(DAC0, 5.0)                         # Set DAC0 using node constant\n");
+        mp_printf(&mp_plat_print, "  voltage = get_adc(1)                       # Read ADC1 using alias\n");
+        mp_printf(&mp_plat_print, "  connect(TOP_RAIL, D13)                     # Connect using constants\n");
+        // mp_printf(&mp_plat_print, "  connect(\"TOP_RAIL\", 5)                      # Connect using strings\n");
+        mp_printf(&mp_plat_print, "  connect(4, 20)                             # Connect using numbers\n");
+        mp_printf(&mp_plat_print, "  top_rail = node(\"TOP_RAIL\")                # Create node object\n");
+        mp_printf(&mp_plat_print, "  connect(top_rail, D13)                     # Mix objects and constants\n");
+        mp_printf(&mp_plat_print, "  oled_print(\"Fuck you!\")                    # Display text\n");
+        mp_printf(&mp_plat_print, "  current = get_current(0)                   # Read current using alias\n");
+        mp_printf(&mp_plat_print, "  set_gpio(1, True)                          # Set GPIO pin high using alias\n");
+        mp_printf(&mp_plat_print, "  pwm(1, 1000, 0.5)                          # 1kHz PWM, 50%% duty cycle on pin 1\n");
+        mp_printf(&mp_plat_print, "  pwm(GPIO_2, 0.5, 0.25)                     # 0.5Hz PWM, 25%% duty (LED blink)\n");
+        mp_printf(&mp_plat_print, "  pwm_set_duty_cycle(GPIO_1, 0.75)           # Change to 75%% duty cycle\n");
+        // mp_printf(&mp_plat_print, "  pwm_set_frequency(2, 0.1)                 # Very slow 0.1Hz frequency\n");
+        mp_printf(&mp_plat_print, "  pwm_stop(GPIO_1)                           # Stop PWM on GPIO_1\n");
+        mp_printf(&mp_plat_print, "  pad = probe_read()                         # Wait for probe touch\n");
+        mp_printf(&mp_plat_print, "  if pad == 25: print('Touched pad 25!')     # Check specific pad\n");
+        // mp_printf(&mp_plat_print, "  if pad == D13_PAD: connect(D13, TOP_RAIL)  # Auto-connect Arduino pin\n");
+        // mp_printf(&mp_plat_print, "  if pad == TOP_RAIL_PAD: show_voltage()     # Show rail voltage\n");
+        mp_printf(&mp_plat_print, "  if pad == LOGO_PAD_TOP: print('Logo!')     # Check logo pad\n");
+        mp_printf(&mp_plat_print, "  button = get_button()                      # Wait for button press (blocking)\n");
+        mp_printf(&mp_plat_print, "  if button == CONNECT_BUTTON: ...           # Front button pressed\n");
+        mp_printf(&mp_plat_print, "  if button == REMOVE_BUTTON: ...            # Rear button pressed\n");
+        mp_printf(&mp_plat_print, "  button = check_button()                    # Check buttons immediately\n");
+        mp_printf(&mp_plat_print, "  if button == BUTTON_NONE: print('None')    # No button pressed\n");
+        // mp_printf(&mp_plat_print, "  pad = wait_touch()                        # Wait for touch\n");
+        // mp_printf(&mp_plat_print, "  btn = check_button()                      # Check button immediately\n");
+        // mp_printf(&mp_plat_print, "  if pad == D13_PAD and btn == CONNECT_BUTTON: connect(D13, TOP_RAIL)\n\n");
+        // mp_printf(&mp_plat_print, "Note: All functions and constants are available globally!\n");
+        // mp_printf(&mp_plat_print, "No need for ' ' prefix in REPL or single commands.\n\n");
+    }
+    jl_cycle_term_color(false, 100.0, 1);
+    if (strcmp(section_upper, "ALL") != 0 && 
+        strcmp(section_upper, "DAC") != 0 && strcmp(section_upper, "ADC") != 0 && 
+        strcmp(section_upper, "GPIO") != 0 && strcmp(section_upper, "PWM") != 0 && 
+        strcmp(section_upper, "INA") != 0 && strcmp(section_upper, "NODES") != 0 && 
+        strcmp(section_upper, "OLED") != 0 && strcmp(section_upper, "PROBE") != 0 && 
+        strcmp(section_upper, "CLICKWHEEL") != 0 && strcmp(section_upper, "STATUS") != 0 && 
+        strcmp(section_upper, "FILESYSTEM") != 0 && strcmp(section_upper, "CORE2") != 0 && 
+        strcmp(section_upper, "MISC") != 0 && strcmp(section_upper, "EXAMPLES") != 0) {
+        mp_printf(&mp_plat_print, "Unknown help section: %s\n", section);
+        mp_printf(&mp_plat_print, "Use help() to see available sections.\n\n");
+    }
+}
 
 // Filesystem Functions
 static mp_obj_t jl_fs_exists_func(mp_obj_t path_obj) {
@@ -3086,7 +3284,10 @@ static const mp_rom_map_elem_t jumperless_module_globals_table[] = {
     
     // Misc functions
     { MP_ROM_QSTR(MP_QSTR_arduino_reset), MP_ROM_PTR(&jl_arduino_reset_obj) },
+    { MP_ROM_QSTR(MP_QSTR_pause_core2), MP_ROM_PTR(&jl_pause_core2_obj) },
     { MP_ROM_QSTR(MP_QSTR_run_app), MP_ROM_PTR(&jl_run_app_obj) },
+    { MP_ROM_QSTR(MP_QSTR_change_terminal_color), MP_ROM_PTR(&jl_change_terminal_color_obj) },
+    { MP_ROM_QSTR(MP_QSTR_cycle_term_color), MP_ROM_PTR(&jl_cycle_term_color_obj) },
 
         // Status functions
     { MP_ROM_QSTR(MP_QSTR_print_bridges), MP_ROM_PTR(&jl_nodes_print_bridges_obj) },

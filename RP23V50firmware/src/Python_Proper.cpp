@@ -174,7 +174,7 @@ void setGlobalStream(Stream *stream) {
 // MicroPython HAL stdout function with Jumperless-specific functionality
 extern "C" void mp_hal_stdout_tx_strn_cooked(const char *str, size_t len) {
     // Check for interrupt before outputting (this is called frequently)
-    mp_hal_check_interrupt();
+    //mp_hal_check_interrupt();
     
     // Basic output to global stream (regular MicroPython output)
     if (global_mp_stream) {
@@ -285,6 +285,8 @@ bool initMicroPythonProper(Stream *stream) {
   //     "    print('Loading Python wrapper functions instead...')\n"
   //     "    print()  # Empty line\n");
   // Initialize MicroPython
+
+  changeTerminalColor(replColors[11], true, global_mp_stream);
   mp_embed_init(mp_heap, sizeof(mp_heap), stack_top);
 
   // Set Ctrl+Q (ASCII 17) as the keyboard interrupt character instead of Ctrl+C (ASCII 3)
@@ -293,21 +295,25 @@ bool initMicroPythonProper(Stream *stream) {
   mp_embed_exec_str("import micropython; micropython.kbd_intr(17)");
 
   // Simple initialization - don't load complex modules during startup
-  mp_embed_exec_str("print('MicroPython ready for Jumperless')");
-  
+  // mp_embed_exec_str("print('MicroPython ready for Jumperless')");
+  changeTerminalColor(replColors[11], true, global_mp_stream);
   // Set up filesystem and module import paths
+
   setupFilesystemAndPaths();
     
     mp_initialized = true;
   mp_repl_active = false;
 
   addJumperlessPythonFunctions();
+
+  changeTerminalColor(replColors[11], true, global_mp_stream);
   addMicroPythonModules();
 
-
+  changeTerminalColor(replColors[11], true, global_mp_stream);
   global_mp_stream->println("[MP] MicroPython initialized successfully");
 
-  global_mp_stream->println("[MP] interrupt char: " + String(keyboard_interrupt_char));
+  changeTerminalColor(replColors[11], true, global_mp_stream);
+  //global_mp_stream->println("[MP] interrupt char: " + String(keyboard_interrupt_char));
   return true;
 }
 
@@ -1725,14 +1731,14 @@ void addJumperlessPythonFunctions(void) {
   // Only load once to avoid redundant imports
   if (jumperless_globals_loaded) {
     if (global_mp_stream) {
-      global_mp_stream->println("[DEBUG] Jumperless globals already loaded, skipping");
+      //global_mp_stream->println("[DEBUG] Jumperless globals already loaded, skipping");
     }
     return;
   }
   
   // Debug: print that this function is being called
   if (global_mp_stream) {
-    global_mp_stream->println("[DEBUG] Loading jumperless globals for first time");
+    //global_mp_stream->println("[DEBUG] Loading jumperless globals for first time");
   }
 
   // Import jumperless module and add ALL functions and constants to global namespace
@@ -1791,7 +1797,7 @@ void addMicroPythonModules(bool time, bool machine, bool os, bool math, bool gc)
   
   if (time) {
     mp_embed_exec_str("import time\n");
-    mp_embed_exec_str("print('Time module imported successfully')\n");
+   // mp_embed_exec_str("print('Time module imported successfully')\n");
   }
   // if (machine) {
   //   mp_embed_exec_str("import machine\n");
@@ -1799,15 +1805,15 @@ void addMicroPythonModules(bool time, bool machine, bool os, bool math, bool gc)
   // }
   if (os) {
     mp_embed_exec_str("import os\n");
-    mp_embed_exec_str("print('OS module imported successfully')\n");
+  //  mp_embed_exec_str("print('OS module imported successfully')\n");
   }
   if (math) {
     mp_embed_exec_str("import math\n");
-    mp_embed_exec_str("print('Math module imported successfully')\n");
+   // mp_embed_exec_str("print('Math module imported successfully')\n");
   }
   if (gc) {
     mp_embed_exec_str("import gc\n");
-    mp_embed_exec_str("print('GC module imported successfully')\n");
+   // mp_embed_exec_str("print('GC module imported successfully')\n");
   }
 }
 
@@ -2989,7 +2995,7 @@ void displayStringWithSyntaxHighlighting(const String& text, Stream* stream) {
     "get_button", "probe_button", "probe_button_blocking", "probe_button_nonblocking",
     "probe_wait", "wait_probe", "probe_touch", "wait_touch", "button_read", "read_button",
     "check_button", "button_check", "arduino_reset", "probe_tap", "run_app", "format_output",
-    "help_nodes", nullptr
+    "help_nodes", "pwm", "pwm_set_frequency", "pwm_set_duty_cycle", "pwm_stop", "send_raw", nullptr
   };
   
   const char* jumperless_constants[] = {
@@ -2999,7 +3005,7 @@ void displayStringWithSyntaxHighlighting(const String& text, Stream* stream) {
     "D0", "D1", "D2", "D3", "D4", "D5", "D6", "D7", "D8", "D9", "D10", "D11", "D12", "D13",
     "A0", "A1", "A2", "A3", "A4", "A5", "A6", "A7", "D13_PAD", "TOP_RAIL_PAD", "BOTTOM_RAIL_PAD",
     "LOGO_PAD_TOP", "LOGO_PAD_BOTTOM", "CONNECT_BUTTON", "REMOVE_BUTTON", "BUTTON_NONE",
-    "CONNECT", "REMOVE", "NONE", nullptr
+    "CONNECT", "REMOVE", "NONE", "INPUT", "OUTPUT", "PULLUP", "PULLDOWN", "KEEPER", "HIGH", "LOW", nullptr
   };
   
   const char* jfs_functions[] = {
@@ -3278,6 +3284,16 @@ static const FunctionTypeMap function_type_map[] = {
   {"get_bus_voltage", OUTPUT_VOLTAGE},      // Alias
   {"get_power", OUTPUT_POWER},              // Alias
   
+  // PWM functions
+  {"pwm", OUTPUT_NONE},
+  {"pwm_set_frequency", OUTPUT_NONE},
+  {"pwm_set_duty_cycle", OUTPUT_NONE},
+  {"pwm_stop", OUTPUT_NONE},
+  
+
+
+  
+  
   // GPIO functions
   {"gpio_set", OUTPUT_NONE},
   {"gpio_get", OUTPUT_GPIO_STATE},
@@ -3360,6 +3376,7 @@ static const FunctionTypeMap function_type_map[] = {
   {"scroll_up", OUTPUT_NONE},           // Alias
   {"scroll_down", OUTPUT_NONE},         // Alias
   {"press", OUTPUT_NONE},               // Alias
+  {"send_raw", OUTPUT_NONE},            
   
   {nullptr, OUTPUT_NONE} // End marker
 };
@@ -3376,6 +3393,8 @@ static const char* jumperless_functions[] = {
   "ina_get_current", "ina_get_voltage", "ina_get_bus_voltage", "ina_get_power",
   "get_ina_current", "get_ina_voltage", "get_ina_bus_voltage", "get_ina_power",
   "get_current", "get_voltage", "get_bus_voltage", "get_power",
+  // PWM functions
+  "pwm", "pwm_set_frequency", "pwm_set_duty_cycle", "pwm_stop",
   // GPIO functions
   "gpio_set", "gpio_get", "gpio_set_dir", "gpio_get_dir", "gpio_set_pull", "gpio_get_pull",
   "set_gpio", "get_gpio", "set_gpio_dir", "get_gpio_dir", "set_gpio_pull", "get_gpio_pull",
@@ -3395,7 +3414,7 @@ static const char* jumperless_functions[] = {
   "arduino_reset", "probe_tap", "clickwheel_up", "clickwheel_down", "clickwheel_press", "run_app", "help",
   "reset_arduino", "reset", "app_run", "tap_probe", "tap",
   "wheel_up", "wheel_down", "wheel_press", "click_up", "click_down", "click_press",
-  "scroll_up", "scroll_down", "press",
+  "scroll_up", "scroll_down", "press", "send_raw",
   nullptr // End marker
 };
 
@@ -3755,7 +3774,9 @@ void testFormattedOutput(void) {
 
 // Filesystem setup and module path configuration
 void setupFilesystemAndPaths(void) {
-  global_mp_stream->println("[MP] Setting up filesystem and module paths...");
+  changeTerminalColor(replColors[11], true, global_mp_stream);
+  global_mp_stream->println("Setting up filesystem and module paths...");
+  changeTerminalColor(replColors[13], true, global_mp_stream);
   
   // Set up sys.path for module imports using our filesystem bridge
   mp_embed_exec_str(
@@ -3773,32 +3794,35 @@ void setupFilesystemAndPaths(void) {
     "        '/python_scripts/lib',\n"
     "        '/python_scripts/modules',\n"
     "        '/python_scripts/examples',\n"
-    "        '/lib',\n"
-    "        '/modules'\n"
+    "        #'/lib',\n"
+    "        #'/modules'\n"
     "    ]\n"
     "    \n"
     "    for path in paths_to_add:\n"
     "        try:\n"
     "            # Check if path exists using jumperless filesystem bridge\n"
-    "            if path in ['', '/']:\n"
+    "            if path in ['/', '']:\n"
     "                if path not in sys.path:\n"
     "                    sys.path.append(path)\n"
     "            elif jumperless.fs_exists(path):\n"
     "                if path not in sys.path:\n"
     "                    sys.path.append(path)\n"
-    "                    print('Added ' + path + ' to sys.path')\n"
-    "                else:\n"
-    "                    print('Path already in sys.path: ' + path)\n"
-    "            else:\n"
-    "                print('Skipping non-existent path: ' + path)\n"
+    "                   # print('Added ' + path + ' to sys.path')\n"
+    "                #else:\n"
+    "                   # print('Path already in sys.path: ' + path)\n"
+    "            #else:\n"
+    "                #print('Skipping non-existent path: ' + path)\n"
     "        except Exception as e:\n"
     "            print('Error adding ' + path + ': ' + str(e))\n"
     "    \n"
     "    print('Module search paths:')\n"
     "    for i, path in enumerate(sys.path):\n"
-    "        print('  ' + str(i) + ': ' + path)\n"
+    "        if path == '':\n"
+    "            print('  ' + str(i) + ': ' + '/  (root)')\n"
+    "        else:\n"
+    "            print('  ' + str(i) + ': ' + path)\n"
     "    \n"
-    "    print()\n"
+    "    #print()\n"
     "    print('Place .py and .mpy modules in:')\n"
     "    print('  /python_scripts/lib/  - User modules')\n"
     "    print('  /python_scripts/      - User scripts')\n"
@@ -3811,26 +3835,26 @@ void setupFilesystemAndPaths(void) {
   );
   
   // Test basic module availability
-  mp_embed_exec_str(
-    "try:\n"
-    "    # Test that we can import basic modules\n"
-    "    import time\n"
-    "    print('✓ time module available')\n"
-    "except ImportError:\n"
-    "    print('✗ time module not available')\n"
-    "\n"
-    "try:\n"
-    "    import os\n"
-    "    print('✓ os module available')\n"
-    "except ImportError:\n"
-    "    print('✗ os module not available')\n"
-    "\n"
-    "try:\n"
-    "    import gc\n"
-    "    print('✓ gc module available')\n"
-    "except ImportError:\n"
-    "    print('✗ gc module not available')\n"
-  );
+  // mp_embed_exec_str(
+  //   "try:\n"
+  //   "    # Test that we can import basic modules\n"
+  //   "    import time\n"
+  //   "    print('✓ time module available')\n"
+  //   "except ImportError:\n"
+  //   "    print('✗ time module not available')\n"
+  //   "\n"
+  //   "try:\n"
+  //   "    import os\n"
+  //   "    print('✓ os module available')\n"
+  //   "except ImportError:\n"
+  //   "    print('✗ os module not available')\n"
+  //   "\n"
+  //   "try:\n"
+  //   "    import gc\n"
+  //   "    print('✓ gc module available')\n"
+  //   "except ImportError:\n"
+  //   "    print('✗ gc module not available')\n"
+  // );
 }
 
 /**

@@ -23,6 +23,11 @@
 
 bool disableTerminalColors = false;
 
+// External function declarations (to avoid including headers)
+extern void jl_pause_core2(bool pause);
+extern void changeTerminalColor(int termColor, bool flush, Stream *stream);
+extern void cycleTermColor(bool reset,  float step, bool flush);
+
 /* clang-format off */
 
 // Non-blocking flush function with timeout
@@ -397,7 +402,16 @@ void changeTerminalColor(int termColor, bool flush, Stream *stream) {
   }
 }
 
+extern "C" {
 
+void changeTerminalColorC(int color, bool flush) {
+  changeTerminalColor(color, flush, &Serial);
+}
+
+void cycleTermColor(bool reset,  float step, bool flush) {
+  cycleTerminalColor(reset, step, flush, &Serial, 0, 0);
+}
+}
 
 ///@brief cycle through the high saturation spectrum colors (54 colors)
 ///@param reset if true, reset the color accumulator
@@ -412,6 +426,9 @@ void cycleTerminalColor(bool reset,  float step, bool flush, Stream *stream, int
   static float stepDistance = 5.0f;
   static float colorAccumulator = 0.0f;
 
+  if (stream == NULL) {
+    stream = &Serial;
+  }
   if (step < 80.0f) {
     stepDistance = step;
   } else {

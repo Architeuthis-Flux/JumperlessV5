@@ -2044,13 +2044,11 @@ void sendDigitalData() {
 
 void sendMixedSignalData() {
   uint8_t* digital_buffer= (uint8_t*)la_buffer;
-  const uint32_t UNIFIED_BYTES_PER_SAMPLE=
-      32; // Always 32 bytes per sample for driver compatibility
-  const uint32_t CHUNK_SIZE=
-      64; // Smaller chunks for better flow control - 8 samples per chunk
+  const uint32_t UNIFIED_BYTES_PER_SAMPLE = 32; // Always 32 bytes per sample for driver compatibility
+  const uint32_t CHUNK_SIZE = 512; // Smaller chunks for better flow control - 8 samples per chunk
 
   // Use static buffer to avoid malloc/free during critical transmission
-  static uint8_t chunk_buffer[64];
+  static uint8_t chunk_buffer[512];
   uint32_t chunk_pos= 0;
 
   // Calculate how many samples we actually have in the buffer
@@ -2106,13 +2104,19 @@ void sendMixedSignalData() {
     // Check if we need to flush chunk
     if (chunk_pos + UNIFIED_BYTES_PER_SAMPLE > CHUNK_SIZE) {
       // STABILITY: Send chunk with better flow control
+      while (la_usb_available()) {
+        la_usb_read();
+      }
       la_usb_write_buffer(chunk_buffer, chunk_pos);
       la_usb_flush();
-
+// DEBUG_LA_PRINTLN(chunk_buffer);
       // STABILITY: Yield to other cores and prevent USB buffer saturation
-      delayMicroseconds(1500); // Reduced delay for better throughput
+      //delayMicroseconds(1500); // Reduced delay for better throughput
       //yield();                // Allow other cores to run
-     // updateLastActivity();
+      //updateLastActivity();
+
+
+
       chunk_pos= 0;
     }
 
@@ -2198,13 +2202,18 @@ void sendMixedSignalData() {
     // More frequent yields for better responsiveness and USB flow control
     if (sample % 500 == 0 && sample > 0) {
       updateLastActivity();
-      // yield();  // Allow other cores to run
+     yield();  // Allow other cores to run
     }
   }
 
   // Send any remaining data
   if (chunk_pos >= 32) {
+    while (la_usb_available()) {
+      la_usb_read();
+    }
     la_usb_write_buffer(chunk_buffer, chunk_pos);
+
+    // DEBUG_LA_PRINTLN(chunk_buffer);
     la_usb_flush();
     delayMicroseconds(1500); // Final stability delay
   }

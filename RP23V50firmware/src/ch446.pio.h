@@ -58,9 +58,14 @@ static inline void pio_spi_ch446_multi_cs_init(PIO pio, uint sm, uint prog_offs,
     sm_config_set_clkdiv(&c, clkdiv);
 pio_sm_set_consecutive_pindirs	(pio, sm, pin_mosi, 2, true);
 //pio_sm_set_out_pins(pio, sm, pin_mosi, 2);
+gpio_set_drive_strength(pin_sck, GPIO_DRIVE_STRENGTH_12MA);
+gpio_set_drive_strength(pin_mosi, GPIO_DRIVE_STRENGTH_12MA);
 
+gpio_set_slew_rate(pin_sck, GPIO_SLEW_RATE_FAST);
+gpio_set_slew_rate(pin_mosi, GPIO_SLEW_RATE_FAST);
     pio_gpio_init(pio, pin_mosi);
     pio_gpio_init(pio, pin_sck);
+
     //pio_set_irqn_source_enabled	(pio,0,pis_sm0_tx_fifo_not_full,true);
            // The reason for doing interrupt0 + sm:
         // IRQ sources are enabled per irq flag. Since the irq flag being set depends on the state

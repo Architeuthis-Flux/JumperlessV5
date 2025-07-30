@@ -41,6 +41,31 @@ int justReadProbe(bool allowDuplicates);
 // C-compatible wrapper functions for MicroPython
 extern "C" {
 #include "py/mpthread.h"
+
+
+
+
+
+void jl_pause_core2(bool pause) {
+    pauseCore2 = pause;
+}
+
+
+void jl_change_terminal_color(int color, bool flush) {
+    changeTerminalColor(color, flush);
+}
+
+void jl_cycle_term_color(bool reset, float step, bool flush) {
+    cycleTermColor(reset, step, flush);
+}
+
+void jl_print_terminal_colors(void) {
+    printSpectrumOrderedColorCube();
+}
+
+
+
+
 // DAC Functions
 void jl_dac_set(int channel, float voltage, int save) {
     // if (channel == 0) {
@@ -304,21 +329,35 @@ int parseChipIdentifier(const char* chip_str) {
 void jl_send_raw(int chip, int x, int y, int setOrClear) {
     // Validate chip number (0-11)
     if (chip < 0 || chip > 11) {
+        Serial.print("jl_send_raw: Invalid chip number: ");
+        Serial.println(chip);
         return; // Invalid chip number
     }
     
     // Validate x,y coordinates (assuming 0-15 range based on typical crossbar chips)
     if (x < 0 || x > 15 || y < 0 || y > 15) {
+        Serial.print("jl_send_raw: Invalid coordinates: ");
+        Serial.print(x);
+        Serial.print(",");
+        Serial.println(y);
         return; // Invalid coordinates
     }
     
     // Call the existing sendXYraw function with setOrClear=1 (set path)
+    lastChipXY[chip].connected[x][y] = setOrClear;
     sendXYraw(chip, x, y, setOrClear);
 }
 
 void jl_send_raw_str(const char* chip_str, int x, int y, int setOrClear) {
     int chip = parseChipIdentifier(chip_str);
     if (chip >= 0) {
+        // Serial.print("jl_send_raw_str: chip = ");
+        // Serial.println(chip);
+        // Serial.print("jl_send_raw_str: x = ");
+        // Serial.println(x);
+        // Serial.print("jl_send_raw_str: y = ");
+        // Serial.println(y);
+        // Serial.print("jl_send_raw_str: setOrClear = ");
         jl_send_raw(chip, x, y, setOrClear);
     }
 }
