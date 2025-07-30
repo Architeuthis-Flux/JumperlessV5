@@ -94,7 +94,7 @@ const char* python_keywords[] = {
     "get_button||", "probe_button||", "probe_button_blocking||", "probe_button_nonblocking||",
     "probe_wait||", "wait_probe||", "probe_touch||", "wait_touch||", "button_read||", "read_button||",
     "check_button||", "button_check||", "arduino_reset||", "probe_tap||", "run_app||", "format_output||",
-    "help_nodes||",
+    "help_nodes||", "pause_core2||", "send_raw||", "pwm||", "pwm_set_duty_cycle||", "pwm_set_frequency||", "pwm_stop||",
     
     // Jumperless Types/Constants (marked with |||)
     "TOP_RAIL|||", "BOTTOM_RAIL|||", "GND|||", "DAC0|||", "DAC1|||", "ADC0|||", "ADC1|||", "ADC2|||", "ADC3|||", "ADC4|||",

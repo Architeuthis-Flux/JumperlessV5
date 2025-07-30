@@ -3289,10 +3289,10 @@ static const FunctionTypeMap function_type_map[] = {
   {"pwm_set_frequency", OUTPUT_NONE},
   {"pwm_set_duty_cycle", OUTPUT_NONE},
   {"pwm_stop", OUTPUT_NONE},
-  
-
-
-  
+  {"set_pwm", OUTPUT_NONE},                    // Alias
+  {"set_pwm_frequency", OUTPUT_NONE},          // Alias
+  {"set_pwm_duty_cycle", OUTPUT_NONE},         // Alias
+  {"stop_pwm", OUTPUT_NONE},                   // Alias
   
   // GPIO functions
   {"gpio_set", OUTPUT_NONE},
@@ -3377,6 +3377,7 @@ static const FunctionTypeMap function_type_map[] = {
   {"scroll_down", OUTPUT_NONE},         // Alias
   {"press", OUTPUT_NONE},               // Alias
   {"send_raw", OUTPUT_NONE},            
+  {"pause_core2", OUTPUT_NONE},
   
   {nullptr, OUTPUT_NONE} // End marker
 };
@@ -3395,6 +3396,7 @@ static const char* jumperless_functions[] = {
   "get_current", "get_voltage", "get_bus_voltage", "get_power",
   // PWM functions
   "pwm", "pwm_set_frequency", "pwm_set_duty_cycle", "pwm_stop",
+  "set_pwm", "set_pwm_frequency", "set_pwm_duty_cycle", "stop_pwm",
   // GPIO functions
   "gpio_set", "gpio_get", "gpio_set_dir", "gpio_get_dir", "gpio_set_pull", "gpio_get_pull",
   "set_gpio", "get_gpio", "set_gpio_dir", "get_gpio_dir", "set_gpio_pull", "get_gpio_pull",
@@ -3414,7 +3416,7 @@ static const char* jumperless_functions[] = {
   "arduino_reset", "probe_tap", "clickwheel_up", "clickwheel_down", "clickwheel_press", "run_app", "help",
   "reset_arduino", "reset", "app_run", "tap_probe", "tap",
   "wheel_up", "wheel_down", "wheel_press", "click_up", "click_down", "click_press",
-  "scroll_up", "scroll_down", "press", "send_raw",
+  "scroll_up", "scroll_down", "press", "send_raw", "pause_core2",
   nullptr // End marker
 };
 

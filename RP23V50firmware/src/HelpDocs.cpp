@@ -977,6 +977,23 @@ Serial.println(probe_art);
         Serial.println("  vl    - Toggle live readings");
         Serial.println("  vp    - Read probe voltage");
         
+        changeTerminalColor(HELP_USAGE_COLOR, true);
+        Serial.println("\n PWM Signal Generation (Python):");
+        changeTerminalColor(HELP_DESC_COLOR, true);
+        Serial.println("  jumperless.pwm(1, 1000, 0.5)           - 1kHz PWM on GPIO_1, 50% duty");
+        Serial.println("  jumperless.pwm(2, 0.1, 0.25)           - 0.1Hz slow PWM on GPIO_2, 25% duty");
+        Serial.println("  jumperless.pwm_set_frequency(1, 500)   - Change frequency to 500Hz");
+        Serial.println("  jumperless.pwm_set_duty_cycle(1, 0.75) - Change duty cycle to 75%");
+        Serial.println("  jumperless.pwm_stop(GPIO_1)            - Stop PWM on GPIO_1");
+        
+        changeTerminalColor(HELP_NOTE_COLOR, true);
+        Serial.println("\n PWM Frequency Ranges:");
+        changeTerminalColor(HELP_DESC_COLOR, true);
+        Serial.println("  Hardware PWM: 10Hz to 62.5MHz (high precision)");
+        Serial.println("  Slow PWM: 0.001Hz to 10Hz (hardware timer based)");
+        Serial.println("  Automatic mode selection based on frequency");
+        Serial.println("  Ultra-slow PWM: 0.001Hz = 1000 second period!");
+        
         changeTerminalColor(HELP_NOTE_COLOR, true);
         Serial.println("\n Animated Voltage Display:");
         changeTerminalColor(HELP_DESC_COLOR, true);
@@ -1048,7 +1065,10 @@ Serial.println(probe_art);
         Serial.println("  jumperless.set_gpio(2, 1)   - Digital output");
         Serial.println("  jumperless.get_adc(0)       - Read voltage");
         Serial.println("  jumperless.set_dac(0, 3.3)  - Set voltage");
+        Serial.println("  jumperless.pwm(1, 1000, 0.5) - PWM output (1kHz, 50% duty)");
         Serial.println("  jumperless.run_app('i2c')   - Run built-in apps");
+        Serial.println("  jumperless.pause_core2()    - Pause core2 processing");
+        Serial.println("  jumperless.send_raw(data)   - Send raw data to core2");
         
         changeTerminalColor(HELP_NOTE_COLOR, true);
         Serial.println("\n REPL Features:");
@@ -1392,6 +1412,13 @@ Serial.println(probe_art);
         Serial.print("_  ");
         changeTerminalColor(HELP_DESC_COLOR, false);
         Serial.println("- Print timing statistics");
+        
+        changeTerminalColor(HELP_USAGE_COLOR, true);
+        Serial.println("\n Advanced Python Functions:");
+        changeTerminalColor(HELP_DESC_COLOR, true);
+        Serial.println("  jumperless.pause_core2()    - Pause core2 processing");
+        Serial.println("  jumperless.send_raw(data)   - Send raw data to core2");
+        Serial.println("  jumperless.pwm(1, 0.001, 0.5) - Ultra-slow PWM (0.001Hz)");
         
         changeTerminalColor(HELP_NOTE_COLOR, true);
         Serial.println("\n Advanced Features:");

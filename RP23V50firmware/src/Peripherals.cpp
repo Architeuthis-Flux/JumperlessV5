@@ -2703,8 +2703,8 @@ int setupSlowPWM(int gpio_pin, float frequency, float duty_cycle) {
     return -1; // Invalid pin
   }
 
-  // Validate frequency (0.01Hz to 10Hz for slow PWM)
-  if (frequency < 0.01 || frequency > 10.0) {
+  // Validate frequency (0.001Hz to 10Hz for slow PWM)
+  if (frequency < 0.001 || frequency > 10.0) {
     return -2; // Invalid frequency
   }
 
@@ -2800,8 +2800,8 @@ int setSlowPWMFrequency(int gpio_pin, float frequency) {
     return -1; // Invalid pin
   }
 
-  // Validate frequency (0.01Hz to 10Hz for slow PWM)
-  if (frequency < 0.01 || frequency > 10.0) {
+  // Validate frequency (0.001Hz to 10Hz for slow PWM)
+  if (frequency < 0.001 || frequency > 10.0) {
     return -2; // Invalid frequency
   }
 
