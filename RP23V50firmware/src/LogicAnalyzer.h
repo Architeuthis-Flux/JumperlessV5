@@ -196,6 +196,8 @@ void setupLogicAnalyzer(void);
 void handleLogicAnalyzer(void);
 void stopLogicAnalyzer(void);
 void gracefulLogicAnalyzerShutdown(void);
+bool checkLogicAnalyzerConflicts(void);
+bool disableRotaryEncoderForLogicAnalyzer(void);
 
 // State queries
 bool isLogicAnalyzerAvailable(void);

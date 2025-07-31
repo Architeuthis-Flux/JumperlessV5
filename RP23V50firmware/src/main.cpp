@@ -437,6 +437,7 @@ menu:
     shownMenuItems += printMenuLine(showExtraMenu, 0, "\t/ = show filesystem\n\r");
     shownMenuItems += printMenuLine(showExtraMenu, 0, "\t\b\bU/u = enable/disable USB Mass Storage\n\r");
     shownMenuItems += printMenuLine(showExtraMenu, 0, "\tw = enable logic analyzer\n\r");
+    shownMenuItems += printMenuLine(showExtraMenu, 3, "\tX = resource status\n\r");
     // Serial.print("\tu = disable USB Mass Storage drive\n\r");
     // cycleTerminalColor();
 
@@ -552,9 +553,23 @@ dontshowmenu:
          slotChanged == 0) {
 
     unsigned long busyTimer = millis();
+
+    int countLogicAnalyzing = 0;
+    while (logicAnalyzing == true) {
+      countLogicAnalyzing++;
+      if (countLogicAnalyzing % 100 == 0) {
+        Serial.print("logicAnalyzing");
+        Serial.println(countLogicAnalyzing);
+        Serial.flush();
+        //countLogicAnalyzing = 0;
+      }
+      delay(10);
+      tight_loop_contents();
+    }
+
     // warningNet = 7;
     // firstConnection = -1;
-    checkPads();
+    
     int encoderNetHighlighted = encoderNetHighlight();
     if (encoderNetHighlighted != -1) {
       firstConnection = encoderNetHighlighted;
@@ -562,6 +577,8 @@ dontshowmenu:
     } else {
       // firstConnection = -1;
     }
+
+    checkPads();
 
     secondSerialHandler();
 
@@ -898,6 +915,34 @@ setupla:
       // }
       break;
     }
+
+  case 'X': { //! X - Resource Status
+    Serial.println("Resource Allocation Status:");
+    Serial.println("==========================");
+    
+    // Check logic analyzer status
+    if (isLogicAnalyzerAvailable()) {
+      Serial.println("✓ Logic Analyzer: Available");
+      printLogicAnalyzerStatus();
+    } else {
+      Serial.println("✗ Logic Analyzer: Not available");
+    }
+    
+    // Check rotary encoder status
+    if (isRotaryEncoderInitialized()) {
+      Serial.println("✓ Rotary Encoder: Initialized");
+      printRotaryEncoderStatus();
+    } else {
+      Serial.println("✗ Rotary Encoder: Not initialized");
+    }
+    
+    // Check for conflicts
+    Serial.println("\nConflict Detection:");
+    checkLogicAnalyzerConflicts();
+    
+    Serial.println();
+    break;
+  }
 
   case 'G': { //! G - Load config.txt changes
     Serial.println("Reloading config.txt...");
@@ -2295,12 +2340,14 @@ void loop1() {
   uint32_t current_time = millis();
   
   // Check for USB activity every 10ms to avoid overwhelming the system
-  // if (current_time - last_la_check >= 10) {
-  //   last_la_check = current_time;
+  if (current_time - last_la_check >= 50) {
+    last_la_check = current_time;
     
     if (isLogicAnalyzerAvailable() && (la_usb_available() > 0 || la_usb_connected())) {
       handleLogicAnalyzer();
+      //Serial.println("handleLogicAnalyzer");
     }
+  }
   
 
   // while (logicAnalyzing == true) {

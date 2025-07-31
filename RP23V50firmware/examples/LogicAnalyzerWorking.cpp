@@ -468,7 +468,7 @@ bool calculateAndAllocateBuffers() {
     
     // Allocate digital buffer
     if (actual_digital_bytes > 0) {
-        la_buffer = (uint32_t*)malloc(actual_digital_bytes);
+        la_buffer = (uint32_t*)malloc(actual_digital_bytes + 1024);
         if (!la_buffer) {
             DEBUG_LA_PRINTF("◆ ERROR: Failed to allocate %lu byte digital buffer\n", actual_digital_bytes);
             return false;
@@ -479,7 +479,7 @@ bool calculateAndAllocateBuffers() {
 
     // Allocate analog buffer
     if (actual_analog_bytes > 0) {
-        analog_buffer = (uint16_t*)malloc(actual_analog_bytes);
+        analog_buffer = (uint16_t*)malloc(actual_analog_bytes + 1024);
         if (!analog_buffer) {
             DEBUG_LA_PRINTF("◆ ERROR: Failed to allocate %lu byte analog buffer\n", actual_analog_bytes);
             if (la_buffer) {
@@ -1930,7 +1930,7 @@ void setupLogicAnalyzer() {
 
 void handleLogicAnalyzer() {
     if (!la_initialized || !la_enabled) return;
-    logicAnalyzing = true;
+    //logicAnalyzing = true;
     bool usb_connected = la_usb_connected();
     handleConnectionStateChange(usb_connected);
     
@@ -3166,7 +3166,7 @@ bool allocateAllLogicAnalyzerBuffers() {
         DEBUG_LA_PRINTF("◆ ERROR: Failed to allocate %zu byte digital buffer\n", req.digital_buffer_bytes);
         return false;
     }
-    g_la_buffers.digital_buffer_size = req.digital_buffer_bytes;
+    g_la_buffers.digital_buffer_size = req.digital_buffer_bytes + 1024;
     g_la_buffers.digital_max_samples = req.max_samples_final;
     g_la_buffers.digital_allocated = true;
     
@@ -3181,7 +3181,7 @@ bool allocateAllLogicAnalyzerBuffers() {
             releaseAllLogicAnalyzerBuffers();  // Clean up digital buffer
             return false;
         }
-        g_la_buffers.analog_buffer_size = req.analog_buffer_bytes;
+        g_la_buffers.analog_buffer_size = req.analog_buffer_bytes + 1024;
         g_la_buffers.analog_max_samples = req.max_samples_final;
         g_la_buffers.analog_channels_active = req.driver_analog_channels;
         g_la_buffers.analog_allocated = true;

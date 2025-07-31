@@ -35,6 +35,8 @@ void initRotaryEncoder(void);
 void unInitRotaryEncoder(void);
 void printRotaryEncoderHelp(void);
 void rotaryEncoderStuff(void);
+bool isRotaryEncoderInitialized(void);
+void printRotaryEncoderStatus(void);
 
 
 void slotManager(void); 

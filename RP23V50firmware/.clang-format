@@ -2,13 +2,14 @@
 Language: Cpp
 BasedOnStyle: LLVM
 ColumnLimit: 0
-IndentWidth: 2
-TabWidth: 2
+IndentWidth: 4
+TabWidth: 4
 UseTab: Never
 PointerAlignment: Left
 SpaceBeforeParens: ControlStatements
-SpaceInEmptyParentheses: false
-SpacesInParentheses: false
-SpacesInSquareBrackets: false
-SpaceBeforeAssignmentOperators: false
+SpaceInEmptyParentheses: true
+SpacesInParentheses: true
+SpacesInSquareBrackets: true
+SpaceBeforeAssignmentOperators: true
+
 Standard: Cpp11

@@ -19,9 +19,9 @@
 #include "LogicAnalyzer.h"
 
 volatile int slotChanged = 0;
-PIO pioEnc = pio1;
+PIO pioEnc = nullptr;  // Will be dynamically assigned
 
-const uint smEnc = 0;
+uint smEnc = -1;  // Will be dynamically assigned
 uint offsetEnc = 0;
 const uint PIN_AB = 12;
 
@@ -45,17 +45,80 @@ volatile int slotPreview = 0;
 
 void initRotaryEncoder(void) {
   pinMode(BUTTON_ENC, INPUT);
-    pinMode(QUADRATURE_A_PIN, INPUT_PULLUP);
-    pinMode(QUADRATURE_B_PIN, INPUT_PULLUP);
-  // stdio_init_all();
-  pio_add_program(pioEnc, &quadrature_encoder_program);
+  pinMode(QUADRATURE_A_PIN, INPUT_PULLUP);
+  pinMode(QUADRATURE_B_PIN, INPUT_PULLUP);
+  
+  // CRITICAL: Dynamically claim an unused PIO to avoid conflicts
+  //Serial.println("◆ Initializing rotary encoder with dynamic PIO allocation...");
+  
+  // Try PIO instances in order: PIO2, PIO0, PIO1 (same priority as logic analyzer)
+  PIO pio_instances[] = {pio2, pio0, pio1};
+  bool pio_allocated = false;
+  
+  for (int i = 0; i < 3 && !pio_allocated; i++) {
+    PIO test_pio = pio_instances[i];
+    //Serial.printf("◆ Trying PIO%d for rotary encoder...\n", pio_get_index(test_pio));
+    
+    // Try to claim a state machine
+    int test_sm = pio_claim_unused_sm(test_pio, false);
+    if (test_sm < 0) {
+    //  Serial.printf("◆ PIO%d: No available state machines\n", pio_get_index(test_pio));
+      continue;
+    }
+    
+    // Check if we can add the program
+    if (!pio_can_add_program(test_pio, &quadrature_encoder_program)) {
+     // Serial.printf("◆ PIO%d: Cannot add quadrature encoder program\n", pio_get_index(test_pio));
+      pio_sm_unclaim(test_pio, test_sm);
+      continue;
+    }
+    
+    // Add the program
+    uint test_offset = pio_add_program(test_pio, &quadrature_encoder_program);
+    if (test_offset < 0) {
+      //Serial.printf("◆ PIO%d: Failed to add quadrature encoder program\n", pio_get_index(test_pio));
+      pio_sm_unclaim(test_pio, test_sm);
+      continue;
+    }
+    
+    // Success! Assign the resources
+    pioEnc = test_pio;
+    smEnc = test_sm;
+    offsetEnc = test_offset;
+    
+    //Serial.printf("◆ SUCCESS: Rotary encoder allocated PIO%d SM%d offset=%d\n", 
+    //              pio_get_index(pioEnc), smEnc, offsetEnc);
+    
+    pio_allocated = true;
+  }
+  
+  if (!pio_allocated) {
+    //Serial.println("◆ ERROR: Failed to allocate PIO resources for rotary encoder");
+    //Serial.println("◆ Rotary encoder will not function");
+    return;
+  }
+  
+  // Initialize the quadrature encoder
   quadrature_encoder_program_init(pioEnc, smEnc, PIN_AB, 0);
-
-
+  //Serial.println("◆ Rotary encoder initialized successfully");
 }
 
 void unInitRotaryEncoder(void) {
-  // pio_sm_unclaim(pioEnc, smEnc);
+  if (pioEnc && smEnc != (uint)-1) {
+    //Serial.printf("◆ Cleaning up rotary encoder resources: PIO%d SM%d\n", 
+    //              pio_get_index(pioEnc), smEnc);
+    
+    // Remove the program and unclaim the state machine
+    pio_remove_program(pioEnc, &quadrature_encoder_program, offsetEnc);
+    pio_sm_unclaim(pioEnc, smEnc);
+    
+    // Reset the variables
+    pioEnc = nullptr;
+    smEnc = -1;
+    offsetEnc = 0;
+    
+    //Serial.println("◆ Rotary encoder resources cleaned up");
+  }
 }
 
 const char rotaryEncoderHelp[] =
@@ -98,6 +161,21 @@ const char rotaryEncoderHelp[] =
 void printRotaryEncoderHelp(void) {
   Serial.print(rotaryEncoderHelp);
   return;
+}
+
+// Function to check if rotary encoder is properly initialized
+bool isRotaryEncoderInitialized(void) {
+  return (pioEnc != nullptr && smEnc != (uint)-1);
+}
+
+// Function to get rotary encoder status
+void printRotaryEncoderStatus(void) {
+  if (isRotaryEncoderInitialized()) {
+    Serial.printf("◆ Rotary encoder: PIO%d SM%d offset=%d\n", 
+                  pio_get_index(pioEnc), smEnc, offsetEnc);
+  } else {
+    Serial.println("◆ Rotary encoder: Not initialized");
+  }
 }
 
 unsigned long buttonHoldTimer = 0;
