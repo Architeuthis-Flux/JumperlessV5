@@ -6,6 +6,7 @@
 #include "MatrixState.h"
 #include "NetsToChipConnections.h"
 #include "Peripherals.h"
+#include "JulseView.h"
 
 #include "hardware/pio.h"
 
@@ -25,6 +26,8 @@
 PIO pio = pio0;
 
 uint sm = pio_claim_unused_sm(pio, true);
+
+uint offset = 0;
 
 volatile int chipSelect = 0;
 volatile uint32_t irq_flags = 0;
@@ -46,13 +49,19 @@ void isrFromPio(void) {
 
   setCSex(chipSelect, 0);
 
-  // delayMicroseconds(40);
+  // Small delay to ensure signal stability
+  delayMicroseconds(10);
   chipSelect = -1;
 
+  // Clear the state machine interrupt (not PIO0_IRQ_0)
+  // The PIO program uses "irq 1" and "wait 0 irq 1 rel", so we need to clear interrupt 1 for this state machine
+  pio_interrupt_clear(pio, 1);  // Clear interrupt 1 (absolute)
+  
+  // Also clear the PIO IRQ register for good measure
   irq_flags = pio0_hw->irq;
-  pio_interrupt_clear(pio, PIO0_IRQ_0);
   hw_clear_bits(&pio0_hw->irq, irq_flags);
   
+
   }
 
 struct pathStruct lastPath[MAX_BRIDGES];
@@ -68,6 +77,9 @@ int changedPathsCount = 0;
 int chipOrderedIndex[MAX_BRIDGES];
 bool chipOrderValid = false;
 
+// Timeout counter for PIO debugging
+int ch446q_timeout_count = 0;
+
 void initCH446Q(void) {
 
   uint dat = 14;
@@ -75,11 +87,15 @@ void initCH446Q(void) {
 
   // uint cs = 7;
 
-  irq_add_shared_handler(PIO0_IRQ_0, isrFromPio,
-                         PICO_SHARED_IRQ_HANDLER_DEFAULT_ORDER_PRIORITY);
-  irq_set_enabled(PIO0_IRQ_0, true);
+  // CRITICAL: Initialize GPIO pins for PIO use (required for RP2350B)
+  pio_gpio_init(pio, dat);  // Initialize GPIO 14 for PIO0
+  pio_gpio_init(pio, clk);  // Initialize GPIO 15 for PIO0
 
-  uint offset = pio_add_program(pio, &spi_ch446_multi_cs_program);
+  irq_add_shared_handler(PIO0_IRQ_1, isrFromPio,
+                         PICO_SHARED_IRQ_HANDLER_DEFAULT_ORDER_PRIORITY);
+  irq_set_enabled(PIO0_IRQ_1, true);
+
+   offset = pio_add_program(pio, &spi_ch446_multi_cs_program);
   // uint offsetCS = pio_add_program(pio, &spi_ch446_cs_handler_program);
 
   // Serial.print("offset: ");
@@ -135,15 +151,118 @@ void sendPaths(int clean) {
     // delayMicroseconds(10);
     // digitalWrite(RESETPIN, LOW);
 
+  unsigned long wait_start = micros();
   while (core1busy == true) {
     delayMicroseconds(1);  // Small delay to prevent tight loop
+    
+    // DEBUG: Warn if waiting too long
+    if (micros() - wait_start > 1000000) {  // 1 second timeout
+      Serial.println("WARNING: CH446Q waiting for core1busy for more than 1 second!");
+      break;  // Break out of the loop to prevent infinite hang
     }
+  }
   core2busy = true;
 
   unsigned long pathTimer = micros();
 
   // Create chip-ordered index for efficient hardware operations while keeping paths in net order
   createChipOrderedIndex();
+
+  // Re-enable PIO program and set IRQ if needed
+  if (!irq_is_enabled(PIO0_IRQ_1)) {
+   // Serial.println("CH446Q: Re-enabling PIO0_IRQ_1");
+    irq_set_enabled(PIO0_IRQ_1, true);
+  }
+  
+  // CRITICAL: Force re-enable state machine if JulseView disabled it
+  if (!(pio->ctrl & (1u << (PIO_CTRL_SM_ENABLE_LSB + sm)))) {
+   // Serial.println("CH446Q: Re-enabling disabled PIO state machine");
+    pio_sm_set_enabled(pio, sm, true);
+  }
+  
+  // CRITICAL: Reset PIO state machine after JulseView operations to clear any interference
+  // JulseView's intensive DMA operations can cause timing issues that affect PIO0
+  pio_sm_restart(pio, sm);
+  pio_sm_clear_fifos(pio, sm);
+  pio_interrupt_clear(pio, 1);  // Clear interrupt 1
+  delayMicroseconds(100);  // Small delay to ensure PIO is stable
+  
+  // CRITICAL: Re-enable the correct IRQ1 source using proper SDK function
+  // SKIP IRQ reset if JulseView is active to prevent interference with logic analyzer
+  if (!julseview_active && pio0_hw->inte1 != 0x100) {
+    // Serial.print("CH446Q: Re-setting IRQ1 source - INTE1 was 0x");
+    // Serial.print(pio0_hw->inte1, HEX);
+    // Serial.println();
+    pio_set_irq1_source_enabled(pio, pis_interrupt1, false);  // Clear any wrong sources
+    pio_set_irq1_source_enabled(pio, pis_interrupt1, true);   // Set correct source for SM0
+  }
+  
+  // // Check if PIO state machine is claimed and enabled
+  // if (!pio_sm_is_claimed(pio, sm)) {
+  //   Serial.println("CH446Q: PIO state machine not claimed, re-claiming...");
+  //   pio_sm_claim(pio, sm);
+  // }
+  
+  // // Check if state machine is actually enabled by checking the hardware register
+  // if (!(pio->ctrl & (1u << (PIO_CTRL_SM_ENABLE_LSB + sm)))) {
+  //   Serial.println("CH446Q: Re-enabling PIO state machine");
+  //   pio_sm_set_enabled(pio, sm, true);
+  // }
+  
+  // CRITICAL: Always force complete PIO reset and reload after JulseView operations
+  // JulseView's intensive DMA operations can corrupt PIO instruction memory globally
+  // SKIP aggressive PIO reset if JulseView is active to prevent interference
+  if (!julseview_active) {
+    uint dat = 14;
+    uint clk = 15;
+    
+    // CRITICAL: Force complete PIO reset after JulseView operations
+    // JulseView's intensive DMA operations can corrupt PIO instruction memory
+    pio_sm_set_enabled(pio, sm, false);
+    pio_sm_clear_fifos(pio, sm);
+    pio_sm_restart(pio, sm);
+    pio_interrupt_clear(pio, 1);
+    delayMicroseconds(100);
+    
+    // Remove and re-add program to ensure clean state
+    pio_remove_program(pio, &spi_ch446_multi_cs_program, 0);
+    uint offset = pio_add_program(pio, &spi_ch446_multi_cs_program);
+    pio_spi_ch446_multi_cs_init(pio, sm, offset, 8, 2, 0, 1, clk, dat);
+    pio_sm_set_enabled(pio, sm, true);
+    // DISABLED: Interrupt setup is handled in pio_spi_ch446_multi_cs_init() to avoid conflicts
+    // pio_set_irq0_source_enabled(pio, (pio_interrupt_source)0, true);
+    pio_interrupt_clear(pio, sm);
+  }
+  
+  // // Force complete PIO reset if we've had timeout issues
+  // if (ch446q_timeout_count > 0) {
+  //   Serial.println("CH446Q: Force reloading PIO program due to previous timeouts...");
+  //   uint dat = 14;
+  //   uint clk = 15;
+    
+  //   // // Disable and clear everything
+  //   // pio_sm_set_enabled(pio, sm, false);
+  //   // pio_interrupt_clear(pio, sm);
+  //   // // FIX: Use direct interrupt 0 since PIO program uses "irq 0" (absolute)
+  //   // // On RP2350B, pis_interrupt0 = 8, but we need interrupt 0
+  //   // // pio_set_irq0_source_enabled(pio, (pio_interrupt_source)0, false);
+    
+  //   // // Remove and re-add program
+  //   // pio_remove_program(pio, &spi_ch446_multi_cs_program, 0);
+  //   // uint offset = pio_add_program(pio, &spi_ch446_multi_cs_program);
+    
+  //   // Reinitialize everything
+  //   pio_spi_ch446_multi_cs_init(pio, sm, offset, 8, 2, 0, 1, clk, dat);
+  //   pio_sm_set_enabled(pio, sm, true);
+  //   // FIX: Use direct interrupt 0 since PIO program uses "irq 0" (absolute)
+  //   // On RP2350B, pis_interrupt0 = 8, but we need interrupt 0
+  //   // pio_set_irq0_source_enabled(pio, (pio_interrupt_source)0, true);
+  //   pio_interrupt_clear(pio, sm);
+    
+  //   ch446q_timeout_count = 0;  // Reset counter
+  // }
+  
+
 
   if (clean == 1) {
     digitalWrite(RESETPIN, HIGH);
@@ -563,10 +682,37 @@ void sendXYraw(int chip, int x, int y, int setOrClear) {
   //   Serial.flush();
   //   }
 
+  unsigned long wait_start = micros();
   while (chipSelect != -1) {
     //delayMicroseconds(1);
     tight_loop_contents();
+    
+    // DEBUG: Warn if waiting too long
+    if (micros() - wait_start > 1000000) {  // 1 second timeout
+      ch446q_timeout_count++;
+      Serial.print("WARNING: CH446Q sendXYraw waiting for chipSelect for more than 1 second! (timeout #");
+      Serial.print(ch446q_timeout_count);
+      Serial.println(")");
+      Serial.println("CH446Q: Attempting emergency PIO reset...");
+      
+      // Emergency reset: force chipSelect to -1 and reset PIO
+      chipSelect = -1;
+      pio_sm_set_enabled(pio, sm, false);
+      delayMicroseconds(100);
+      pio_sm_set_enabled(pio, sm, true);
+      pio_interrupt_clear(pio, sm);
+      
+      // Debug PIO state after reset
+      Serial.print("CH446Q: After emergency reset - SM enabled: ");
+      Serial.print((pio->ctrl & (1u << (PIO_CTRL_SM_ENABLE_LSB + sm))) ? "YES" : "NO");
+      Serial.print(", IRQ enabled: ");
+      Serial.print(irq_is_enabled(PIO0_IRQ_1) ? "YES" : "NO");
+      Serial.print(", chipSelect: ");
+      Serial.println(chipSelect);
+      isrFromPio();
+      break;  // Break out of the loop to prevent infinite hang
     }
+  }
 
     // unsigned long end = micros();
     // Serial.print("time: ");

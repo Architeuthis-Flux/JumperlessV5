@@ -11,7 +11,7 @@
 #include "CH446Q.h"
 #include "Commands.h"
 #include "FileParsing.h"
-#include "LogicAnalyzer.h"  // Add logic analyzer awareness
+
 #include "NetManager.h"
 #include "config.h"
 #include "configManager.h"
@@ -104,6 +104,7 @@ void initSecondSerial(void) {
 #if USB_CDC_ENABLE_COUNT >= 3
   // USBSer2 maps to CDC interface 2 - ALWAYS initialize for logic analyzer compatibility
   // This ensures PulseView can always connect to the logic analyzer on CDC interface 2
+ 
   USBSer2.begin(115200);  // Always initialize at 115200 for SUMP protocol compatibility
   // Serial.println("  USBSer2 initialized for logic analyzer");
   
@@ -869,7 +870,7 @@ int handleSerialPassthrough(int serial, int print, int printPassthroughFlashing,
 
   // Skip USBSer2 passthrough when logic analyzer is active to prevent SUMP protocol interference
   // Only do passthrough when serial_2.function == 1 (passthrough mode) AND logic analyzer is not active
-  if (jumperlessConfig.serial_2.function == 1 && (serial == 1 || serial == 2) && logicAnalyzing == false) {
+  if (jumperlessConfig.serial_2.function == 1 && (serial == 1 || serial == 2) && false) {
 
     unsigned long serial2Timeout = millis();
     int usbSer2Available = USBSer2.available();
@@ -1438,7 +1439,7 @@ void checkForConfigChangesUSBSer2(int print) {
 void replyWithSerialInfo(void) {
 
 
-  if (flashingArduino == true || logicAnalyzing == true) {
+  if (flashingArduino == true || false) {
     return;
   }
 

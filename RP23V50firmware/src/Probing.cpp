@@ -409,7 +409,7 @@ if (setOrClear == 1 && firstConnection == -1) {
           nodesToConnect[0] = -1;
           nodesToConnect[1] = -1;
           node1or2 = 0;
-          clearLEDsExceptRails();
+          //clearLEDsExceptRails();
           probeHighlight = -1;
           showLEDsCore2 = -1;
 
@@ -428,7 +428,7 @@ if (setOrClear == 1 && firstConnection == -1) {
           nodesToConnect[1] = -1;
           //           lastProbedRows[0] = -1;
           // lastProbedRows[1] = -1;
-          clearLEDsExceptRails();
+          //clearLEDsExceptRails();
           showLEDsCore2 = 1;
           node1or2 = 0;
           // showProbeLEDs = 1;
@@ -448,7 +448,7 @@ if (setOrClear == 1 && firstConnection == -1) {
               //Serial.println(probeHighlight);
 
               probeHighlight = -1;
-              clearLEDsExceptRails();
+             // clearLEDsExceptRails();
               showLEDsCore2 = -2;
               // waitCore2();
               Serial.print("\r                                \r");
@@ -473,7 +473,7 @@ if (setOrClear == 1 && firstConnection == -1) {
             nodesToConnect[0] = -1;
             nodesToConnect[1] = -1;
             node1or2 = 0;
-            clearLEDsExceptRails();
+            //clearLEDsExceptRails();
             // lastProbedRows[0] = -1;
             // lastProbedRows[1] = -1;
 
@@ -955,11 +955,13 @@ if (setOrClear == 1 && firstConnection == -1) {
   // showLEDsCore2 = -1;
   //refreshLocalConnections(-1);
   // delay(10);
-  if (firstConnection != -3 && numberOfLocalChanges >= 0) {
+  if (firstConnection != -3 && numberOfLocalChanges > 0) {
+    Serial.println("saving local node file");
+    Serial.flush();
     saveLocalNodeFile();
     }
   // delay(10);
-  refreshConnections(-1, 1, 0);
+  refreshConnections(1, 1, 0);
   row[0] = -1;
   row[1] = -2;
   // showLEDsCore2 = -1;
@@ -2683,8 +2685,8 @@ int checkProbeButton(void) {
   while (showingProbeLEDs == 1) {
     // delay(10);
     }
-  waitCore2();
-  // setDac0voltage(3.33, 1, 1);
+  // waitCore2();
+  // // setDac0voltage(3.33, 1, 1);
 
   core1busy = true;
 

@@ -29,7 +29,7 @@ KevinC@ppucc.io
 #include <Adafruit_TinyUSB.h>
 #endif
 
-#include "LogicAnalyzer.h"
+
 
 #include <Adafruit_NeoPixel.h>
 #include <EEPROM.h>
@@ -75,6 +75,7 @@ KevinC@ppucc.io
 #include "Python_Proper.h"
 #include "USBfs.h"
 #include <hardware/adc.h>
+#include "JulseView.h"
 
 // #define Serial SerialWrap
 // #define USBSer1 SerialWrap
@@ -117,9 +118,11 @@ volatile int dumpLED = 0;
 unsigned long dumpLEDTimer = 0;
 unsigned long dumpLEDrate = 50;
 
-const char firmwareVersion[] = "5.2.2.3"; // remember to update this
+const char firmwareVersion[] = "5.3.0.0"; // remember to update this
 bool newConfigOptions = false; // set to true with new config options //!
                                // fix the saving every boot thing
+
+julseview julseview;
 
 void setup() {
   pinMode(RESETPIN, OUTPUT_12MA);
@@ -197,6 +200,14 @@ void setup() {
   }
 
   initSecondSerial();
+
+  // Auto-initialize JulseView for SUMP/libsigrok compatibility
+  Serial.println("Auto-initializing JulseView for logic analyzer...");
+  if (julseview.init()) {
+    Serial.println("JulseView initialized successfully");
+  } else {
+    Serial.println("JulseView initialization failed");
+  }
 
   drawAnimatedImage(0);
   startupAnimationFinished = 1;
@@ -323,7 +334,7 @@ int menuItemCounts[4] = {14, 22, 37, 46};
 
 
 
-//#define SETUP_LOGIC_ANALYZER_ON_BOOT 1
+#define SETUP_LOGIC_ANALYZER_ON_BOOT 1
 
 
 void loop() {
@@ -554,21 +565,11 @@ dontshowmenu:
 
     unsigned long busyTimer = millis();
 
-    int countLogicAnalyzing = 0;
-    while (logicAnalyzing == true) {
-      countLogicAnalyzing++;
-      if (countLogicAnalyzing % 100 == 0) {
-        Serial.print("logicAnalyzing");
-        Serial.println(countLogicAnalyzing);
-        Serial.flush();
-        //countLogicAnalyzing = 0;
-      }
-      delay(10);
-      tight_loop_contents();
+    if (julseview.getShouldStopOtherStuff() == true) {
+      continue;
     }
 
-    // warningNet = 7;
-    // firstConnection = -1;
+
     
     int encoderNetHighlighted = encoderNetHighlight();
     if (encoderNetHighlighted != -1) {
@@ -680,7 +681,7 @@ dontshowmenu:
       firstConnection = -1;
     }
 
-    if ((millis() - waitTimer) > 30) {
+    if ((millis() - waitTimer) > 12) {
       waitTimer = millis();
 
       int probeButton = checkProbeButton();
@@ -789,8 +790,8 @@ dontshowmenu:
                                 jumperlessConfig.top_oled.gpio_scl) == true) {
 
           if (oled.checkConnection() == false) {
-            Serial.print("\r                                             "
-                         "\roled connection lost, retrying...");
+            //Serial.print("\r                                             "
+                    //     "\roled connection lost, retrying...");
             oled.oledConnected = false;
             // oled.disconnect();
             // jumperlessConfig.top_oled.enabled = 0;
@@ -905,7 +906,11 @@ setupla:
 
 
       Serial.println();
-      setupLogicAnalyzer();
+      //setupLogicAnalyzer();
+      // DON'T call init() again - JulseView is already initialized during boot
+      // Calling init() multiple times can cause resource conflicts with CH446Q
+      // julseview.init();
+      Serial.println("Logic analyzer is ready (already initialized during boot)");
 
       // for (int i = 0; i < 8; i++) {
       //   adc_select_input(8);
@@ -921,12 +926,7 @@ setupla:
     Serial.println("==========================");
     
     // Check logic analyzer status
-    if (isLogicAnalyzerAvailable()) {
-      Serial.println("✓ Logic Analyzer: Available");
-      printLogicAnalyzerStatus();
-    } else {
-      Serial.println("✗ Logic Analyzer: Not available");
-    }
+    Serial.println("✗ Logic Analyzer: Not available (removed)");
     
     // Check rotary encoder status
     if (isRotaryEncoderInitialized()) {
@@ -938,7 +938,7 @@ setupla:
     
     // Check for conflicts
     Serial.println("\nConflict Detection:");
-    checkLogicAnalyzerConflicts();
+    Serial.println("Logic Analyzer conflicts: N/A (removed)");
     
     Serial.println();
     break;
@@ -2339,15 +2339,46 @@ void loop1() {
   static uint32_t last_la_check = 0;
   uint32_t current_time = millis();
   
-  // Check for USB activity every 10ms to avoid overwhelming the system
-  if (current_time - last_la_check >= 50) {
-    last_la_check = current_time;
+  // ENHANCED STATE-BASED HANDLER CALLING
+  // Use the new state variables to make smarter decisions about when to call the handler
+  bool should_call_handler = false;
+  
+  // Always call if device is actively running or armed
+  if (julseview.getIsRunning() || julseview.getIsArmed() || julseview.getReceivedCommand()) {
+    should_call_handler = true;
+  
+
     
-    if (isLogicAnalyzerAvailable() && (la_usb_available() > 0 || la_usb_connected())) {
-      handleLogicAnalyzer();
-      //Serial.println("handleLogicAnalyzer");
-    }
+    julseview.handler();
+  } else if (millis() - last_la_check >= 10) {
+    last_la_check = millis();
+    should_call_handler = true;
+    julseview.handler();
   }
+  
+  // CRITICAL: Post-deinit DMA watchdog to prevent buffer overflow crashes
+  // static uint32_t last_dma_watchdog_check = 0;
+  // if (!julseview_active && (current_time - last_dma_watchdog_check > 10000)) {  // Check every 10 seconds when idle
+  //   last_dma_watchdog_check = current_time;
+    
+  //   // Check if any DMA channels are still running (they shouldn't be after deinit)
+  //   bool dma_still_running = false;
+  //   for (int i = 0; i < NUM_DMA_CHANNELS; i++) {
+  //     if (dma_channel_is_busy(i)) {
+  //       dma_still_running = true;
+  //       break;
+  //     }
+  //   }
+    
+  //   if (dma_still_running) {
+  //    // Serial.println("WARNING: DMA channels still running after deinit - forcing cleanup");
+  //     // Force cleanup of any remaining DMA activity
+  //     for (int i = 0; i < NUM_DMA_CHANNELS; i++) {
+  //       dma_channel_abort(i);
+  //       dma_channel_wait_for_finish_blocking(i);
+  //     }
+  //   }
+  // }
   
 
   // while (logicAnalyzing == true) {
@@ -2358,7 +2389,7 @@ void loop1() {
   if (doomOn == 1) {
     playDoom();
     doomOn = 0;
-  } else if (pauseCore2 == 0) {
+  } else if (pauseCore2 == 0 && julseview_active == false) {
     core2stuff();
   }
 

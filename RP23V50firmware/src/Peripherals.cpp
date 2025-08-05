@@ -4,7 +4,7 @@
 // #include "Adafruit_INA219.h"
 
 #include "LEDs.h"
-#include "LogicAnalyzer.h"  // For isLogicAnalyzerCapturing() check
+
 #include "MatrixState.h"
 #include "NetManager.h"
 
@@ -41,7 +41,7 @@
 // #include "hardware/adc.h"
 #include "Highlighting.h"
 
-#include "LogicAnalyzer.h"
+
 
 // Compatibility for clangd - these are provided by Arduino.h at compile time
 #ifndef abs
@@ -783,11 +783,11 @@ volatile bool readingGPIO = false;
 void readGPIO(void) {
 
 
-  if (logicAnalyzing == true) {
+  if (false) {
     return;
   }
   // Allow normal GPIO reading for non-logic analyzer pins
-  bool logic_analyzer_active = logicAnalyzing;
+  bool logic_analyzer_active = false;
   
   // Serial.println("\n\n\n\rreadGPIO\n\n\n\n\n\r");
   // return;
@@ -1896,6 +1896,32 @@ void showMeasurements(int samples, int printOrBB, int oneShot) {
   //   }
   startMillis = millis();
   Serial.flush();
+}
+
+void printPIOStateMachines() {
+    Serial.println("=== PIO STATE MACHINE STATUS ===");
+    
+    // Check all PIO instances (pio0, pio1, pio2)
+    PIO pio_instances[] = {pio0, pio1, pio2};
+    const char* pio_names[] = {"PIO0", "PIO1", "PIO2"};
+    
+    for (int pio_idx = 0; pio_idx < 3; pio_idx++) {
+        PIO current_pio = pio_instances[pio_idx];
+        Serial.printf("%s:\n\r", pio_names[pio_idx]);
+        
+        // Check all 4 state machines per PIO
+        for (int sm = 0; sm < 4; sm++) {
+            bool is_claimed = pio_sm_is_claimed(current_pio, sm);
+            
+            if (is_claimed) {
+                Serial.printf("  SM%d: CLAIMED\n\r", sm);
+            } else {
+                Serial.printf("  SM%d: FREE\n\r", sm);
+            }
+        }
+    }
+    
+    Serial.println("==============================");
 }
 
 float readAdcVoltage(int channel, int samples) {

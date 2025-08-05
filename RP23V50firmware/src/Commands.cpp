@@ -61,6 +61,8 @@ void refresh(int flashOrLocal, int ledShowOption, int fillUnused, int clean) {
   }
 }
 
+//#define DEBUG_REFRESH 1
+
 void refreshConnections(int ledShowOption, int fillUnused, int clean) {
 
  // waitCore2();
@@ -71,35 +73,52 @@ void refreshConnections(int ledShowOption, int fillUnused, int clean) {
   //core1busy = true;
   // return;
   openNodeFile(netSlot, 0);
-      // Serial.print("refreshConnections openNodeFile = ");
-      // Serial.println(millis() - start);
+#ifdef DEBUG_REFRESH
+      Serial.print("refreshConnections openNodeFile = ");
+      Serial.println(millis() - start);
+#endif
 
   getNodesToConnect();
-  // Serial.print("refreshConnections getNodesToConnect = ");
-  // Serial.println(millis() - start);
+#ifdef DEBUG_REFRESH
+  Serial.print("refreshConnections getNodesToConnect = ");
+  Serial.println(millis() - start);
+#endif
 //core1busy = false;
   bridgesToPaths();
-  // Serial.print("refreshConnections bridgesToPaths = ");
-  // Serial.println(millis() - start);
+#ifdef DEBUG_REFRESH
+  Serial.print("refreshConnections bridgesToPaths = ");
+  Serial.println(millis() - start);
+#endif
   checkChangedNetColors(-1);
-  // Serial.print("refreshConnections checkChangedNetColors = ");
-  // Serial.println(millis() - start);
+#ifdef DEBUG_REFRESH
+  Serial.print("refreshConnections checkChangedNetColors = ");
+  Serial.println(millis() - start);
+#endif
   assignNetColors();
-  // Serial.print("refreshConnections assignNetColors = ");
-  // Serial.println(millis() - start);
+#ifdef DEBUG_REFRESH
+  Serial.print("refreshConnections assignNetColors = ");
+  Serial.println(millis() - start);
+#endif
   chooseShownReadings();
-  // Serial.print("refreshConnections chooseShownReadings = ");
-  // Serial.println(millis() - start);
+#ifdef DEBUG_REFRESH
+  Serial.print("refreshConnections chooseShownReadings = ");
+  Serial.println(millis() - start);
+#endif
   assignTermColor();
-  // Serial.print("refreshConnections assignTermColor = ");
-  // Serial.println(millis() - start);
+#ifdef DEBUG_REFRESH
+  Serial.print("refreshConnections assignTermColor = ");
+  Serial.println(millis() - start);
+#endif
   //findChangedNetColors();
   //assignNetColors();
   
   // Restore GPIO configurations from jumperlessConfig after net processing
   setGPIO();
-  // Serial.print("refreshConnections time = ");
-  // Serial.println(millis() - start);
+#ifdef DEBUG_REFRESH
+  Serial.print("refreshConnections setGPIO = ");
+  Serial.println(millis() - start);
+#endif
+
   // if (lastSlot != netSlot) {
   //   createLocalNodeFile(netSlot);
   //   lastSlot = netSlot;
@@ -130,8 +149,11 @@ void refreshConnections(int ledShowOption, int fillUnused, int clean) {
     sendAllPathsCore2 = 1;
   }
 
-  // Serial.print("after waitCore2 time = ");
-  // Serial.println(millis() - start);
+#ifdef DEBUG_REFRESH
+  Serial.print("after waitCore2 time = ");  
+
+  Serial.println(millis() - start);
+#endif
   
   
   // sendPaths();
@@ -141,22 +163,48 @@ void refreshLocalConnections(int ledShowOption, int fillUnused, int clean) {
 
    waitCore2();
    
-
+unsigned long start2 = millis();
   clearAllNTCC();
   //core1busy = true;
   openNodeFile(netSlot, 1);
 
+
   getNodesToConnect();
-  
+#ifdef DEBUG_REFRESH
+  Serial.print("refreshLocalConnections getNodesToConnect = ");
+  Serial.println(millis() - start2);
+#endif
   bridgesToPaths();
+#ifdef DEBUG_REFRESH
+  Serial.print("refreshLocalConnections bridgesToPaths = ");
+  Serial.println(millis() - start2);
+#endif
   checkChangedNetColors(-1);
+#ifdef DEBUG_REFRESH
+  Serial.print("refreshLocalConnections checkChangedNetColors = ");
+  Serial.println(millis() - start2);
+#endif
   assignNetColors();
+#ifdef DEBUG_REFRESH
+  Serial.print("refreshLocalConnections assignNetColors = ");
+  Serial.println(millis() - start2);
+#endif
   chooseShownReadings();
+#ifdef DEBUG_REFRESH
+  Serial.print("refreshLocalConnections chooseShownReadings = ");
+  Serial.println(millis() - start2);
+#endif
   assignTermColor();
-  
+#ifdef DEBUG_REFRESH
+  Serial.print("refreshLocalConnections assignTermColor = ");
+  Serial.println(millis() - start2);
+#endif
   // Restore GPIO configurations from jumperlessConfig after net processing
   setGPIO();
-  
+#ifdef DEBUG_REFRESH
+  Serial.print("refreshLocalConnections time = ");
+  Serial.println(millis() - start2);
+#endif
   //core1busy = false;
   if (ledShowOption != 0) {
 
@@ -170,6 +218,14 @@ void refreshLocalConnections(int ledShowOption, int fillUnused, int clean) {
     sendAllPathsCore2 = 1;
     //waitCore2();
   }
+#ifdef DEBUG_REFRESH
+  Serial.print("refreshLocalConnections after waitCore2 time = ");
+  Serial.println(millis() - start2);
+#endif
+
+  // Serial.print("Free heap = ");
+  // Serial.println(rp2040.getFreeHeap());
+
 
   // sendPaths();
   
