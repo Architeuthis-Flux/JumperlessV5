@@ -2224,6 +2224,15 @@ void julseview::send_slices_analog( uint8_t* dbuf, uint8_t* abuf ) {
             samp_remain = num_samples - scnt;
             JULSEDEBUG_DAT("SAMPLE LIMIT: Reduced samp_remain to %d to match requested samples\n\r", samp_remain);
         }
+        
+        // CRITICAL: Final safety check - ensure we don't exceed analog buffer capacity
+        uint32_t final_analog_needed = samp_remain / analog_decimation_factor;
+        if (final_analog_needed >= max_analog_samples) {
+            JULSEDEBUG_ERR("FINAL SAFETY: Still exceeding analog buffer capacity (%d >= %d)\n\r", 
+                           final_analog_needed, max_analog_samples);
+            samp_remain = (max_analog_samples - 1) * analog_decimation_factor; // Leave 1 sample buffer
+            JULSEDEBUG_DAT("FINAL SAFETY: Forced samp_remain to %d\n\r", samp_remain);
+        }
     }
 
     if ( !cont && ( scnt + samp_remain > num_samples ) ) {
@@ -2241,6 +2250,14 @@ void julseview::send_slices_analog( uint8_t* dbuf, uint8_t* abuf ) {
             JULSEDEBUG_ERR("FINAL ERROR: Still exceeding analog buffer capacity!\n\r");
             samp_remain = analog_samples_per_half * analog_decimation_factor;
             JULSEDEBUG_DAT("FINAL FIX: Forced samp_remain to %d\n\r", samp_remain);
+        }
+        
+        // CRITICAL: Ensure we don't exceed the maximum safe number of samples
+        uint32_t max_safe_samples = analog_samples_per_half * analog_decimation_factor;
+        if (samp_remain > max_safe_samples) {
+            JULSEDEBUG_ERR("CRITICAL: samp_remain (%d) > max_safe_samples (%d)\n\r", samp_remain, max_safe_samples);
+            samp_remain = max_safe_samples;
+            JULSEDEBUG_DAT("CRITICAL FIX: Forced samp_remain to %d\n\r", samp_remain);
         }
     }
 
@@ -2287,6 +2304,16 @@ void julseview::send_slices_analog( uint8_t* dbuf, uint8_t* abuf ) {
         uint32_t batch_end = samples_processed + batch_size;
         if ( batch_end > samp_remain ) {
             batch_end = samp_remain;
+        }
+        
+        // CRITICAL: Additional safety check for decimation mode
+        if (use_decimation_mode) {
+            uint32_t max_safe_samples = analog_samples_per_half * analog_decimation_factor;
+            if (batch_end > max_safe_samples) {
+                JULSEDEBUG_ERR("BATCH SAFETY: batch_end (%d) > max_safe_samples (%d)\n\r", batch_end, max_safe_samples);
+                batch_end = max_safe_samples;
+                samp_remain = max_safe_samples; // Also limit total samples
+            }
         }
 
         // // CONSERVATIVE: More conservative buffer management
@@ -2343,8 +2370,8 @@ void julseview::send_slices_analog( uint8_t* dbuf, uint8_t* abuf ) {
                     
                     // SAFETY: Check if this analog sample index is within bounds
                     if (analog_sample_idx >= analog_samples_per_half) {
-                        JULSEDEBUG_ERR("Analog sample index out of bounds: %d >= %d\n\r", 
-                                       analog_sample_idx, analog_samples_per_half);
+                        JULSEDEBUG_ERR("Analog sample index out of bounds: %d >= %d (sample %d, factor %d)\n\r", 
+                                       analog_sample_idx, analog_samples_per_half, s, analog_decimation_factor);
                         goto end_processing;
                     }
                     
@@ -2455,7 +2482,23 @@ void julseview::send_slices_analog( uint8_t* dbuf, uint8_t* abuf ) {
                 // Print analog values - convert back to millivolts for readability
                 //  Only show enabled channels in debug output
                 if ( a_chan_cnt > 0 && abuf != nullptr ) {
-                    uint32_t temp_rxbufaidx = rxbufaidx - ( a_chan_cnt * 2 ); // Go back to start of this sample's analog data
+                    uint32_t temp_analog_offset;
+                    
+                    if (use_decimation_mode) {
+                        // DECIMATION MODE: Calculate analog offset based on sample index
+                        uint32_t analog_sample_idx = s / analog_decimation_factor;
+                        temp_analog_offset = analog_sample_idx * (a_chan_cnt * 2);
+                        
+                        // SAFETY: Check bounds for debug output
+                        if (temp_analog_offset + (a_chan_cnt * 2) > a_size) {
+                            JULSEDEBUG_STA("  BOUNDS ERROR | "); // Show error for all channels
+                            continue;
+                        }
+                    } else {
+                        // NORMAL MODE: Use rxbufaidx
+                        temp_analog_offset = rxbufaidx - (a_chan_cnt * 2); // Go back to start of this sample's analog data
+                    }
+                    
                     for ( char i = 0; i < JULSEVIEW_MAX_ANALOG_CHANNELS; i++ ) {
                         // Only show channels that are enabled in a_mask
                         if ( !( ( a_mask >> i ) & 1 ) ) {
@@ -2464,11 +2507,11 @@ void julseview::send_slices_analog( uint8_t* dbuf, uint8_t* abuf ) {
                         }
 
                         // Read 16-bit little-endian value from DMA buffer
-                        uint16_t adc_raw = abuf[ temp_rxbufaidx ] | ( abuf[ temp_rxbufaidx + 1 ] << 8 ); // Little-endian
+                        uint16_t adc_raw = abuf[ temp_analog_offset ] | ( abuf[ temp_analog_offset + 1 ] << 8 ); // Little-endian
                         uint16_t adc_12bit = adc_raw & 0x0FFF;                                           // Mask to 12 bits (bits 0-11)
 
                         JULSEDEBUG_STA( "%4d | ", adc_12bit );
-                        temp_rxbufaidx += 2; // 16-bit mode: 2 bytes per channel
+                        temp_analog_offset += 2; // 16-bit mode: 2 bytes per channel
                     }
                 } else {
                     // Show dashes for all analog channels when none are enabled
@@ -3009,15 +3052,19 @@ void julseview::calculate_asymmetric_buffer_layout() {
         JULSEDEBUG_BUF("  digital_samples_per_half: %d (full capacity)\n\r", digital_samples_per_half);
         JULSEDEBUG_BUF("  analog_samples_per_half: %d (decimated)\n\r", analog_samples_per_half);
         
-        // CRITICAL: Verify we have enough analog samples to support the decimation factor
-        uint32_t required_analog_samples = digital_samples_per_half / analog_decimation_factor;
+        // CRITICAL: Verify we have enough analog samples to support the requested sample count
+        uint32_t required_analog_samples = num_samples / analog_decimation_factor;
+        uint32_t max_digital_samples_supported = analog_samples_per_half * analog_decimation_factor;
+        
         if (required_analog_samples > analog_samples_per_half) {
-            JULSEDEBUG_BUF("WARNING: Decimation factor %d requires %d analog samples, but only %d available\n\r", 
-                           analog_decimation_factor, required_analog_samples, analog_samples_per_half);
+            JULSEDEBUG_BUF("WARNING: Requested %d samples with factor %d requires %d analog samples, but only %d available\n\r", 
+                           num_samples, analog_decimation_factor, required_analog_samples, analog_samples_per_half);
             JULSEDEBUG_BUF("  This may cause buffer overruns - consider reducing sample rate or decimation factor\n\r");
         } else {
-            JULSEDEBUG_BUF("DECIMATION CAPACITY: %d analog samples can support %d digital samples with factor %d\n\r", 
-                           analog_samples_per_half, analog_samples_per_half * analog_decimation_factor, analog_decimation_factor);
+            JULSEDEBUG_BUF("DECIMATION CAPACITY: %d analog samples can support up to %d digital samples with factor %d\n\r", 
+                           analog_samples_per_half, max_digital_samples_supported, analog_decimation_factor);
+            JULSEDEBUG_BUF("REQUESTED SAMPLES: %d digital samples = %d analog samples (within capacity)\n\r", 
+                           num_samples, required_analog_samples);
         }
     }
 }
