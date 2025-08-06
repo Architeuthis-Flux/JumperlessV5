@@ -377,8 +377,8 @@ void updateConfigFromFile(const char* filename) {
         } else if (strcmp(section, "routing") == 0) {
             if (strcmp(key, "stack_paths") == 0) {
                 jumperlessConfig.routing.stack_paths = parseInt(value);
-                Serial.print("Updated stack_paths to: ");
-                Serial.println(jumperlessConfig.routing.stack_paths);
+                // Serial.print("Updated stack_paths to: ");
+                // Serial.println(jumperlessConfig.routing.stack_paths);
             }
             else if (strcmp(key, "stack_rails") == 0) jumperlessConfig.routing.stack_rails = parseInt(value);
             else if (strcmp(key, "stack_dacs") == 0) jumperlessConfig.routing.stack_dacs = parseInt(value);

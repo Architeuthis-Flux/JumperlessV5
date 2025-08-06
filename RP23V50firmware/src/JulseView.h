@@ -19,15 +19,21 @@
 
 // Buffer and clock settings - Producer-Consumer ping-pong design
 // Buffer size configuration - larger buffers for stability
-#define JULSEVIEW_DMA_BUF_SIZE 73728  // 72KB total buffer (back to original size)
+
 #define JULSEVIEW_ANALOG_BUF_SIZE 65536  // 64KB for analog (8 channels × 4096 samples × 2 bytes)
-#define JULSEVIEW_DIGITAL_BUF_SIZE 8192   // 8KB for digital (8 channels × 4096 samples × 1 byte)
-#define JULSEVIEW_TX_BUF_SIZE 260
+#define JULSEVIEW_DIGITAL_BUF_SIZE 32768   // 32KB for digital (16KB each for ping-pong)
+#define JULSEVIEW_DMA_BUF_SIZE JULSEVIEW_ANALOG_BUF_SIZE + JULSEVIEW_DIGITAL_BUF_SIZE
+#define JULSEVIEW_TX_BUF_SIZE 2600
 #define JULSEVIEW_TX_BUF_THRESH 64    // Increased from 20 to reduce USB overhead
 #define JULSEVIEW_USB_FLUSH_DELAY_US 100  // Microsecond delay between USB transmissions
 #define JULSEVIEW_USB_MAX_BLOCK_SIZE 128   // Maximum bytes per USB transmission
 #define JULSEVIEW_USB_RATE_LIMIT_MS 1      // Minimum milliseconds between large transmissions
 #define JULSEVIEW_SYS_CLK_BASE 150000
+
+// Decimation configuration constants
+#define JULSEVIEW_ADC_MAX_RATE 200000  // Maximum safe ADC sample rate (200kHz total)
+#define JULSEVIEW_DECIMATION_MIN_FACTOR 1  // Minimum decimation factor
+#define JULSEVIEW_DECIMATION_MAX_FACTOR 100  // Maximum decimation factor
 
 
 extern volatile bool julseview_active;
@@ -93,6 +99,8 @@ public:
     // Debug method to print current state
     void printState() const;
 
+    bool isInitialized() const { return initialized; }
+
 private:
     // --- Configuration ---
     uint32_t sample_rate;
@@ -116,6 +124,7 @@ private:
     bool use_single_buffer = false;  // true = single buffer mode, false = producer-consumer mode
 
     // --- State ---
+    volatile bool initialized;
     volatile bool started;
     volatile bool sending;
     volatile bool armed;  // Track if device is armed and ready for trigger
@@ -171,6 +180,14 @@ private:
     uint32_t samp_remain;  // remaining samples to process
     uint32_t rxbufdidx;    // receive buffer index
 
+    // --- Decimation Configuration ---
+    bool use_decimation_mode;              // Whether we're in high-speed decimation mode
+    uint32_t analog_decimation_factor;     // How many digital samples per analog sample
+    uint32_t digital_samples_per_half;     // Digital samples per buffer (larger)
+    uint32_t analog_samples_per_half;      // Analog samples per buffer (smaller)
+    // uint32_t last_analog_sample_index;     // REMOVED - driver now handles duplication
+    // uint16_t last_analog_values[JULSEVIEW_MAX_ANALOG_CHANNELS]; // REMOVED - driver now handles duplication
+
     // --- Private Methods ---
     void reset();
     void cleanup_dma_channels();
@@ -222,6 +239,11 @@ private:
     bool dma_ended_flag;  // Flag to prevent multiple dma_end() calls
     void dma_check();
     void dma_end();  // Break ping-pong chaining and stop DMA channels
+
+    // --- Decimation Methods ---
+    void configure_decimation_mode();      // Configure decimation based on sample rate
+    void calculate_asymmetric_buffer_layout(); // Calculate asymmetric buffer layout (always used)
+    void duplicate_analog_sample(uint32_t sample_index); // Duplicate analog sample data (unused - driver handles)
     
     // Buffer readiness tracking - ensures buffers are only sent when completely full
     bool buffer0_ready_to_send;

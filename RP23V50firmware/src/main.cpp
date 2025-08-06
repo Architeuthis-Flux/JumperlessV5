@@ -202,12 +202,12 @@ void setup() {
   initSecondSerial();
 
   // Auto-initialize JulseView for SUMP/libsigrok compatibility
-  Serial.println("Auto-initializing JulseView for logic analyzer...");
-  if (julseview.init()) {
-    Serial.println("JulseView initialized successfully");
-  } else {
-    Serial.println("JulseView initialization failed");
-  }
+  // Serial.println("Auto-initializing JulseView for logic analyzer...");
+  // if (julseview.init()) {
+  //   Serial.println("JulseView initialized successfully");
+  // } else {
+  //   Serial.println("JulseView initialization failed");
+  // }
 
   drawAnimatedImage(0);
   startupAnimationFinished = 1;
@@ -334,7 +334,7 @@ int menuItemCounts[4] = {14, 22, 37, 46};
 
 
 
-#define SETUP_LOGIC_ANALYZER_ON_BOOT 1
+#define SETUP_LOGIC_ANALYZER_ON_BOOT 0
 
 
 void loop() {
@@ -903,14 +903,14 @@ setupla:
       //   Serial.print(tempReading);
       //   Serial.println(" ");
       // }
+      julseview.init();
 
-
-      Serial.println();
+      //Serial.println();
       //setupLogicAnalyzer();
       // DON'T call init() again - JulseView is already initialized during boot
       // Calling init() multiple times can cause resource conflicts with CH446Q
       // julseview.init();
-      Serial.println("Logic analyzer is ready (already initialized during boot)");
+     // Serial.println("Logic analyzer is ready (already initialized during boot)");
 
       // for (int i = 0; i < 8; i++) {
       //   adc_select_input(8);
@@ -957,7 +957,7 @@ setupla:
     Serial.println("Read frequency on row 29\n\n\r");
 
     pauseCore2 = true;
-unsigned long cycles = 1000000;
+    unsigned long cycles = 1000000;
     unsigned long start = micros();
     sendXYraw(10, 0, 4, 1);
     for (int i = 0; i < cycles; i++) {
