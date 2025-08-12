@@ -57,6 +57,16 @@ extern bool gpioPWMEnabled[10];
 
 extern volatile bool readingGPIO;
 
+
+
+
+struct gpio_function_name_struct {
+    gpio_function_t function;
+    char name[10];
+    };
+
+    extern gpio_function_name_struct gpio_function_names[15];
+
 // gpioDef[i][0] is the pin number
 // gpioDef[i][1] is the RP_GPIO_x define
 // gpioDef[i][2] is the index of the gpioState array

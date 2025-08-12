@@ -20,7 +20,6 @@
 #include "NetsToChipConnections.h"
 #include "configManager.h"
 #include "Apps.h"
-#include "UserCode.h"
 #include "oled.h"
 #include "menuTree.h"
 #include "SerialWrapper.h"

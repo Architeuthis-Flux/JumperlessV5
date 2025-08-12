@@ -50,7 +50,8 @@ void clearHighlighting(void) {
   // netColors[highlightedNet] = highlightedOriginalColor;
   // netColors[brightenedNet] = brightenedOriginalColor;
   // netColors[warningNet] = warningOriginalColor;
-
+  // Serial.println("clearHighlighting");
+  // Serial.flush();
   for (int i = 4; i < numberOfRowAnimations; i++) {
     rowAnimations[i].row = -1;
     rowAnimations[i].net = -1;
@@ -82,6 +83,17 @@ int encoderNetHighlight(int print, int mode, int divider) {
   rotaryDivider = divider;
   int returnNode = -1;
 
+  // Serial.print (" highlightedNet: ");
+  // Serial.println(highlightedNet);
+
+  // Serial.print (" brightenedRail: ");
+  // Serial.println(brightenedRail);
+
+  // Serial.print (" brightenedNode: ");
+  // Serial.println(brightenedNode);
+
+
+  // Serial.flush();
   // if (inClickMenu == 1)
   //   return -1;
   //rotaryEncoderStuff();
@@ -479,6 +491,7 @@ void warnNetTimeout(int clearAll) {
   // Check for warning timeout
   if (warningTimer > 0 && millis() - warningTimer > warningTimeout) {
     //warningTimeout = 0;
+    //Serial.println("warningTimer timeout");
     if (clearAll == 1) {
       clearHighlighting();
       } else {
@@ -523,6 +536,10 @@ int highlightNets(int probeReading, int encoderNetHighlighted, int print) {
   // Serial.print("justReadProbe = ");
      // Serial.println(probeReading);
      // delay(100);
+
+    //  Serial.println("probeReading: ");
+    //  Serial.println(probeReading);
+    //  Serial.flush();
 
   int netHighlighted;
   if (encoderNetHighlighted != -1) {

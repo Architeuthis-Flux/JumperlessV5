@@ -98,6 +98,7 @@
     "C_Cpp.vcFormat.wrap.preserveBlocksOnSeparateLines": false,
     "C_Cpp.vcFormat.wrap.ColumnLimit": 0,
     
+    
     // Use default IntelliSense engine
     "C_Cpp.intelliSenseEngine": "disabled"
     

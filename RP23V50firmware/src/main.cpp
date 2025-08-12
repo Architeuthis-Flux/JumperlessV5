@@ -10,6 +10,7 @@ KevinC@ppucc.io
 
 */
 
+#include "hardware/pio.h"
 #define PICO_RP2350A 0
 // #include <pico/stdlib.h>
 #include <Arduino.h>
@@ -58,30 +59,18 @@ KevinC@ppucc.io
 #include "Peripherals.h"
 #include "PersistentStuff.h"
 #include "Probing.h"
-#include "Python.h"
 #include "RotaryEncoder.h"
 #include "configManager.h"
 #include "oled.h"
-// #define USE_FATFS 1
-#ifdef USE_FATFS
-#include "FatFS.h"
-#include "USBfs.h"
-#endif
-#include "UserCode.h"
-// #include "SerialWrapper.h"
 #include "FilesystemStuff.h"
 #include "HelpDocs.h"
 #include "Highlighting.h"
 #include "Python_Proper.h"
 #include "USBfs.h"
-#include <hardware/adc.h>
 #include "JulseView.h"
 
-// #define Serial SerialWrap
-// #define USBSer1 SerialWrap
-// #define USBSer2 SerialWrap
+#include <hardware/adc.h>
 
-// #define Serial SerialWrap
 
 bread b;
 
@@ -103,7 +92,6 @@ volatile int loadingFile = 0;
 unsigned long lastNetConfirmTimer = 0;
 // int machineMode = 0;
 
-int rotEncInit = 0;
 // https://wokwi.com/projects/367384677537829889
 
 volatile bool core2initFinished = false;
@@ -118,11 +106,11 @@ volatile int dumpLED = 0;
 unsigned long dumpLEDTimer = 0;
 unsigned long dumpLEDrate = 50;
 
-const char firmwareVersion[] = "5.3.0.0"; // remember to update this
+const char firmwareVersion[] = "5.3.0.1"; // remember to update this
 bool newConfigOptions = false; // set to true with new config options //!
                                // fix the saving every boot thing
 
-julseview julseview;
+//julseview julseview;
 
 void setup() {
   pinMode(RESETPIN, OUTPUT_12MA);
@@ -214,7 +202,7 @@ void setup() {
   startupTimers[4] = millis();
   clearAllNTCC();
 
-  initRotaryEncoder();
+
   startupTimers[5] = millis();
 
   delayMicroseconds(100);
@@ -251,10 +239,11 @@ void setupCore2stuff() {
   initCH446Q();
   startupCore2timers[1] = millis();
   // delay(1);
+ 
   while (configLoaded == 0) {
     delayMicroseconds(1);
   }
-
+ 
   initLEDs();
   startupCore2timers[2] = millis();
   initRowAnimations();
@@ -263,7 +252,7 @@ void setupCore2stuff() {
   startupCore2timers[4] = millis();
 
   startupCore2timers[5] = millis();
-
+initRotaryEncoder();
   startupCore2timers[6] = millis();
 
   // delay(4);
@@ -332,7 +321,7 @@ int menuItemCounts[4] = {14, 22, 37, 46};
 
 #include <hardware/gpio.h>
 
-
+unsigned long core1Timeout = millis();
 
 #define SETUP_LOGIC_ANALYZER_ON_BOOT 0
 
@@ -447,7 +436,7 @@ menu:
     shownMenuItems += printMenuLine(showExtraMenu, 0, "\t> = send Python formatted command\n\r");
     shownMenuItems += printMenuLine(showExtraMenu, 0, "\t/ = show filesystem\n\r");
     shownMenuItems += printMenuLine(showExtraMenu, 0, "\t\b\bU/u = enable/disable USB Mass Storage\n\r");
-    shownMenuItems += printMenuLine(showExtraMenu, 0, "\tw = enable logic analyzer\n\r");
+    //shownMenuItems += printMenuLine(showExtraMenu, 0, "\tw = enable logic analyzer\n\r");
     shownMenuItems += printMenuLine(showExtraMenu, 3, "\tX = resource status\n\r");
     // Serial.print("\tu = disable USB Mass Storage drive\n\r");
     // cycleTerminalColor();
@@ -496,6 +485,18 @@ menu:
     shownMenuItems += printMenuLine(showExtraMenu, 1, "\t\b\ba/A = dis/connect UART to D0/D1\n\r");
 
     // Serial.print("\t    print passthrough");
+    // Serial.print("\t    print passthrough"); 
+    // Serial.print("\t    print passthrough"); 
+    // Serial.print("\t    print passthrough"); 
+    // Serial.print("\t    print passthrough"); 
+    // Serial.print("\t    print passthrough"); 
+    // Serial.print("\t    print passthrough");
+    // Serial.print("\t    print passthrough");
+    // Serial.print("\t    print passthrough");
+    // Serial.print("\t    print passthrough");
+    // Serial.print("\t    print passthrough");
+    // Serial.print("\t    print passthrough");
+
     // if (printSerial1Passthrough == 1) {
     //   Serial.print(" - on");
     //   } else if (printSerial1Passthrough == 2) {
@@ -565,13 +566,27 @@ dontshowmenu:
 
     unsigned long busyTimer = millis();
 
+
     if (julseview.getShouldStopOtherStuff() == true) {
+      //julseview.check_heartbeat_watchdog();
+       delay(1);
+      // if (millis() - core1Timeout > 2000) {
+      //   //core1Timeout = millis();
+      //   Serial.println("Core 1 timeout");
+
+      //  // rp2040.restartCore1();
+      // }
+  
       continue;
     }
 
-
+//watchdog core loop should be called here
     
     int encoderNetHighlighted = encoderNetHighlight();
+
+    // Serial.println("encoderNetHighlighted: " + String(encoderNetHighlighted));
+
+    // Serial.println("enc position: " + String(encoderPosition));
     if (encoderNetHighlighted != -1) {
       firstConnection = encoderNetHighlighted;
 
@@ -903,7 +918,11 @@ setupla:
       //   Serial.print(tempReading);
       //   Serial.println(" ");
       // }
-      julseview.init();
+      if (!julseview.init()) {
+        Serial.println("ERROR: JulseView initialization failed!");
+      } else {
+        Serial.println("JulseView initialized successfully");
+      }
 
       //Serial.println();
       //setupLogicAnalyzer();
@@ -924,9 +943,13 @@ setupla:
   case 'X': { //! X - Resource Status
     Serial.println("Resource Allocation Status:");
     Serial.println("==========================");
+
+    Serial.print("Free Heap: ");
+    Serial.println(rp2040.getFreeHeap());
     
-    // Check logic analyzer status
-    Serial.println("✗ Logic Analyzer: Not available (removed)");
+    
+    Serial.println("Total memory: " + String(rp2040.getTotalHeap()));
+    Serial.println("Free memory: " + String(rp2040.getFreeHeap()));
     
     // Check rotary encoder status
     if (isRotaryEncoderInitialized()) {
@@ -939,7 +962,46 @@ setupla:
     // Check for conflicts
     Serial.println("\nConflict Detection:");
     Serial.println("Logic Analyzer conflicts: N/A (removed)");
-    
+
+    printPIOStateMachines();
+    Serial.print("rotary divider = ");
+    Serial.println(rotaryDivider);
+
+    // Serial.println("PIO0 Funsel: " + String(pio_get_funcsel(pio0)));
+    // Serial.println("PIO0 base: " + String(pio_get_gpio_base(pio0)));
+    // Serial.println("PIO1 Funsel: " + String(pio_get_funcsel(pio1)));
+    // Serial.println("PIO1 base: " + String(pio_get_gpio_base(pio1)));
+    // Serial.println("PIO2 Funsel: " + String(pio_get_funcsel(pio2)));
+    // Serial.println("PIO2 base: " + String(pio_get_gpio_base(pio2)));
+
+
+    // Serial.println("PIO1 base: " + String(pio_get_gpio_base(pio1)));
+    // Serial.println("PIO2 base: " + String(pio_get_gpio_base(pio2)));
+
+
+Serial.println("gpio    up dn\tfunction\tfunction_hex");
+    for (int i = 0; i < 48; i++) {
+      int pull = gpio_is_pulled_up(i);
+      Serial.print("gpio ");
+      Serial.print(i);
+      Serial.print(":  ");
+      if (i < 10) {
+        Serial.print(" ");
+      }
+      Serial.print(pull);
+      Serial.print("  ");
+
+      pull = gpio_is_pulled_down(i);
+      Serial.print(pull);
+
+  
+      Serial.print("\t");
+      Serial.print(gpio_function_names[gpio_get_function(i)].name);
+      Serial.print("\t");
+      Serial.print(gpio_get_function(i),HEX);
+      Serial.println();
+      Serial.flush();
+    }
     Serial.println();
     break;
   }
@@ -1986,7 +2048,6 @@ setupla:
     int showDupes = 1;
     char in = Serial.read();
     if (in == '0') {
-      showDupes = 0;
     } else if (in == '2') {
       showDupes = 2;
     }
@@ -2346,7 +2407,7 @@ void loop1() {
   // Always call if device is actively running or armed
   if (julseview.getIsRunning() || julseview.getIsArmed() || julseview.getReceivedCommand()) {
     should_call_handler = true;
-  
+   // Serial.println("calling handler");
 
     
     julseview.handler();

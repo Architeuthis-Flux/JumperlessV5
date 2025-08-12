@@ -17,7 +17,6 @@
 #include "Probing.h"
 #include "Python_Proper.h"
 #include "RotaryEncoder.h"
-#include "UserCode.h"
 #include "configManager.h"
 #include "oled.h"
 #include "Python_Proper.h"

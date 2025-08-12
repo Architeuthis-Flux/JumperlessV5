@@ -661,26 +661,10 @@ void sendXYraw(int chip, int x, int y, int setOrClear) {
 
   chAddress = chAddress << 24;
 
-  //delayMicroseconds(10);
-  // Serial.print("fifo: ");
-  // Serial.println(pio_sm_get_tx_fifo_level(pio, sm));
 
   pio_sm_put(pio, sm, chAddress);
 
 
-  // while (pio_interrupt_get(pio, PIO0_IRQ_0) == 0){
-  //   delayMicroseconds(1);
-  //   // Serial.print(".");
-  //   // Serial.flush();
-  //   }
-
-
-
-  // while (pio_interrupt_get(pio, PIO0_IRQ_0)){
-  //   tight_loop_contents();
-  //   Serial.print("x");
-  //   Serial.flush();
-  //   }
 
   unsigned long wait_start = micros();
   while (chipSelect != -1) {
@@ -714,18 +698,7 @@ void sendXYraw(int chip, int x, int y, int setOrClear) {
     }
   }
 
-    // unsigned long end = micros();
-    // Serial.print("time: ");
-    // Serial.println(end - start);
-    // Serial.flush();
 
-  // while (pio_interrupt_get(pio, sm)) {
-  //   //delayMicroseconds(1);
-  //   tight_loop_contents();
-  //   }
-
-  //delayMicroseconds(10);
-  // isrFromPio();
   }
 
 void createXYarray(void) { }

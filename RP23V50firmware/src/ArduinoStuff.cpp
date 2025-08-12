@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: MIT
 
 #include "ArduinoStuff.h"
+#include "Graphics.h"
 #include "JumperlessDefines.h"
 #include "LEDs.h"
 #include "MatrixState.h"
@@ -341,12 +342,20 @@ int secondSerialHandler(void) {
     SetArduinoResetLine(HIGH);
   }
 
-  if (LastArduinoDTR == 1 && actArduinoDTR == 0 && USBSer1.available() > 0) {
+  if (((LastArduinoDTR == 1 && actArduinoDTR == 0) || (LastArduinoDTR == 0 && actArduinoDTR == 1)) && USBSer1.available() > 0) {
 
     // resetArduino();
-    LastArduinoDTR = actArduinoDTR;
+
+ 
 
     if (millis() > 2500) {
+
+      changeTerminalColor(14, true, &Serial);
+      Serial.printf("Arduino Port DTR changed from %d to %d\n", LastArduinoDTR, actArduinoDTR);
+  
+      Serial.flush();
+
+
 
       arduinoConnected = checkIfArduinoIsConnected();
       int arduinoWasConnected = arduinoConnected;
@@ -359,7 +368,7 @@ int secondSerialHandler(void) {
         // flashArduinoNextLoop = 1;
         // connectArduino();
         if (jumperlessConfig.serial_1.autoconnect_flashing == 1) {
-          connectArduino(0, 1);
+          connectArduino(1, 1);
           while (arduinoConnected == 0) {
             delay(1);
             arduinoConnected = checkIfArduinoIsConnected();
@@ -374,10 +383,13 @@ int secondSerialHandler(void) {
 
       flashArduino(1200);
 
-      // if (arduinoWasConnected == 0) {
-      //   disconnectArduino(0);
-      // }
+      if (arduinoWasConnected == 0) {
+        disconnectArduino(1);
+      }
     }
+    changeTerminalColor(-1, true, &Serial);
+
+    LastArduinoDTR = actArduinoDTR;
   }
 
   if ((actArduinoDTR != LastArduinoDTR)) {
@@ -467,21 +479,22 @@ void flashArduino(unsigned long timeoutTime) {
   uint8_t peeked = 0x00;
 
   if (USBSer1.peek() == 0x30) {
+    //Serial.println("Peeked 0x30");
     while (USBSer1.available() == 0)
       ;
     peeked = USBSer1.read();
     if (USBSer1.peek() == 0x20) {
-
+     // Serial.println("Peeked 0x20");
       Serial1.write(0x30);
       Serial1.flush();
       resetArduino();
     }
   } else {
-    // Serial.println("unpeeked");
+    //Serial.println("unpeeked");
     // Serial.flush();
     return;
   }
-
+  changeTerminalColor(14, true, &Serial);
   Serial.println("Flash Arduino started");
   checkForConfigChangesUSBSer1(true);
   //  checkForConfigChangesSerial1(true);
@@ -562,6 +575,7 @@ void flashArduino(unsigned long timeoutTime) {
   arduinoInReset = 0;
   FirstDTR = true;
 
+  changeTerminalColor(14, true, &Serial);
   Serial.println("Flash Arduino done");
   Serial.println("\n\r");
   Serial.print("totalBytesTransferred: ");
@@ -573,6 +587,8 @@ void flashArduino(unsigned long timeoutTime) {
   Serial.println();
   Serial.flush();
   flashingArduino = false;
+
+  changeTerminalColor(-1, true, &Serial);
 }
 
 char commandStartString[] = "`[";

@@ -3324,7 +3324,7 @@ int readProbeRaw(int readNothingTouched, bool allowDuplicates) {
   if (connectOrClearProbe == 1) {
 
     for (int i = 0; i < numberOfReads; i++) {
-      measurements[i] = readAdc(5, 4);
+      measurements[i] = readAdc(5, 10);
       if (measurements[i] < 300 && i < 4) {
         lowReads++;
         }

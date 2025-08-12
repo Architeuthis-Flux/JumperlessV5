@@ -21,7 +21,7 @@
 volatile int slotChanged = 0;
 PIO pioEnc = nullptr;  // Will be dynamically assigned
 
-uint smEnc = -1;  // Will be dynamically assigned
+int smEnc = -1;  // Will be dynamically assigned
 uint offsetEnc = 0;
 const uint PIN_AB = 12;
 
@@ -52,7 +52,7 @@ void initRotaryEncoder(void) {
   //Serial.println("◆ Initializing rotary encoder with dynamic PIO allocation...");
   
   // Try PIO instances in order: PIO2, PIO0, PIO1 (same priority as logic analyzer)
-  PIO pio_instances[] = {pio2, pio0, pio1};
+  PIO pio_instances[] = {pio0, pio1, pio2};
   bool pio_allocated = false;
   
   for (int i = 0; i < 3 && !pio_allocated; i++) {
@@ -87,7 +87,7 @@ void initRotaryEncoder(void) {
     offsetEnc = test_offset;
     
     //Serial.printf("◆ SUCCESS: Rotary encoder allocated PIO%d SM%d offset=%d\n", 
-    //              pio_get_index(pioEnc), smEnc, offsetEnc);
+      //            pio_get_index(pioEnc), smEnc, offsetEnc);
     
     pio_allocated = true;
   }

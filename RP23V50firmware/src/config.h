@@ -130,18 +130,18 @@ struct config {
             2, //uart_tx - no pull
             2, //uart_rx - no pull
         };
-        float pwm_frequency[10] = {
-            1.0, //gpio_0 default frequency in Hz
-            1.0, //gpio_1
-            1.0, //gpio_2
-            1.0, //gpio_3
-            1.0, //gpio_4
-            1.0, //gpio_5
-            1.0, //gpio_6
-            1.0, //gpio_7
-            1.0, //uart_tx
-            1.0, //uart_rx
-        };
+        float pwm_frequency[10] = { 
+            1.0, //gpio_0 default frequency in Hz 
+            1.0, //gpio_1 
+            1.0, //gpio_2 
+            1.0, //gpio_3 
+            1.0, //gpio_4 
+            1.0, //gpio_5 
+            1.0, //gpio_6 
+            1.0, //gpio_7 
+            1.0, //uart_tx 
+            1.0, //uart_rx 
+        }; 
         float pwm_duty_cycle[10] = {
             0.5, //gpio_0 default duty cycle (0.0 to 1.0)
             0.5, //gpio_1

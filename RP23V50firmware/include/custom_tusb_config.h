@@ -36,7 +36,8 @@ extern "C" {
 //--------------------------------------------------------------------
 // COMMON CONFIGURATION
 //--------------------------------------------------------------------
-#define CFG_TUSB_RHPORT0_MODE OPT_MODE_DEVICE
+// CRITICAL: Enable high-speed mode for RP2350B
+#define CFG_TUSB_RHPORT0_MODE (OPT_MODE_DEVICE | OPT_MODE_HIGH_SPEED)
 
 // Enable device stack
 #define CFG_TUD_ENABLED 1
@@ -61,7 +62,10 @@ extern "C" {
 // #define CFG_TUH_LOG_LEVEL 3
 
 #define CFG_TUSB_MEM_SECTION
-#define CFG_TUSB_MEM_ALIGN TU_ATTR_ALIGNED(4)
+#define CFG_TUSB_MEM_ALIGN TU_ATTR_ALIGNED(32)  // Increased from 4 for better DMA performance
+
+// STREAMING OPTIMIZATIONS: Enable double packet buffering for better throughput
+#define CFG_TUD_BULK_DOUBLE_PACKET_BUFFERING 1
 
 //--------------------------------------------------------------------
 // Device Configuration
@@ -74,16 +78,24 @@ extern "C" {
 
 #define CFG_TUD_CDC USB_CDC_ENABLE_COUNT
 
-// Enable multiple CDC descriptors  
-#define CFG_TUD_CDC_EP_BUFSIZE 64
+// Enable multiple CDC descriptors - OPTIMIZED FOR STREAMING
+#define CFG_TUD_CDC_EP_BUFSIZE 512   // Match USB 2.0 bulk packet size for efficiency
 
 #define CFG_TUD_MSC USB_MSC_ENABLE
 #define CFG_TUD_MIDI USB_MIDI_ENABLE
 #define CFG_TUD_VENDOR USB_VENDOR_ENABLE
 
-// CDC FIFO size of TX and RX - Increased for dumpLEDs function
-#define CFG_TUD_CDC_RX_BUFSIZE 2048
-#define CFG_TUD_CDC_TX_BUFSIZE 4096
+// CDC FIFO size of TX and RX - OPTIMIZED FOR HIGH-THROUGHPUT STREAMING
+#define CFG_TUD_CDC_RX_BUFSIZE 4096   // Keep RX buffer reasonable
+#define CFG_TUD_CDC_TX_BUFSIZE 16384  // Larger TX buffer for streaming - double the previous size
+
+// STREAMING PERFORMANCE OPTIMIZATIONS
+#define CFG_TUSB_OPT_HIGH_SPEED 1
+#define CFG_TUSB_OPT_PACKET_SIZE 512  // USB 2.0 bulk packet size
+
+// Additional streaming optimizations
+#define CFG_TUD_CDC_TX_FLUSH_THRESHOLD 512  // Flush when we have a full packet
+#define CFG_TUD_CDC_STREAM_MODE 1            // Enable streaming mode optimizations
 
 // MSC Buffer size of Device Mass storage
 #define CFG_TUD_MSC_EP_BUFSIZE 64

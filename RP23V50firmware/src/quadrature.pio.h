@@ -69,6 +69,7 @@ static inline void quadrature_encoder_program_init(PIO pio, uint sm, uint pin,
   pio_sm_set_consecutive_pindirs(pio, sm, pin, 2, false);
   gpio_pull_up(pin);
   gpio_pull_up(pin + 1);
+
   pio_sm_config c = quadrature_encoder_program_get_default_config(0);
   sm_config_set_in_pins(&c, pin); // for WAIT, IN
   sm_config_set_jmp_pin(&c, pin); // for JMP
