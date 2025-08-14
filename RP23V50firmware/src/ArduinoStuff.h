@@ -74,7 +74,7 @@ void ESPReset(void);
 void SetArduinoResetLine(bool state, int topBottomBoth = 2);
 void flashArduino(unsigned long timeout);
 
-void resetArduino(int topBottomBoth = 2, unsigned long holdMicroseconds = 2500);
+void resetArduino(int topBottomBoth = 2, unsigned long holdMicroseconds = 5500);
 void connectArduino(int flashOrLocal = 1, int refreshConnections = 1);
 void disconnectArduino(int flashOrLocal =  1);
 int checkIfArduinoIsConnected(void);

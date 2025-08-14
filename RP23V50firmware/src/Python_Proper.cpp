@@ -19,7 +19,7 @@ extern "C" {
 }
 
 // Global state for proper MicroPython integration
-static char mp_heap[50 * 1024]; // 64KB heap for MicroPython (reduced to free memory for editor)
+static char mp_heap[64 * 1024]; // 64KB heap for MicroPython (reduced to free memory for editor)
 static bool mp_initialized = false;
 static bool mp_repl_active = false;
 static bool jumperless_globals_loaded = false;

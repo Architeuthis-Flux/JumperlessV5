@@ -131,62 +131,7 @@ void debugFlagInit(int forceDefaults) {
     EEPROM.write(SHOW_PROBE_CURRENT_ADDRESS, 0);
     showProbeCurrent = 0;
     }
-  // delay(3000);
-  // Serial.print("pathDuplicates: ");
-  // Serial.println(pathDuplicates);
-  // Serial.print("dacDuplicates: ");
-  // Serial.println(dacDuplicates);
-  // Serial.print("powerDuplicates: ");
-  // Serial.println(powerDuplicates);
-  // Serial.print("dacPriority: ");
-  // Serial.println(dacPriority);
-  // Serial.print("powerPriority: ");
-  // Serial.println(powerPriority);
-
-  // if (pathDuplicates < 0 || pathDuplicates > 20) {
-  //   Serial.print("pathDuplicates out of range (");
-  //   Serial.print(pathDuplicates);
-  //   Serial.println("), setting to 3");
-  //   EEPROM.write(PATH_DUPLICATE_ADDRESS, 3);
-  //   pathDuplicates = 3;
-  //   }
-  // if (dacDuplicates < 0 || dacDuplicates > 20) {
-  //   Serial.print("dacDuplicates out of range (");
-  //   Serial.print(dacDuplicates);
-  //   Serial.println("), setting to 0");
-
-  //   EEPROM.write(DAC_DUPLICATE_ADDRESS, 0);
-  //   dacDuplicates = 0;
-  //   }
-  // if (powerDuplicates < 0 || powerDuplicates > 20) {
-  //   Serial.print("powerDuplicates out of range (");
-  //   Serial.print(powerDuplicates);
-  //   Serial.println("), setting to 3");
-
-
-  //   EEPROM.write(POWER_DUPLICATE_ADDRESS, 3);
-  //   powerDuplicates = 3;
-  //   }
-  // if (dacPriority < 1 || dacPriority > 10) {
-
-  //   Serial.print("dacPriority out of range (");
-  //   Serial.print(dacPriority);
-  //   Serial.println("), setting to 1");
-
-  //   EEPROM.write(DAC_PRIORITY_ADDRESS, 1);
-  //   dacPriority = 1;
-  //   }
-  // if (powerPriority < 1 || powerPriority > 10) {
-
-  //   Serial.print("powerPriority out of range (");
-  //   Serial.print(powerPriority);
-  //   Serial.println("), setting to 1");
-
-  //   EEPROM.write(POWER_PRIORITY_ADDRESS, 1);
-  //   powerPriority = 1;
-  //   }
-
-
+ 
   if (revisionNumber <= 0 || revisionNumber > 10) {
 
 
@@ -492,7 +437,7 @@ void debugFlagSet(int flag) {
 
     // **CONFIG FILE**: Save all debug flags to config file
     saveConfig();
-    Serial.println("◆ All debug flags disabled (saved to config.txt)");
+    Serial.println("All debug flags disabled (saved to config.txt)");
 
     break;
     }
@@ -525,7 +470,7 @@ void debugFlagSet(int flag) {
     
     // **CONFIG FILE**: Save all debug flags to config file
     saveConfig();
-    Serial.println("◆ All debug flags enabled (saved to config.txt)");
+    Serial.println("All debug flags enabled (saved to config.txt)");
     
     break;
     }
@@ -588,32 +533,6 @@ void saveVoltages(float top, float bot, float dac0, float dac1) {
   }
 
 void saveDuplicateSettings(int forceDefaults) {
-// #ifdef EEPROMSTUFF
-//   if (forceDefaults == 1) {
-//     EEPROM.write(PATH_DUPLICATE_ADDRESS, 2);
-//     EEPROM.write(DAC_DUPLICATE_ADDRESS, 0);
-//     EEPROM.write(POWER_DUPLICATE_ADDRESS, 3);
-//     EEPROM.write(DAC_PRIORITY_ADDRESS, 1);
-//     EEPROM.write(POWER_PRIORITY_ADDRESS, 1);
-//     EEPROM.commit();
-//     delayMicroseconds(100);
-//     // return;
-//     } else {
-//     EEPROM.write(PATH_DUPLICATE_ADDRESS, pathDuplicates);
-//     EEPROM.write(DAC_DUPLICATE_ADDRESS, dacDuplicates);
-//     EEPROM.write(POWER_DUPLICATE_ADDRESS, powerDuplicates);
-//     EEPROM.write(DAC_PRIORITY_ADDRESS, dacPriority);
-//     EEPROM.write(POWER_PRIORITY_ADDRESS, powerPriority);
-//     EEPROM.commit();
-//     delayMicroseconds(100);
-//     }
-// #endif
-
-  // // Save to config file
-  // jumperlessConfig.routing.stack_paths = pathDuplicates;
-  // jumperlessConfig.routing.stack_rails = dacDuplicates;
-  // jumperlessConfig.routing.stack_dacs = powerDuplicates;
-  // jumperlessConfig.routing.rail_priority = dacPriority;
 
   configChanged = true;
 
@@ -623,95 +542,6 @@ void saveDuplicateSettings(int forceDefaults) {
 void readVoltages(void) {
 
 
-  // delay(1000);
-
-  // Serial.println("readVoltages");
-  // Serial.println(jumperlessConfig.dacs.top_rail);
-  // Serial.println(jumperlessConfig.dacs.bottom_rail);
-  // Serial.println(jumperlessConfig.dacs.dac_0);
-  // Serial.println(jumperlessConfig.dacs.dac_1);
-
-  // delay(1000);
-  // #ifdef EEPROMSTUFF
-  // delayMicroseconds(200);
-  // EEPROM.get(TOP_RAIL_ADDRESS0, railVoltage[0]);
-
-
-  // EEPROM.get(BOTTOM_RAIL_ADDRESS0, railVoltage[1]);
-  // EEPROM.get(DAC0_ADDRESS0, dacOutput[0]);
-  // EEPROM.get(DAC1_ADDRESS0, dacOutput[1]);
-  // delayMicroseconds(200);
-
-  // #endif
-
-  // jumperlessConfig.dac_settings.top_rail = railVoltage[0];
-  // jumperlessConfig.dac_settings.bottom_rail = railVoltage[1];
-  // jumperlessConfig.dac_settings.dac_0 = dacOutput[0];
-  // jumperlessConfig.dac_settings.dac_1 = dacOutput[1];
-
-  // int needsInit = 0;
-  // if (railVoltage[0] > 8.0f || railVoltage[0] < -8.0f) {//|| (uint32_t)railVoltage[0] == 0x00000000 || (uint32_t)railVoltage[0] == 0xFFFFFFFF) {
-  //   Serial.println(railVoltage[0]);
-
-  //   railVoltage[0] = 0.0f;
-  //   needsInit = 1;
-
-  //   //Serial.println("rail voltage 0 out of range");
-  //   }
-  // if (railVoltage[1] > 8.0f || railVoltage[1] < -8.0f) {// || (uint32_t)railVoltage[1] == 0x00000000 || (uint32_t)railVoltage[1] == 0xFFFFFFFF) {
-  //   railVoltage[1] = 0.0f;
-  //   needsInit = 1;
-  //   //Serial.println("rail voltage 1 out of range");
-  //   }
-  // if (dacOutput[0] > 5.0f || dacOutput[0] < 0.0f) {// || (uint32_t)dacOutput[0] == 0x00000000 || (uint32_t)dacOutput[0] == 0xFFFFFFFF) {
-  //   dacOutput[0] = 0.0f;
-  //   needsInit = 1;
-  //   //Serial.println("dac 0 out of range");
-  //   }
-  // if (dacOutput[1] > 8.0f || dacOutput[1] < -8.0f) {// || (uint32_t)dacOutput[1] == 0x00000000 || (uint32_t)dacOutput[1] == 0xFFFFFFFF) {
-  //   dacOutput[1] = 0.0f;
-  //   needsInit = 1;
-  //   //Serial.println("dac 1 out of range");
-  //   }
-
-  // // Only update config values if they are invalid or zero (fallback to EEPROM)
-  // // Otherwise, preserve the config file values
-  // if (jumperlessConfig.dacs.top_rail == 0.0f && railVoltage[0] != 0.0f) {
-  //   jumperlessConfig.dacs.top_rail = railVoltage[0];
-  //   configChanged = true;
-  // }
-  // if (jumperlessConfig.dacs.bottom_rail == 0.0f && railVoltage[1] != 0.0f) {
-  //   jumperlessConfig.dacs.bottom_rail = railVoltage[1];
-  //   configChanged = true;
-  // }
-  // if (jumperlessConfig.dacs.dac_0 == 0.0f && dacOutput[0] != 0.0f) {
-  //   jumperlessConfig.dacs.dac_0 = dacOutput[0];
-  //   configChanged = true;
-  // }
-  // if (jumperlessConfig.dacs.dac_1 == 0.0f && dacOutput[1] != 0.0f) {
-  //   jumperlessConfig.dacs.dac_1 = dacOutput[1];
-  //   configChanged = true;
-  // }
-
-  // Don't call saveVoltages() here anymore - it would overwrite config values
-  // The config values will be copied to legacy variables in readSettingsFromConfig()
-
-//Serial.println(sizeof(float));
-
-  // Serial.print("top rail: ");
-  // Serial.println((float)railVoltage[0]);
-  // Serial.print("bot rail: ");
-  // Serial.println(railVoltage[1],BIN);
-  // Serial.print("dac0: ");
-  // Serial.println(dacOutput[0],BIN);
-  // Serial.print("dac1: ");
-  // Serial.println(dacOutput[1],BIN);
-
-
-// setTopRail(railVoltage[0]);
-// setBotRail(railVoltage[1]);
-// setDac0_5Vvoltage(dacOutput[0]);
-// setDac1_8Vvoltage(dacOutput[1]);
   return;
   }
 

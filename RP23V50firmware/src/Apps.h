@@ -24,7 +24,7 @@ int i2cScan(int sdaRow = -1 , int sclRow = -1, int sdaPin = 26, int sclPin = 27,
 void scanBoard(void);
 void calibrateDacs(void);
 void bounceStartup(void);
-
+void fileManagerApp(void);
 void customApp(void);
 void xlsxGui(void);
 

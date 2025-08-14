@@ -201,7 +201,7 @@ public:
 };
 
 // Global functions
-void filesystemApp();
+void filesystemApp(bool waitForEnter = true);
 void filesystemAppPythonScripts(); // Start file manager in python_scripts directory
 String filesystemAppPythonScriptsREPL(); // REPL mode - returns content if file saved
 void eKiloApp();

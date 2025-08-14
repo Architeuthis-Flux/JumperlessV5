@@ -68,7 +68,7 @@ KevinC@ppucc.io
 #include "Python_Proper.h"
 #include "USBfs.h"
 #include "JulseView.h"
-
+#include "Debugs.h"
 #include <hardware/adc.h>
 
 
@@ -106,7 +106,7 @@ volatile int dumpLED = 0;
 unsigned long dumpLEDTimer = 0;
 unsigned long dumpLEDrate = 50;
 
-const char firmwareVersion[] = "5.3.0.1"; // remember to update this
+const char firmwareVersion[] = "5.3.0.3"; // remember to update this
 bool newConfigOptions = false; // set to true with new config options //!
                                // fix the saving every boot thing
 
@@ -436,7 +436,7 @@ menu:
     shownMenuItems += printMenuLine(showExtraMenu, 0, "\t> = send Python formatted command\n\r");
     shownMenuItems += printMenuLine(showExtraMenu, 0, "\t/ = show filesystem\n\r");
     shownMenuItems += printMenuLine(showExtraMenu, 0, "\t\b\bU/u = enable/disable USB Mass Storage\n\r");
-    //shownMenuItems += printMenuLine(showExtraMenu, 0, "\tw = enable logic analyzer\n\r");
+    shownMenuItems += printMenuLine(showExtraMenu, 1, "\tw = enable logic analyzer\n\r");
     shownMenuItems += printMenuLine(showExtraMenu, 3, "\tX = resource status\n\r");
     // Serial.print("\tu = disable USB Mass Storage drive\n\r");
     // cycleTerminalColor();
@@ -912,17 +912,42 @@ skipinput:
     {
       // int tempReading = adc_read_blocking(8);
 setupla:
+
+      if (la_enabled) {
+        Serial.println("Logic analyzer disabled, deinitializing...");
+        julseview.deinit();
+        la_enabled = false;
+        goto dontshowmenu;
+      } else {
+        changeTerminalColor(196, true, &Serial);
+        Serial.println("Logic analyzer enabled");
+        Serial.println("Note: Logic analyzer is not yet fully functional and can make a mess of your memory");
+        Serial.println("Make sure to save anything important on the file system before playing with it");
+        Serial.println("Worst case, you can use this to nuke the flash and start fresh:");
+        changeTerminalColor(39, true, &Serial);
+        Serial.println("https://github.com/Gadgetoid/pico-universal-flash-nuke/releases/latest");
+
+        changeTerminalColor(-1, true, &Serial);
+        la_enabled = true;
+      }
+
+      //la_enabled = true;
       // for (int i = 0; i < 8; i++) {
       //   adc_select_input(8);
       //   int tempReading = adc_read();
       //   Serial.print(tempReading);
       //   Serial.println(" ");
       // }
-      if (!julseview.init()) {
-        Serial.println("ERROR: JulseView initialization failed!");
-      } else {
-        Serial.println("JulseView initialized successfully");
-      }
+      // if (!julseview.init()) {
+      //   Serial.println("ERROR: JulseView initialization failed!");
+      // } else {
+      //   Serial.println("JulseView initialized successfully");
+      // }
+
+      // for (int i = 0; i < 500; i++) {
+      //   julseview.send_single_slice();
+      //   delay(1);
+      // }
 
       //Serial.println();
       //setupLogicAnalyzer();
@@ -2258,71 +2283,11 @@ Serial.println("gpio    up dn\tfunction\tfunction_hex");
     break;
 
   case 'd': {
-    debugFlagInit();
+    //debugFlagInit();
+    debugFlagsMenu();
 
-  debugFlags:
 
-    int lastSerial1Passthrough = jumperlessConfig.serial_1.print_passthrough;
-    int lastSerial2Passthrough = jumperlessConfig.serial_2.print_passthrough;
-    printSerial1Passthrough = 0;
-    printSerial2Passthrough = 0;
 
-    Serial.print("\n\n\r0.   all off");
-    Serial.print("\n\r9.   all on");
-    Serial.print("\n\ra-z. exit\n\r");
-
-    Serial.print("\n\r1. file parsing               =    ");
-    Serial.print(debugFP);
-    Serial.print("\n\r2. net manager                =    ");
-    Serial.print(debugNM);
-    Serial.print("\n\r3. chip connections           =    ");
-    Serial.print(debugNTCC);
-    Serial.print("\n\r4. chip conns alt paths       =    ");
-    Serial.print(debugNTCC2);
-    Serial.print("\n\r5. LEDs                       =    ");
-    Serial.print(debugLEDs);
-    Serial.print("\n\r6. logic analyzer debug       =    ");
-    Serial.print(debugLA);
-    Serial.print("\n\r7. show probe current         =    ");
-    Serial.print(showProbeCurrent);
-    Serial.print("\n\n\r8. print serial 1 passthrough =    ");
-    if (jumperlessConfig.serial_1.print_passthrough == 1) {
-      Serial.print("on");
-    } else if (jumperlessConfig.serial_1.print_passthrough == 2) {
-      Serial.print("flashing only");
-    } else if (jumperlessConfig.serial_1.print_passthrough == 0) {
-      Serial.print("off");
-    }
-
-    // Serial.print("\n\n\r6. swap probe pin         =    ");
-    // if (probeSwap == 0) {
-    //   Serial.print("19");
-    // } else {
-    //   Serial.print("18");
-    // }
-
-    Serial.println("\n\n\n\r");
-    Serial.flush();
-
-    while (Serial.available() == 0)
-      ;
-
-    int toggleDebug = Serial.read();
-    Serial.write(toggleDebug);
-    toggleDebug -= '0';
-
-    if (toggleDebug >= 0 && toggleDebug <= 9) {
-
-      debugFlagSet(toggleDebug);
-
-      delay(10);
-
-      goto debugFlags;
-    } else {
-      printSerial1Passthrough = lastSerial1Passthrough;
-      printSerial2Passthrough = lastSerial2Passthrough;
-      break;
-    }
   }
 
   case ':':
@@ -2405,13 +2370,13 @@ void loop1() {
   bool should_call_handler = false;
   
   // Always call if device is actively running or armed
-  if (julseview.getIsRunning() || julseview.getIsArmed() || julseview.getReceivedCommand()) {
+  if ( julseview.getReceivedCommand()) {
     should_call_handler = true;
    // Serial.println("calling handler");
 
     
     julseview.handler();
-  } else if (millis() - last_la_check >= 10) {
+  } else if (millis() - last_la_check >= 50) {
     last_la_check = millis();
     should_call_handler = true;
     julseview.handler();

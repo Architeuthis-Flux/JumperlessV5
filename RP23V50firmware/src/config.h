@@ -51,7 +51,7 @@ struct config {
         bool probing = false;
         bool oled = false;
         bool logo_pads = false;
-        bool logic_analyzer = false;    
+        bool logic_analyzer = true;    
     } debug;
 
     struct routing {

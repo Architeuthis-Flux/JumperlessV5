@@ -9,6 +9,9 @@
 #define PICO_STDIO_USB_STDOUT_TIMEOUT_US 500000
 #endif
 
+
+
+extern bool la_enabled;
 // Using actual Jumperless hardware channel counts
 #define JULSEVIEW_MAX_ANALOG_CHANNELS 9
 #define JULSEVIEW_MAX_DIGITAL_CHANNELS 16
@@ -30,13 +33,14 @@ extern uint32_t g_julseview_digital_buf_size;  // total digital region size (byt
 #define JULSEVIEW_USB_MAX_BLOCK_SIZE 512   // Maximum bytes per USB transmission
 #define JULSEVIEW_USB_RATE_LIMIT_MS 1      // Minimum milliseconds between large transmissions
 #define JULSEVIEW_SYS_CLK_BASE 150000
+#define JULSEVIEW_SLOW_THRESHOLD_HZ 3000
 
 // Decimation configuration constants
 #define JULSEVIEW_ADC_MAX_RATE 200000  // Maximum safe ADC sample rate (200kHz total)
 #define JULSEVIEW_DECIMATION_MIN_FACTOR 1  // Minimum decimation factor
 #define JULSEVIEW_DECIMATION_MAX_FACTOR 100  // Maximum decimation factor
 
-
+extern uint32_t julseview_debug_mask;  
 extern volatile bool julseview_active;
 
 // Logic analyzer debug flag (kept for compatibility)
@@ -98,7 +102,7 @@ public:
     uint32_t getCommandTimeout() const { return commandTimeout; }
     
     // Combined state check for UI blocking
-    bool getShouldStopOtherStuff() const { return isRunning || isTriggered; }
+    bool getShouldStopOtherStuff() const { return isRunning || isTriggered || isArmed; }
     
 
     bool isInitialized() const { return initialized; }
@@ -318,14 +322,14 @@ private:
     void armAnalogCommon();
     void armDigitalSelected(bool use_slow_program);
 
-    // --- Simple Heartbeat Watchdog Methods ---
-    bool setup_heartbeat_watchdog();         // Setup heartbeat watchdog for capture loop
-    void start_heartbeat_watchdog();         // Start the heartbeat monitoring
-    void stop_heartbeat_watchdog();          // Stop the heartbeat monitoring
-    void send_heartbeat();                   // Send heartbeat from core 1
-    void handle_heartbeat_watchdog_timeout(); // Handle watchdog timeout - restart core 1
+
+    // --- Debugging ---
+    void julseview_set_debug_mask( uint32_t mask );
+    void julseview_set_debug_categories( const char* categories );
+
+
     uint32_t calculate_expected_capture_time(); // Calculate expected capture time based on sample rate and count
-    bool was_watchdog_triggered() const;     // Check if watchdog was triggered during last capture
+
 
     // --- Capture Completion Methods ---
     void send_capture_completion_signal(bool is_watchdog_timeout = false); // Send completion signal to host
@@ -349,4 +353,148 @@ extern volatile float control_A[4];
 // Global control byte sampled by DMA; may be updated by other subsystems (e.g., MicroPython)
 extern volatile uint8_t control_data;
 
+
+
+
+
+
+int debugColors[ 10 ] = {
+    108, // commands
+    156, // buffers
+    111, // digital
+    224, // analog
+    105, // dmas
+    226, // usb
+    76,  // timing
+    195, // data
+    196, // errors
+    213, // state
+};
+
+// Debug categories - use bit flags for selective enabling
+#define JULSEDEBUG_COMMANDS ( 1 << 0 ) // Command processing (i, R, L, a, A, D, etc.)
+#define JULSEDEBUG_BUFFERS ( 1 << 1 )  // Buffer allocation, DMA setup, memory management
+#define JULSEDEBUG_DIGITAL ( 1 << 2 )  // Digital capture, PIO, GPIO operations
+#define JULSEDEBUG_ANALOG ( 1 << 3 )   // ADC setup, analog capture, voltage readings
+#define JULSEDEBUG_DMAS ( 1 << 4 )     // DMA configuration, transfers, IRQs
+#define JULSEDEBUG_USBS ( 1 << 5 )     // USB transmission, flow control, data streaming
+#define JULSEDEBUG_TIMING ( 1 << 6 )   // Sample rates, clock dividers, timing issues
+#define JULSEDEBUG_DATA ( 1 << 7 )     // Raw data values, sample processing
+#define JULSEDEBUG_ERRORS ( 1 << 8 )   // Error conditions, warnings, failures
+#define JULSEDEBUG_STATE ( 1 << 9 )    // State machine transitions, mode changes
+
+// Debug level enum (for backward compatibility)
+typedef enum {
+    JULSEDEBUG_LEVEL_NONE = 0,
+    JULSEDEBUG_LEVEL_ERROR = 1,
+    JULSEDEBUG_LEVEL_WARNING = 2,
+    JULSEDEBUG_LEVEL_INFO = 3,
+    JULSEDEBUG_LEVEL_DEBUG = 4
+} julseview_debug_level_t;
+
+// Debug configuration
+julseview_debug_level_t julseview_debug_level = JULSEDEBUG_LEVEL_DEBUG;
+
+#define JULSEDEBUG_MASK_ON 1
+uint32_t julseview_debug_mask = JULSEDEBUG_MASK_ON ? JULSEDEBUG_ERRORS |
+                                                         JULSEDEBUG_COMMANDS |
+                                                         JULSEDEBUG_USBS |
+                                                         JULSEDEBUG_DMAS |
+                                                         JULSEDEBUG_DATA |
+                                                         JULSEDEBUG_ANALOG |
+                                                         JULSEDEBUG_DIGITAL |
+                                                         JULSEDEBUG_TIMING |
+                                                         JULSEDEBUG_STATE |
+                                                        JULSEDEBUG_BUFFERS
+                                                   : 0; // Default: errors and commands only
+
+void julseview_debug_color( int color ) {
+    Serial.printf( "\033[38;5;%dm", color );
+    Serial.flush( );
+}
+
+// Helper macros for category-specific debug output
+// NOTE: When debugLA is false, category-based debug output is suppressed without altering the saved mask
+#define JULSEDEBUG_CHECK( category ) ( debugLA && ( julseview_debug_level >= JULSEDEBUG_LEVEL_INFO ) && ( julseview_debug_mask & category ) )
+
+// Convenience macros for common debug categories
+#define JULSEDEBUG_CMD( fmt, ... )             \
+    julseview_debug_color( debugColors[ 0 ] ); \
+    JULSEDEBUG_PRINTF_CAT( JULSEDEBUG_COMMANDS, fmt, ##__VA_ARGS__ );
+#define JULSEDEBUG_BUF( fmt, ... )             \
+    julseview_debug_color( debugColors[ 1 ] ); \
+    JULSEDEBUG_PRINTF_CAT( JULSEDEBUG_BUFFERS, fmt, ##__VA_ARGS__ );
+#define JULSEDEBUG_DIG( fmt, ... )             \
+    julseview_debug_color( debugColors[ 2 ] ); \
+    JULSEDEBUG_PRINTF_CAT( JULSEDEBUG_DIGITAL, fmt, ##__VA_ARGS__ );
+#define JULSEDEBUG_ANA( fmt, ... )             \
+    julseview_debug_color( debugColors[ 3 ] ); \
+    JULSEDEBUG_PRINTF_CAT( JULSEDEBUG_ANALOG, fmt, ##__VA_ARGS__ );
+#define JULSEDEBUG_DMA( fmt, ... )             \
+    julseview_debug_color( debugColors[ 4 ] ); \
+    JULSEDEBUG_PRINTF_CAT( JULSEDEBUG_DMAS, fmt, ##__VA_ARGS__ );
+#define JULSEDEBUG_USB( fmt, ... )             \
+    julseview_debug_color( debugColors[ 5 ] ); \
+    JULSEDEBUG_PRINTF_CAT( JULSEDEBUG_USBS, fmt, ##__VA_ARGS__ );
+#define JULSEDEBUG_TIM( fmt, ... )             \
+    julseview_debug_color( debugColors[ 6 ] ); \
+    JULSEDEBUG_PRINTF_CAT( JULSEDEBUG_TIMING, fmt, ##__VA_ARGS__ );
+#define JULSEDEBUG_DAT( fmt, ... )             \
+    julseview_debug_color( debugColors[ 7 ] ); \
+    JULSEDEBUG_PRINTF_CAT( JULSEDEBUG_DATA, fmt, ##__VA_ARGS__ );
+#define JULSEDEBUG_ERR( fmt, ... )             \
+    julseview_debug_color( debugColors[ 8 ] ); \
+    JULSEDEBUG_PRINTF_CAT( JULSEDEBUG_ERRORS, fmt, ##__VA_ARGS__ );
+#define JULSEDEBUG_STA( fmt, ... )             \
+    julseview_debug_color( debugColors[ 9 ] ); \
+    JULSEDEBUG_PRINTF_CAT( JULSEDEBUG_STATE, fmt, ##__VA_ARGS__ );
+
+// Category-specific debug macros
+#define JULSEDEBUG_PRINTF_CAT( category, fmt, ... ) \
+    if ( JULSEDEBUG_CHECK( category ) )             \
+    Serial.printf( fmt, ##__VA_ARGS__ )
+#define JULSEDEBUG_PRINT_CAT( category, str, ... ) \
+    if ( JULSEDEBUG_CHECK( category ) )            \
+    Serial.print( str, ##__VA_ARGS__ )
+#define JULSEDEBUG_PRINTLN_CAT( category, str, ... ) \
+    if ( JULSEDEBUG_CHECK( category ) )              \
+    Serial.println( str, ##__VA_ARGS__ )
+
+// Legacy macros (for backward compatibility) - always enabled if debug level >= 1
+#define JULSEDEBUG_PRINTF( fmt, ... ) \
+    if ( julseview_debug_level >= 1 ) \
+    Serial.printf( fmt, ##__VA_ARGS__ )
+#define JULSEDEBUG_PRINT( str, ... )  \
+    if ( julseview_debug_level >= 1 ) \
+    Serial.print( str, ##__VA_ARGS__ )
+#define JULSEDEBUG_PRINTLN( str, ... ) \
+    if ( julseview_debug_level >= 1 )  \
+    Serial.println( str, ##__VA_ARGS__ )
+
+// Level-specific macros (for backward compatibility)
+#define JULSEDEBUG_PRINTF2( fmt, ... ) \
+    if ( julseview_debug_level >= 2 )  \
+    Serial.printf( fmt, ##__VA_ARGS__ )
+#define JULSEDEBUG_PRINT2( str, ... ) \
+    if ( julseview_debug_level >= 2 ) \
+    Serial.print( str, ##__VA_ARGS__ )
+#define JULSEDEBUG_PRINTLN2( str, ... ) \
+    if ( julseview_debug_level >= 2 )   \
+    Serial.println( str, ##__VA_ARGS__ )
+
+#define JULSEDEBUG_PRINTF3( fmt, ... ) \
+    if ( julseview_debug_level == 3 )  \
+    Serial.printf( fmt, ##__VA_ARGS__ )
+#define JULSEDEBUG_PRINT3( str, ... ) \
+    if ( julseview_debug_level == 3 ) \
+    Serial.print( str, ##__VA_ARGS__ )
+#define JULSEDEBUG_PRINTLN3( str, ... ) \
+    if ( julseview_debug_level == 3 )   \
+    Serial.println( str, ##__VA_ARGS__ )
+
+ 
+// Debug configuration helper function prototypes
+void julseview_set_debug_mask( uint32_t mask );
+void julseview_set_debug_categories( const char* categories );
+ 
 #endif

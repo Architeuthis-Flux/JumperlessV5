@@ -1888,7 +1888,7 @@ void printColoredPath(const String& path) {
 }
 
 // App entry points
-void filesystemApp() {
+void filesystemApp(bool waitForEnter) {
 
     bool showOledInTerminal = jumperlessConfig.top_oled.show_in_terminal;
     jumperlessConfig.top_oled.show_in_terminal = false;
@@ -1908,13 +1908,16 @@ void filesystemApp() {
 
     
     // Wait for user to press enter to break the input loop
-    while (Serial.available() == 0) {
-        delayMicroseconds(100);
-    }
+    if (waitForEnter) {
+        while (Serial.available() == 0) {
+            delayMicroseconds(100);
+        }
+   
     // Clear the enter keypress
     while (Serial.available() > 0) {
         Serial.read();
     }
+}
     
     // Save current screen state and switch to alternate screen buffer
     saveScreenState(&Serial);

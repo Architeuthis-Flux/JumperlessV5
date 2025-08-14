@@ -59,8 +59,13 @@ void initArduino(void) // if the UART is set up, the Arduino won't flash from
 }
 
 bool ManualArduinoReset = false;
+
+bool arduinoDTR[3] = {false, false, false};
 bool LastArduinoDTR = true;
 bool LastRoutableDTR = true;
+
+
+
 uint8_t numbitsUSBSer1 = 8;
 uint8_t paritytypeUSBSer1 = 0;
 uint8_t stopbitsUSBSer1 = 0;
@@ -282,6 +287,9 @@ unsigned long lastSerialPassthrough = millis();
 int serialPassthroughStatus = 0;
 int serialPassthroughStatusTimeout = 50;
 
+bool arduinoDTRpulse = false;
+
+
 int secondSerialHandler(void) {
 
   int ret = 0;
@@ -290,6 +298,7 @@ int secondSerialHandler(void) {
   // jumperlessConfig.serial_2.function == 2) {
   //   return 0;
   //   }
+
 
   if (jumperlessConfig.serial_1.function != 0 &&
       (long)millis() - (long)lastSerial1Check > 50) {
@@ -342,13 +351,37 @@ int secondSerialHandler(void) {
     SetArduinoResetLine(HIGH);
   }
 
-  if (((LastArduinoDTR == 1 && actArduinoDTR == 0) || (LastArduinoDTR == 0 && actArduinoDTR == 1)) && USBSer1.available() > 0) {
+  if (USBSer1.dtr() != arduinoDTR[2]) {
+    // Shift the array to the left, keeping only last 3 states
+    arduinoDTR[0] = arduinoDTR[1];
+    arduinoDTR[1] = arduinoDTR[2];
+    arduinoDTR[2] = USBSer1.dtr();
+  
+
+    // Serial.printf("arduinoDTRpulse: ");
+    // // Print the last 3 states
+    // for (int i = 0; i < 3; i++) {
+    //   Serial.printf("%d  ", arduinoDTR[i]);
+    // }
+    // Serial.println();
+    // Serial.flush();
+  
+    if (arduinoDTR[0] == 0 && arduinoDTR[1] == 1 && arduinoDTR[2] == 0) { //detect pulses going either direction (some things invert the DTR line)
+      arduinoDTRpulse = true;
+    } else if (arduinoDTR[0] == 1 && arduinoDTR[1] == 0 && arduinoDTR[2] == 1) {
+      arduinoDTRpulse = true;
+    } else {
+      arduinoDTRpulse = false;
+    }
+  }
+
+  if (arduinoDTRpulse) {
 
     // resetArduino();
 
  
 
-    if (millis() > 2500) {
+    if (millis() > 1500) {
 
       changeTerminalColor(14, true, &Serial);
       Serial.printf("Arduino Port DTR changed from %d to %d\n", LastArduinoDTR, actArduinoDTR);
@@ -389,7 +422,16 @@ int secondSerialHandler(void) {
     }
     changeTerminalColor(-1, true, &Serial);
 
-    LastArduinoDTR = actArduinoDTR;
+    arduinoDTRpulse = false;
+    
+
+    //shift the pulses so we don't keep triggering
+    arduinoDTR[0] = arduinoDTR[1];
+    arduinoDTR[1] = arduinoDTR[2];
+    arduinoDTR[2] = USBSer1.dtr();
+
+
+    // LastArduinoDTR = actArduinoDTR;
   }
 
   if ((actArduinoDTR != LastArduinoDTR)) {
@@ -479,7 +521,7 @@ void flashArduino(unsigned long timeoutTime) {
   uint8_t peeked = 0x00;
 
   if (USBSer1.peek() == 0x30) {
-    //Serial.println("Peeked 0x30");
+   // Serial.println("Peeked 0x30");
     while (USBSer1.available() == 0)
       ;
     peeked = USBSer1.read();
@@ -491,7 +533,7 @@ void flashArduino(unsigned long timeoutTime) {
     }
   } else {
     //Serial.println("unpeeked");
-    // Serial.flush();
+     Serial.flush();
     return;
   }
   changeTerminalColor(14, true, &Serial);

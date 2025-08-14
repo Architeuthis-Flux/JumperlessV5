@@ -152,15 +152,15 @@ void sendPaths(int clean) {
     // digitalWrite(RESETPIN, LOW);
 
   unsigned long wait_start = micros();
-  while (core1busy == true) {
-    delayMicroseconds(1);  // Small delay to prevent tight loop
+  // while (core1busy == true) {
+  //   delayMicroseconds(1);  // Small delay to prevent tight loop
     
-    // DEBUG: Warn if waiting too long
-    if (micros() - wait_start > 1000000) {  // 1 second timeout
-      Serial.println("WARNING: CH446Q waiting for core1busy for more than 1 second!");
-      break;  // Break out of the loop to prevent infinite hang
-    }
-  }
+  //   // DEBUG: Warn if waiting too long
+  //   if (micros() - wait_start > 1000000) {  // 1 second timeout
+  //     Serial.println("WARNING: CH446Q waiting for core1busy for more than 1 second!");
+  //     break;  // Break out of the loop to prevent infinite hang
+  //   }
+  // }
   core2busy = true;
 
   unsigned long pathTimer = micros();

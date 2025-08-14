@@ -17,6 +17,8 @@ uint32_t g_julseview_digital_buf_size = 16384;
 // Logic analyzer debug flag (kept for compatibility)
 bool debugLA = false;
 
+bool la_enabled = false;
+
 #include "hardware/adc.h"
 #include "hardware/clocks.h"
 #include "hardware/dma.h"
@@ -44,175 +46,6 @@ static volatile bool heartbeat_triggered = false;
 
 bool initialized = false;
 
-int debugColors[ 10 ] = {
-    108, // commands
-    156, // buffers
-    111, // digital
-    224, // analog
-    105, // dmas
-    226, // usb
-    76,  // timing
-    195, // data
-    196, // errors
-    213, // state
-};
-
-// Debug categories - use bit flags for selective enabling
-#define JULSEDEBUG_COMMANDS ( 1 << 0 ) // Command processing (i, R, L, a, A, D, etc.)
-#define JULSEDEBUG_BUFFERS ( 1 << 1 )  // Buffer allocation, DMA setup, memory management
-#define JULSEDEBUG_DIGITAL ( 1 << 2 )  // Digital capture, PIO, GPIO operations
-#define JULSEDEBUG_ANALOG ( 1 << 3 )   // ADC setup, analog capture, voltage readings
-#define JULSEDEBUG_DMAS ( 1 << 4 )     // DMA configuration, transfers, IRQs
-#define JULSEDEBUG_USBS ( 1 << 5 )     // USB transmission, flow control, data streaming
-#define JULSEDEBUG_TIMING ( 1 << 6 )   // Sample rates, clock dividers, timing issues
-#define JULSEDEBUG_DATA ( 1 << 7 )     // Raw data values, sample processing
-#define JULSEDEBUG_ERRORS ( 1 << 8 )   // Error conditions, warnings, failures
-#define JULSEDEBUG_STATE ( 1 << 9 )    // State machine transitions, mode changes
-
-// Debug level enum (for backward compatibility)
-typedef enum {
-    JULSEDEBUG_LEVEL_NONE = 0,
-    JULSEDEBUG_LEVEL_ERROR = 1,
-    JULSEDEBUG_LEVEL_WARNING = 2,
-    JULSEDEBUG_LEVEL_INFO = 3,
-    JULSEDEBUG_LEVEL_DEBUG = 4
-} julseview_debug_level_t;
-
-// Debug configuration
-julseview_debug_level_t julseview_debug_level = JULSEDEBUG_LEVEL_DEBUG;
-
-#define JULSEDEBUG_MASK_ON 1
-uint32_t julseview_debug_mask = JULSEDEBUG_MASK_ON ? JULSEDEBUG_ERRORS |
-                                                         JULSEDEBUG_COMMANDS |
-                                                         JULSEDEBUG_USBS |
-                                                         JULSEDEBUG_DMAS |
-                                                         JULSEDEBUG_DATA |
-                                                         JULSEDEBUG_ANALOG |
-                                                         JULSEDEBUG_DIGITAL |
-                                                         JULSEDEBUG_TIMING |
-                                                         JULSEDEBUG_STATE |
-                                                         JULSEDEBUG_BUFFERS
-                                                   : 0; // Default: errors and commands only
-
-void julseview_debug_color( int color ) {
-    Serial.printf( "\033[38;5;%dm", color );
-    Serial.flush( );
-}
-
-// Helper macros for category-specific debug output
-#define JULSEDEBUG_CHECK( category ) ( julseview_debug_level >= JULSEDEBUG_LEVEL_INFO && ( julseview_debug_mask & category ) )
-
-// Convenience macros for common debug categories
-#define JULSEDEBUG_CMD( fmt, ... )             \
-    julseview_debug_color( debugColors[ 0 ] ); \
-    JULSEDEBUG_PRINTF_CAT( JULSEDEBUG_COMMANDS, fmt, ##__VA_ARGS__ );
-#define JULSEDEBUG_BUF( fmt, ... )             \
-    julseview_debug_color( debugColors[ 1 ] ); \
-    JULSEDEBUG_PRINTF_CAT( JULSEDEBUG_BUFFERS, fmt, ##__VA_ARGS__ );
-#define JULSEDEBUG_DIG( fmt, ... )             \
-    julseview_debug_color( debugColors[ 2 ] ); \
-    JULSEDEBUG_PRINTF_CAT( JULSEDEBUG_DIGITAL, fmt, ##__VA_ARGS__ );
-#define JULSEDEBUG_ANA( fmt, ... )             \
-    julseview_debug_color( debugColors[ 3 ] ); \
-    JULSEDEBUG_PRINTF_CAT( JULSEDEBUG_ANALOG, fmt, ##__VA_ARGS__ );
-#define JULSEDEBUG_DMA( fmt, ... )             \
-    julseview_debug_color( debugColors[ 4 ] ); \
-    JULSEDEBUG_PRINTF_CAT( JULSEDEBUG_DMAS, fmt, ##__VA_ARGS__ );
-#define JULSEDEBUG_USB( fmt, ... )             \
-    julseview_debug_color( debugColors[ 5 ] ); \
-    JULSEDEBUG_PRINTF_CAT( JULSEDEBUG_USBS, fmt, ##__VA_ARGS__ );
-#define JULSEDEBUG_TIM( fmt, ... )             \
-    julseview_debug_color( debugColors[ 6 ] ); \
-    JULSEDEBUG_PRINTF_CAT( JULSEDEBUG_TIMING, fmt, ##__VA_ARGS__ );
-#define JULSEDEBUG_DAT( fmt, ... )             \
-    julseview_debug_color( debugColors[ 7 ] ); \
-    JULSEDEBUG_PRINTF_CAT( JULSEDEBUG_DATA, fmt, ##__VA_ARGS__ );
-#define JULSEDEBUG_ERR( fmt, ... )             \
-    julseview_debug_color( debugColors[ 8 ] ); \
-    JULSEDEBUG_PRINTF_CAT( JULSEDEBUG_ERRORS, fmt, ##__VA_ARGS__ );
-#define JULSEDEBUG_STA( fmt, ... )             \
-    julseview_debug_color( debugColors[ 9 ] ); \
-    JULSEDEBUG_PRINTF_CAT( JULSEDEBUG_STATE, fmt, ##__VA_ARGS__ );
-
-// Category-specific debug macros
-#define JULSEDEBUG_PRINTF_CAT( category, fmt, ... ) \
-    if ( JULSEDEBUG_CHECK( category ) )             \
-    Serial.printf( fmt, ##__VA_ARGS__ )
-#define JULSEDEBUG_PRINT_CAT( category, str, ... ) \
-    if ( JULSEDEBUG_CHECK( category ) )            \
-    Serial.print( str, ##__VA_ARGS__ )
-#define JULSEDEBUG_PRINTLN_CAT( category, str, ... ) \
-    if ( JULSEDEBUG_CHECK( category ) )              \
-    Serial.println( str, ##__VA_ARGS__ )
-
-// Legacy macros (for backward compatibility) - always enabled if debug level >= 1
-#define JULSEDEBUG_PRINTF( fmt, ... ) \
-    if ( julseview_debug_level >= 1 ) \
-    Serial.printf( fmt, ##__VA_ARGS__ )
-#define JULSEDEBUG_PRINT( str, ... )  \
-    if ( julseview_debug_level >= 1 ) \
-    Serial.print( str, ##__VA_ARGS__ )
-#define JULSEDEBUG_PRINTLN( str, ... ) \
-    if ( julseview_debug_level >= 1 )  \
-    Serial.println( str, ##__VA_ARGS__ )
-
-// Level-specific macros (for backward compatibility)
-#define JULSEDEBUG_PRINTF2( fmt, ... ) \
-    if ( julseview_debug_level >= 2 )  \
-    Serial.printf( fmt, ##__VA_ARGS__ )
-#define JULSEDEBUG_PRINT2( str, ... ) \
-    if ( julseview_debug_level >= 2 ) \
-    Serial.print( str, ##__VA_ARGS__ )
-#define JULSEDEBUG_PRINTLN2( str, ... ) \
-    if ( julseview_debug_level >= 2 )   \
-    Serial.println( str, ##__VA_ARGS__ )
-
-#define JULSEDEBUG_PRINTF3( fmt, ... ) \
-    if ( julseview_debug_level == 3 )  \
-    Serial.printf( fmt, ##__VA_ARGS__ )
-#define JULSEDEBUG_PRINT3( str, ... ) \
-    if ( julseview_debug_level == 3 ) \
-    Serial.print( str, ##__VA_ARGS__ )
-#define JULSEDEBUG_PRINTLN3( str, ... ) \
-    if ( julseview_debug_level == 3 )   \
-    Serial.println( str, ##__VA_ARGS__ )
-
-// Debug configuration helper function
-void julseview_set_debug_mask( uint32_t mask ) {
-    julseview_debug_mask = mask;
-    JULSEDEBUG_PRINTF( "Debug mask set to 0x%08X\n", mask );
-}
-
-// Debug configuration helper function with string input
-void julseview_set_debug_categories( const char* categories ) {
-    uint32_t mask = 0;
-    if ( strstr( categories, "commands" ) )
-        mask |= JULSEDEBUG_COMMANDS;
-    if ( strstr( categories, "buffers" ) )
-        mask |= JULSEDEBUG_BUFFERS;
-    if ( strstr( categories, "digital" ) )
-        mask |= JULSEDEBUG_DIGITAL;
-    if ( strstr( categories, "analog" ) )
-        mask |= JULSEDEBUG_ANALOG;
-    if ( strstr( categories, "dma" ) )
-        mask |= JULSEDEBUG_DMAS;
-    if ( strstr( categories, "usb" ) )
-        mask |= JULSEDEBUG_USBS;
-    if ( strstr( categories, "timing" ) )
-        mask |= JULSEDEBUG_TIMING;
-    if ( strstr( categories, "data" ) )
-        mask |= JULSEDEBUG_DATA;
-    if ( strstr( categories, "errors" ) )
-        mask |= JULSEDEBUG_ERRORS;
-    if ( strstr( categories, "state" ) )
-        mask |= JULSEDEBUG_STATE;
-    if ( strstr( categories, "all" ) )
-        mask = 0x3FF; // All categories
-    if ( strstr( categories, "none" ) )
-        mask = 0; // No categories
-
-    julseview_set_debug_mask( mask );
-}
 
 volatile bool julseview_active = false;
 
@@ -336,8 +169,8 @@ void julseview_pio_irq0_handler(void) {
         adc_select_input( ch );
         adc_hw->cs |= ADC_CS_START_ONCE_BITS;
         // Wait until conversion finished; READY goes 1 when a new conversion can start
-        // while ( ( adc_hw->cs & ADC_CS_READY_BITS ) == 0 ) {
-        // }
+        while ( ( adc_hw->cs & ADC_CS_READY_BITS ) == 0 ) {
+        }
        // JULSEDEBUG_ERR( "ADC IRQ Fired: %d\n\r", ch );
        // Serial.flush( );
     }
@@ -521,7 +354,7 @@ bool julseview::init( ) {
     // Only allocate new buffer if we don't already have a valid one
     if ( !capture_buf || actual_buffer_size == 0 ) {
 
-        g_julseview_digital_buf_size = rp2040.getFreeHeap( ) - 16384 - JULSEVIEW_ANALOG_BUF_SIZE;
+        g_julseview_digital_buf_size = rp2040.getFreeHeap( ) - 32768 - JULSEVIEW_ANALOG_BUF_SIZE;
         // Show available memory before allocation
         JULSEDEBUG_BUF( "Free memory before allocation: %d g_julseview_digital_buf_size: %d\n\r", rp2040.getFreeHeap( ), g_julseview_digital_buf_size );
 
@@ -535,7 +368,7 @@ bool julseview::init( ) {
                             requested_buffer_size, available_memory );
 
             // Reduce buffer size to fit with safety margin
-            requested_buffer_size = available_memory - 16384;
+            requested_buffer_size = available_memory - 32768;
             JULSEDEBUG_BUF( "Reducing buffer size to %d bytes\n\r", requested_buffer_size );
         }
 
@@ -651,7 +484,7 @@ void julseview::handler( ) {
     // FAST HANDLER - Minimal checks for tight loop performance
 
     // Quick USB check
-    if ( !USBSer2 || !USBSer2.available( ) ) {
+    if ( !USBSer2 || !USBSer2.available( ) || !la_enabled ) {
         return;
     }
 
@@ -682,14 +515,19 @@ void julseview::armAnalogCommon() {
     channel_config_set_chain_to( &acfg0, admachan1 );
     channel_config_set_chain_to( &acfg1, admachan0 );
 
-    uint32_t analog_transfers = use_decimation_mode ? ( analog_samples_per_half * a_chan_cnt )
-                                                    : ( samples_per_half * a_chan_cnt );
+    uint32_t analog_transfers = use_decimation_mode ? ( (analog_samples_per_half) * a_chan_cnt )
+                                                    : ( (samples_per_half) * a_chan_cnt );
+
+
+    if ( analog_transfers > num_samples * a_chan_cnt ) {
+        analog_transfers = num_samples * a_chan_cnt;
+    }
 
     dma_channel_configure( admachan0, &acfg0, &capture_buf[ abuf0_start ], &adc_hw->fifo, analog_transfers, false );
     dma_channel_configure( admachan1, &acfg1, &capture_buf[ abuf1_start ], &adc_hw->fifo, analog_transfers, false );
-    JULSEDEBUG_DMA( "Analog DMA channels configured\n\r" );
+    JULSEDEBUG_DMA( "Analog DMA transfers: %d\n\r", analog_transfers );
 
-    adc_fifo_setup( true, true, 1, false, false );
+    adc_fifo_setup( false, true, 1, false, false );
     adc_fifo_drain( );
 
     if ( sample_rate == 0 || a_chan_cnt == 0 ) {
@@ -751,9 +589,15 @@ void julseview::armDigitalSelected(bool use_slow_program) {
     uint32_t digital_transfers = use_decimation_mode ? ( digital_samples_per_half * d_dma_bps )
                                                      : ( samples_per_half * d_dma_bps );
 
+    if ( digital_transfers > num_samples ) {
+        digital_transfers = num_samples;
+    }
+
     // Match old behavior: clear digital halves prior to arming
     memset( &capture_buf[ dbuf0_start ], 0, d_size );
     memset( &capture_buf[ dbuf1_start ], 0, d_size );
+
+    JULSEDEBUG_DMA( "Digital DMA transfers: %d\n\r", digital_transfers );
 
     // Always use the slow program; emulate fast mode by wrapping to the first instruction only.
     const struct pio_program* selected_program = &pio_slowgram_program;
@@ -945,7 +789,7 @@ void julseview::arm( ) {
     // Decide streaming mode early (before buffer sizing) based on sample rate
     // so we can size ping-pong halves appropriately.
     // Decide stream mode for this arm() based on current sample_rate
-    const uint32_t slow_threshold_hz = 10000; // same threshold used for slow PIO selection
+    const uint32_t slow_threshold_hz = JULSEVIEW_SLOW_THRESHOLD_HZ; // same threshold used for slow PIO selection
     stream_mode = ((uint32_t)sample_rate <= slow_threshold_hz);
     JULSEDEBUG_BUF( "STREAM MODE: %s (sample_rate=%d, threshold=%u)\n\r",
                     stream_mode ? "enabled" : "disabled", sample_rate, slow_threshold_hz );
@@ -1045,7 +889,7 @@ void julseview::arm( ) {
         // Optional stream mode: further reduce samples_per_half so each half can be
         // transmitted over USB before the next half completes capturing.
         // Only apply small streaming chunks for slow rates; skip at fast rates
-        const uint32_t slow_threshold_hz_stream = 10000;
+        const uint32_t slow_threshold_hz_stream = JULSEVIEW_SLOW_THRESHOLD_HZ;
         if ( stream_mode && (uint32_t)sample_rate <= slow_threshold_hz_stream ) {
             // bytes per sample sent over USB (digital 7-bit chunks + analog raw)
             uint32_t bytes_per_sample = d_tx_bps + ( a_chan_cnt * 2 );
@@ -1053,7 +897,7 @@ void julseview::arm( ) {
 
             // Include a conservative constant overhead for each half-buffer transmit (USB flush, task, etc.)
             // Choose 2 ms overhead to provide headroom on FS USB.
-            const uint32_t overhead_us = 4000;
+            const uint32_t overhead_us = 8000;
 
             // We need minimal S such that: S/sample_rate >= overhead + (S*bytes_per_sample)/usb_estimated_bps
             // Solve for S: S * (1/sample_rate - bytes_per_sample/usb_estimated_bps) >= overhead
@@ -1132,7 +976,7 @@ void julseview::arm( ) {
 
     // Refactored arming dispatch: choose slow/fast paths for analog and digital
     {
-        const uint32_t slow_threshold_hz = 10000;
+        const uint32_t slow_threshold_hz = JULSEVIEW_SLOW_THRESHOLD_HZ;
         if ( a_chan_cnt > 0 ) {
             if ( (uint32_t)sample_rate <= slow_threshold_hz ) armAnalogSlow(); else armAnalogFast();
         }
@@ -1141,401 +985,14 @@ void julseview::arm( ) {
         }
     }
 
-    //return;
 
-    // --- Analog Channels ---
 
-    // --- ADC Configuration (only if analog channels enabled) ---
-    // if ( a_chan_cnt > 0 ) {
-    //     adc_run( false );
-
-    //     // Initialize channel configs BEFORE configuring channels
-    //     acfg0 = dma_channel_get_default_config( admachan0 );
-    //     acfg1 = dma_channel_get_default_config( admachan1 );
-
-    //     // Configure analog DMA channels
-    //     channel_config_set_transfer_data_size( &acfg0, DMA_SIZE_16 ); // 16-bit to preserve 12-bit ADC resolution
-    //     channel_config_set_transfer_data_size( &acfg1, DMA_SIZE_16 );
-    //     channel_config_set_read_increment( &acfg0, false ); // ADC FIFO doesn't increment
-    //     channel_config_set_read_increment( &acfg1, false );
-    //     channel_config_set_write_increment( &acfg0, true ); // Write to buffer
-    //     channel_config_set_write_increment( &acfg1, true );
-    //     channel_config_set_dreq( &acfg0, DREQ_ADC ); // Use ADC data request
-    //     channel_config_set_dreq( &acfg1, DREQ_ADC );
-
-    //     // Set up chaining between the two analog DMA channels
-    //     channel_config_set_chain_to( &acfg0, admachan1 ); // Analog 0 chains to Analog 1
-    //     channel_config_set_chain_to( &acfg1, admachan0 ); // Analog 1 chains to Analog 0
-
-    //     // Now configure the channels with the prepared configs
-    //     // Configure but DO NOT start here; start in run()
-    //     dma_channel_configure( admachan0, &acfg0, &capture_buf[ abuf0_start ], &adc_hw->fifo, analog_transfers, false );
-    //     dma_channel_configure( admachan1, &acfg1, &capture_buf[ abuf1_start ], &adc_hw->fifo, analog_transfers, false );
-
-    //     JULSEDEBUG_DMA( "Analog DMA channels configured\n\r" );
-    //     // Two-stage setup like reference: first setup without enabling
-    //     adc_fifo_setup( true, true, 1, false, false );
-    //     adc_fifo_drain( );
-
-    //     JULSEDEBUG_ANA( "ADC FIFO setup\n\r" );
-
-    //     // CRITICAL SAFETY: Add ADC divisor calculation validation
-    //     if ( sample_rate == 0 || a_chan_cnt == 0 ) {
-    //         JULSEDEBUG_ERR( "ERROR: Invalid ADC parameters! sample_rate=%d, a_chan_cnt=%d\n\r", sample_rate, a_chan_cnt );
-    //         return;
-    //     }
-
-    //     // Calculate ADC divisor with fractional part like reference
-    //     uint32_t actual_adc_rate = use_decimation_mode ? ( sample_rate / analog_decimation_factor ) : sample_rate;
-    //     uint32_t adcdivint = 48000000ULL / ( actual_adc_rate * a_chan_cnt );
-    //     uint8_t adc_frac_int = (uint8_t)( ( ( 48000000ULL % ( actual_adc_rate * a_chan_cnt ) ) * 256ULL ) / ( actual_adc_rate * a_chan_cnt ) );
-
-    //     JULSEDEBUG_ANA( "ADC RATE CALCULATION: requested=%d Hz, actual=%d Hz, decimation_factor=%d\n\r",
-    //                     sample_rate, actual_adc_rate, analog_decimation_factor );
-
-    //     // CRITICAL SAFETY: Validate ADC divisor
-    //     if ( adcdivint == 0 || adcdivint > 65535 ) {
-    //         JULSEDEBUG_ERR( "ERROR: Invalid ADC divisor! adcdivint=%d\n\r", adcdivint );
-    //         adcdivint = 1;
-    //     }
-
-    //     uint8_t adc_mask = 0;
-    //     /* Build ADC round-robin mask from actual enabled channels */
-    //     for ( int i = 0; i < 8; i++ ) {
-    //         if ( ( a_mask >> i ) & 1 ) {
-    //             // CRITICAL SAFETY: Validate ADC pin number
-    //             if ( 40 + i > 47 ) {
-    //                 JULSEDEBUG_ERR( "ERROR: ADC pin out of range! pin=%d\n\r", 40 + i );
-    //                 continue;
-    //             }
-
-    //             // adc_gpio_init(40 + i);  // Jumperless ADCs on pins 40-47
-    //             adc_mask |= ( 1 << i );
-    //             JULSEDEBUG_ANA( "ADC enabled on pin %d (channel %d)\n\r", 40 + i, i );
-    //         }
-    //     }
-
-    //     // Safe binary print (no %b in printf)
-    //     char adc_mask_binary[ 9 ];
-    //     for ( int bit = 7; bit >= 0; --bit ) {
-    //         adc_mask_binary[ 7 - bit ] = ( ( adc_mask >> bit ) & 0x1 ) ? '1' : '0';
-    //     }
-    //     adc_mask_binary[ 8 ] = '\0';
-    //     JULSEDEBUG_ANA( "ADC round-robin mask: 0x%02X (binary: %s)\n\r", adc_mask, adc_mask_binary );
-
-    //     // Calculate first enabled channel for synchronization
-    //     adc_first_channel = get_first_adc_channel( adc_mask );
-    //     JULSEDEBUG_ANA( "First enabled ADC channel: %d\n\r", adc_first_channel );
-
-    //     // Prepare atomic register values for CS and FCS
-    //     // Drain FIFO once before reconfig, then configure FCS/CS atomically at run() start
-    //     adc_fifo_drain( );
-
-    //     // Apply ADC divisor like reference using direct register write
-    //     volatile uint32_t* adcdiv = (volatile uint32_t*)( ADC_BASE + 0x10 );
-
-    //     // CRITICAL SAFETY: Validate ADC register pointer
-    //     if ( adcdiv == nullptr ) {
-    //         JULSEDEBUG_ERR( "ERROR: ADC divisor register pointer is null!\n\r" );
-    //         return;
-    //     }
-
-    //     if ( adcdivint <= 96 ) {
-    //         *adcdiv = 0; // Special case for high sample rates
-    //     } else {
-    //         *adcdiv = ( ( adcdivint - 1 ) << 8 ) | adc_frac_int;
-    //     }
-
-    //     // Use 16-bit FIFO mode for full 12-bit ADC resolution
-    //     uint8_t fifo_threshold = 8; // Higher threshold to buffer multiple samples and reduce timing sensitivity
-    //     // We'll apply FCS atomically at run() start
-    //     JULSEDEBUG_ANA( "ADC FIFO threshold set to: %d (16-bit mode)\n\r", fifo_threshold );
-
-    //     JULSEDEBUG_ANA( "ADC DMA config - transfer count: %d, bytes per transfer: 2 (16-bit mode)\n\r", analog_transfers );
-
-    //     // The DMA channels are now configured in the 'Simplified DMA Configuration' block.
-    //     // This old logic is no longer needed.
-
-    //     // Critical: Drain FIFO after DMA setup to ensure clean start
-    //     adc_fifo_drain( );
-
-    //     // Add FIFO monitoring debug
-    //     // JULSEDEBUG_ANA( "ADC FIFO level after drain: %d\n\r", adc_fifo_get_level( ) );
-    //     // JULSEDEBUG_ANA( "ADC sample rate: %d\n\r", sample_rate );
-    //     // JULSEDEBUG_ANA( " Hz, channels: %d\n\r", a_chan_cnt );
-    //     // JULSEDEBUG_ANA( "effective rate per channel: %d\n\r", sample_rate * a_chan_cnt );
-    //     // JULSEDEBUG_ANA( " Hz, data rate: %d\n\r", sample_rate * a_chan_cnt * 2 / 1000 );
-    //     // JULSEDEBUG_ANA( " KB/s\n\r" );
-    //     // JULSEDEBUG_ANA( "ADC divisor: int=%d\n\r", adcdivint );
-    //     // JULSEDEBUG_ANA( "frac=%d\n\r", adc_frac_int );
-    // } else {
-    //     JULSEDEBUG_ANA( "No analog channels enabled - skipping ADC configuration\n\r" );
-    // }
-
-    //   }
-
-    if ( d_chan_cnt > 0 && false) {
-
-        // CRITICAL SAFETY: Add bounds checking before buffer operations
-        if ( capture_buf == nullptr ) {
-            JULSEDEBUG_ERR( "ERROR: capture_buf is null during digital setup!\n\r" );
-            return;
-        }
-
-        pcfg0 = dma_channel_get_default_config( pdmachan0 );
-        pcfg1 = dma_channel_get_default_config( pdmachan1 );
-
-        // Always use PIO for first 8 GPIO pins (20-27), control channels read separately
-        channel_config_set_transfer_data_size( &pcfg0, DMA_SIZE_8 );
-        channel_config_set_transfer_data_size( &pcfg1, DMA_SIZE_8 );
-        channel_config_set_read_increment( &pcfg0, false ); // PIO FIFO doesn't increment
-        channel_config_set_read_increment( &pcfg1, false );
-        channel_config_set_write_increment( &pcfg0, true ); // Write to buffer
-        channel_config_set_write_increment( &pcfg1, true );
-        // DREQ will be set when PIO is configured - we'll set it to use PIO RX FIFO
-        JULSEDEBUG_DMA( "Digital DMA channels configured for 8 GPIO pins (PIO mode)\n\r" );
-
-        dreq = pio_get_dreq( lapio, piosm, false ); // Use false like sigrok-pico
-        channel_config_set_dreq( &pcfg0, dreq );
-        channel_config_set_dreq( &pcfg1, dreq );
-
-        channel_config_set_chain_to( &pcfg0, pdmachan1 ); // Digital 0 chains to Digital 1
-        channel_config_set_chain_to( &pcfg1, pdmachan0 ); // Digital 1 chains to Digital 0
-
-        // CRITICAL: Digital-only fast path if request fits into total digital capacity (both halves)
-        uint32_t total_digital_capacity = ( d_size * 2 ) / d_dma_bps; // total samples across both halves
-        JULSEDEBUG_DMA( "Digital capacity: %d\n\r", total_digital_capacity );
-        // if (a_chan_cnt == 0 && num_samples > 0 && (uint32_t)num_samples <= total_digital_capacity) {
-        //     JULSEDEBUG_DMA( "Digital-only fast path: %d\n\r", num_samples );
-        //     single_buffer_mode = true;
-        //     dma_channel_configure( pdmachan0, &pcfg0, &capture_buf[ dbuf0_start ], &pio->rxf[ piosm ], num_samples, false );
-        //     // Disable secondary channel in single-transfer mode
-        //     dma_channel_configure( pdmachan1, &pcfg1, NULL, NULL, 0, false );
-        //     use_producer_consumer = true;
-        // } else {
-        JULSEDEBUG_DMA( "Normal ping-pong: %d\n\r", digital_transfers );
-        // Configure but DO NOT start here; start in run()
-        dma_channel_configure( pdmachan0, &pcfg0, &capture_buf[ dbuf0_start ], &lapio->rxf[ piosm ], digital_transfers, false );
-        dma_channel_configure( pdmachan1, &pcfg1, &capture_buf[ dbuf1_start ], &lapio->rxf[ piosm ], digital_transfers, false );
-        //   }
-
-
-        // CRITICAL: Clear digital buffers (entire halves)
-        memset( &capture_buf[ dbuf0_start ], 0, d_size );
-        memset( &capture_buf[ dbuf1_start ], 0, d_size );
-        JULSEDEBUG_DIG( "◆ Digital capture buffers cleared\n\r" );
-
-        // Always use PIO for first 8 GPIO pins (20-27), control channels read separately
-        // CRITICAL SAFETY: Add PIO validation
-        if ( lapio == nullptr ) {
-            JULSEDEBUG_ERR( "ERROR: PIO is null during digital setup!\n\r" );
-            return;
-        }
-
-        // Debug: Show PIO state before attempting to add program
-        JULSEDEBUG_CMD( "PIO %d state before program add: SM0=%s, SM1=%s, SM2=%s, SM3=%s\n\r",
-                        pio_get_index( lapio ),
-                        pio_sm_is_claimed( lapio, 0 ) ? "CLAIMED" : "FREE",
-                        pio_sm_is_claimed( lapio, 1 ) ? "CLAIMED" : "FREE",
-                        pio_sm_is_claimed( lapio, 2 ) ? "CLAIMED" : "FREE",
-                        pio_sm_is_claimed( lapio, 3 ) ? "CLAIMED" : "FREE" );
-
-        // Select PIO program based on requested sample rate
-        const uint32_t slow_threshold_hz = 10000; // switch to slow program below this rate
-        const struct pio_program* selected_program = ( sample_rate <= (int)slow_threshold_hz )
-                                                         ? &pio_slowgram_program
-                                                         : &pio_logic_analyzer_program;
-        // Slow program cycles:
-        // IN (1) + 6x delay(31)=6*32 + delay(30)=31 + irq_set=1 + delay(30)=31 + delay(0)=1
-        // Total = 1 + 192 + 31 + 1 + 31 + 1 = 256 cycles
-        const uint32_t cycles_per_sample = ( selected_program == &pio_slowgram_program ) ? 32u : 1u;
-
-        // Auto-enable stream mode for slow rates (pairs well with slow PIO)
-        if ( selected_program == &pio_slowgram_program ) {
-            stream_mode = true;
-            // Ensure ADC runs at full speed for single-shot conversions so DMA sees each sample promptly
-            adc_set_clkdiv( 1.0f );
-            JULSEDEBUG_CMD( "ADC clkdiv forced to 1.0 for slow mode single-shot conversions\n\r" );
-
-            int enabled_idx = 0;
-            for ( uint8_t i = 0; i < 8; i++ ) {
-                if ( ( a_mask >> i ) & 1 ) {
-                    ana_enabled_list[ enabled_idx++ ] = i;
-                } 
-            }
-            ana_enabled_count = enabled_idx;
-        }
-
-        JULSEDEBUG_CMD( "PIO program selection: %s (cycles/sample=%u) for sample_rate=%d Hz, stream_mode=%d\n\r",
-                        ( selected_program == &pio_slowgram_program ) ? "slow" : "fast",
-                        cycles_per_sample, sample_rate, (int)stream_mode );
-
-        // Check if we can add the selected PIO program before attempting to add it
-        if ( !pio_can_add_program( lapio, selected_program ) ) {
-            // JULSEDEBUG_DIG( "ERROR: Cannot add selected PIO program - instruction memory full or program already loaded!\n\r" );
-            // JULSEDEBUG_DIG( "PIO %d instruction memory may be full or program already present\n\r", pio_get_index( pio ) );
-
-            // Try to remove the program first and then re-add it
-            JULSEDEBUG_CMD( "Attempting to remove and re-add selected PIO program...\n\r" );
-            pio_remove_program( lapio, selected_program, 0 );
-
-            // Check again if we can add it now
-            if ( !pio_can_add_program( lapio, selected_program ) ) {
-                JULSEDEBUG_ERR( "ERROR: Still cannot add selected PIO program after removal!\n\r" );
-                return;
-            }
-            JULSEDEBUG_CMD( "Successfully removed and can re-add selected PIO program\n\r" );
-        }
-
-        // pio_sm_set_enabled(lapio, piosm, false);
-        // pio_sm_clear_fifos(lapio, piosm);
-        // pio_sm_restart(lapio, piosm);
-
-        uint offset = pio_add_program( lapio, selected_program );
-        if ( offset == (uint)-1 ) {
-            JULSEDEBUG_ERR( "ERROR: Failed to add selected PIO program despite can_add check!\n\r" );
-            return;
-        }
-        JULSEDEBUG_DIG( "PIO %d program added (offset=%u, length=%u)\n\r", pio_get_index( lapio ), offset, selected_program->length );
-        pio_sm_config c = pio_get_default_sm_config( );
-
-        sm_config_set_in_pins( &c, 20 ); // Start at GPIO 20
-
-        // Always configure PIO for 8 pins since that's what we're actually reading
-        // Control channels are added in software
-        sm_config_set_in_pin_count( &c, 8 );
-        sm_config_set_in_shift( &c, false, true, 8 ); // 8-bit shift, autopush enabled for 8 channels
-        JULSEDEBUG_DIG( "PIO configured for 8 GPIO pins (control channels added in software)\n\r" );
-
-        sm_config_set_fifo_join( &c, PIO_FIFO_JOIN_RX );
-
-        // Set wrap to loop over the entire selected program
-        sm_config_set_wrap( &c, offset, offset + selected_program->length - 1 );
-
-        // Clock divider calculation accounts for instruction cycles per sample
-        uint32_t sys_clock = clock_get_hz( clk_sys );
-
-        JULSEDEBUG_CMD( "Clock divider calculation: sys_clock=%d, sample_rate=%d, cycles_per_sample=%u, offset=%d, length=%u\n\r",
-                        sys_clock, sample_rate, cycles_per_sample, offset, selected_program->length );
-
-        float clock_div = (float)sys_clock / ( (float)sample_rate * (float)cycles_per_sample );
-
-
-        JULSEDEBUG_CMD( "Clock divider calculation: clock_div=%.2f\n\r", clock_div );
-
-        if ( clock_div < 1.0f ) {
-            JULSEDEBUG_ERR( "Clock divider too low, setting to 1\n\r" );
-            clock_div = 1.0f;
-        }
-        if ( clock_div > 65536.0f ) {
-            JULSEDEBUG_ERR( "Clock divider too high, setting to 65536\n\r" );
-            clock_div = 65536.0f;
-        }
-
-        sm_config_set_clkdiv( &c, clock_div );
-
-        // Debug: Log PIO configuration details
-        JULSEDEBUG_CMD( "PIO CONFIG DEBUG: sample_rate=%d, sys_clock=%d, cycles/sample=%u, clock_div=%.2f\n\r",
-                        sample_rate, sys_clock, cycles_per_sample, clock_div );
-        JULSEDEBUG_CMD( "PIO CONFIG DEBUG: trigger_enabled=%d, pre_trigger_samples=%d, post_trigger_samples=%d\n\r",
-                        trigger_config.enabled, pre_trigger_samples, post_trigger_samples );
-
-        JULSEDEBUG_STA( "ARM: About to init PIO SM %d on PIO1\n\r", piosm );
-        pio_sm_init( lapio, piosm, offset, &c );
-
-        // Enable CPU interrupt for the exact PIO IRQ flag raised by the program (absolute IRQ 1)
-        pio_interrupt_clear( lapio, 1 );
-        pio_set_irq1_source_enabled( lapio, pis_interrupt1, true );
-
-
-        
-        // Ensure GPIOs are initialized for PIO and configured as inputs for sampling
-        // // Follow CH446Q pattern by explicitly claiming pins for PIO block
-        // for ( uint gpio = 20; gpio < 28; ++gpio ) {
-        //     pio_gpio_init( lapio, gpio );
-        // }
-        // pio_sm_set_consecutive_pindirs( lapio, piosm, 20, 8, false );
-
-        // Bind handler to PIO1 IRQ1 and enable it
-        JULSEDEBUG_CMD( "Binding PIO1 IRQ1 to julseview handler (CH446Q style)\n\r" );
-
-        if ( !irq_has_shared_handler( PIO1_IRQ_1 ) ) {
-            irq_add_shared_handler( PIO1_IRQ_1, julseview_pio_irq0_handler, 0 );
-            irq_set_enabled( PIO1_IRQ_1, true );
-        }
-
-
-        JULSEDEBUG_CMD( "IRQ setup verification: PIO1 IRQ1=%d enabled=%d\n\r",
-                        PIO1_IRQ_1, irq_is_enabled( PIO1_IRQ_1 ) );
-        JULSEDEBUG_CMD( "PIO1 INTE1 mask: 0x%08X\n\r", pio1_hw->inte1 );
-
-        // Verify PIO state machine was initialized correctly
-        JULSEDEBUG_STA( "ARM: Checking if PIO SM %d is claimed\n\r", piosm );
-        if ( !pio_sm_is_claimed( lapio, piosm ) ) {
-            JULSEDEBUG_ERR( "ERROR: PIO state machine %d not claimed after initialization!\n\r", piosm );
-            return;
-        }
-
-        JULSEDEBUG_CMD( "PIO program loaded successfully at offset %d on PIO %d, SM %d\n\r", offset, pio_get_index( lapio ), piosm );
-
-        // CRITICAL SAFETY: Add DMA configuration validation
-        if ( pdmachan0 < 0 || pdmachan1 < 0 ) {
-            JULSEDEBUG_ERR( "ERROR: Digital DMA channels not claimed! pdmachan0=%d, pdmachan1=%d\n\r", pdmachan0, pdmachan1 );
-            return;
-        }
-
-        // Configure DMA for digital capture - always use 8-bit transfers since PIO only provides 8 bits
-        // We'll combine with control channels in software
-        channel_config_set_transfer_data_size( &pcfg0, DMA_SIZE_8 );
-        channel_config_set_transfer_data_size( &pcfg1, DMA_SIZE_8 );
-        JULSEDEBUG_DIG( "Digital DMA configured for 8-bit transfers (PIO provides 8 bits, control channels added in software)\n\r" );
-
-        channel_config_set_read_increment( &pcfg0, false ); // PIO FIFO doesn't increment
-        channel_config_set_read_increment( &pcfg1, false );
-
-        channel_config_set_write_increment( &pcfg0, true ); // Write to buffer
-        channel_config_set_write_increment( &pcfg1, true );
-
-        dreq = pio_get_dreq( lapio, piosm, false );
-        if ( dreq == -1 ) {
-            JULSEDEBUG_ERR( "ERROR: Failed to get PIO DREQ!\n\r" );
-            return;
-        }
-
-        channel_config_set_dreq( &pcfg0, dreq ); // Use PIO RX FIFO
-        channel_config_set_dreq( &pcfg1, dreq );
-
-        JULSEDEBUG_DIG( "PIO configured for %d channels, sample rate: %d Hz\n\r", d_chan_cnt, sample_rate );
-        JULSEDEBUG_DIG( "PIO clock divider: %.2f (sys_clock=%d Hz)\n\r", clock_div, sys_clock );
-        JULSEDEBUG_DIG( "Digital DMA configured for 8-bit transfers, buffer size: %d bytes\n\r", d_size );
-        JULSEDEBUG_DIG( "Digital DMA DREQ configured: %d (PIO RX FIFO)\n\r", pio_get_dreq( lapio, piosm, false ) );
-
-        // The DMA channels are now configured in the 'Simplified DMA Configuration' block.
-        // This old logic is no longer needed.
-
-        // CRITICAL DEBUG: Verify PIO and DMA configuration match
-        JULSEDEBUG_DIG( "Digital configuration verification:\n\r" );
-        JULSEDEBUG_DIG( "  Channels: %d, d_dma_bps: %d, PIO autopush: 8 bits\n\r",
-                        d_chan_cnt, d_dma_bps );
-        JULSEDEBUG_DIG( "  DMA transfer size: 8-bit (PIO provides 8 bits, control channels added in software)\n\r" );
-
-        // CRITICAL CHECK: Verify DMA and PIO configurations are compatible
-        uint8_t expected_dma_bps = 1;  // Always 1 byte since PIO provides 8 bits
-        uint8_t expected_pio_bits = 8; // Always 8 bits from PIO
-
-        if ( d_dma_bps != expected_dma_bps ) {
-            JULSEDEBUG_DIG( "WARNING: DMA bytes per sample (%d) doesn't match setup!\n\r", d_dma_bps );
-            JULSEDEBUG_DIG( "Expected: %d bytes for 8-bit PIO autopush\n\r", expected_dma_bps );
-        } else {
-            JULSEDEBUG_DIG( "✓ DMA and PIO configurations match (8-bit PIO + separate control DMA)\n\r" );
-        }
-    }
 
     // Final FIFO cleanup before starting capture
-    if ( a_mask ) {
-        adc_fifo_drain( );
-        JULSEDEBUG_ANA( "Final ADC FIFO level before capture start: %d\n\r", adc_fifo_get_level( ) );
-    }
+    // if ( a_mask ) {
+    //     adc_fifo_drain( );
+    //     JULSEDEBUG_ANA( "Final ADC FIFO level before capture start: %d\n\r", adc_fifo_get_level( ) );
+    // }
 
     // Initialize capture state variables
     sending = false;      // Will be set to true when run() starts
@@ -1544,11 +1001,11 @@ void julseview::arm( ) {
     scnt = 0;             // Reset sample counter for new capture
     total_bytes_sent = 0; // Reset byte counter for new capture
 
-    //  Ensure num_samples is not corrupted before storing
-    if ( num_samples == 0 ) {
-        JULSEDEBUG_ERR( "ERROR: num_samples is 0 before capture start! Using default 10000\n\r" );
-        num_samples = 10000;
-    }
+    // //  Ensure num_samples is not corrupted before storing
+    // if ( num_samples == 0 ) {
+    //     JULSEDEBUG_ERR( "ERROR: num_samples is 0 before capture start! Using default 10000\n\r" );
+    //     num_samples = 10000;
+    // }
 
     // Store original num_samples to prevent corruption
     original_num_samples = num_samples;
@@ -1605,7 +1062,7 @@ void julseview::run( ) {
     completion_signal_sent = false;
 
     // Prepare analog capture if enabled (but don't start yet in trigger mode)
-    adc_fifo_drain( );
+   // adc_fifo_drain( );
 
     watchdog_enable( calculate_expected_capture_time( ) * 2, true );
 
@@ -1615,7 +1072,7 @@ void julseview::run( ) {
 
     pio_sm_set_enabled( lapio, piosm, true );
 
-    adc_fifo_setup( false, false, 1, false, false );
+    //adc_fifo_setup( false, false, 1, false, false );
 
     // Build FCS mask: EN (write results), DREQ_EN, THRESH=1 sample, clear sticky OVER/UNDER
     uint32_t fcs_mask = 0;
@@ -1633,6 +1090,8 @@ void julseview::run( ) {
     if ( !stream_mode ) {
         cs_mask |= ( ( (uint32_t)a_mask << ADC_CS_RROBIN_LSB ) & ADC_CS_RROBIN_BITS );
         cs_mask |= ADC_CS_START_MANY_BITS;
+    } else {
+        cs_mask &= ~ADC_CS_START_MANY_BITS;
     }
 
     // Start analog DMA after FCS/CS are programmed
@@ -1655,6 +1114,10 @@ void julseview::run( ) {
         scnt = 0;
         // JULSEDEBUG_CMD("Sample counter reset to 0 for post-trigger capture\n\r");
     }
+
+
+    JULSEDEBUG_CMD( "Starting DMA channels - PIO/ADC are already running from arm()\n\r" );
+    Serial.flush();
 
     // Start DMA channels - PIO/ADC are already running from arm()
     if ( d_chan_cnt > 0 ) {
@@ -1687,7 +1150,7 @@ void julseview::run( ) {
         // 0x00000002 [1]     TS_EN        (0) Power on temperature sensor
         // 0x00000001 [0]     EN           (0) Power on ADC and enable its clock
 
-        adc_fifo_drain( );
+        //adc_fifo_drain( );
         adc_hw->fcs = fcs_mask;
         adc_hw->cs = cs_mask;
 
@@ -1787,9 +1250,9 @@ void julseview::dma_check( ) {
     bool digital_complete = ( d_chan_cnt == 0 ) || !dma_channel_is_busy( pdmachan_current );
 
     // // In digital-only mode, rely solely on digital completion to avoid handoff races
-    if ( a_chan_cnt == 0 ) {
-        analog_complete = true;
-    }
+    // if ( a_chan_cnt == 0 ) {
+    //     analog_complete = true;
+    // }
 
     if ( analog_complete && digital_complete ) {
         // Debug: Log DMA completion
@@ -1862,12 +1325,12 @@ void julseview::dma_check( ) {
         uint64_t end_time = micros( );
         // }
 
-        int64_t time_to_capture = ( samples_per_half * ( 1.0f / (float)sample_rate ) );
+        // int64_t time_to_capture = ( samples_per_half * ( 1.0f / (float)sample_rate ) );
 
         // JULSEDEBUG_DAT("samples_per_half: %d x sample_rate: %d = %d us\n\r", samples_per_half, sample_rate, time_to_capture);
         // JULSEDEBUG_DAT("start_time: %d us, end_time: %d us\n\r", start_time, end_time);
 
-        int64_t time_to_send = end_time - start_time;
+        // int64_t time_to_send = end_time - start_time;
         // JULSEDEBUG_DAT("Time to capture: %d us, time to send: %d us\n\r", time_to_capture, time_to_send);
     }
 }
@@ -2059,7 +1522,7 @@ void julseview::end( ) {
         float voltage = readAdcVoltage( i, 32 );
         adc_select_input( i );
         int raw_reading = adc_read( );
-        JULSEDEBUG_ANA( "DEINIT: ADC pin %d restored - voltage: %f, raw: %d\n\r", 40 + i, voltage, raw_reading );
+        //JULSEDEBUG_ANA( "DEINIT: ADC pin %d restored - voltage: %f, raw: %d\n\r", 40 + i, voltage, raw_reading );
     }
 
     // === STEP 5: RESET STATE FLAGS ===
@@ -2298,7 +1761,7 @@ bool julseview::process_char( char charin ) {
                     JULSEDEBUG_CMD( "JulseView ID command received - initializing\n\r" );
                     julseview::init( );
                 }
-                cont = true;
+                //cont = true;
                 arm( );
 
                 run( ); // Start capture immediately after arming
@@ -3432,16 +2895,8 @@ void julseview::configure_internal_trigger( uint32_t var_address, uint32_t var_v
                     var_address, var_value );
 }
 
-// Global trigger interrupt flag
-static volatile bool trigger_interrupt_fired = false;
-
-// GPIO interrupt handler for trigger detection
-static void trigger_irq_handler( uint gpio, uint32_t event_mask ) {
-    trigger_interrupt_fired = true;
-}
-
 void julseview::waitForTrigger( ) {
-    JULSEDEBUG_CMD( "waitForTrigger() - starting trigger monitoring with GPIO interrupt\n\r" );
+    JULSEDEBUG_CMD( "waitForTrigger() - starting trigger monitoring with GPIO polling (sio gpio_in)\n\r" );
 
     if ( trigger_config.type == TRIGGER_DIGITAL_EDGE ) {
         uint8_t trigger_pin = trigger_config.channel + 20; // GPIO 20-27 for channels 0-7
@@ -3449,45 +2904,34 @@ void julseview::waitForTrigger( ) {
         JULSEDEBUG_CMD( "Trigger monitoring: channel=%d -> GPIO %d, edge=%d\n\r",
                         trigger_config.channel, trigger_pin, trigger_config.edge );
 
-        // Reset interrupt flag
-        trigger_interrupt_fired = false;
-
-        // Configure GPIO interrupt based on trigger edge
-        uint32_t irq_event_mask = 0;
-        switch ( trigger_config.edge ) {
-        case EDGE_RISING:
-            irq_event_mask = GPIO_IRQ_EDGE_RISE;
-            break;
-        case EDGE_FALLING:
-            irq_event_mask = GPIO_IRQ_EDGE_FALL;
-            break;
-        case EDGE_EITHER:
-            irq_event_mask = GPIO_IRQ_EDGE_RISE | GPIO_IRQ_EDGE_FALL;
-            break;
+        // Poll sio gpio_in and detect configured edge
+        uint32_t pin_mask = ( 1u << trigger_pin );
+        bool prev = ( sio_hw->gpio_in & pin_mask ) != 0;
+        while ( !trigger_detected && julseview_active ) {
+            uint32_t in = sio_hw->gpio_in;
+            bool curr = ( in & pin_mask ) != 0;
+            bool fired = false;
+            switch ( trigger_config.edge ) {
+            case EDGE_RISING:
+                fired = ( !prev && curr );
+                break;
+            case EDGE_FALLING:
+                fired = ( prev && !curr );
+                break;
+            case EDGE_EITHER:
+                fired = ( prev != curr );
+                break;
+            }
+            if ( fired ) {
+                //JULSEDEBUG_CMD( "TRIGGER DETECTED via polling! Pin %d (GPIO %d)\n\r",
+                             //   trigger_config.channel, trigger_pin );
+                trigger_detected = true;
+                isTriggered = true;
+                return;
+            }
+            prev = curr;
+            watchdog_update( );
         }
-
-        // Set up GPIO interrupt
-        gpio_set_irq_enabled_with_callback( trigger_pin, irq_event_mask, true, trigger_irq_handler );
-
-        JULSEDEBUG_CMD( "GPIO interrupt configured for pin %d with mask 0x%X\n\r", trigger_pin, irq_event_mask );
-
-        // Wait for interrupt
-        while ( !trigger_interrupt_fired && !trigger_detected && julseview_active ) {
-            // Small delay to prevent busy waiting
-            sleep_ms( 1 );
-        }
-
-        // Disable GPIO interrupt
-        gpio_set_irq_enabled( trigger_pin, irq_event_mask, false );
-
-        if ( trigger_interrupt_fired ) {
-            JULSEDEBUG_CMD( "TRIGGER DETECTED via GPIO interrupt! Pin %d (GPIO %d)\n\r",
-                            trigger_config.channel, trigger_pin );
-            trigger_detected = true;
-            isTriggered = true;
-        }
-
-        watchdog_update( );
     }
 
     JULSEDEBUG_CMD( "waitForTrigger() - completed\n\r" );
@@ -3863,129 +3307,6 @@ uint8_t julseview::collect_control_channel_data( ) {
     return control_data;
 }
 
-// =============================================================================
-// SIMPLE HEARTBEAT WATCHDOG IMPLEMENTATION
-// =============================================================================
-
-volatile int heartbeat_enabled = 0;
-volatile bool heartbeat_watchdog_started = false;
-
-// Setup the heartbeat watchdog for capture loop recovery
-bool julseview::setup_heartbeat_watchdog( ) {
-
-    // Calculate expected capture time based on sample rate and count
-    expected_capture_time_us = calculate_expected_capture_time( );
-
-    // Set timeout to 2x expected time
-    heartbeat_timeout_us = expected_capture_time_us * 2;
-
-    // Apply minimum timeout based on trigger configuration
-    uint32_t min_timeout_us;
-    if ( trigger_config.enabled ) {
-        min_timeout_us = 10000000; // 10 seconds minimum for trigger mode
-        JULSEDEBUG_CMD( "Trigger mode: using 10 second minimum timeout\n\r" );
-    } else {
-        min_timeout_us = 1000000; // 1 second minimum for normal mode
-        JULSEDEBUG_CMD( "Normal mode: using 1 second minimum timeout\n\r" );
-    }
-
-    // Ensure timeout is at least the minimum
-    if ( heartbeat_timeout_us < min_timeout_us ) {
-        heartbeat_timeout_us = min_timeout_us;
-        JULSEDEBUG_CMD( "Heartbeat timeout increased to minimum: %lu us\n\r", heartbeat_timeout_us );
-    }
-
-    // Initialize global heartbeat state
-    heartbeat_timeout_us = heartbeat_timeout_us;
-    heartbeat_triggered = false;
-    heartbeat_last_time = 0;
-
-    JULSEDEBUG_CMD( "Heartbeat watchdog setup: expected_capture_time=%lu us, timeout=%lu us\n\r",
-                    expected_capture_time_us, heartbeat_timeout_us );
-
-    return true;
-}
-
-// Start the heartbeat watchdog monitoring
-void julseview::start_heartbeat_watchdog( ) {
-    // Record start time and reset state
-    heartbeat_last_time = time_us_32( );
-    heartbeat_triggered = false;
-
-    JULSEDEBUG_CMD( "Heartbeat watchdog started - monitoring core 1 heartbeat\n\r" );
-}
-
-// Stop the heartbeat watchdog monitoring
-void julseview::stop_heartbeat_watchdog( ) {
-    heartbeat_triggered = false;
-    JULSEDEBUG_CMD( "Heartbeat watchdog stopped\n\r" );
-}
-
-// Send heartbeat from core 1 (called during capture loop)
-void julseview::send_heartbeat( ) {
-    heartbeat_last_time = time_us_32( );
-}
-
-// Check heartbeat timeout (called from core 0)
-void julseview::check_heartbeat_watchdog( ) {
-
-    if ( heartbeat_enabled == 0 ) {
-        if ( heartbeat_watchdog_started == true ) {
-            stop_heartbeat_watchdog( );
-            heartbeat_watchdog_started = false;
-        }
-        return;
-    }
-    if ( heartbeat_enabled == 1 && heartbeat_watchdog_started == false ) {
-        setup_heartbeat_watchdog( );
-        start_heartbeat_watchdog( );
-        heartbeat_watchdog_started = true;
-    }
-
-    static uint32_t heartbeatCount = 0;
-
-    uint32_t current_time = time_us_32( );
-    uint32_t elapsed_time = current_time - heartbeat_last_time;
-    heartbeatCount++;
-    if ( heartbeatCount % 5000 == 0 ) {
-        // JULSEDEBUG_CMD("Heartbeat elapsed_time = %lu us, heartbeat_timeout_us = %lu us, heatbeatCount = %d core %d\n\r", elapsed_time, heartbeat_timeout_us, heatbeatCount, rp2040.cpuid());
-    }
-
-    if ( elapsed_time > heartbeat_timeout_us ) {
-        JULSEDEBUG_ERR( "HEARTBEAT TIMEOUT: No heartbeat for %lu us (timeout: %lu us)\n\r",
-                        elapsed_time, heartbeat_timeout_us );
-
-        // Set the watchdog triggered flag
-        heartbeat_triggered = true;
-
-        // Force cleanup by setting julseview_active to false
-        // This will break the main capture loop
-        // julseview_active = false;
-        handle_heartbeat_watchdog_timeout( );
-    }
-}
-
-// Handle heartbeat watchdog timeout - restart core 1
-void julseview::handle_heartbeat_watchdog_timeout( ) {
-    JULSEDEBUG_ERR( "=== HEARTBEAT WATCHDOG TIMEOUT - RESTARTING CORE 1 ===\n\r" );
-
-    // Stop the heartbeat monitoring
-    stop_heartbeat_watchdog( );
-
-    // Send error completion signal to host
-
-    julseview_active = false;
-    isRunning = false;
-    isArmed = false;
-    send_capture_completion_signal( true );
-
-    // Restart core 1 using rp2040.restartCore1()
-    JULSEDEBUG_ERR( "Restarting core 1 due to heartbeat timeout\n\r" );
-    // rp2040.restartCore1();
-
-    JULSEDEBUG_ERR( "Core 1 restart initiated\n\r" );
-}
-
 // Calculate expected capture time based on sample rate and sample count
 uint32_t julseview::calculate_expected_capture_time( ) {
     if ( sample_rate == 0 || num_samples == 0 ) {
@@ -4009,11 +3330,6 @@ uint32_t julseview::calculate_expected_capture_time( ) {
     }
 
     return expected_time_ms;
-}
-
-// Check if watchdog was triggered during last capture
-bool julseview::was_watchdog_triggered( ) const {
-    return heartbeat_triggered;
 }
 
 // Send capture completion signal to host
@@ -4229,4 +3545,47 @@ void julseview::get_calibrated_analog_scaling( uint8_t channel, uint32_t* scale_
         *offset_microvolts = -(int32_t)( 8.0 * 1000000.0 );               // Default -8V offset
         break;
     }
+}
+
+
+
+
+
+
+
+// Debug configuration helper function
+void julseview_set_debug_mask( uint32_t mask ) {
+    julseview_debug_mask = mask;
+    JULSEDEBUG_PRINTF( "Debug mask set to 0x%08X\n", mask );
+}
+
+// Debug configuration helper function with string input
+void julseview_set_debug_categories( const char* categories ) {
+    uint32_t mask = 0;
+    if ( strstr( categories, "commands" ) )
+        mask |= JULSEDEBUG_COMMANDS;
+    if ( strstr( categories, "buffers" ) )
+        mask |= JULSEDEBUG_BUFFERS;
+    if ( strstr( categories, "digital" ) )
+        mask |= JULSEDEBUG_DIGITAL;
+    if ( strstr( categories, "analog" ) )
+        mask |= JULSEDEBUG_ANALOG;
+    if ( strstr( categories, "dma" ) )
+        mask |= JULSEDEBUG_DMAS;
+    if ( strstr( categories, "usb" ) )
+        mask |= JULSEDEBUG_USBS;
+    if ( strstr( categories, "timing" ) )
+        mask |= JULSEDEBUG_TIMING;
+    if ( strstr( categories, "data" ) )
+        mask |= JULSEDEBUG_DATA;
+    if ( strstr( categories, "errors" ) )
+        mask |= JULSEDEBUG_ERRORS;
+    if ( strstr( categories, "state" ) )
+        mask |= JULSEDEBUG_STATE;
+    if ( strstr( categories, "all" ) )
+        mask = 0x3FF; // All categories
+    if ( strstr( categories, "none" ) )
+        mask = 0; // No categories
+
+    julseview_set_debug_mask( mask );
 }

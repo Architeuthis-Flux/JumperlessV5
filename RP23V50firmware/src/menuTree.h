@@ -78,6 +78,7 @@ String menuLines[] = {
   "-Micropython",
   "-uPythonREPL",
   "-File   Manager",
+  "-Probe  Calib",
 
   //"-Show   Image",
  

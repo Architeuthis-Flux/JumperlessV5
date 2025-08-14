@@ -225,8 +225,8 @@ struct Buffer {
 };
 
 // Safe memory allocation with size limits
-#define MAX_EDITOR_MEMORY (32 * 1024)  // 32KB limit for editor content
-#define MIN_FREE_HEAP (5 * 1024)      // Reduce to 5KB free (was 10KB)
+#define MAX_EDITOR_MEMORY (16 * 1024)  // 32KB limit for editor content
+#define MIN_FREE_HEAP (3 * 1024)      // Reduce to 5KB free (was 10KB)
 
 bool check_memory_available(size_t needed) {
     size_t freeHeap = rp2040.getFreeHeap();
@@ -302,9 +302,9 @@ int ekilo_read_key() {
     if (c == ESC) {
         // Wait a bit for the rest of the sequence
         unsigned long start = millis();
-        while (millis() - start < 50 && !Serial.available()) {
-            delayMicroseconds(1);
-        }
+        // while (millis() - start < 12 && !Serial.available()) {
+        //    // delayMicroseconds(1);
+        // }
         
         if (!Serial.available()) return ESC;
         
@@ -862,6 +862,7 @@ void ekilo_move_cursor(int key) {
     
     // Schedule OLED update when cursor moves
     ekilo_schedule_oled_update();
+    
     
     // Mark screen as dirty for refresh
     E.screen_dirty = true;
@@ -2004,10 +2005,10 @@ int ekilo_main(const char* filename) {
         }
         
         // Process any pending OLED updates
-        ekilo_process_oled_update();
-        
+        //ekilo_process_oled_update();
+        ekilo_process_keypress();
         // Process encoder input for cursor movement and character selection
-        ekilo_process_encoder_input();
+        //ekilo_process_encoder_input();
         
         // Only refresh screen if something changed
         if (E.screen_dirty) {
@@ -2015,8 +2016,8 @@ int ekilo_main(const char* filename) {
             E.screen_dirty = false;
         }
         
-        ekilo_process_keypress();
-        delayMicroseconds(1); 
+        
+        //delayMicroseconds(1); 
     }
     
     // Check if Ctrl+P was pressed (save and launch REPL)

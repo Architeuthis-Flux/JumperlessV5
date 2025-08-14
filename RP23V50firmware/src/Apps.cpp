@@ -71,7 +71,7 @@ struct app apps[30] = {
     {"XLSX   GUI", 6, 1, xlsxGui},
     {"Micropython", 7, 1, microPythonREPLapp},
     {"uPythonREPL", 8, 1, microPythonREPLapp},
-    {"File   Manager", 9, 1, filesystemApp},
+    {"File   Manager", 9, 1, fileManagerApp},
     {"eKilo Editor", 10, 1, eKiloApp},
 
     {"DOOM", 16, 1, playDoom},
@@ -147,7 +147,7 @@ void runApp(int index, char *name) {
     microPythonREPLapp();
     break;
   case 9:
-    filesystemApp();
+    fileManagerApp();
     break;
   case 10:
     eKiloApp();
@@ -190,6 +190,12 @@ void leaveApp(int lastNetSlot) {
   createSlots(8, 1);
   netSlot = lastNetSlot;
   refreshConnections(-1, 0, 1);
+}
+
+
+void fileManagerApp(void) {
+ 
+  filesystemApp(false);
 }
 
 // this just does a bunch of random stuff as an example
