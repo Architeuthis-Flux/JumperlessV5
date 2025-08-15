@@ -12,6 +12,10 @@
 
 
 extern bool la_enabled;
+
+extern bool debugLA;
+
+/*
 // Using actual Jumperless hardware channel counts
 #define JULSEVIEW_MAX_ANALOG_CHANNELS 9
 #define JULSEVIEW_MAX_DIGITAL_CHANNELS 16
@@ -44,7 +48,7 @@ extern uint32_t julseview_debug_mask;
 extern volatile bool julseview_active;
 
 // Logic analyzer debug flag (kept for compatibility)
-extern bool debugLA;
+
 
 // RX state enum from the Jumperless driver
 typedef enum {
@@ -352,7 +356,7 @@ extern volatile bool control_D[4];
 extern volatile float control_A[4];
 // Global control byte sampled by DMA; may be updated by other subsystems (e.g., MicroPython)
 extern volatile uint8_t control_data;
-
+*/
 
 
 

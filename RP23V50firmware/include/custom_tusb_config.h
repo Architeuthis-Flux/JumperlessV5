@@ -62,7 +62,7 @@ extern "C" {
 // #define CFG_TUH_LOG_LEVEL 3
 
 #define CFG_TUSB_MEM_SECTION
-#define CFG_TUSB_MEM_ALIGN TU_ATTR_ALIGNED(32)  // Increased from 4 for better DMA performance
+#define CFG_TUSB_MEM_ALIGN TU_ATTR_ALIGNED(16)  // Increased from 4 for better DMA performance
 
 // STREAMING OPTIMIZATIONS: Enable double packet buffering for better throughput
 #define CFG_TUD_BULK_DOUBLE_PACKET_BUFFERING 1
@@ -71,7 +71,7 @@ extern "C" {
 // Device Configuration
 //--------------------------------------------------------------------
 
-#define CFG_TUD_ENDOINT0_SIZE 64
+#define CFG_TUD_ENDPOINT0_SIZE 64
 
 // CRITICAL: Disable auto-generated descriptors FIRST
 #define CFG_TUD_DESC_AUTO 0
@@ -79,7 +79,7 @@ extern "C" {
 #define CFG_TUD_CDC USB_CDC_ENABLE_COUNT
 
 // Enable multiple CDC descriptors - OPTIMIZED FOR STREAMING
-#define CFG_TUD_CDC_EP_BUFSIZE 512   // Match USB 2.0 bulk packet size for efficiency
+#define CFG_TUD_CDC_EP_BUFSIZE 64   // Match USB 2.0 bulk packet size for efficiency
 
 #define CFG_TUD_MSC USB_MSC_ENABLE
 #define CFG_TUD_MIDI USB_MIDI_ENABLE

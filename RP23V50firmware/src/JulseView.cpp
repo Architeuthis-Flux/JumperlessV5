@@ -1,4 +1,11 @@
 #include "JulseView.h"
+
+bool debugLA = false;
+
+bool la_enabled = true;
+
+
+/*
 #include "ArduinoStuff.h" // For USBSer2
 #include "Graphics.h"
 #include "Peripherals.h"
@@ -15,9 +22,7 @@ uint32_t g_julseview_digital_buf_size = 16384;
 #include "pico.h"
 
 // Logic analyzer debug flag (kept for compatibility)
-bool debugLA = false;
 
-bool la_enabled = false;
 
 #include "hardware/adc.h"
 #include "hardware/clocks.h"
@@ -2162,7 +2167,7 @@ void julseview::send_slice_init( uint8_t* dbuf ) {
 }
 
 #define PRINT_IN_TRANSMIT 0
-#define PRINT_DATA_SAMPLES 0 // !Set to 1 to enable sample data printing
+#define PRINT_DATA_SAMPLES 1 // !Set to 1 to enable sample data printing
 
 // Send mixed analog and digital data - FIRMWARE DECIMATION VERSION
 void julseview::send_slices_analog( uint8_t* dbuf, uint8_t* abuf ) {
@@ -3548,7 +3553,7 @@ void julseview::get_calibrated_analog_scaling( uint8_t channel, uint32_t* scale_
 }
 
 
-
+*/
 
 
 

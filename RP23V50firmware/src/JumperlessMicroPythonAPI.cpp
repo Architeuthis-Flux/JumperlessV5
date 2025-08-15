@@ -20,6 +20,10 @@
 #include "hardware/gpio.h"
 #include "SafeString.h"
 
+#include "LogicAnalyzer.h"
+
+extern LogicAnalyzer logicAnalyzer; // defined in main.cpp
+
 // External declarations
 extern SafeString nodeFileString;
 
@@ -389,118 +393,72 @@ int jl_switch_slot(int slot) {
 
 
 void jl_control_set_analog(int channel, float value) {
-    if (channel >= 0 && channel < 4) {
-        control_A[channel] = value;
-    }
+    // if (channel >= 0 && channel < 4) {
+    //     control_A[channel] = value;
+    // }
 }
 
 void jl_control_set_digital(int channel, bool value) {
-    if (channel >= 0 && channel < 4) {
-        control_D[channel] = value;
-    }
+    // if (channel >= 0 && channel < 4) {
+    //     control_D[channel] = value;
+    // }
 }
 
 // Enhanced Logic Analyzer Functions
 bool jl_la_set_trigger(int trigger_type, int channel, float value) {
-    // Map trigger types to JulseView trigger types
-    switch (trigger_type) {
-        case 0: // TRIGGER_ANALOG_LEVEL
-            if (channel >= 0 && channel < 8) {
-                //julseview.configure_analog_trigger(channel, (uint16_t)value, EDGE_EITHER);
-                return true;
-            }
-            break;
-        case 1: // TRIGGER_ANALOG_EDGE
-            if (channel >= 0 && channel < 8) {
-               // julseview.configure_analog_trigger(channel, (uint16_t)value, EDGE_RISING);
-                return true;
-            }
-            break;
-        case 2: // TRIGGER_DIGITAL_EDGE
-            if (channel >= 0 && channel < 8) {
-                //julseview.configure_digital_trigger(channel, EDGE_RISING);
-                return true;
-            }
-            break;
-        case 3: // TRIGGER_INTERNAL_VAR
-           // julseview.configure_internal_trigger((uint32_t)channel, (uint32_t)value);
-            return true;
-    }
-    return false;
+    // Triggers not implemented in LogicAnalyzer yet; accept and noop
+    (void)trigger_type; (void)channel; (void)value;
+    return true;
 }
 
 bool jl_la_capture_single_sample(void) {
-    // Trigger a single sample capture and send to PulseView
-    if (julseview.getIsRunning()) {
-        return false; // Already capturing
-    }
-    
-    // Configure for single sample capture
-    julseview.num_samples = 1;
-    julseview.sample_rate = 1000; // 1KHz default
-    
-    // Start capture
-    julseview.run();
-    
-    // Wait for capture to complete
-    while (julseview.getIsRunning()) {
-        delayMicroseconds(100);
-    }
-    
+    if (logicAnalyzer.getIsRunning()) return false;
+    logicAnalyzer.num_samples = 1;
+    logicAnalyzer.sample_rate_hz = 1000;
+    logicAnalyzer.arm();
+    logicAnalyzer.run();
+    while (logicAnalyzer.getIsRunning()) { delayMicroseconds(100); }
     return true;
 }
 
 bool jl_la_start_continuous_capture(void) {
-    if (julseview.getIsRunning()) {
-        return false; // Already capturing
-    }
-    
-    // Configure for continuous capture
-    julseview.num_samples = 0; // 0 = continuous
-    julseview.sample_rate = 1000000; // 1MHz default
-    
-    // Start capture
-    julseview.run();
+    if (logicAnalyzer.getIsRunning()) return false;
+    logicAnalyzer.num_samples = 0; // 0 => continuous not yet supported; use large value
+    logicAnalyzer.num_samples = 0x7FFFFFFF;
+    logicAnalyzer.sample_rate_hz = 1000000;
+    logicAnalyzer.arm();
+    logicAnalyzer.run();
     return true;
 }
 
 bool jl_la_stop_capture(void) {
-    if (!julseview.getIsRunning()) {
-        return false; // Not capturing
-    }
-    
-    julseview.reset();
+    if (!logicAnalyzer.getIsRunning()) return false;
+    logicAnalyzer.reset();
     return true;
 }
 
 bool jl_la_is_capturing(void) {
-    return julseview.getIsRunning();
+    return logicAnalyzer.getIsRunning();
 }
 
 void jl_la_set_sample_rate(uint32_t sample_rate) {
-    julseview.sample_rate = sample_rate;
+    logicAnalyzer.sample_rate_hz = sample_rate;
 }
 
 void jl_la_set_num_samples(uint32_t num_samples) {
-    julseview.num_samples = num_samples;
+    logicAnalyzer.num_samples = num_samples;
 }
 
 void jl_la_enable_channel(int channel_type, int channel, bool enable) {
-    if (channel_type == 0) { // Digital channel
+    if (channel_type == 0) { // Digital
         if (channel >= 0 && channel < 8) {
-            if (enable) {
-                julseview.d_mask |= (1 << channel);
-            } else {
-                julseview.d_mask &= ~(1 << channel);
-            }
+            if (enable) logicAnalyzer.d_mask |= (1u << channel);
+            else logicAnalyzer.d_mask &= ~(1u << channel);
         }
-    } else if (channel_type == 1) { // Analog channel
+    } else if (channel_type == 1) { // Analog
         if (channel >= 0 && channel < 8) {
-            if (enable) {
-                julseview.a_mask |= (1 << channel);
-            } else {
-                julseview.a_mask &= ~(1 << channel);
-            }
+            if (enable) logicAnalyzer.a_mask |= (1u << channel);
+            else logicAnalyzer.a_mask &= ~(1u << channel);
         }
     }
 }
@@ -514,17 +472,13 @@ void jl_la_set_control_digital(int channel, bool value) {
 }
 
 float jl_la_get_control_analog(int channel) {
-    if (channel >= 0 && channel < 4) {
-        return control_A[channel];
-    }
-    return 0.0f;
+   // return (channel >= 0 && channel < 4) ? control_A[channel] : 0.0f;
+   return 0.0f;
 }
 
 bool jl_la_get_control_digital(int channel) {
-    if (channel >= 0 && channel < 4) {
-        return control_D[channel];
-    }
-    return false;
+   // return (channel >= 0 && channel < 4) ? control_D[channel] : false;
+   return false;
 }
 
 // OLED Functions

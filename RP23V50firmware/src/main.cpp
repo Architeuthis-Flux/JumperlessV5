@@ -70,6 +70,7 @@ KevinC@ppucc.io
 #include "JulseView.h"
 #include "Debugs.h"
 #include <hardware/adc.h>
+#include "LogicAnalyzer.h"
 
 
 bread b;
@@ -111,6 +112,7 @@ bool newConfigOptions = false; // set to true with new config options //!
                                // fix the saving every boot thing
 
 //julseview julseview;
+LogicAnalyzer logicAnalyzer;
 
 void setup() {
   pinMode(RESETPIN, OUTPUT_12MA);
@@ -567,7 +569,7 @@ dontshowmenu:
     unsigned long busyTimer = millis();
 
 
-    if (julseview.getShouldStopOtherStuff() == true) {
+    if (logicAnalyzer.is_running() == true || logicAnalyzer.is_armed() == true) {
       //julseview.check_heartbeat_watchdog();
        delay(1);
       // if (millis() - core1Timeout > 2000) {
@@ -915,7 +917,7 @@ setupla:
 
       if (la_enabled) {
         Serial.println("Logic analyzer disabled, deinitializing...");
-        julseview.deinit();
+       // julseview.deinit();
         la_enabled = false;
         goto dontshowmenu;
       } else {
@@ -2345,6 +2347,8 @@ int passthroughStatus = 0;
 
 unsigned long serialInfoTimer = 0;
 
+unsigned long la_timer = 0;
+
 void loop1() {
   // int timer = micros();
 
@@ -2369,17 +2373,10 @@ void loop1() {
   // Use the new state variables to make smarter decisions about when to call the handler
   bool should_call_handler = false;
   
-  // Always call if device is actively running or armed
-  if ( julseview.getReceivedCommand()) {
-    should_call_handler = true;
-   // Serial.println("calling handler");
-
-    
-    julseview.handler();
-  } else if (millis() - last_la_check >= 50) {
+  // Route PulseView traffic to the new logic analyzer
+  if ((millis() - last_la_check >= 20) || (millis() - logicAnalyzer.last_command_time < 3000)) {
     last_la_check = millis();
-    should_call_handler = true;
-    julseview.handler();
+    logicAnalyzer.handler();
   }
   
   // CRITICAL: Post-deinit DMA watchdog to prevent buffer overflow crashes
@@ -2415,7 +2412,7 @@ void loop1() {
   if (doomOn == 1) {
     playDoom();
     doomOn = 0;
-  } else if (pauseCore2 == 0 && julseview_active == false) {
+  } else if (pauseCore2 == 0 && logicAnalyzer.getIsRunning() == false) {
     core2stuff();
   }
 
