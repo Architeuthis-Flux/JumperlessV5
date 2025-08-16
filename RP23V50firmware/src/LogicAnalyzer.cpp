@@ -3,12 +3,19 @@
 #include "LogicAnalyzer.h"
 #include "JulseView.h" // for debug macros and constants (reuse debug infra)
 #include <new>
+#include "Peripherals.h"
+#include "hardware/address_mapped.h"
+#include "hardware/gpio.h"
 #include "hardware/watchdog.h"
 #include "configManager.h"
 #include "Peripherals.h"
 
 // // ADC register definitions (matching JulseView)
 // #define ADC_BASE 0x40040000
+
+
+
+//TODO: Decimation mode
 
 // Unified PIO program (first instruction identical). We'll vary wrap based on mode.
 // Read 8 pins, assert IRQ1, then delay ~256 PIO cycles (8*32) to extend period without extreme clkdiv.
@@ -256,7 +263,7 @@ bool LogicAnalyzer::compute_layout() {
     // Decide a chunked samples_per_half (ping-pong) small enough to fit memory and aligned
     if (num_samples == 0) num_samples = 10000;
     // Base chunk size (time-samples per half)
-    uint32_t half = 4096; // default chunk
+    uint32_t half = 2048; // default chunk
     uint32_t a_cnt = 0;
     for (int i = 0; i < 8; i++) if ((a_mask >> i) & 1) a_cnt++;
     uint32_t new_samples_per_half;
@@ -312,6 +319,19 @@ bool LogicAnalyzer::compute_layout() {
     return true;
 }
 
+
+
+
+gpio_function_t last_gpio_function_map[10];
+bool last_gpio_dir_map[10];
+bool last_gpio_pull_up_map[10];
+bool last_gpio_pull_down_map[10];
+bool last_gpio_input_enabled_map[10];
+
+
+
+
+
 bool LogicAnalyzer::setup_pio_for_digital() {
 	if (!pio_loaded || pio_slow_offset < 0) {
 		JULSEDEBUG_ERR("LA: PIO slow program not loaded; call init() earlier\n\r");
@@ -322,6 +342,28 @@ bool LogicAnalyzer::setup_pio_for_digital() {
 	pio_sm_set_enabled(lapio, lasm, false);
 	pio_sm_clear_fifos(lapio, lasm);
 	pio_sm_drain_tx_fifo(lapio, lasm);
+	printGPIOState();
+
+	for (int i = 0; i < 8; i++) { // errata fix save state
+		last_gpio_function_map[i] = gpio_get_function(20 + i);
+		last_gpio_dir_map[i] = gpio_get_dir(20 + i);
+			// gpio_set_function(20 + i, GPIO_FUNC_SIO);
+			// gpio_set_dir(20 + i, false);
+			
+		last_gpio_input_enabled_map[i] = pads_bank0_hw->io[20+i] & PADS_BANK0_GPIO0_IE_BITS;
+
+		//JULSEDEBUG_DIG("LA PIO setup: gpio_input_enabled_map[%d] = %d\n\r", i, last_gpio_input_enabled_map[i]);
+		// PADS_BANK0_GPIO0_IE_BITS,
+		// PADS_BANK0_GPIO0_IE_BITS | PADS_BANK0_GPIO0_OD_BITS
+		
+		
+		last_gpio_pull_up_map[i] = gpio_is_pulled_up(20 + i);
+		last_gpio_pull_down_map[i] = gpio_is_pulled_down(20 + i);
+		// gpio_set_input_enabled(20 + i, false);
+		 //gpio_set_pulls(20 + i, false, false);
+		 gpio_set_input_enabled(20 + i, true);
+		
+	}
 
 	pio_sm_config c = pio_get_default_sm_config();
 	sm_config_set_in_pins(&c, 20);
@@ -532,7 +574,7 @@ void LogicAnalyzer::start_hardware() {
 		pio_interrupt_clear(lapio, 1);
 		// Enable PIO block interrupt flag 1 to route to BOTH CPU IRQ lines for robustness
 		pio_set_irq0_source_enabled(lapio, pis_interrupt1, true);
-		pio_set_irq1_source_enabled(lapio, pis_interrupt1, true);
+		//pio_set_irq1_source_enabled(lapio, pis_interrupt1, true);
 		active_instance = this;
 		// Map active PIO to its IRQ lines
 		uint irq0_num = PIO0_IRQ_0;
@@ -545,10 +587,10 @@ void LogicAnalyzer::start_hardware() {
 			irq_add_shared_handler(irq0_num, [](){ LogicAnalyzer::pio_irq1_isr(); }, 0);
 			irq_set_enabled(irq0_num, true);
 		}
-		if (!irq_has_shared_handler(irq1_num)) {
-			irq_add_shared_handler(irq1_num, [](){ LogicAnalyzer::pio_irq1_isr(); }, 0);
-			irq_set_enabled(irq1_num, true);
-		}
+		// if (!irq_has_shared_handler(irq1_num)) {
+		// 	irq_add_shared_handler(irq1_num, [](){ LogicAnalyzer::pio_irq1_isr(); }, 0);
+		// 	irq_set_enabled(irq1_num, true);
+		// }
 		JULSEDEBUG_DIG("LA prep: slow IRQ pacing configured (irq0=%u irq1=%u)\n\r", (unsigned)irq0_num, (unsigned)irq1_num);
 	}
 	// Do NOT enable PIO SM here; will be enabled after DMA starts
@@ -615,15 +657,31 @@ void LogicAnalyzer::run() {
 	
 	// Start hardware (ADC/PIO only, no DMA starts)
 	start_hardware();
-	
+	//adc_run(false);
 	// Start first DMA channels (they will chain automatically per setup)
 	if (dma_dig_0 >= 0) dma_channel_start(dma_dig_0);
 	if (a_cnt_runtime && dma_ana_0 >= 0) dma_channel_start(dma_ana_0);
-	delayMicroseconds(10000);
+
+
+	
+	delayMicroseconds(100000);
+	// adc_fifo_drain();
 
 	// Now that DMA is primed, enable PIO SM and start ADC conversions (normal mode)
+	
+
+
+	io_rw_32 adcMask = adc_hw->cs;
+	if (adc_rr_mask) {
+		uint first_ch = (uint)__builtin_ctz(adc_rr_mask);
+		adcMask = (adcMask & ~ADC_CS_AINSEL_BITS) | (((first_ch << ADC_CS_AINSEL_LSB) & ADC_CS_AINSEL_BITS));
+	}
+	adcMask |= ADC_CS_START_MANY_BITS;
+	
+	
 	if (!is_slow_mode()) {
-		adc_hw->cs |= ADC_CS_START_MANY_BITS;
+		
+		adc_hw->cs = adcMask;
 	}
 	pio_sm_set_enabled(lapio, lasm, true);
  
@@ -637,6 +695,8 @@ void LogicAnalyzer::run() {
 			// spin; hardware paced
 		}
 	};
+
+	delayMicroseconds(1000);
 	
 	while (samples_remaining > 0) { //! this is the capture loop
 		// Wait for current half completion
@@ -755,6 +815,26 @@ void LogicAnalyzer::stop() {
 	pio_sm_restart(lapio, lasm);
 	pio_sm_clear_fifos(lapio, lasm);
 
+	JULSEDEBUG_STA("LA stop()\n\r");
+	initADC();
+
+//erattaClearGPIO();
+
+	for (int i = 0; i < 8; i++) { // errata fix 
+		//gpio_set_function(20 + i, last_gpio_function_map[i]);
+
+		gpio_set_input_enabled(20 + i, false);
+		delayMicroseconds(1);
+
+		gpio_set_input_enabled(20 + i, last_gpio_input_enabled_map[i]);
+
+		gpio_set_function(20 + i, last_gpio_function_map[i]);
+		
+		gpio_set_dir(20 + i, last_gpio_dir_map[i]);
+		//gpio_set_input_enabled(20 + i, true);
+		gpio_set_pulls(20 + i, last_gpio_pull_up_map[i], last_gpio_pull_down_map[i]);
+	}
+
 	// Ensure USB CDC write FIFO is flushed between runs to avoid stale data
 #ifdef USE_TINYUSB
 	tud_task();
@@ -776,6 +856,10 @@ void LogicAnalyzer::deinit() {
 	if (ana_half0) { delete [] ana_half0; ana_half0 = nullptr; }
 	if (ana_half1) { delete [] ana_half1; ana_half1 = nullptr; }
 	armed = false; initialized = false; running = false; txidx = 0;
+
+
+
+
 }
 
 uint8_t LogicAnalyzer::pack_digital_8(uint8_t pio_bits) {

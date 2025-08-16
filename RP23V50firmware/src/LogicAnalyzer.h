@@ -25,6 +25,8 @@
 // - Slow mode:   sample_rate < 5 kHz and num_samples > 1000 (stream as we go)
 // - Decimation:  TODO (when digital rate exceeds ADC capability)
 
+
+
 class LogicAnalyzer {
 public:
 	LogicAnalyzer();
@@ -150,4 +152,5 @@ private:
 	uint8_t adc_rr_mask;
 };
 
+extern LogicAnalyzer logicAnalyzer;
 

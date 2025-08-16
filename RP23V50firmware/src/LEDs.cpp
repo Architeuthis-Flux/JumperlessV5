@@ -2503,7 +2503,7 @@ void lightUpNet(int netNumber, int node, int onOff, int brightness2,
         }
 
       if (net[netNumber].machine == true) {
-        Serial.println("machine");
+        //Serial.println("machine");
         if (net[netNumber].nodes[j] == node || node == -1) {
           if (onOff == 1) {
             if (nodesToPixelMap[net[netNumber].nodes[j]] > 0) {

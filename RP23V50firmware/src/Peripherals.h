@@ -100,6 +100,7 @@ void printGPIOState(void);
 int toggleGPIO(int lowHigh = 2, int gpio = -1, int onlyCheck = 0);
 int probeToggle(void);
 int handleHighlights(int probeReading);
+void erattaClearGPIO(int gpio = -1);
 
 int initI2C(int sdaPin = 26, int sclPin = 27, int speed = 100000);
 int findI2CAddress(int sdaPin = 26, int sclPin = 27, int i2cNumber = 1);

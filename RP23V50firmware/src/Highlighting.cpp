@@ -542,13 +542,13 @@ int highlightNets(int probeReading, int encoderNetHighlighted, int print) {
     //  Serial.flush();
 
   int netHighlighted;
-  if (encoderNetHighlighted != -1) {
+  if (encoderNetHighlighted > 0) {
     netHighlighted = encoderNetHighlighted;
     } else {
     netHighlighted = brightenNet(probeReading);
     }
 
-  if (netHighlighted != -1) {
+  if (netHighlighted > 0) {
     highlightedOriginalColor = netColors[netHighlighted];
     highlightedNet = netHighlighted;
     
