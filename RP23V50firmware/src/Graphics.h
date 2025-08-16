@@ -61,7 +61,9 @@ public:
   void printRawRow(uint8_t data, int row, uint32_t color, uint32_t bg,
                    int scale = 1);
 
+ // int lightUpNode(int node, uint32_t color);
   void clear(int topBottom = -1);
+  void lightUpNode(int node, uint32_t color);
 };
 
 
@@ -188,5 +190,10 @@ void dumpHeaderMain(int posX = 50, int posY = 20, int absolute = 1,
                     int wide = 0);
 void dumpLEDsMain(int posX = 50, int posY = 27, int pixelsOrRows = 0,
                   int header = 0, int rgbOrRaw = 0, int logo = 0);
+
+// Helper that maps a defined node (e.g., TOP_1..BOTTOM_30) to the 0-based row
+// index expected by bread.printRawRow(). Returns -1 if the node is not a
+// breadboard row.
+int nodeToPrintRow(int node);
 
 #endif

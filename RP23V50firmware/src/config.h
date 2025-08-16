@@ -84,6 +84,8 @@ struct config {
         float adc_7_spread = 18.28;
         int probe_max = 4060;
         int probe_min = 15;
+        float probe_switch_threshold = 3.0;
+        float measure_mode_output_voltage = 3.33;
     } calibration;
 
     struct logo_pads {

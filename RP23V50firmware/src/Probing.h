@@ -32,6 +32,9 @@ extern volatile int inPadMenu;
 extern volatile int checkingButton;
 extern volatile int measureModeActive;
 
+extern int probeRowMapByPad[108];
+extern int probeRowMap[108];
+
 
 extern int probePowerDAC;
 extern int lastProbePowerDAC;

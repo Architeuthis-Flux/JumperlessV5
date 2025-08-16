@@ -1820,6 +1820,84 @@ void bread::printRawRow(uint8_t data, int row, uint32_t color, uint32_t bg,
   }
 }
 
+
+void bread::lightUpNode(int node, uint32_t color) {
+  if (node <= 0) {
+    return;
+  }
+
+  // Breadboard rows 1..60
+  if (node >= 1 && node <= 60) {
+    // Fill all 5 pixels in the row
+    printGraphicsRow(0b00011111, node - 1, color, 0xfffffe);
+    return;
+  }
+
+  // Header/special nodes mapped via bbPixelToNodesMapV5
+
+  if (node >= 69 && node <= 99) {
+  for (int i = 0; i < 35; i++) {
+    if (bbPixelToNodesMapV5[i][0] == node) {
+      leds.setPixelColor(bbPixelToNodesMapV5[i][1], color);
+      return;
+    }
+  }
+}
+
+  if (node >= 100 && node <= 126) {
+
+
+  if (node == ADC_PAD) {
+    setLogoOverride(ADC_0, color);
+    setLogoOverride(ADC_1, color);
+    return;
+  }
+  if (node == DAC_PAD) {
+    setLogoOverride(DAC_0, color);
+    setLogoOverride(DAC_1, color);
+    return;
+  }
+  if (node == GPIO_PAD) {
+    setLogoOverride(GPIO_0, color);
+    setLogoOverride(GPIO_1, color);
+        return;
+  }
+  if (node == LOGO_PAD_TOP) {
+    setLogoOverride(LOGO_TOP, color);
+    return;
+  }
+  if (node == LOGO_PAD_BOTTOM) {
+    setLogoOverride(LOGO_BOTTOM, color);
+    return;
+  }
+  if (node == TOP_RAIL) {
+    brightenedRail = 0;
+    return;
+  }
+  if (node == BOTTOM_RAIL) {
+    brightenedRail = 2;
+    return;
+  }
+  if (node == TOP_RAIL_GND) {
+    brightenedRail = 1;
+    return;
+  }
+  if (node == BOTTOM_RAIL_GND) {
+    brightenedRail = 3;
+    return;
+  }
+}
+  // if (node == BUILDING_PAD_TOP) {
+  //   setLogoOverride(LOGO, color);
+  //   return;
+  // }
+  // if (node == BUILDING_PAD_BOTTOM) {
+  //   setLogoOverride(LOGO, color);
+  //   return;
+  // }
+}
+
+
 void bread::barGraph(int position, int value, int maxValue, int leftRight,
                      uint32_t color, uint32_t bg) {}
 /*
@@ -1874,6 +1952,13 @@ void printGraphicsRow(uint8_t data, int row, uint32_t color, uint32_t bg) {
       }
     }
   }
+}
+
+int nodeToPrintRow(int node) {
+  if (node <= 0) {
+    return -1;
+  }
+  return node - 1;
 }
 
 void printChar(const char c, uint32_t color, uint32_t bg, int position,

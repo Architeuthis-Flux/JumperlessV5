@@ -17,6 +17,7 @@
 #include "Probing.h"
 #include "Python_Proper.h"
 #include "RotaryEncoder.h"
+#include "config.h"
 #include "configManager.h"
 #include "oled.h"
 #include "Python_Proper.h"
@@ -73,6 +74,7 @@ struct app apps[30] = {
     {"uPythonREPL", 8, 1, microPythonREPLapp},
     {"File   Manager", 9, 1, fileManagerApp},
     {"eKilo Editor", 10, 1, eKiloApp},
+    {"Probe  Calib", 11, 1, probeCalibApp},
 
     {"DOOM", 16, 1, playDoom},
 
@@ -152,6 +154,9 @@ void runApp(int index, char *name) {
   case 10:
     eKiloApp();
     break;
+  case 11:
+    probeCalibApp();
+    break;
     // case 2: logicAnalyzer(); break;
     // case 3: oscilloscope(); break;
     // case 4: midiSynth(); break;
@@ -198,6 +203,179 @@ void fileManagerApp(void) {
   filesystemApp(false);
 }
 
+
+void probeCalibApp(void) {
+
+
+  b.clear();
+
+  cycleTerminalColor(true, 5.0, true);
+  Serial.println("Probe Calibration App");
+
+  cycleTerminalColor();
+
+  Serial.println("\n\rTap rows with the probe and rotate the clickweel until they're lighting up the correct row"); 
+
+  cycleTerminalColor();
+
+  Serial.println("be sure to check nano header rows too");
+
+  cycleTerminalColor();
+
+  Serial.println("Hold the clickwheel when you're done\n\n\r");
+
+
+
+  cycleTerminalColor();
+
+
+  bool done = false;
+
+  b.clear();
+  int lastNetSlot = netSlot;
+  netSlot = 8;
+  createSlots(8, 1);
+
+  refreshConnections(-1, 0);
+  routableBufferPower(1, 1, 1);
+  resetEncoderPosition = true;
+int lastEncoderPosition = encoderPosition;
+  int reading = 0;
+  int lastReading = -1;
+
+  int probeMax = jumperlessConfig.calibration.probe_max;
+
+  int nodeSelected = -1;
+  int lastNodeSelected = -1;
+
+  int nodeSelectedWithOldMapping = -1;
+  int lastNodeSelectedWithOldMapping = -1;
+
+
+  int lastValidProbeRead = -1;
+  int lastSwitchPosition = -1;
+
+  int measureOrSelect = 0;
+
+  float measureModeOutputVoltage = jumperlessConfig.calibration.measure_mode_output_voltage;
+
+  while (done == false) {
+
+
+    int probeRead = readProbeRaw(0, true);
+
+    if (probeRead != -1) {
+      lastValidProbeRead = probeRead;
+    }
+
+
+    int rowProbed = map(lastValidProbeRead, jumperlessConfig.calibration.probe_min, jumperlessConfig.calibration.probe_max, 101, 0);
+    int rowProbedWithOldMapping = map(lastValidProbeRead, jumperlessConfig.calibration.probe_min, probeMax, 101, 0);
+
+
+    nodeSelected = probeRowMap[rowProbed];
+    nodeSelectedWithOldMapping = probeRowMapByPad[rowProbedWithOldMapping];
+
+
+    int checkSwitch = checkSwitchPosition();
+
+    if (checkSwitch != lastSwitchPosition) {
+    if (checkSwitch == 0 ) {
+      lastSwitchPosition = 0;
+      measureOrSelect = 0;
+      showProbeLEDs = 3;
+      measureModeOutputVoltage = jumperlessConfig.calibration.measure_mode_output_voltage;
+    } else {
+      lastSwitchPosition = 1;
+      measureOrSelect = 1;
+      showProbeLEDs = 1;
+      probeMax = jumperlessConfig.calibration.probe_max;
+      }
+      resetEncoderPosition = true;
+    }
+
+
+    reading = rowProbed;
+
+    if (encoderPosition != lastEncoderPosition || reading != lastReading) {
+      lastEncoderPosition = encoderPosition;
+      if (measureOrSelect == 0) {
+
+        jumperlessConfig.calibration.measure_mode_output_voltage = measureModeOutputVoltage - ((float)encoderPosition / 2000.0);
+
+        if (jumperlessConfig.calibration.measure_mode_output_voltage < 2.8) {
+          jumperlessConfig.calibration.measure_mode_output_voltage = 2.8;
+        } else if (jumperlessConfig.calibration.measure_mode_output_voltage > 4.5) {
+          jumperlessConfig.calibration.measure_mode_output_voltage = 5.0;
+        }
+        setDac0voltage(jumperlessConfig.calibration.measure_mode_output_voltage, 1, 0, false);
+
+      } else {
+
+        jumperlessConfig.calibration.probe_max = probeMax - encoderPosition;
+        if (jumperlessConfig.calibration.probe_max < 15) {
+          jumperlessConfig.calibration.probe_max = 15;
+        }
+      }
+      Serial.printf("                                  \rraw: %d enc: %d reading: %d max: %d node: %s mode: %s v: %0.4f", \
+        lastValidProbeRead, encoderPosition, rowProbed, jumperlessConfig.calibration.probe_max, definesToChar(nodeSelected), measureOrSelect? "measure" : "select", jumperlessConfig.calibration.measure_mode_output_voltage  );
+      Serial.flush();
+    }
+
+   
+
+    if (reading == -1) {
+      continue;
+    }
+
+
+    if (reading != lastReading && reading != -1) {
+      //b.clear();
+      clearLEDsExceptRails();
+      //if (probeRead != -1) {
+       // b.lightUpNode(lastReading, 0x000000);
+       
+     //}
+     if (nodeSelected != nodeSelectedWithOldMapping && measureOrSelect == 1) {
+     // b.lightUpNode(lastNodeSelectedWithOldMapping, 0x000000);
+      b.lightUpNode(nodeSelectedWithOldMapping, 0x050205);
+      }
+      if (measureOrSelect == 0) {
+        b.lightUpNode(nodeSelected, 0x200010);
+      } else {
+        b.lightUpNode(nodeSelected, 0x001030);
+      }
+     
+    }
+lastReading = reading;
+lastNodeSelected = nodeSelected;
+lastNodeSelectedWithOldMapping = nodeSelectedWithOldMapping;
+
+
+
+if (encoderButtonState == HELD) {
+  done = true;
+}
+
+  }
+
+  Serial.println("\n\n\r");
+  Serial.println("Saving config...");
+
+
+
+  saveConfig();
+  leaveApp(lastNetSlot);
+
+
+
+
+
+
+
+
+
+}
 // this just does a bunch of random stuff as an example
 void customApp(void) {
   leds.clear();

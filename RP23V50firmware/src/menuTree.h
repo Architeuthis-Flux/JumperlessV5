@@ -75,7 +75,7 @@ String menuLines[] = {
   "-Calib  DACs",
   "-Custom App",
   // "-XLSX   GUI",
-  "-Micropython",
+  //"-Micropython",
   "-uPythonREPL",
   "-File   Manager",
   "-Probe  Calib",

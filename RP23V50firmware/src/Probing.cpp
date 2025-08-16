@@ -2219,7 +2219,7 @@ int checkSwitchPosition() { // 0 = measure, 1 = select
   // Serial.println(current);
   // Serial.flush();
 
-  if (checkProbeCurrent() > 0.08) {
+  if (checkProbeCurrent() > jumperlessConfig.calibration.probe_switch_threshold) {
     // showProbeLEDs = 0;
       //Serial.print("probe current: ");
     //  Serial.println(micros() - timer);
@@ -2309,7 +2309,7 @@ float checkProbeCurrent(void) {
   //  printChipStatus();
   //  pinMode(23, INPUT);
  // digitalWrite(10, LOW);
-  delayMicroseconds(1000);
+ // delayMicroseconds(1000);
   // refreshLocalConnections();
   // showProbeLEDs = 8;
   // while(showProbeLEDs == 8) {
@@ -2360,11 +2360,11 @@ void routableBufferPower(int offOn, int flash, int force) {
       // Serial.print("bufferPowerConnected dac 0 = "); Serial.println(bufferPowerConnected);
       bufferPowerConnected = false;
       needToRefresh = true;
-      } else if (getDacVoltage(0) < 3.29 || getDacVoltage(0) > 3.34 && offOn == 1) {
+      } else if (getDacVoltage(0) < jumperlessConfig.calibration.measure_mode_output_voltage - 0.02 || getDacVoltage(0) > jumperlessConfig.calibration.measure_mode_output_voltage + 0.02 && offOn == 1) {
         // Serial.println("DAC 0 voltage is out of range, setting to 3.30 V");
         // Serial.print("getDacVoltage(0) = ");
         // Serial.println(getDacVoltage(0));
-        setDac0voltage(3.30, 1, 0);
+        setDac0voltage(jumperlessConfig.calibration.measure_mode_output_voltage, 1, 0);
         return;
         } else if (offOn == 1) {
           bufferPowerConnected = true;
@@ -2382,7 +2382,7 @@ void routableBufferPower(int offOn, int flash, int force) {
           // Serial.println("DAC 1 voltage is out of range, setting to 3.30 V");
           // Serial.print("getDacVoltage(1) = ");
           // Serial.println(getDacVoltage(1));
-          setDac1voltage(3.30, 1, 0);
+          setDac1voltage(jumperlessConfig.calibration.measure_mode_output_voltage, 1, 0);
           return;
           } else if (offOn == 1) {
             bufferPowerConnected = true;
@@ -2397,7 +2397,7 @@ void routableBufferPower(int offOn, int flash, int force) {
       // Serial.println("power on\n\r");
       //  delay(10);
       if (probePowerDAC == 0) {
-        setDac0voltage(3.30, 1, 0);
+        setDac0voltage(jumperlessConfig.calibration.measure_mode_output_voltage, 1, 0);
         if (probePowerDACChanged == true) {
           removeBridgeFromNodeFile(ROUTABLE_BUFFER_IN, DAC1, netSlot, flashOrLocal, 0);
           addBridgeToNodeFile(ROUTABLE_BUFFER_IN, DAC0, netSlot, flashOrLocal, 0);
@@ -2405,7 +2405,7 @@ void routableBufferPower(int offOn, int flash, int force) {
           needToRefresh = true;
           }
         } else if (probePowerDAC == 1) {
-          setDac1voltage(3.30, 1, 0);
+          setDac1voltage(jumperlessConfig.calibration.measure_mode_output_voltage, 1, 0);
           if (probePowerDACChanged == true) {
             removeBridgeFromNodeFile(ROUTABLE_BUFFER_IN, DAC0, netSlot, flashOrLocal, 0);
             addBridgeToNodeFile(ROUTABLE_BUFFER_IN, DAC1, netSlot, flashOrLocal, 0);
