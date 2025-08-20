@@ -475,7 +475,7 @@ void inputNodeFileList(int addRotaryConnections) {
     nodeFileString.concat(" } \n\r");
   }
   // Validate the input first
-  int validation_result = validateNodeFile(nodeFileString.c_str(), true);
+  int validation_result = validateNodeFile(nodeFileString.c_str(), false);
   if (validation_result != 0) {
     Serial.println("◇ Input validation failed: " +
                    String(getNodeFileValidationError(validation_result)));
@@ -620,14 +620,20 @@ void inputNodeFileList(int addRotaryConnections) {
   }
 
   // Validate all saved slots
-  Serial.println("◆ Validating saved slot files...");
+  if (debugFP) {
+    Serial.println("◆ Validating saved slot files...");
+  }
   for (int i = firstSlotNumber; i <= lastSlotNumber; i++) {
     int validation_result = validateNodeFileSlot(i, false);
     if (validation_result == 0) {
-      Serial.println("◆ Slot " + String(i) + " validated successfully");
+      if (debugFP) {
+        Serial.println("◆ Slot " + String(i) + " validated successfully");
+      }
     } else {
-      Serial.println("◇ Slot " + String(i) + " validation failed: " +
-                     String(getNodeFileValidationError(validation_result)));
+      if (debugFP) {
+        Serial.println("◇ Slot " + String(i) + " validation failed: " +
+                       String(getNodeFileValidationError(validation_result)));
+      }
     }
   }
 }
@@ -744,26 +750,26 @@ void savePreformattedNodeFile(int source, int slot, int keepEncoder) {
     // delayMicroseconds(microsPerByteSerial1);
     // }
   }
-  if (source == 1) {
-    nodeFile.print("{117-71, 116-70,");
-    while (Serial1.available() == 0) {
-    }
-    delayMicroseconds(microsPerByteSerial1);
-    // Serial.println("waiting for Arduino to send file");
-    while (Serial1.available() > 0) {
+  // if (source == 1) {
+  //   nodeFile.print("{117-71, 116-70,");
+  //   while (Serial1.available() == 0) {
+  //   }
+  //   delayMicroseconds(microsPerByteSerial1);
+  //   // Serial.println("waiting for Arduino to send file");
+  //   while (Serial1.available() > 0) {
 
-      char c = Serial1.read();
-      // nodeFile.write(c);
-      specialFunctionsString.write(c);
-      delayMicroseconds(microsPerByteSerial1);
-      // Serial.println(Serial1.available());
-    }
+  //     char c = Serial1.read();
+  //     // nodeFile.write(c);
+  //     specialFunctionsString.write(c);
+  //     delayMicroseconds(microsPerByteSerial1);
+  //     // Serial.println(Serial1.available());
+  //   }
 
-    while (Serial1.available() > 0) {
-      Serial1.read();
-      delayMicroseconds(microsPerByteSerial1);
-    }
-  }
+  //   while (Serial1.available() > 0) {
+  //     Serial1.read();
+  //     delayMicroseconds(microsPerByteSerial1);
+  //   }
+  // }
 
   specialFunctionsString.trim();
   if (specialFunctionsString.endsWith(",") == 0) {
@@ -1235,12 +1241,15 @@ int removeBridgeFromNodeFile(int node1, int node2, int slot, int flashOrLocal,
   unsigned long timerStart = millis();
   unsigned long timerEnd[5] = {0, 0, 0, 0, 0};
 
+
+  if (onlyCheck == 0) {
   for (int i = 0; i < 8; i++) { // idk if I should do this here but YOLO
     if (node1 == RP_GPIO_1 + i || node2 == RP_GPIO_1 + i) {
       if (gpioNet[i] != -2) {
         gpioNet[i] = -1;
       }
     }
+  }
   }
   // Serial.print("Slot = ");
   // Serial.println(slot);
@@ -1771,7 +1780,7 @@ void readStringFromSerial(int source, int addRemove) {
   if (source == 0) {
     specialFunctionsString.read(Serial);
   } else if (source == 1) {
-    specialFunctionsString.read(Serial1);
+   // specialFunctionsString.read(Serial1);
   }
 
   if (specialFunctionsString.endsWith("-") == 1 ||
@@ -2876,83 +2885,9 @@ void initializeValidationTracking() {
   }
 }
 
-void printNetColorTrackingStatus() {
-  Serial.println("◆ Performance Tracking Status:");
-  
-  // Net Color Tracking
-  Serial.println("  Net Colors:");
-  Serial.print("    Tracking variable: 0x");
-  Serial.println(slotsWithNetColors, HEX);
-  
-  int trackedSlots = 0;
-  Serial.print("    Slots with colors: ");
-  bool first = true;
-  for (int i = 0; i < 32 && i < NUM_SLOTS; i++) {
-    if (slotHasNetColors(i)) {
-      if (!first) Serial.print(", ");
-      Serial.print(i);
-      trackedSlots++;
-      first = false;
-    }
-  }
-  if (trackedSlots == 0) {
-    Serial.print("none");
-  }
-  Serial.println();
-  
-  // Validation Tracking
-  Serial.println("  Validation:");
-  Serial.print("    Tracking variable: 0x");
-  Serial.println(slotsValidated, HEX);
-  
-  int validatedSlots = 0;
-  Serial.print("    Validated slots: ");
-  first = true;
-  for (int i = 0; i < 32 && i < NUM_SLOTS; i++) {
-    if (slotIsValidated(i)) {
-      if (!first) Serial.print(", ");
-      Serial.print(i);
-      validatedSlots++;
-      first = false;
-    }
-  }
-  if (validatedSlots == 0) {
-    Serial.print("none");
-  }
-  Serial.println();
-  
-  // Performance Summary
-  Serial.println("  Performance Benefits:");
-  int colorSlotsSkipped = NUM_SLOTS - trackedSlots;
-  int validationSlotsSkipped = validatedSlots;
-  Serial.println("    " + String(colorSlotsSkipped) + " slots skip net color file operations");
-  Serial.println("    " + String(validationSlotsSkipped) + " slots skip validation on next open");
-}
 
-void benchmarkSlotOperations() {
-  Serial.println("◆ Slot Operation Benchmark:");
-  
-  unsigned long startTime, endTime;
-  
-  // Test 1: Net color checking (fast path)
-  startTime = micros();
-  for (int i = 0; i < NUM_SLOTS; i++) {
-    slotHasNetColors(i); // Fast bitmask check
-  }
-  endTime = micros();
-  Serial.println("  Net color checks (" + String(NUM_SLOTS) + " slots): " + String(endTime - startTime) + " μs");
-  
-  // Test 2: Validation checking (fast path)  
-  startTime = micros();
-  for (int i = 0; i < NUM_SLOTS; i++) {
-    slotIsValidated(i); // Fast bitmask check
-  }
-  endTime = micros();
-  Serial.println("  Validation checks (" + String(NUM_SLOTS) + " slots): " + String(endTime - startTime) + " μs");
-  
-  Serial.println("  Performance: Both operations now take microseconds instead of seconds");
-  Serial.println("  Improvement: ~1000x faster for slots without colors/validation needs");
-}
+
+
 
 ///@brief prints the disconnected nodes (separated by commas)
 ///@return the number of disconnected nodes

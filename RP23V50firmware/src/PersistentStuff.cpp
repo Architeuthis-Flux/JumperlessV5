@@ -278,8 +278,6 @@ void saveDacCalibration(void)
   jumperlessConfig.calibration.adc_3_zero = adcZero[3];
   jumperlessConfig.calibration.adc_4_zero = adcZero[4];
   jumperlessConfig.calibration.adc_7_zero = adcZero[7];
-  jumperlessConfig.calibration.probe_max = 0.0f;
-  jumperlessConfig.calibration.probe_min = 0.0f;
 
   saveConfig();
   //Serial.println("DAC calibration saved to both EEPROM and config file");
@@ -426,6 +424,8 @@ void debugFlagSet(int flag) {
     debugNTCC2 = false;
     debugLEDs = false;
     debugLA = false;
+    jumperlessConfig.debug.arduino = 0;
+    debugArduino = 0;
     showProbeCurrent = 0;
     jumperlessConfig.debug.file_parsing = false;
     jumperlessConfig.debug.net_manager = false;
@@ -459,6 +459,7 @@ void debugFlagSet(int flag) {
     debugNTCC2 = true;
     debugLEDs = true;
     debugLA = true;
+    // do not force arduino debug level here; leave as-is
     showProbeCurrent = 1;
     jumperlessConfig.debug.file_parsing = true;
     jumperlessConfig.debug.net_manager = true;
@@ -803,6 +804,8 @@ void readSettingsFromConfig() {
   debugNTCC2 = jumperlessConfig.debug.nets_to_chips_alt;
   debugLEDs = jumperlessConfig.debug.leds;
   debugLA = jumperlessConfig.debug.logic_analyzer;
+  // Sync Arduino debug level to global
+  debugArduino = jumperlessConfig.debug.arduino;
   // showProbeCurrent = jumperlessConfig.debug_flags.show_probe_current;
 
   // Display settings

@@ -69,6 +69,7 @@ KevinC@ppucc.io
 #include "configManager.h"
 #include "oled.h"
 #include <hardware/adc.h>
+#include "AsyncPassthrough.h"
 
 bread b;
 
@@ -104,7 +105,7 @@ volatile int dumpLED = 0;
 unsigned long dumpLEDTimer = 0;
 unsigned long dumpLEDrate = 50;
 
-const char firmwareVersion[] = "5.3.0.4"; //! remember to update this
+const char firmwareVersion[] = "5.3.1.0"; //! remember to update this
 bool newConfigOptions = false;            //! set to true with new config options //!
                                           
 
@@ -186,7 +187,18 @@ void setup( ) {
         // delayMicroseconds(1);
     }
 
-    initSecondSerial( );
+    if (jumperlessConfig.serial_1.async_passthrough == true) {
+        AsyncPassthrough::begin();
+    }
+
+    // Initialize the async UART0 <-> CDC1 bridge
+   // AsyncPassthrough::begin();
+
+    // Ensure Arduino Serial1 does not contend with UART0 used by AsyncPassthrough
+    //Serial1.end();
+
+    // Optionally mirror host CDC settings to UART0 periodically elsewhere:
+    // AsyncPassthrough::applyUsbLineCodingToUart();
 
     // Auto-initialize JulseView for SUMP/libsigrok compatibility
     // Serial.println("Auto-initializing JulseView for logic analyzer...");
@@ -219,6 +231,8 @@ void setup( ) {
     // routableBufferPower(1, 1);
 
     getNothingTouched( );
+
+    checkProbeCurrentZero();
     startupTimers[ 8 ] = millis( );
     createSlots( -1, 0 );
     initializeNetColorTracking( );   // Initialize net color tracking after slots are
@@ -252,7 +266,7 @@ void setupCore2stuff( ) {
     startupCore2timers[ 5 ] = millis( );
     initRotaryEncoder( );
     startupCore2timers[ 6 ] = millis( );
-
+    initSecondSerial( );
     // delay(4);
 }
 
@@ -298,17 +312,17 @@ unsigned long timer = 0;
 int lastProbeButton = 0;
 unsigned long waitTimer = 0;
 unsigned long switchTimer = 0;
-extern volatile bool flashingArduino; // Defined in ArduinoStuff.cpp
+
 int attract = 0;
 
 unsigned long switchPositionCheckTimer = 0;
-// int switchPosition = 0;
-unsigned long switchPositionCheckInterval = 500;
+
 
 unsigned long mscModeRefreshTimer = 0;
 unsigned long mscModeRefreshInterval = 2000;
 
 volatile int core1passthrough = 1;
+int switchPosCount = 0;
 
 int shownMenuItems = 0;
 int menuItemCount[ 4 ] = { 0, 0, 0, 0 };
@@ -365,6 +379,11 @@ menu:
         goto setupla;
 #endif
     }
+
+    // Run CDC1 <-> Serial1 bridge foreground task
+#if ASYNC_PASSTHROUGH_ENABLED == 1
+    AsyncPassthrough::task();
+#endif
 
     if ( Serial.available( ) >
          20 ) { // this is so if you dump a lot of data into the serial buffer, it
@@ -498,38 +517,14 @@ menu:
     }
     menuItemCount[ showExtraMenu ] = shownMenuItems;
 
-    // for (int i = 0; i < 4; i++) {
-    //   Serial.print("menuItemCount[");
-    //   Serial.print(i);
-    //   Serial.print("] = ");
-    //   Serial.println(menuItemCount[i]);
-    // }
-    // Serial.flush();
-    // Serial.println(millis());
+
 dontshowmenu:
 
     connectFromArduino = '\0';
     firstConnection = -1;
     core1passthrough = 1;
 
-    /// Serial.setSerialTarget( SERIAL_PORT_USBSER1);
-    // SerialWrap.setSerialTarget(SERIAL_PORT_MAIN | SERIAL_PORT_USBSER1 |
-    // SERIAL_PORT_SERIAL1);
 
-    // uint8_t serialTarget = SERIAL_PORT_MAIN;
-
-    // if (jumperlessConfig.serial_1.function == 2) {
-    //   Serial.println("Serial 1 is set to serial1");
-    //   Serial.setSerialTarget(SERIAL_PORT_SERIAL1 | SERIAL_PORT_MAIN);
-    //   } else if (jumperlessConfig.serial_2.function == 2) {
-    //     Serial.println("Serial 2 is set to serial2");
-    //     Serial.setSerialTarget(SERIAL_PORT_SERIAL2 | SERIAL_PORT_MAIN);
-    //   } else {
-    //     Serial.println("Serial is set to main");
-    //     Serial.setSerialTarget(SERIAL_PORT_MAIN);
-    //     }
-
-    // Serial.setSerialTarget(serialTarget);
 
     //! This is the main busy wait loop waiting for input
     while ( Serial.available( ) == 0 && connectFromArduino == '\0' &&
@@ -541,15 +536,10 @@ dontshowmenu:
             // julseview.check_heartbeat_watchdog();
             delay( 100 );
 
-            // if (millis() - core1Timeout > 2000) {
-            //   //core1Timeout = millis();
-            //   Serial.println("Core 1 timeout");
-
-            //  // rp2040.restartCore1();
-            // }
 
             continue;
         }
+
 
         // watchdog core loop should be called here
 
@@ -564,10 +554,27 @@ dontshowmenu:
         } else {
             // firstConnection = -1;
         }
-
+        
         checkPads( );
 
-        secondSerialHandler( );
+        // showProbeLEDs = 10;
+         //if (Serial1.available() > 0) {
+        //     Serial.println("Serial1 available");
+        //   }
+
+        // if (AsyncPassthrough::historyLength() > 0) {
+           
+
+        //     uint8_t history[AsyncPassthrough::historyLength()];
+        //     AsyncPassthrough::copyHistory(history, AsyncPassthrough::historyLength());
+        //     for (int i = 0; i < AsyncPassthrough::historyLength(); i++) {
+        //        // Serial.print(history[i], HEX);
+        //       //  Serial.print(" ");
+        //     }
+        //   // Serial.println();
+        // }
+
+        //secondSerialHandler( );
 
         // Handle USB tasks (required for MSC and other USB interfaces)
         // #ifdef USE_TINYUSB
@@ -581,9 +588,6 @@ dontshowmenu:
             goto loadfile;
         }
 
-        //     // **NORMAL MODE**: Single call when not in connection mode
-        // handleLogicAnalyzer();
-        //}
 
         int probeReading = justReadProbe( true );
 
@@ -708,39 +712,19 @@ dontshowmenu:
             } else if ( probeButton > 0 && lastProbeButton > 0 &&
                         probeButton == lastProbeButton ) {
 
-                // Serial.print("probeButton = ");
-                // Serial.print(probeButton);
-                // Serial.print("\tlastProbeButton = ");
-                // Serial.println(lastProbeButton);
             }
+        } else {
+            checkSwitchPosition( ); 
         }
 
         if ( lastHighlightedNet != highlightedNet ) {
-            // Serial.print("\n\rhighlightedNet = ");
-            // Serial.println(highlightedNet);
-            // Serial.print("brightenedNet = ");
-            // Serial.println(brightenedNet);
-            // Serial.print("warningNet = ");
-            // Serial.println(warningNet);
-            // Serial.flush();
+
             lastHighlightedNet = highlightedNet;
         } else if ( lastBrightenedNet != brightenedNet ) {
-            // Serial.print("\n\rhighlightedNet = ");
-            // Serial.println(highlightedNet);
-            // Serial.print("brightenedNet = ");
-            // Serial.println(brightenedNet);
-            // Serial.print("warningNet = ");
-            // Serial.println(warningNet);
-            // Serial.flush();
+
             lastBrightenedNet = brightenedNet;
         } else if ( lastWarningNet != warningNet ) {
-            // Serial.print("\n\rhighlightedNet = ");
-            // Serial.println(highlightedNet);
-            // Serial.print("brightenedNet = ");
-            // Serial.println(brightenedNet);
-            // Serial.print("warningNet = ");
-            // Serial.println(warningNet);
-            // Serial.flush();
+
             lastWarningNet = warningNet;
         }
 
@@ -751,60 +735,12 @@ dontshowmenu:
         }
 
         if ( mscModeEnabled == true ) {
-            if ( millis( ) - mscModeRefreshTimer > mscModeRefreshInterval ) {
-                mscModeRefreshTimer = millis( );
-                // refreshUSBFilesystem();
-                // refreshConnections(-1);
-                // Serial.println("Periodic filesystem refresh completed");
-                //   refreshUSBFilesystem();
-            }
+            usbPeriodic();
         }
 
-        if ( millis( ) - oled.lastConnectionCheck > oled.connectionCheckInterval &&
-             jumperlessConfig.top_oled.enabled == 1 ) {
-            // Serial.println("checking oled connection");
-            // Serial.println(oled.checkConnection());
-            oled.lastConnectionCheck = millis( );
-            if ( checkIfBridgeExists( jumperlessConfig.top_oled.sda_row,
-                                      jumperlessConfig.top_oled.gpio_sda ) == true ) {
-                if ( checkIfBridgeExists( jumperlessConfig.top_oled.scl_row,
-                                          jumperlessConfig.top_oled.gpio_scl ) == true ) {
+        oled.oledPeriodic();
 
-                    if ( oled.checkConnection( ) == false ) {
-                        // Serial.print("\r                                             "
-                        //      "\roled connection lost, retrying...");
-                        oled.oledConnected = false;
-                        // oled.disconnect();
-                        // jumperlessConfig.top_oled.enabled = 0;
-
-                        // if (jumperlessConfig.top_oled.lock_connection == 1 &&
-                        if ( oled.connectionRetries < oled.maxConnectionRetries ) {
-                            // oled.connectionRetries++;
-                            //  if (oled.connectionRetries > oled.maxConnectionRetries) {
-                            //    oled.connectionRetries = 0;
-                            // Serial.println("retrying oled connection");
-                            if ( oled.init( ) != 0 ) {
-                                Serial.print( "\r                                          \r" );
-                                Serial.flush( );
-                            }
-                        }
-                    }
-
-                    oled.connectionRetries = 0;
-                }
-            }
-        }
-
-        if ( millis( ) - switchPositionCheckTimer > switchPositionCheckInterval ) {
-            switchPositionCheckTimer = millis( );
-            switchPosition = checkSwitchPosition( );
-            // Serial.print("switchPosition = ");
-            // Serial.println(switchPosition);
-            // Serial.flush();
-        }
-
-        // Serial.print("busyTimer = ");
-        // Serial.println(millis() - busyTimer);
+        
     }
 
     input = Serial.read( );
@@ -1987,6 +1923,7 @@ skipinput:
         // delayMicroseconds(5);
         probeActive = 0;
 
+
         clearHighlighting( );
         // clearLEDs();
         // assignNetColors();
@@ -2005,6 +1942,7 @@ skipinput:
 
         // delayMicroseconds(5);
         probeActive = 0;
+
         // clearLEDs();
         // assignNetColors();
         // showNets();
@@ -2158,14 +2096,18 @@ skipinput:
         savePreformattedNodeFile( serSource, netSlot, rotaryEncoderMode );
 
         // Validate the saved node file
-        int validation_result = validateNodeFileSlot( netSlot, true );
+        int validation_result = validateNodeFileSlot( netSlot, false );
         if ( validation_result == 0 ) {
-            Serial.println( "NodeFile validated successfully" );
+            if (debugFP) {
+                Serial.println( "NodeFile validated successfully" );    
+            }
             refreshConnections( -1 );
         } else {
+            if (debugFP) {
             Serial.println( "NodeFile validation failed: " +
                             String( getNodeFileValidationError( validation_result ) ) );
-            Serial.println( "Connections not refreshed due to invalid node file" );
+                Serial.println( "Connections not refreshed due to invalid node file" );
+            }
         }
 
         // //if (debugNMtime) {
@@ -2334,34 +2276,7 @@ void loop1( ) {
         logicAnalyzer.handler( );
     }
 
-    // CRITICAL: Post-deinit DMA watchdog to prevent buffer overflow crashes
-    // static uint32_t last_dma_watchdog_check = 0;
-    // if (!julseview_active && (current_time - last_dma_watchdog_check > 10000)) {  // Check every 10 seconds when idle
-    //   last_dma_watchdog_check = current_time;
 
-    //   // Check if any DMA channels are still running (they shouldn't be after deinit)
-    //   bool dma_still_running = false;
-    //   for (int i = 0; i < NUM_DMA_CHANNELS; i++) {
-    //     if (dma_channel_is_busy(i)) {
-    //       dma_still_running = true;
-    //       break;
-    //     }
-    //   }
-
-    //   if (dma_still_running) {
-    //    // Serial.println("WARNING: DMA channels still running after deinit - forcing cleanup");
-    //     // Force cleanup of any remaining DMA activity
-    //     for (int i = 0; i < NUM_DMA_CHANNELS; i++) {
-    //       dma_channel_abort(i);
-    //       dma_channel_wait_for_finish_blocking(i);
-    //     }
-    //   }
-    // }
-
-    // while (logicAnalyzing == true) {
-    //   //handleLogicAnalyzer();
-    //   delayMicroseconds(1000);
-    // }
 
     if ( doomOn == 1 ) {
         playDoom( );
@@ -2373,10 +2288,15 @@ void loop1( ) {
     // if (millis() - serialInfoTimer > 10) {
     //   serialInfoTimer = millis();
 
-    if ( core1passthrough == 0 || inClickMenu == 1 || inPadMenu == 1 ||
-         probeActive == 1 ) {
-        passthroughStatus = secondSerialHandler( );
+    // if ( core1passthrough == 0 || inClickMenu == 1 || inPadMenu == 1 ||
+    //      probeActive == 1 ) {
+    if (jumperlessConfig.serial_1.async_passthrough == true) {
+        AsyncPassthrough::task();
     }
+    passthroughStatus = secondSerialHandler( );
+    
+    //     //Serial.println("passthroughStatus = " + String(passthroughStatus));
+    // }
 
     replyWithSerialInfo( );
 

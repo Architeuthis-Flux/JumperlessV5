@@ -224,6 +224,7 @@ void resetConfigToDefaults(int clearCalibration, int clearHardware) {
     int saved_probe_min = jumperlessConfig.calibration.probe_min;
     float saved_probe_switch_threshold = jumperlessConfig.calibration.probe_switch_threshold;
     float saved_measure_mode_output_voltage = jumperlessConfig.calibration.measure_mode_output_voltage;
+    float saved_probe_current_zero = jumperlessConfig.calibration.probe_current_zero;
     // Serial.print("saved_probe_min = ");
     // Serial.println(saved_probe_min);
     // Serial.print("saved_probe_max = ");
@@ -248,6 +249,7 @@ void resetConfigToDefaults(int clearCalibration, int clearHardware) {
 
 
     if (clearCalibration == 0) {
+        
 
 
     jumperlessConfig.calibration.top_rail_zero = saved_top_rail_zero;
@@ -272,7 +274,9 @@ void resetConfigToDefaults(int clearCalibration, int clearHardware) {
     jumperlessConfig.calibration.adc_4_spread = saved_adc_4_spread;
     jumperlessConfig.calibration.adc_7_zero = saved_adc_7_zero;
     jumperlessConfig.calibration.adc_7_spread = saved_adc_7_spread;
-
+    jumperlessConfig.calibration.probe_switch_threshold = saved_probe_switch_threshold;
+    jumperlessConfig.calibration.measure_mode_output_voltage = saved_measure_mode_output_voltage;
+    jumperlessConfig.calibration.probe_current_zero = saved_probe_current_zero;
     } 
 
 
@@ -376,6 +380,7 @@ void updateConfigFromFile(const char* filename) {
             else if (strcmp(key, "nets_to_chips_alt") == 0) jumperlessConfig.debug.nets_to_chips_alt = parseBool(value);
             else if (strcmp(key, "leds") == 0) jumperlessConfig.debug.leds = parseBool(value);
             else if (strcmp(key, "logic_analyzer") == 0) jumperlessConfig.debug.logic_analyzer = parseBool(value);
+            else if (strcmp(key, "arduino") == 0) jumperlessConfig.debug.arduino = parseInt(value);
         } else if (strcmp(section, "routing") == 0) {
             if (strcmp(key, "stack_paths") == 0) {
                 jumperlessConfig.routing.stack_paths = parseInt(value);
@@ -410,6 +415,7 @@ void updateConfigFromFile(const char* filename) {
             else if (strcmp(key, "probe_min") == 0) jumperlessConfig.calibration.probe_min = parseInt(value);
             else if (strcmp(key, "probe_switch_threshold") == 0) jumperlessConfig.calibration.probe_switch_threshold = parseFloat(value);
             else if (strcmp(key, "measure_mode_output_voltage") == 0) jumperlessConfig.calibration.measure_mode_output_voltage = parseFloat(value);
+            else if (strcmp(key, "probe_current_zero") == 0) jumperlessConfig.calibration.probe_current_zero = parseFloat(value);
         } else if (strcmp(section, "logo_pads") == 0) {
             if (strcmp(key, "top_guy") == 0) jumperlessConfig.logo_pads.top_guy = parseArbitraryFunction(value);
             else if (strcmp(key, "bottom_guy") == 0) jumperlessConfig.logo_pads.bottom_guy = parseArbitraryFunction(value);
@@ -439,6 +445,7 @@ void updateConfigFromFile(const char* filename) {
             else if (strcmp(key, "connect_on_boot") == 0) jumperlessConfig.serial_1.connect_on_boot = parseBool(value);
             else if (strcmp(key, "lock_connection") == 0) jumperlessConfig.serial_1.lock_connection = parseBool(value);
             else if (strcmp(key, "autoconnect_flashing") == 0) jumperlessConfig.serial_1.autoconnect_flashing = parseBool(value);
+            else if (strcmp(key, "async_passthrough") == 0) jumperlessConfig.serial_1.async_passthrough = parseBool(value);
         } else if (strcmp(section, "serial_2") == 0) {
             if (strcmp(key, "function") == 0) jumperlessConfig.serial_2.function = parseUartFunction(value);
             else if (strcmp(key, "baud_rate") == 0) jumperlessConfig.serial_2.baud_rate = parseInt(value);
@@ -519,7 +526,8 @@ void updateConfigFromFile(const char* filename) {
                 jumperlessConfig.calibration.adc_7_zero != savedConfig.calibration.adc_7_zero ||
                 jumperlessConfig.calibration.adc_7_spread != savedConfig.calibration.adc_7_spread ||
                 jumperlessConfig.calibration.probe_switch_threshold != savedConfig.calibration.probe_switch_threshold ||
-                jumperlessConfig.calibration.measure_mode_output_voltage != savedConfig.calibration.measure_mode_output_voltage) {
+                jumperlessConfig.calibration.measure_mode_output_voltage != savedConfig.calibration.measure_mode_output_voltage ||
+                jumperlessConfig.calibration.probe_current_zero != savedConfig.calibration.probe_current_zero) {
                 hasNewCalibrationOptions = true;
             }
             
@@ -639,6 +647,7 @@ void saveConfigToFile(const char* filename) {
     file.print("nets_to_chips_alt = "); file.print(jumperlessConfig.debug.nets_to_chips_alt ? 1:0); file.println(";");
     file.print("leds = "); file.print(jumperlessConfig.debug.leds ? 1:0); file.println(";");
     file.print("logic_analyzer = "); file.print(jumperlessConfig.debug.logic_analyzer ? 1:0); file.println(";");
+    file.print("arduino = "); file.print(jumperlessConfig.debug.arduino); file.println(";");
     file.println();
 
     // Write routing settings section
@@ -675,6 +684,7 @@ void saveConfigToFile(const char* filename) {
     file.print("probe_min = "); file.print(jumperlessConfig.calibration.probe_min); file.println(";");
     file.print("probe_switch_threshold = "); file.print(jumperlessConfig.calibration.probe_switch_threshold); file.println(";");
     file.print("measure_mode_output_voltage = "); file.print(jumperlessConfig.calibration.measure_mode_output_voltage); file.println(";");
+    file.print("probe_current_zero = "); file.print(jumperlessConfig.calibration.probe_current_zero); file.println(";");
     file.println();
 
     // Write logo pad settings section
@@ -724,6 +734,7 @@ void saveConfigToFile(const char* filename) {
     file.print("connect_on_boot = "); file.print(jumperlessConfig.serial_1.connect_on_boot); file.println(";");
     file.print("lock_connection = "); file.print(jumperlessConfig.serial_1.lock_connection); file.println(";");
     file.print("autoconnect_flashing = "); file.print(jumperlessConfig.serial_1.autoconnect_flashing); file.println(";");
+    file.print("async_passthrough = "); file.print(jumperlessConfig.serial_1.async_passthrough ? 1:0); file.println(";");
 
     file.println("[serial_2]");
     file.print("function = "); file.print(jumperlessConfig.serial_2.function); file.println(";");
@@ -878,6 +889,8 @@ void printConfigSectionToSerial(int section, bool showNames, bool pasteable) {
         Serial.print("leds = "); Serial.print(getStringFromTable(jumperlessConfig.debug.leds, boolTable)); Serial.println(";");
         if (pasteable == true) Serial.print("`[debug] ");
         Serial.print("logic_analyzer = "); Serial.print(getStringFromTable(jumperlessConfig.debug.logic_analyzer, boolTable)); Serial.println(";");
+        if (pasteable == true) Serial.print("`[debug] ");
+        Serial.print("arduino = "); Serial.print(jumperlessConfig.debug.arduino); Serial.println(";");
     }
     cycleTerminalColor();
     // Print routing settings section
@@ -944,6 +957,8 @@ void printConfigSectionToSerial(int section, bool showNames, bool pasteable) {
         Serial.print("probe_switch_threshold = "); Serial.print(jumperlessConfig.calibration.probe_switch_threshold); Serial.println(";");
         if (pasteable == true) Serial.print("`[calibration] ");
         Serial.print("measure_mode_output_voltage = "); Serial.print(jumperlessConfig.calibration.measure_mode_output_voltage); Serial.println(";");
+        if (pasteable == true) Serial.print("`[calibration] ");
+        Serial.print("probe_current_zero = "); Serial.print(jumperlessConfig.calibration.probe_current_zero); Serial.println(";");
     }
     cycleTerminalColor();
     // Print logo pad settings section
@@ -1018,6 +1033,8 @@ void printConfigSectionToSerial(int section, bool showNames, bool pasteable) {
         Serial.print("lock_connection = "); Serial.print(getStringFromTable(jumperlessConfig.serial_1.lock_connection, boolTable)); Serial.println(";");
         if (pasteable == true) Serial.print("`[serial_1] ");
         Serial.print("autoconnect_flashing = "); Serial.print(getStringFromTable(jumperlessConfig.serial_1.autoconnect_flashing, boolTable)); Serial.println(";");
+        if (pasteable == true) Serial.print("`[serial_1] ");
+        Serial.print("async_passthrough = "); Serial.print(getStringFromTable(jumperlessConfig.serial_1.async_passthrough, boolTable)); Serial.println(";");
     }
     cycleTerminalColor();
     // Print serial_2 section
@@ -1656,6 +1673,7 @@ void updateConfigValue(const char* section, const char* key, const char* value) 
         else if (strcmp(key, "nets_to_chips_alt") == 0) sprintf(oldValue, "%d", jumperlessConfig.debug.nets_to_chips_alt);
         else if (strcmp(key, "leds") == 0) sprintf(oldValue, "%d", jumperlessConfig.debug.leds);
         else if (strcmp(key, "logic_analyzer") == 0) sprintf(oldValue, "%d", jumperlessConfig.debug.logic_analyzer);
+        else if (strcmp(key, "arduino") == 0) sprintf(oldValue, "%d", jumperlessConfig.debug.arduino);
     }
     else if (strcmp(section, "routing") == 0) {
         if (strcmp(key, "stack_paths") == 0) sprintf(oldValue, "%d", jumperlessConfig.routing.stack_paths);
@@ -1687,7 +1705,8 @@ void updateConfigValue(const char* section, const char* key, const char* value) 
         else if (strcmp(key, "probe_max") == 0) sprintf(oldValue, "%d", jumperlessConfig.calibration.probe_max);
         else if (strcmp(key, "probe_min") == 0) sprintf(oldValue, "%d", jumperlessConfig.calibration.probe_min);
         else if (strcmp(key, "probe_switch_threshold") == 0) sprintf(oldValue, "%.2f", jumperlessConfig.calibration.probe_switch_threshold);
-    }
+        else if (strcmp(key, "probe_current_zero") == 0) sprintf(oldValue, "%.2f", jumperlessConfig.calibration.probe_current_zero);
+        }
     else if (strcmp(section, "logo_pads") == 0) {
         if (strcmp(key, "top_guy") == 0) sprintf(oldValue, "%d", jumperlessConfig.logo_pads.top_guy);
         else if (strcmp(key, "bottom_guy") == 0) sprintf(oldValue, "%d", jumperlessConfig.logo_pads.bottom_guy);
@@ -1735,6 +1754,7 @@ void updateConfigValue(const char* section, const char* key, const char* value) 
         else if (strcmp(key, "connect_on_boot") == 0) sprintf(oldValue, "%d", jumperlessConfig.serial_1.connect_on_boot);
         else if (strcmp(key, "lock_connection") == 0) sprintf(oldValue, "%d", jumperlessConfig.serial_1.lock_connection);
         else if (strcmp(key, "autoconnect_flashing") == 0) sprintf(oldValue, "%d", jumperlessConfig.serial_1.autoconnect_flashing);
+        else if (strcmp(key, "async_passthrough") == 0) sprintf(oldValue, "%d", jumperlessConfig.serial_1.async_passthrough);
     }
     else if (strcmp(section, "serial_2") == 0) {
         if (strcmp(key, "function") == 0) sprintf(oldValue, "%d", jumperlessConfig.serial_2.function);
@@ -1784,6 +1804,8 @@ void updateConfigValue(const char* section, const char* key, const char* value) 
         else if (strcmp(key, "nets_to_chips") == 0) jumperlessConfig.debug.nets_to_chips = parseBool(value);
         else if (strcmp(key, "nets_to_chips_alt") == 0) jumperlessConfig.debug.nets_to_chips_alt = parseBool(value);
         else if (strcmp(key, "leds") == 0) jumperlessConfig.debug.leds = parseBool(value);
+        else if (strcmp(key, "logic_analyzer") == 0) jumperlessConfig.debug.logic_analyzer = parseBool(value);
+        else if (strcmp(key, "arduino") == 0) jumperlessConfig.debug.arduino = parseInt(value);
     }
     else if (strcmp(section, "routing") == 0) {
         if (strcmp(key, "stack_paths") == 0) jumperlessConfig.routing.stack_paths = parseInt(value);
@@ -1814,7 +1836,10 @@ void updateConfigValue(const char* section, const char* key, const char* value) 
         else if (strcmp(key, "adc_7_spread") == 0) jumperlessConfig.calibration.adc_7_spread = parseFloat(value);
         else if (strcmp(key, "probe_max") == 0) jumperlessConfig.calibration.probe_max = parseInt(value);
         else if (strcmp(key, "probe_min") == 0) jumperlessConfig.calibration.probe_min = parseInt(value);
-    }
+        else if (strcmp(key, "measure_mode_output_voltage") == 0) jumperlessConfig.calibration.measure_mode_output_voltage = parseFloat(value);
+        else if (strcmp(key, "probe_switch_threshold") == 0) jumperlessConfig.calibration.probe_switch_threshold = parseFloat(value);
+        else if (strcmp(key, "probe_current_zero") == 0) jumperlessConfig.calibration.probe_current_zero = parseFloat(value);
+        }
     else if (strcmp(section, "logo_pads") == 0) {
         if (strcmp(key, "top_guy") == 0) jumperlessConfig.logo_pads.top_guy = parseArbitraryFunction(value);
         else if (strcmp(key, "bottom_guy") == 0) jumperlessConfig.logo_pads.bottom_guy = parseArbitraryFunction(value);
@@ -1857,6 +1882,7 @@ void updateConfigValue(const char* section, const char* key, const char* value) 
         else if (strcmp(key, "connect_on_boot") == 0) jumperlessConfig.serial_1.connect_on_boot = parseBool(value);
         else if (strcmp(key, "lock_connection") == 0) jumperlessConfig.serial_1.lock_connection = parseBool(value);
         else if (strcmp(key, "autoconnect_flashing") == 0) jumperlessConfig.serial_1.autoconnect_flashing = parseBool(value);
+        else if (strcmp(key, "async_passthrough") == 0) jumperlessConfig.serial_1.async_passthrough = parseBool(value);
     }
     else if (strcmp(section, "serial_2") == 0) {
         if (strcmp(key, "function") == 0) jumperlessConfig.serial_2.function = parseUartFunction(value);

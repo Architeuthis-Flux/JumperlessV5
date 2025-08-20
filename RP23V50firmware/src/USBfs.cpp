@@ -31,6 +31,19 @@
 bool mscModeEnabled = false;
 FatFSUSBClass FatFSUSB;
 
+// Periodic maintenance (called from main loop)
+void usbPeriodic(void) {
+    static unsigned long mscModeRefreshTimer = 0;
+    const unsigned long mscModeRefreshInterval = 2000;
+    if (mscModeEnabled == true) {
+        if (millis() - mscModeRefreshTimer > mscModeRefreshInterval) {
+            mscModeRefreshTimer = millis();
+            // Optionally refresh or check status here
+            // refreshUSBFilesystem();
+        }
+    }
+}
+
 // Ensure we are logged in to the USB framework
 void __USBInstallMassStorage() {
     /* dummy */

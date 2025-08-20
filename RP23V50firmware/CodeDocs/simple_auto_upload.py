@@ -17,8 +17,12 @@ import sys
 import os
 import serial.tools.list_ports
 
+
+
+#python codeDocs/simple_auto_upload.py
+
 # Configuration
-USB_PORT = "/dev/cu.usbmodem101"  # Change this to your Jumperless port
+USB_PORT = "/dev/cu.usbmodem1101"  # Change this to your Jumperless port
 ENVIRONMENT = "jumperless_v5"
 CHECK_INTERVAL = 1  # seconds
 

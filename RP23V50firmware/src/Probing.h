@@ -69,6 +69,10 @@ enum measuredState
 };
 extern volatile int showingProbeLEDs;
 extern int switchPosition;
+extern int lastSwitchPositions[3];
+
+
+
 float measureMode(int updateSpeed = 150);
 void checkPads(void);
 int delayWithButton(int delayTime = 1000);
@@ -95,6 +99,7 @@ int readFloatingOrState (int pin = 0, int row = 0);
 
 int checkSwitchPosition(void);
 float checkProbeCurrent(void);
+float checkProbeCurrentZero(void);
 
 void routableBufferPower (int offOn, int flash = 0, int force = 0);
 

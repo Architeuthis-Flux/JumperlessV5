@@ -149,6 +149,7 @@ int oled::init() {
     setCursor(0, 0);
     Wire1.setTimeout(15);
     charPos = 0;
+    refreshConnections(-1);
     
     return success;
 }
@@ -182,6 +183,8 @@ int oled::cycleFont(void) {
     }
     setFontForSize(currentFontFamily, currentTextSize);
     clearPrintShow((String)fontList[fontFamilyMap[currentFontFamily].size2Index].longName, 2);
+    jumperlessConfig.top_oled.font = (int)currentFontFamily;
+    saveConfig();
     return currentFontFamily;
 }
 
@@ -1022,6 +1025,28 @@ void oled::showJogo32h() {
     display.display();
 }
 
+void oled::oledPeriodic() {
+    return;
+    if (millis() - lastConnectionCheck > connectionCheckInterval && jumperlessConfig.top_oled.enabled == 1) {
+        lastConnectionCheck = millis();
+        if (checkIfBridgeExists(jumperlessConfig.top_oled.sda_row, jumperlessConfig.top_oled.gpio_sda) == true) {
+            if (checkIfBridgeExists(jumperlessConfig.top_oled.scl_row, jumperlessConfig.top_oled.gpio_scl) == true) {
+                if (checkConnection() == false) {
+                    oledConnected = false;
+                    if (connectionRetries < maxConnectionRetries) {
+                        if (init() != 0) {
+                            Serial.print("\r                                          \r");
+                            Serial.flush();
+                        }
+                    }
+                } else {
+                    connectionRetries = 0;
+                }
+            }
+        }
+    }
+}
+
 // TEST AND DEBUG FUNCTIONS
 // ========================
 
@@ -1459,6 +1484,7 @@ int oled::connect(void) {
         return 0;
     }
     int found = -1;
+    // Reserve pins on net map so UI shows them as I2C (not generic GPIO)
     // gpioNet[jumperlessConfig.top_oled.sda_pin - 20] = -2;
     // gpioNet[jumperlessConfig.top_oled.scl_pin - 20] = -2;
     // removeBridgeFromNodeFile(jumperlessConfig.top_oled.gpio_sda, -1, netSlot, 0);
@@ -1477,9 +1503,14 @@ int oled::connect(void) {
     // Serial.print("waitCore2     ");
     // Serial.println(millis());
      waitCore2();
+
+        
     // Serial.print("waitCore2Done  ");
     // Serial.println(millis());
     found = initI2C(jumperlessConfig.top_oled.sda_pin, jumperlessConfig.top_oled.scl_pin, 400000);
+    // Mark function map so scan/UI reflect I2C role
+    gpio_function_map[jumperlessConfig.top_oled.sda_pin - 20] = GPIO_FUNC_I2C;
+    gpio_function_map[jumperlessConfig.top_oled.scl_pin - 20] = GPIO_FUNC_I2C;
     // Serial.print("initI2C      ");
     // Serial.println(millis());
     gpioState[jumperlessConfig.top_oled.sda_pin - 20] = 6;
@@ -1500,8 +1531,9 @@ void oled::disconnect(void) {
     }
     removeBridgeFromNodeFile(jumperlessConfig.top_oled.gpio_sda, jumperlessConfig.top_oled.sda_row, netSlot, 0);
     removeBridgeFromNodeFile(jumperlessConfig.top_oled.gpio_scl, jumperlessConfig.top_oled.scl_row, netSlot, 0);
-    gpioNet[jumperlessConfig.top_oled.sda_pin - 20] = -1;
-    gpioNet[jumperlessConfig.top_oled.scl_pin - 20] = -1;
+    // Restore pins to unassigned in net map so they show as normal when disconnected
+    // gpioNet[jumperlessConfig.top_oled.sda_pin - 20] = -1;
+    // gpioNet[jumperlessConfig.top_oled.scl_pin - 20] = -1;
     gpioState[jumperlessConfig.top_oled.sda_pin - 20] = 4;
     gpioState[jumperlessConfig.top_oled.scl_pin - 20] = 4;
     oledConnected = false;

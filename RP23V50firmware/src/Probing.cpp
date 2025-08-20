@@ -39,6 +39,8 @@ int lastProbePowerDAC = 0;
 bool probePowerDACChanged = 0;
 
 int switchPosition = 1;
+int lastSwitchPositions[3] = {1, 1, 1};
+
 int showProbeCurrent = 0;
 
 volatile bool bufferPowerConnected = 0;
@@ -151,7 +153,11 @@ restartProbing:
   //unsigned long timer[3] = {0, 0, 0};
   //timer[0] = micros();
 
-
+if (switchPosition == 0) {
+  changeTerminalColor(197);
+  Serial.println("  Switch is in Measure mode!\n\r  Set switch to Select mode for best results\n\r");
+  Serial.flush();
+}
 
 
 
@@ -183,10 +189,10 @@ restartProbing:
   if (setOrClear == 1) {
     // sprintf(oledBuffer, "connect  ");
     // drawchar();
-   
-
-    Serial.println("\n\r\t connect nodes (blue)\n\r");
+    changeTerminalColor(45);
+    Serial.println("\n\r\t connect nodes\n\r");
     Serial.flush();
+    changeTerminalColor(-1);
     rawOtherColors[1] = 0x4500e8;
 
     } else {
@@ -196,9 +202,10 @@ restartProbing:
     //oled.clearPrintShow("clear nodes", 1, true, true, true);
 
 
-
-    Serial.println("\n\r\t clear nodes (red)\n\r");
+    changeTerminalColor(202);
+    Serial.println("\n\r\t clear nodes\n\r");
     Serial.flush();
+    changeTerminalColor(-1);
     rawOtherColors[1] = 0x6644A8;
 
     }
@@ -2204,54 +2211,64 @@ float voltageSelect(int fiveOrEight) {
 
 int checkSwitchPosition() { // 0 = measure, 1 = select
 
-  unsigned long timer = micros();
-  checkingButton = 0;
-  // showProbeLEDs = 8;
-  // //delay(200);
-  //   //
-  // //waitCore2();
-  // while(showProbeLEDs == 8) {
-  //  // delay(10);
-  // }
+  // Debounce/glitch filter and timing: only sample at a fixed interval.
+  static bool have_previous_read = false;
+  static float previous_current_mA[5] = {0.0f, 0.0f, 0.0f, 0.0f, 0.0f};
+  static int last_candidate_position = -1; // -1 unknown, 0 measure, 1 select
+  static int stable_read_count = 0;          // consecutive close readings on same side of threshold
+  static unsigned long last_check_millis = 0;
 
-  float current = checkProbeCurrent();
-  // Serial.print("current = ");
-  // Serial.println(current);
+  float tolerance = 0.25;
+
+  // Use the global interval if available; otherwise default to 50ms.
+ //unsigned long switchPositionCheckInterval = 200;
+  unsigned long interval_ms = 500; //switchPositionCheckInterval;
+
+
+if (checkingButton == 1) {
+  //Serial.println("checkingButton");
+  return switchPosition;
+}
+
+
+
+  // Timing gate: exit early if interval hasn't elapsed.
+  unsigned long now_ms = millis();
+  if ((now_ms - last_check_millis) < interval_ms) {
+    return switchPosition;
+  }
+  last_check_millis = now_ms;
+
+  checkingButton = 0;
+  //digitalWrite(10, LOW);
+
+
+  float current_mA = checkProbeCurrent();
+
+  if (current_mA > jumperlessConfig.calibration.probe_switch_threshold) {
+    switchPosition = 1;
+  } else {
+    switchPosition = 0;
+  }
+
+
+  if (switchPosition == 0) {
+    showProbeLEDs = 3; // measure
+  } else {
+    showProbeLEDs = 4; // select idle
+  }
+
+
+
+  // for (int i = 0; i < 5; i++) {
+  //   Serial.print(previous_current_mA[i]);
+  //   Serial.print(" ");
+  // }
+  // Serial.println();
   // Serial.flush();
 
-  if (checkProbeCurrent() > jumperlessConfig.calibration.probe_switch_threshold) {
-    // showProbeLEDs = 0;
-      //Serial.print("probe current: ");
-    //  Serial.println(micros() - timer);
-    //  if (probeActive == 0) {
-    //    showProbeLEDs = 4;
-    //  } else {
-    //    if (connectOrClearProbe == 1) {
-    //      showProbeLEDs = 2;
-    //    } else {
-    //      showProbeLEDs = 3;
-    //    }
-    //  }
-    timer = micros();
-    switchPosition = 1;
-    // Serial1.begin(baudRateUSBSer1, getSerial1Config());
-    // Serial2.begin(baudRateUSBSer2, getSerial2Config());
-    return 1;
-    } else {
-    // showProbeLEDs = 0;
-    if (bufferPowerConnected == true) {
-      // routableBufferPower(0);
-      //  addBridgeToNodeFile(ROUTABLE_BUFFER_IN, RP_GPIO_23, netSlot, 1);
-      }
-    // refreshBlind();
-    // refreshLocalConnections();
-    // showProbeLEDs = 3;
-    switchPosition = 0;
-    // Serial1.begin(baudRateUSBSer1, getSerial1Config());
-    // Serial2.begin(baudRateUSBSer2, getSerial2Config());
-    return 0;
-    }
-  }
+  return switchPosition;
+}
 // float calibrated3v3 = 3.3;
 
 // void calibrateDac0(float target) {
@@ -2288,41 +2305,34 @@ float checkProbeCurrent(void) {
   int bs = 0;
 
   float lastDac = dacOutput[0];
-  // unsigned long timer[4];
-  // timer[0] = micros();
-  // setDac0voltage(3.3, 0);
-  // if ( removeBridgeFromNodeFile(ROUTABLE_BUFFER_IN, DAC0, netSlot, 1, 1) ==
-  // 0) {
 
-  // addBridgeToNodeFile(ROUTABLE_BUFFER_IN, DAC0, netSlot, 1, 0);
-  //refreshBlind(1, 0);
+  float current = 0.0;// = INA1.getCurrent_mA()-jumperlessConfig.calibration.probe_current_zero;
+
+
+  for (int i = 0; i < 20; i++) {
+    current += INA1.getCurrent_mA();
+    delayMicroseconds(500);
+  }
+  current = current / 20.0;
+  current = current - jumperlessConfig.calibration.probe_current_zero;
+
+  if (showProbeCurrent == 1) {
+    Serial.print("                          \rProbe current: ");
+    Serial.print(current);
+    Serial.print(" mA");
+
+    // for (int i = 0; i < (int)(current*10.0); i++) {
+    //   Serial.print("*");
+    // }
+    // Serial.println();
+    // Serial.flush();
+  }
+  // if (millis() % 1000 < 10) {
+  //   Serial.print("current: ");
+  //   Serial.print(current);
+  //   Serial.println(" mA\n\r");
+  //   Serial.flush();
   //  }
-  // addBridgeToNodeFile(ROUTABLE_BUFFER_IN, DAC0, netSlot, 1, 0);
-  // timer[1] = micros();
-  // printNodeFile();
-  // setDac0voltage(3.33, 1, 1);
-  // chooseShownReadings();
-  // timer[2] = micros();
-
-  // timer[3] = micros();
-  //    printPathsCompact();
-  //  printChipStatus();
-  //  pinMode(23, INPUT);
- // digitalWrite(10, LOW);
- // delayMicroseconds(1000);
-  // refreshLocalConnections();
-  // showProbeLEDs = 8;
-  // while(showProbeLEDs == 8) {
-  //   //delay(10);
-  // }
-
-  float current = INA1.getCurrent_mA();
-
-  //if (showProbeCurrent == 1) {
-    // Serial.print("current: ");
-    // Serial.print(current);
-    // Serial.println(" mA\n\r");
-   // }
 
   // for (int i = 1; i < 4; i++) {
   //   Serial.print("timer[");
@@ -2337,6 +2347,38 @@ float checkProbeCurrent(void) {
 
   return current;
   }
+
+
+float checkProbeCurrentZero(void) {
+
+  showProbeLEDs = 10;
+  probeLEDs.setPixelColor(0, 0x000000);
+  probeLEDs.show();
+  delayMicroseconds(1000);
+
+  float current = 0.0;//INA1.getCurrent_mA();
+
+  float currentSum = 0.0;
+
+  for (int i = 0; i < 10; i++) {
+    currentSum += INA1.getCurrent_mA();
+    delayMicroseconds(1000);
+
+  }
+
+  // Serial.print("currentSum = ");
+  // Serial.println(currentSum);
+
+
+  current= currentSum / 10;
+
+  jumperlessConfig.calibration.probe_current_zero = current;
+
+  //saveConfig();
+
+  showProbeLEDs = 4;
+  return current;
+}
 
 void routableBufferPower(int offOn, int flash, int force) {
   int flashOrLocal;
@@ -4003,6 +4045,11 @@ void probeLEDhandler(void) {
         }
       showProbeLEDs = 0;
       //Serial.println("max");
+      break;
+
+    case 10:
+      probeLEDs.setPixelColor(0, 0x000000); // off
+      showProbeLEDs = 0;
       break;
     default:
       break;

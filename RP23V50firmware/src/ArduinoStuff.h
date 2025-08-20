@@ -4,6 +4,11 @@
 
 #include <Arduino.h>
 
+
+extern int debugArduino;
+extern volatile bool flashingArduino; 
+
+
 extern int connectOnBoot1;
 extern int connectOnBoot2;
 extern int lockConnection1;
@@ -48,6 +53,7 @@ extern Adafruit_USBD_CDC USBSer3;
 
 
 extern volatile int arduinoInReset;
+extern volatile bool flashingArduino;
 
 
 extern char arduinoCommandStrings[10][50];
@@ -65,6 +71,8 @@ uint16_t getSerial2Config(void);
 void checkForConfigChangesUSBSer1(int print = 0);
 void checkForConfigChangesUSBSer2(int print = 0);
 int secondSerialHandler(void);
+bool checkForDTRpulse(void);
+bool checkForSync(void);
 uint16_t makeSerialConfig(uint8_t numbits = 8, uint8_t paritytype = 0,
                           uint8_t stopbits = 1);
 void arduinoPrint(void);
@@ -74,7 +82,7 @@ void ESPReset(void);
 void SetArduinoResetLine(bool state, int topBottomBoth = 2);
 void flashArduino(unsigned long timeout);
 
-void resetArduino(int topBottomBoth = 2, unsigned long holdMicroseconds = 5500);
+void resetArduino(int topBottomBoth = 2, unsigned long holdMicroseconds = 8500);
 void connectArduino(int flashOrLocal = 1, int refreshConnections = 1);
 void disconnectArduino(int flashOrLocal =  1);
 int checkIfArduinoIsConnected(void);

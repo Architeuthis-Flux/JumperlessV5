@@ -51,7 +51,8 @@ struct config {
         bool probing = false;
         bool oled = false;
         bool logo_pads = false;
-        bool logic_analyzer = true;    
+        bool logic_analyzer = true; 
+        int  arduino = 0;
     } debug;
 
     struct routing {
@@ -84,8 +85,9 @@ struct config {
         float adc_7_spread = 18.28;
         int probe_max = 4060;
         int probe_min = 15;
-        float probe_switch_threshold = 3.0;
-        float measure_mode_output_voltage = 3.33;
+        float probe_switch_threshold = 0.50;
+        float measure_mode_output_voltage = 3.30;
+        float probe_current_zero = 2.0;
     } calibration;
 
     struct logo_pads {
@@ -184,6 +186,7 @@ struct config {
             int connect_on_boot = 0;
             int lock_connection = 0;
             int autoconnect_flashing = 1;
+            bool async_passthrough = true;
         } serial_1;
 
         

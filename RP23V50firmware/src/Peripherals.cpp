@@ -14,6 +14,7 @@
 #include "hardware/adc.h"
 #include "hardware/gpio.h"
 #include "hardware/pwm.h"
+#include "hardware/structs/io_bank0.h"
 #include "pico/time.h" // For hardware timer support
 // #include "pico/cyw43_arch.h"
 // #include "pico/stdlib.h"
@@ -44,6 +45,10 @@
 // #include "hardware/adc.h"
 #include "Highlighting.h"
 #include "LogicAnalyzer.h"
+#include "ArduinoStuff.h"
+
+
+int i2cSpeed = 400000;
 
 // Compatibility for clangd - these are provided by Arduino.h at compile time
 #ifndef abs
@@ -310,7 +315,7 @@ void initDAC( void ) {
     delayMicroseconds( 1000 );
 }
 
-int findI2CAddress( int sdaPin, int sclPin, int i2cNumber ) {
+int findI2CAddress( int sdaPin, int sclPin, int i2cNumber, int print ) {
     int address = -1;
     for ( int i = 0; i < 128; i++ ) {
         if ( i2cNumber == 0 ) {
@@ -327,8 +332,10 @@ int findI2CAddress( int sdaPin, int sclPin, int i2cNumber ) {
 
         if ( error == 0 ) {
             address = i;
-            Serial.print( "Found I2C address: " );
-            Serial.println( address );
+            if ( print == 1 ) {
+                Serial.print( "Found I2C address: " );
+                Serial.println( address );
+            }
             break;
         }
     }
@@ -406,6 +413,7 @@ int initI2C( int sdaPin, int sclPin, int speed ) {
         i2c0Pins[ 0 ] = sdaPin;
         i2c0Pins[ 1 ] = sclPin;
         i2c0Pins[ 2 ] = speed;
+        i2cSpeed = speed;
 
         return gpioI2Cmap[ sdaFound ][ 2 ];
     } else if ( portFound == 1 ) {
@@ -431,6 +439,8 @@ int initI2C( int sdaPin, int sclPin, int speed ) {
         Wire1.setSCL( sclPin );
         Wire1.setClock( speed );
         Wire1.begin( );
+
+        i2cSpeed = speed;
 
         // Serial.println("sdaPin: ");
         // Serial.println(gpio_get_function(sdaPin));
@@ -521,14 +531,19 @@ int gpioReadWithFloating(
     int readingPullup = -1;
     readingGPIO = true;
 
+    if (gpio_get_function(pin) == GPIO_FUNC_I2C || gpio_get_function(pin) == GPIO_FUNC_UART){
+        return gpio_get( pin );
+    }
+
     int dir = gpio_get_dir( pin );
     if ( dir == 1 ) { // we'll just quickly set the pin to input and read it and
                       // then set it back to whatever it was
         // gpio_set_dir(pin, false);
+        if (pin >1 && gpio_get_function(pin) != GPIO_FUNC_I2C && gpio_get_function(pin) != GPIO_FUNC_UART){
         gpio_set_input_enabled(pin, false);
-
         gpio_set_input_enabled(pin, true);
-        return gpio_get_out_level( pin );
+        }
+        return gpio_get( pin );
     }
 
     int pullupState = 0;
@@ -548,11 +563,13 @@ int gpioReadWithFloating(
         pulldownState = 1;
         if ( gpio_get( pin ) == 1 ) { /// don't mess with the pullups if the pin is
                                       /// already being pulled up
+            if (pin >1 && gpio_get_function(pin) != GPIO_FUNC_I2C && gpio_get_function(pin) != GPIO_FUNC_UART){
 
             gpio_set_input_enabled(pin, false); //? Aha! the eratta fix!
             delayMicroseconds(1);
             gpio_set_input_enabled(pin, true);
 
+            }
             //gpio_set_pulls(pin, pullupState, pulldownState);
             return high;
         }
@@ -869,15 +886,18 @@ void readGPIO( void ) {
     // if (logi) {
     //   return;
     // }
-    for ( int i = 0; i < 10;
-          i++ ) { // if you want to read the UART pins, set this to 10
+    for ( int i = 0; i < 10; i++ ) { // if you want to read the UART pins, set this to 10
 
         // **IMPROVED**: Skip logic analyzer pins during capture, but allow other GPIO reading
         // Logic analyzer uses GPIO 20-27 (i=0 through i=7), leave UART pins (i=8,9) alone
-        if ( logicAnalyzer.is_running( ) || logicAnalyzer.is_armed( ) ) {
+        if ( logicAnalyzer.is_running( ) || logicAnalyzer.is_armed( ) || flashingArduino == true ) {
             // Skip reading logic analyzer pins during capture to avoid interference
             // Keep previous state to avoid display issues
             return;
+            continue;
+        }
+
+        if (gpio_get_function(gpioDef[i][0]) == GPIO_FUNC_UART) {
             continue;
         }
 
@@ -1277,6 +1297,10 @@ void initINA219( void ) {
         // Remove blocking delay - just log the error
         Serial.println( "Failed to find INA219 chip" );
     }
+
+
+    INA0.setShuntSamples(2);
+    INA1.setShuntSamples(2);
 
     INA0.setMaxCurrentShunt( 1, 2.0 );
     INA1.setMaxCurrentShunt( 1, 2.0 );
@@ -1694,6 +1718,7 @@ int anyGpioOutputConnected( int net ) {
         for ( int i = 0; i < 10; i++ ) {
             if ( gpioNet[ i ] > 0 && gpioNet[ i ] <= numberOfNets ) {
                 if ( jumperlessConfig.gpio.direction[ i ] == 0 ) {
+                    // Only treat as GPIO output if pin function is SIO
                     if ( gpio_function_map[ i ] == GPIO_FUNC_SIO ) {
                         return i;
                     }
@@ -1704,6 +1729,7 @@ int anyGpioOutputConnected( int net ) {
         for ( int i = 0; i < 10; i++ ) {
             if ( gpioNet[ i ] == net ) {
                 if ( jumperlessConfig.gpio.direction[ i ] == 0 ) {
+                    // Only treat as GPIO output if pin function is SIO
                     if ( gpio_function_map[ i ] == GPIO_FUNC_SIO ) {
                         return i;
                     }
@@ -1713,6 +1739,9 @@ int anyGpioOutputConnected( int net ) {
     }
     return -1;
 }
+
+
+
 
 /// @brief check if any gpio inputs are connected
 /// @return  gpio number if a gpio input is connected, -1 if no inputs are
@@ -2294,6 +2323,7 @@ int setupPWM( int gpio_pin, float frequency, float duty_cycle ) {
 
     // Set up PWM
     gpio_set_function( physical_pin, GPIO_FUNC_PWM );
+    gpio_function_map[ gpio_index ] = GPIO_FUNC_PWM;
 
     // Find out which PWM slice is connected to this GPIO
     uint slice_num = pwm_gpio_to_slice_num( physical_pin );

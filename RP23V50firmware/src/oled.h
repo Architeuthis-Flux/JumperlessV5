@@ -110,6 +110,8 @@ public:
     // Display functions
     void displayBitmap(int x, int y, const unsigned char* bitmap, int width, int height);
     void showJogo32h();
+    // Periodic maintenance (connection health check, auto-reinit)
+    void oledPeriodic();
     bool clear(int waitToFinish = 0);
     bool show(int waitToFinish = 0);
     void moveToNextLine();

@@ -80,6 +80,8 @@ bool isUSBMassStorageEjected(void);
 void printUSBMassStorageStatus(void);
 void testUSBMassStorage(void);
 bool getUSBMountedStatus(void);
+// Periodic maintenance (e.g., timed refresh)
+void usbPeriodic(void);
 
 // Debug and manual refresh functions
 void setUSBDebug(bool enable);

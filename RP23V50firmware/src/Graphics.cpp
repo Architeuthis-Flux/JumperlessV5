@@ -1149,6 +1149,7 @@ void assignRowAnimations(void) {
         // Serial.print("numberOfNets = ");
         // Serial.println(numberOfNets);
 
+        // Revert: always clear out-of-range nets; they will be reassigned on refresh
         gpioNet[i] = -1;
         assignedAnimations[gpioNet[i]] = -1;
         continue;

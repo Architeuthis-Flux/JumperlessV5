@@ -17,6 +17,7 @@ extern INA219 INA0;
 extern INA219 INA1;
 extern int showReadings;
 
+extern int i2cSpeed;
 
 extern int inaConnected;
 extern int showINA0[3]; // 0 = current, 1 = voltage, 2 = power
@@ -103,7 +104,7 @@ int handleHighlights(int probeReading);
 void erattaClearGPIO(int gpio = -1);
 
 int initI2C(int sdaPin = 26, int sclPin = 27, int speed = 100000);
-int findI2CAddress(int sdaPin = 26, int sclPin = 27, int i2cNumber = 1);
+int findI2CAddress(int sdaPin = 26, int sclPin = 27, int i2cNumber = 1, int print = 0);
 
 int readFloatingOrStateMCP (int pin = 0);
 int gpioReadWithFloating(int pin, unsigned long usDelay = 10);

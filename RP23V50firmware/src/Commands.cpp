@@ -145,10 +145,17 @@ void refreshConnections(int ledShowOption, int fillUnused, int clean) {
   }
   if (clean == 1) {
     sendAllPathsCore2 = -1;
-  } else {
-    sendAllPathsCore2 = 1;
-  }
-
+    if (rp2040.cpuid() == 1) {
+      sendPaths(sendAllPathsCore2);
+      //sendAllPathsCore2 = 0;
+    } 
+    } else {
+      sendAllPathsCore2 = 1;
+      if (rp2040.cpuid() == 1) {
+        sendPaths(sendAllPathsCore2);
+        //sendAllPathsCore2 = 0;
+      }
+    }
 #ifdef DEBUG_REFRESH
   Serial.print("after waitCore2 time = ");  
 
@@ -159,9 +166,13 @@ void refreshConnections(int ledShowOption, int fillUnused, int clean) {
   // sendPaths();
 }
 
+//#define DEBUG_REFRESH 1
+
 void refreshLocalConnections(int ledShowOption, int fillUnused, int clean) {
 
+  if (rp2040.cpuid() == 0) {
    waitCore2();
+  }
    
 unsigned long start2 = millis();
   clearAllNTCC();
@@ -213,11 +224,17 @@ unsigned long start2 = millis();
   }
   if (clean == 1) {
     sendAllPathsCore2 = -1;
-    //waitCore2();
-  } else {
-    sendAllPathsCore2 = 1;
-    //waitCore2();
-  }
+    if (rp2040.cpuid() == 1) {
+      sendPaths(sendAllPathsCore2);
+      //sendAllPathsCore2 = 0;
+    } 
+    } else {
+      sendAllPathsCore2 = 1;
+      if (rp2040.cpuid() == 1) {
+        sendPaths(sendAllPathsCore2);
+        //sendAllPathsCore2 = 0;
+      }
+    }
 #ifdef DEBUG_REFRESH
   Serial.print("refreshLocalConnections after waitCore2 time = ");
   Serial.println(millis() - start2);
@@ -263,9 +280,18 @@ void refreshBlind(
   // }
   if (clean == 1) {
     sendAllPathsCore2 = -1;
-  } else {
-    sendAllPathsCore2 = 1;
-  }
+    if (rp2040.cpuid() == 1) {
+      sendPaths(sendAllPathsCore2);
+     // sendAllPathsCore2 = 0;
+    } 
+    } else {
+      sendAllPathsCore2 = 1;
+      if (rp2040.cpuid() == 1) {
+        sendPaths(sendAllPathsCore2);
+        //sendAllPathsCore2 = 0;
+      }
+    }
+
 
   chooseShownReadings();
   
