@@ -883,7 +883,11 @@ void LogicAnalyzer::encode_and_queue_analog(uint16_t v12) {
 
 bool LogicAnalyzer::usb_write_blocking(const uint8_t* data, int len) {
 #ifdef USE_TINYUSB
-	if (!tud_cdc_n_connected(2)) return false;
+	if (!tud_cdc_n_connected(2)) {
+		Serial.println("LA: USB not connected");
+		Serial.flush();
+		return false;
+	}
 	// Push big chunks into TinyUSB TX fifo; rely on its flush threshold to xfer
 	int off = 0;
 	while (off < len) {

@@ -61,11 +61,11 @@ extern "C" {
 // #define CFG_TUD_LOG_LEVEL 3
 // #define CFG_TUH_LOG_LEVEL 3
 
-#define CFG_TUSB_MEM_SECTION
-#define CFG_TUSB_MEM_ALIGN TU_ATTR_ALIGNED(16)  // Increased from 4 for better DMA performance
+// #define CFG_TUSB_MEM_SECTION
+// #define CFG_TUSB_MEM_ALIGN TU_ATTR_ALIGNED(16)  // Increased from 4 for better DMA performance
 
-// STREAMING OPTIMIZATIONS: Enable double packet buffering for better throughput
-#define CFG_TUD_BULK_DOUBLE_PACKET_BUFFERING 1
+// // STREAMING OPTIMIZATIONS: Enable double packet buffering for better throughput
+// #define CFG_TUD_BULK_DOUBLE_PACKET_BUFFERING 0
 
 //--------------------------------------------------------------------
 // Device Configuration
@@ -87,7 +87,7 @@ extern "C" {
 
 // CDC FIFO size of TX and RX - OPTIMIZED FOR HIGH-THROUGHPUT STREAMING
 #define CFG_TUD_CDC_RX_BUFSIZE 4096   // Keep RX buffer reasonable
-#define CFG_TUD_CDC_TX_BUFSIZE 16384  // Larger TX buffer for streaming - double the previous size
+#define CFG_TUD_CDC_TX_BUFSIZE 4096  // Larger TX buffer for streaming - double the previous size
 
 // STREAMING PERFORMANCE OPTIMIZATIONS
 #define CFG_TUSB_OPT_HIGH_SPEED 1

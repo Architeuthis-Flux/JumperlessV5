@@ -1,0 +1,32 @@
+#######################################
+# Syntax Coloring Map For JDI_MIP_Display
+#######################################
+
+#######################################
+# Datatypes (KEYWORD1)
+#######################################
+JDI_MIP_Display KEYWORD1
+
+#######################################
+# Methods and Functions (KEYWORD2)
+#######################################
+begin			KEYWORD2
+refresh			KEYWORD2
+displayOn		KEYWORD2			
+displayOff		KEYWORD2
+clearScreen		KEYWORD2
+frontlightOn		KEYWORD2
+frontlightOff		KEYWORD2
+setBackgroundColor	KEYWORD2
+
+#######################################
+# Constants (LITERAL1)
+#######################################
+COLOR_BLACK	LITERAL1
+COLOR_BLUE	LITERAL1
+COLOR_GREEN	LITERAL1
+COLOR_CYAN	LITERAL1
+COLOR_RED	LITERAL1
+COLOR_MAGENTA	LITERAL1
+COLOR_YELLOW	LITERAL1
+COLOR_WHITE	LITERAL1

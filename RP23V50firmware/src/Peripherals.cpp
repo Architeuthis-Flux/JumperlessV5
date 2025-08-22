@@ -876,7 +876,7 @@ int gpioOutput[ 10 ] = { 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 };
 volatile bool readingGPIO = false;
 void readGPIO( void ) {
 
-    if ( false ) {
+    if ( true ) {
         return;
     }
     // Allow normal GPIO reading for non-logic analyzer pins

@@ -79,6 +79,7 @@ String menuLines[] = {
   "-uPythonREPL",
   "-File   Manager",
   "-Probe  Calib",
+  "-JDI MIPdisplay",
 
   //"-Show   Image",
  

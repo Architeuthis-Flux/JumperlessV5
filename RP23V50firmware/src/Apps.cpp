@@ -25,6 +25,9 @@
 // #include <PNGDisplay.h>
 #include <Adafruit_GFX.h>
 #include <Adafruit_SSD1306.h>
+#include <SPI.h>
+
+
 
 #include "SerialWrapper.h"
 #define OLED_CONNECTED 0
@@ -70,6 +73,8 @@ struct app apps[ 30 ] = {
     { "File   Manager", 9, 1, fileManagerApp },
     { "eKilo Editor", 10, 1, eKiloApp },
     { "Probe  Calib", 11, 1, probeCalibApp },
+    { "JDI MIPdisplay", 12, 1, jdiMIPdisplay },
+    
 
     { "DOOM", 16, 1, playDoom },
 
@@ -151,6 +156,12 @@ void runApp( int index, char* name ) {
         break;
     case 11:
         probeCalibApp( );
+        break;
+    case 12:
+    Serial.println("JDI_MIP_Display starting");
+    Serial.flush();
+    delay(1000);
+        jdiMIPdisplay( );
         break;
         // case 2: logicAnalyzer(); break;
         // case 3: oscilloscope(); break;
@@ -1207,6 +1218,8 @@ void calibrateDacs( void ) {
     int lastNetSlot = netSlot;
     netSlot = 8;
 
+    int failedToConverge = 0;
+
     createSlots( 8, 1 );
     // for (int i = 0; i < 4; i++) {
 
@@ -1299,6 +1312,8 @@ void calibrateDacs( void ) {
                 delay( 18 );
             }
             printPathsCompact( );
+
+           
             // Serial.print("\n\n\r\tDAC ");
             // Serial.println(d);
 
@@ -1357,6 +1372,7 @@ void calibrateDacs( void ) {
 
                 if ( counter > 80 ) {
                     zeroFound++;
+                    failedToConverge++;
                 }
 
                 Serial.print( "dacZero: " );
@@ -1430,6 +1446,8 @@ void calibrateDacs( void ) {
                     // dacSpread[d] = dacSpread[d] + (abs((reading / 1000) - setVoltage));
                 }
             }
+
+            if (giveUp >= 40) failedToConverge++;
         }
 
         // ADC calibration - use DAC 1 to calibrate all ADCs
@@ -1693,6 +1711,38 @@ void calibrateDacs( void ) {
     }
     setRailsAndDACs( );
 
+    if (failedToConverge == 0) {
+        changeTerminalColor(84, true); // Green
+    } else {
+        changeTerminalColor(196, true); // Red
+    }
+  
+
+    // Print big block text for PASS or FAIL
+    if (failedToConverge == 0) {
+        Serial.println("\r\n");
+        Serial.println("███████   █████   ███████ ███████");
+        Serial.println("██    ██ ██   ██  ██      ██     ");
+        Serial.println("███████  ███████  ███████ ███████");
+        Serial.println("██       ██   ██       ██      ██");
+        Serial.println("██       ██   ██  ███████ ███████");
+        Serial.println("\r\n");
+    } else {
+        Serial.println("\r\n");
+        Serial.println("███████  █████  ██ ██     ");
+        Serial.println("██      ██   ██ ██ ██     ");
+        Serial.println("█████   ███████ ██ ██     ");
+        Serial.println("██      ██   ██ ██ ██     ");
+        Serial.println("██      ██   ██ ██ ███████");
+        Serial.println("\r\n");
+    }
+    Serial.println();
+    Serial.print("\n\n\rFailedToConverge = ");
+    Serial.println(failedToConverge);
+    changeTerminalColor(-1);
+
+    
+
 
     Serial.println( "\n\n\rrun test? (y/n)\n\n\rmake damn sure nothing is "
                     "physically connected to the rails\n\r" );
@@ -1720,6 +1770,9 @@ void calibrateDacs( void ) {
 
     //   }
 
+    failedToConverge = 0;
+
+    float tolerance = 0.6;
     if ( yesNo == 1 ) {
 
         b.clear( );
@@ -1824,6 +1877,10 @@ void calibrateDacs( void ) {
                     reading = readAdcVoltage( d, 64 );
                 }
                 Serial.print( "\tADC measured: " );
+
+                if (abs(reading - setVoltage) > tolerance && i <= 7) {
+                    failedToConverge++;
+                }
                 // if (i < 0) {
                 //  Serial.print(setVoltage); // + random(-4, 4) / 100.0);
 
@@ -1850,6 +1907,10 @@ void calibrateDacs( void ) {
 
                     reading = INA1.getBusVoltage( );
 
+                    if (abs(reading - setVoltage) > tolerance && i  >= 0) {
+                        failedToConverge++;
+                    }
+
                 } else {
 
                     reading = INA0.getBusVoltage( );
@@ -1861,6 +1922,10 @@ void calibrateDacs( void ) {
                     }
 
                     reading = INA0.getBusVoltage( );
+
+                    if (abs(reading - setVoltage) > tolerance && i >= 0) {
+                        failedToConverge++;
+                    }
                 }
 
                 Serial.print( "\t     INA measured: " );
@@ -1894,6 +1959,41 @@ void calibrateDacs( void ) {
     createSlots( netSlot, 1 );
     clearAllNTCC( );
     netSlot = lastNetSlot;
+    if (failedToConverge == 0) {
+       
+    } else {
+        
+    }
+  
+
+    // Print big block text for PASS or FAIL
+    if (failedToConverge < 7) {
+        changeTerminalColor(84, true); // Green
+        Serial.println("\r\n");
+        Serial.println("███████   █████   ███████ ███████");
+        Serial.println("██    ██ ██   ██  ██      ██     ");
+        Serial.println("███████  ███████  ███████ ███████");
+        Serial.println("██       ██   ██       ██      ██");
+        Serial.println("██       ██   ██  ███████ ███████");
+        Serial.println("\r\n");
+    } else {
+        changeTerminalColor(196, true); // Red
+        Serial.println("\r\n");
+        Serial.println("███████  █████  ██ ██     ");
+        Serial.println("██      ██   ██ ██ ██     ");
+        Serial.println("█████   ███████ ██ ██     ");
+        Serial.println("██      ██   ██ ██ ██     ");
+        Serial.println("██      ██   ██ ██ ███████");
+        Serial.println("\r\n");
+    }
+    //Serial.println();
+    Serial.print("\n\n\rFailedToConverge = ");
+    Serial.println(failedToConverge);
+    Serial.println();
+    Serial.println();
+    changeTerminalColor(-1, true);
+
+    
 
     refreshConnections( -1 );
     routableBufferPower( 1, 0, 1 );
@@ -1902,7 +2002,13 @@ void calibrateDacs( void ) {
     configChanged = true;
     if ( firstStart == 1 ) {
         initializeMicroPythonExamples( true );
+
+        delay(1300);
+        rp2040.restart();
+
     }
+
+
     // printPathsCompact();
 }
 
@@ -1949,4 +2055,193 @@ const char* addressToHexString( uint8_t address ) {
     static char hexStr[ 6 ]; // static so it persists after function returns
     sprintf( hexStr, "0x%02X", address );
     return hexStr;
+}
+
+
+
+#include <JDI_MIP_Display.h>
+#include <Display_cfg.h>
+
+#include "Images.h"
+
+
+// // JDI MIP (LPM009M360A 72x144) pin/config
+// #define PIN_SCS         21
+// #define PIN_DISP        20
+// #define PIN_FRONTLIGHT  25
+
+#define DISPLAY_WIDTH   72
+#define DISPLAY_HEIGHT  144
+
+#define DIFF_LINE_UPDATE
+#define HALF_WIDTH (DISPLAY_WIDTH / 2)
+
+#define COLOR_BLACK             0x00
+#define COLOR_BLUE              0x02
+#define COLOR_GREEN             0x04
+#define COLOR_CYAN              0x06
+#define COLOR_RED               0x08
+#define COLOR_MAGENTA           0x0a
+#define COLOR_YELLOW            0x0c
+#define COLOR_WHITE             0x0e
+
+#define CMD_NO_UPDATE           0x00
+#define CMD_BLINKING_BLACK      0x10
+#define CMD_BLINKING_INVERSION  0x14
+#define CMD_BLINKING_WHITE      0x18
+#define CMD_ALL_CLEAR           0x20
+#define CMD_VCOM                0x40
+#define CMD_UPDATE              0x90
+
+
+
+// NOTE: moved to include/Display_cfg.h; do not duplicate here
+ JDI_MIP_Display jdi_display;
+
+void jdiMIPdisplay( void ) {
+
+   
+
+
+    
+
+
+
+
+
+jdi_display.begin();
+jdi_display.displayOn();
+jdi_display.clearScreen();
+jdi_display.refresh();
+
+cycleTerminalColor(true, 5.3, true);
+int colors[10] = {COLOR_BLUE, COLOR_GREEN, COLOR_CYAN, COLOR_RED, COLOR_MAGENTA, COLOR_YELLOW, COLOR_WHITE, COLOR_BLACK, COLOR_BLUE, COLOR_GREEN};
+Serial.println("\n\rThis is meant to run with a JDI LPM009M360A 72x144 display");
+Serial.println("It will bounce the startup animation and then exit\n\r");
+cycleTerminalColor();
+Serial.println("Connections: \n\r");
+
+Serial.println("  ┃  8  7  6  5  4  3  2  1  ┃  ");
+Serial.println("  ┃  ▌     ▌  ▌  ▌  ▌  ▌  ▌  ┃  ");
+Serial.println("  ┃  ▌     ▌  ▌  ▌  ▌  ▌  ▌  ┃  ");
+Serial.println("  ┃  ▌     ▌  ▌  ▌  ▌  ▌  ▌  ┃  ");
+Serial.println("  ┃  ▌  ╳  ▌  ▌  ▌  ▌  ▌  ▌  ┃  ");
+Serial.println("  ┗━━━━━━━━━━━━━━━━━━━━━━━━━━┛  ");cycleTerminalColor();
+Serial.println("     G  N  3  D  E  C  M  C     ");
+Serial.println("     N  C  V  i  x  S  O  L     ");
+Serial.println("     D     3  s  t  .  S  K     ");
+Serial.println("     ⏚     +  p     .  I  .     ");
+Serial.println("              .     .  .  .     ");cycleTerminalColor();
+Serial.println("    GPIO      6     2  4  3     ");
+
+Serial.println();
+
+cycleTerminalColor();
+Serial.println("GPIO 2 - CS");
+Serial.println("GPIO 3 - SCK");
+Serial.println("GPIO 4 - MOSI");
+Serial.println("GPIO 6 - DISP");
+
+cycleTerminalColor();
+Serial.println("\n\rPress the encoder button or any key to exit\n\n\r");
+cycleTerminalColor();
+
+Serial.println("Paste this in if you have the display soldered to the adapter board's SMD footptint");
+Serial.println("f { 139-106,136-79,101-80,82-100,132-77,134-76,133-75, } ");
+cycleTerminalColor();
+
+
+Serial.flush();
+
+
+
+// for (int i = 0; i < 10; i++){
+// jdi_display.fillCircle(jdi_display.width() / 2, jdi_display.height() / 2, 30, colors[i %10]);
+// jdi_display.refresh();
+// delay(20);
+// }
+
+    const int srcW = 32;
+    const int srcH = 21;
+    const int rotW = srcH;  // 90° rotation width
+    const int rotH = srcW;  // 90° rotation height
+
+    for (int outer = 0; outer < 100; outer++){
+        for (int fi = 0; fi < startupFrameLEN; fi++){
+            const uint32_t* src = startupFrameArray[fi];
+
+            // Render full-screen, rotated 90° CW, scaled to 72x144
+            for (int dy = 0; dy < DISPLAY_HEIGHT; dy++){
+                int uy = (dy * rotH) / DISPLAY_HEIGHT; // 0..rotH-1
+                for (int dx = 0; dx < DISPLAY_WIDTH; dx++){
+                    int ux = (dx * rotW) / DISPLAY_WIDTH; // 0..rotW-1
+
+                    // Rotate 90° CW: (sx, sy) derived from (ux, uy)
+                    int sx = srcW - 1 - uy;
+                    int sy = ux;
+
+                    uint32_t c = src[ sy * srcW + sx ]; // 0x00RRGGBB
+                    uint8_t r = ( c >> 16 ) & 0xFF;
+                    uint8_t g = ( c >> 8 ) & 0xFF;
+                    uint8_t b = ( c ) & 0xFF;
+
+                    // Map to JDI 8-color palette nibble
+                    uint16_t col = 0;
+                    if ( r >= 0x50 ) col |= COLOR_RED;
+                    if ( g >= 0x80 ) col |= COLOR_GREEN;
+                    if ( b >= 0x60 ) col |= COLOR_BLUE;
+
+                    jdi_display.drawBufferedPixel( DISPLAY_WIDTH - 1 - dx, DISPLAY_HEIGHT - 1 - dy, col );
+                }
+            }
+
+            jdi_display.refresh();
+        }
+        for (int fi = startupFrameLEN-1; fi >= 0; fi--){
+            const uint32_t* src = startupFrameArray[fi];
+
+            // Render full-screen, rotated 90° CW, scaled to 72x144
+            for (int dy = 0; dy < DISPLAY_HEIGHT; dy++){
+                int uy = (dy * rotH) / DISPLAY_HEIGHT; // 0..rotH-1
+                for (int dx = 0; dx < DISPLAY_WIDTH; dx++){
+                    int ux = (dx * rotW) / DISPLAY_WIDTH; // 0..rotW-1
+
+                    // Rotate 90° CW: (sx, sy) derived from (ux, uy)
+                    int sx = srcW - 1 - uy;
+                    int sy = ux;
+
+                    uint32_t c = src[ sy * srcW + sx ]; // 0x00RRGGBB
+                    uint8_t r = ( c >> 16 ) & 0xFF;
+                    uint8_t g = ( c >> 8 ) & 0xFF;
+                    uint8_t b = ( c ) & 0xFF;
+
+                    // Map to JDI 8-color palette nibble
+                    uint16_t col = 0;
+                    if ( r >= 0x50 ) col |= COLOR_RED;
+                    if ( g >= 0x80 ) col |= COLOR_GREEN;
+                    if ( b >= 0x50 ) col |= COLOR_BLUE;
+
+                    jdi_display.drawBufferedPixel( DISPLAY_WIDTH - 1 - dx, DISPLAY_HEIGHT - 1 - dy, col );
+                }
+            }
+
+            jdi_display.refresh();
+        }
+
+        if (encoderButtonState == PRESSED || Serial.available() > 0){
+            break;
+        }
+        delay(10);
+    }
+    return;
+
+    // // Convert a small startup image to RGB111 (8 colors) and render centered
+
+
+    // jdi_display.frontlightOff();
+  //  jdi_display.displayOff();
+//#else
+   // Serial.println("\n\rJDI_MIP_Display library not found at compile time.");
+   // Serial.println("Install 'JDI_MIP_Display' via Library Manager or platformio.ini lib_deps.");
+//#endif
 }

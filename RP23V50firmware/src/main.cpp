@@ -105,7 +105,7 @@ volatile int dumpLED = 0;
 unsigned long dumpLEDTimer = 0;
 unsigned long dumpLEDrate = 50;
 
-const char firmwareVersion[] = "5.3.1.0"; //! remember to update this
+const char firmwareVersion[] = "5.3.1.1"; //! remember to update this
 bool newConfigOptions = false;            //! set to true with new config options //!
                                           
 
@@ -373,6 +373,8 @@ menu:
             // Serial.println("Initializing OLED");
             oled.init( );
         }
+
+       // runApp(-1, "jdi MIPdisplay");
 
         firstLoop = 0;
 #if SETUP_LOGIC_ANALYZER_ON_BOOT == 1

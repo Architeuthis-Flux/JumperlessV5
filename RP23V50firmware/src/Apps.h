@@ -28,6 +28,7 @@ void fileManagerApp(void);
 void customApp(void);
 void xlsxGui(void);
 void probeCalibApp(void);
+void jdiMIPdisplay(void);
 
 
 void displayImage(void);

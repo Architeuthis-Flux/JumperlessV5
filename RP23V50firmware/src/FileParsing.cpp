@@ -55,7 +55,7 @@ char inputBuffer[INPUTBUFFERLENGTH] = {0};
 // ArduinoJson::StaticJsonDocument<8000> wokwiJson;
 // ;
 
-String connectionsW[MAX_BRIDGES][5];
+// String connectionsW[MAX_BRIDGES][5];
 
 File nodeFile;
 
@@ -2072,59 +2072,59 @@ bool isSlotFileEmpty(int slot) {
   return isSlotFileEmpty(content);
 }
 
-void writeToNodeFile(int slot, int flashOrLocal) {
+ void writeToNodeFile(int slot, int flashOrLocal) {
 
-  /// core1busy = true;
+//   /// core1busy = true;
 
-  // nodeFileString.printTo(Serial);
-  // nodeFile = FatFS.open("nodeFile" + String(slot) + ".txt", "w");
-  openFileThreadSafe(w, slot);
+//   // nodeFileString.printTo(Serial);
+//   // nodeFile = FatFS.open("nodeFile" + String(slot) + ".txt", "w");
+//   openFileThreadSafe(w, slot);
 
-  if (!nodeFile) {
-    if (debugFP)
-      Serial.println("Failed to open nodeFile");
-    return;
-  } else {
-    if (debugFP)
-      Serial.println("\n\rrecreated nodeFile.txt\n\n\rloading bridges from "
-                     "wokwi.txt\n\r");
-  }
-  nodeFile.print("{\n\r");
-  for (int i = 0; i < numConnsJson; i++) {
-    if (connectionsW[i][0] == "-1" && connectionsW[i][1] != "-1") {
-      // lightUpNode(connectionsW[i][0].toInt());
-      continue;
-    }
-    if (connectionsW[i][1] == "-1" && connectionsW[i][0] != "-1") {
-      // lightUpNode(connectionsW[i][1].toInt());
-      continue;
-    }
-    if (connectionsW[i][0] == connectionsW[i][1]) {
-      // lightUpNode(connectionsW[i][0].toInt());
-      continue;
-    }
+//   if (!nodeFile) {
+//     if (debugFP)
+//       Serial.println("Failed to open nodeFile");
+//     return;
+//   } else {
+//     if (debugFP)
+//       Serial.println("\n\rrecreated nodeFile.txt\n\n\rloading bridges from "
+//                      "wokwi.txt\n\r");
+//   }
+//   nodeFile.print("{\n\r");
+//   for (int i = 0; i < numConnsJson; i++) {
+//     if (connectionsW[i][0] == "-1" && connectionsW[i][1] != "-1") {
+//       // lightUpNode(connectionsW[i][0].toInt());
+//       continue;
+//     }
+//     if (connectionsW[0][1] == "-1" && connectionsW[0][0] != "-1") {
+// //       // lightUpNode(connectionsW[i][1].toInt());
+// //       continue;
+//      }
+//     if (connectionsW[i][0] == connectionsW[i][1]) {
+//       // lightUpNode(connectionsW[i][0].toInt());
+//       continue;
+//     }
 
-    nodeFile.print(connectionsW[i][0]);
-    nodeFile.print("-");
-    nodeFile.print(connectionsW[i][1]);
-    nodeFile.print(",\n\r");
-  }
-  nodeFile.print("\n\r}\n\r");
+//     nodeFile.print(connectionsW[i][0]);
+//     nodeFile.print("-");
+//     nodeFile.print(connectionsW[i][1]);
+//     nodeFile.print(",\n\r");
+//   }
+//   nodeFile.print("\n\r}\n\r");
 
-  if (debugFP) {
-    Serial.println("wrote to nodeFile.txt");
+//   if (debugFP) {
+//     Serial.println("wrote to nodeFile.txt");
 
-    Serial.println("nodeFile.txt contents:");
-    nodeFile.seek(0);
+//     Serial.println("nodeFile.txt contents:");
+//     nodeFile.seek(0);
 
-    while (nodeFile.available()) {
-      Serial.write(nodeFile.read());
-    }
-    Serial.println("\n\r");
-  }
-  nodeFile.close();
-  core1busy = false;
-}
+//     while (nodeFile.available()) {
+//       Serial.write(nodeFile.read());
+//     }
+//     Serial.println("\n\r");
+//   }
+//   nodeFile.close();
+//   core1busy = false;
+ }
 
 void openNodeFile(int slot, int flashOrLocal) {
   timeToFP = millis();

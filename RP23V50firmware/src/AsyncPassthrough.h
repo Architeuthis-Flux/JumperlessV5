@@ -6,6 +6,8 @@
 #define ASYNC_PASSTHROUGH_ENABLED 1
 
 extern bool asyncPassthroughEnabled;
+extern unsigned long microsPerByteSerial1;
+extern unsigned long serial1baud;
 
 #if ASYNC_PASSTHROUGH_ENABLED == 1
 namespace AsyncPassthrough {

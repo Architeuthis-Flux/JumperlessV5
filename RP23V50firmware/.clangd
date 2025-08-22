@@ -13,6 +13,7 @@ CompileFlags:
     
     # Project includes
     - "-Iinclude"
+    - "-Ilib/JDI_MIP_Display"
     - "-Isrc"
     - "-Iboards/jumperless_v5"
     - "-Ilib"
@@ -30,6 +31,7 @@ CompileFlags:
     - "-I.pio/libdeps/jumperless_v5/ArduinoJson/src"
     - "-I.pio/libdeps/jumperless_v5/Arduino_JSON/src"
     - "-I.pio/libdeps/jumperless_v5/logic-analyzer/src"
+    - "-I.pio/libdeps/jumperless_v5/JDI_MIP_Display"
     
     # MicroPython includes
     - "-Ilib/micropython"
@@ -118,3 +120,6 @@ Format:
   IndentWidth: 2
   TabWidth: 2
   UseTab: Never
+
+CompileFlags:
+  Add: ["-Iinclude", "-I.pio/libdeps/jumperless_v5/JDI_MIP_Display", "-I.pio/libdeps/jumperless_v5/Adafruit GFX Library", "-I.pio/libdeps/jumperless_v5/Adafruit BusIO", "-I.pio/libdeps/jumperless_v5/SPI", "-DUSE_TINYUSB"]

@@ -169,7 +169,7 @@ void initSecondSerial( void ) {
 #if USB_CDC_ENABLE_COUNT >= 2
     // USBSer1 maps to CDC interface 1 (Arduino Serial)
     if ( jumperlessConfig.serial_1.function != 0 ) {
-        Serial1.setFIFOSize( 1024 );
+        Serial1.setFIFOSize( 2048 );
         // Serial1.setTimeout( 100 );
         USBSer1.begin( baudRateUSBSer1 );
         //  Serial.println("  USBSer1 (Arduino) initialized");
@@ -181,13 +181,13 @@ void initSecondSerial( void ) {
 
 #if USB_CDC_ENABLE_COUNT >= 3
     // USBSer2 maps to CDC interface 2 (Routable Serial) - conditionally
-    if ( jumperlessConfig.serial_2.function != 0 ) {
-        USBSer2.begin( baudRateUSBSer2, makeSerialConfig( 8, 0, 0 ) );
+   // if ( jumperlessConfig.serial_2.function != 0 ) {
+       USBSer2.begin( baudRateUSBSer2, makeSerialConfig( 8, 0, 1 ) );
         // Serial.println("  USBSer2 (Routable) initialized");
         // Serial2.begin( baudRateUSBSer2, makeSerialConfig( 8, 0, 0 ) );
-    } else {
+   // } else {
         // Serial.println("  USBSer2 disabled by config");
-    }
+   // }
 #endif
 
 #if USB_CDC_ENABLE_COUNT >= 4
@@ -374,7 +374,9 @@ int secondSerialHandler( void ) {
     //         //       lastSerial1TxRead));
     //         // Serial.println("Serial1 lastRx: " + String(millis() -
     //         // lastSerial1RxRead));
-    checkForConfigChangesUSBSer1( true );
+    if ( jumperlessConfig.serial_1.async_passthrough == false ) {
+        checkForConfigChangesUSBSer1( true );
+    }
     //     }
     //     lastSerial1Check = millis( );
     // }
@@ -414,7 +416,7 @@ int secondSerialHandler( void ) {
 
         if ( jumperlessConfig.serial_1.async_passthrough == false ) {
             ret = handleSerialPassthrough( 0, 0, printSerial1Passthrough == 2 ? 1 : 0, 0 );
-           // Serial.println(jumperlessConfig.serial_1.async_passthrough);
+            Serial.println(jumperlessConfig.serial_1.async_passthrough);
         }
     }
     // } while ( Serial1.available( ) > 0 || USBSer1.available( ) > 0 );
@@ -671,6 +673,10 @@ int handleSerialPassthrough( int serial, int print, int printPassthroughFlashing
     int ret = 0;
     int sent = 0;
     int received = 0;
+
+    if ( jumperlessConfig.serial_1.async_passthrough == true ) {
+        return 0;
+    }
 
     if ( jumperlessConfig.serial_1.function == 1 && ( serial == 0 || serial == 2 ) || true ) {
 

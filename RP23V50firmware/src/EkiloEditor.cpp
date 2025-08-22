@@ -225,7 +225,7 @@ struct Buffer {
 };
 
 // Safe memory allocation with size limits
-#define MAX_EDITOR_MEMORY (16 * 1024)  // 32KB limit for editor content
+#define MAX_EDITOR_MEMORY (48 * 1024)  // 32KB limit for editor content
 #define MIN_FREE_HEAP (3 * 1024)      // Reduce to 5KB free (was 10KB)
 
 bool check_memory_available(size_t needed) {
@@ -1994,15 +1994,15 @@ int ekilo_main(const char* filename) {
     
     while (!E.should_quit) {
         // Periodic memory monitoring
-        unsigned long current_time = millis();
-        if (current_time - last_memory_check > MEMORY_CHECK_INTERVAL) {
-            size_t freeHeap = rp2040.getFreeHeap();
-            if (freeHeap < MIN_FREE_HEAP) {
-                ekilo_set_status_message("WARNING: Low memory (%dKB free) - save your work!", freeHeap / 1024);
-                E.screen_dirty = true;
-            }
-            last_memory_check = current_time;
-        }
+        // unsigned long current_time = millis();
+        // if (current_time - last_memory_check > MEMORY_CHECK_INTERVAL) {
+        //     size_t freeHeap = rp2040.getFreeHeap();
+        //     if (freeHeap < MIN_FREE_HEAP) {
+        //         ekilo_set_status_message("WARNING: Low memory (%dKB free) - save your work!", freeHeap / 1024);
+        //         E.screen_dirty = true;
+        //     }
+        //     last_memory_check = current_time;
+        // }
         
         // Process any pending OLED updates
         //ekilo_process_oled_update();
@@ -2123,19 +2123,22 @@ String ekilo_main_repl(const char* filename) {
     // Editor loop with REPL positioning
     while (!E.should_quit) {
         // Process any pending OLED updates
-        ekilo_process_oled_update();
+
+        ekilo_process_keypress();
+
+        
         
         // Process encoder input for cursor movement and character selection
         ekilo_process_encoder_input();
-        
+        ekilo_process_oled_update();
         // Only refresh screen if something changed
         if (E.screen_dirty) {
             ekilo_refresh_screen();
             E.screen_dirty = false;
         }
         
-        ekilo_process_keypress();
-        delayMicroseconds(1);
+        
+       // delayMicroseconds(1);
     }
     
     // If content was saved, return it with Ctrl+P prefix if needed

@@ -109,10 +109,10 @@ extern int probeRev;
 #define USB_MODE_ADDRESS 165
 
 #define MAX_NETS 60
-#define MAX_BRIDGES 255
+#define MAX_BRIDGES 192
 #define MAX_NODES 48 //this is the max number of nodes that can be connected to a net
 #define MAX_DNI 8 // max number of doNotIntersect rules
-#define MAX_DUPLICATE 25 // max number of duplicates
+#define MAX_DUPLICATE 12 // max number of duplicates
 
 #define MAX_NETS_FOR_WIRES 18
 #define MAX_PATHS_FOR_WIRES 38

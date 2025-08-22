@@ -2309,17 +2309,18 @@ float checkProbeCurrent(void) {
   float current = 0.0;// = INA1.getCurrent_mA()-jumperlessConfig.calibration.probe_current_zero;
 
 
-  for (int i = 0; i < 20; i++) {
+  for (int i = 0; i < 16; i++) {
     current += INA1.getCurrent_mA();
-    delayMicroseconds(500);
+    delayMicroseconds(900);
   }
-  current = current / 20.0;
+  current = current / 16.0;
   current = current - jumperlessConfig.calibration.probe_current_zero;
 
   if (showProbeCurrent == 1) {
     Serial.print("                          \rProbe current: ");
     Serial.print(current);
     Serial.print(" mA");
+    Serial.flush();
 
     // for (int i = 0; i < (int)(current*10.0); i++) {
     //   Serial.print("*");
@@ -3366,7 +3367,7 @@ int readProbeRaw(int readNothingTouched, bool allowDuplicates) {
   if (connectOrClearProbe == 1) {
 
     for (int i = 0; i < numberOfReads; i++) {
-      measurements[i] = readAdc(5, 10);
+      measurements[i] = readAdc(5, 12);
       if (measurements[i] < 300 && i < 4) {
         lowReads++;
         }
@@ -3391,7 +3392,7 @@ int readProbeRaw(int readNothingTouched, bool allowDuplicates) {
 
       } else {
       for (int i = 0; i < numberOfReads; i++) {
-        measurements[i] = readAdc(5, 4);
+        measurements[i] = readAdc(5, 6);
         if (measurements[i] < 300 && i < 4) {
           lowReads++;
           }
