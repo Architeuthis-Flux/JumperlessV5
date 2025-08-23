@@ -683,6 +683,33 @@ void ekilo_row_del_char(EditorRow* row, int at) {
     E.dirty++;
 }
 
+// Insert a string into a row at a position
+void ekilo_row_insert_string(EditorRow* row, int at, const char* s, size_t len) {
+    if (!row || !s || len == 0) return;
+    if (at < 0) at = 0;
+    if (at > row->size) at = row->size;
+    
+    if (!check_memory_available(row->size + len + 1)) {
+        ekilo_set_status_message("ERROR: Not enough memory to insert string");
+        return;
+    }
+    
+    char* new_chars = (char*)realloc(row->chars, row->size + len + 1);
+    if (!new_chars) {
+        ekilo_set_status_message("ERROR: Memory allocation failed for string insert");
+        return;
+    }
+    row->chars = new_chars;
+    
+    // Shift existing content to make room
+    memmove(&row->chars[at + len], &row->chars[at], row->size - at + 1); // include NUL
+    memcpy(&row->chars[at], s, len);
+    row->size += len;
+    row->chars[row->size] = '\0';
+    ekilo_update_row(row);
+    E.dirty++;
+}
+
 // Append string to a row
 void ekilo_row_append_string(EditorRow* row, char* s, size_t len) {
     if (!row || !s || len == 0) return;
@@ -806,10 +833,25 @@ void ekilo_set_status_message(const char* fmt, ...) {
     E.screen_dirty = true;
 }
 
+// Lightweight cursor repositioning without full redraw when possible
+static inline void ekilo_update_cursor_position_only() {
+    char buf[24];
+    int visual_row = (E.cy - E.rowoff) + (E.repl_mode ? 1 : 2);
+    int visual_col = (E.cx - E.coloff) + 1;
+    int n = snprintf(buf, sizeof(buf), "\x1b[%d;%dH", visual_row, visual_col);
+    Serial.write((const uint8_t*)buf, n);
+}
+
 // Move cursor based on key
 void ekilo_move_cursor(int key) {
     EditorRow* row = (E.cy >= E.numrows) ? nullptr : &E.row[E.cy];
     
+    int prev_cy = E.cy;
+    int prev_cx = E.cx;
+    int prev_rowoff = E.rowoff;
+    int prev_coloff = E.coloff;
+    bool need_full_redraw = false;
+
     switch (key) {
         case ARROW_LEFT:
             if (E.cx != 0) {
@@ -836,6 +878,7 @@ void ekilo_move_cursor(int key) {
                 // Auto-scroll if cursor moves above visible area
                 if (E.cy < E.rowoff) {
                     E.rowoff = E.cy;
+                    need_full_redraw = true;
                 }
             }
             break;
@@ -849,6 +892,7 @@ void ekilo_move_cursor(int key) {
                 int available_rows = E.repl_mode ? E.screenrows - 3 : E.screenrows - 4;
                 if (E.cy >= E.rowoff + available_rows) {
                     E.rowoff = E.cy - available_rows + 1;
+                    need_full_redraw = true;
                 }
             }
             break;
@@ -860,12 +904,28 @@ void ekilo_move_cursor(int key) {
         E.cx = rowlen;
     }
     
+    // Horizontal scroll window management on cursor move
+    if (E.cx < E.coloff) {
+        E.coloff = E.cx;
+        need_full_redraw = true;
+    }
+    if (E.cx >= E.coloff + E.screencols) {
+        E.coloff = E.cx - E.screencols + 1;
+        need_full_redraw = true;
+    }
+
     // Schedule OLED update when cursor moves
     ekilo_schedule_oled_update();
-    
-    
-    // Mark screen as dirty for refresh
-    E.screen_dirty = true;
+
+    // If nothing structural changed, just move the terminal cursor
+    if (!need_full_redraw && prev_rowoff == E.rowoff && prev_coloff == E.coloff) {
+        if (prev_cx != E.cx || prev_cy != E.cy) {
+            ekilo_update_cursor_position_only();
+        }
+    } else {
+        // Full redraw needed (viewport changed)
+        E.screen_dirty = true;
+    }
 }
 
 // Open file
@@ -1050,8 +1110,8 @@ void ekilo_write_buffer_chunked(Buffer* ab) {
         return;
     }
     
-    const int CHUNK_SIZE = 64; // Write in 64-byte chunks
-    const int DELAY_MICROS = 10; // 10us delay between chunks
+    const int CHUNK_SIZE = 64; // USB CDC packet size
+    const int DELAY_MICROS = 2; // small pause between packets for compatibility
     
     int bytes_written = 0;
     while (bytes_written < ab->len) {
@@ -1064,14 +1124,11 @@ void ekilo_write_buffer_chunked(Buffer* ab) {
         
         // Write this chunk
         Serial.write((uint8_t*)(ab->b + bytes_written), chunk_size);
-        Serial.flush();
         
         bytes_written += chunk_size;
         
-        // Add delay between chunks (except for the last one)
-        if (bytes_written < ab->len) {
-            delayMicroseconds(DELAY_MICROS);
-        }
+        // Add tiny delay between chunks (except for the last one)
+        if (bytes_written < ab->len) delayMicroseconds(DELAY_MICROS);
     }
     
     buffer_free(ab);
@@ -1300,10 +1357,13 @@ void ekilo_refresh_screen() {
 void ekilo_process_keypress() {
     static int quit_times = 3;
     
-    int c = ekilo_read_key();
-    if (c == 0) return; // No key available
-    
-    switch (c) {
+    int processed = 0;
+    while (processed < 32) { // batch up to 32 inputs to reduce redraws
+        int c = ekilo_read_key();
+        if (c == 0) break; // No key available
+        bool exit_early = false;
+        
+        switch (c) {
         case '\n':
         
         case ENTER:
@@ -1315,9 +1375,11 @@ void ekilo_process_keypress() {
                 ekilo_set_status_message("WARNING!!! File has unsaved changes. "
                     "Press Ctrl-Q %d more times to quit.", quit_times);
                 quit_times--;
-                return;
+                exit_early = true; // mirror previous early return behavior
+                break;
             }
             E.should_quit = 1;
+            exit_early = true;
             break;
             
         case CTRL_S:
@@ -1329,6 +1391,7 @@ void ekilo_process_keypress() {
             ekilo_save();
             E.should_launch_repl = true;
             E.should_quit = 1;
+            exit_early = true;
             break;
             
         case CTRL_U:
@@ -1388,10 +1451,18 @@ void ekilo_process_keypress() {
             break;
         }
         case TAB:
-            ekilo_insert_char(' ');
-            ekilo_insert_char(' ');
-            ekilo_insert_char(' '); 
-            ekilo_insert_char(' ');
+            // Fast-path tab insert as 4 spaces in one update
+            if (E.cy == E.numrows) {
+                ekilo_insert_row(E.numrows, "", 0);
+            }
+            {
+                EditorRow* row = &E.row[E.cy];
+                ekilo_row_insert_string(row, E.cx, "    ", 4);
+                E.cx += 4;
+                // Schedule OLED and mark dirty like ekilo_insert_char
+                ekilo_schedule_oled_update();
+                E.screen_dirty = true;
+            }
             break;
         
         case ARROW_UP:
@@ -1419,9 +1490,15 @@ void ekilo_process_keypress() {
         default:
             ekilo_insert_char(c);
             break;
+        }
+
+        processed++;
+        if (exit_early) break;
     }
     
-    quit_times = 1;
+    if (processed > 0) {
+        quit_times = 1;
+    }
 }
 
 // OLED update batching functions
@@ -2044,13 +2121,11 @@ void ekilo_init_repl_mode() {
     
     // Print a simple header once when entering REPL mode
     Serial.println("eKilo Editor | Ctrl-S/Ctrl-P=save & load | Ctrl-Q=quit | Wheel=navigate");
-    Serial.flush();
 }
 
 void ekilo_store_cursor_position() {
     // Save current cursor position using terminal escape sequence
     Serial.print("\033[s"); // Save cursor position
-    Serial.flush();
     E.lines_used = 0;
 }
 
@@ -2058,7 +2133,6 @@ void ekilo_restore_cursor_position() {
     if (E.repl_mode) {
         // Restore saved cursor position
         Serial.print("\033[u"); // Restore cursor position
-        Serial.flush();
     }
 }
 
@@ -2409,9 +2483,7 @@ String ekilo_inline_edit(const String& initial_content) {
             }
             Serial.write(render[i]);
         }
-        if (current_color != -1) {
-            Serial.print("\x1b[0m"); // Reset at end
-        }
+        if (current_color != -1) Serial.print("\x1b[0m"); // Reset at end
         
         free(render);
         free(hl);
@@ -2529,12 +2601,7 @@ String ekilo_inline_edit(const String& initial_content) {
     }
     
     // Show current prompt
-    if (inline_editor.numrows == 0) {
-        Serial.print(">>> ");
-    } else {
-        Serial.print("... ");
-    }
-    Serial.flush();
+    if (inline_editor.numrows == 0) Serial.print(">>> "); else Serial.print("... ");
     
     // Simple editing loop - much simpler than full eKilo
     String current_line = "";
@@ -2756,7 +2823,7 @@ String ekilo_inline_edit(const String& initial_content) {
                     }
                     break;
             }
-            Serial.flush();
+            // Avoid flush here to prevent input lag; USB CDC buffers adequately
         }
         delayMicroseconds(100);
     }

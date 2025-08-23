@@ -167,15 +167,16 @@ void initSecondSerial( void ) {
     // Serial.println(" enabled)");
 
 #if USB_CDC_ENABLE_COUNT >= 2
-    // USBSer1 maps to CDC interface 1 (Arduino Serial)
+    // USBSer1 maps to CDC interface 1. Avoid starting Arduino Serial1 if
+    // async passthrough is using pico-sdk UART on the same pins.
     if ( jumperlessConfig.serial_1.function != 0 ) {
-        Serial1.setFIFOSize( 2048 );
-        // Serial1.setTimeout( 100 );
         USBSer1.begin( baudRateUSBSer1 );
-        //  Serial.println("  USBSer1 (Arduino) initialized");
-        Serial1.setTX( 0 );
-        Serial1.setRX( 1 );
-        Serial1.begin( baudRateUSBSer1, makeSerialConfig( 8, 0, 1 ) );
+        if ( jumperlessConfig.serial_1.async_passthrough == false ) {
+            Serial1.setFIFOSize( 8192 );
+            Serial1.setTX( 0 );
+            Serial1.setRX( 1 );
+            Serial1.begin( baudRateUSBSer1, makeSerialConfig( 8, 0, 1 ) );
+        }
     }
 #endif
 
@@ -357,7 +358,7 @@ int serialPassthroughStatus = 0;
 int serialPassthroughStatusTimeout = 50;
 
 int secondSerialHandler( void ) {
-
+//return 0;
     int ret = 0;
 
     // if (jumperlessConfig.serial_1.function == 2 ||
@@ -416,7 +417,7 @@ int secondSerialHandler( void ) {
 
         if ( jumperlessConfig.serial_1.async_passthrough == false ) {
             ret = handleSerialPassthrough( 0, 0, printSerial1Passthrough == 2 ? 1 : 0, 0 );
-            Serial.println(jumperlessConfig.serial_1.async_passthrough);
+            //Serial.println(jumperlessConfig.serial_1.async_passthrough);
         }
     }
     // } while ( Serial1.available( ) > 0 || USBSer1.available( ) > 0 );

@@ -531,7 +531,12 @@ int gpioReadWithFloating(
     int readingPullup = -1;
     readingGPIO = true;
 
-    if (gpio_get_function(pin) == GPIO_FUNC_I2C || gpio_get_function(pin) == GPIO_FUNC_UART){
+    if (gpio_get_function(pin) == GPIO_FUNC_I2C || gpio_get_function(pin) == GPIO_FUNC_UART || pin < 2){
+        // Serial.println("I2C or UART pin");
+        // Serial.println(pin);
+        // Serial.println(gpio_get_function(pin));
+        // Serial.flush();
+        return 0;
         return gpio_get( pin );
     }
 
@@ -876,7 +881,7 @@ int gpioOutput[ 10 ] = { 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 };
 volatile bool readingGPIO = false;
 void readGPIO( void ) {
 
-    if ( true ) {
+    if ( false ) {
         return;
     }
     // Allow normal GPIO reading for non-logic analyzer pins
@@ -898,6 +903,10 @@ void readGPIO( void ) {
         }
 
         if (gpio_get_function(gpioDef[i][0]) == GPIO_FUNC_UART) {
+            // Serial.println("UART pin");
+            // Serial.println(gpioDef[i][0]);
+            // Serial.println(gpio_get_function(gpioDef[i][0]));
+            // Serial.flush();
             continue;
         }
 

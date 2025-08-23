@@ -105,7 +105,7 @@ volatile int dumpLED = 0;
 unsigned long dumpLEDTimer = 0;
 unsigned long dumpLEDrate = 50;
 
-const char firmwareVersion[] = "5.3.1.1"; //! remember to update this
+const char firmwareVersion[] = "5.3.1.2"; //! remember to update this
 bool newConfigOptions = false;            //! set to true with new config options //!
                                           
 
@@ -188,7 +188,7 @@ void setup( ) {
     }
 
     if (jumperlessConfig.serial_1.async_passthrough == true) {
-        AsyncPassthrough::begin();
+        AsyncPassthrough::begin(115200);
     }
 
     // Initialize the async UART0 <-> CDC1 bridge
@@ -2247,6 +2247,7 @@ int passthroughStatus = 0;
 unsigned long serialInfoTimer = 0;
 
 unsigned long la_timer = 0;
+unsigned long uartTaskTimer = 0;
 
 void loop1( ) {
     // int timer = micros();
@@ -2292,11 +2293,15 @@ void loop1( ) {
 
     // if ( core1passthrough == 0 || inClickMenu == 1 || inPadMenu == 1 ||
     //      probeActive == 1 ) {
+
+    if (millis() - uartTaskTimer > 10) {
+        uartTaskTimer = millis();
     if (jumperlessConfig.serial_1.async_passthrough == true) {
         AsyncPassthrough::task();
     }
-    passthroughStatus = secondSerialHandler( );
     
+    passthroughStatus = secondSerialHandler( );
+    }
     //     //Serial.println("passthroughStatus = " + String(passthroughStatus));
     // }
 
