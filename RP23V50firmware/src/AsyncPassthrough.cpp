@@ -128,29 +128,39 @@ static inline uint16_t make_serial_config_from_line_coding( uint8_t data_bits, u
 // ----------------------------------------------------------------------------
 
 static volatile bool s_uart_flush_pending = false;
-static uint8_t s_uart_rx_ring[ 4096 ];
-static volatile uint16_t s_uart_rx_head = 0;
-static volatile uint16_t s_uart_rx_tail = 0;
-static volatile uint32_t s_uart_ring_overflow_count = 0;
+// Exposed ring: uartReceived
+uint8_t uartReceived[ 4096 ];
+volatile uint16_t uartReceivedHead = 0;
+volatile uint16_t uartReceivedTail = 0;
+static volatile uint32_t uartReceivedOverflowCount = 0;
 static volatile uint32_t s_uart_overrun_count = 0;
-#define UART_RING_MASK ( (uint16_t)( sizeof( s_uart_rx_ring ) - 1 ) )
+#define UART_RECEIVED_MASK ( (uint16_t)( sizeof( uartReceived ) - 1 ) )
 
 static inline bool ring_push_byte( uint8_t b ) {
-    uint16_t next_head = (uint16_t)( ( s_uart_rx_head + 1 ) & UART_RING_MASK );
-    if ( next_head == s_uart_rx_tail ) {
-        s_uart_ring_overflow_count++;
+    uint16_t next_head = (uint16_t)( ( uartReceivedHead + 1 ) & UART_RECEIVED_MASK );
+    if ( next_head == uartReceivedTail ) {
+        uartReceivedOverflowCount++;
         return false;
     }
-    s_uart_rx_ring[ s_uart_rx_head ] = b;
-    s_uart_rx_head = next_head;
+    uartReceived[ uartReceivedHead ] = b;
+    uartReceivedHead = next_head;
     return true;
 }
 
 static inline bool ring_pop_byte( uint8_t* out ) {
-    if ( s_uart_rx_tail == s_uart_rx_head ) return false;
-    *out = s_uart_rx_ring[ s_uart_rx_tail ];
-    s_uart_rx_tail = (uint16_t)( ( s_uart_rx_tail + 1 ) & UART_RING_MASK );
+    if ( uartReceivedTail == uartReceivedHead ) return false;
+    *out = uartReceived[ uartReceivedTail ];
+    uartReceivedTail = (uint16_t)( ( uartReceivedTail + 1 ) & UART_RECEIVED_MASK );
     return true;
+}
+
+static inline uint16_t ring_available( ) {
+    return (uint16_t)( ( uartReceivedHead - uartReceivedTail ) & UART_RECEIVED_MASK );
+}
+
+static inline uint8_t ring_peek_at( uint16_t offset ) {
+    uint16_t idx = (uint16_t)( ( uartReceivedTail + offset ) & UART_RECEIVED_MASK );
+    return uartReceived[ idx ];
 }
 
 static void async_uart_irq_handler( void ) {
@@ -168,6 +178,71 @@ static void async_uart_irq_handler( void ) {
         hw->rsr = 0xFFFFFFFFu; // write to RSR (alias of ECR) clears errors
     }
     s_uart_flush_pending = true;
+}
+
+// ----------------------------------------------------------------------------
+// Command prefix forwarding to main Serial
+// ----------------------------------------------------------------------------
+static const char* s_forward_prefixes[ 8 ];
+static size_t s_forward_prefix_count = 0;
+static size_t s_forward_max_len = 0;
+static const char* s_forward_end_tokens[ 8 ];
+static size_t s_forward_end_count = 0;
+static bool s_forward_end_on_newline = true;
+static bool s_forward_active = false;
+static unsigned long s_forward_last_byte_us = 0;
+
+static inline bool ring_starts_with( const char* prefix ) {
+    const size_t len = strlen( prefix );
+    if ( ring_available( ) < len ) return false;
+    for ( size_t i = 0; i < len; ++i ) {
+        if ( ring_peek_at( (uint16_t)i ) != (uint8_t)prefix[ i ] ) return false;
+    }
+    return true;
+}
+
+static inline void ring_discard_n( size_t n ) {
+    for ( size_t i = 0; i < n; ++i ) {
+        uint8_t tmp;
+        if ( !ring_pop_byte( &tmp ) ) break;
+    }
+}
+
+static void process_uart_forward_prefixes( ) {
+    if ( s_forward_prefix_count == 0 ) return;
+    // Try each prefix; on first match, discard prefix and forward until newline or buffer empty
+    for ( size_t i = 0; i < s_forward_prefix_count; ++i ) {
+        const char* pfx = s_forward_prefixes[ i ];
+        if ( !pfx ) continue;
+        if ( ring_starts_with( pfx ) ) {
+            const size_t plen = strlen( pfx );
+            ring_discard_n( plen );
+            s_forward_active = true;
+            return; // Only process one prefix per task iteration
+        }
+    }
+}
+
+static inline bool is_end_token_seen( uint8_t last_byte ) {
+    // Newline handling
+    if ( s_forward_end_on_newline && ( last_byte == '\n' || last_byte == '\r' ) ) return true;
+    // Token-based
+    if ( s_forward_end_count == 0 ) return false;
+    for ( size_t i = 0; i < s_forward_end_count; ++i ) {
+        const char* tok = s_forward_end_tokens[ i ];
+        if ( !tok ) continue;
+        const size_t len = strlen( tok );
+        if ( len == 0 ) continue;
+        if ( ring_available( ) < len ) continue;
+        bool match = true;
+        for ( size_t j = 0; j < len; ++j ) {
+            if ( ring_peek_at( (uint16_t)( ring_available( ) - len + j ) ) != (uint8_t)tok[ j ] ) {
+                match = false; break;
+            }
+        }
+        if ( match ) return true;
+    }
+    return false;
 }
 
 static inline void bridge_usb_to_uart( uint8_t itf ) {
@@ -188,6 +263,24 @@ static inline void bridge_uart_to_usb( uint8_t itf ) {
     uint32_t wrote = 0;
     uint32_t avail = tud_cdc_n_write_available( itf );
     uint8_t c;
+    // If in forwarding mode, stream all bytes to main Serial until end token or timeout
+    if ( s_forward_active ) {
+        bool ended = false;
+        while ( ring_pop_byte( &c ) ) {
+            Serial.write( c );
+            s_forward_last_byte_us = micros();
+            wrote++;
+            // Check for end on newline or token match
+            if ( is_end_token_seen( c ) ) { ended = true; break; }
+            // Timeout: if idle > 8*usPerByteSerial1, end session
+            if ( micros() - s_forward_last_byte_us > ( 8 * usPerByteSerial1 ) ) { ended = true; break; }
+        }
+        if ( ended ) {
+            Serial.flush();
+            s_forward_active = false;
+        }
+    }
+    // Also continue normal UART->USB bridging for non-forwarded data
     while ( avail > 0 && ring_pop_byte( &c ) ) {
         tud_cdc_n_write_char( itf, c );
         wrote++;
@@ -197,7 +290,7 @@ static inline void bridge_uart_to_usb( uint8_t itf ) {
         tud_cdc_n_write_flush( itf );
         tud_task(); // service USB to reduce latency under load
     }
-    s_uart_flush_pending = ( s_uart_rx_tail != s_uart_rx_head );
+    s_uart_flush_pending = ( uartReceivedTail != uartReceivedHead );
 }
 
 // ISR-safe flags updated by TinyUSB callbacks, processed in main context
@@ -260,6 +353,12 @@ void begin( unsigned long baud ) {
     s_line_coding.parity = 0;
     s_line_coding.stop_bits = 0; // 1 stop
     set_micros_per_byte( &s_line_coding );
+
+    // Register default forward prefixes
+    registerForwardPrefix( "jcommand:" );
+    registerForwardPrefix( "\x01" ); // SOH
+    registerForwardPrefix( "\x10" ); // DLE
+    registerForwardPrefix( "jl:" );
 }
 
 void task( ) {
@@ -310,9 +409,81 @@ void task( ) {
     // UART -> USB
     bridge_uart_to_usb( ASYNC_PASSTHROUGH_CDC_ITF );
 
+    // Check if uartReceived starts with any forward prefix and route to main Serial
+    process_uart_forward_prefixes();
+
     // Service USB stack regardless to minimize latency and prevent CDC TX stalling
     tud_task();
 
+}
+
+bool registerForwardPrefix( const char* prefix ) {
+    if ( !prefix || !*prefix ) return false;
+    if ( s_forward_prefix_count >= ( sizeof( s_forward_prefixes ) / sizeof( s_forward_prefixes[ 0 ] ) ) ) return false;
+    s_forward_prefixes[ s_forward_prefix_count++ ] = prefix;
+    const size_t len = strlen( prefix );
+    if ( len > s_forward_max_len ) s_forward_max_len = len;
+    return true;
+}
+
+bool unregisterForwardPrefix( const char* prefix ) {
+    if ( !prefix ) return false;
+    for ( size_t i = 0; i < s_forward_prefix_count; ++i ) {
+        if ( s_forward_prefixes[ i ] && strcmp( s_forward_prefixes[ i ], prefix ) == 0 ) {
+            // Compact array
+            for ( size_t j = i + 1; j < s_forward_prefix_count; ++j ) {
+                s_forward_prefixes[ j - 1 ] = s_forward_prefixes[ j ];
+            }
+            s_forward_prefix_count--;
+            s_forward_prefixes[ s_forward_prefix_count ] = nullptr;
+            // Recompute max len
+            s_forward_max_len = 0;
+            for ( size_t k = 0; k < s_forward_prefix_count; ++k ) {
+                size_t l = strlen( s_forward_prefixes[ k ] );
+                if ( l > s_forward_max_len ) s_forward_max_len = l;
+            }
+            return true;
+        }
+    }
+    return false;
+}
+
+size_t listForwardPrefixes( const char** out, size_t max ) {
+    size_t n = ( s_forward_prefix_count < max ) ? s_forward_prefix_count : max;
+    for ( size_t i = 0; i < n; ++i ) out[ i ] = s_forward_prefixes[ i ];
+    return s_forward_prefix_count;
+}
+
+bool registerForwardEnd( const char* token ) {
+    if ( !token ) return false;
+    if ( s_forward_end_count >= ( sizeof( s_forward_end_tokens ) / sizeof( s_forward_end_tokens[ 0 ] ) ) ) return false;
+    s_forward_end_tokens[ s_forward_end_count++ ] = token;
+    return true;
+}
+
+bool unregisterForwardEnd( const char* token ) {
+    if ( !token ) return false;
+    for ( size_t i = 0; i < s_forward_end_count; ++i ) {
+        if ( s_forward_end_tokens[ i ] && strcmp( s_forward_end_tokens[ i ], token ) == 0 ) {
+            for ( size_t j = i + 1; j < s_forward_end_count; ++j ) {
+                s_forward_end_tokens[ j - 1 ] = s_forward_end_tokens[ j ];
+            }
+            s_forward_end_count--;
+            s_forward_end_tokens[ s_forward_end_count ] = nullptr;
+            return true;
+        }
+    }
+    return false;
+}
+
+size_t listForwardEnds( const char** out, size_t max ) {
+    size_t n = ( s_forward_end_count < max ) ? s_forward_end_count : max;
+    for ( size_t i = 0; i < n; ++i ) out[ i ] = s_forward_end_tokens[ i ];
+    return s_forward_end_count;
+}
+
+void setForwardEndOnNewline( bool enable ) {
+    s_forward_end_on_newline = enable;
 }
 
 } // namespace AsyncPassthrough

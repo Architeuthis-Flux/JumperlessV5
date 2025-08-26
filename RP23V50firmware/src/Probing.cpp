@@ -3312,7 +3312,7 @@ void checkPads(void) {
         }
       break;
     case BUILDING_PAD_BOTTOM:
-      Serial.print("Building bottom");
+     // Serial.print("Building bottom");
       clearColorOverrides(1, 1, 0);
       if (brightenedNet != -1) {
         hsvColor hsv = RgbToHsv(netColors[brightenedNet]);
