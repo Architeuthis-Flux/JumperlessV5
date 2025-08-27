@@ -12,7 +12,7 @@
 
 #include "Graphics.h"
 #include "NetsToChipConnections.h"
-#include "oled.h"
+#include "Oled.h"
 #include "RotaryEncoder.h"
 #include "Peripherals.h"
 
