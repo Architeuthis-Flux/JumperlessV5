@@ -240,7 +240,11 @@ static inline bool is_end_token_seen( uint8_t last_byte ) {
                 match = false; break;
             }
         }
-        if ( match ) return true;
+        if ( match ) {
+         Serial.println("End token seen!");   
+        return true;
+        }
+
     }
     return false;
 }
@@ -356,8 +360,8 @@ void begin( unsigned long baud ) {
 
     // Register default forward prefixes
     registerForwardPrefix( "jcommand:" );
-    registerForwardPrefix( "\x01" ); // SOH
-    registerForwardPrefix( "\x10" ); // DLE
+    registerForwardPrefix( "\x02" ); // SOH
+    registerForwardPrefix( "\x03" ); // DLE
     registerForwardPrefix( "jl:" );
 }
 

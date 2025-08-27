@@ -29,7 +29,7 @@
 
 
 
-#include "SerialWrapper.h"
+
 #define OLED_CONNECTED 0
 
 // Helper function to normalize spaces in a string (strip leading/trailing and reduce multiple spaces to single)

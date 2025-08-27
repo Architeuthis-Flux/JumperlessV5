@@ -12,7 +12,7 @@
 #include "PersistentStuff.h"
 #include "Probing.h"
 #include "RotaryEncoder.h"
-#include "SerialWrapper.h"
+
 #include "USBfs.h"
 
 volatile int sendAllPathsCore2 =

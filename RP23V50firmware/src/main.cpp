@@ -383,9 +383,9 @@ menu:
     }
 
     // Run CDC1 <-> Serial1 bridge foreground task
-#if ASYNC_PASSTHROUGH_ENABLED == 1
-    AsyncPassthrough::task();
-#endif
+// #if ASYNC_PASSTHROUGH_ENABLED == 1
+//     AsyncPassthrough::task();
+// #endif
 
     if ( Serial.available( ) >
          20 ) { // this is so if you dump a lot of data into the serial buffer, it

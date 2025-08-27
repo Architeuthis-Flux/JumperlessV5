@@ -2,7 +2,7 @@
 
 #include "Debugs.h"
 #include "PersistentStuff.h"
-#include "JulseView.h"
+
 #include "AsyncPassthrough.h"
 #include "configManager.h"
 #include "config.h"
@@ -14,7 +14,7 @@
 #include "FileParsing.h"
 #include "LEDs.h"
 #include "Graphics.h"
-#include "JulseView.h"
+
 
 
 
