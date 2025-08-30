@@ -13,9 +13,10 @@
 #include "oled.h"
 #include "ArduinoStuff.h"
 #include "Apps.h"
+
 #ifdef DONOTUSE_SERIALWRAPPER
-#include "SerialWrapper.h"
-#define Serial SerialWrap
+    #include "SerialWrapper.h"
+    #define Serial SerialWrap
 #endif
 
 
@@ -1292,7 +1293,7 @@ void printConfigHelp() {
     // Serial.println("\n\r    config setting format (prefix with ` to paste from main menu)\n\r");    
     // Serial.println("    Example: ");
     // Serial.println("`[serial_1]connect_on_boot = true;");
-        cycleTerminalColor(true, 15.0, true,  &Serial, 1, 1);
+    cycleTerminalColor(true, 15.0, true,  &Serial, 1, 1);
 
     Serial.println("\n\r");
     Serial.println("                              Reset config");

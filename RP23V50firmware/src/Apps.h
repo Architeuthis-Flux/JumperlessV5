@@ -6,21 +6,22 @@
 
 #define NUM_APPS 30
 
-
 struct app {
   char name[20];
-    int index;
-    int works;
-    void (*action)(void);
+  int index;
+  int works;
+  void (*action)(void);
 };
 
+extern struct app apps[NUM_APPS];
 
-extern struct app apps[30];
-
-
+// NOTE: keep signature as-is for drop-in compatibility
 void runApp (int index = -1, char* name = nullptr);
 
-int i2cScan(int sdaRow = -1 , int sclRow = -1, int sdaPin = 26, int sclPin = 27, int leaveConnections = 0);
+int  i2cScan(int sdaRow = -1, int sclRow = -1,
+             int sdaPin = 26, int sclPin = 27, // <-- unified defaults
+             int leaveConnections = 0);
+
 void scanBoard(void);
 void calibrateDacs(void);
 void bounceStartup(void);
@@ -30,20 +31,10 @@ void xlsxGui(void);
 void probeCalibApp(void);
 void jdiMIPdisplay(void);
 
-
 void displayImage(void);
 const char* addressToHexString(uint8_t address);
 
 void printSerial1stuff(void);
 void microPythonREPLapp(void);
-// int i2cScan(int sdaRow = -1 , int sclRow = -1, int sdaPin = 22, int sclPin = 23, int leaveConnections = 0);
-
-
-
-
-
-
-
-
 
 #endif
