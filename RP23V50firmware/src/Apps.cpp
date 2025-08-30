@@ -7,7 +7,6 @@
 #include "Graphics.h"
 #include "JumperlessDefines.h"
 #include "LEDs.h"
-#include "MachineCommands.h"
 #include "MatrixState.h"
 #include "Menus.h"
 #include "NetManager.h"
@@ -780,13 +779,812 @@ int i2cScan(int sdaRow, int sclRow, int sdaPin, int sclPin, int leaveConnections
   return nDevices;
 }
 
-// ---- calibrateDacs() ----
-// (unchanged from your version; retained verbatim)
-// NOTE: Keeping as-is to avoid unintended behavior changes.
-void calibrateDacs(void) {
-  // ... your entire original function body here unchanged ...
-  // (For brevity in this reply, keep your existing implementation.)
-  // ***** COPY YOUR EXISTING calibrateDacs() CONTENT HERE *****
+void calibrateDacs( void ) {
+
+
+
+
+
+
+
+    if ( firstStart == 1 ) {
+        Serial.println( "\n\rFirst startup calibration\n\n\r" );
+
+        // Ensure routing system is properly initialized after filesystem wipe
+        Serial.println( "Initializing routing system for first startup..." );
+        Serial.flush();
+        initChipStatus( ); // Initialize chip mappings based on hardware revision
+        clearAllNTCC( );   // Clear and reinitialize routing state
+        delay( 100 );      // Give system time to stabilize
+        Serial.println( "Routing system initialized." );
+    } else {
+        // Serial.println("Calibration");
+        clearAllNTCC( );
+    }
+    // delay(3000);
+    float setVoltage = 0.0;
+
+    uint32_t dacColors[ 4 ] = { 0x150003, 0x101000, 0x001204, 0x000512 };
+    // sendAllPathsCore2 = 1;
+    INA0.setBusADC( 0x0e );
+    INA1.setBusADC( 0x0e );
+    int lastNetSlot = netSlot;
+    netSlot = 8;
+
+    int failedToConverge = 0;
+
+    createSlots( 8, 1 );
+    // for (int i = 0; i < 4; i++) {
+
+    // Serial.print("netSlot: ");
+    // Serial.println(netSlot);
+    // printPathsCompact();
+    // printChipStatus();
+    b.print( "Calib", 0x001010, 0x000000, 0, -1, -2 );
+    Serial.println( "\n\r\t\tCalibrating\n\r" );
+
+    Serial.println( "This tweaks the zero and full scale values for the DACs when "
+                    "converting floats to a 12-bit value for the DAC\n\r" );
+    Serial.println( "Were using the INA219 to measure the DAC output, which can "
+                    "only measure positive voltages\n\r" );
+    Serial.println(
+        "The DAC outputs 0 to 4.096 V, which is scaled and shifted to +-8V\n\r" );
+    Serial.println(
+        "This is the float voltage to 12-bit DAC formula:\n\n\r\tint dacValue = "
+        "(voltage * 4095 / dacSpread[n]) + dacZero[n];\n\n\r" );
+
+    Serial.println( "**UNPLUG ANYTHING CONNECTED TO THE RAILS**\n\n\r" );
+
+    Serial.flush();
+    int skipZeroing = 0;
+    if ( skipZeroing == 0 ) {
+        for ( int d = 0; d < 4; d++ ) {
+
+            //     removeBridgeFromNodeFile(ISENSE_PLUS, -1, netSlot);
+            // removeBridgeFromNodeFile(ADC0+d, -1, netSlot);
+            b.clear( );
+
+            b.print( "Zero  ", 0x001010, 0x000000, 0, -1, -1 );
+
+            for ( int j = d; j >= 0; j-- ) {
+                // b.print(".", dacColors[j], 0xfffffe, 5, 0, (j*2)-2);
+                if ( j != d ) {
+                    b.printRawRow( 0b00010001, 22 + ( j * 2 ), dacColors[ j ], 0xfffffe );
+                }
+
+                b.printRawRow( 0b00000001, 22 + ( j * 2 ), dacColors[ j ], 0xfffffe );
+            }
+
+            b.print( "DAC ", dacColors[ d ], 0x000000, 0, 1, -1 );
+
+            b.print( d, dacColors[ d ], 5, 1, -1 );
+            refreshPaths( );
+            clearAllNTCC( );
+            createSlots( netSlot, 1 );
+            refreshConnections( 0, 0, 1 );
+
+            if ( firstStart == 1 ) {
+                delay( 1 );
+            } else {
+                delay( 8 );
+            }
+            // delay(10);
+
+            switch ( d ) {
+            case 0:
+
+                addBridgeToNodeFile( DAC0, ISENSE_PLUS, netSlot );
+                // addBridgeToNodeFile(DAC0, ROUTABLE_BUFFER_IN, netSlot);
+                addBridgeToNodeFile( DAC0, ADC0, netSlot );
+                Serial.println( "\n\n\r\tDAC 0" );
+                break;
+            case 1:
+
+                addBridgeToNodeFile( DAC1, ISENSE_PLUS, netSlot );
+                addBridgeToNodeFile( DAC1, ADC1, netSlot );
+                Serial.println( "\n\n\r\tDAC 1" );
+                break;
+            case 2:
+
+                addBridgeToNodeFile( TOP_RAIL, ISENSE_PLUS, netSlot );
+                addBridgeToNodeFile( TOP_RAIL, ADC2, netSlot );
+                Serial.println( "\n\n\r\tTop Rail" );
+                break;
+            case 3:
+
+                addBridgeToNodeFile( BOTTOM_RAIL, ISENSE_PLUS, netSlot );
+                addBridgeToNodeFile( BOTTOM_RAIL, ADC3, netSlot );
+                Serial.println( "\n\n\r\tBottom Rail" );
+                break;
+            }
+
+            refreshConnections( 0, 0, 1 );
+            if ( firstStart == 1 ) {
+                delay( 20 );
+            } else {
+                delay( 18 );
+            }
+            printPathsCompact( );
+
+           
+            // Serial.print("\n\n\r\tDAC ");
+            // Serial.println(d);
+
+            Serial.println( "\n\r\t\tzeroing DAC" );
+
+            int zeroFound = 0;
+            float zeroTolerance = 2.1;
+
+            int counter = 0;
+            dacZero[ d ] = dacZero[ d ] + 5;
+
+            while ( zeroFound < 2 && counter < 80 ) {
+                setVoltage = 0.0;
+                setDacByNumber( d, setVoltage, 0 );
+                if ( firstStart == 1 ) {
+                    delay( 32 );
+                } else {
+                    delay( 38 );
+                }
+                float reading = INA0.getBusVoltage_mV( );
+
+                while ( INA0.getConversionFlag( ) == 0 ) {
+
+                    // Serial.print(".");
+                    delayMicroseconds( 400 );
+                }
+
+                reading = INA0.getBusVoltage_mV( );
+
+                // delay(20);
+                //  for (int i = 0; i < 1; i++) {
+                //    delay(10);
+                //    //INA0.getConversionFlag();
+                //    float sample = INA0.getBusVoltage_mV();
+                //    reading += sample;
+                //    Serial.println(sample);
+
+                // }
+                //  reading = reading / 1;
+
+                if ( reading < zeroTolerance && reading > -zeroTolerance ) {
+                    zeroFound++;
+                } else if ( reading < 2.0 ) {
+                    dacZero[ d ] = dacZero[ d ] + 1;
+                } else if ( reading > 2.0 ) {
+                    dacZero[ d ] = dacZero[ d ] - 1;
+                }
+
+                // if (reading < 20.0 && reading > -20.0) // prevent the loop from
+                // running
+                //                                        // forever if it never finds
+                //                                        zero
+                // {
+                counter++;
+                //}
+
+                if ( counter > 80 ) {
+                    zeroFound++;
+                    failedToConverge++;
+                }
+
+                Serial.print( "dacZero: " );
+                Serial.print( dacZero[ d ] );
+
+                Serial.print( "\t\tmeasured: " );
+                Serial.print( reading );
+                Serial.println( " mV" );
+                // zeroFound = 1;
+            }
+
+            int spreadFound = 0;
+            float tolerance = 4.1; // mV
+            int giveUp = 0;
+            Serial.println( "\n\n\rfinding spread\n\r" );
+            b.print( "Spred", 0x080010, 0x000000, 0, -1, -1 );
+
+            for ( int j = d; j >= 0; j-- ) {
+                // b.print(".", dacColors[j], 0xfffffe, 5, 0, (j*2)-2);
+
+                b.printRawRow( 0b00010001, 22 + ( j * 2 ), dacColors[ j ], 0xfffffe );
+            }
+
+            while ( spreadFound < 2 && giveUp < 40 ) {
+
+                setVoltage = 5.0;
+                giveUp++;
+                float setMillivoltage = setVoltage * 1000;
+
+                if ( dacSpread[ d ] < 18.0 || dacSpread[ d ] > 25.0 ||
+                     dacSpread[ d ] != dacSpread[ d ] ) {
+                    dacSpread[ d ] = 20.1;
+                }
+                setDacByNumber( d, setVoltage, 0 );
+                if ( firstStart == 1 ) {
+                    delay( 1 );
+                } else {
+                    delay( 8 );
+                }
+                // delay(20 * (spreadFound + 1));
+
+                float reading = INA0.getBusVoltage_mV( );
+                while ( INA0.getConversionFlag( ) == 0 ) {
+                    delayMicroseconds( 100 );
+                }
+
+                reading = INA0.getBusVoltage_mV( );
+                Serial.print( "Set: " );
+                Serial.print( setVoltage );
+                Serial.print( " V\t" );
+                Serial.print( "dacSpread: " );
+                Serial.print( dacSpread[ d ], 3 );
+                Serial.print( " V\tmeasured: " );
+                Serial.print( reading, 2 );
+                Serial.println( " mV" );
+
+                if ( reading <= ( setMillivoltage + tolerance ) &&
+                     reading >= ( setMillivoltage - tolerance ) ) {
+                    spreadFound++;
+                } else if ( reading <= setMillivoltage - 14.5 ) {
+                    dacSpread[ d ] = dacSpread[ d ] - 0.1;
+                    // dacSpread[d] = dacSpread[d] - (abs((reading / 1000) - setVoltage));
+                } else if ( reading >= setMillivoltage + 14.5 ) {
+                    dacSpread[ d ] = dacSpread[ d ] + 0.1;
+                    // dacSpread[d] = dacSpread[d] + (abs((reading / 1000) - setVoltage));
+                } else if ( reading <= setMillivoltage - 4.5 ) {
+                    dacSpread[ d ] = dacSpread[ d ] - 0.03;
+                    // dacSpread[d] = dacSpread[d] - (abs((reading / 1000) - setVoltage));
+                } else if ( reading >= setMillivoltage + 4.5 ) {
+                    dacSpread[ d ] = dacSpread[ d ] + 0.03;
+                    // dacSpread[d] = dacSpread[d] + (abs((reading / 1000) - setVoltage));
+                }
+            }
+
+            if (giveUp >= 40) failedToConverge++;
+        }
+
+        // ADC calibration - use DAC 1 to calibrate all ADCs
+        Serial.println( "\n\n\rCalibrating ADCs against INA readings using DAC 1\n\r" );
+
+        int adcChannels[] = { 0, 1, 2, 3, 4, 7 }; // ADC channels to calibrate
+        int numAdcChannels = 6;
+
+        for ( int adcIdx = 0; adcIdx < numAdcChannels; adcIdx++ ) {
+            int d = adcChannels[ adcIdx ];
+            b.clear( );
+            b.print( "calib", 0x100010, 0x000000, 0, 0, -1 );
+            // b.print("ADC", dacColors[d], 0x000000, 3, -1, -2);
+            char adcName[ 10 ] = "";
+
+            switch ( d ) {
+            case 0:
+                strcpy( adcName, "ADC 0" );
+                break;
+            case 1:
+                strcpy( adcName, "ADC 1" );
+
+                break;
+            case 2:
+                strcpy( adcName, "ADC 2" );
+                break;
+            case 3:
+                strcpy( adcName, "ADC 3" );
+                break;
+            case 4:
+                strcpy( adcName, "ADC 4" );
+                break;
+            case 7:
+                strcpy( adcName, "Probe" );
+                break;
+            }
+
+            b.print( adcName, dacColors[ d % 4 ], 0x000000, 0, 1, 3 );
+
+            // Use DAC 1 to calibrate all ADCs (it's working properly)
+            clearAllNTCC( );
+            createSlots( netSlot, 1 );
+            // refreshConnections(0, 0, 1);
+
+            // Always use DAC 1 as the voltage source
+            addBridgeToNodeFile( DAC1, ISENSE_PLUS, netSlot );
+
+            // Connect to the appropriate ADC
+            switch ( d ) {
+            case 0:
+                addBridgeToNodeFile( DAC1, ADC0, netSlot );
+                Serial.println( "\n\n\r\tADC 0 calibration (using DAC 1)" );
+                break;
+            case 1:
+                addBridgeToNodeFile( DAC1, ADC1, netSlot );
+                Serial.println( "\n\n\r\tADC 1 calibration (using DAC 1)" );
+                break;
+            case 2:
+                addBridgeToNodeFile( DAC1, ADC2, netSlot );
+                Serial.println( "\n\n\r\tADC 2 calibration (using DAC 1)" );
+                break;
+            case 3:
+                addBridgeToNodeFile( DAC1, ADC3, netSlot );
+                Serial.println( "\n\n\r\tADC 3 calibration (using DAC 1)" );
+                break;
+            case 4:
+                addBridgeToNodeFile( DAC1, ADC4, netSlot );
+                Serial.println( "\n\n\r\tADC 4 calibration (0-5V range, using DAC 1)" );
+                break;
+            case 7:
+                addBridgeToNodeFile( DAC1, ROUTABLE_BUFFER_IN, netSlot );
+                Serial.println( "\n\n\r\tADC 7 calibration (Probe tip, using DAC 1)" );
+                break;
+            }
+
+            refreshConnections( 0, 1, 1 );
+            delay( 250 );
+            printPathsCompact( );
+
+            // Calibrate ADC using multiple voltage points
+            float voltagePoints[ 8 ];
+            int numPoints;
+
+            if ( d == 4 ) {
+                // ADC 4 has 0-5V range, use points within this range
+                float adc4Points[] = { 0.0, 1.0, 2.0, 3.0, 4.0, 4.5 };
+                numPoints = 6;
+                for ( int i = 0; i < numPoints; i++ ) {
+                    voltagePoints[ i ] = adc4Points[ i ];
+                }
+            } else {
+                // ADCs 0-3 and 7 have ±8V range, but use 0-6V for calibration (INA can't measure negative)
+                float standardPoints[] = { 0.0, 1.0, 2.0, 3.0, 4.0, 5.0, 6.0 };
+                numPoints = 7;
+                for ( int i = 0; i < numPoints; i++ ) {
+                    voltagePoints[ i ] = standardPoints[ i ];
+                }
+            }
+            float totalError = 0.0;
+            float sumINA = 0.0;
+            float sumADC = 0.0;
+            float sumADCSquared = 0.0;
+            float sumADCxINA = 0.0;
+            int validPoints = 0;
+
+            for ( int p = 0; p < numPoints; p++ ) {
+                float testVoltage = voltagePoints[ p ];
+                setDacByNumber( 1, testVoltage, 0 ); // Always use DAC 1
+                delay( 100 );
+
+                // Get INA reading
+                float inaReading = INA0.getBusVoltage( );
+
+                while ( INA0.getConversionFlag( ) == 0 ) {
+                    delayMicroseconds( 100 );
+                }
+                inaReading = INA0.getBusVoltage( );
+
+                // Get raw ADC reading for the specific channel
+                int rawADC = readAdc( d, 64 );
+
+                // Only use positive voltages for calibration (INA can't measure negative)
+                if ( inaReading > 0.1 ) {
+                    sumINA += inaReading;
+                    sumADC += rawADC;
+                    sumADCSquared += rawADC * rawADC;
+                    sumADCxINA += rawADC * inaReading;
+                    validPoints++;
+
+                    Serial.print( "Set: " );
+                    Serial.print( testVoltage );
+                    Serial.print( "V, INA: " );
+                    Serial.print( inaReading );
+                    Serial.print( "V, raw ADC" );
+                    Serial.print( d );
+                    Serial.print( ": " );
+                    Serial.println( rawADC );
+                }
+            }
+
+            // Calculate calibration using linear regression
+            if ( validPoints >= 2 ) {
+                // Use linear regression to find: INA_voltage = slope * rawADC + intercept
+                float n = validPoints;
+                float slope = ( n * sumADCxINA - sumADC * sumINA ) / ( n * sumADCSquared - sumADC * sumADC );
+                float intercept = ( sumINA - slope * sumADC ) / n;
+
+                // Handle different ADC formulas
+                if ( d == 4 ) {
+                    // ADC 4 formula: voltage = (rawADC * adcSpread / 4095) (no offset)
+                    // We want: INA_voltage = slope * rawADC + intercept
+                    // So: adcSpread/4095 = slope, and intercept should be 0
+                    adcSpread[ d ] = slope * 4095.0;
+                    adcZero[ d ] = 0.0; // No offset for ADC 4
+                } else {
+                    // Other ADCs formula: voltage = (rawADC * adcSpread / 4095) - adcZero
+                    // We want: INA_voltage = slope * rawADC + intercept
+                    // Matching coefficients: adcSpread/4095 = slope, so adcSpread = slope * 4095
+                    // And: -adcZero = intercept, so adcZero = -intercept
+                    adcSpread[ d ] = slope * 4095.0;
+                    adcZero[ d ] = -intercept; // This is what gets subtracted in the offset
+                }
+
+                if ( abs( slope ) > 0.0001 ) {
+
+                    // Clamp to reasonable values based on ADC type
+                    if ( d == 4 ) {
+                        // ADC 4 is 0-5V range
+                        if ( adcSpread[ d ] < 3.0 || adcSpread[ d ] > 8.0 ) {
+                            Serial.print( "ADC4 spread out of range: " );
+                            Serial.print( adcSpread[ d ] );
+                            Serial.println( ", using default" );
+                            adcSpread[ d ] = 5.0; // Default for 0-5V
+                            adcZero[ d ] = 0.0;
+                        }
+                    } else {
+                        // Other ADCs are ±8V range
+                        if ( adcSpread[ d ] < 10.0 || adcSpread[ d ] > 30.0 ) {
+                            Serial.print( "adcSpread out of range: " );
+                            Serial.print( adcSpread[ d ] );
+                            Serial.println( ", using default" );
+                            adcSpread[ d ] = 18.28; // Default value
+                            adcZero[ d ] = 8.0;
+                        } else if ( abs( adcZero[ d ] ) > 50.0 ) {
+                            Serial.print( "adcZero out of range: " );
+                            Serial.print( adcZero[ d ] );
+                            Serial.println( ", using default" );
+                            adcZero[ d ] = 8.0; // Default value
+                        }
+                    }
+
+                    // Print calibration results if values are reasonable
+                    Serial.print( "ADC " );
+                    Serial.print( d );
+                    Serial.print( " calibration: spread=" );
+                    Serial.print( adcSpread[ d ], 2 );
+                    Serial.print( ", zero=" );
+                    Serial.print( adcZero[ d ], 2 );
+                    Serial.print( " (slope=" );
+                    Serial.print( slope, 6 );
+                    Serial.print( ", intercept=" );
+                    Serial.print( intercept, 2 );
+                    Serial.println( ")" );
+                } else {
+                    Serial.print( "ADC calibration failed - slope too small: " );
+                    Serial.println( slope, 6 );
+                    // Keep default values
+                }
+            } else {
+                Serial.println( "ADC calibration failed - insufficient valid points" );
+            }
+
+            setDacByNumber( 1, 0.0, 0 ); // Reset DAC 1 to 0V
+        }
+
+        Serial.println( "\n\n\tCalibration Values\n\n\r" );
+        Serial.print( "            DAC Zero\tDAC Spread\tADC Zero\tADC Spread\n\r" );
+        for ( int i = 0; i < 4; i++ ) {
+
+            switch ( i ) {
+            case 0:
+                Serial.print( "DAC 0       " );
+                break;
+            case 1:
+                Serial.print( "DAC 1       " );
+                break;
+            case 2:
+                Serial.print( "Top Rail    " );
+                break;
+            case 3:
+                Serial.print( "Bottom Rail " );
+                break;
+            }
+            Serial.print( dacZero[ i ] );
+            // Serial.print("\tdacSpread[");
+            Serial.print( "\t" );
+
+            Serial.print( dacSpread[ i ] );
+
+            Serial.print( "\t\t" );
+
+            Serial.print( adcZero[ i ] );
+
+            Serial.print( "\t\t" );
+
+            Serial.println( adcSpread[ i ] );
+        }
+
+        Serial.println( "\n\r            ADC Zero\tADC Spread" );
+        Serial.print( "ADC 4 (0-5V)   " );
+        Serial.print( adcZero[ 4 ] );
+        Serial.print( "\t" );
+        Serial.println( adcSpread[ 4 ] );
+        Serial.print( "ADC 7 (Probe)  " );
+        Serial.print( adcZero[ 7 ] );
+        Serial.print( "\t" );
+        Serial.println( adcSpread[ 7 ] );
+        delay(10);
+        checkProbeCurrentZero();
+        saveDacCalibration( );
+    }
+    setRailsAndDACs( );
+
+    if (failedToConverge == 0) {
+        changeTerminalColor(84, true); // Green
+    } else {
+        changeTerminalColor(196, true); // Red
+    }
+  
+
+    // Print big block text for PASS or FAIL
+    if (failedToConverge == 0) {
+        Serial.println("\r\n");
+        Serial.println("███████   █████   ███████ ███████");
+        Serial.println("██    ██ ██   ██  ██      ██     ");
+        Serial.println("███████  ███████  ███████ ███████");
+        Serial.println("██       ██   ██       ██      ██");
+        Serial.println("██       ██   ██  ███████ ███████");
+        Serial.println("\r\n");
+    } else {
+        Serial.println("\r\n");
+        Serial.println("███████  █████  ██ ██     ");
+        Serial.println("██      ██   ██ ██ ██     ");
+        Serial.println("█████   ███████ ██ ██     ");
+        Serial.println("██      ██   ██ ██ ██     ");
+        Serial.println("██      ██   ██ ██ ███████");
+        Serial.println("\r\n");
+    }
+    Serial.println();
+    Serial.print("\n\n\rFailedToConverge = ");
+    Serial.println(failedToConverge);
+    changeTerminalColor(-1);
+
+    
+
+
+    Serial.println( "\n\n\rrun test? (y/n)\n\n\rmake damn sure nothing is "
+                    "physically connected to the rails\n\r" );
+
+    b.clear( );
+    b.print( "Test?", 0x0a0a00, 0x000000, 1, -1, -1 );
+    int yesNo;
+    if ( firstStart == 1 ) {
+        yesNo = 1; // yesNoMenu(800);
+    } else {
+        yesNo = yesNoMenu( 4000 );
+    }
+
+    failedToConverge = 0;
+
+    float tolerance = 0.6;
+    if ( yesNo == 1 ) {
+
+        b.clear( );
+        setDacByNumber( 0, 0.0, 0 );
+        setDacByNumber( 1, 0.0, 0 );
+        setDacByNumber( 2, 0.0, 0 );
+        setDacByNumber( 3, 0.0, 0 );
+        for ( int d = 0; d < 4; d++ ) {
+            b.clear( 0 );
+
+
+
+            clearAllNTCC( );
+            createSlots( netSlot, 1 );
+            // refreshConnections(0, 0, 1);
+            if ( firstStart == 1 ) {
+                delay( 8 );
+            } else {
+                delay( 8 );
+            }
+            switch ( d ) {
+            case 0:
+
+                // addBridgeToNodeFile(DAC0, ISENSE_PLUS, netSlot);
+
+                addBridgeToNodeFile( DAC0, ROUTABLE_BUFFER_IN, netSlot );
+                // addBridgeToNodeFile(DAC0, ADC0, netSlot);
+                Serial.println( "\n\n\r\tDAC 0 test" );
+                b.print( "DAC 0", dacColors[ d ], 0x000000, 1, -1, -1 );
+                break;
+            case 1:
+                /// removeBridgeFromNodeFile(ADC0+d, -1, netSlot);
+                addBridgeToNodeFile( DAC1, ISENSE_PLUS, netSlot );
+                addBridgeToNodeFile( DAC1, ADC1, netSlot );
+                Serial.println( "\n\n\r\tDAC 1 test" );
+                b.print( "DAC 1", dacColors[ d ], 0x000000, 1, -1, -1 );
+                break;
+            case 2:
+                // removeBridgeFromNodeFile(ADC0+d, -1, netSlot);
+                addBridgeToNodeFile( TOP_RAIL, ISENSE_PLUS, netSlot );
+                addBridgeToNodeFile( TOP_RAIL, ADC2, netSlot );
+                Serial.println( "\n\n\r\tTop Rail test" );
+                // b.print("Top Ral", dacColors[d], 0x000000, 0, -1, -1);
+                b.print( "Top", dacColors[ d ], 0x000000, 0, -1, -1 );
+                b.print( "Ra", dacColors[ d ], 0xfffffe, 4, -1, -2 );
+                b.print( "i", dacColors[ d ], 0xfffffe, 6, 0, -3 );
+                b.print( "l", dacColors[ d ], 0xfffffe, 6, 0, -1 );
+                break;
+            case 3:
+                // removeBridgeFromNodeFile(ADC0+d, -1, netSlot);
+                addBridgeToNodeFile( BOTTOM_RAIL, ISENSE_PLUS, netSlot );
+                addBridgeToNodeFile( BOTTOM_RAIL, ADC3, netSlot );
+                Serial.println( "\n\n\r\tBottom Rail test" );
+                b.print( "Bot", dacColors[ d ], 0x000000, 0, -1, -1 );
+                b.print( "Ra", dacColors[ d ], 0xfffffe, 4, -1, -2 );
+                b.print( "i", dacColors[ d ], 0xfffffe, 6, 0, -3 );
+                b.print( "l", dacColors[ d ], 0xfffffe, 6, 0, -1 );
+                break;
+            }
+
+            refreshConnections( 0, 1, 1 );
+            // refreshBlind(1, 0);
+            if ( firstStart == 1 ) {
+                delay( 1 );
+            } else {
+                delay( 8 );
+            }
+            printPathsCompact( );
+            Serial.println( " " );
+
+            int nextRow = 0;
+
+            for ( int i = -1; i <= 8; i++ ) {
+                setVoltage = i * 1.0;
+                setDacByNumber( d, setVoltage, 0 );
+                Serial.print( "set : " );
+                Serial.printf( "%*.3f", 6, setVoltage );
+                Serial.print( " V\t" );
+                if ( firstStart == 1 ) {
+                    delay( 25 );
+                } else {
+                    delay( 150 );
+                }
+                float reading = 0.0;
+
+                int voltage = map( i, -3, 8, 0, 4 );
+
+                b.printRawRow( 0b00000001 << voltage, nextRow + 30 + ( d * 6 ),
+                               dacColors[ d ], 0xfffffe );
+                nextRow++;
+
+                if ( firstStart == 1 ) {
+                    delay( 5 );
+                } else {
+                    delay( 8 );
+                }
+                if ( d == 0 ) {
+                    reading = readAdcVoltage( 7, 64 );
+                } else {
+                    reading = readAdcVoltage( d, 64 );
+                }
+                Serial.print( "\tADC measured: " );
+
+                if (abs(reading - setVoltage) > tolerance && i <= 7) {
+                    failedToConverge++;
+                }
+                // if (i < 0) {
+                //  Serial.print(setVoltage); // + random(-4, 4) / 100.0);
+
+                // } else if (i > 8) {
+                //   Serial.print(setVoltage); // + random(-4, 4) / 100.0);
+                // } else {
+                Serial.printf( "%*.3f", 6, reading );
+                //}
+                Serial.print( " V" );
+                if ( firstStart == 1 ) {
+                    delay( 3 );
+                } else {
+                    delay( 8 );
+                }
+
+                if ( d == 0 ) {
+                    reading = INA1.getBusVoltage( );
+
+                    while ( INA1.getConversionFlag( ) == 0 ) {
+                        // Serial.print(".");
+                        // delay(1);
+                        delayMicroseconds( 100 );
+                    }
+
+                    reading = INA1.getBusVoltage( );
+
+                    if (abs(reading - setVoltage) > tolerance && i  >= 0) {
+                        failedToConverge++;
+                    }
+
+                } else {
+
+                    reading = INA0.getBusVoltage( );
+
+                    while ( INA0.getConversionFlag( ) == 0 ) {
+                        // Serial.print(".");
+                        // delay(1);
+                        delayMicroseconds( 100 );
+                    }
+
+                    reading = INA0.getBusVoltage( );
+
+                    if (abs(reading - setVoltage) > tolerance && i >= 0) {
+                        failedToConverge++;
+                    }
+                }
+
+                Serial.print( "\t     INA measured: " );
+                Serial.printf( "%*.3f", 6, reading );
+                Serial.println( " V" );
+
+                // dacCalibration[0][i] = reading;
+            }
+            setDacByNumber( d, 0.0, 0 );
+            // setDacByNumber(d, d < 2 ? dacOutput[d] : railVoltage[d - 2], 0);
+        }
+    }
+    unsigned long timeout = millis( );
+    Serial.println( "\n\r" );
+    while ( 1 ) {
+        if ( millis( ) - timeout > 1000 ) {
+            break;
+        }
+        if ( Serial.available( ) > 0 ) {
+            break;
+        }
+        if ( encoderButtonState == PRESSED ) {
+            encoderButtonState = IDLE;
+            break;
+        }
+    }
+    // delay(5000);
+    INA0.setBusADC( 0x0b );
+    INA1.setBusADC( 0x0b );
+    // removeBridgeFromNodeFile(ISENSE_PLUS, -1, netSlot);
+    createSlots( netSlot, 1 );
+    clearAllNTCC( );
+    netSlot = lastNetSlot;
+    if (failedToConverge == 0) {
+       
+    } else {
+        
+    }
+  
+
+    // Print big block text for PASS or FAIL
+    if (failedToConverge < 7) {
+        changeTerminalColor(84, true); // Green
+        Serial.println("\r\n");
+        Serial.println("███████   █████   ███████ ███████");
+        Serial.println("██    ██ ██   ██  ██      ██     ");
+        Serial.println("███████  ███████  ███████ ███████");
+        Serial.println("██       ██   ██       ██      ██");
+        Serial.println("██       ██   ██  ███████ ███████");
+        Serial.println("\r\n");
+    } else {
+        changeTerminalColor(196, true); // Red
+        Serial.println("\r\n");
+        Serial.println("███████  █████  ██ ██     ");
+        Serial.println("██      ██   ██ ██ ██     ");
+        Serial.println("█████   ███████ ██ ██     ");
+        Serial.println("██      ██   ██ ██ ██     ");
+        Serial.println("██      ██   ██ ██ ███████");
+        Serial.println("\r\n");
+    }
+    //Serial.println();
+    Serial.print("\n\n\rFailedToConverge = ");
+    Serial.println(failedToConverge);
+    Serial.println();
+    Serial.println();
+    changeTerminalColor(-1, true);
+
+    
+
+    refreshConnections( -1 );
+    routableBufferPower( 1, 0, 1 );
+    // showProbeLEDs = 1;
+    refreshConnections( -1 );
+    configChanged = true;
+    if ( firstStart == 1 ) {
+        initializeMicroPythonExamples( true );
+
+        delay(1300);
+        rp2040.restart();
+
+    }
+
 }
 
 // ---- printSerial1stuff() ----
@@ -816,6 +1614,7 @@ void printSerial1stuff(void) {
     }
   }
 }
+
 
 void displayImage(void) {
   Serial.println(F("PNG Image app not implemented yet."));
