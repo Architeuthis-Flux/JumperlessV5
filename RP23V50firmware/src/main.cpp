@@ -55,7 +55,6 @@ KevinC@ppucc.io
 #include "JumperlessDefines.h"
 #include "LEDs.h"
 #include "LogicAnalyzer.h"
-#include "MachineCommands.h"
 #include "MatrixState.h"
 #include "Menus.h"
 #include "NetManager.h"
