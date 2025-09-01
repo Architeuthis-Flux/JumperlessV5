@@ -399,6 +399,12 @@ extern int probeRev;
 
 #define ROUTABLE_BUFFER_IN 139
 #define ROUTABLE_BUFFER_OUT 140
+
+
+#define USER_FUNCTION_WAIT 60000
+#define MAX_TOKENS  20
+#define MAX_OPTS  20
+
 /*
 
 #define GND  100
