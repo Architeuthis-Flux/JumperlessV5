@@ -14,16 +14,7 @@ KevinC@ppucc.io
 #define PICO_RP2350A 0
 // #include <pico/stdlib.h>
 #include <Arduino.h>
-
-//  #define LED LED_BUILTIN
-//  #ifdef USE_TINYUSB
-//  #include
-//  "../include/Adafruit_TinyUSB_Arduino_changed/Adafruit_TinyUSB_changed.h"
-//  #include
-//  "../lib/Adafruit_TinyUSB_Arduino_changed/src/Adafruit_TinyUSB_changed.h"
-//  #endif
-
-// #include <Adafruit_TinyUSB.h>
+#include "user_functions.h"
 
 #ifdef USE_TINYUSB
 #include "tusb.h" // For tud_task() function
@@ -34,11 +25,6 @@ KevinC@ppucc.io
 #include <EEPROM.h>
 #include <SPI.h>
 #include <Wire.h>
-// #ifdef CFG_TUSB_CONFIG_FILE
-// #include CFG_TUSB_CONFIG_FILE
-// #else
-// #include "tusb_config.h"
-// #endif
 #include "ArduinoStuff.h"
 #include "CH446Q.h"
 #include "Commands.h"
@@ -127,9 +113,7 @@ void setup( ) {
 
     loadConfig( );
 
-    // readSettingsFromConfig();
     configLoaded = 1;
-    // Serial.println("Configuration loaded!");
     startupTimers[ 1 ] = millis( );
     delayMicroseconds( 200 );
 
@@ -156,11 +140,6 @@ void setup( ) {
         jumperlessConfig.top_oled.show_in_terminal = 3;
     }
 
-    if ( jumperlessConfig.serial_2.function != 0 ) {
-        // Serial.begin(jumperlessConfig.serial_2.baud_rate);
-        // Serial.enableUSBSer2(true);
-        // USBSer2.begin(jumperlessConfig.serial_2.baud_rate);
-    }
 
     Serial.begin( 115200 );
 
@@ -190,23 +169,6 @@ void setup( ) {
         AsyncPassthrough::begin(115200);
     }
 
-    // Initialize the async UART0 <-> CDC1 bridge
-   // AsyncPassthrough::begin();
-
-    // Ensure Arduino Serial1 does not contend with UART0 used by AsyncPassthrough
-    //Serial1.end();
-
-    // Optionally mirror host CDC settings to UART0 periodically elsewhere:
-    // AsyncPassthrough::applyUsbLineCodingToUart();
-
-    // Auto-initialize JulseView for SUMP/libsigrok compatibility
-    // Serial.println("Auto-initializing JulseView for logic analyzer...");
-    // if (julseview.init()) {
-    //   Serial.println("JulseView initialized successfully");
-    // } else {
-    //   Serial.println("JulseView initialization failed");
-    // }
-
     drawAnimatedImage( 0 );
     startupAnimationFinished = 1;
     startupTimers[ 4 ] = millis( );
@@ -223,11 +185,6 @@ void setup( ) {
     initADC( );
     startupTimers[ 7 ] = millis( );
 
-    // pinMode(18, INPUT_PULLUP); //reset lines for arduino
-    // pinMode(19, INPUT_PULLUP);
-
-    // routableBufferPower(1, 0);
-    // routableBufferPower(1, 1);
 
     getNothingTouched( );
 
@@ -335,6 +292,192 @@ unsigned long core1Timeout = millis( );
 
 #define SETUP_LOGIC_ANALYZER_ON_BOOT 0
 
+
+String readLine(uint32_t timeoutMs) {
+  String s;
+  uint32_t start = millis();
+
+  Serial.flush();
+
+  while (millis() - start < timeoutMs) {
+    if (Serial.available() == 0) {
+      delay(5);
+      continue;
+    }
+
+    char c = Serial.read();
+    if (c < 0) continue;
+    
+    // Handle Enter (CR, LF, or CRLF)
+    if (c == '\r' || c == '\n') {
+      if (c == '\r' && Serial.peek() == '\n') {
+        Serial.read();
+      }
+      break;
+    }
+
+    // Normal character
+    s += c;
+  }
+
+  Serial.flush();
+  return s;
+}
+
+
+static void prinFunctionHelp() {
+
+    // Otherwise, list all functions
+    Serial.println("Available user functions:");
+
+    for (size_t i = 0; i < USER_FUNCTIONS_COUNT; ++i) {
+        const auto& c = USER_FUNCTIONS[i];
+        // left-pad names to a fixed width for readability
+        const int width = 14;
+        int n = strlen(c.name);
+        Serial.print("  ");
+        Serial.print(c.name);
+        if (n < width) for (int k = 0; k < width - n; ++k) Serial.print(' ');
+        Serial.print(" - ");
+        if (c.help && c.help[0]) 
+            Serial.println(c.help);
+        else                     
+            Serial.println("(no help provided)");
+    }
+
+    Serial.println("\nPlease enter your custom function (Press Enter Twice!).");
+    Serial.flush();
+}
+
+void handleUserFunction() {
+
+    prinFunctionHelp();
+   
+  
+    String userFunc = readLine(USER_FUNCTION_WAIT);
+    Serial.print("Function Call: ");
+    Serial.println(userFunc);
+    Serial.flush();
+
+
+    if (!uf_dispatch(userFunc)) {
+
+        Serial.println("User Function Not Found!:\n\n");
+        Serial.println("User Functions Defined:\n");
+        for (size_t i = 0; i < USER_FUNCTIONS_COUNT; ++i) {
+                Serial.print("  ");
+                Serial.print(USER_FUNCTIONS[i].name);
+                if (USER_FUNCTIONS[i].help && USER_FUNCTIONS[i].help[0]) {
+                Serial.print(" - ");
+                Serial.print(USER_FUNCTIONS[i].help);
+            }
+            Serial.println();
+            Serial.flush();
+        }
+
+    }
+
+}
+
+// ---- Tokenize a command line into argc/argv (handles quotes) ----
+// Supports: words separated by spaces; quotes "like this"; escaped quotes \" inside quotes.
+int tokenize(const String& line, String argv[], int maxTokens) {
+  int argc = 0;
+  bool inQuotes = false;
+  char quoteChar = 0;
+  String cur;
+
+  for (size_t i = 0; i < line.length(); ++i) {
+    char c = line[i];
+
+    if (inQuotes) {
+      if (c == '\\' && i + 1 < line.length()) { // allow \" and \\ inside quotes
+        char n = line[i+1];
+        if (n == '"' || n == '\'' || n == '\\') { cur += n; i++; continue; }
+      }
+      if (c == quoteChar) { inQuotes = false; continue; }
+      cur += c;
+    } else {
+      if (c == '"' || c == '\'') { inQuotes = true; quoteChar = c; continue; }
+      if (c == ' ' || c == '\t') {
+        if (cur.length()) {
+          if (argc < maxTokens) argv[argc++] = cur;
+          cur = "";
+        }
+      } else {
+        cur += c;
+      }
+    }
+  }
+  if (cur.length() && argc < maxTokens) argv[argc++] = cur;
+  return argc;
+}
+
+// ---- Parse options: --key value, --key=value, -k value, -abc (bool flags) ----
+struct Opt {
+  String key;    // without leading dashes
+  String value;  // empty => boolean flag
+};
+
+
+
+int parseOptions(int argc, String argv[], Opt opts[], int maxOpts) {
+  int nopt = 0;
+  for (int i = 1; i < argc; ++i) {
+    String t = argv[i];
+    if (t.startsWith("--")) {
+      String keyval = t.substring(2);
+      int eq = keyval.indexOf('=');
+      if (eq >= 0) {
+        if (nopt < maxOpts) { opts[nopt++] = { keyval.substring(0, eq), keyval.substring(eq+1) }; }
+      } else {
+        String val = "";
+        if (i + 1 < argc && !argv[i+1].startsWith("-")) { val = argv[++i]; }
+        if (nopt < maxOpts) { opts[nopt++] = { keyval, val }; }
+      }
+    } else if (t.startsWith("-") && t.length() > 1) {
+      // short flags can be bundled like -abc or take value as next token (-o out)
+      for (int k = 1; k < (int)t.length(); ++k) {
+        String key( (char[]){ t[k], 0 } );
+        String val = "";
+        // if it's the last short flag in this token, allow value in next argv
+        if (k == (int)t.length() - 1 && i + 1 < argc && !argv[i+1].startsWith("-")) {
+          val = argv[++i];
+        }
+        if (nopt < maxOpts) { opts[nopt++] = { key, val }; }
+      }
+    } else {
+      // positional argument; treat as key="" with value=t
+      if (nopt < maxOpts) { opts[nopt++] = { "", t }; }
+    }
+  }
+  return nopt;
+}
+
+// ---- Example dispatcher: call functions by name ----
+void callFunctionByName(const String& name, int nopt, Opt opts[]) {
+  // Stub: replace with your real registry
+  if (name == "i2cScanApp" || name == "I2CScanApp") {
+    // find args: --sdaRow, --sclRow, -v
+    int sda = -1, scl = -1; bool verbose = false;
+    for (int i = 0; i < nopt; ++i) {
+      if (opts[i].key == "sdaRow") sda = opts[i].value.toInt();
+      else if (opts[i].key == "sclRow") scl = opts[i].value.toInt();
+      else if (opts[i].key == "v") verbose = true;
+      else if (opts[i].key == "" && sda < 0) sda = opts[i].value.toInt(); // positional example
+    }
+    Serial.print("Calling i2cScanApp with sdaRow="); Serial.print(sda);
+    Serial.print(" sclRow="); Serial.print(scl);
+    Serial.print(" verbose="); Serial.println(verbose ? "true" : "false");
+    // i2cScanApp(sda, scl, verbose); // <-- your actual function
+  } else {
+    Serial.print("Unknown function: "); Serial.println(name);
+  }
+}
+
+
+
+
 void loop( ) {
 
 menu:
@@ -381,10 +524,6 @@ menu:
 #endif
     }
 
-    // Run CDC1 <-> Serial1 bridge foreground task
-// #if ASYNC_PASSTHROUGH_ENABLED == 1
-//     AsyncPassthrough::task();
-// #endif
 
     if ( Serial.available( ) >
          20 ) { // this is so if you dump a lot of data into the serial buffer, it
@@ -407,12 +546,8 @@ menu:
     clearHighlighting( );
 
     if ( dontShowMenu == 0 ) {
-    forceprintmenu:
+        forceprintmenu:
 
-        // Serial.print("showExtraMenu = ");
-        // Serial.println(showExtraMenu);
-        // Serial.print("shownMenuItems = ");
-        // Serial.println(shownMenuItems);
 
         int numberOfMenuItems = menuItemCounts[ showExtraMenu ];
         float steps =
@@ -557,34 +692,9 @@ dontshowmenu:
         }
         
         checkPads( );
-
-        // showProbeLEDs = 10;
-         //if (Serial1.available() > 0) {
-        //     Serial.println("Serial1 available");
-        //   }
-
-        // if (AsyncPassthrough::historyLength() > 0) {
-           
-
-        //     uint8_t history[AsyncPassthrough::historyLength()];
-        //     AsyncPassthrough::copyHistory(history, AsyncPassthrough::historyLength());
-        //     for (int i = 0; i < AsyncPassthrough::historyLength(); i++) {
-        //        // Serial.print(history[i], HEX);
-        //       //  Serial.print(" ");
-        //     }
-        //   // Serial.println();
-        // }
-
-        //secondSerialHandler( );
-
-        // Handle USB tasks (required for MSC and other USB interfaces)
-        // #ifdef USE_TINYUSB
         tud_task( );
-        // #endif
-        //  //core1passthrough = 0;
-
+        
         if ( clickMenu( ) >= 0 ) {
-            // defconDisplay = -1;
             core1passthrough = 0;
             goto loadfile;
         }
@@ -596,8 +706,6 @@ dontshowmenu:
 
         warnNetTimeout( 1 );
         if ( probeReading > 0 ) {
-            // Serial.print("probeReading = ");
-            // Serial.println(probeReading);
             if ( highlightNets( probeReading ) > 0 ) {
 
                 firstConnection = probeReading;
@@ -678,15 +786,9 @@ dontshowmenu:
 
                 // if (switchPosition == 1) {
                 if ( probeButton > 0 ) {
-                    //&& inPadMenu == 0) {
 
-                    // Serial.print("probeButton = ");
-                    // Serial.println(probeButton);
-
-                    // int longShort = longShortPress(1000);
-                    // defconDisplay = -1;
-                    // probeLEDs.show();
                     if ( probeButton == 2 ) {
+
                         connectOrClearProbe = 1;
                         probeActive = 1;
                         showProbeLEDs = 1;
@@ -695,6 +797,7 @@ dontshowmenu:
                         brightenedNet = 0;
                         core1passthrough = 0;
                         goto skipinput;
+
                     } else if ( probeButton == 1 ) {
                         // getNothingTouched();
                         startupTimers[ 0 ] = millis( );
@@ -807,6 +910,12 @@ skipinput:
 
     switch ( input ) {
 
+    case 'z':{        
+        handleUserFunction();
+        goto dontshowmenu;
+        break;
+    }
+
       case '|': {
         erattaClearGPIO(-1);
         Serial.println("Eratta cleared");
@@ -837,37 +946,7 @@ skipinput:
             la_enabled = true;
         }
 
-        // la_enabled = true;
-        //  for (int i = 0; i < 8; i++) {
-        //    adc_select_input(8);
-        //    int tempReading = adc_read();
-        //    Serial.print(tempReading);
-        //    Serial.println(" ");
-        //  }
-        //  if (!julseview.init()) {
-        //    Serial.println("ERROR: JulseView initialization failed!");
-        //  } else {
-        //    Serial.println("JulseView initialized successfully");
-        //  }
-
-        // for (int i = 0; i < 500; i++) {
-        //   julseview.send_single_slice();
-        //   delay(1);
-        // }
-
-        // Serial.println();
-        // setupLogicAnalyzer();
-        //  DON'T call init() again - JulseView is already initialized during boot
-        //  Calling init() multiple times can cause resource conflicts with CH446Q
-        //  julseview.init();
-        // Serial.println("Logic analyzer is ready (already initialized during boot)");
-
-        // for (int i = 0; i < 8; i++) {
-        //   adc_select_input(8);
-        //   int tempReading = adc_read();
-        //   Serial.print(tempReading);
-        //   Serial.println(" ");
-        // }
+        
         break;
     }
 
@@ -897,16 +976,7 @@ skipinput:
         Serial.print( "rotary divider = " );
         Serial.println( rotaryDivider );
 
-        // Serial.println("PIO0 Funsel: " + String(pio_get_funcsel(pio0)));
-        // Serial.println("PIO0 base: " + String(pio_get_gpio_base(pio0)));
-        // Serial.println("PIO1 Funsel: " + String(pio_get_funcsel(pio1)));
-        // Serial.println("PIO1 base: " + String(pio_get_gpio_base(pio1)));
-        // Serial.println("PIO2 Funsel: " + String(pio_get_funcsel(pio2)));
-        // Serial.println("PIO2 base: " + String(pio_get_gpio_base(pio2)));
-
-        // Serial.println("PIO1 base: " + String(pio_get_gpio_base(pio1)));
-        // Serial.println("PIO2 base: " + String(pio_get_gpio_base(pio2)));
-
+        
         Serial.println( "gpio    up dn\tfunction\tfunction_hex" );
         for ( int i = 0; i < 48; i++ ) {
             int pull = gpio_is_pulled_up( i );
@@ -937,8 +1007,6 @@ skipinput:
         Serial.println( "Reloading config.txt..." );
         configChanged = true;
 
-        /// loadConfigChanges();
-        // goto dontshowmenu;
         break;
     }
     case 'S': { //! S - raw speed test
@@ -951,9 +1019,8 @@ skipinput:
         sendXYraw( 10, 0, 4, 1 );
         for ( int i = 0; i < cycles; i++ ) {
             sendXYraw( 10, 0, 0, 1 );
-            // delayMicroseconds(1);
             sendXYraw( 10, 0, 0, 0 );
-            // delayMicroseconds(1);
+        
         }
         unsigned long end = micros( );
         Serial.print( "Time for " );
@@ -1074,23 +1141,6 @@ skipinput:
                 }
             }
         }
-        //  Serial.println("\n╭─────────────────────────────────────╮");
-        //    Serial.println("│       USB Mass Storage Control      │");
-        //    Serial.println("╰─────────────────────────────────────╯");
-        //    printUSBMassStorageStatus();
-        //    Serial.println("Usage:");
-        //    Serial.println("  • Device appears as mass storage automatically");
-        //    Serial.println("  • No special mode needed (CircuitPython-style)");
-        //    Serial.println("  • Device remains responsive during file access");
-        //    Serial.println("  • Use 'U' command to check status anytime");
-        //    if (isUSBMassStorageMounted()) {
-        //      Serial.println("Currently mounted by host - ready for file access");
-        //    } else if (isUSBMassStorageEjected()) {
-        //      Serial.println("Device was ejected by host");
-        //    } else {
-        //      Serial.println("Waiting for host to mount device");
-        //    }
-        //    Serial.flush();
         goto dontshowmenu;
         break;
     }
@@ -1160,29 +1210,6 @@ skipinput:
         break;
     }
 
-    case 'D': { //! D - Run USB MSC diagnostic test
-        // Serial.println("Running USB Mass Storage diagnostic test...");
-        // Serial.flush();
-
-        // quickUSBMSCDiagnostic();
-
-        // Serial.println("\nDiagnostic complete. Press any key to continue...");
-        // Serial.flush();
-        // while (Serial.available() == 0) {
-        //   delay(10);
-        // }
-        // // Clear the input
-        // while (Serial.available() > 0) {
-        //   Serial.read();
-        // }
-        // goto dontshowmenu;
-        // printUSBDeviceInfo();            // Shows updated port detection info
-        // testSUMPProtocol();            // Tests SUMP protocol on USBSer2
-        // testUSBSer1Alternative();      // Tests Bus Pirate-style CDC Interface 1
-        // printLogicAnalyzerConflictDiagnosis();  // Shows conflicts
-        break;
-    }
-
     case '/': { //!  /
 
         runApp( -1, (char*)"File Manager" );
@@ -1199,7 +1226,6 @@ skipinput:
             Serial.println( "Terminal colors enabled" );
         }
         Serial.flush( );
-        // goto dontshowmenu;
         break;
     }
     case 'E': { //!  E
@@ -1210,13 +1236,7 @@ skipinput:
         }
         break;
     }
-    case 'k': { //!  k
-        // for (int i = 0; i < 255; i++) {
-        //   Serial.print(i);
-        //   Serial.print(": ");
-        //   char* name = colorToName(i, -1);
-        //   Serial.println(name);
-        //   }
+    case 'k': { 
 
         // Call the demo function directly - it will check for range input itself
         // Serial.println("Displaying color names (enter range like '10-200' for
@@ -1276,33 +1296,7 @@ skipinput:
         break;
     }
 
-    case 'p': { //!  p
-        // micropythonREPL();
-        //  Serial.println("Entering MicroPython REPL");
-        //  Serial.println("choose a stream: ");
-        //  Serial.println("1 = Port 1 (this)");
-        //  Serial.println("2 = Port 2");
-        //  Serial.println("3 = Port 3");
-        //  Serial.println("4 = Port 4");
-
-        // // testStreamRedirection(&USBSer1);
-        // int streamChoice = 1;
-        // // while (streamChoice == -1) {
-        //   if (Serial.available() > 0) {
-        //   streamChoice = Serial.parseInt();
-        //   if (streamChoice == 1) {
-        //     setGlobalStream(&Serial);
-        //   } else if (streamChoice == 2) {
-        //     setGlobalStream(&USBSer1);
-        //   } else if (streamChoice == 3  ) {
-        //     setGlobalStream(&USBSer2);
-        //   } else if (streamChoice == 4) {
-        //     #ifdef USBSer3
-        //     setGlobalStream(&USBSer3);
-        //     #endif
-        //   }
-        // }
-        // Serial.println("Using stream: " + String(streamChoice));
+    case 'p': { 
         enterMicroPythonREPL( );
 
         refreshConnections( -1, 1, 1 );
@@ -1327,9 +1321,6 @@ skipinput:
             Serial.println( "oled disconnected" );
         }
 
-        // oled.print("FUCK");
-        // oled.show();
-        // oled.test();
         goto dontshowmenu;
         break;
     }
@@ -1374,9 +1365,6 @@ skipinput:
 
         Serial.flush( );
 
-        // if (node2 == -1 && node1 > 0) {
-        //   Serial.println(checkIfBridgeExists(node1,node2));
-        //   }
 
         break;
     }
@@ -1470,8 +1458,6 @@ skipinput:
         configChanged = true;
         Serial.printf( "DAC %d = %0.2f V\n", !probePowerDAC, f1 );
         Serial.flush( );
-        // playDoom();
-        // doomOn = 0;
         goto dontshowmenu;
         break;
     }
@@ -1554,26 +1540,9 @@ skipinput:
                         changeTerminalColor( -1 );
                         return;
                     }
-                    // Serial.println("Found devices");
-                    // } else {
-                    //   removeBridgeFromNodeFile(sdaRow, -1, netSlot, 0);
-                    //   removeBridgeFromNodeFile(sclRow, -1, netSlot, 0);
-                    //   refreshConnections(-1, 1);
-                    // }
                     delay( 1 ); // Small delay between scans
                 }
-            } else {
-                // // Legacy format for '1' or '2' options
-                // if(input == "1") {
-                //   i2cScan(1, 2, 26, 27, 1);
-                // } else if(input == "2") {
-                //   i2cScan(1, 2, 26, 27, 0);
-                // } else {
-                //   changeTerminalColor(202, true);
-                //   Serial.println("Invalid format. Use @5,10 for specific pins or @5
-                //   for auto-try"); changeTerminalColor(38, true);
-                // }
-            }
+            } 
         } else {
             // Interactive mode - prompt for SDA and SCL
             Serial.print( "Enter SDA row: " );
@@ -1671,13 +1640,7 @@ skipinput:
             connectArduino( 0 );
             Serial.println( "UART connected to Arduino D0 and D1" );
             Serial.flush( );
-            //   removeBridgeFromNodeFile(NANO_D1, RP_UART_RX, netSlot, 0);
-            //   removeBridgeFromNodeFile(NANO_D0, RP_UART_TX, netSlot, 0);
-            //   addBridgeToNodeFile(RP_UART_RX, NANO_D1, netSlot, 0, 1);
-            //   addBridgeToNodeFile(RP_UART_TX, NANO_D0, netSlot, 0, 1);
-            //   //ManualArduinoReset = true;
-            //  // goto loadfile;
-            //   refreshConnections(-1);
+            
         }
         goto dontshowmenu;
         break;
@@ -1711,12 +1674,7 @@ skipinput:
             disconnectArduino( 0 );
             Serial.println( "UART disconnected from Arduino D0 and D1" );
             Serial.flush( );
-            // removeBridgeFromNodeFile(NANO_D1, RP_UART_RX, netSlot, 0);
-            // removeBridgeFromNodeFile(NANO_D0, RP_UART_TX, netSlot, 0);
-            // // removeBridgeFromNodeFile(RP_UART_RX, -1, netSlot, 0);
-            // // removeBridgeFromNodeFile(RP_UART_TX, -1, netSlot, 0);
-            // //refreshLocalConnections(-1);
-            // refreshConnections(-1);
+           
         }
         // goto loadfile;
         goto dontshowmenu;
@@ -1727,42 +1685,12 @@ skipinput:
         oled.cycleFont( );
         break;
 
-        // case '%': { //!  %
-        //   // Print entire filesystem
-        //   Serial.println("\n\rFilesystem Contents:");
-        //   Serial.println("====================");
-        //   printDirectoryContents("/", 0);
-        //   Serial.println("====================");
-        //   break;
-        // }
+        
 
-    case '=': { //!  =
-        //  while (SerialWrap.available() == 0) {
-        //  }
-        //  char o = SerialWrap.read();
-        // oled.testCharBounds("Fuck", 2);
-
+    case '=': { 
         Serial.println( "\n\r" );
-        // oled.debugJokermanBaseline();
+        
         oled.dumpFrameBuffer( );
-        // oled.testMenuPositioning();
-        // oled.dumpFrameBuffer();
-        //  if (isDigit(o)) {
-        //  if (o == '0') {
-        //   oled.setFont(0);
-        //   } else if (o == '1') {
-        //     oled.setFont(1);
-        //     }
-        // else if (o == '2') {
-        //   oled.setFont(2);
-        //   }
-        // else if (o == '3') {
-        //   oled.setFont(3);
-        //   }
-        // } else {
-        //   oled.clear();
-
-        // }
 
         goto dontshowmenu;
         break;
@@ -1776,15 +1704,12 @@ skipinput:
             }
         }
 
-        // oledTest(NANO_D2, NANO_D3, 22, 23);
 
         break;
     }
 
-    case '#': { //!  #
-        // pauseCore2 = 1;
-        //  while (slotChanged == 0)
-        //  {
+    case '#': { 
+
         while ( Serial.available( ) == 0 && slotChanged == 0 ) {
             if ( slotChanged == 1 ) {
                 // b.print("Jumperless", 0x101000, 0x020002, 0);
@@ -1797,8 +1722,7 @@ skipinput:
         clearLEDs( );
         showLEDsCore2 = 1;
         defconDisplay = -1;
-        // b.print(f, color);
-
+        
         break;
     }
     case 'e': { //!  e
@@ -1902,58 +1826,35 @@ skipinput:
             showReadings++;
 
             chooseShownReadings( );
-            // Serial.println(showReadings);
+        
 
             goto dontshowmenu;
             break;
         }
     }
     case '}': {
-        // probeActive = 1;
-        //   Serial.print("pdebugLEDs = ");
-        //  Serial.println(debugLEDs);
-        /// delayMicroseconds(5);
-        //  Serial.print("firstConnection = ");
-        //  Serial.println(firstConnection);
-        //  Serial.flush();
+        
         blockProbeButton = 300;
         blockProbeButtonTimer = millis( );
         probeMode( 1, firstConnection );
-        //      Serial.print("apdebugLEDs = ");
-        // Serial.println(debugLEDs);
-        // delayMicroseconds(5);
+        
         probeActive = 0;
 
 
         clearHighlighting( );
-        // clearLEDs();
-        // assignNetColors();
-        // showNets();
-        // showLEDsCore2 = 1;
+        
         goto menu;
         // break;
     }
     case '{': {
-        // removeBridgeFromNodeFile(19, 1);
-        // probeActive = 1;
-        // delayMicroseconds(5);
+        
         blockProbeButton = 300;
         blockProbeButtonTimer = millis( );
         int probeReturn = probeMode( 0, firstConnection );
 
-        // delayMicroseconds(5);
+        
         probeActive = 0;
-
-        // clearLEDs();
-        // assignNetColors();
-        // showNets();
-        // showLEDsCore2 = 1;
-        clearHighlighting( );
-
-        // Serial.print("millis() - startupTimers[0] = ");
-        // Serial.println(millis() - startupTimers[0]);
-        // Serial.flush();
-
+        clearHighlighting( );        
         goto menu;
         // break;
     }
@@ -1961,11 +1862,7 @@ skipinput:
         couldntFindPath( 1 );
         core1passthrough = 0;
         Serial.print( "\n\n\rnetlist\n\r" );
-        // listSpecialNets();
-        // Serial.print("\n\n\r");
-        // Serial.print("anythingInteractiveConnected(-1) = ");
-        // Serial.println(anythingInteractiveConnected(-1));
-        // Serial.flush();
+        
         listNets( anythingInteractiveConnected( -1 ) );
 
         break;
@@ -1992,8 +1889,7 @@ skipinput:
         Serial.print( "\n\n\rChip Status\n\r" );
         printChipStatus( );
         Serial.print( "\n\n\r" );
-        // Serial.print("Revision ");
-        // Serial.print(revisionNumber);
+        
         Serial.print( "\n\n\r" );
         break;
     }
@@ -2017,23 +1913,7 @@ skipinput:
         break;
     }
 
-    // case '>': {
 
-    //   if (netSlot == NUM_SLOTS - 1) {
-    //     netSlot = 0;
-    //   } else {
-    //     netSlot++;
-    //   }
-
-    //   Serial.print("\r                                         \r");
-    //   Serial.print("Slot ");
-    //   Serial.print(netSlot);
-    //   slotPreview = netSlot;
-    //   slotChanged = 1;
-    //   // printAllChangedNetColorFiles();
-
-    //   goto loadfile;
-    // }
     case '<': {
 
         if ( netSlot == 0 ) {
@@ -2041,59 +1921,36 @@ skipinput:
         } else {
             netSlot--;
         }
-        // Serial.print("slotChanged = ");
-        // Serial.println(millis() - timer);
-        // Serial.print("\r                                         \r");
         Serial.print( "Slot " );
         Serial.println( netSlot );
         slotPreview = netSlot;
         slotChanged = 1;
-        // printAllChangedNetColorFiles();
+
         goto loadfile;
     }
     case 'y': {
     loadfile:
         loadingFile = 1;
-        // Serial.print("loadingFile = ");
-        // Serial.println(millis() - timer);
+        
         if ( slotChanged == 1 ) {
             // clearChangedNetColors(0);
             loadChangedNetColorsFromFile( netSlot, 0 );
-            // Serial.print("loadChangedNetColorsFromFile = ");
-            // Serial.println(millis() - timer);
+        
         }
 
         slotChanged = 0;
         loadingFile = 0;
 
-        // Check if this is a USB refresh request
-        // if (isUSBMassStorageMounted()) {
-        //   manualRefreshFromUSB();
-        // } else {
+        
         refreshConnections( -1 );
-        //}
-        // chooseShownReadings();
-        //  setGPIO();
-        // Serial.print("refreshConnections = ");
-        // Serial.println(millis() - timer);
+        
         break;
     }
     case 'f': {
 
         probeActive = 1;
         readInNodesArduino = 1;
-        // clearAllNTCC();
-
-        // sendAllPathsCore2 = 1;
-        // timer = millis();
-
-        // clearNodeFile(netSlot);
-
-        // if (connectFromArduino != '\0') {
-        //   serSource = 1;
-        //   } else {
-        //   serSource = 0;
-        //   }
+        
         savePreformattedNodeFile( serSource, netSlot, rotaryEncoderMode );
 
         // Validate the saved node file
@@ -2111,34 +1968,25 @@ skipinput:
             }
         }
 
-        // //if (debugNMtime) {
-        //   Serial.print("\n\n\r");
-        //   Serial.print("took ");
-        //   Serial.print(millis() - timer);
-        //   Serial.print("ms");
-        //  // }
+        
         input = ' ';
 
         probeActive = 0;
         if ( connectFromArduino != '\0' ) {
             connectFromArduino = '\0';
-            // Serial.print("connectFromArduino\n\r");
-            //  delay(2000);
             input = ' ';
             readInNodesArduino = 0;
 
             goto dontshowmenu;
         }
-        // chooseShownReadings();
+        
 
         connectFromArduino = '\0';
         readInNodesArduino = 0;
         break;
     }
 
-        // case '\n':
-        //   goto menu;
-        //   break;
+       
 
     case 't': { //! t - Test MSC callbacks
         // Test function disabled
@@ -2249,16 +2097,6 @@ unsigned long la_timer = 0;
 unsigned long uartTaskTimer = 0;
 
 void loop1( ) {
-    // int timer = micros();
-
-    // while (startupAnimationFinished == 0) {
-
-    //   }
-
-    // Handle USB tasks on core1 as well (important for MSC interface)
-    // #ifdef USE_TINYUSB
-    //  tud_task();
-    // #endif
 
     while ( pauseCore2 == true ) {
         tight_loop_contents( );
@@ -2287,22 +2125,15 @@ void loop1( ) {
         core2stuff( );
     }
 
-    // if (millis() - serialInfoTimer > 10) {
-    //   serialInfoTimer = millis();
-
-    // if ( core1passthrough == 0 || inClickMenu == 1 || inPadMenu == 1 ||
-    //      probeActive == 1 ) {
 
     if (millis() - uartTaskTimer > 10) {
         uartTaskTimer = millis();
-    if (jumperlessConfig.serial_1.async_passthrough == true) {
-        AsyncPassthrough::task();
-    }
+        if (jumperlessConfig.serial_1.async_passthrough == true) {
+            AsyncPassthrough::task();
+        }
     
-    passthroughStatus = secondSerialHandler( );
+        passthroughStatus = secondSerialHandler( );
     }
-    //     //Serial.println("passthroughStatus = " + String(passthroughStatus));
-    // }
 
     replyWithSerialInfo( );
 
@@ -2327,7 +2158,7 @@ void loop1( ) {
         if ( millis( ) - blockProbingTimer > blockProbing ) {
             blockProbing = 0;
             blockProbingTimer = 0;
-            // Serial.println("probing unblocked");
+    
         }
     }
 }
@@ -2343,19 +2174,7 @@ void core2stuff( ) // core 2 handles the LEDs and the CH446Q8
         clearBeforeSend = 1;
     }
 
-    if ( showProbeLEDs != lastProbeLEDs ) {
-        // lastProbeLEDs = showProbeLEDs;
-        //  probeLEDs.clear();
-    }
-
-    // if (showLEDsCore2 != 0 || core1busy != false || core1request != 0 ||
-    // sendAllPathsCore2 != 0) { Serial.println("showLEDsCore2 = " +
-    // String(showLEDsCore2)); Serial.println("core1busy = " + String(core1busy));
-    // Serial.println("core1request = " + String(core1request));
-    // Serial.println("sendAllPathsCore2 = " + String(sendAllPathsCore2));
-    // Serial.println();
-
-    // }
+   
     if ( micros( ) - schedulerTimer > schedulerUpdateTime || showLEDsCore2 == 3 ||
          showLEDsCore2 == 4 ||
          showLEDsCore2 == 6 && core1busy == false && core1request == 0 ) {
@@ -2365,8 +2184,6 @@ void core2stuff( ) // core 2 handles the LEDs and the CH446Q8
                showProbeLEDs != lastProbeLEDs ) &&
              sendAllPathsCore2 == 0 ) {
 
-            // Serial.println(showLEDsCore2);
-            // secondSerialHandler();
             if ( showLEDsCore2 == 6 ) {
                 showLEDsCore2 = 1;
             }
@@ -2460,7 +2277,6 @@ void core2stuff( ) // core 2 handles the LEDs and the CH446Q8
                     showLEDsCore2 == 0 && core1busy == false ) {
             readcounter++;
 
-            // logoSwirl(swirlCount, spread, probeActive);
 
             lastSwirlTime = millis( );
 
@@ -2491,12 +2307,8 @@ void core2stuff( ) // core 2 handles the LEDs and the CH446Q8
                     if ( tempDD > 6 ) {
                         tempDD = 0;
                     }
-                    // Serial.print("tempDD = ");
-                    // Serial.println(tempDD);
                     defconDisplay = tempDD;
-                } else {
-                    // defconDisplay = 0;
-                }
+                } 
 
                 if ( defconDisplay > 5 ) {
                     defconDisplay = 0;
@@ -2505,7 +2317,6 @@ void core2stuff( ) // core 2 handles the LEDs and the CH446Q8
 
             if ( readcounter > 100 ) {
                 readcounter = 0;
-                // probeCycle++;
                 if ( probeCycle > 4 ) {
                     probeCycle = 1;
                 }
@@ -2513,16 +2324,11 @@ void core2stuff( ) // core 2 handles the LEDs and the CH446Q8
 
             rotaryEncoderStuff( );
 
-            if ( inClickMenu == 0 && loadingFile == 0 && showLEDsCore2 == 0 &&
-                 core1busy == false ) {
-                // showAllRowAnimations();
-            }
         } else {
-            // secondSerialHandler();
             rotaryEncoderStuff( );
         }
         schedulerTimer = micros( );
         core2busy = false;
-        // readGPIO();
+
     }
 }
