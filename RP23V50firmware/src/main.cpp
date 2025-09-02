@@ -300,10 +300,6 @@ unsigned long core1Timeout = millis( );
 #define SETUP_LOGIC_ANALYZER_ON_BOOT 0
 
 
-
-
-
-
 void loop( ) {
 
 menu:

@@ -67,6 +67,13 @@ static void cbToggleOLED() {
   } else {
     oled.disconnect();
   }
+
+  delay(100);
+
+  
+  oled.clearPrintShow("OLED " + String(TUI::oledEnabled ? "ON" : "OFF"), 1, true, true, true, -1, -1, 1500);
+
+
   TUI::setOledEnabled(!TUI::oledEnabled);
   TUI::setStatus(TUI::oledEnabled ? "OLED ON" : "OLED OFF");
 }
@@ -77,6 +84,14 @@ static void cbAbout()  {
   TUI::log("Jumperless RP2350B – DOS-style TUI (demo)"); 
 }
 
+
+
+
+
+
+
+
+
 static void cbResizeToTerminal() {
   uint16_t r=0,c=0;
   if (TUI::probeTerminalSize(r,c)) { 
@@ -86,6 +101,22 @@ static void cbResizeToTerminal() {
   }
   else TUI::log("Resize failed: terminal didn't answer CPR.");
 }
+
+bool lastDTR = 0;
+static void checkUSBconnection(){
+
+  if (Ser3.dtr() != lastDTR) {
+    lastDTR = Ser3.dtr();
+   
+      Serial.println("USB connection lost");
+   
+
+  TUI::fullRedraw();
+  }
+//  cbResizeToTerminal();
+}
+
+
 static void cbMenuNarrower(){ 
   TUI::L.leftFracWide = max(0.10f, TUI::L.leftFracWide - 0.02f); 
   TUI::resizeTo(TUI::S.rows, TUI::S.cols); 
@@ -263,6 +294,8 @@ namespace TuiGlue {
     
     if (!s_active) 
       return;
+
+    checkUSBconnection();
 
     if (TUIserial->available() && TUIserial->peek() == 0x04) {
       TUIserial->read();
