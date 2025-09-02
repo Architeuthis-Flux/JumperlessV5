@@ -3498,7 +3498,7 @@ void playDoom(void) {
   }
 #endif // INCLUDE_DOOM
   // core1busy = 0;
-  core2busy = 0;
+  //core2busy = 0;
 }
 
 uint8_t rainbowr[30] = {30, 29, 26, 23, 20, 17, 14, 11, 8,  5,

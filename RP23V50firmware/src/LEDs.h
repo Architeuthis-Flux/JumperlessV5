@@ -47,7 +47,7 @@ extern bool splitLEDs;
 #define DEFAULTRAILBRIGHTNESS 55
 #define DEFAULTSPECIALNETBRIGHTNESS 60
 
-extern volatile bool core2busy;
+//extern volatile bool core2busy;
 // #define PCBEXTINCTION 0 //extra brightness for to offset the extinction
 // through pcb
 //this stuff is unused
@@ -67,7 +67,7 @@ extern volatile uint8_t LEDbrightnessRail;
 extern volatile uint8_t LEDbrightness;
 extern volatile uint8_t LEDbrightnessSpecial;
 
-extern volatile uint8_t pauseCore2;
+//extern volatile uint8_t pauseCore2;
 extern Adafruit_NeoPixel bbleds;
 extern Adafruit_NeoPixel probeLEDs;
 extern uint8_t probeLEDstateMachine;

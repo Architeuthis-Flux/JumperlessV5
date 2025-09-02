@@ -2,6 +2,7 @@
 #include <Arduino.h>
 #include "ArduinoStuff.h"
 
+
 namespace TUI {
 
 Stream *TUIserial = &Ser3;
@@ -147,7 +148,7 @@ inline bool            oledEnabled   = false;
 inline uint8_t         oledRows      = 2;
 inline uint8_t         oledMaxChars  = 21;
 
-inline bool haveOled() { return oledClear && oledPrintLine; }
+inline bool haveOled() { return true; }
 
 
 

@@ -726,7 +726,7 @@ void readGPIO( void ) {
             // Skip reading logic analyzer pins during capture to avoid interference
             // Keep previous state to avoid display issues
             return;
-            continue;
+           continue;
         }
 
         if (gpio_get_function(gpioDef[i][0]) == GPIO_FUNC_UART) {

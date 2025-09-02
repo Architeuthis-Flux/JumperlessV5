@@ -1,6 +1,10 @@
 #include "Tui.h"
 #include "TuiGlue.h"
 #include <Wire.h>
+#include "ArduinoStuff.h"
+#include "LogicAnalyzer.h"
+#include "oled.h"
+
 
 
 
@@ -58,6 +62,11 @@ static void cbFlashArduino()  {
 }
 
 static void cbToggleOLED() {
+  if (oled.isConnected() == false) { 
+  oled.init();
+  } else {
+    oled.disconnect();
+  }
   TUI::setOledEnabled(!TUI::oledEnabled);
   TUI::setStatus(TUI::oledEnabled ? "OLED ON" : "OLED OFF");
 }
@@ -263,7 +272,7 @@ namespace TuiGlue {
     }
 
     uint16_t spins = 0;
-    while ((TUIserial->available() || TUI::inEscapeSeq()) && spins < 240) {
+    while ((TUIserial->available() || TUI::inEscapeSeq()) && spins < 2) {
       (void)TUI::handleInput();
       spins++;
       if ((spins & 0x07) == 0) delayMicroseconds(250);
@@ -286,7 +295,7 @@ namespace TuiGlue {
     if (TUI::S.logDirty) TUI::drawLog();
 
 
-    delay(100);
+   // delay(100);
 
     TUIserial->flush();
   }
