@@ -7,6 +7,8 @@
 #include "FileParsing.h"
 #include "CH446Q.h"
 #include "Commands.h"
+#include "AsyncPassthrough.h"
+#include "LEDs.h"
 
 extern "C" {
 #include "py/gc.h"
@@ -19,7 +21,7 @@ extern "C" {
 }
 
 // Global state for proper MicroPython integration
-static char mp_heap[92 * 1024]; // 64KB heap for MicroPython (reduced to free memory for editor)
+static char mp_heap[MICROPY_HEAP_SIZE]; //heap for MicroPython (reduced to free memory for editor)
 static bool mp_initialized = false;
 static bool mp_repl_active = false;
 static bool jumperless_globals_loaded = false;
@@ -40,24 +42,24 @@ static char mp_response_buffer[1024];
 // Terminal colors for different REPL states
 /// 0 = menu (cyan) 1 = prompt (light blue) 2 = output (chartreuse) 3 = input
 /// (orange-yellow) 4 = error (orange-red) 5 = purple 6 = dark purple 7 = light
-/// cyan 8 = magenta 9 = pink 10 = green 11 = grey 12 = dark grey 13 = light
-/// grey
+/// cyan 8 = magenta 9 = pink 10 = green 11 = grey 12 = dark grey 13 = light grey
+/// 14 = history prompt (magenta)
 static int replColors[15] = {
-    38,  // menu (cyan)
-    69,  // prompt (light blue)
-    155, // output (chartreuse)
-    221, // input (orange-yellow)
-    202, // error (orange-red)
-    92,  // purple
-    56,  // dark purple
-    51,  // light cyan
-    199, // magenta
-    207, // pink
-    40,  //  green
-    8,   // grey
-    235, // dark grey
-    248, // light grey
-
+     38,  // menu (cyan)
+     69,  // prompt (light blue)
+    155,  // output (chartreuse)
+    221,  // input (orange-yellow)
+    202,  // error (orange-red)
+     92,  // purple
+     56,  // dark purple
+     51,  // light cyan
+    199,  // magenta
+    207,  // pink
+     40,  // green
+      8,  // grey
+    235,  // dark grey
+    248,  // light grey
+    199,  // history prompt (magenta)
 };
 
 Stream *global_mp_stream = &Serial;
@@ -154,7 +156,7 @@ extern "C" mp_uint_t mp_hal_set_interrupt_char(int c) {
     keyboard_interrupt_char = c;
     if (global_mp_stream) {
         char char_name = (c >= 1 && c <= 26) ? (char)(c + 64) : '?';
-        global_mp_stream->printf("[MP] Keyboard interrupt character set to Ctrl+%c (ASCII %d)\n", char_name, c);
+        global_mp_stream->printf("[MP] Keyboard interrupt character set to Ctrl+%c (ASCII %d)\n\r", char_name, c);
     }
     return 0;
 }
@@ -179,10 +181,10 @@ extern "C" void mp_hal_stdout_tx_strn_cooked(const char *str, size_t len) {
     // Basic output to global stream (regular MicroPython output)
     if (global_mp_stream) {
         for (size_t i = 0; i < len; i++) {
-            // // Check for interrupt more frequently during output
-            // if (i % 10 == 0) { // Check every 10 characters
-            //     mp_hal_check_interrupt();
-            // }
+            // Check for interrupt more frequently during output
+            if (i % 10 == 0) { // Check every 10 characters
+                mp_hal_check_interrupt();
+            }
             
             if (str[i] == '\n') {
                 global_mp_stream->write('\r');
@@ -221,7 +223,7 @@ void mp_hal_check_interrupt(void) {
         if (current_time - last_interrupt_time > 50) { // Reduced from 100ms to 50ms
           char char_display = (keyboard_interrupt_char >= 1 && keyboard_interrupt_char <= 26) ? 
                              (char)(keyboard_interrupt_char + 64) : '?';
-          global_mp_stream->printf("^%c\n", char_display);
+          global_mp_stream->printf("^%c\n\r", char_display);
           if (global_mp_stream) {
             changeTerminalColor(replColors[4], true, global_mp_stream);
             global_mp_stream->printf("KeyboardInterrupt (Ctrl+%c)\n\r", char_display);
@@ -258,33 +260,6 @@ bool initMicroPythonProper(Stream *stream) {
   // Get proper stack pointer
   char stack_dummy;
   char *stack_top = &stack_dummy;
-    // Set up Python path and basic modules (with error handling)
-  // mp_embed_exec_str(
-  //     "try:\n"
-  //     "    print('MicroPython initializing...')\n"
-  //     "    import sys\n"
-  //     "    sys.path.append('/lib')\n"
-  //     "    print('MicroPython', sys.version)\n"
-  //     "except ImportError as e:\n"
-  //     "    print('MicroPython initialized (sys modu le unavailable)')\n"
-  //     "print('\\nJumperless hardware control available')\n");
-  // changeTerminalColor(replColors[5], true, global_mp_stream);
-  // // Test if native jumperless module is available
-  // mp_embed_exec_str(
-  //     "try:\n"
-  //     "    import jumperless\n"
-  //     // "    import time\n"
-  //     "    print('Native jumperless module imported successfully')\n"
-  //     "    print('Available functions:')\n"
-  //     "    for func in dir(jumperless):\n"
-  //     "        if not func.startswith('_'):\n"
-  //     "            print('  jumperless.' + func + '()')\n"
-  //     "    print()  # Empty line\n"
-  //     "except ImportError as e:\n"
-  //     "    print('❌ Native jumperless module not available:', str(e))\n"
-  //     "    print('Loading Python wrapper functions instead...')\n"
-  //     "    print()  # Empty line\n");
-  // Initialize MicroPython
 
   changeTerminalColor(replColors[11], true, global_mp_stream);
   mp_embed_init(mp_heap, sizeof(mp_heap), stack_top);
@@ -310,7 +285,7 @@ bool initMicroPythonProper(Stream *stream) {
   addMicroPythonModules();
 
   changeTerminalColor(replColors[11], true, global_mp_stream);
-  global_mp_stream->println("[MP] MicroPython initialized successfully");
+  //global_mp_stream->println("[MP] MicroPython initialized successfully");
 
   changeTerminalColor(replColors[11], true, global_mp_stream);
   //global_mp_stream->println("[MP] interrupt char: " + String(keyboard_interrupt_char));
@@ -329,6 +304,8 @@ void deinitMicroPythonProper(void) {
     mp_repl_active = false;
     jumperless_globals_loaded = false;  // Reset globals flag
     mp_interrupt_requested = false;  // Clear any pending interrupt
+
+    pauseCore2 = false;
   }
 }
 
@@ -379,16 +356,18 @@ void startMicroPythonREPL(void) {
 void stopMicroPythonREPL(void) {
   if (mp_repl_active) {
     changeTerminalColor(0, false, global_mp_stream);
-    global_mp_stream->println("\n[MP] Exiting REPL...");
+    global_mp_stream->println("\n\r[MP] Exiting REPL...");
     
     // Restore to entry state (discard Python changes by default)
     jl_exit_micropython_restore_entry_state();
     
     // Close any open files before exiting REPL
     closeAllOpenFiles();
+    s_line_coding_override = false;
     
     mp_repl_active = false;
     mp_interrupt_requested = false; // Clear any pending interrupt
+    pauseCore2 = false;
   }
 }
 
@@ -399,6 +378,8 @@ void setREPLInitialFile(const String& filepath) {
   repl_initial_filepath = filepath;
   repl_has_initial_file = (filepath.length() > 0);
 }
+
+
 
 void enterMicroPythonREPL(Stream *stream) {
   enterMicroPythonREPLWithFile(stream, "");
@@ -453,94 +434,11 @@ void enterMicroPythonREPLWithFile(Stream *stream, const String& filepath) {
   changeTerminalColor(replColors[0], true, global_mp_stream);
   global_mp_stream->println("MicroPython initialized successfully");
   global_mp_stream->flush();
-  delay(200);
+  //delay(200);
 
-  changeTerminalColor(replColors[0], true, global_mp_stream);
-  global_mp_stream->println();
-  changeTerminalColor(replColors[2], true, global_mp_stream);
-  global_mp_stream->println("    MicroPython REPL");
+  showREPLreference();
 
-  // Show commands menu
-  changeTerminalColor(replColors[5], true, global_mp_stream);
-  global_mp_stream->println("\n Commands:");
-  changeTerminalColor(replColors[3], false, global_mp_stream);
-  global_mp_stream->print("  quit ");
-  changeTerminalColor(replColors[0], false, global_mp_stream);
-  global_mp_stream->println("       -   Exit REPL");
-  changeTerminalColor(replColors[3], false, global_mp_stream);
-  global_mp_stream->printf("  Ctrl+%c ", (char)(keyboard_interrupt_char + 64)); // Convert ASCII to Ctrl+ notation
-  changeTerminalColor(replColors[0], false, global_mp_stream);
-  global_mp_stream->println("     -   quit REPL or interrupt running script");
-  changeTerminalColor(replColors[3], false, global_mp_stream);
-  global_mp_stream->print("  helpl");
-  changeTerminalColor(replColors[0], false, global_mp_stream);
-  global_mp_stream->println("       -   Show REPLhelp");
-  changeTerminalColor(replColors[3], false, global_mp_stream);
-  global_mp_stream->print("  history ");
-  changeTerminalColor(replColors[0], false, global_mp_stream);
-  global_mp_stream->println("    -   Show command history");
-  changeTerminalColor(replColors[3], false, global_mp_stream);
-  global_mp_stream->print("  save ");
-  changeTerminalColor(replColors[0], false, global_mp_stream);
-  global_mp_stream->println("       -   Save last script");
-  changeTerminalColor(replColors[3], false, global_mp_stream);
-  global_mp_stream->print("  load ");
-  changeTerminalColor(replColors[0], false, global_mp_stream);
-  global_mp_stream->println("       -   Load saved script");
-  // changeTerminalColor(replColors[3], false, global_mp_stream);
-  // global_mp_stream->print("  delete ");
-  // changeTerminalColor(replColors[0], false, global_mp_stream);
-  // global_mp_stream->println("     -   Delete saved script");
-  changeTerminalColor(replColors[3], false, global_mp_stream);
-  global_mp_stream->print("  files ");
-  changeTerminalColor(replColors[0], false, global_mp_stream);
-  global_mp_stream->println("      -   Open file manager (python_scripts)");
-  changeTerminalColor(replColors[3], false, global_mp_stream);
-  global_mp_stream->print("  new ");
-  changeTerminalColor(replColors[0], false, global_mp_stream);
-  global_mp_stream->println("        -   Create new script with eKilo editor");
-  changeTerminalColor(replColors[3], false, global_mp_stream);
-  global_mp_stream->print("  Ctrl+E ");
-  changeTerminalColor(replColors[0], false, global_mp_stream);
-          global_mp_stream->println("     -   Edit current input in main eKilo editor");
-  // changeTerminalColor(replColors[3], false, global_mp_stream);
-  // global_mp_stream->print("  multiline ");
-  // changeTerminalColor(replColors[0], false, global_mp_stream);
-  // global_mp_stream->println("  -   Toggle multiline mode");
-  // changeTerminalColor(replColors[3], false, global_mp_stream);
-  // global_mp_stream->print("  run ");
-  // changeTerminalColor(replColors[0], false, global_mp_stream);
-  // global_mp_stream->println("        -   Execute script (multiline mode)");
-  changeTerminalColor(replColors[3], false, global_mp_stream);
-  global_mp_stream->print("  help() ");
-  changeTerminalColor(replColors[0], false, global_mp_stream);
-  global_mp_stream->println("     -   Show hardware commands");
-
-  changeTerminalColor(replColors[5], true, global_mp_stream);
-  global_mp_stream->println("\nNavigation:");
-  changeTerminalColor(replColors[8], false, global_mp_stream);
-  global_mp_stream->println("  ↑/↓ arrows - Browse command history");
-  global_mp_stream->println("  ←/→ arrows - Move cursor, edit text");
-  global_mp_stream->println("  TAB        - Add 4-space indentation");
-  global_mp_stream->println(
-      "  Enter      - Execute (on an empty line)");
-  // global_mp_stream->println("  Ctrl+Q     - Force quit REPL or interrupt running script");
-  // global_mp_stream->println("  files      - Browse and manage Python scripts");
-  // global_mp_stream->println("  new        - Create new scripts with eKilo editor");
-  // global_mp_stream->println("  run        - Execute accumulated script "
-  //                           "(multiline forced ON)");
-
-  changeTerminalColor(replColors[5], true, global_mp_stream);
-  global_mp_stream->println("\nHardware:");
-  changeTerminalColor(replColors[7], false, global_mp_stream);
-  global_mp_stream->println(
-      "  help()           - Show Jumperless hardware commands");
-  char int_char = (keyboard_interrupt_char >= 1 && keyboard_interrupt_char <= 26) ? 
-                  (char)(keyboard_interrupt_char + 64) : '?';
-  // global_mp_stream->printf(
-  //     "  check_interrupt() - Call in tight loops to allow Ctrl+%c\n", int_char);
-  // global_mp_stream->println(
-  //     "  ");
+  //! This is to break the Python App's input loop
   global_mp_stream->println();
 
   if (global_mp_stream == &Serial) {
@@ -553,9 +451,13 @@ void enterMicroPythonREPLWithFile(Stream *stream, const String& filepath) {
   global_mp_stream->print("\n\rPress enter to start REPL");
   global_mp_stream->println();
   global_mp_stream->flush();
+
+
   while (global_mp_stream->available() == 0) {
-    delay(1);
+    delayMicroseconds(1);
   }
+
+
   global_mp_stream->read(); // consume the enter keypress
 
   // Start the REPL with colors
@@ -566,15 +468,21 @@ void enterMicroPythonREPLWithFile(Stream *stream, const String& filepath) {
   while (mp_repl_active) {
     processMicroPythonInput(global_mp_stream);
    // mp_hal_check_interrupt();
-    delayMicroseconds(10); // Small delay to prevent overwhelming
+    delayMicroseconds(1); // Small delay to prevent overwhelming
   }
+
+  pauseCore2 = false;
 
   // Cleanup with colors
   changeTerminalColor(replColors[0], true, global_mp_stream);
-  global_mp_stream->println("\nExiting REPL...");
+
+  global_mp_stream->println("\n\rExiting REPL...");
+  global_mp_stream->flush();
+  delay(10);
+
   if (global_mp_stream == &Serial) {
-    global_mp_stream->write(0x0F); // turn off interactive mode
-    global_mp_stream->flush();
+    // global_mp_stream->write(0x0F); // turn off interactive mode
+    // global_mp_stream->flush();
     //delay(100); // Give system time to switch modes
     // global_mp_stream->write(0x0E); // turn interactive mode back on for main menu
     // global_mp_stream->flush();
@@ -584,31 +492,11 @@ void enterMicroPythonREPLWithFile(Stream *stream, const String& filepath) {
 }
 
 void processMicroPythonInput(Stream *stream) {
+  
   if (!mp_initialized) {
     return;
   }
 
-  // Use global variables for initial content
-
-  // // Process any queued hardware commands
-  // if (mp_command_ready) {
-  //     global_mp_stream->printf("[MP] Processing hardware command: %s\n",
-  //     mp_command_buffer);
-
-  //     // Execute the hardware command through your existing system
-  //     char response[512];
-  //     int result = parseAndExecutePythonCommand(mp_command_buffer, response);
-
-  //     // Make result available to Python
-  //     if (result == 0) {
-  //         String python_result = "globals()['_last_result'] = '";
-  //         python_result += response;
-  //         python_result += "'";
-  //         mp_embed_exec_str(python_result.c_str());
-  //     }
-
-  //     mp_command_ready = false;
-  // }
 
   // Handle REPL input with proper text editor functionality and history
   if (mp_repl_active) {
@@ -632,17 +520,9 @@ void processMicroPythonInput(Stream *stream) {
       if (file) {
         String fileContent = file.readString();
         file.close();
-        
-        editor.current_input = fileContent;
-        editor.cursor_pos = fileContent.length();
-        editor.in_multiline_mode = (fileContent.indexOf('\n') >= 0);
-        
-        changeTerminalColor(replColors[5], true, global_mp_stream);
-        global_mp_stream->println("Script loaded from file: " + repl_initial_filepath);
-        changeTerminalColor(replColors[1], true, global_mp_stream);
-        
+
         // Show the loaded content
-        editor.drawFromCurrentLine(global_mp_stream);
+        editor.loadScriptContent(fileContent, "Script loaded from file: " + repl_initial_filepath);
       } else {
         changeTerminalColor(replColors[4], true, global_mp_stream);
         global_mp_stream->println("Failed to load file: " + repl_initial_filepath);
@@ -686,7 +566,7 @@ void processMicroPythonInput(Stream *stream) {
         editor.escape_state = 0; // Reset escape state
 
         switch (c) {
-        case 65: // Up arrow - history previous
+        case 65: //TODO: Up arrow - history previous
         {
           // Only allow history navigation if:
           // 1. Current input is empty (blank prompt), OR
@@ -782,7 +662,7 @@ void processMicroPythonInput(Stream *stream) {
       if (c == keyboard_interrupt_char) {
         char char_display = (keyboard_interrupt_char >= 1 && keyboard_interrupt_char <= 26) ? 
                            (char)(keyboard_interrupt_char + 64) : '?';
-        global_mp_stream->printf("^%c\n", char_display);
+        global_mp_stream->printf("^%c\n\r", char_display);
         
         // Set interrupt flag for script execution
         mp_interrupt_requested = true;
@@ -790,10 +670,11 @@ void processMicroPythonInput(Stream *stream) {
         // Always exit REPL immediately when interrupt char is pressed during input
         // This covers the case where user is typing but not executing a script
         changeTerminalColor(replColors[4], true, global_mp_stream);
-        global_mp_stream->printf("KeyboardInterrupt (Ctrl+%c)\n", char_display);
+        global_mp_stream->printf("KeyboardInterrupt (Ctrl+%c)\n\r", char_display);
         global_mp_stream->println("Force quit - exiting REPL...");
         changeTerminalColor(replColors[1], true, global_mp_stream);
         stopMicroPythonREPL();
+        
         editor.reset();
         return;
       }
@@ -822,7 +703,7 @@ void processMicroPythonInput(Stream *stream) {
           history.listScripts();
           editor.reset();
           changeTerminalColor(replColors[1], true, global_mp_stream);
-          global_mp_stream->print(">>> ");
+          editor.drawPrompt(global_mp_stream, 0);
           global_mp_stream->flush();
           return;
         }
@@ -848,7 +729,7 @@ void processMicroPythonInput(Stream *stream) {
             "  multiline edit - Use main eKilo editor for multiline input");
           editor.reset();
           changeTerminalColor(replColors[1], true, global_mp_stream);
-          global_mp_stream->print(">>> ");
+          editor.drawPrompt(global_mp_stream, 0);
           global_mp_stream->flush();
           return;
         }
@@ -863,7 +744,7 @@ void processMicroPythonInput(Stream *stream) {
                                     "execute accumulated script.");
           editor.reset();
           changeTerminalColor(replColors[1], true, global_mp_stream);
-          global_mp_stream->print(">>> ");
+          editor.drawPrompt(global_mp_stream, 0);
           global_mp_stream->flush();
           return;
         }
@@ -875,7 +756,7 @@ void processMicroPythonInput(Stream *stream) {
           global_mp_stream->println("Multiline mode: FORCED OFF");
           editor.reset();
           changeTerminalColor(replColors[1], true, global_mp_stream);
-          global_mp_stream->print(">>> ");
+          editor.drawPrompt(global_mp_stream, 0);
           global_mp_stream->flush();
           return;
         }
@@ -887,7 +768,7 @@ void processMicroPythonInput(Stream *stream) {
           global_mp_stream->println("Multiline mode: AUTO (default)");
           editor.reset();
           changeTerminalColor(replColors[1], true, global_mp_stream);
-          global_mp_stream->print(">>> ");
+          editor.drawPrompt(global_mp_stream, 0);
           global_mp_stream->flush();
           return;
         }
@@ -902,14 +783,15 @@ void processMicroPythonInput(Stream *stream) {
             FatFS.mkdir("/python_scripts");
           }
           
-          // Save current input to temporary file
+          // Save last executed command to temporary file
           String tempFile = "/python_scripts/_temp_repl_edit.py";
           File file = FatFS.open(tempFile, "w");
           if (file) {
-            if (editor.current_input.length() > 0) {
-              file.print(editor.current_input);
+            String lastCommand = history.getLastExecutedCommand();
+            if (lastCommand.length() > 0) {
+              file.print(lastCommand);
             } else {
-              // Start with a helpful comment if no input
+              // Start with a helpful comment if no history
               file.println("# Edit your Python script here");
               file.println("# Press Ctrl+S to save and return to REPL");
               file.println("# Press Ctrl+P to save and execute immediately");
@@ -960,7 +842,7 @@ void processMicroPythonInput(Stream *stream) {
           
           editor.reset();
           changeTerminalColor(replColors[1], true, global_mp_stream);
-          global_mp_stream->print(">>> ");
+          editor.drawPrompt(global_mp_stream, 0);
           global_mp_stream->flush();
           return;
         }
@@ -984,13 +866,7 @@ void processMicroPythonInput(Stream *stream) {
           
           // If content was saved, load it into the editor
           if (savedContent.length() > 0) {
-            editor.current_input = savedContent;
-            editor.cursor_pos = savedContent.length();
-            editor.in_multiline_mode = (savedContent.indexOf('\n') >= 0);
-            changeTerminalColor(replColors[5], true, global_mp_stream);
-            global_mp_stream->println("Script content loaded into REPL");
-            // Don't reset - show the loaded content
-            editor.redrawAndPosition(global_mp_stream);
+            editor.loadScriptContent(savedContent, "Script content loaded into REPL");
             return;
           } else {
             changeTerminalColor(replColors[5], true, global_mp_stream);
@@ -998,7 +874,7 @@ void processMicroPythonInput(Stream *stream) {
             
             editor.reset();
             changeTerminalColor(replColors[1], true, global_mp_stream);
-            global_mp_stream->print(">>> ");
+            editor.drawPrompt(global_mp_stream, 0);
             global_mp_stream->flush();
             return;
           }
@@ -1015,14 +891,15 @@ void processMicroPythonInput(Stream *stream) {
             FatFS.mkdir("/python_scripts");
           }
           
-          // Save current input to temporary file
+          // Save last executed command to temporary file
           String tempFile = "/python_scripts/_temp_repl_edit.py";
           File file = FatFS.open(tempFile, "w");
           if (file) {
-            if (editor.current_input.length() > 0) {
-              file.print(editor.current_input);
+            String lastCommand = history.getLastExecutedCommand();
+            if (lastCommand.length() > 0) {
+              file.print(lastCommand);
             } else {
-              // Start with a helpful comment if no input
+              // Start with a helpful comment if no history
               file.println("# Edit your Python script here");
               file.println("# Press Ctrl+S to save and return to REPL");
               file.println("# Press Ctrl+P to save and execute immediately");
@@ -1042,30 +919,19 @@ void processMicroPythonInput(Stream *stream) {
           // Handle the return from eKilo
           if (savedContent.length() > 0) {
             // Check if this was a Ctrl+P (save and execute) request
-            if (savedContent.startsWith("[LAUNCH_REPL]")) {
-              // Remove the marker and execute the content
-              String contentToExecute = savedContent.substring(13); // Remove "[LAUNCH_REPL]"
-              if (contentToExecute.length() > 0) {
-                changeTerminalColor(replColors[2], true, global_mp_stream);
-                global_mp_stream->println("Executing script from eKilo:");
-                
-                // Add to history before execution
-                history.addToHistory(contentToExecute);
-                
-                // Execute the script
-                mp_embed_exec_str(contentToExecute.c_str());
-              }
-            } else {
+
               // Regular save - load content into REPL editor
-              editor.current_input = savedContent;
-              editor.cursor_pos = savedContent.length();
-              editor.in_multiline_mode = (savedContent.indexOf('\n') >= 0);
-              changeTerminalColor(replColors[5], true, global_mp_stream);
-              global_mp_stream->println("Script loaded into REPL editor");
-              // Don't reset - show the loaded content
-              editor.drawFromCurrentLine(global_mp_stream);
+              showREPLreference();
+              editor.loadScriptContent(savedContent, "Script content loaded into REPL");
+              // editor.current_input = savedContent;
+              // editor.cursor_pos = savedContent.length();
+              // editor.in_multiline_mode = (savedContent.indexOf('\n') >= 0);
+              // changeTerminalColor(replColors[5], true, global_mp_stream);
+              // global_mp_stream->println("Script loaded into REPL editor");
+              // // Don't reset - show the loaded content
+              // editor.drawFromCurrentLine(global_mp_stream);
               return;
-            }
+            
           } else {
             changeTerminalColor(replColors[5], true, global_mp_stream);
             global_mp_stream->println("Returned from eKilo editor");
@@ -1073,7 +939,7 @@ void processMicroPythonInput(Stream *stream) {
           
           editor.reset();
           changeTerminalColor(replColors[1], true, global_mp_stream);
-          global_mp_stream->print(">>> ");
+          editor.drawPrompt(global_mp_stream, 0);
           global_mp_stream->flush();
           return;
         }
@@ -1083,84 +949,12 @@ void processMicroPythonInput(Stream *stream) {
           // Show REPL help
           changeTerminalColor(replColors[7], true, global_mp_stream);
           global_mp_stream->println("\n   MicroPython REPL Help");
-          changeTerminalColor(replColors[5], true, global_mp_stream);
-          global_mp_stream->println("\nCommands:");
-          changeTerminalColor(replColors[3], false, global_mp_stream);
-          global_mp_stream->print("  quit/exit ");
-          changeTerminalColor(replColors[0], false, global_mp_stream);
-          global_mp_stream->println("    -   Exit REPL");
-          changeTerminalColor(replColors[3], false, global_mp_stream);
-          global_mp_stream->print("  history ");
-          changeTerminalColor(replColors[0], false, global_mp_stream);
-          global_mp_stream->println(
-              "      -   Show command history & saved scripts");
-          changeTerminalColor(replColors[3], false, global_mp_stream);
-          global_mp_stream->print("  save [name] ");
-          changeTerminalColor(replColors[0], false, global_mp_stream);
-          global_mp_stream->println(
-              "  -   Save last script (auto: script_N.py)");
-          changeTerminalColor(replColors[3], false, global_mp_stream);
-          global_mp_stream->print("  load <name> ");
-          changeTerminalColor(replColors[0], false, global_mp_stream);
-          global_mp_stream->println("  -   Load script by name");
-          changeTerminalColor(replColors[3], false, global_mp_stream);
-          global_mp_stream->print("  delete <name>");
-          changeTerminalColor(replColors[0], false, global_mp_stream);
-          global_mp_stream->println(" -   Delete saved script");
-          changeTerminalColor(replColors[3], false, global_mp_stream);
-          global_mp_stream->print("  files ");
-          changeTerminalColor(replColors[0], false, global_mp_stream);
-          global_mp_stream->println("       -   Open file manager (python_scripts)");
-          changeTerminalColor(replColors[3], false, global_mp_stream);
-          global_mp_stream->print("  new ");
-          changeTerminalColor(replColors[0], false, global_mp_stream);
-          global_mp_stream->println("         -   Create new script with eKilo editor");
-          changeTerminalColor(replColors[3], false, global_mp_stream);
-          global_mp_stream->print("  edit ");
-          changeTerminalColor(replColors[0], false, global_mp_stream);
-          global_mp_stream->println("        -   Launch main eKilo editor");
-          changeTerminalColor(replColors[3], false, global_mp_stream);
-          global_mp_stream->print("  multiline ");
-          changeTerminalColor(replColors[0], false, global_mp_stream);
-          global_mp_stream->println(
-              "    -   Toggle multiline mode (on/off/auto/edit)");
-          changeTerminalColor(replColors[3], false, global_mp_stream);
-          global_mp_stream->print("  run ");
-          changeTerminalColor(replColors[0], false, global_mp_stream);
-          global_mp_stream->println(
-              "          -   Execute script (when multiline forced ON)");
-
-          changeTerminalColor(replColors[5], true, global_mp_stream);
-          global_mp_stream->println("\nNavigation:");
-          changeTerminalColor(replColors[8], false, global_mp_stream);
-          global_mp_stream->println("  ↑/↓ arrows - Browse command history");
-          global_mp_stream->println("  ←/→ arrows - Move cursor, edit text");
-          global_mp_stream->println("  TAB        - Add 4-space indentation");
-          global_mp_stream->println(
-              "  Enter      - Execute (empty line in multiline to finish)");
-          char int_char = (keyboard_interrupt_char >= 1 && keyboard_interrupt_char <= 26) ? 
-                          (char)(keyboard_interrupt_char + 64) : '?';
-          global_mp_stream->printf("  Ctrl+%c     - Force quit REPL or interrupt running script\n", int_char);
-          global_mp_stream->println("  files      - Browse and manage Python scripts");
-          global_mp_stream->println("  new        - Create new scripts with eKilo editor");
-          global_mp_stream->println("  edit       - Launch main eKilo editor for multiline scripts");
-          global_mp_stream->println("  run        - Execute accumulated script "
-                                    "(multiline forced ON)");
-          changeTerminalColor(replColors[8], false, global_mp_stream);
-          global_mp_stream->println("  multiline edit - Launch main eKilo editor");
-
-          changeTerminalColor(replColors[5], true, global_mp_stream);
-          global_mp_stream->println("\nHardware:");
-          changeTerminalColor(replColors[7], false, global_mp_stream);
-          global_mp_stream->println(
-              "  help()  - Show Jumperless hardware commands");
-          global_mp_stream->println(
-              "  ");
-          global_mp_stream->println();
+          
+          showREPLreference();
 
           editor.reset();
           changeTerminalColor(replColors[1], true, global_mp_stream);
-          global_mp_stream->print(">>> ");
+          editor.drawPrompt(global_mp_stream, 0);
           global_mp_stream->flush();
           return;
         }
@@ -1186,7 +980,7 @@ void processMicroPythonInput(Stream *stream) {
           }
           editor.reset();
           changeTerminalColor(replColors[1], true, global_mp_stream);
-          global_mp_stream->print(">>> ");
+          editor.drawPrompt(global_mp_stream, 0);
           global_mp_stream->flush();
           return;
         }
@@ -1235,7 +1029,7 @@ void processMicroPythonInput(Stream *stream) {
                       "scripts.");
                   editor.reset();
                   changeTerminalColor(replColors[1], true, global_mp_stream);
-                  global_mp_stream->print(">>> ");
+                  editor.drawPrompt(global_mp_stream, 0);
                   global_mp_stream->flush();
                   return;
                 }
@@ -1248,10 +1042,12 @@ void processMicroPythonInput(Stream *stream) {
                 String loaded_script = history.loadScript(filename);
                 if (loaded_script.length() > 0) {
                   // Load the script into the editor
-                  editor.current_input = loaded_script;
-                  editor.cursor_pos = loaded_script.length();
-                  editor.in_multiline_mode = (loaded_script.indexOf('\n') >= 0);
-                  editor.redrawAndPosition(global_mp_stream);
+                  showREPLreference();
+                  editor.loadScriptContent(loaded_script, "Script loaded into REPL editor");
+                  // editor.current_input = loaded_script;
+                  // editor.cursor_pos = loaded_script.length();
+                  // editor.in_multiline_mode = (loaded_script.indexOf('\n') >= 0);
+                  // editor.redrawAndPosition(global_mp_stream);
                   return; // Stay in editing mode
                 }
               }
@@ -1262,7 +1058,7 @@ void processMicroPythonInput(Stream *stream) {
           }
           editor.reset();
           changeTerminalColor(replColors[1], true, global_mp_stream);
-          global_mp_stream->print(">>> ");
+          editor.drawPrompt(global_mp_stream, 0);
           global_mp_stream->flush();
           return;
         }
@@ -1280,7 +1076,7 @@ void processMicroPythonInput(Stream *stream) {
           }
           editor.reset();
           changeTerminalColor(replColors[1], true, global_mp_stream);
-          global_mp_stream->print(">>> ");
+          editor.drawPrompt(global_mp_stream, 0);
           global_mp_stream->flush();
           return;
         }
@@ -1300,23 +1096,18 @@ void processMicroPythonInput(Stream *stream) {
             global_mp_stream->write(0x0E); // turn on interactive mode
             global_mp_stream->flush();
           }
-          
+
           // If content was saved, load it into the editor
           if (savedContent.length() > 0) {
-            editor.current_input = savedContent;
-            editor.cursor_pos = savedContent.length();
-            editor.in_multiline_mode = (savedContent.indexOf('\n') >= 0);
-            changeTerminalColor(replColors[5], true, global_mp_stream);
-            global_mp_stream->println("File content loaded into REPL");
-            // Don't reset - show the loaded content
-            editor.redrawAndPosition(global_mp_stream);
+            showREPLreference();
+            editor.loadScriptContent(savedContent, "File content loaded into REPL");
             return;
           } else {
             changeTerminalColor(replColors[5], true, global_mp_stream);
             global_mp_stream->println("Returned from file manager");
             editor.reset();
             changeTerminalColor(replColors[1], true, global_mp_stream);
-            global_mp_stream->print(">>> ");
+            editor.drawPrompt(global_mp_stream, 0);
             global_mp_stream->flush();
             return;
           }
@@ -1330,7 +1121,7 @@ void processMicroPythonInput(Stream *stream) {
             global_mp_stream->println("No script to execute.");
             editor.reset();
             changeTerminalColor(replColors[1], true, global_mp_stream);
-            global_mp_stream->print(">>> ");
+            editor.drawPrompt(global_mp_stream, 0);
             global_mp_stream->flush();
             return;
           } else if (trimmed_input.endsWith("\nrun") &&
@@ -1363,7 +1154,7 @@ void processMicroPythonInput(Stream *stream) {
             // Reset and show new prompt
             editor.reset();
             changeTerminalColor(replColors[1], true, global_mp_stream);
-            global_mp_stream->print(">>> ");
+            editor.drawPrompt(global_mp_stream, 0);
             global_mp_stream->flush();
             return;
           }
@@ -1375,17 +1166,24 @@ void processMicroPythonInput(Stream *stream) {
         bool force_execution = false;
         bool force_multiline = false;
         
-        // Check the current line content to determine if we should execute
+        // Check if there's no non-whitespace after the current cursor position
+        String remaining_input = editor.current_input.substring(editor.cursor_pos);
+        remaining_input.trim();
+        bool no_content_after_cursor = (remaining_input.length() == 0);
+        
+        // Check if the previous line is a newline (empty line)
         int line_start = editor.current_input.lastIndexOf('\n', editor.cursor_pos - 1);
         line_start = (line_start >= 0) ? line_start + 1 : 0;
         String current_line = editor.current_input.substring(line_start, editor.cursor_pos);
         current_line.trim();
+        bool previous_line_empty = (current_line.length() == 0);
         
         // Don't force multiline mode when loading from history - let normal detection work
         if (editor.in_multiline_mode && !editor.multiline_forced_on) {
           // Only allow empty line escape in AUTO mode, not when forced ON
-          if (current_line.length() == 0) {
-            force_execution = true; // Empty line in multiline mode
+          // AND only if there's no content after cursor AND previous line is empty
+          if (previous_line_empty && no_content_after_cursor) {
+            force_execution = true; // Empty line in multiline mode with no trailing content
           }
         }
 
@@ -1403,11 +1201,14 @@ void processMicroPythonInput(Stream *stream) {
           if (editor.multiline_forced_off) {
             // In forced OFF mode, NEVER continue (always execute on Enter)
             needs_more_input = false;
-          } else {
-            // Use automatic detection (default behavior)
+          } else if (no_content_after_cursor) {
+            // If there's no content after cursor, use automatic detection
             String input_for_check = editor.current_input;
             needs_more_input =
                 mp_repl_continue_with_input(input_for_check.c_str());
+          } else {
+            // If there IS content after cursor, always continue (insert newline)
+            needs_more_input = true;
           }
         }
 
@@ -1468,29 +1269,9 @@ void processMicroPythonInput(Stream *stream) {
               indent_spaces + editor.current_input.substring(editor.cursor_pos);
           editor.cursor_pos += indent_spaces.length();
 
-          // Show the appropriate prompt
-          changeTerminalColor(replColors[1], true, global_mp_stream);
-          if (editor.multiline_forced_on) {
-            global_mp_stream->print("... "); // Standard multiline prompt
-            // Show reminder on first few lines
-            static int line_count = 0;
-            line_count++;
-            if (line_count < 1) { // Show on first multiline prompt
-              changeTerminalColor(replColors[12], false, global_mp_stream);
-              global_mp_stream->print(" (type 'run' to execute)");
-              global_mp_stream->println();
-              changeTerminalColor(replColors[1], true, global_mp_stream);
-              global_mp_stream->print("... ");
-            }
-          } else {
-            global_mp_stream->print("... ");
-          }
-
-          if (indent_spaces.length() > 0) {
-            changeTerminalColor(replColors[3], false, global_mp_stream);
-            global_mp_stream->print(indent_spaces); // Show the indentation
-          }
-          global_mp_stream->flush();
+          // Redraw the entire input to show current position after newline
+          // This handles prompts, indentation, and cursor positioning
+          editor.redrawAndPosition(global_mp_stream);
         } else {
           // Execute the complete statement (or force execution)
           if (editor.current_input.length() > 0) {
@@ -1522,7 +1303,7 @@ void processMicroPythonInput(Stream *stream) {
           // Reset and show new prompt
           editor.reset();
           changeTerminalColor(replColors[1], true, global_mp_stream);
-          global_mp_stream->print(">>> ");
+          editor.drawPrompt(global_mp_stream, 0);
           global_mp_stream->flush();
         }
 
@@ -1651,8 +1432,8 @@ void processMicroPythonInput(Stream *stream) {
         
         editor.reset();
         changeTerminalColor(replColors[1], true, global_mp_stream);
-        global_mp_stream->print(">>> ");
-        global_mp_stream->flush();
+          editor.drawPrompt(global_mp_stream, 0);
+          
         return;
         
       } else if (c == '\t') { // TAB character
@@ -1744,7 +1525,6 @@ void addJumperlessPythonFunctions(void) {
   // Import jumperless module and add ALL functions and constants to global namespace
   mp_embed_exec_str(
       "try:\n"
-      "    print('Attempting to import jumperless module...')\n"
       "    import jumperless\n"
       "    print('Native jumperless module available')\n"
       "    funcs = [attr for attr in dir(jumperless) if not attr.startswith('_')]\n"
@@ -1815,6 +1595,125 @@ void addMicroPythonModules(bool time, bool machine, bool os, bool math, bool gc)
     mp_embed_exec_str("import gc\n");
    // mp_embed_exec_str("print('GC module imported successfully')\n");
   }
+}
+
+
+int padTextColumn(int textColumnEnd, int textColumnLength) {
+  int padding = textColumnEnd - textColumnLength;
+  for (int i = 0; i < padding; i++) {
+    global_mp_stream->print(" ");
+  }
+  return padding;
+}
+
+void showREPLreference(int verbose) {
+
+  int textColumnEnd = 12;
+  int textColumnLength = 0;
+
+
+  changeTerminalColor(replColors[0], true, global_mp_stream);
+
+  global_mp_stream->println();
+
+  changeTerminalColor(replColors[2], true, global_mp_stream);
+
+  global_mp_stream->println("    MicroPython REPL");
+
+  // Show commands menu
+  changeTerminalColor(replColors[5], true, global_mp_stream);
+
+  global_mp_stream->println("\n Commands:");
+
+  changeTerminalColor(replColors[3], false, global_mp_stream);
+
+  textColumnLength = global_mp_stream->print("  quit");
+  padTextColumn(textColumnEnd, textColumnLength);
+  changeTerminalColor(replColors[0], false, global_mp_stream);
+  global_mp_stream->println("-   Exit REPL");
+  changeTerminalColor(replColors[3], false, global_mp_stream);
+
+  textColumnLength = global_mp_stream->printf("  Ctrl+%c ", (char)(keyboard_interrupt_char + 64)); // Convert ASCII to Ctrl+ notation
+  padTextColumn(textColumnEnd, textColumnLength);
+  changeTerminalColor(replColors[0], false, global_mp_stream);
+  global_mp_stream->println("-   quit REPL or interrupt running script");
+  changeTerminalColor(replColors[3], false, global_mp_stream);
+
+  textColumnLength = global_mp_stream->print("  helpl");
+  padTextColumn(textColumnEnd, textColumnLength);
+  changeTerminalColor(replColors[0], false, global_mp_stream);
+  global_mp_stream->println("-   Show REPLhelp");
+  changeTerminalColor(replColors[3], false, global_mp_stream);
+
+  textColumnLength = global_mp_stream->print("  history");
+  padTextColumn(textColumnEnd, textColumnLength);
+  changeTerminalColor(replColors[0], false, global_mp_stream);
+  global_mp_stream->println("-   Show command history");
+  changeTerminalColor(replColors[3], false, global_mp_stream);
+
+  textColumnLength = global_mp_stream->print("  save");
+  padTextColumn(textColumnEnd, textColumnLength);
+  changeTerminalColor(replColors[0], false, global_mp_stream);
+  global_mp_stream->println("-   Save last script");
+  changeTerminalColor(replColors[3], false, global_mp_stream);
+
+  textColumnLength = global_mp_stream->print("  load");
+  padTextColumn(textColumnEnd, textColumnLength);
+  changeTerminalColor(replColors[0], false, global_mp_stream);
+  global_mp_stream->println("-   Load saved script");
+  changeTerminalColor(replColors[3], false, global_mp_stream);
+
+  textColumnLength = global_mp_stream->print("  files ");
+  padTextColumn(textColumnEnd, textColumnLength);
+  changeTerminalColor(replColors[0], false, global_mp_stream);
+  global_mp_stream->println("-   Open file manager (python_scripts)");
+  changeTerminalColor(replColors[3], false, global_mp_stream);
+
+  textColumnLength = global_mp_stream->print("  new ");
+  padTextColumn(textColumnEnd, textColumnLength);
+  changeTerminalColor(replColors[0], false, global_mp_stream);
+  global_mp_stream->println("-   Create new script with eKilo editor");
+  changeTerminalColor(replColors[3], false, global_mp_stream);
+
+  textColumnLength = global_mp_stream->print("  edit  ");
+  padTextColumn(textColumnEnd, textColumnLength);
+  changeTerminalColor(replColors[0], false, global_mp_stream);
+  global_mp_stream->println("-   Edit current input in main eKilo editor");
+  changeTerminalColor(replColors[3], false, global_mp_stream);
+
+
+  // textColumnLength = global_mp_stream->print("  help() ");
+  // padTextColumn(textColumnEnd, textColumnLength);
+    // global_mp_stream->print("  help() ");
+  // changeTerminalColor(replColors[0], false, global_mp_stream);
+  // global_mp_stream->println("     -   Show hardware commands");
+
+  changeTerminalColor(replColors[5], true, global_mp_stream);
+  global_mp_stream->println("\nNavigation:");
+  changeTerminalColor(replColors[8], false, global_mp_stream);
+  global_mp_stream->println("  ↑/↓ arrows - Browse command history");
+  global_mp_stream->println("  ←/→ arrows - Move cursor, edit text");
+  global_mp_stream->println("  TAB        - Add 4-space indentation");
+  global_mp_stream->println(
+      "  Enter      - Execute (on an empty line)");
+  // global_mp_stream->println("  Ctrl+Q     - Force quit REPL or interrupt running script");
+  // global_mp_stream->println("  files      - Browse and manage Python scripts");
+  // global_mp_stream->println("  new        - Create new scripts with eKilo editor");
+  // global_mp_stream->println("  run        - Execute accumulated script "
+  //                           "(multiline forced ON)");
+
+  changeTerminalColor(replColors[5], true, global_mp_stream);
+  global_mp_stream->println("\nHardware:");
+  changeTerminalColor(replColors[7], false, global_mp_stream);
+  global_mp_stream->println(
+      "  help()           - Show Jumperless hardware commands");
+
+  char int_char = (keyboard_interrupt_char >= 1 && keyboard_interrupt_char <= 26) ? 
+                  (char)(keyboard_interrupt_char + 64) : '?';
+  // global_mp_stream->printf(
+  //     "  check_interrupt() - Call in tight loops to allow Ctrl+%c\n", int_char);
+  global_mp_stream->println();
+  //     "  ");
 }
 
 const char *test_code = R"""(
@@ -2451,6 +2350,20 @@ void REPLEditor::backspaceOverNewline(Stream *stream) {
   }
 }
 
+void REPLEditor::drawPrompt(Stream *stream, int level) {
+  // Use history prompt color when in history mode, normal prompt color otherwise
+  int prompt_color = in_history_mode ? replColors[14] : replColors[1];
+  changeTerminalColor(prompt_color, true, stream);
+  if (level == 0) {
+   stream->print(">>> ");
+  } else if (level == 1) {
+   stream->print("... ");
+  }
+  stream->flush();
+}
+
+
+
 void REPLEditor::loadFromHistory(Stream *stream, const String &historical_input) {
   if (!in_history_mode) {
     original_input = current_input; // Save current input
@@ -2495,8 +2408,7 @@ void REPLEditor::drawFromCurrentLine(Stream *stream) {
   
   // If we have no input, just show prompt
   if (current_input.length() == 0) {
-    changeTerminalColor(replColors[1], true, stream);
-    stream->print(">>> ");
+    drawPrompt(stream, 0);
     stream->flush();
     last_displayed_lines = 0;
     return;
@@ -2515,10 +2427,10 @@ void REPLEditor::drawFromCurrentLine(Stream *stream) {
       // Show appropriate prompt
       if (current_line_num == 0) {
         changeTerminalColor(replColors[1], true, stream);
-        stream->print(">>> ");
+        drawPrompt(stream, 0);
       } else {
         changeTerminalColor(replColors[1], true, stream);
-        stream->print("... ");
+        drawPrompt(stream, 1);
       }
 
       // Show line content with syntax highlighting
@@ -2700,6 +2612,29 @@ void REPLEditor::moveCursorToLineEnd() {
   setCursorFromLineColumn(cursor_position.line, line_length);
 }
 
+
+// Move cursor to the very end of all content (data only, no terminal output)
+void REPLEditor::moveCursorToEnd() {
+  cursor_pos = current_input.length();
+  cursor_position.is_valid = false; // Mark for recalculation
+}
+
+// Load script content into editor and display it properly
+void REPLEditor::loadScriptContent(const String &script, const String &message) {
+  // Load the script content into the editor
+  current_input = script;
+  in_multiline_mode = (script.indexOf('\n') >= 0);
+  
+  // Display success message
+  changeTerminalColor(replColors[5], true, global_mp_stream);
+  global_mp_stream->println(message);
+  
+  // Redraw the content and position cursor at the end
+  redrawAndPosition(global_mp_stream);
+  moveCursorToEnd();
+  repositionCursorOnly(global_mp_stream);
+}
+
 // Redraw content and position cursor - fixed positioning approach
 void REPLEditor::redrawAndPosition(Stream *stream) {
   updateCursorPosition();
@@ -2742,8 +2677,7 @@ void REPLEditor::redrawAndPosition(Stream *stream) {
   
   // Step 3: If we have no input, just show prompt
   if (current_input.length() == 0) {
-    changeTerminalColor(replColors[1], true, stream);
-    stream->print(">>> ");
+    drawPrompt(stream, 0);
     stream->flush();
     last_displayed_lines = 0;
     return;
@@ -2761,11 +2695,9 @@ void REPLEditor::redrawAndPosition(Stream *stream) {
 
       // Show appropriate prompt
       if (current_line_num == 0) {
-        changeTerminalColor(replColors[1], true, stream);
-        stream->print(">>> ");
+        drawPrompt(stream, 0);
       } else {
-        changeTerminalColor(replColors[1], true, stream);
-        stream->print("... ");
+        drawPrompt(stream, 1);
       }
 
       // Show line content with syntax highlighting
@@ -2995,7 +2927,7 @@ void displayStringWithSyntaxHighlighting(const String& text, Stream* stream) {
     "get_button", "probe_button", "probe_button_blocking", "probe_button_nonblocking",
     "probe_wait", "wait_probe", "probe_touch", "wait_touch", "button_read", "read_button",
     "check_button", "button_check", "arduino_reset", "probe_tap", "run_app", "format_output",
-    "help_nodes", "pwm", "pwm_set_frequency", "pwm_set_duty_cycle", "pwm_stop", "send_raw", nullptr
+    "help_nodes", "pwm", "pwm_set_frequency", "pwm_set_duty_cycle", "pwm_stop", "send_raw", "pause_core2", nullptr
   };
   
   const char* jumperless_constants[] = {
@@ -3890,6 +3822,8 @@ void closeAllOpenFiles(void) {
   //   // global_mp_stream->println("[FS] File cleanup complete");
   // }
 }
+
+
 
 
 

@@ -21,6 +21,13 @@ bool asyncPassthroughEnabled = jumperlessConfig.serial_1.async_passthrough;
 // Configuration
 // ----------------------------------------------------------------------------
 
+// Interop mode between AsyncPassthrough and MicroPython UART driver
+// 0 = integrate (both use shared IRQ handler)
+// 1 = preempt (AsyncPassthrough suspends while MicroPython owns UART0)
+#ifndef JL_UART0_INTEROP_MODE
+#define JL_UART0_INTEROP_MODE 0
+#endif
+
 #ifndef ASYNC_PASSTHROUGH_CDC_ITF
 // Bridge TinyUSB CDC instance 1 (USBSer1) <-> Serial1
 #define ASYNC_PASSTHROUGH_CDC_ITF 1
@@ -128,6 +135,8 @@ static inline uint16_t make_serial_config_from_line_coding( uint8_t data_bits, u
 // ----------------------------------------------------------------------------
 
 static volatile bool s_uart_flush_pending = false;
+// Track suspend state to avoid concurrent access when MicroPython owns UART0
+static volatile bool s_uart_suspended_by_mpy = false;
 // Exposed ring: uartReceived
 uint8_t uartReceived[ 4096 ];
 volatile uint16_t uartReceivedHead = 0;
@@ -300,6 +309,8 @@ static inline void bridge_uart_to_usb( uint8_t itf ) {
 // ISR-safe flags updated by TinyUSB callbacks, processed in main context
 static volatile bool s_usb_rx_pending = false;
 static volatile bool s_apply_line_coding_pending = false;
+volatile bool s_line_coding_override = false;
+
 static cdc_line_coding_t s_line_coding = { .bit_rate = ASYNC_PASSTHROUGH_UART_DEFAULT_BAUD, .stop_bits = 1, .parity = 0, .data_bits = 8 };
 
 // ----------------------------------------------------------------------------
@@ -340,9 +351,16 @@ void begin( unsigned long baud ) {
     uart_set_fifo_enabled( ASYNC_PASSTHROUGH_UART, true );
 
     // Enable RX interrupt for immediate forwarding; include RX timeout interrupt
+#if JL_UART0_INTEROP_MODE == 0
+    // Integrate: use shared handler so MicroPython and passthrough can coexist
+    irq_add_shared_handler( ASYNC_PASSTHROUGH_UART_IRQ, async_uart_irq_handler, 0 );
+    irq_set_enabled( ASYNC_PASSTHROUGH_UART_IRQ, true );
+#else
+    // Preempt (default): exclusive handler while not suspended by MicroPython
     irq_set_exclusive_handler( ASYNC_PASSTHROUGH_UART_IRQ, async_uart_irq_handler );
     irq_set_priority( ASYNC_PASSTHROUGH_UART_IRQ, 0 ); // highest priority
     irq_set_enabled( ASYNC_PASSTHROUGH_UART_IRQ, true );
+#endif
     uart_set_irq_enables( ASYNC_PASSTHROUGH_UART, true, false );
     // Ensure RX timeout and overrun interrupts are enabled
     hw_set_bits( &uart_get_hw( ASYNC_PASSTHROUGH_UART )->imsc, UART_UARTIMSC_RTIM_BITS | UART_UARTIMSC_OEIM_BITS );
@@ -366,8 +384,13 @@ void begin( unsigned long baud ) {
 }
 
 void task( ) {
+    // If suspended by MicroPython, avoid touching UART hardware
+    if ( s_uart_suspended_by_mpy ) {
+        tud_task();
+        return;
+    }
     // Apply pending line coding from host
-    if ( s_apply_line_coding_pending ) {
+    if ( s_apply_line_coding_pending && s_line_coding_override == false ) {
         // Apply to pico-sdk UART
         uint data_bits = 8;
         switch ( s_line_coding.data_bits ) {
@@ -395,10 +418,10 @@ void task( ) {
         } else {
             stop_bits = 1;
         }
-
+       
         uart_set_baudrate( ASYNC_PASSTHROUGH_UART, s_line_coding.bit_rate );
         uart_set_format( ASYNC_PASSTHROUGH_UART, data_bits, stop_bits, parity );
-
+        
         serial1baud = s_line_coding.bit_rate;
         set_micros_per_byte( &s_line_coding );
         s_apply_line_coding_pending = false;
@@ -491,5 +514,83 @@ void setForwardEndOnNewline( bool enable ) {
 }
 
 } // namespace AsyncPassthrough
+
+// ----------------------------------------------------------------------------
+// Interop hooks for MicroPython ownership of UART0
+// ----------------------------------------------------------------------------
+
+// Track suspend state to avoid redundant reconfiguration
+// (defined above to gate task() too)
+
+extern "C" void jl_asyncpassthrough_suspend_uart0( void ) {
+#if JL_UART0_INTEROP_MODE == 1
+    if ( s_uart_suspended_by_mpy ) return;
+    // Disable our IRQs and release exclusive handler so shared handlers can be installed safely
+    irq_set_enabled( ASYNC_PASSTHROUGH_UART_IRQ, false );
+    uart_set_irq_enables( ASYNC_PASSTHROUGH_UART, false, false );
+    // Disable RX timeout and overrun interrupts we enabled
+    hw_clear_bits( &uart_get_hw( ASYNC_PASSTHROUGH_UART )->imsc, UART_UARTIMSC_RTIM_BITS | UART_UARTIMSC_OEIM_BITS );
+    // Release exclusive handler slot (set to null)
+    irq_set_exclusive_handler( ASYNC_PASSTHROUGH_UART_IRQ, 0 );
+    s_uart_suspended_by_mpy = true;
+#else
+    (void)s_uart_suspended_by_mpy; // unused
+#endif
+}
+
+extern "C" void jl_asyncpassthrough_resume_uart0( void ) {
+#if JL_UART0_INTEROP_MODE == 1
+    if ( !s_uart_suspended_by_mpy ) return;
+    // Reconfigure UART hardware and restore our IRQ configuration
+    gpio_set_function( ASYNC_PASSTHROUGH_UART_TX_PIN, GPIO_FUNC_UART );
+    gpio_set_function( ASYNC_PASSTHROUGH_UART_RX_PIN, GPIO_FUNC_UART );
+
+    uart_init( ASYNC_PASSTHROUGH_UART, serial1baud );
+    uart_set_format( ASYNC_PASSTHROUGH_UART, 8, 1, UART_PARITY_NONE );
+    uart_set_fifo_enabled( ASYNC_PASSTHROUGH_UART, true );
+
+    irq_set_exclusive_handler( ASYNC_PASSTHROUGH_UART_IRQ, async_uart_irq_handler );
+    irq_set_priority( ASYNC_PASSTHROUGH_UART_IRQ, 0 );
+    irq_set_enabled( ASYNC_PASSTHROUGH_UART_IRQ, true );
+    uart_set_irq_enables( ASYNC_PASSTHROUGH_UART, true, false );
+    hw_set_bits( &uart_get_hw( ASYNC_PASSTHROUGH_UART )->imsc, UART_UARTIMSC_RTIM_BITS | UART_UARTIMSC_OEIM_BITS );
+    hw_write_masked( &uart_get_hw( ASYNC_PASSTHROUGH_UART )->ifls,
+                     ( 0u << UART_UARTIFLS_RXIFLSEL_LSB ) | ( 2u << UART_UARTIFLS_TXIFLSEL_LSB ),
+                     UART_UARTIFLS_RXIFLSEL_BITS | UART_UARTIFLS_TXIFLSEL_BITS );
+    s_uart_suspended_by_mpy = false;
+#endif
+}
+
+// Expose an override for MicroPython to update UART0 line coding
+extern "C" void jl_asyncpassthrough_override_line_coding( uint32_t baud, uint8_t data_bits, uint8_t parity, uint8_t stop_bits ) {
+    // Map to pico-sdk settings and apply immediately
+
+    // Serial.println("jl_asyncpassthrough_override_line_coding");
+    // Serial.println(baud);
+    // Serial.println(data_bits);
+    // Serial.println(parity);
+    // Serial.println(stop_bits);
+
+    uint d = ( data_bits < 5 ? 5 : ( data_bits > 8 ? 8 : data_bits ) );
+    uart_parity_t p = UART_PARITY_NONE;
+    if ( parity == 1 ) p = UART_PARITY_ODD; else if ( parity == 2 ) p = UART_PARITY_EVEN;
+    uint s = ( stop_bits >= 2 ? 2 : 1 );
+
+    if ( baud > 0 ) {
+        uart_set_baudrate( ASYNC_PASSTHROUGH_UART, baud );
+    }
+    uart_set_format( ASYNC_PASSTHROUGH_UART, d, s, p );
+
+    // Keep tracking vars in sync (CDC semantics: stop_bits 0=1,1=1.5,2=2)
+    if ( baud > 0 ) {
+        s_line_coding.bit_rate = baud;
+        serial1baud = baud;
+    }
+    s_line_coding.data_bits = d;
+    s_line_coding.parity = ( parity == 1 ? 1 : ( parity == 2 ? 2 : 0 ) );
+    s_line_coding.stop_bits = ( s == 1 ? 0 : 2 );
+    set_micros_per_byte( &s_line_coding );
+    s_line_coding_override = true;
+}
 
 #endif

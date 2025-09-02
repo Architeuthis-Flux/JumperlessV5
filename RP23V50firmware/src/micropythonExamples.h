@@ -11,11 +11,14 @@
 #define INCLUDE_ADC_BASICS  
 #define INCLUDE_GPIO_BASICS
 #define INCLUDE_NODE_CONNECTIONS
-#define INCLUDE_README
+//#define INCLUDE_README
 //#define INCLUDE_TEST_RUNNER
 #define INCLUDE_LED_BRIGHTNESS_CONTROL
 #define INCLUDE_VOLTAGE_MONITOR
 #define INCLUDE_STYLOPHONE
+#define INCLUDE_UART_BASICS
+#define INCLUDE_UART_LOOPBACK
+
 
 // Convenience defines to disable groups of examples
 // Uncomment any of these to disable entire categories
@@ -54,9 +57,71 @@
     #undef INCLUDE_TEST_RUNNER
 #endif
 
+#ifdef DISABLE_MACHINE_EXAMPLES
+    #undef INCLUDE_UART_BASICS
+    #undef INCLUDE_UART_LOOPBACK
+#endif
+
 //==============================================================================
 // MicroPython Examples - Individual Demo Files
 //==============================================================================
+
+
+#ifdef INCLUDE_UART_BASICS
+const char* UART_BASICS_PY = R"("""
+Basic UART operations.
+This example shows how to use UART.
+"""
+
+from machine import UART
+    
+uart = UART(0, 115200)
+uart.init(115200, 8, None, 1)
+
+connect(UART_TX, D0)
+connect(UART_RX, D1)
+
+print("UART Basics Demo")
+print("This example will send a message to the Arduino Nano over UART")
+
+time.sleep(1)
+
+buffer = "Sup Arduino"
+while True:
+    uart.write(buffer)
+    time.sleep(0.5)
+)";
+#endif
+
+#ifdef INCLUDE_UART_LOOPBACK
+const char* UART_LOOPBACK_PY = R"("""
+UART Loopback Demo
+"""
+
+from machine import UART
+    
+uart = UART(0, 115200)
+uart.init(115200, 8, None, 1)
+connect(UART_TX, D0)
+connect(UART_RX, D0)
+
+buffer = "UART looped back!"
+
+print("UART Loopback Demo")
+print("Open a serial monitor and connect to the Jumperless's second port and set baud rate to 115200")
+print("You should see the message looped back from the UART_RX pin to the UART_TX pin")
+
+while True:
+    _=uart.write(buffer)
+    readback = uart.read(len(buffer))
+    print(readback)
+    time.sleep(0.5)
+
+)";
+#endif
+
+
+
 
 #ifdef INCLUDE_DAC_BASICS
 const char* DAC_BASICS_PY = R"("""
@@ -227,27 +292,12 @@ This directory contains example scripts demonstrating various Jumperless feature
 - `02_adc_basics.py` - ADC operations and voltage reading  
 - `03_gpio_basics.py` - Digital I/O and GPIO control
 - `04_node_connections.py` - Node routing and connections
-
-### Interactive Demos
+- `uart_basics.py` - UART operations
+- `uart_loopback.py` - UART loopback
 - `led_brightness_control.py` - Touch-controlled LED brightness
 - `voltage_monitor.py` - Real-time voltage monitoring
 - `stylophone.py` - Musical instrument using probe
 
-### Utilities
-- `test_examples.py` - Run all examples in sequence
-
-## Usage
-
-Load and run any example:
-```python
-exec(open('examples/01_dac_basics.py').read())
-```
-
-Or run individual functions:
-```python
-from examples.dac_basics import dac_basics
-dac_basics()
-```
 
 ## Hardware Setup
 

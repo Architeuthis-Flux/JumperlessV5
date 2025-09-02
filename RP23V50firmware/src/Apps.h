@@ -26,6 +26,7 @@ void scanBoard(void);
 void calibrateDacs(void);
 void bounceStartup(void);
 void fileManagerApp(void);
+
 void customApp(void);
 void xlsxGui(void);
 void probeCalibApp(void);

@@ -33,18 +33,20 @@ target_include_directories(micropython PUBLIC
 
 # Set compile flags for MicroPython RP2 port
 target_compile_definitions(micropython PUBLIC
-    MICROPY_ENABLE_GC=1
-    MICROPY_HELPER_REPL=1
-    MODULE_JUMPERLESS_ENABLED=1
-    # RP2 port specific defines
-    MICROPY_CONFIG_ROM_LEVEL=50
-    MICROPY_PY_MACHINE=0
-    MICROPY_PY_TIME=1
-    MICROPY_PY_OS=1
-    MICROPY_VFS=1
-    MICROPY_VFS_LFS2=1
-    MICROPY_VFS_FAT=1
-    MICROPY_PY_THREAD=1
+    # MICROPY_ENABLE_GC=0
+    # MICROPY_HELPER_REPL=1
+    # MODULE_JUMPERLESS_ENABLED=1
+    # # RP2 port specific defines
+    # MICROPY_PY_MACHINE_UART=1
+    # JL_USE_PICO_HAL=1
+    # MICROPY_CONFIG_ROM_LEVEL=50
+    # MICROPY_PY_MACHINE=1
+    # MICROPY_PY_TIME=1
+    # MICROPY_PY_OS=1
+    # MICROPY_VFS=1
+    # MICROPY_VFS_LFS2=1
+    # MICROPY_VFS_FAT=1
+    # MICROPY_PY_THREAD=1
     PICO_RP2350=1
     PICO_ARM=1
 ) 

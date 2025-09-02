@@ -16,6 +16,9 @@ extern const struct _mp_obj_module_t mp_module_io;
 #undef MODULE_DEF_IO
 #define MODULE_DEF_IO { MP_ROM_QSTR(MP_QSTR_io), MP_ROM_PTR(&mp_module_io) },
 
+extern const struct _mp_obj_module_t mp_module_machine;
+#undef MODULE_DEF_MACHINE
+#define MODULE_DEF_MACHINE { MP_ROM_QSTR(MP_QSTR_machine), MP_ROM_PTR(&mp_module_machine) },
 
 extern const struct _mp_obj_module_t mp_module_os;
 #undef MODULE_DEF_OS
@@ -57,6 +60,9 @@ extern const struct _mp_obj_module_t jumperless_user_cmodule;
 #undef MODULE_DEF_JUMPERLESS
 #define MODULE_DEF_JUMPERLESS { MP_ROM_QSTR(MP_QSTR_jumperless), MP_ROM_PTR(&jumperless_user_cmodule) },
 
+extern const struct _mp_obj_module_t mp_module_machine;
+#undef MODULE_DEF_MACHINE
+#define MODULE_DEF_MACHINE { MP_ROM_QSTR(MP_QSTR_machine), MP_ROM_PTR(&mp_module_machine) },
 
 extern const struct _mp_obj_module_t mp_module_math;
 #undef MODULE_DEF_MATH
@@ -81,6 +87,7 @@ extern const struct _mp_obj_module_t mp_module_uctypes;
     MODULE_DEF_GC \
     MODULE_DEF_JFS \
     MODULE_DEF_JUMPERLESS \
+    MODULE_DEF_MACHINE \
     MODULE_DEF_MATH \
     MODULE_DEF_MICROPYTHON \
     MODULE_DEF_SYS \
@@ -93,6 +100,7 @@ extern const struct _mp_obj_module_t mp_module_uctypes;
     MODULE_DEF_COLLECTIONS \
     MODULE_DEF_ERRNO \
     MODULE_DEF_IO \
+    MODULE_DEF_MACHINE \
     MODULE_DEF_OS \
     MODULE_DEF_PLATFORM \
     MODULE_DEF_STRUCT \
