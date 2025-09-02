@@ -31,3 +31,4 @@ bool uf_dispatch(const String& line);
 
 // Lookup by name (exact match)
 const UserFunction* uf_find(const String& name);
+void handleUserFunction();
