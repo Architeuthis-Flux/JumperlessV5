@@ -1,5 +1,5 @@
 #include "user_functions.h"
-
+#include "JumperlessDefines.h"
 #include <Wire.h>
 
 
@@ -272,4 +272,186 @@ bool uf_dispatch(const String& line) {
 
   cmd->fn(argc, argv);
   return true;
+}
+
+String readLine(uint32_t timeoutMs) {
+  String s;
+  uint32_t start = millis();
+
+  Serial.flush();
+
+  while (millis() - start < timeoutMs) {
+    if (Serial.available() == 0) {
+      delay(5);
+      continue;
+    }
+
+    char c = Serial.read();
+    if (c < 0) continue;
+    
+    // Handle Enter (CR, LF, or CRLF)
+    if (c == '\r' || c == '\n') {
+      if (c == '\r' && Serial.peek() == '\n') {
+        Serial.read();
+      }
+      break;
+    }
+
+    // Normal character
+    s += c;
+  }
+
+  Serial.flush();
+  return s;
+}
+
+
+static void prinFunctionHelp() {
+
+    // Otherwise, list all functions
+    Serial.println("Available user functions:");
+
+    for (size_t i = 0; i < USER_FUNCTIONS_COUNT; ++i) {
+        const auto& c = USER_FUNCTIONS[i];
+        // left-pad names to a fixed width for readability
+        const int width = 14;
+        int n = strlen(c.name);
+        Serial.print("  ");
+        Serial.print(c.name);
+        if (n < width) for (int k = 0; k < width - n; ++k) Serial.print(' ');
+        Serial.print(" - ");
+        if (c.help && c.help[0]) 
+            Serial.println(c.help);
+        else                     
+            Serial.println("(no help provided)");
+    }
+
+    Serial.println("\nPlease enter your custom function (Press Enter Twice!).");
+    Serial.flush();
+}
+
+void handleUserFunction() {
+
+    prinFunctionHelp();
+   
+  
+    String userFunc = readLine(USER_FUNCTION_WAIT);
+    Serial.print("Function Call: ");
+    Serial.println(userFunc);
+    Serial.flush();
+
+
+    if (!uf_dispatch(userFunc)) {
+
+        Serial.println("User Function Not Found!:\n\n");
+        Serial.println("User Functions Defined:\n");
+        for (size_t i = 0; i < USER_FUNCTIONS_COUNT; ++i) {
+                Serial.print("  ");
+                Serial.print(USER_FUNCTIONS[i].name);
+                if (USER_FUNCTIONS[i].help && USER_FUNCTIONS[i].help[0]) {
+                Serial.print(" - ");
+                Serial.print(USER_FUNCTIONS[i].help);
+            }
+            Serial.println();
+            Serial.flush();
+        }
+
+    }
+
+}
+
+// ---- Tokenize a command line into argc/argv (handles quotes) ----
+// Supports: words separated by spaces; quotes "like this"; escaped quotes \" inside quotes.
+int tokenize(const String& line, String argv[], int maxTokens) {
+  int argc = 0;
+  bool inQuotes = false;
+  char quoteChar = 0;
+  String cur;
+
+  for (size_t i = 0; i < line.length(); ++i) {
+    char c = line[i];
+
+    if (inQuotes) {
+      if (c == '\\' && i + 1 < line.length()) { // allow \" and \\ inside quotes
+        char n = line[i+1];
+        if (n == '"' || n == '\'' || n == '\\') { cur += n; i++; continue; }
+      }
+      if (c == quoteChar) { inQuotes = false; continue; }
+      cur += c;
+    } else {
+      if (c == '"' || c == '\'') { inQuotes = true; quoteChar = c; continue; }
+      if (c == ' ' || c == '\t') {
+        if (cur.length()) {
+          if (argc < maxTokens) argv[argc++] = cur;
+          cur = "";
+        }
+      } else {
+        cur += c;
+      }
+    }
+  }
+  if (cur.length() && argc < maxTokens) argv[argc++] = cur;
+  return argc;
+}
+
+// ---- Parse options: --key value, --key=value, -k value, -abc (bool flags) ----
+struct Opt {
+  String key;    // without leading dashes
+  String value;  // empty => boolean flag
+};
+
+
+
+int parseOptions(int argc, String argv[], Opt opts[], int maxOpts) {
+  int nopt = 0;
+  for (int i = 1; i < argc; ++i) {
+    String t = argv[i];
+    if (t.startsWith("--")) {
+      String keyval = t.substring(2);
+      int eq = keyval.indexOf('=');
+      if (eq >= 0) {
+        if (nopt < maxOpts) { opts[nopt++] = { keyval.substring(0, eq), keyval.substring(eq+1) }; }
+      } else {
+        String val = "";
+        if (i + 1 < argc && !argv[i+1].startsWith("-")) { val = argv[++i]; }
+        if (nopt < maxOpts) { opts[nopt++] = { keyval, val }; }
+      }
+    } else if (t.startsWith("-") && t.length() > 1) {
+      // short flags can be bundled like -abc or take value as next token (-o out)
+      for (int k = 1; k < (int)t.length(); ++k) {
+        String key( (char[]){ t[k], 0 } );
+        String val = "";
+        // if it's the last short flag in this token, allow value in next argv
+        if (k == (int)t.length() - 1 && i + 1 < argc && !argv[i+1].startsWith("-")) {
+          val = argv[++i];
+        }
+        if (nopt < maxOpts) { opts[nopt++] = { key, val }; }
+      }
+    } else {
+      // positional argument; treat as key="" with value=t
+      if (nopt < maxOpts) { opts[nopt++] = { "", t }; }
+    }
+  }
+  return nopt;
+}
+
+// ---- Example dispatcher: call functions by name ----
+void callFunctionByName(const String& name, int nopt, Opt opts[]) {
+  // Stub: replace with your real registry
+  if (name == "i2cScanApp" || name == "I2CScanApp") {
+    // find args: --sdaRow, --sclRow, -v
+    int sda = -1, scl = -1; bool verbose = false;
+    for (int i = 0; i < nopt; ++i) {
+      if (opts[i].key == "sdaRow") sda = opts[i].value.toInt();
+      else if (opts[i].key == "sclRow") scl = opts[i].value.toInt();
+      else if (opts[i].key == "v") verbose = true;
+      else if (opts[i].key == "" && sda < 0) sda = opts[i].value.toInt(); // positional example
+    }
+    Serial.print("Calling i2cScanApp with sdaRow="); Serial.print(sda);
+    Serial.print(" sclRow="); Serial.print(scl);
+    Serial.print(" verbose="); Serial.println(verbose ? "true" : "false");
+    // i2cScanApp(sda, scl, verbose); // <-- your actual function
+  } else {
+    Serial.print("Unknown function: "); Serial.println(name);
+  }
 }
