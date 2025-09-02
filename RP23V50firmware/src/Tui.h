@@ -221,7 +221,7 @@ inline bool  hotkeyActivate(char ch);
 inline int   lastChar();
 
 // --- Terminal size probe (CPR) and responsive layout -----------------
-inline bool readCPR(uint16_t& row, uint16_t& col, uint32_t timeout_ms=200) {
+inline bool readCPR(uint16_t& row, uint16_t& col, uint32_t timeout_ms=400) {
   char buf[32]; size_t n=0; uint32_t t0=millis();
   while ((millis()-t0) < timeout_ms && n < sizeof(buf)-1) {
     if (!Serial.available()) { delayMicroseconds(300); continue; }
@@ -240,7 +240,7 @@ inline bool probeTerminalSize(uint16_t& rows, uint16_t& cols) {
   Serial.print("\x1b[9999;9999H");
   Serial.print("\x1b[6n");
   Serial.flush();
-  bool ok = readCPR(rows, cols, 250);
+  bool ok = readCPR(rows, cols, 600);
   Serial.print("\x1b[u");
   Serial.flush();
   return ok;
