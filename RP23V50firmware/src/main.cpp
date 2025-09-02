@@ -205,5 +205,15 @@ void setup() {
 
 
 void loop() { 
+    
     TuiGlue::loop(); 
 }
+
+
+
+void loop1() {
+
+
+    // You probably want to put some stuff here
+}
+

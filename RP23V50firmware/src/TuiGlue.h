@@ -1,7 +1,14 @@
 // RP23V50firmware/src/TuiGlue.h
 #pragma once
 
+#include <Arduino.h>
+#include "ArduinoStuff.h"
+
+
+
 namespace TuiGlue {
+
+  Stream *TUIserial = &Ser3;
 
   // Build the TUI model (menus, titles). Safe to call multiple times.
   void init();

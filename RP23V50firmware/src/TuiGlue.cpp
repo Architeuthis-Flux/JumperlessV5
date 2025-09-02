@@ -3,6 +3,7 @@
 #include <Wire.h>
 
 
+
 // -----------------------------------------------------------------------------
 // callbacks 
 // -----------------------------------------------------------------------------
@@ -254,15 +255,15 @@ namespace TuiGlue {
     if (!s_active) 
       return;
 
-    if (Serial.available() && Serial.peek() == 0x04) {
-      Serial.read();
+    if (TUIserial->available() && TUIserial->peek() == 0x04) {
+      TUIserial->read();
       uint8_t m = (TUI::getDebugMode() + 1) % 3;
       TUI::setDebugMode(m);
       TUI::log(String("[DBG] mode -> ") + (int)m + (m==1 ? " (silent)" : m==2 ? " (visible)" : " (off)"));
     }
 
     uint16_t spins = 0;
-    while ((Serial.available() || TUI::inEscapeSeq()) && spins < 240) {
+    while ((TUIserial->available() || TUI::inEscapeSeq()) && spins < 240) {
       (void)TUI::handleInput();
       spins++;
       if ((spins & 0x07) == 0) delayMicroseconds(250);
@@ -286,7 +287,8 @@ namespace TuiGlue {
 
 
     delay(100);
-    Serial.flush();
+
+    TUIserial->flush();
   }
 
 

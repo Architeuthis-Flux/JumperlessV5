@@ -1,7 +1,12 @@
 #pragma once
 #include <Arduino.h>
+#include "ArduinoStuff.h"
 
 namespace TUI {
+
+Stream *TUIserial = &Ser3;
+
+
 
 // === Debug/timing mode =============================================
 // 0 = off, 1 = log
@@ -26,9 +31,9 @@ inline void setDebugMode(uint8_t m) { dbgMode() = m; }
 inline uint8_t getDebugMode()       { return dbgMode(); }
 
 // ---------- ANSI helpers ----------
-inline void W(const char* s) { Serial.print(s); }
-inline void W(char c)        { Serial.write(c); }
-inline void P(const String& s){ Serial.print(s); }
+inline void W(const char* s) { TUIserial->print(s); }
+inline void W(char c)        { TUIserial->write(c); }
+inline void P(const String& s){ TUIserial->print(s); }
 
 inline void clr()            { W("\x1b[2J"); }
 inline void home()           { W("\x1b[H"); }
@@ -62,8 +67,8 @@ inline void box(uint8_t r1, uint8_t c1, uint8_t r2, uint8_t c2) {
 }
 
 // ---- 256-color helpers ----
-inline void fg256(uint8_t c){ char b[20]; snprintf(b,sizeof(b),"\x1b[38;5;%um",c); Serial.print(b); }
-inline void bg256(uint8_t c){ char b[20]; snprintf(b,sizeof(b),"\x1b[48;5;%um",c); Serial.print(b); }
+inline void fg256(uint8_t c){ char b[20]; snprintf(b,sizeof(b),"\x1b[38;5;%um",c); TUIserial->print(b); }
+inline void bg256(uint8_t c){ char b[20]; snprintf(b,sizeof(b),"\x1b[48;5;%um",c); TUIserial->print(b); }
 
 // ---- Theme ----
 enum BorderStyle : uint8_t { BORDER_ASCII, BORDER_LIGHT, BORDER_ROUNDED, BORDER_HEAVY, BORDER_DOUBLE };
@@ -116,18 +121,18 @@ inline void boxColored(uint8_t r1, uint8_t c1, uint8_t r2, uint8_t c2, uint8_t c
     }
   }
 
-  at(r1, c1); Serial.print(TL);
-  for (uint8_t c = c1 + 1; c < c2; ++c) Serial.print(H);
-  Serial.print(TR);
+  at(r1, c1); TUIserial->print(TL);
+  for (uint8_t c = c1 + 1; c < c2; ++c) TUIserial->print(H);
+  TUIserial->print(TR);
 
   for (uint8_t r = r1 + 1; r < r2; ++r) {
-    at(r, c1); Serial.print(V);
-    at(r, c2); Serial.print(V);
+    at(r, c1); TUIserial->print(V);
+    at(r, c2); TUIserial->print(V);
   }
 
-  at(r2, c1); Serial.print(BL);
-  for (uint8_t c = c1 + 1; c < c2; ++c) Serial.print(H);
-  Serial.print(BR);
+  at(r2, c1); TUIserial->print(BL);
+  for (uint8_t c = c1 + 1; c < c2; ++c) TUIserial->print(H);
+  TUIserial->print(BR);
 
   rs();
 }
@@ -224,8 +229,8 @@ inline int   lastChar();
 inline bool readCPR(uint16_t& row, uint16_t& col, uint32_t timeout_ms=400) {
   char buf[32]; size_t n=0; uint32_t t0=millis();
   while ((millis()-t0) < timeout_ms && n < sizeof(buf)-1) {
-    if (!Serial.available()) { delayMicroseconds(300); continue; }
-    char ch = (char)Serial.read();
+    if (!TUIserial->available()) { delayMicroseconds(300); continue; }
+    char ch = (char)TUIserial->read();
     if (n==0 && ch!='\x1b') continue;
     buf[n++] = ch;
     if (ch=='R') break;
@@ -235,14 +240,14 @@ inline bool readCPR(uint16_t& row, uint16_t& col, uint32_t timeout_ms=400) {
 }
 
 inline bool probeTerminalSize(uint16_t& rows, uint16_t& cols) {
-  while (Serial.available()) (void)Serial.read();
-  Serial.print("\x1b[s");
-  Serial.print("\x1b[9999;9999H");
-  Serial.print("\x1b[6n");
-  Serial.flush();
+  while (TUIserial->available()) (void)TUIserial->read();
+  TUIserial->print("\x1b[s");
+  TUIserial->print("\x1b[9999;9999H");
+  TUIserial->print("\x1b[6n");
+  TUIserial->flush();
   bool ok = readCPR(rows, cols, 600);
-  Serial.print("\x1b[u");
-  Serial.flush();
+  TUIserial->print("\x1b[u");
+  TUIserial->flush();
   return ok;
 }
 
@@ -307,7 +312,7 @@ inline void drawHeader() {
   boldOff(); 
   invOff(); rs();
   
-  Serial.flush();
+  TUIserial->flush();
 }
 
 inline void drawStatus() {
@@ -332,7 +337,7 @@ inline void drawStatus() {
       oledPrintLine(1, trimForOled(S.status).c_str());
   }
 
-  Serial.flush();
+  TUIserial->flush();
 }
 
 inline void setOledEnabled(bool en) {
@@ -349,13 +354,13 @@ inline void setOledEnabled(bool en) {
 inline void drawMenuFrame() {
   boxColored(S.menuTop, S.menuLeft, S.menuBottom, S.menuRight);
   at(S.menuTop, S.menuLeft+2); fg256(THEME.borderFg); P(" Menu "); rs();
-  Serial.flush();
+  TUIserial->flush();
 }
 
 inline void drawLogFrame() {
   boxColored(S.logTop, S.logLeft, S.logBottom, S.logRight);
   at(S.logTop, S.logLeft+2); fg256(THEME.borderFg); P(" Log "); rs();
-  Serial.flush();
+  TUIserial->flush();
 }
 
 inline const MenuView& curMenu() { return S.menus.stack[S.menus.depth]; }
@@ -497,7 +502,7 @@ inline void drawMenuItems() {
   }
 
   rs();
-  Serial.flush();
+  TUIserial->flush();
 }
 
 // ---------- Menu ops ----------
@@ -580,7 +585,7 @@ inline void drawLog() {
     P((s.length() <= maxw) ? s : (s.substring(0, maxw-1) + "…"));
   }
   S.logDirty = false;
-  Serial.flush();
+  TUIserial->flush();
 }
 
 // ---------- Modal input ----------
@@ -597,7 +602,7 @@ inline void drawInputModal() {
   at(r1+2, c1+2); P(S.inputPrompt);
   at(r1+4, c1+2); P(String("> ") + S.inputBuffer);
   at(r2,   c1+2); P("Enter=OK   ESC=Cancel    BKSP=Delete");
-  Serial.flush();
+  TUIserial->flush();
 }
 
 
@@ -635,7 +640,7 @@ inline void fullRedraw() {
   drawHeader(); drawMenuFrame(); drawLogFrame(); drawMenuItems(); drawStatus();
   if (S.inputActive) drawInputModal();
   rs();
-  Serial.flush();
+  TUIserial->flush();
 }
 
 
@@ -664,8 +669,8 @@ inline bool inEscapeSeq() { return esc_state != IDLE; }
 
 inline int read_byte_nonblock() {
   if (ungot >= 0) { int v = ungot; ungot = -1; return v; }
-  if (!Serial.available()) return -1;
-  int b = Serial.read();
+  if (!TUIserial->available()) return -1;
+  int b = TUIserial->read();
   if (getDebugMode() == 1) log(String("key 0x") + String(b, HEX));
   return b;
 }
