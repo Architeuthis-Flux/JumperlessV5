@@ -780,16 +780,16 @@ bool oled::clear(int waitToFinish) {
     charPos = 0;
     display.clearDisplay();
     setCursor(0, 0); // Auto-positioning for clear
-    int waited = 0;
-    if (waitToFinish > 0) {
-        while (Wire1.finishedAsync() == false) {
-            delayMicroseconds(1);
-            waited += 1;
-            if (waited > waitToFinish) {
-                break;
-            }
-        }
-    }
+    //int waited = 0;
+    // if (waitToFinish > 0) {
+    //     while (Wire1.finishedAsync() == false) {
+    //         delayMicroseconds(1);
+    //         waited += 1;
+    //         if (waited > waitToFinish) {
+    //             break;
+    //         }
+    //     }
+    // }
     return true;
 }
 
@@ -800,17 +800,17 @@ bool oled::show(int waitToFinish) {
     }
     if (!oledConnected) return false;
     display.display();
-    int waited = 0;
-    if (waitToFinish > 0) {
-        while (Wire1.finishedAsync() == false) {
-            delayMicroseconds(1);
-            waited += 1;
-            if (waited > waitToFinish) {
-                Serial.println("OLED show timed out");
-                break;
-            }
-        }
-    }
+    // int waited = 0;
+    // if (waitToFinish > 0) {
+    //     while (Wire1.finishedAsync() == false) {
+    //         delayMicroseconds(1);
+    //         waited += 1;
+    //         if (waited > waitToFinish) {
+    //             Serial.println("OLED show timed out");
+    //             break;
+    //         }
+    //     }
+    // }
     return true;
 }
 

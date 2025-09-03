@@ -208,6 +208,8 @@ void ekilo_init() {
     E.should_quit = 0;
     strcpy(E.statusmsg, "");
     E.statusmsg_time = 0;
+    Serial.write(0x0E);
+    Serial.flush();
     
     // Try to determine screen size - use conservative defaults for Arduino
     // Reduce available rows by 1 to account for persistent help header
@@ -871,6 +873,7 @@ void ekilo_move_cursor(int key) {
 // Open file
 int ekilo_open(const char* filename) {
     if (!filename) return -1;
+
     
     // Check file exists and get size
     File file = FatFS.open(filename, "r");
@@ -2038,9 +2041,11 @@ void ekilo_init_repl_mode() {
     E.repl_mode = true;
     // No need to store cursor position - XTerm alternate screen handles this
     E.screenrows = DEFAULT_EDITOR_ROWS; // Use configurable screen size in alternate buffer
-    
+    Serial.write(0x0E);
+    Serial.flush();    
     // Clear the alternate screen and position at top-left
     Serial.print("\x1b[2J\x1b[H");
+
     
     // Print a simple header once when entering REPL mode
     Serial.println("eKilo Editor | Ctrl-S/Ctrl-P=save & load | Ctrl-Q=quit | Wheel=navigate");

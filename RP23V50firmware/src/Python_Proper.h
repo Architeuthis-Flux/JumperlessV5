@@ -46,6 +46,7 @@ public:
   bool deleteScript(const String &filename);
   void listScripts();
   void clearHistory();
+
 private:
   void findNextScriptNumber();
   void saveHistoryToFile();
@@ -85,6 +86,10 @@ struct REPLEditor {
   void moveCursorRight();                          // Move logical cursor right one character
   void moveCursorToLineStart();                    // Move logical cursor to start of current line
   void moveCursorToLineEnd();                      // Move logical cursor to end of current line
+  void moveCursorToEnd();                          // Move logical cursor to end of all content
+  
+  // Content loading and display
+  void loadScriptContent(const String &script, const String &message);
   
   // Terminal control (sends ANSI escape codes)
   void clearToEndOfLine(Stream *stream);
@@ -103,6 +108,7 @@ struct REPLEditor {
   void exitHistoryMode(Stream *stream);
   void reset();
   void fullReset(); // Complete reset including multiline mode settings
+  void drawPrompt(Stream *stream, int level = 0);
 };
 
 // Core initialization and cleanup
@@ -133,6 +139,9 @@ void stopMicroPythonREPL(void);
 bool isMicroPythonREPLActive(void);
 void processMicroPythonInput(Stream *stream = global_mp_stream);
 
+// REPL helper functions
+void loadScriptIntoREPL(const String &script, const String &message);
+
 // Simple blocking REPL function - call from main.cpp
 void enterMicroPythonREPL(Stream *stream = global_mp_stream);
 void enterMicroPythonREPLWithFile(Stream *stream, const String& filepath);
@@ -146,6 +155,7 @@ void testJumperlessNativeModule(void);
 void testStreamRedirection(Stream *newStream);
 void testSingleCommandExecution(void);
 void testFormattedOutput(void);
+void showREPLreference(int verbose = 0);
 
 // Status functions
 bool isMicroPythonInitialized(void);

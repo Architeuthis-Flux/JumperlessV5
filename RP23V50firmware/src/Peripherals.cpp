@@ -387,6 +387,30 @@ int initI2C( int sdaPin, int sclPin, int speed ) {
     
 }
 
+int getGPIOIndexFromPin(int pin) {
+    for (int i = 0; i < 10; i++) {
+        if (gpioDef[i][0] == pin) {
+            return i;
+        }
+    }
+    Serial.print("getGPIOIndexFromPin: ");
+    Serial.println(pin);
+    Serial.println("Failed to find GPIO index");
+    Serial.flush();
+    return -1;
+}
+
+int convertPullToJumperless(int pull) {
+    switch (pull) {
+        case 0: return 2; // no pull
+        case 1: return 1; // pullup
+        case 2: return 0; // pulldown
+        case 3: return 3; // bus keeper
+    }
+    return 2; // no pull
+    }
+
+
 void setGPIO( void ) {
     // Restore GPIO configurations from jumperlessConfig after
     // refreshConnections()

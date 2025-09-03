@@ -1176,12 +1176,49 @@ static mp_obj_t jl_ina_get_power_func(mp_obj_t sensor_obj) {
 static MP_DEFINE_CONST_FUN_OBJ_1(jl_ina_get_power_obj, jl_ina_get_power_func);
 
 // GPIO Functions
+// Helper: map an incoming pin object (int or node) to a physical GPIO that
+// jl_gpio_* backends understand. Supports:
+// - Breadboard/routable GPIO indices: 1-10 (as-is)
+// - RP GPIOs 20-27 (as-is)
+// - Node constants GPIO_1..GPIO_8 (131..138) → RP GPIO 20..27
+// - UART nodes UART_TX (116) → 0, UART_RX (117) → 1
+static int map_pin_obj_to_physical_gpio(mp_obj_t pin_obj) {
+    int pin = -1;
+
+    // Accept pre-wrapped node objects
+    if (mp_obj_get_type(pin_obj) == &node_type) {
+        int node = get_node_value(pin_obj);
+        if (node >= 131 && node <= 138) {
+            // GPIO_1..GPIO_8 → GP20..GP27
+            pin = 20 + (node - 131);
+        } else if (node == 116) {
+            // UART_TX → GP0
+            pin = 0;
+        } else if (node == 117) {
+            // UART_RX → GP1
+            pin = 1;
+        } else {
+            // Not a supported GPIO-like node
+            pin = -1;
+        }
+    } else {
+        // Try numeric conversion (accepts small-int and int objects)
+        pin = mp_obj_get_int(pin_obj);
+    }
+
+    // Validate the mapped pin for our backends
+    if (!((pin >= 1 && pin <= 10) || (pin >= 20 && pin <= 27) || pin == 0 || pin == 1)) {
+        return -1;
+    }
+    return pin;
+}
+
 static mp_obj_t jl_gpio_set_func(mp_obj_t pin_obj, mp_obj_t value_obj) {
-    int pin = mp_obj_get_int(pin_obj);
+    int pin = map_pin_obj_to_physical_gpio(pin_obj);
     int value = get_gpio_state_value(value_obj);
     
-    if (pin < 1 || pin > 10) {
-        mp_raise_ValueError(MP_ERROR_TEXT("GPIO pin must be 1-10"));
+    if (pin < 0) {
+        mp_raise_ValueError(MP_ERROR_TEXT("GPIO pin must be 1-10, GPIO_1-GPIO_8, GPIO_20-GPIO_27, or UART_TX/UART_RX"));
     }
     
     jl_gpio_set(pin, value);
@@ -1190,12 +1227,12 @@ static mp_obj_t jl_gpio_set_func(mp_obj_t pin_obj, mp_obj_t value_obj) {
 static MP_DEFINE_CONST_FUN_OBJ_2(jl_gpio_set_obj, jl_gpio_set_func);
 
 static mp_obj_t jl_gpio_set_dir_func(mp_obj_t pin_obj, mp_obj_t direction_obj) {
-    int pin = mp_obj_get_int(pin_obj);
+    int pin = map_pin_obj_to_physical_gpio(pin_obj);
     int direction = get_direction_value(direction_obj);
     
-    // if (pin < 1 || pin > 10) {
-    //     mp_raise_ValueError(MP_ERROR_TEXT("GPIO pin must be 1-10"));
-    // }
+    if (pin < 0) {
+        mp_raise_ValueError(MP_ERROR_TEXT("GPIO pin must be 1-10, GPIO_1-GPIO_8, GPIO_20-GPIO_27, or UART_TX/UART_RX"));
+    }
     
     jl_gpio_set_dir(pin, direction);
     return mp_const_none;
@@ -1203,10 +1240,10 @@ static mp_obj_t jl_gpio_set_dir_func(mp_obj_t pin_obj, mp_obj_t direction_obj) {
 static MP_DEFINE_CONST_FUN_OBJ_2(jl_gpio_set_dir_obj, jl_gpio_set_dir_func);
 
 static mp_obj_t jl_gpio_get_func(mp_obj_t pin_obj) {
-    int pin = mp_obj_get_int(pin_obj);
+    int pin = map_pin_obj_to_physical_gpio(pin_obj);
     
-    if (pin < 1 || pin > 10) {
-        mp_raise_ValueError(MP_ERROR_TEXT("GPIO pin must be 1-10"));
+    if (pin < 0) {
+        mp_raise_ValueError(MP_ERROR_TEXT("GPIO pin must be 1-10, GPIO_1-GPIO_8, GPIO_20-GPIO_27, or UART_TX/UART_RX"));
     }
     
     int value = jl_gpio_get(pin);
@@ -1226,7 +1263,10 @@ static mp_obj_t jl_gpio_get_func(mp_obj_t pin_obj) {
 static MP_DEFINE_CONST_FUN_OBJ_1(jl_gpio_get_obj, jl_gpio_get_func);
 
 static mp_obj_t jl_gpio_get_dir_func(mp_obj_t pin_obj) {
-    int pin = mp_obj_get_int(pin_obj);
+    int pin = map_pin_obj_to_physical_gpio(pin_obj);
+    if (pin < 0) {
+        mp_raise_ValueError(MP_ERROR_TEXT("GPIO pin must be 1-10, GPIO_1-GPIO_8, GPIO_20-GPIO_27, or UART_TX/UART_RX"));
+    }
     int direction = jl_gpio_get_dir(pin);
     
     // Return custom GPIO direction object that displays as INPUT/OUTPUT but behaves as boolean
@@ -1235,16 +1275,22 @@ static mp_obj_t jl_gpio_get_dir_func(mp_obj_t pin_obj) {
 static MP_DEFINE_CONST_FUN_OBJ_1(jl_gpio_get_dir_obj, jl_gpio_get_dir_func);
 
 static mp_obj_t jl_gpio_set_pull_func(mp_obj_t pin_obj, mp_obj_t pull_obj) {
-    int pin = mp_obj_get_int(pin_obj);
+    int pin = map_pin_obj_to_physical_gpio(pin_obj);
     int pull = get_pull_value(pull_obj);
     
+    if (pin < 0) {
+        mp_raise_ValueError(MP_ERROR_TEXT("GPIO pin must be 1-10, GPIO_1-GPIO_8, GPIO_20-GPIO_27, or UART_TX/UART_RX"));
+    }
     jl_gpio_set_pull(pin, pull);
     return mp_const_none;
 }
 static MP_DEFINE_CONST_FUN_OBJ_2(jl_gpio_set_pull_obj, jl_gpio_set_pull_func);
 
 static mp_obj_t jl_gpio_get_pull_func(mp_obj_t pin_obj) {
-    int pin = mp_obj_get_int(pin_obj);
+    int pin = map_pin_obj_to_physical_gpio(pin_obj);
+    if (pin < 0) {
+        mp_raise_ValueError(MP_ERROR_TEXT("GPIO pin must be 1-10, GPIO_1-GPIO_8, GPIO_20-GPIO_27, or UART_TX/UART_RX"));
+    }
     int pull = jl_gpio_get_pull(pin);
     
     // Return custom GPIO pull object that displays as PULLUP/PULLDOWN/NONE

@@ -14,14 +14,35 @@
 #include "py/cstack.h"  // Use newer cstack API instead of deprecated stackctrl
 #include "py/nlr.h"
 #include "py/builtin.h"
+#include "py/mphal.h"
 #include "JumperlessDefines.h"
 
-// Static allocation for heap - adjust size as needed
-#if OG_JUMPERLESS == 1
-#define MICROPY_HEAP_SIZE (0 * 1024)
-#else
-#define MICROPY_HEAP_SIZE (32 * 1024)
+#ifdef __cplusplus
+extern "C" {
 #endif
+
+#if MICROPY_PY_MACHINE && MICROPY_PY_MACHINE_UART
+// Ensure the UART type from the port backend is retained by the linker
+extern const mp_obj_type_t machine_uart_type;
+const mp_obj_type_t *jl_retain_machine_uart_type = &machine_uart_type;
+#endif
+
+// Minimal stubs for modmachine low-level hooks to satisfy linker
+void mp_machine_idle(void) {}
+void mp_machine_set_freq(size_t n_args, const mp_obj_t *args) { (void)n_args; (void)args; }
+mp_obj_t mp_machine_get_freq(void) { return MP_OBJ_NEW_SMALL_INT(150000000); }
+mp_obj_t mp_machine_unique_id(void) { return mp_const_none; }
+void mp_machine_lightsleep(size_t n_args, const mp_obj_t *args) { (void)n_args; (void)args; }
+NORETURN void mp_machine_deepsleep(size_t n_args, const mp_obj_t *args) { (void)n_args; (void)args; for (;;) {} }
+NORETURN void mp_machine_reset(void) { for (;;) {} }
+mp_int_t mp_machine_reset_cause(void) { return 0; }
+
+// Static allocation for heap - adjust size as needed
+// #if OG_JUMPERLESS == 1
+// #define MICROPY_HEAP_SIZE (32 * 1024)
+// #else
+// #define MICROPY_HEAP_SIZE (32 * 1024)
+// #endif
 static char heap[MICROPY_HEAP_SIZE];
 
 // Note: HAL functions (arduino_serial_write, arduino_serial_read) are implemented
@@ -32,9 +53,9 @@ int mp_embed_init(void *heap, size_t heap_size, void *stack_top) {
     // Use the newer cstack API with proper stack limit initialization
     // Define a reasonable stack size for embedded systems (8KB)
     #if OG_JUMPERLESS == 1
-    const size_t stack_size = 0 * 1024;  // 16KB stack size
+    const size_t stack_size = 16 * 1024;  // 16KB stack size
     #else
-    const size_t stack_size = 16 * 1024;  // 8KB stack size
+    const size_t stack_size = 32 * 1024;  // 32KB stack size
     #endif
     mp_cstack_init_with_top(stack_top, stack_size);
     
@@ -104,7 +125,11 @@ void nlr_jump_fail(void *val) {
     mp_hal_stdout_tx_strn_cooked("FATAL: uncaught exception\n", 24);
     // In a real embedded system, you might want to reset here
     // For now, we'll enter an infinite loop since this is a noreturn function
-    while(1) {
-        // Infinite loop - this should never be reached in normal operation
-    }
-} 
+    // while(1) {
+    //     // Infinite loop - this should never be reached in normal operation
+    // }
+}
+
+#ifdef __cplusplus
+}
+#endif 

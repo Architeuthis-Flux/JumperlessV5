@@ -205,8 +205,9 @@ void filesystemApp(bool waitForEnter = true);
 void filesystemAppPythonScripts(); // Start file manager in python_scripts directory
 String filesystemAppPythonScriptsREPL(); // REPL mode - returns content if file saved
 void eKiloApp();
-void launchEkilo(const char* filename = nullptr);
-String launchEkiloREPL(const char* filename = nullptr); // REPL mode - returns content if file saved
+String launchEkilo(const char* filename, bool replMode); // Unified eKilo launcher
+void launchEkiloStandalone(const char* filename = nullptr); // Legacy wrapper for standalone mode
+String launchEkiloREPL(const char* filename = nullptr); // Legacy wrapper for REPL mode
 String launchInlineEkilo(const String& initial_content = ""); // Inline editing mode - no screen clearing, no file operations
 String generateNextScriptName(); // Helper to generate next available script name
 

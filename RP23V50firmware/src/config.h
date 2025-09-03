@@ -110,6 +110,8 @@ struct config {
     } display;
 
     struct gpio {
+        
+        ///@param 1 = input 0 = output
         int direction[10] = {
             1, //gpio_0 1 = input 0 = output
             1, //gpio_1
@@ -122,6 +124,8 @@ struct config {
             0, //uart_tx
             1, //uart_rx
         };
+        
+        ///@param 0 = pull down 1 = pull up 2 = none 3 = bus keeper
         int pulls[10] = {
             0, //gpio_0 0 = pull down 1 = pull up 2 = none 3 = bus keeper
             0, //gpio_1

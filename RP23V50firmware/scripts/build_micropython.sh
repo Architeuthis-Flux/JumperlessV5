@@ -82,9 +82,12 @@ if [ -d "micropython_embed" ]; then
     rm -rf micropython_embed
 fi
 
-# Copy our custom mpconfigport.h to the embed port
+# Copy our custom mpconfigport.h (and include) to the embed port so QSTR scan sees our extras
 echo -e "${YELLOW}Setting up custom configuration for embed port...${NC}"
 cp "$MICROPYTHON_LOCAL_PATH/port/mpconfigport.h" "$MICROPYTHON_REPO_PATH/ports/embed/"
+# Ensure the include referenced by MICROPY_PY_MACHINE_INCLUDEFILE is visible to the embed build
+mkdir -p "$MICROPYTHON_REPO_PATH/ports/embed/port"
+cp "$MICROPYTHON_LOCAL_PATH/port/modmachine_jl.inc" "$MICROPYTHON_REPO_PATH/ports/embed/port/"
 
 
 
@@ -116,6 +119,7 @@ SRC_EXTMOD_C = \
 	extmod/modtime.c \
 	extmod/modplatform.c \
 	extmod/moductypes.c \
+	extmod/modmachine.c \
 
 # Define shared source files we want
 SRC_SHARED_C = \
@@ -134,7 +138,7 @@ MICROPYTHON_EMBED_PORT = $(MICROPYTHON_TOP)/ports/embed
 MICROPY_ROM_TEXT_COMPRESSION ?= 0
 
 # Set CFLAGS for the MicroPython build.
-CFLAGS += -I. -I$(TOP) -I$(BUILD) -I$(MICROPYTHON_EMBED_PORT)
+CFLAGS += -I. -I$(TOP) -I$(BUILD) -I$(MICROPYTHON_EMBED_PORT) -I$(MICROPYTHON_EMBED_PORT)/port
 CFLAGS += -Wall -Werror -std=c99
 
 # Define the required generated header files.
@@ -156,7 +160,7 @@ clean-micropython-embed-package:
 	$(RM) -rf $(PACKAGE_DIR)
 
 PACKAGE_DIR ?= micropython_embed
-PACKAGE_DIR_LIST = $(addprefix $(PACKAGE_DIR)/,py extmod shared/runtime shared/timeutils shared/readline genhdr port)
+PACKAGE_DIR_LIST = $(addprefix $(PACKAGE_DIR)/,py extmod shared/runtime shared/timeutils shared/readline genhdr port drivers/bus)
 
 .PHONY: micropython-embed-package
 micropython-embed-package: $(GENHDR_OUTPUT)
@@ -172,12 +176,21 @@ micropython-embed-package: $(GENHDR_OUTPUT)
 	$(Q)$(CP) $(TOP)/extmod/modplatform.h $(PACKAGE_DIR)/extmod
 	$(Q)$(CP) $(TOP)/extmod/moductypes.c $(PACKAGE_DIR)/extmod
 	$(Q)$(CP) $(TOP)/extmod/misc.h $(PACKAGE_DIR)/extmod
+	# Provide machine glue header for ports and its dependencies
+	$(Q)$(CP) $(TOP)/extmod/modmachine.h $(PACKAGE_DIR)/extmod
+	# Machine module implementation
+	$(Q)$(CP) $(TOP)/extmod/modmachine.c $(PACKAGE_DIR)/extmod
+	# Drivers headers needed by modmachine.h
+	$(Q)$(MKDIR) -p $(PACKAGE_DIR)/drivers/bus || true
+	$(Q)$(CP) $(TOP)/drivers/bus/spi.h $(PACKAGE_DIR)/drivers/bus
+	# Skip machine_uart sources for embed build; not needed unless enabling UART
 
 	$(ECHO) "- shared"
 	$(Q)$(CP) $(TOP)/shared/runtime/gchelper.h $(PACKAGE_DIR)/shared/runtime
 	$(Q)$(CP) $(TOP)/shared/runtime/gchelper_generic.c $(PACKAGE_DIR)/shared/runtime
 	$(Q)$(CP) $(TOP)/shared/runtime/pyexec.h $(PACKAGE_DIR)/shared/runtime
 	$(Q)$(CP) $(TOP)/shared/runtime/pyexec.c $(PACKAGE_DIR)/shared/runtime
+	$(Q)$(CP) $(TOP)/shared/runtime/mpirq.h $(PACKAGE_DIR)/shared/runtime
 	$(Q)$(MKDIR) -p $(PACKAGE_DIR)/shared/timeutils || true
 	$(Q)$(CP) $(TOP)/shared/timeutils/*.h $(PACKAGE_DIR)/shared/timeutils || true
 	$(Q)$(CP) $(TOP)/shared/timeutils/*.c $(PACKAGE_DIR)/shared/timeutils || true
@@ -204,28 +217,14 @@ export MICROPYTHON_TOP="$MICROPYTHON_REPO_PATH"
 export USER_C_MODULES="$PROJECT_ROOT/modules"
 
 # Build the embed port using the modified makefile that includes extmod
-make -f embed_with_extmod.mk PACKAGE_DIR="$MICROPYTHON_LOCAL_PATH/micropython_embed" \
-    CFLAGS="-I$MICROPYTHON_LOCAL_PATH/port -I$MICROPYTHON_REPO_PATH -I$MICROPYTHON_REPO_PATH/py -Ibuild-embed" \
-    V=1
+make -f embed_with_extmod.mk PACKAGE_DIR="$MICROPYTHON_LOCAL_PATH/micropython_embed" V=1
 
 # Copy mpconfigport.h to the micropython_embed directory so it can be found during PlatformIO compilation
 echo -e "${YELLOW}Copying mpconfigport.h to micropython_embed directory...${NC}"
 
 cp "$MICROPYTHON_LOCAL_PATH/port/mpconfigport.h" "$MICROPYTHON_LOCAL_PATH/micropython_embed/"
 
-# Remove machine module from moduledefs.h to prevent undefined reference errors
-echo -e "${YELLOW}Removing machine module from moduledefs.h...${NC}"
-if [ -f "$MICROPYTHON_LOCAL_PATH/micropython_embed/genhdr/moduledefs.h" ]; then
-    # Remove machine module extern declaration and definition
-    sed -i.bak '/extern const struct _mp_obj_module_t mp_module_machine;/d' "$MICROPYTHON_LOCAL_PATH/micropython_embed/genhdr/moduledefs.h"
-    sed -i.bak '/#undef MODULE_DEF_MACHINE/d' "$MICROPYTHON_LOCAL_PATH/micropython_embed/genhdr/moduledefs.h"
-    sed -i.bak '/#define MODULE_DEF_MACHINE/d' "$MICROPYTHON_LOCAL_PATH/micropython_embed/genhdr/moduledefs.h"
-    # Remove machine module from the extensible modules list
-    sed -i.bak '/MODULE_DEF_MACHINE \\/d' "$MICROPYTHON_LOCAL_PATH/micropython_embed/genhdr/moduledefs.h"
-    # Clean up backup file
-    rm -f "$MICROPYTHON_LOCAL_PATH/micropython_embed/genhdr/moduledefs.h.bak"
-    echo -e "${GREEN}   ◆ Machine module removed from moduledefs.h${NC}"
-fi
+# Do not remove machine module; we include it properly now
 
 # echo -e "${RED}$MICROPYTHON_LOCAL_PATH/micropython_embed/port/mphalport.h${NC}"
 if [  -f "$MICROPYTHON_LOCAL_PATH/micropython_embed/port/mphalport.h" ]; then

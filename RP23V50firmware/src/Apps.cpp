@@ -141,7 +141,7 @@ void leaveApp(int lastNetSlot) {
   refreshConnections(-1, 0, 1);
 }
 
-void fileManagerApp(void) { filesystemApp(false); }
+void fileManagerApp(void) { filesystemApp(true); }
 
 void probeCalibApp(void) {
   b.clear();
