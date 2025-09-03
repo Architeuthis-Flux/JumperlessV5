@@ -46,6 +46,12 @@ float jl_ina_get_current(int sensor);
 float jl_ina_get_voltage(int sensor);
 float jl_ina_get_bus_voltage(int sensor);
 float jl_ina_get_power(int sensor);
+
+// AWG engine (C linkage)
+int jl_dac_awg_start(const uint16_t *codes_a, size_t n_frames, const uint16_t *codes_b, uint32_t sample_rate_hz);
+void jl_dac_awg_stop(void);
+int jl_dac_awg_running(void);
+int jl_dac_awg_start_preset(int wave, float amplitude_volts, float dc_offset_volts, size_t samples_per_period, uint32_t sample_rate_hz, int mirror_b, int channel);
 void jl_gpio_set(int pin, int value);
 int jl_gpio_get(int pin);
 void jl_gpio_set_dir(int pin, int direction);
@@ -1102,6 +1108,65 @@ static mp_obj_t jl_dac_get_func(mp_obj_t channel_obj) {
     return mp_obj_new_float(voltage);
 }
 static MP_DEFINE_CONST_FUN_OBJ_1(jl_dac_get_obj, jl_dac_get_func);
+
+// DAC AWG MicroPython bindings
+// dac_awg_start(codes_a, sample_rate_hz, codes_b=None)
+static mp_obj_t jl_dac_awg_start_func(size_t n_args, const mp_obj_t *args) {
+    if (n_args < 2) {
+        mp_raise_ValueError(MP_ERROR_TEXT("dac_awg_start requires at least (codes_a, sample_rate_hz)"));
+    }
+    mp_obj_t buf_a_obj = args[0];
+    uint32_t sample_rate_hz = mp_obj_get_int(args[1]);
+    mp_buffer_info_t buf_a;
+    mp_get_buffer_raise(buf_a_obj, &buf_a, MP_BUFFER_READ);
+    if ((buf_a.len % sizeof(uint16_t)) != 0) {
+        mp_raise_ValueError(MP_ERROR_TEXT("codes_a must be array('H') or bytes multiple of 2"));
+    }
+    size_t n_frames = buf_a.len / sizeof(uint16_t);
+    const uint16_t *codes_a = (const uint16_t *)buf_a.buf;
+
+    const uint16_t *codes_b = NULL;
+    if (n_args >= 3 && args[2] != mp_const_none) {
+        mp_buffer_info_t buf_b;
+        mp_get_buffer_raise(args[2], &buf_b, MP_BUFFER_READ);
+        if (buf_b.len != buf_a.len) {
+            mp_raise_ValueError(MP_ERROR_TEXT("codes_b must match codes_a length"));
+        }
+        codes_b = (const uint16_t *)buf_b.buf;
+    }
+
+    int rc = jl_dac_awg_start(codes_a, n_frames, codes_b, sample_rate_hz);
+    return mp_obj_new_int(rc);
+}
+static MP_DEFINE_CONST_FUN_OBJ_VAR_BETWEEN(jl_dac_awg_start_obj, 2, 3, jl_dac_awg_start_func);
+
+static mp_obj_t jl_dac_awg_stop_func(void) {
+    jl_dac_awg_stop();
+    return mp_const_none;
+}
+static MP_DEFINE_CONST_FUN_OBJ_0(jl_dac_awg_stop_obj, jl_dac_awg_stop_func);
+
+static mp_obj_t jl_dac_awg_running_func(void) {
+    return mp_obj_new_bool(jl_dac_awg_running());
+}
+static MP_DEFINE_CONST_FUN_OBJ_0(jl_dac_awg_running_obj, jl_dac_awg_running_func);
+
+// dac_awg_start_preset(wave, amplitude_volts, dc_offset_volts, samples_per_period, sample_rate_hz, mirror_b=True)
+static mp_obj_t jl_dac_awg_start_preset_func(size_t n_args, const mp_obj_t *args) {
+    if (n_args < 5) {
+        mp_raise_ValueError(MP_ERROR_TEXT("dac_awg_start_preset requires (wave, amplitude_volts, dc_offset_volts, samples_per_period, sample_rate_hz[, mirror_b][, channel])"));
+    }
+    int wave = mp_obj_get_int(args[0]);
+    float amplitude_volts = mp_obj_get_float(args[1]);
+    float dc_offset_volts = mp_obj_get_float(args[2]);
+    size_t samples_per_period = (size_t) mp_obj_get_int(args[3]);
+    uint32_t sample_rate_hz = (uint32_t) mp_obj_get_int(args[4]);
+    int mirror_b = (n_args >= 6) ? (mp_obj_is_true(args[5]) ? 1 : 0) : 1;
+    int channel = (n_args >= 7) ? mp_obj_get_int(args[6]) : -1;
+    int rc = jl_dac_awg_start_preset(wave, amplitude_volts, dc_offset_volts, samples_per_period, sample_rate_hz, mirror_b, channel);
+    return mp_obj_new_int(rc);
+}
+static MP_DEFINE_CONST_FUN_OBJ_VAR_BETWEEN(jl_dac_awg_start_preset_obj, 5, 7, jl_dac_awg_start_preset_func);
 
 // ADC Functions
 static mp_obj_t jl_adc_get_func(mp_obj_t channel_obj) {
@@ -3488,6 +3553,12 @@ static const mp_rom_map_elem_t jumperless_module_globals_table[] = {
     { MP_ROM_QSTR(MP_QSTR_set_pwm_duty_cycle), MP_ROM_PTR(&jl_pwm_set_duty_cycle_obj) },
     { MP_ROM_QSTR(MP_QSTR_set_pwm_frequency), MP_ROM_PTR(&jl_pwm_set_frequency_obj) },
     { MP_ROM_QSTR(MP_QSTR_stop_pwm), MP_ROM_PTR(&jl_pwm_stop_obj) },
+
+    // DAC AWG controls
+    { MP_ROM_QSTR(MP_QSTR_dac_awg_start), MP_ROM_PTR(&jl_dac_awg_start_obj) },
+    { MP_ROM_QSTR(MP_QSTR_dac_awg_stop), MP_ROM_PTR(&jl_dac_awg_stop_obj) },
+    { MP_ROM_QSTR(MP_QSTR_dac_awg_running), MP_ROM_PTR(&jl_dac_awg_running_obj) },
+    { MP_ROM_QSTR(MP_QSTR_dac_awg_start_preset), MP_ROM_PTR(&jl_dac_awg_start_preset_obj) },
     
     // Node functions
     { MP_ROM_QSTR(MP_QSTR_connect), MP_ROM_PTR(&jl_nodes_connect_obj) },
@@ -3571,6 +3642,12 @@ static const mp_rom_map_elem_t jumperless_module_globals_table[] = {
     
     // JFS Module - Comprehensive filesystem API
     { MP_ROM_QSTR(MP_QSTR_jfs), MP_ROM_PTR(&jfs_user_cmodule) },
+
+    // Waveform constants
+    { MP_ROM_QSTR(MP_QSTR_SINE), MP_ROM_INT(0) },
+    { MP_ROM_QSTR(MP_QSTR_TRIANGLE), MP_ROM_INT(1) },
+    { MP_ROM_QSTR(MP_QSTR_SAWTOOTH), MP_ROM_INT(2) },
+    { MP_ROM_QSTR(MP_QSTR_SQUARE), MP_ROM_INT(3) },
     
     // Enhanced Logic Analyzer Functions
     { MP_ROM_QSTR(MP_QSTR_la_set_trigger), MP_ROM_PTR(&jl_la_set_trigger_obj) },

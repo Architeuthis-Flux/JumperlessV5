@@ -2927,7 +2927,7 @@ void displayStringWithSyntaxHighlighting(const String& text, Stream* stream) {
     "get_button", "probe_button", "probe_button_blocking", "probe_button_nonblocking",
     "probe_wait", "wait_probe", "probe_touch", "wait_touch", "button_read", "read_button",
     "check_button", "button_check", "arduino_reset", "probe_tap", "run_app", "format_output",
-    "help_nodes", "pwm", "pwm_set_frequency", "pwm_set_duty_cycle", "pwm_stop", "send_raw", "pause_core2", nullptr
+    "help_nodes", "pwm", "pwm_set_frequency", "pwm_set_duty_cycle", "pwm_stop", "send_raw", "nodes_save", nullptr
   };
   
   const char* jumperless_constants[] = {
@@ -3317,6 +3317,7 @@ static const FunctionTypeMap function_type_map[] = {
 /**
  * List of jumperless module function names for automatic prefix detection
  */
+
 static const char* jumperless_functions[] = {
   // DAC functions
   "dac_set", "dac_get", "set_dac", "get_dac",
@@ -3348,6 +3349,8 @@ static const char* jumperless_functions[] = {
   "arduino_reset", "probe_tap", "clickwheel_up", "clickwheel_down", "clickwheel_press", "run_app", "help",
   "reset_arduino", "reset", "app_run", "tap_probe", "tap",
   "wheel_up", "wheel_down", "wheel_press", "click_up", "click_down", "click_press",
+  "scroll_up", "scroll_down", "press", "send_raw", "pause_core2", "nodes_save",
+
   "scroll_up", "scroll_down", "press", "send_raw", "pause_core2",
   nullptr // End marker
 };

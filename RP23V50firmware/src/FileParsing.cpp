@@ -219,7 +219,7 @@ void saveLocalNodeFile(int slot) {
 
   long count = 0;
 
-  openFileThreadSafe(w, netSlot);
+  openFileThreadSafe(w, slot);
   nodeFileString.replace(" ", "");
   // nodeFileString.replace(" ", "");
   nodeFileString.replace("{", "");
@@ -230,9 +230,12 @@ void saveLocalNodeFile(int slot) {
   // delay(3);
 
   nodeFileString.printTo(nodeFile);
+  //nodeFileString.printTo(Serial);
+
 
   nodeFile.close();
   core1busy = false;
+  storeNodeFileBackup();
   markSlotAsModified(slot); // Mark slot as needing re-validation
   // Serial.println("\n\n\rsaved local node file");
 }

@@ -318,8 +318,18 @@ int jl_nodes_save(int slot) {
     
     // Save the local nodeFileString to the specified slot
     saveLocalNodeFile(target_slot);
+//     printSlots(-1);
+//     //saveLocalNodeFile(netSlot);
+//     Serial.println("netslot = " + String(netSlot));
+//     Serial.print("jl_nodes_save: slot = ");
+//     Serial.println(slot);
+//     Serial.print("jl_nodes_save: target_slot = ");
+//     Serial.println(target_slot);
+//     Serial.println("jl_nodes_save: saving local nodeFileString to slot " + String(target_slot));
+// saveCurrentSlotToSlot(netSlot, target_slot, 0, 0);
+//     //saveLocalNodeFile(target_slot);
     
-    // Refresh connections to make sure everything is in sync
+//     // Refresh connections to make sure everything is in sync
     refreshConnections();
     
     return target_slot;  // Return the slot that was saved to

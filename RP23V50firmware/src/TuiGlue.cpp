@@ -70,7 +70,7 @@ static void cbToggleOLED() {
 
   delay(100);
 
-  
+
   oled.clearPrintShow("OLED " + String(TUI::oledEnabled ? "ON" : "OFF"), 1, true, true, true, -1, -1, 1500);
 
 
@@ -83,13 +83,6 @@ static void cbAbout()  {
   TUI::setStatus("About"); 
   TUI::log("Jumperless RP2350B – DOS-style TUI (demo)"); 
 }
-
-
-
-
-
-
-
 
 
 static void cbResizeToTerminal() {
