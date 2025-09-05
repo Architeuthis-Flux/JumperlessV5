@@ -34,6 +34,11 @@
 #include "config.h"
 #include "configManager.h"
 
+// Add missing interface name constants
+#define USB_HID_NAME     "JL HID Interface"
+#define USB_MIDI_NAME    "JL MIDI Interface"  
+#define USB_VENDOR_NAME  "JL Vendor Interface"
+
 extern "C" {
 
 // Declare the real functions for linker wrapping
@@ -107,7 +112,7 @@ uint8_t const desc_hid_report[] =
 // Dynamic Endpoint Assignment
 //--------------------------------------------------------------------+
 
-// CDC endpoints
+// CDC endpoints - use sequential numbering to avoid conflicts
 #if USB_CDC_ENABLE_COUNT >= 1
 #define EPNUM_CDC_0_NOTIF   0x81
 #define EPNUM_CDC_0_OUT     0x02
@@ -126,39 +131,43 @@ uint8_t const desc_hid_report[] =
 #define EPNUM_CDC_2_IN      0x86
 #endif
 
-// Other interface endpoints (start after CDC endpoints)
-// Each CDC uses 3 endpoints: 1 notification IN + 1 data OUT + 1 data IN
-// But they share the data endpoints (same number for IN/OUT)
-// So we need: CDC_COUNT notification endpoints + CDC_COUNT data endpoint pairs
-#define EPNUM_NEXT_OUT      (0x02 + (USB_CDC_ENABLE_COUNT * 2))   // Skip notification endpoints, count data pairs
-#define EPNUM_NEXT_IN       (0x82 + (USB_CDC_ENABLE_COUNT * 2))   // Skip notification endpoints, count data pairs
-
-#if USB_MSC_ENABLE
-#define EPNUM_MSC_OUT       0x07    // EP7 OUT (manually assigned)
-#define EPNUM_MSC_IN        0x87    // EP7 IN (manually assigned)
-#define EPNUM_AFTER_MSC_OUT (EPNUM_MSC_OUT + 1)
-#define EPNUM_AFTER_MSC_IN  (EPNUM_MSC_IN + 1)
-#else
-#define EPNUM_AFTER_MSC_OUT 0x07    // Next available if no MSC
-#define EPNUM_AFTER_MSC_IN  0x87    // Next available if no MSC
+#if USB_CDC_ENABLE_COUNT >= 4
+#define EPNUM_CDC_3_NOTIF   0x87
+#define EPNUM_CDC_3_OUT     0x08
+#define EPNUM_CDC_3_IN      0x88
 #endif
 
+#if USB_CDC_ENABLE_COUNT >= 5
+#define EPNUM_CDC_4_NOTIF   0x89
+#define EPNUM_CDC_4_OUT     0x0A
+#define EPNUM_CDC_4_IN      0x8A
+#endif
+
+// MSC endpoints - place after all CDC endpoints to avoid conflicts
+#if USB_MSC_ENABLE
+#define EPNUM_MSC_OUT       0x0B    // EP11 OUT (after CDC endpoints)
+#define EPNUM_MSC_IN        0x8B    // EP11 IN (after CDC endpoints)
+#endif
+
+// HID endpoints (if enabled in future)
 #if USB_HID_ENABLE_COUNT >= 1
-#define EPNUM_HID_0         EPNUM_AFTER_MSC_IN
+#define EPNUM_HID_0         (EPNUM_MSC_IN + 1)
 #endif
 
 #if USB_HID_ENABLE_COUNT >= 2
 #define EPNUM_HID_1         (EPNUM_HID_0 + 1)
 #endif
 
+// MIDI endpoints (if enabled in future)
 #if USB_MIDI_ENABLE
-#define EPNUM_MIDI_OUT      (EPNUM_AFTER_MSC_OUT + (USB_HID_ENABLE_COUNT > 0 ? 1 : 0))
-#define EPNUM_MIDI_IN       (EPNUM_AFTER_MSC_IN + USB_HID_ENABLE_COUNT)
+#define EPNUM_MIDI_OUT      (EPNUM_MSC_OUT + 1)
+#define EPNUM_MIDI_IN       (EPNUM_MSC_IN + 1)
 #endif
 
+// Vendor endpoints (if enabled in future)
 #if USB_VENDOR_ENABLE
-#define EPNUM_VENDOR_OUT    (EPNUM_AFTER_MSC_OUT + (USB_HID_ENABLE_COUNT > 0 ? 1 : 0) + (USB_MIDI_ENABLE ? 1 : 0))
-#define EPNUM_VENDOR_IN     (EPNUM_AFTER_MSC_IN + USB_HID_ENABLE_COUNT + (USB_MIDI_ENABLE ? 1 : 0))
+#define EPNUM_VENDOR_OUT    (EPNUM_MSC_OUT + 1)
+#define EPNUM_VENDOR_IN     (EPNUM_MSC_IN + 1)
 #endif
 
 //--------------------------------------------------------------------+
@@ -183,9 +192,17 @@ uint8_t const desc_fs_configuration[] =
   TUD_CDC_DESCRIPTOR(ITF_NUM_CDC_2, 6, EPNUM_CDC_2_NOTIF, 8, EPNUM_CDC_2_OUT, EPNUM_CDC_2_IN, 64),
 #endif
 
+#if USB_CDC_ENABLE_COUNT >= 4
+  TUD_CDC_DESCRIPTOR(ITF_NUM_CDC_3, 7, EPNUM_CDC_3_NOTIF, 8, EPNUM_CDC_3_OUT, EPNUM_CDC_3_IN, 64),
+#endif
+
+#if USB_CDC_ENABLE_COUNT >= 5
+  TUD_CDC_DESCRIPTOR(ITF_NUM_CDC_4, 8, EPNUM_CDC_4_NOTIF, 8, EPNUM_CDC_4_OUT, EPNUM_CDC_4_IN, 64),
+#endif
+
   // MSC interface - place after CDC interfaces for better compatibility
 #if USB_MSC_ENABLE
-  TUD_MSC_DESCRIPTOR(ITF_NUM_MSC, 7, EPNUM_MSC_OUT, EPNUM_MSC_IN, 64),
+  TUD_MSC_DESCRIPTOR(ITF_NUM_MSC, 9, EPNUM_MSC_OUT, EPNUM_MSC_IN, 64),
 #endif
 
   // HID interfaces
@@ -233,6 +250,12 @@ uint8_t const * __wrap_tud_descriptor_configuration_cb(uint8_t index)
 #if USB_CDC_ENABLE_COUNT >= 3
     Serial.printf("◆   CDC 2: interfaces %d, %d\n", ITF_NUM_CDC_2, ITF_NUM_CDC_2_DATA);
 #endif
+#if USB_CDC_ENABLE_COUNT >= 4
+    Serial.printf("◆   CDC 3: interfaces %d, %d\n", ITF_NUM_CDC_3, ITF_NUM_CDC_3_DATA);
+#endif
+#if USB_CDC_ENABLE_COUNT >= 5
+    Serial.printf("◆   CDC 4: interfaces %d, %d\n", ITF_NUM_CDC_4, ITF_NUM_CDC_4_DATA);
+#endif
 #if USB_MSC_ENABLE
     Serial.printf("◆   MSC: interface %d\n", ITF_NUM_MSC);
     Serial.printf("◆   MSC endpoints: OUT=0x%02X, IN=0x%02X\n", EPNUM_MSC_OUT, EPNUM_MSC_IN);
@@ -255,6 +278,8 @@ enum {
   STRID_CDC_0,
   STRID_CDC_1,
   STRID_CDC_2,
+  STRID_CDC_3,
+  STRID_CDC_4,
   STRID_MSC,
   STRID_HID,
   STRID_MIDI,
@@ -281,18 +306,26 @@ static const char* string_desc_arr [] =
   USB_CDC_NAMES[2],              // 6: CDC Interface 2
 #endif
 
+#if USB_CDC_ENABLE_COUNT >= 4
+  USB_CDC_NAMES[3],              // 7: CDC Interface 3
+#endif
+
+#if USB_CDC_ENABLE_COUNT >= 5
+  USB_CDC_NAMES[4],              // 8: CDC Interface 4
+#endif
+
   // Other interface names
 #if USB_MSC_ENABLE
-  USB_MSC_NAME,                  // 7: MSC Interface
+  USB_MSC_NAME,                  // 9: MSC Interface
 #endif
 #if USB_HID_ENABLE_COUNT > 0
-  USB_HID_NAME,                  // 8: HID Interface
+  USB_HID_NAME,                  // 10: HID Interface
 #endif
 #if USB_MIDI_ENABLE
-  USB_MIDI_NAME,                 // 9: MIDI Interface
+  USB_MIDI_NAME,                 // 11: MIDI Interface
 #endif
 #if USB_VENDOR_ENABLE
-  USB_VENDOR_NAME,               // 10: Vendor Interface
+  USB_VENDOR_NAME,               // 12: Vendor Interface
 #endif
 };
 

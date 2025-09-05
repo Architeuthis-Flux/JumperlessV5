@@ -35,6 +35,11 @@ Adafruit_USBD_CDC USBSer2;
 Adafruit_USBD_CDC USBSer3;
 // #endif
 
+// #if USB_CDC_ENABLE_COUNT >= 5
+//Adafruit_USBD_CDC Serial4;
+// #endif
+
+
 // general debug printing
 #define ARDUINO_DEBUG_PRINTLN( x )                 \
     if ( debugArduino > 0 ) {                      \
@@ -194,6 +199,8 @@ void initSecondSerial( void ) {
 #if USB_CDC_ENABLE_COUNT >= 4
     // USBSer3 maps to CDC interface 3 (Debug Serial)
     USBSer3.begin( 115200 );
+    delay(3000);
+    USBSer3.println("Serial3 initialized");
     // Serial.println("  USBSer3 (Debug) initialized");
 #endif
 
