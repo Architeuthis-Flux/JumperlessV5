@@ -44,6 +44,12 @@ public:
     void setFrequency(float frequency_hz);
     void setAmplitude(float amplitude_v);
     void setOffset(float offset_v);
+    // Query current configuration
+    waveGen_channel_t getChannel() const { return _channel; }
+    waveGen_waveform_t getWaveform() const { return _waveform; }
+    float getFrequency() const { return _frequency_hz; }
+    float getAmplitude() const { return _amplitude_v; }
+    float getOffset() const { return _offset_v; }
     
     // Control
     bool start();

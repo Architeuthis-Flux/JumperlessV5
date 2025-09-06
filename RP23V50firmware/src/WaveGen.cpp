@@ -279,6 +279,16 @@ void WaveGen::setCalibrationGain(waveGen_channel_t channel, float gain) {
     }
 }
 
+
+//! !!!!!!!!!!!!!!!
+
+#define B_PER_SAM 3.5f
+
+//!!!!!!!!!!!!!
+
+
+
+
 /*!
  *    @brief  Get the actual achievable frequency for a desired frequency
  */
@@ -289,7 +299,7 @@ float WaveGen::getAchievableFrequency(float desired_freq) const {
     // if (wire) {
     //     i2c_hz = (float)_dac.getClockHz();
     // }
-    const float BYTES_PER_SAMPLE = 4.5f;
+    const float BYTES_PER_SAMPLE = B_PER_SAM;
     float effective_samples_per_sec = (i2c_hz / 9.0f) / BYTES_PER_SAMPLE;
     if (effective_samples_per_sec < 1.0f) effective_samples_per_sec = 1.0f;
 
@@ -329,7 +339,7 @@ float WaveGen::setFrequencyAdjusted(float frequency_hz) {
     // if (wire) {
     //     i2c_hz = (float)_dac.getClockHz();
     // }
-    const float BYTES_PER_SAMPLE = 4.5f;
+    const float BYTES_PER_SAMPLE = B_PER_SAM;
     float effective_samples_per_sec = (i2c_hz / 9.0f) / BYTES_PER_SAMPLE;
     if (effective_samples_per_sec < 1.0f) effective_samples_per_sec = 1.0f;
     size_t ts = _table_size > 0 ? _table_size : 1;
@@ -352,7 +362,7 @@ void WaveGen::_updateTableSize() {
     //     Serial.print("I2C Hz: ");
     //     Serial.println(i2c_hz);
     // }
-    const float BYTES_PER_SAMPLE = 4.5f;
+    const float BYTES_PER_SAMPLE = B_PER_SAM;
     float effective_samples_per_sec = (i2c_hz / 9.0f) / BYTES_PER_SAMPLE;
     if (effective_samples_per_sec < 1.0f) effective_samples_per_sec = 1.0f;
 
@@ -390,20 +400,20 @@ void WaveGen::_updateTableSize() {
     }
     _repeat_remaining = _repeat_factor;
 
-    // Debug output (clean formatting)
-    Serial.print("Table size calc: size=");
-    Serial.print(calculated_size, 2);
-    Serial.print(" -> ");
-    Serial.print(_table_size);
-    Serial.print(", est_no_repeat=");
-    Serial.print(effective_samples_per_sec / (float)_table_size, 2);
-    Serial.print(" Hz, repeat=");
-    Serial.print((uint32_t)_repeat_factor);
-    Serial.print(", est_with_repeat=");
-    float denom = (float)_table_size * (float)(_repeat_factor > 0 ? _repeat_factor : 1);
-    Serial.print(effective_samples_per_sec / denom, 2);
-    Serial.println(" Hz");
-    Serial.flush();
+    // // Debug output (clean formatting)
+    // Serial.print("Table size calc: size=");
+    // Serial.print(calculated_size, 2);
+    // Serial.print(" -> ");
+    // Serial.print(_table_size);
+    // Serial.print(", est_no_repeat=");
+    // Serial.print(effective_samples_per_sec / (float)_table_size, 2);
+    // Serial.print(" Hz, repeat=");
+    // Serial.print((uint32_t)_repeat_factor);
+    // Serial.print(", est_with_repeat=");
+    // float denom = (float)_table_size * (float)(_repeat_factor > 0 ? _repeat_factor : 1);
+    // Serial.print(effective_samples_per_sec / denom, 2);
+    // Serial.println(" Hz");
+    // Serial.flush();
 }
 
 /*!
@@ -545,7 +555,7 @@ float WaveGen::_estimateSamplesPerSec() const {
     // if (wire) {
     //     i2c_hz = (float)_dac.getClockHz();
     // }
-    const float BYTES_PER_SAMPLE = 4.0f; // address + 3 data bytes per sample
+    const float BYTES_PER_SAMPLE = B_PER_SAM; // address + 3 data bytes per sample
     float sps = (i2c_hz / 9.0f) / BYTES_PER_SAMPLE;
     if (sps < 1.0f) sps = 1.0f;
     return sps;

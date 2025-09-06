@@ -96,6 +96,22 @@ const char* python_keywords[] = {
     "check_button||", "button_check||", "arduino_reset||", "probe_tap||", "run_app||", "format_output||",
     "help_nodes||", "pause_core2||", "send_raw||", "pwm||", "pwm_set_duty_cycle||", "pwm_set_frequency||", "pwm_stop||", "nodes_save||",
     
+    // Wavegen Functions (marked with ||)
+    "wavegen_set_output||", "set_wavegen_output||",
+    "wavegen_set_freq||", "set_wavegen_freq||",
+    "wavegen_set_wave||", "set_wavegen_wave||",
+    "wavegen_set_sweep||", "set_wavegen_sweep||",
+    "wavegen_set_amplitude||", "set_wavegen_amplitude||",
+    "wavegen_set_offset||", "set_wavegen_offset||",
+    "wavegen_start||", "start_wavegen||",
+    "wavegen_stop||", "stop_wavegen||",
+    "wavegen_get_output||", "get_wavegen_output||",
+    "wavegen_get_freq||", "get_wavegen_freq||",
+    "wavegen_get_wave||", "get_wavegen_wave||",
+    "wavegen_get_amplitude||", "get_wavegen_amplitude||",
+    "wavegen_get_offset||", "get_wavegen_offset||",
+    "wavegen_is_running||",
+    
     // Jumperless Types/Constants (marked with |||)
     "TOP_RAIL|||", "BOTTOM_RAIL|||", "GND|||", "DAC0|||", "DAC1|||", "ADC0|||", "ADC1|||", "ADC2|||", "ADC3|||", "ADC4|||",
     "PROBE|||", "ISENSE_PLUS|||", "ISENSE_MINUS|||", "UART_TX|||", "UART_RX|||", "BUFFER_IN|||", "BUFFER_OUT|||",
@@ -104,6 +120,9 @@ const char* python_keywords[] = {
     "A0|||", "A1|||", "A2|||", "A3|||", "A4|||", "A5|||", "A6|||", "A7|||",
     "D13_PAD|||", "TOP_RAIL_PAD|||", "BOTTOM_RAIL_PAD|||", "LOGO_PAD_TOP|||", "LOGO_PAD_BOTTOM|||",
     "CONNECT_BUTTON|||", "REMOVE_BUTTON|||", "BUTTON_NONE|||", "CONNECT|||", "REMOVE|||", "NONE|||",
+    
+    // Wavegen constants (marked with |||)
+    "SINE|||", "TRIANGLE|||", "SAWTOOTH|||", "SQUARE|||", "RAMP|||", "ARBITRARY|||",
     
     // JFS Functions (marked with ||||)
     "open||||", "read||||", "write||||", "close||||", "seek||||", "tell||||", "size||||", "available||||",

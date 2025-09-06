@@ -3063,7 +3063,23 @@ void displayStringWithSyntaxHighlighting(const String& text, Stream* stream) {
     "get_button", "probe_button", "probe_button_blocking", "probe_button_nonblocking",
     "probe_wait", "wait_probe", "probe_touch", "wait_touch", "button_read", "read_button",
     "check_button", "button_check", "arduino_reset", "probe_tap", "run_app", "format_output",
-    "help_nodes", "pwm", "pwm_set_frequency", "pwm_set_duty_cycle", "pwm_stop", "send_raw", "nodes_save", nullptr
+    "help_nodes", "pwm", "pwm_set_frequency", "pwm_set_duty_cycle", "pwm_stop", "send_raw", "nodes_save",
+    // Wavegen
+    "wavegen_set_output", "set_wavegen_output",
+    "wavegen_set_freq", "set_wavegen_freq",
+    "wavegen_set_wave", "set_wavegen_wave",
+    "wavegen_set_sweep", "set_wavegen_sweep",
+    "wavegen_set_amplitude", "set_wavegen_amplitude",
+    "wavegen_set_offset", "set_wavegen_offset",
+    "wavegen_start", "start_wavegen",
+    "wavegen_stop", "stop_wavegen",
+    "wavegen_get_output", "get_wavegen_output",
+    "wavegen_get_freq", "get_wavegen_freq",
+    "wavegen_get_wave", "get_wavegen_wave",
+    "wavegen_get_amplitude", "get_wavegen_amplitude",
+    "wavegen_get_offset", "get_wavegen_offset",
+    "wavegen_is_running",
+    nullptr
   };
   
   const char* jumperless_constants[] = {
@@ -3073,7 +3089,10 @@ void displayStringWithSyntaxHighlighting(const String& text, Stream* stream) {
     "D0", "D1", "D2", "D3", "D4", "D5", "D6", "D7", "D8", "D9", "D10", "D11", "D12", "D13",
     "A0", "A1", "A2", "A3", "A4", "A5", "A6", "A7", "D13_PAD", "TOP_RAIL_PAD", "BOTTOM_RAIL_PAD",
     "LOGO_PAD_TOP", "LOGO_PAD_BOTTOM", "CONNECT_BUTTON", "REMOVE_BUTTON", "BUTTON_NONE",
-    "CONNECT", "REMOVE", "NONE", "INPUT", "OUTPUT", "PULLUP", "PULLDOWN", "KEEPER", "HIGH", "LOW", nullptr
+    "CONNECT", "REMOVE", "NONE", "INPUT", "OUTPUT", "PULLUP", "PULLDOWN", "KEEPER", "HIGH", "LOW",
+    // Wavegen constants
+    "SINE", "TRIANGLE", "SAWTOOTH", "SQUARE", "RAMP", "ARBITRARY",
+    nullptr
   };
   
   const char* jfs_functions[] = {
