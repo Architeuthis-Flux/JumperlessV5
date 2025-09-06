@@ -277,33 +277,35 @@ namespace TuiGlue {
   void openOnDemand() { activate(); }
   bool isActive() { return s_active; }
 
-  void loop() {
 
+  unsigned long tuiGlueTimers[ 10 ] = { 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 };
+  void loop() {
+tuiGlueTimers[ 0 ] = micros( );
     if (!s_modelBuilt) 
       TuiGlue::init();   // build the model
-  
+    tuiGlueTimers[ 1 ] = micros( );
     if (!s_active)
       activate();    
-    
+    tuiGlueTimers[ 2 ] = micros( );
     if (!s_active) 
       return;
 
     checkUSBconnection();
-
+    tuiGlueTimers[ 3 ] = micros( );
     if (TUIserial->available() && TUIserial->peek() == 0x04) {
       TUIserial->read();
       uint8_t m = (TUI::getDebugMode() + 1) % 3;
       TUI::setDebugMode(m);
       TUI::log(String("[DBG] mode -> ") + (int)m + (m==1 ? " (silent)" : m==2 ? " (visible)" : " (off)"));
     }
-
+    tuiGlueTimers[ 4 ] = micros( );
     uint16_t spins = 0;
     while ((TUIserial->available() || TUI::inEscapeSeq()) && spins < 2) {
       (void)TUI::handleInput();
       spins++;
       if ((spins & 0x07) == 0) delayMicroseconds(250);
     }
-
+    tuiGlueTimers[ 5 ] = micros( );
 
     // one-shot automatic re-probe/repaint in case the first CPR missed
     if (s_needDeferredRedraw && millis() - s_deferredAt > 80) {
@@ -316,14 +318,26 @@ namespace TuiGlue {
         s_deferredAt = millis();  // try again next tick until it works
       }
     }
-
+    tuiGlueTimers[ 6 ] = micros( );
 
     if (TUI::S.logDirty) TUI::drawLog();
-
+    tuiGlueTimers[ 7 ] = micros( );
 
    // delay(100);
-
+    tuiGlueTimers[ 8 ] = micros( );
     TUIserial->flush();
+    tuiGlueTimers[ 9 ] = micros( );
+
+    for (int i = 1; i < 10; i++) {
+        Serial.print("tuiGlueTimer ");
+        Serial.print(i);
+        Serial.print(": ");
+        Serial.println(tuiGlueTimers[ i ] - tuiGlueTimers[ i - 1 ]);
+    }
+    Serial.print("total: ");
+    Serial.println(tuiGlueTimers[ 9 ] - tuiGlueTimers[ 0 ]);
+    Serial.println("\n\n\r");
+    Serial.flush();
   }
 
 

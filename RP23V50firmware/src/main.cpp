@@ -59,11 +59,9 @@ KevinC@ppucc.io
 #include "CoreBusyFlags.h"
 #include "TuiGlue.h"
 
-
-
-//#include "DacAwg.h"
-//#include "WaveGen.h"  // Old blocking wavegen
 #include "WaveGen.h"  // New async wavegen
+
+
 bread b;
 
 // Global async waveform generator
@@ -101,7 +99,7 @@ volatile int dumpLED = 0;
 unsigned long dumpLEDTimer = 0;
 unsigned long dumpLEDrate = 50;
 
-const char firmwareVersion[] = "5.3.2.0"; //! remember to update this
+const char firmwareVersion[] = "5.3.2.1"; //! remember to update this
 bool newConfigOptions = false;            //! set to true with new config options //!
                                           
 
@@ -173,12 +171,12 @@ startupTimers[ 2 ] = millis( );
     delayMicroseconds( 100 );
 
     digitalWrite( RESETPIN, LOW );
-
+    
     while ( core2initFinished == 0 ) {
         // delayMicroseconds(1);
     }
+   
     routableBufferPower( 1, 1 );
-
     if (jumperlessConfig.serial_1.async_passthrough == true) {
         AsyncPassthrough::begin(115200);
     }
@@ -313,6 +311,10 @@ unsigned long core1Timeout = millis( );
 
 
 #define debug_startup_timers 0
+
+
+unsigned long busyTimers[ 10 ] = { 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 };
+
 
 void loop( ) {
 
@@ -528,14 +530,44 @@ dontshowmenu:
 
         if ( logicAnalyzer.is_running( ) == true || logicAnalyzer.is_armed( ) == true ) {
             // julseview.check_heartbeat_watchdog();
+            Serial.println("Logic analyzer is running, skipping loop");
+            Serial.flush();
             delay( 100 );
 
 
             continue;
         }
+        busyTimers[ 0 ] = micros( );
 
         TuiGlue::loop();
+        busyTimers[ 1 ] = micros( );
 
+// int lastProbeButtonResult = 0;
+//         while (1){
+//             int probeButtonResult = checkProbeButton();
+
+//             if (probeButtonResult != lastProbeButtonResult) {
+//                 Serial.println(" ");
+//                 Serial.flush();
+            
+//             lastProbeButtonResult = probeButtonResult;
+//             }
+
+//             if (probeButtonResult == 1) {
+//                 Serial.print("1");
+//                 Serial.flush();
+//                // break;
+//             }
+//             if (probeButtonResult == 2) {
+//                 Serial.print("2");
+//                 Serial.flush();
+//                 //break;
+//             }
+
+        
+//            // delay(1);
+//         }
+            
 
         // watchdog core loop should be called here
         // Drive wavegen progress if running or in async mode
@@ -557,16 +589,18 @@ dontshowmenu:
         
         checkPads( );
         tud_task( );
-        
+        busyTimers[ 2 ] = micros( );
+
         if ( clickMenu( ) >= 0 ) {
             core1passthrough = 0;
             goto loadfile;
         }
-
+        busyTimers[ 3 ] = micros( );
 
         int probeReading = justReadProbe( true );
 
         checkForReadingChanges( );
+        busyTimers[ 4 ] = micros( );
 
         warnNetTimeout( 1 );
         if ( probeReading > 0 ) {
@@ -575,6 +609,7 @@ dontshowmenu:
                 firstConnection = probeReading;
             }
         }
+        busyTimers[ 5 ] = micros( );
 
         if ( brightenedNet > 0 ) {
             int probeToggleResult = probeToggle( );
@@ -611,14 +646,14 @@ dontshowmenu:
                     }
                 }
 
-                blockProbeButton = 800;
+                blockProbeButton = 200;
                 blockProbeButtonTimer = millis( );
             } else if ( probeToggleResult == -3 ) {
-                blockProbeButton = 800;
+                blockProbeButton = 200;
                 blockProbeButtonTimer = millis( );
 
             } else if ( probeToggleResult == -2 ) {
-                blockProbeButton = 800;
+                blockProbeButton = 200;
                 blockProbeButtonTimer = millis( );
 
             } else if ( probeToggleResult == -4 ) {
@@ -632,12 +667,14 @@ dontshowmenu:
                 // clearHighlighting();
 
                 firstConnection = -1;
-                blockProbeButton = 500;
+                blockProbeButton = 100;
                 blockProbeButtonTimer = millis( );
             }
         } else {
             firstConnection = -1;
         }
+
+        busyTimers[ 6 ] = micros( );
 
         if ( ( millis( ) - waitTimer ) > 12 ) {
             waitTimer = millis( );
@@ -682,8 +719,11 @@ dontshowmenu:
 
             }
         } else {
+            
             checkSwitchPosition( ); 
+           
         }
+        busyTimers[ 7 ] = micros( );
 
         if ( lastHighlightedNet != highlightedNet ) {
 
@@ -701,15 +741,33 @@ dontshowmenu:
             // chooseShownReadings();
             showMeasurements( 16, 0, 0 );
         }
-
+        busyTimers[ 8 ] = micros( );
         if ( mscModeEnabled == true ) {
             usbPeriodic();
+            //busyTimers[ 9 ] = millis( );
         }
 
         oled.oledPeriodic();
+        busyTimers[ 9 ] = micros( );
 
+
+        for (int i = 1; i < 10; i++) {
+            Serial.print("busyTimer ");
+            Serial.print(i);
+            Serial.print(": ");
+            Serial.println(busyTimers[ i ] - busyTimers[ i - 1 ]);
+    
+
+        }
+        Serial.print("total: ");
+        Serial.println(busyTimers[ 9 ] - busyTimers[ 0 ]);
+        Serial.println("\n\n\r");
+        Serial.flush();
+        delay(1000);
         
     }
+
+
 
     input = Serial.read( );
 
@@ -1817,7 +1875,7 @@ float wavegen_frequency = 1000.0f;
     }
     case '}': {
         
-        blockProbeButton = 300;
+        blockProbeButton = 100;
         blockProbeButtonTimer = millis( );
         probeMode( 1, firstConnection );
         
@@ -1831,7 +1889,7 @@ float wavegen_frequency = 1000.0f;
     }
     case '{': {
         
-        blockProbeButton = 300;
+        blockProbeButton = 100;
         blockProbeButtonTimer = millis( );
         int probeReturn = probeMode( 0, firstConnection );
 

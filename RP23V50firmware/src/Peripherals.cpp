@@ -854,6 +854,9 @@ void readGPIO( void ) {
 }
 
 void setRailsAndDACs( int saveEEPROM ) {
+
+    // Serial.println("setRailsAndDACs");
+    // Serial.flush();
     setTopRail( jumperlessConfig.dacs.top_rail, 1, 0 );
     // delay(10);
     setBotRail( jumperlessConfig.dacs.bottom_rail, 1, 0 );
