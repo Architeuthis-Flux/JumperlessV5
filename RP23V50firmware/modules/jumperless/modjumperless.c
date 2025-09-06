@@ -1112,6 +1112,7 @@ static MP_DEFINE_CONST_FUN_OBJ_1(jl_dac_get_obj, jl_dac_get_func);
 // DAC AWG MicroPython bindings
 // dac_awg_start(codes_a, sample_rate_hz, codes_b=None)
 static mp_obj_t jl_dac_awg_start_func(size_t n_args, const mp_obj_t *args) {
+    
     if (n_args < 2) {
         mp_raise_ValueError(MP_ERROR_TEXT("dac_awg_start requires at least (codes_a, sample_rate_hz)"));
     }
@@ -1135,19 +1136,22 @@ static mp_obj_t jl_dac_awg_start_func(size_t n_args, const mp_obj_t *args) {
         codes_b = (const uint16_t *)buf_b.buf;
     }
 
-    int rc = jl_dac_awg_start(codes_a, n_frames, codes_b, sample_rate_hz);
+  //  int rc = jl_dac_awg_start(codes_a, n_frames, codes_b, sample_rate_hz);
+    int rc = 0;
     return mp_obj_new_int(rc);
 }
 static MP_DEFINE_CONST_FUN_OBJ_VAR_BETWEEN(jl_dac_awg_start_obj, 2, 3, jl_dac_awg_start_func);
 
 static mp_obj_t jl_dac_awg_stop_func(void) {
-    jl_dac_awg_stop();
+    //jl_dac_awg_stop();
     return mp_const_none;
 }
 static MP_DEFINE_CONST_FUN_OBJ_0(jl_dac_awg_stop_obj, jl_dac_awg_stop_func);
 
 static mp_obj_t jl_dac_awg_running_func(void) {
-    return mp_obj_new_bool(jl_dac_awg_running());
+    //return mp_obj_new_bool(jl_dac_awg_running());
+    return mp_obj_new_bool(0);
+   // return mp_obj_new_bool(jl_dac_awg_running());
 }
 static MP_DEFINE_CONST_FUN_OBJ_0(jl_dac_awg_running_obj, jl_dac_awg_running_func);
 
@@ -1163,7 +1167,8 @@ static mp_obj_t jl_dac_awg_start_preset_func(size_t n_args, const mp_obj_t *args
     uint32_t sample_rate_hz = (uint32_t) mp_obj_get_int(args[4]);
     int mirror_b = (n_args >= 6) ? (mp_obj_is_true(args[5]) ? 1 : 0) : 1;
     int channel = (n_args >= 7) ? mp_obj_get_int(args[6]) : -1;
-    int rc = jl_dac_awg_start_preset(wave, amplitude_volts, dc_offset_volts, samples_per_period, sample_rate_hz, mirror_b, channel);
+    //int rc = jl_dac_awg_start_preset(wave, amplitude_volts, dc_offset_volts, samples_per_period, sample_rate_hz, mirror_b, channel);
+    int rc = 0;
     return mp_obj_new_int(rc);
 }
 static MP_DEFINE_CONST_FUN_OBJ_VAR_BETWEEN(jl_dac_awg_start_preset_obj, 5, 7, jl_dac_awg_start_preset_func);

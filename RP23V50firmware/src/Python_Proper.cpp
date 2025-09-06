@@ -2358,11 +2358,45 @@ void REPLEditor::drawPrompt(Stream *stream, int level) {
    stream->print(">>> ");
   } else if (level == 1) {
    stream->print("... ");
+  } else if (level == 2) {
+   stream->print("└─>     ");
   }
   stream->flush();
 }
 
 
+
+// Maximum number of content characters to render per REPL line (excluding prompt)
+// Keep this conservative (<= 76) so prompt (4 chars) + content (76) fits in 80-col terminals
+static const int REPL_MAX_CONTENT_COLUMNS = 76;
+
+// Track previous target display row (0-based) so next redraw can move up correctly
+static int REPL_prev_target_display_row_index = 0;
+
+// Compute 0-based display row index from logical line/column with wrapping
+static int REPL_compute_display_row_index(const String &content, int target_line, int column) {
+  if (target_line < 0) return 0;
+  int width = REPL_MAX_CONTENT_COLUMNS;
+  int row_index = 0;
+  int current_line = 0;
+  int line_start = 0;
+  for (int i = 0; i <= content.length(); i++) {
+    if (i == content.length() || content.charAt(i) == '\n') {
+      int line_len = i - line_start;
+      if (current_line < target_line) {
+        int chunks = (line_len + width - 1) / width;
+        if (chunks < 1) chunks = 1;
+        row_index += chunks;
+      } else if (current_line == target_line) {
+        row_index += (column / width);
+        break;
+      }
+      line_start = i + 1;
+      current_line++;
+    }
+  }
+  return row_index;
+}
 
 void REPLEditor::loadFromHistory(Stream *stream, const String &historical_input) {
   if (!in_history_mode) {
@@ -2414,7 +2448,7 @@ void REPLEditor::drawFromCurrentLine(Stream *stream) {
     return;
   }
 
-  // Split input into lines and display each one
+  // Split input into lines and display each one with soft-wrapping
   String lines = current_input;
   int line_start = 0;
   int current_line_num = 0;
@@ -2424,19 +2458,59 @@ void REPLEditor::drawFromCurrentLine(Stream *stream) {
     if (i == lines.length() || lines.charAt(i) == '\n') {
       String line = lines.substring(line_start, i);
 
-      // Show appropriate prompt
-      if (current_line_num == 0) {
+      // Soft-wrap the line into chunks of REPL_MAX_CONTENT_COLUMNS
+      // Detect if this is a full comment line (after leading spaces the first char is '#')
+      bool is_comment_line = false;
+      {
+        int k = 0;
+        while (k < (int)line.length() && isspace((int)line.charAt(k))) k++;
+        if (k < (int)line.length() && line.charAt(k) == '#') {
+          is_comment_line = true;
+        }
+      }
+      int remaining = line.length();
+      int offset = 0;
+      int chunk_index = 0;
+      while (true) {
+        // Determine the length of this chunk
+        int this_len = min(remaining, REPL_MAX_CONTENT_COLUMNS);
+        String chunk = line.substring(offset, offset + this_len);
+
+        // Prompt: first chunk uses level 0/1, subsequent chunks use continuation prompt (level 2)
         changeTerminalColor(replColors[1], true, stream);
-        drawPrompt(stream, 0);
-      } else {
-        changeTerminalColor(replColors[1], true, stream);
-        drawPrompt(stream, 1);
+        if (chunk_index == 0) {
+          drawPrompt(stream, (current_line_num == 0) ? 0 : 1);
+        } else {
+          drawPrompt(stream, 2);
+        }
+
+        // Render the chunk, keeping comment highlight across wrapped rows
+        if (is_comment_line) {
+          stream->print("\x1b[38;5;34m");
+          for (int cj = 0; cj < chunk.length(); cj++) {
+            stream->write(chunk.charAt(cj));
+          }
+        } else {
+          displayStringWithSyntaxHighlighting(chunk, stream);
+        }
+
+        remaining -= this_len;
+        offset += this_len;
+
+        // If more to render for this logical line, newline and continue another wrapped row
+        if (remaining > 0) {
+          stream->println();
+          lines_displayed++;
+          chunk_index++;
+        } else {
+          if (is_comment_line) {
+            stream->print("\x1b[0m");
+          }
+          break;
+        }
       }
 
-      // Show line content with syntax highlighting
-      displayStringWithSyntaxHighlighting(line, stream);
-
-      // Add newline if not the last line
+      // Add newline if not the last logical line
       if (i < lines.length()) {
         stream->println();
         lines_displayed++;
@@ -2643,12 +2717,25 @@ void REPLEditor::redrawAndPosition(Stream *stream) {
   // To do this, we'll track how many lines our display occupies and always
   // clear exactly that many lines, then redraw from the same starting position
   
-  // Step 1: Calculate how many lines we need to display
-  int total_display_lines = 1; // At least one line for content
+  // Step 1: Calculate how many display rows we need (with soft-wrapping)
+  int total_display_lines = 0; // number of display rows across all logical lines
+  int target_display_row_index = 0; // the display row where the cursor should be
   if (current_input.length() > 0) {
-    for (int i = 0; i < current_input.length(); i++) {
-      if (current_input.charAt(i) == '\n') {
-        total_display_lines++;
+    String lines_for_count = current_input;
+    int line_start_idx = 0;
+    int count_line_num = 0;
+    for (int idx = 0; idx <= lines_for_count.length(); idx++) {
+      if (idx == lines_for_count.length() || lines_for_count.charAt(idx) == '\n') {
+        int line_len = idx - line_start_idx;
+        int chunks = max(1, (line_len + REPL_MAX_CONTENT_COLUMNS - 1) / REPL_MAX_CONTENT_COLUMNS);
+        total_display_lines += chunks;
+        if (count_line_num < cursor_position.line) {
+          target_display_row_index += chunks;
+        } else if (count_line_num == cursor_position.line) {
+          target_display_row_index += (cursor_position.column / REPL_MAX_CONTENT_COLUMNS);
+        }
+        line_start_idx = idx + 1;
+        count_line_num++;
       }
     }
   }
@@ -2658,12 +2745,15 @@ void REPLEditor::redrawAndPosition(Stream *stream) {
   stream->print("\r");
   
   // Calculate how far to move up based on where the cursor currently is
-  // The terminal cursor should be on the line corresponding to cursor_position.line
+  // The terminal cursor should be on the display row corresponding to the target display row
   // We need to move up to the first line of our display
-  int lines_to_move_up = cursor_position.line;
+  int lines_to_move_up = target_display_row_index;
   
   // Also account for any extra lines if the previous display was larger
-  int extra_lines_to_clear = max(0, last_displayed_lines - (total_display_lines - 1));
+  int extra_lines_to_clear = 0;
+  if (last_displayed_lines > 0) {
+    extra_lines_to_clear = max(0, last_displayed_lines - total_display_lines);
+  }
   lines_to_move_up += extra_lines_to_clear;
   
   if (lines_to_move_up > 0) {
@@ -2683,7 +2773,7 @@ void REPLEditor::redrawAndPosition(Stream *stream) {
     return;
   }
 
-  // Step 4: Display all lines
+  // Step 4: Display all lines with soft-wrapping
   String lines = current_input;
   int line_start = 0;
   int current_line_num = 0;
@@ -2693,17 +2783,54 @@ void REPLEditor::redrawAndPosition(Stream *stream) {
     if (i == lines.length() || lines.charAt(i) == '\n') {
       String line = lines.substring(line_start, i);
 
-      // Show appropriate prompt
-      if (current_line_num == 0) {
-        drawPrompt(stream, 0);
-      } else {
-        drawPrompt(stream, 1);
+      // Emit this logical line in wrapped chunks
+      // Detect if this is a full comment line (after leading spaces the first char is '#')
+      bool is_comment_line = false;
+      {
+        int k = 0;
+        while (k < (int)line.length() && isspace((int)line.charAt(k))) k++;
+        if (k < (int)line.length() && line.charAt(k) == '#') {
+          is_comment_line = true;
+        }
+      }
+      int remaining = line.length();
+      int offset = 0;
+      int chunk_index = 0;
+      while (true) {
+        int this_len = min(remaining, REPL_MAX_CONTENT_COLUMNS);
+        String chunk = line.substring(offset, offset + this_len);
+
+        if (chunk_index == 0) {
+          drawPrompt(stream, (current_line_num == 0) ? 0 : 1);
+        } else {
+          drawPrompt(stream, 2);
+        }
+
+        if (is_comment_line) {
+          stream->print("\x1b[38;5;34m");
+          for (int cj = 0; cj < chunk.length(); cj++) {
+            stream->write(chunk.charAt(cj));
+          }
+        } else {
+          displayStringWithSyntaxHighlighting(chunk, stream);
+        }
+
+        remaining -= this_len;
+        offset += this_len;
+
+        if (remaining > 0) {
+          stream->println();
+          lines_with_newlines++;
+          chunk_index++;
+        } else {
+          if (is_comment_line) {
+            stream->print("\x1b[0m");
+          }
+          break;
+        }
       }
 
-      // Show line content with syntax highlighting
-      displayStringWithSyntaxHighlighting(line, stream);
-
-      // Add newline if not the last line
+      // Newline between logical lines (except after the last one)
       if (i < lines.length()) {
         stream->println();
         lines_with_newlines++;
@@ -2715,7 +2842,8 @@ void REPLEditor::redrawAndPosition(Stream *stream) {
   }
 
   // Step 5: Update tracking
-  last_displayed_lines = lines_with_newlines;
+  last_displayed_lines = max(1, total_display_lines);
+  REPL_prev_target_display_row_index = target_display_row_index;
 
   // Step 6: Position cursor at the target location
   // We're currently at the end of the last line
@@ -2728,18 +2856,23 @@ void REPLEditor::redrawAndPosition(Stream *stream) {
     stream->print("A"); // Move up to first line
   }
   
-  // Move down to target line
-  if (cursor_position.line > 0) {
-    // When at bottom of screen, cursor can't move down, so add newlines instead
-    for (int i = 0; i < cursor_position.line; i++) {
-      stream->println(); // Add newline to push content up
+  // Move down to target display row
+  if (target_display_row_index > 0) {
+    for (int i = 0; i < target_display_row_index; i++) {
+      stream->println();
     }
   }
   
   // Position horizontally
   stream->print("\r");
-  int prompt_length = (cursor_position.line == 0) ? 4 : 4;
-  int target_column = prompt_length + cursor_position.column;
+  int cursor_wrap_index = (cursor_position.column / REPL_MAX_CONTENT_COLUMNS);
+  int prompt_length;
+  if (cursor_wrap_index == 0) {
+    prompt_length = 4; // '>>> ' or '... '
+  } else {
+    prompt_length = 8; // '└─>     '
+  }
+  int target_column = prompt_length + (cursor_position.column % REPL_MAX_CONTENT_COLUMNS);
   moveCursorToColumn(stream, target_column);
   
   stream->flush();
@@ -2771,8 +2904,10 @@ void REPLEditor::repositionCursorOnly(Stream *stream) {
     return;
   }
   
-  // Calculate relative movement needed
-  int line_diff = cursor_position.line - last_terminal_line;
+  // Calculate relative movement needed, accounting for wraps
+  int current_display_row = REPL_compute_display_row_index(current_input, cursor_position.line, cursor_position.column);
+  int last_display_row = REPL_compute_display_row_index(current_input, last_terminal_line, last_terminal_column);
+  int line_diff = current_display_row - last_display_row;
   
   // Move vertically if needed
   if (line_diff != 0) {
@@ -2793,10 +2928,11 @@ void REPLEditor::repositionCursorOnly(Stream *stream) {
     }
   }
   
-  // Always recalculate horizontal position to account for prompts
+  // Always recalculate horizontal position to account for prompts and wrapping
   stream->print("\r");
-  int prompt_length = (cursor_position.line == 0) ? 4 : 4;
-  int target_column = prompt_length + cursor_position.column;
+  int cursor_wrap_index = (cursor_position.column / REPL_MAX_CONTENT_COLUMNS);
+  int prompt_length = (cursor_wrap_index == 0) ? 4 : 8;
+  int target_column = prompt_length + (cursor_position.column % REPL_MAX_CONTENT_COLUMNS);
   moveCursorToColumn(stream, target_column);
   
   // Update tracking

@@ -455,12 +455,14 @@ bool checkForDTRpulse( void ) {
         arduinoDTR[ 1 ] = arduinoDTR[ 2 ];
         arduinoDTR[ 2 ] = USBSer1.dtr( );
 
-        if ( arduinoDTR[ 0 ] == 0 && arduinoDTR[ 1 ] == 1 && arduinoDTR[ 2 ] == 0 ) { // detect pulses going either direction (some things invert the DTR line)
+        //!to make this work with Windows, we just check for any change in DTR, macOS and Linux send a full off-on-off pulse
+
+        if (/* arduinoDTR[ 0 ] == 0 && */arduinoDTR[ 1 ] == 1 && arduinoDTR[ 2 ] == 0 ) { // detect pulses going either direction (some things invert the DTR line)
             arduinoDTR[ 0 ] = arduinoDTR[ 1 ];
             arduinoDTR[ 1 ] = arduinoDTR[ 2 ];
             arduinoDTR[ 2 ] = USBSer1.dtr( );
             arduinoDTRpulse = true;
-        } else if ( arduinoDTR[ 0 ] == 1 && arduinoDTR[ 1 ] == 0 && arduinoDTR[ 2 ] == 1 ) {
+        } else if ( /*arduinoDTR[ 0 ] == 1 && */arduinoDTR[ 1 ] == 0 && arduinoDTR[ 2 ] == 1 ) {
             arduinoDTR[ 0 ] = arduinoDTR[ 1 ];
             arduinoDTR[ 1 ] = arduinoDTR[ 2 ];
             arduinoDTR[ 2 ] = USBSer1.dtr( );
