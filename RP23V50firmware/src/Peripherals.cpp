@@ -16,7 +16,7 @@
 #include "pico/time.h" // For hardware timer support
 #include <oled.h>
 #include <stdio.h>
-#include <Adafruit_MCP4728.h>
+//#include <Adafruit_MCP4728.h>  // Old blocking library
 
 #include "PersistentStuff.h"
 #include <Wire.h>
@@ -26,6 +26,8 @@
 #include "Highlighting.h"
 #include "LogicAnalyzer.h"
 #include "ArduinoStuff.h"
+
+#include "MCP4728.h"  // New library
 
 
 int i2cSpeed = 400000;
@@ -124,7 +126,7 @@ int amplitude[ 3 ] = { 0, 0, 0 };
 int offset[ 3 ] = { 2048, 1650, 0 };
 int calib[ 3 ] = { 0, 0, 0 };
 
-Adafruit_MCP4728 mcp;
+MCP4728 mcp;
 
 // MCP4725_PICO dac0_5V(5.0);
 // MCP4725_PICO dac1_8V(railSpread);
@@ -233,6 +235,8 @@ void initADC( void ) {
 }
 
 void initDAC( void ) {
+
+    
     initGPIO( );
 
     Wire.setSDA( 4 );
@@ -241,6 +245,8 @@ void initDAC( void ) {
     Wire.begin( );
 
     delayMicroseconds( 100 );
+
+    
     // Try to initialize!
     if ( !mcp.begin( ) ) {
         delay( 3000 );
@@ -750,7 +756,7 @@ void readGPIO( void ) {
             // Skip reading logic analyzer pins during capture to avoid interference
             // Keep previous state to avoid display issues
             return;
-            continue;
+           continue;
         }
 
         if (gpio_get_function(gpioDef[i][0]) == GPIO_FUNC_UART) {
@@ -848,6 +854,9 @@ void readGPIO( void ) {
 }
 
 void setRailsAndDACs( int saveEEPROM ) {
+
+    // Serial.println("setRailsAndDACs");
+    // Serial.flush();
     setTopRail( jumperlessConfig.dacs.top_rail, 1, 0 );
     // delay(10);
     setBotRail( jumperlessConfig.dacs.bottom_rail, 1, 0 );

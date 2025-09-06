@@ -16,6 +16,7 @@
 #include "Probing.h"
 //#include "SerialWrapper.h"
 #include "Highlighting.h"
+#include "Tui.h"
 
 ///#define Serial SerialWrap
 // Define a struct that holds both the long and short strings as well as the defined value
@@ -1569,12 +1570,51 @@ void listSpecialNets() {
       Serial.print("\t");
       }
 
+    // Serial.print("{");
 
+    // tabs = 0;
+    // for (int j = 0; j < MAX_BRIDGES; j++)
+    // {
+
+    //     tabs += printNodeOrName(net[i].bridges[j][0]);
+    //     tabs += Serial.print("-");
+    //     tabs += printNodeOrName(net[i].bridges[j][1]);
+    //     // Serial.print(",");
+
+    //     if (net[i].bridges[j + 1][0] == 0)
+    //     {
+    //         break;
+    //     }
+    //     else
+    //     {
+
+    //         tabs += Serial.print(",");
+    //     }
+    // }
+    // tabs += Serial.print("}\t");
 
     for (int i = 0; i < 3 - (tabs / 8); i++) {
       Serial.print("\t");
       }
+    /*
+            Serial.print(net[i].colorName);
+    Serial.print("\t\t");
 
+            for (int j = 0; j < MAX_DNI; j++)
+            {
+
+                tabs += printNodeOrName(net[i].doNotIntersectNodes[j]);
+
+                if (net[i].doNotIntersectNodes[j + 1] == 0 || i == 0)
+                {
+                    break;
+                }
+                else
+                {
+
+                    tabs += Serial.print(",");
+                }
+            }*/
     }
   Serial.print("\n\r");
   }

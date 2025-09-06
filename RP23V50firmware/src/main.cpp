@@ -11,6 +11,7 @@ KevinC@ppucc.io
 */
 
 #include "hardware/pio.h"
+#include "pico.h"
 #define PICO_RP2350A 0
 // #include <pico/stdlib.h>
 #include <Arduino.h>
@@ -56,7 +57,17 @@ KevinC@ppucc.io
 #include <hardware/adc.h>
 #include "AsyncPassthrough.h"
 #include "user_functions.h"
+#include "CoreBusyFlags.h"
+#include "TuiGlue.h"
+
+#include "WaveGen.h"  // New async wavegen
+
+
 bread b;
+
+// Global async waveform generator
+WaveGen wavegen;
+
 
 int supplySwitchPosition = 0;
 volatile bool core1busy = false;
@@ -69,7 +80,7 @@ void printDirectoryContents( const char* dirname, int level );
 
 void core2stuff( void );
 
-volatile uint8_t pauseCore2 = 0;
+//volatile uint8_t pauseCore2 = 0;
 
 volatile int loadingFile = 0;
 
@@ -84,13 +95,17 @@ volatile bool configLoaded = false;
 
 volatile int startupAnimationFinished = 0;
 
-unsigned long startupTimers[ 10 ];
+
+unsigned long startupTimers[ 12 ];
+
 
 volatile int dumpLED = 0;
 unsigned long dumpLEDTimer = 0;
 unsigned long dumpLEDrate = 50;
 
-const char firmwareVersion[] = "5.3.1.4"; //! remember to update this
+
+const char firmwareVersion[] = "5.3.2.4"; //! remember to update this
+
 bool newConfigOptions = false;            //! set to true with new config options //!
                                           
 
@@ -144,26 +159,34 @@ void setup( ) {
     Serial.begin( 115200 );
 
     initDAC( );
+
+
     pinMode( PROBE_PIN, OUTPUT_8MA );
     pinMode( BUTTON_PIN, INPUT_PULLDOWN );
     // pinMode(buttonPin, INPUT_PULLDOWN);
     digitalWrite( PROBE_PIN, HIGH );
 
-    routableBufferPower( 1, 1 );
+    
     // digitalWrite(BUTTON_PIN, HIGH);
-
     startupTimers[ 2 ] = millis( );
+
     initINA219( );
 
-    startupTimers[ 3 ] = millis( );
+   
 
     delayMicroseconds( 100 );
 
-    digitalWrite( RESETPIN, LOW );
 
+    digitalWrite( RESETPIN, LOW );
+    
     while ( core2initFinished == 0 ) {
+        tight_loop_contents();
         // delayMicroseconds(1);
     }
+    startupTimers[ 3 ] = millis( );
+   
+    routableBufferPower( 1, 0 );
+    startupTimers[ 4 ] = millis( );
 
     if (jumperlessConfig.serial_1.async_passthrough == true) {
         AsyncPassthrough::begin(115200);
@@ -171,7 +194,7 @@ void setup( ) {
 
     drawAnimatedImage( 0 );
     startupAnimationFinished = 1;
-    startupTimers[ 4 ] = millis( );
+    
     clearAllNTCC( );
 
     startupTimers[ 5 ] = millis( );
@@ -197,6 +220,11 @@ void setup( ) {
     startupTimers[ 9 ] = millis( );
 
     //  setupLogicAnalyzer();
+
+
+
+    TuiGlue::openOnDemand();
+
 }
 
 unsigned long startupCore2timers[ 10 ];
@@ -213,17 +241,22 @@ void setupCore2stuff( ) {
     }
 
     initLEDs( );
+   
     startupCore2timers[ 2 ] = millis( );
     initRowAnimations( );
     startupCore2timers[ 3 ] = millis( );
     setupSwirlColors( );
     startupCore2timers[ 4 ] = millis( );
 
+   
+
     startupCore2timers[ 5 ] = millis( );
     initRotaryEncoder( );
     startupCore2timers[ 6 ] = millis( );
     initSecondSerial( );
+    core2initFinished = 1;
     // delay(4);
+
 }
 
 void setup1( ) {
@@ -231,7 +264,7 @@ void setup1( ) {
 
     setupCore2stuff( );
 
-    core2initFinished = 1;
+    
 
     while ( startupAnimationFinished == 0 ) {
         // delayMicroseconds(1);
@@ -293,8 +326,12 @@ unsigned long core1Timeout = millis( );
 #define SETUP_LOGIC_ANALYZER_ON_BOOT 0
 
 
+#define debug_startup_timers 0
+#define debug_busy_timers 0
 
-
+unsigned long busyPrintTime = 0;
+unsigned long busyPrintInterval = 3000;
+unsigned long busyTimers[ 10 ] = { 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 };
 
 
 void loop( ) {
@@ -462,7 +499,30 @@ menu:
         Serial.println( );
 
         Serial.flush( );
+
+#if debug_startup_timers == 1
+    for (int i = 1; i < 12; i++) {
+        Serial.print("startupTimer[");
+        Serial.print(i - 1);
+        Serial.print(" - ");
+        Serial.print(i);
+        Serial.print("] = ");
+        Serial.println(startupTimers[ i ] - startupTimers[ i - 1 ]);
+        Serial.flush( );
     }
+
+    for (int i = 1; i < 12; i++) {
+        Serial.print("startupCore2Timer[");
+        Serial.print(i - 1);
+        Serial.print(" - ");
+        Serial.print(i);
+        Serial.print("] = ");
+        Serial.println(startupCore2timers[ i ] - startupCore2timers[ i - 1 ]);
+        Serial.flush( );
+    }
+#endif
+}
+
     if ( configChanged == true && millis( ) > 2000 ) {
         // Serial.print("config changed, saving...");
         saveConfig( );
@@ -479,8 +539,11 @@ dontshowmenu:
     firstConnection = -1;
     core1passthrough = 1;
 
-
-
+#if debug_busy_timers == 1
+Serial.println("Starting main loop: " + String(millis( )) + " ms");
+Serial.flush();
+#endif
+busyPrintTime = millis( );
     //! This is the main busy wait loop waiting for input
     while ( Serial.available( ) == 0 && connectFromArduino == '\0' &&
             slotChanged == 0 ) {
@@ -489,14 +552,46 @@ dontshowmenu:
 
         if ( logicAnalyzer.is_running( ) == true || logicAnalyzer.is_armed( ) == true ) {
             // julseview.check_heartbeat_watchdog();
+
             delay( 100 );
 
 
             continue;
         }
 
+        busyTimers[ 0 ] = micros( );
 
-        // watchdog core loop should be called here
+        TuiGlue::loop();
+        busyTimers[ 1 ] = micros( );
+
+// int lastProbeButtonResult = 0; //checking that the probe button is working
+//         while (1){
+//             int probeButtonResult = checkProbeButton();
+
+//             if (probeButtonResult != lastProbeButtonResult) {
+//                 Serial.println(" ");
+//                 Serial.flush();
+            
+//             lastProbeButtonResult = probeButtonResult;
+//             }
+
+//             if (probeButtonResult == 1) {
+//                 Serial.print("1");
+//                 Serial.flush();
+//                // break;
+//             }
+//             if (probeButtonResult == 2) {
+//                 Serial.print("2");
+//                 Serial.flush();
+//                 //break;
+//             }
+
+        
+//            // delay(1);
+//         }
+            
+
+
 
         int encoderNetHighlighted = encoderNetHighlight( );
 
@@ -512,16 +607,22 @@ dontshowmenu:
         
         checkPads( );
         tud_task( );
-        
+
+        busyTimers[ 2 ] = micros( );
+
         if ( clickMenu( ) >= 0 ) {
             core1passthrough = 0;
             goto loadfile;
         }
 
+        busyTimers[ 3 ] = micros( );
+
 
         int probeReading = justReadProbe( true );
 
         checkForReadingChanges( );
+
+        busyTimers[ 4 ] = micros( );
 
         warnNetTimeout( 1 );
         if ( probeReading > 0 ) {
@@ -530,6 +631,9 @@ dontshowmenu:
                 firstConnection = probeReading;
             }
         }
+
+        busyTimers[ 5 ] = micros( );
+
 
         if ( brightenedNet > 0 ) {
             int probeToggleResult = probeToggle( );
@@ -566,6 +670,7 @@ dontshowmenu:
                     }
                 }
 
+
                 blockProbeButton = 800;
                 blockProbeButtonTimer = millis( );
             } else if ( probeToggleResult == -3 ) {
@@ -574,6 +679,7 @@ dontshowmenu:
 
             } else if ( probeToggleResult == -2 ) {
                 blockProbeButton = 800;
+
                 blockProbeButtonTimer = millis( );
 
             } else if ( probeToggleResult == -4 ) {
@@ -587,12 +693,17 @@ dontshowmenu:
                 // clearHighlighting();
 
                 firstConnection = -1;
-                blockProbeButton = 500;
+
+                blockProbeButton = 800;
+
                 blockProbeButtonTimer = millis( );
             }
         } else {
             firstConnection = -1;
         }
+
+        busyTimers[ 6 ] = micros( );
+
 
         if ( ( millis( ) - waitTimer ) > 12 ) {
             waitTimer = millis( );
@@ -637,8 +748,13 @@ dontshowmenu:
 
             }
         } else {
+
+            
             checkSwitchPosition( ); 
+           
         }
+        busyTimers[ 7 ] = micros( );
+
 
         if ( lastHighlightedNet != highlightedNet ) {
 
@@ -657,14 +773,40 @@ dontshowmenu:
             showMeasurements( 16, 0, 0 );
         }
 
+        busyTimers[ 8 ] = micros( );
         if ( mscModeEnabled == true ) {
             usbPeriodic();
+            //busyTimers[ 9 ] = millis( );
         }
 
         oled.oledPeriodic();
+        busyTimers[ 9 ] = micros( );
+#if debug_busy_timers == 1
+        if ( millis( ) - busyPrintTime > busyPrintInterval ) {
+            busyPrintTime = millis( );
+        for (int i = 1; i < 10; i++) {
+            Serial.print("busyTimer ");
+            Serial.print(i);
+            Serial.print(": ");
+            Serial.print(busyTimers[ i ] - busyTimers[ i - 1 ]);
+            Serial.println(" us");
+    
 
+        }
+        Serial.print("total: ");
+        Serial.print(busyTimers[ 9 ] - busyTimers[ 0 ]);
+        Serial.print(" us\t\ttotal system time: ");
+        Serial.print(millis( ));
+        Serial.println(" ms");
+        Serial.println("\n\r");
+        Serial.flush();
+        //delay(100);
+        }
+#endif
         
     }
+
+
 
     input = Serial.read( );
 
@@ -823,6 +965,127 @@ skipinput:
     }
 
     case 'G': { //! G - Load config.txt changes
+
+
+//pauseCore2 = true;
+
+   
+float wavegen_frequency = 1000.0f;
+            
+            // Initialize async wavegen
+            if (!wavegen.begin()) {
+                Serial.println("Failed to initialize wavegen");
+                Serial.flush();
+            } else {
+                Serial.println("wavegen initialized successfully");
+                Serial.print("Fallback mode: ");
+                Serial.println(wavegen.isFallbackMode() ? "ON" : "OFF");
+                
+                // Keep synchronous mode (no Wire.writeAsync)
+                wavegen.setFallbackMode(true);
+                Serial.println("Staying in synchronous fallback mode (no writeAsync)");
+                Serial.flush();
+                
+                // Configure wavegen for ±8V range
+                wavegen.setChannel(WAVEGEN_DAC1);
+                wavegen.setWaveform(WAVEGEN_SINE);
+                float actual_freq = wavegen.setFrequencyAdjusted(wavegen_frequency);
+                wavegen.setAmplitude(4.0f);  // 4V amplitude for ±4V swing
+                wavegen.setOffset(0.0f);     // 0V offset (centered)
+                
+                Serial.print("Initial frequency: ");
+                Serial.print(wavegen_frequency);
+                Serial.print(" Hz -> ");
+                Serial.print(actual_freq);
+                Serial.print(" Hz (");
+                Serial.print(wavegen.getTableSize());
+                Serial.print(" pts, ");
+                Serial.print(wavegen.getBufferSize());
+                Serial.print(" bytes, ");
+                Serial.print(wavegen.getBufferCycles());
+                Serial.println(" cycles)");
+                
+                Serial.print("Waveform: ±");
+                Serial.print(4.0f);
+                Serial.println("V sine wave");
+                Serial.flush();
+                
+                // Start wavegen
+                Serial.println("About to call wavegen.start()");
+                Serial.flush();
+                
+                // Add some debug info before the call
+                Serial.println("Debug: About to enter wavegen.start()");
+                Serial.flush();
+                
+                if (wavegen.start()) {
+                    Serial.println("wavegen started successfully");
+                    Serial.flush();
+                    
+                    // Service the wavegen immediately to start async transfers
+                    Serial.println("About to call wavegen.service()");
+                    Serial.flush();
+                   
+                    Serial.println("Initial wavegen service completed");
+                    Serial.flush();
+                    
+                    while (Serial.available() == 0) {
+                        // Service wavegen frequently while waiting for keypress
+                        rotaryEncoderStuff();
+                        
+                        if (encoderDirectionState == UP) {
+                            wavegen_frequency *= 1.1f;
+                            float actual_freq = wavegen.setFrequencyAdjusted(wavegen_frequency);
+                            Serial.print("Set: ");
+                            Serial.print(wavegen_frequency);
+                            Serial.print(" Hz, Actual: ");
+                            Serial.print(actual_freq);
+                            Serial.print(" Hz, Table: ");
+                            Serial.print(wavegen.getTableSize());
+                            Serial.print(" pts, Buffer: ");
+                            Serial.print(wavegen.getBufferSize());
+                            Serial.print(" bytes");
+                            Serial.println();
+                            Serial.flush();
+                        } else if (encoderDirectionState == DOWN) {
+                            wavegen_frequency *= 0.9f;
+                            float actual_freq = wavegen.setFrequencyAdjusted(wavegen_frequency);
+                            Serial.print("Set: ");
+                            Serial.print(wavegen_frequency);
+                            Serial.print(" Hz, Actual: ");
+                            Serial.print(actual_freq);
+                            Serial.print(" Hz, Table: ");
+                            Serial.print(wavegen.getTableSize());
+                            Serial.print(" pts, Buffer: ");
+                            Serial.print(wavegen.getBufferSize());
+                            Serial.print(" bytes");
+                            Serial.println();
+                            Serial.flush();
+                        }
+                        
+                        // Service the async wavegen
+                      //  wavegen.service();
+                        
+                        if (encoderButtonState == HELD) {
+                            wavegen.stop();
+                            Serial.print("Final stats - Success: ");
+                            Serial.print(wavegen.getSuccessfulWrites());
+                            Serial.print(", Failed: ");
+                            Serial.println(wavegen.getFailedWrites());
+                            break;
+                        }
+                    }
+                    
+                    wavegen.stop();
+                    Serial.println("wavegen stopped");
+                } else {
+                    Serial.println("Failed to start wavegen");
+                }
+                Serial.flush();
+            }
+            
+       // pauseCore2 = false;
+
         Serial.println( "Reloading config.txt..." );
         configChanged = true;
 
@@ -1653,7 +1916,9 @@ skipinput:
     }
     case '}': {
         
-        blockProbeButton = 300;
+
+        blockProbeButton = 500;
+
         blockProbeButtonTimer = millis( );
         probeMode( 1, firstConnection );
         
@@ -1667,7 +1932,9 @@ skipinput:
     }
     case '{': {
         
-        blockProbeButton = 300;
+
+        blockProbeButton = 500;
+
         blockProbeButtonTimer = millis( );
         int probeReturn = probeMode( 0, firstConnection );
 
@@ -1926,6 +2193,19 @@ void loop1( ) {
     uint32_t current_time = millis( );
 
     // ENHANCED STATE-BASED HANDLER CALLING
+
+    // Priority order:
+    // 1) High: path/LED refresh triggered by core1 (handled in core2stuff)
+    // 2) Medium: wavegen_service (function generator streaming)
+    // 3) Medium-low: rotary encoder
+    // 4) Low: logo swirls/animations
+
+    // Medium: service wavegen on core2 if running
+    // if (wavegen_is_running()) {
+    //     wavegen_service();
+    // }
+
+
     // Use the new state variables to make smarter decisions about when to call the handler
     bool should_call_handler = false;
 
@@ -1935,6 +2215,8 @@ void loop1( ) {
         logicAnalyzer.handler( );
     }
 
+
+    wavegen.service();
 
 
     if ( doomOn == 1 ) {
@@ -1995,8 +2277,10 @@ void core2stuff( ) // core 2 handles the LEDs and the CH446Q8
 
    
     if ( micros( ) - schedulerTimer > schedulerUpdateTime || showLEDsCore2 == 3 ||
+
          showLEDsCore2 == 4 ||
          showLEDsCore2 == 6 && core1busy == false && core1request == 0 ) {
+
 
         if ( ( ( ( showLEDsCore2 >= 1 && loadingFile == 0 ) || showLEDsCore2 == 3 ||
                  ( swirled == 1 ) && sendAllPathsCore2 == 0 ) ||
@@ -2109,8 +2393,10 @@ void core2stuff( ) // core 2 handles the LEDs and the CH446Q8
                 countsss++;
             }
 
-            if ( showLEDsCore2 == 0 ) {
-                swirled = 1;
+
+            if ( showLEDsCore2 == 0 && !wavegen.isRunning() ) {
+                swirled = 1; // only swirl when wavegen not streaming
+
             }
 
             // leds.show();
