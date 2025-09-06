@@ -113,7 +113,7 @@ void refreshConnections(int ledShowOption, int fillUnused, int clean) {
   //assignNetColors();
   
   // Restore GPIO configurations from jumperlessConfig after net processing
-  setGPIO();
+  //setGPIO();
 #ifdef DEBUG_REFRESH
   Serial.print("refreshConnections setGPIO = ");
   Serial.println(millis() - start);

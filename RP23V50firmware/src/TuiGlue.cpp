@@ -14,7 +14,7 @@
 
 using namespace TuiGlue;
 
-Stream* TuiGlue::TUIserial = &USBSer3;
+Stream* TuiGlue::TUIserial = &Ser3;
 extern int netSlot;
 
 namespace TUI {
@@ -300,6 +300,7 @@ namespace TUI {
     }
   }
 
+
   void popupPrint(const String& s) {
     uint16_t start = 0;
     while (start < s.length()) {
@@ -471,17 +472,21 @@ static void cbFlashArduino()  {
 }
 
 static void cbToggleOLED() {
+
   if (oled.isConnected() == false) {
     oled.init();
     TUI::log("OLED " + String(TUI::oledEnabled ? "ON" : "OFF"));
+
   } else {
     oled.disconnect();
   }
 
   delay(100);
 
+
   oled.clearPrintShow("OLED " + String(TUI::oledEnabled ? "ON" : "OFF"),
                       1, true, true, true, -1, -1, 1500);
+
 
   TUI::setOledEnabled(!TUI::oledEnabled);
   TUI::setStatus(TUI::oledEnabled ? "OLED ON" : "OLED OFF");
@@ -491,6 +496,7 @@ static void cbAbout()  {
   TUI::setStatus("About");
   TUI::log("Jumperless RP2350B – DOS-style TUI (demo)");
 }
+
 
 static void cbResizeToTerminal() {
   uint16_t r=0,c=0;
@@ -503,10 +509,12 @@ static void cbResizeToTerminal() {
   }
 }
 
+
 static void cbMenuNarrower(){
   TUI::L.leftFracWide = max(0.10f, TUI::L.leftFracWide - 0.02f);
   TUI::resizeTo(TUI::S.rows, TUI::S.cols);
   TUI::fullRedraw();
+
 }
 
 static void cbMenuWider()   {
@@ -731,6 +739,7 @@ void TuiGlue::loop() {
   if (!s_active)     activate();
   if (!s_active)     return;
 
+
   checkUSBconnection();
 
   if (TuiGlue::TUIserial->available())
@@ -752,14 +761,17 @@ void TuiGlue::loop() {
   } else {
     // Normal input path
     while ((TuiGlue::TUIserial->available() || TUI::inEscapeSeq()) && spins < 2) {
+
       (void)TUI::handleInput();
       spins++;
       if ((spins & 0x07) == 0) delayMicroseconds(250);
     }
 
+
     // Deferred probe to avoid the "press Enter to draw" issue
     if (s_needDeferredRedraw && (int32_t)(millis() - s_nextRetryAtMs) >= 0) {
       bool done = false;
+
       uint16_t rr=0, cc=0;
 
       if (TUI::probeTerminalSize(rr, cc) && rr>0 && cc>0) {
@@ -783,7 +795,9 @@ void TuiGlue::loop() {
       }
     }
 
+
     if (TUI::S.logDirty) TUI::drawLog();
+
   }
 
   

@@ -2,9 +2,13 @@
 #include <Arduino.h>
 #include "ArduinoStuff.h"
 
+
+
 namespace TUI {
 
-Stream *TUIserial = &USBSer3;
+Stream *TUIserial = &Ser3;
+
+
 
 // === Debug/timing mode =============================================
 #ifndef TUI_DEBUG_MODE
@@ -32,6 +36,7 @@ inline void setDebugMode(uint8_t m) { dbgMode() = m; }
 inline uint8_t getDebugMode()       { return dbgMode(); }
 
 // ---------- ANSI helpers ----------
+
 inline void W(const char* s)  { TUIserial->print(s); }
 inline void W(char c)         { TUIserial->write(c); }
 inline void P(const String& s){ TUIserial->print(s); }
@@ -45,6 +50,7 @@ inline void invOn()      { W("\x1b[7m"); }
 inline void invOff()     { W("\x1b[27m"); }
 inline void boldOn()     { W("\x1b[1m"); }
 inline void boldOff()    { W("\x1b[22m"); }
+
 
 inline void at(uint8_t row, uint8_t col) {
   char buf[16];
@@ -124,6 +130,7 @@ inline void boxColored(uint8_t r1, uint8_t c1, uint8_t r2, uint8_t c2, uint8_t c
   }
 
   at(r1, c1); TUIserial->print(TL);
+
   for (uint8_t c = c1 + 1; c < c2; ++c) 
     TUIserial->print(H);
 
@@ -142,6 +149,7 @@ inline void boxColored(uint8_t r1, uint8_t c1, uint8_t r2, uint8_t c2, uint8_t c
   
     TUIserial->print(BR);
 
+
   rs();
 }
 
@@ -156,6 +164,7 @@ inline uint8_t         oledRows      = 2;
 inline uint8_t         oledMaxChars  = 21;
 
 inline bool haveOled() { return true; }
+
 
 inline void setOledCallbacks(OledClearFn clr, OledPrintLineFn printLine,
                              uint8_t rows=2, uint8_t maxChars=21) {
@@ -246,12 +255,16 @@ inline bool readCPR(uint16_t& row, uint16_t& col, uint32_t timeout_ms=800) {
 }
 
 inline bool probeTerminalSize(uint16_t& rows, uint16_t& cols) {
+
   while (TUIserial->available()) TUIserial->read();
+
   TUIserial->print("\x1b[s");
   TUIserial->print("\x1b[9999;9999H");
   TUIserial->print("\x1b[6n");
   TUIserial->flush();
+
   bool ok = readCPR(rows, cols, 400);
+
   TUIserial->print("\x1b[u");
   TUIserial->flush();
   return ok;
@@ -401,7 +414,9 @@ inline void drawHeader() {
     at(S.headerRow, 1);      W("╭");
     at(S.headerRow, S.cols); W("╮");
   }
+
   at(S.headerRow,3); boldOn(); P(S.appTitle); boldOff(); invOff(); rs();
+
   TUIserial->flush();
 }
 
@@ -420,6 +435,7 @@ inline void drawStatus() {
     if (oledRows >= 1) oledPrintLine(0, trimForOled(S.appTitle).c_str());
     if (oledRows >= 2) oledPrintLine(1, trimForOled(S.status).c_str());
   }
+
   TUIserial->flush();
 }
 
@@ -635,6 +651,29 @@ inline bool hotkeySelect(char ch){
   return true;
 }
 
+
+// inline void drawLog() {
+//   for (uint8_t r=S.logTop+1; r<=S.logBottom-1; ++r) {
+//     at(r, S.logLeft+1);
+//     for (uint8_t c=S.logLeft+1; c<=S.logRight-1; ++c) W(' ');
+//   }
+//   uint8_t vis = (S.logBottom-1) - (S.logTop+1) + 1;
+//   int32_t start = (int32_t)logCount - vis;
+//   if (start < 0) start = 0;
+
+//   for (uint8_t i=0; i<vis; ++i) {
+//     int32_t idx = start + i;
+//     if (idx >= (int32_t)logCount) break;
+//     uint16_t ringIdx = (logHead + LOG_CAP - (logCount - idx)) % LOG_CAP;
+//     at(S.logTop+1+i, S.logLeft+2);
+//     const String& s = logBuf[ringIdx];
+//     uint8_t maxw = (S.logRight-2) - (S.logLeft+2) + 1;
+//     P((s.length() <= maxw) ? s : (s.substring(0, maxw-1) + "…"));
+//   }
+//   S.logDirty = false;
+//   TUIserial->flush();
+// }
+//I wasn't sure if you need this so I'm just commenting it out for the merge
 
 // ---------- Modal input ----------
 inline void drawInputModal() {

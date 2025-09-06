@@ -32,7 +32,7 @@ Adafruit_USBD_CDC USBSer2;
 // #endif
 
 // #if USB_CDC_ENABLE_COUNT >= 4
-Adafruit_USBD_CDC USBSer3;
+Adafruit_USBD_CDC Ser3;
 // #endif
 
 // #if USB_CDC_ENABLE_COUNT >= 5
@@ -198,9 +198,11 @@ void initSecondSerial( void ) {
 
 #if USB_CDC_ENABLE_COUNT >= 4
     // USBSer3 maps to CDC interface 3 (Debug Serial)
-    USBSer3.begin( 115200 );
+
+    Ser3.begin( 115200 );
     delay(3000);
-    USBSer3.println("Serial3 initialized");
+    Ser3.println("Serial3 initialized");
+
     // Serial.println("  USBSer3 (Debug) initialized");
 #endif
 
@@ -455,12 +457,14 @@ bool checkForDTRpulse( void ) {
         arduinoDTR[ 1 ] = arduinoDTR[ 2 ];
         arduinoDTR[ 2 ] = USBSer1.dtr( );
 
-        if ( arduinoDTR[ 0 ] == 0 && arduinoDTR[ 1 ] == 1 && arduinoDTR[ 2 ] == 0 ) { // detect pulses going either direction (some things invert the DTR line)
+        //!to make this work with Windows, we just check for any change in DTR, macOS and Linux send a full off-on-off pulse
+
+        if (/* arduinoDTR[ 0 ] == 0 && */arduinoDTR[ 1 ] == 1 && arduinoDTR[ 2 ] == 0 ) { // detect pulses going either direction (some things invert the DTR line)
             arduinoDTR[ 0 ] = arduinoDTR[ 1 ];
             arduinoDTR[ 1 ] = arduinoDTR[ 2 ];
             arduinoDTR[ 2 ] = USBSer1.dtr( );
             arduinoDTRpulse = true;
-        } else if ( arduinoDTR[ 0 ] == 1 && arduinoDTR[ 1 ] == 0 && arduinoDTR[ 2 ] == 1 ) {
+        } else if ( /*arduinoDTR[ 0 ] == 1 && */arduinoDTR[ 1 ] == 0 && arduinoDTR[ 2 ] == 1 ) {
             arduinoDTR[ 0 ] = arduinoDTR[ 1 ];
             arduinoDTR[ 1 ] = arduinoDTR[ 2 ];
             arduinoDTR[ 2 ] = USBSer1.dtr( );

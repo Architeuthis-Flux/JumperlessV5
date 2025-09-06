@@ -310,7 +310,7 @@ void updateConfigFromFile(const char* filename) {
     bool foundConfigVersion = false;
     char configFirmwareVersion[16] = {0};
     bool needsReset = false;
-    delay(1000);
+    delay(100);//!son of a bitch
     while (file.available()) {
         int bytesRead = file.readBytesUntil('\n', line, sizeof(line)-1);
         line[bytesRead] = '\0';

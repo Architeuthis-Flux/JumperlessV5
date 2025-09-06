@@ -21,8 +21,10 @@
 #include "SafeString.h"
 
 #include "LogicAnalyzer.h"
+#include "WaveGen.h"
 
 extern LogicAnalyzer logicAnalyzer; // defined in main.cpp
+extern WaveGen wavegen; // defined in main.cpp
 
 // External declarations
 extern SafeString nodeFileString;
@@ -46,6 +48,24 @@ int justReadProbe(bool allowDuplicates);
 // C-compatible wrapper functions for MicroPython
 extern "C" {
 #include "py/mpthread.h"
+// WaveGen C wrappers (C linkage)
+void jl_wavegen_set_output(int channel);
+void jl_wavegen_set_freq(float hz);
+void jl_wavegen_set_wave(int wave);
+void jl_wavegen_set_amplitude(float vpp);
+void jl_wavegen_set_offset(float v);
+void jl_wavegen_set_sweep(float start_hz, float end_hz, float seconds);
+void jl_wavegen_start(int start);
+void jl_wavegen_stop(void);
+
+// WaveGen getters
+int jl_wavegen_get_output(void);
+float jl_wavegen_get_freq(void);
+int jl_wavegen_get_wave(void);
+float jl_wavegen_get_amplitude(void);
+float jl_wavegen_get_offset(void);
+int jl_wavegen_is_running(void);
+void jl_wavegen_get_sweep(float *start_hz, float *end_hz, float *seconds);
 
 
 
@@ -66,6 +86,122 @@ void jl_cycle_term_color(bool reset, float step, bool flush) {
 
 void jl_print_terminal_colors(void) {
     printSpectrumOrderedColorCube();
+}
+// WaveGen implementation
+static float s_wg_sweep_start_hz = 0.0f;
+static float s_wg_sweep_end_hz = 0.0f;
+static float s_wg_sweep_time_s = 0.0f;
+static bool s_wg_user_set_output = false;
+static bool s_wg_user_set_freq = false;
+static bool s_wg_user_set_wave = false;
+static bool s_wg_user_set_amp = false;
+static bool s_wg_user_set_offset = false;
+void jl_wavegen_set_output(int channel) {
+    // Map 0..3 to WAVEGEN_DAC0..3; also accept rails via same mapping the module uses
+    if (channel < 0) channel = 0;
+    if (channel > 3) channel = 3;
+    wavegen.setChannel((waveGen_channel_t)channel);
+    s_wg_user_set_output = true;
+}
+
+void jl_wavegen_set_freq(float hz) {
+    if (hz <= 0.0f) hz = 0.0001f;
+    wavegen.setFrequency(hz);
+    s_wg_user_set_freq = true;
+}
+
+void jl_wavegen_set_wave(int wave) {
+    if (wave < 0) wave = 0;
+    if (wave > 3) wave = 3;
+    wavegen.setWaveform((waveGen_waveform_t)wave);
+    s_wg_user_set_wave = true;
+}
+
+void jl_wavegen_set_amplitude(float vpp) {
+    // Public API specifies Vpp. Internally we use amplitude as peak value.
+    // So convert Vpp to peak amplitude: A = Vpp / 2
+    if (vpp < 0.0f) vpp = 0.0f;
+    float peak = vpp * 0.5f;
+    wavegen.setAmplitude(peak);
+    s_wg_user_set_amp = true;
+}
+
+void jl_wavegen_set_offset(float v) {
+    wavegen.setOffset(v);
+    s_wg_user_set_offset = true;
+}
+
+void jl_wavegen_set_sweep(float start_hz, float end_hz, float seconds) {
+    if (start_hz <= 0.0f) start_hz = 0.0001f;
+    if (end_hz <= 0.0f) end_hz = 0.0001f;
+    if (seconds < 0.0f) seconds = 0.0f;
+    s_wg_sweep_start_hz = start_hz;
+    s_wg_sweep_end_hz = end_hz;
+    s_wg_sweep_time_s = seconds;
+}
+
+void jl_wavegen_start(int start) {
+    if (start) {
+        // Ensure initialized and safe mode
+        wavegen.begin();
+        wavegen.setFallbackMode(true);
+        // Apply defaults if user didn't set anything yet
+        if (!s_wg_user_set_output) {
+            jl_wavegen_set_output(1); // default DAC1
+        }
+        if (!s_wg_user_set_freq) {
+            jl_wavegen_set_freq(100.0f); // default 100 Hz
+        }
+        if (!s_wg_user_set_wave) {
+            jl_wavegen_set_wave(0); // SINE
+        }
+        if (!s_wg_user_set_amp) {
+            jl_wavegen_set_amplitude(3.3f); // Vpp
+        }
+        if (!s_wg_user_set_offset) {
+            jl_wavegen_set_offset(1.65f); // center 0-3.3V
+        }
+        wavegen.start();
+    } else {
+        if (wavegen.isRunning()) {
+            wavegen.stop();
+        }
+    }
+}
+
+void jl_wavegen_stop(void) {
+    wavegen.stop();
+}
+
+int jl_wavegen_get_output(void) {
+    return (int)wavegen.getChannel();
+}
+
+float jl_wavegen_get_freq(void) {
+    return wavegen.getFrequency();
+}
+
+int jl_wavegen_get_wave(void) {
+    return (int)wavegen.getWaveform();
+}
+
+float jl_wavegen_get_amplitude(void) {
+    // Convert from internal peak to Vpp for external callers
+    return wavegen.getAmplitude() * 2.0f;
+}
+
+float jl_wavegen_get_offset(void) {
+    return wavegen.getOffset();
+}
+
+int jl_wavegen_is_running(void) {
+    return wavegen.isRunning() ? 1 : 0;
+}
+
+void jl_wavegen_get_sweep(float *start_hz, float *end_hz, float *seconds) {
+    if (start_hz) *start_hz = s_wg_sweep_start_hz;
+    if (end_hz) *end_hz = s_wg_sweep_end_hz;
+    if (seconds) *seconds = s_wg_sweep_time_s;
 }
 
 
@@ -147,6 +283,8 @@ float jl_ina_get_power(int sensor) {
 void jl_gpio_set(int pin, int value) {
     if (pin >= 1 && pin <= 10) {
         digitalWrite(gpioDef[pin - 1][0], value);
+    } else if (pin >= 20 && pin <= 27) {
+        digitalWrite(pin, value);
     }
 }
 
@@ -167,6 +305,9 @@ int jl_gpio_get(int pin) {
         // Serial.print("gpioReadWithFloating = ");
         // Serial.println(reading);
         return reading;
+    
+    } else if (pin >= 20 && pin <= 27) {
+        return gpio_get(pin);
     }
     return 0;
 }
@@ -175,6 +316,9 @@ int jl_gpio_set_direction(int pin, int direction) {
     if (pin >= 1 && pin <= 10) {
         jumperlessConfig.gpio.direction[pin - 1] = direction;
         pinMode(gpioDef[pin - 1][0], direction ? OUTPUT : INPUT);
+    } else if (pin >= 20 && pin <= 27) {
+        jumperlessConfig.gpio.direction[pin - 20] = direction;
+        pinMode(pin, direction ? OUTPUT : INPUT);
     }
     return 1;
 }
@@ -182,6 +326,8 @@ int jl_gpio_set_direction(int pin, int direction) {
 int jl_gpio_get_dir(int pin) {
     if (pin >= 1 && pin <= 10) {
         return gpio_get_dir(gpioDef[pin - 1][0]);
+    } else if (pin >= 20 && pin <= 27) {
+        return gpio_get_dir(pin);
     }
     return 0;
 }
@@ -189,13 +335,30 @@ int jl_gpio_get_dir(int pin) {
 void jl_gpio_set_dir(int pin, int direction) {
     if (pin >= 1 && pin <= 10) {
         gpio_set_dir(gpioDef[pin - 1][0], direction);
-    }
+        jumperlessConfig.gpio.direction[pin - 1] = direction;
+    } else if (pin >= 20 && pin <= 27) {
+        gpio_set_dir(pin, direction);
+        jumperlessConfig.gpio.direction[pin - 20] = direction;
+    } 
+
 }
 
 int jl_gpio_get_pull(int pin) {
     
     if (pin >= 1 && pin <= 10) {
         pin = gpioDef[pin - 1][0];
+        bool pull_up = gpio_is_pulled_up(pin);
+        bool pull_down = gpio_is_pulled_down(pin);
+        if (pull_up && pull_down) {
+            return 2; // bus keeper
+        } else if (pull_up) {
+            return 1; // pullup
+        } else if (pull_down) {
+            return -1; // pulldown
+        } else {
+            return 0; // no pull
+        }
+    } else if (pin >= 20 && pin <= 27) {
         bool pull_up = gpio_is_pulled_up(pin);
         bool pull_down = gpio_is_pulled_down(pin);
         if (pull_up && pull_down) {
@@ -218,24 +381,36 @@ void jl_gpio_set_pull(int pin, int pull) {
     
     bool pull_up = false;
     bool pull_down = false;
+
+    int config_pull = 0;
     if (pull == 0) {
         pull_up = false;
         pull_down = false;
+        config_pull = 2; // no pull
     } else if (pull == 1) {
         pull_up = true;
         pull_down = false;
+        config_pull = 1; // pullup
     } else if (pull == -1) {
         pull_up = false;
         pull_down = true;
+        config_pull = 0; // pulldown
     } else if (pull == 2) {
         pull_up = true;
         pull_down = true; // bus keeper mode
+        config_pull = 3; // bus keeper
     }
 
 
     if (pin >= 1 && pin <= 10) {
         pin = gpioDef[pin - 1][0];
+        
         gpio_set_pulls(pin, pull_up, pull_down);
+        
+        jumperlessConfig.gpio.pulls[pin - 1] = config_pull;
+    } else if (pin >= 20 && pin <= 27) {
+        gpio_set_pulls(pin, pull_up, pull_down);
+        jumperlessConfig.gpio.pulls[pin - 20] = config_pull;
     }
 }
 
@@ -259,7 +434,7 @@ int jl_nodes_disconnect(int node1, int node2) {
 
 int jl_nodes_clear(void) {
     createSlots(netSlot,  1);
-    delay(2);
+    //delay(2);
     refreshConnections(-1, 1, 1);
     waitCore2();
     return 1;
@@ -279,8 +454,18 @@ int jl_nodes_save(int slot) {
     
     // Save the local nodeFileString to the specified slot
     saveLocalNodeFile(target_slot);
+//     printSlots(-1);
+//     //saveLocalNodeFile(netSlot);
+//     Serial.println("netslot = " + String(netSlot));
+//     Serial.print("jl_nodes_save: slot = ");
+//     Serial.println(slot);
+//     Serial.print("jl_nodes_save: target_slot = ");
+//     Serial.println(target_slot);
+//     Serial.println("jl_nodes_save: saving local nodeFileString to slot " + String(target_slot));
+// saveCurrentSlotToSlot(netSlot, target_slot, 0, 0);
+//     //saveLocalNodeFile(target_slot);
     
-    // Refresh connections to make sure everything is in sync
+//     // Refresh connections to make sure everything is in sync
     refreshConnections();
     
     return target_slot;  // Return the slot that was saved to

@@ -86,6 +86,10 @@ const int gpioDef[10][3] = {
 
 extern int gpioOutput[10];
 
+int getGPIOIndexFromPin(int pin);
+
+int convertPullToJumperless(int pull);
+
 
 int anythingInteractiveConnected(int net = -1);
 int anyGpioOutputConnected(int net = -1);

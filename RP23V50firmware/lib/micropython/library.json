@@ -17,6 +17,7 @@
       "+<port/*.c>",
       "+<shared/runtime/*.c>",
       "+<extmod/*.c>",
+      "+<../port/machine_uart_jl.c>",
       "-<py/mkrules.mk>",
       "-<py/*.mk>",
       "-<py/*.cmake>",
@@ -31,21 +32,18 @@
       "-<extmod/modwebrepl.c>",
       "-<extmod/modbluetooth.c>",
       "-<extmod/modusocket.c>",
-      "-<extmod/modmachine.c>",
-      "-<extmod/machine_*.c>",
       "-<extmod/jumperless_hal.c>",
       "-<*cyw43*>",
       "-<*bluetooth*>",
       "-<*network*>"
     ],
     "flags": [
+      "-I ../port",
       "-I micropython_embed",
       "-I micropython_embed/py",
-      "-I micropython_embed/port",
       "-I micropython_embed/genhdr",
       "-I micropython_embed/shared/runtime",
       "-I micropython_embed/extmod",
-      "-I ../port",
       "-I ../../lib/micropython/port"
     ]
   }

@@ -94,7 +94,23 @@ const char* python_keywords[] = {
     "get_button||", "probe_button||", "probe_button_blocking||", "probe_button_nonblocking||",
     "probe_wait||", "wait_probe||", "probe_touch||", "wait_touch||", "button_read||", "read_button||",
     "check_button||", "button_check||", "arduino_reset||", "probe_tap||", "run_app||", "format_output||",
-    "help_nodes||", "pause_core2||", "send_raw||", "pwm||", "pwm_set_duty_cycle||", "pwm_set_frequency||", "pwm_stop||",
+    "help_nodes||", "pause_core2||", "send_raw||", "pwm||", "pwm_set_duty_cycle||", "pwm_set_frequency||", "pwm_stop||", "nodes_save||",
+    
+    // Wavegen Functions (marked with ||)
+    "wavegen_set_output||", "set_wavegen_output||",
+    "wavegen_set_freq||", "set_wavegen_freq||",
+    "wavegen_set_wave||", "set_wavegen_wave||",
+    "wavegen_set_sweep||", "set_wavegen_sweep||",
+    "wavegen_set_amplitude||", "set_wavegen_amplitude||",
+    "wavegen_set_offset||", "set_wavegen_offset||",
+    "wavegen_start||", "start_wavegen||",
+    "wavegen_stop||", "stop_wavegen||",
+    "wavegen_get_output||", "get_wavegen_output||",
+    "wavegen_get_freq||", "get_wavegen_freq||",
+    "wavegen_get_wave||", "get_wavegen_wave||",
+    "wavegen_get_amplitude||", "get_wavegen_amplitude||",
+    "wavegen_get_offset||", "get_wavegen_offset||",
+    "wavegen_is_running||",
     
     // Jumperless Types/Constants (marked with |||)
     "TOP_RAIL|||", "BOTTOM_RAIL|||", "GND|||", "DAC0|||", "DAC1|||", "ADC0|||", "ADC1|||", "ADC2|||", "ADC3|||", "ADC4|||",
@@ -104,6 +120,9 @@ const char* python_keywords[] = {
     "A0|||", "A1|||", "A2|||", "A3|||", "A4|||", "A5|||", "A6|||", "A7|||",
     "D13_PAD|||", "TOP_RAIL_PAD|||", "BOTTOM_RAIL_PAD|||", "LOGO_PAD_TOP|||", "LOGO_PAD_BOTTOM|||",
     "CONNECT_BUTTON|||", "REMOVE_BUTTON|||", "BUTTON_NONE|||", "CONNECT|||", "REMOVE|||", "NONE|||",
+    
+    // Wavegen constants (marked with |||)
+    "SINE|||", "TRIANGLE|||", "SAWTOOTH|||", "SQUARE|||", "RAMP|||", "ARBITRARY|||",
     
     // JFS Functions (marked with ||||)
     "open||||", "read||||", "write||||", "close||||", "seek||||", "tell||||", "size||||", "available||||",
@@ -208,6 +227,8 @@ void ekilo_init() {
     E.should_quit = 0;
     strcpy(E.statusmsg, "");
     E.statusmsg_time = 0;
+    Serial.write(0x0E);
+    Serial.flush();
     
     // Try to determine screen size - use conservative defaults for Arduino
     // Reduce available rows by 1 to account for persistent help header
@@ -871,6 +892,7 @@ void ekilo_move_cursor(int key) {
 // Open file
 int ekilo_open(const char* filename) {
     if (!filename) return -1;
+
     
     // Check file exists and get size
     File file = FatFS.open(filename, "r");
@@ -2038,9 +2060,11 @@ void ekilo_init_repl_mode() {
     E.repl_mode = true;
     // No need to store cursor position - XTerm alternate screen handles this
     E.screenrows = DEFAULT_EDITOR_ROWS; // Use configurable screen size in alternate buffer
-    
+    Serial.write(0x0E);
+    Serial.flush();    
     // Clear the alternate screen and position at top-left
     Serial.print("\x1b[2J\x1b[H");
+
     
     // Print a simple header once when entering REPL mode
     Serial.println("eKilo Editor | Ctrl-S/Ctrl-P=save & load | Ctrl-Q=quit | Wheel=navigate");

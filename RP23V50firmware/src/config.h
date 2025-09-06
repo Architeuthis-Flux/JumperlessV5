@@ -85,7 +85,7 @@ struct config {
         float adc_7_spread = 18.28;
         int probe_max = 4060;
         int probe_min = 15;
-        float probe_switch_threshold = 0.50;
+        float probe_switch_threshold = 0.40;
         float measure_mode_output_voltage = 3.30;
         float probe_current_zero = 2.0;
     } calibration;
@@ -110,6 +110,8 @@ struct config {
     } display;
 
     struct gpio {
+        
+        ///@param 1 = input 0 = output
         int direction[10] = {
             1, //gpio_0 1 = input 0 = output
             1, //gpio_1
@@ -122,6 +124,8 @@ struct config {
             0, //uart_tx
             1, //uart_rx
         };
+        
+        ///@param 0 = pull down 1 = pull up 2 = none 3 = bus keeper
         int pulls[10] = {
             0, //gpio_0 0 = pull down 1 = pull up 2 = none 3 = bus keeper
             0, //gpio_1

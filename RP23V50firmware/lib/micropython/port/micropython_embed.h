@@ -4,15 +4,7 @@
 // Main header for MicroPython embedding in Jumperless
 // This file provides the interface for integrating MicroPython into C/C++ applications
 
-#include "py/compile.h"
-#include "py/runtime.h"
-#include "py/repl.h"
-#include "py/gc.h"
-#include "py/mperrno.h"
-#include "py/stackctrl.h"
-#include "py/mphal.h"
-#include "py/mpthread.h"
-#include "genhdr/mpversion.h"
+#include "py/obj.h"
 
 #ifdef __cplusplus
 extern "C" {
