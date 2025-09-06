@@ -15,6 +15,8 @@
 
 #include "ArduinoStuff.h"
 #include "Images.h"
+#include "Tui.h"
+#include "TuiGlue.h"
 
 #ifdef DONOTUSE_SERIALWRAPPER
 #include "SerialWrapper.h"
@@ -3498,7 +3500,7 @@ void playDoom(void) {
   }
 #endif // INCLUDE_DOOM
   // core1busy = 0;
-  core2busy = 0;
+  //core2busy = 0;
 }
 
 uint8_t rainbowr[30] = {30, 29, 26, 23, 20, 17, 14, 11, 8,  5,
@@ -3530,7 +3532,7 @@ int brightnessSet = -100;
 void drawAnimatedImage(int imageIndex, int speed) {
   showLEDsCore2 = -3;
   leds.clear();
-  leds.show();
+  //leds.show();
   // delay(100);
   if (imageIndex == 0) {
     cycleCount = 0;
@@ -3796,6 +3798,7 @@ int printMenuLine(const char* format, ...) {
   if (len > 0 && len < sizeof(buffer)) {
     // Print the formatted string
     Serial.print(buffer);
+    TUI::log(buffer);
     printed = len;
     // Cycle to next color
    // cycleTerminalColor();
@@ -3822,6 +3825,7 @@ int printMenuLine(int showExtraMenu, int minLevel, const char* format, ...) {
   if (len > 0 && len < sizeof(buffer)) {
     // Print the formatted string
     Serial.print(buffer);
+    TUI::log(buffer);
     printed = len;
   }
   if (printed > 0) {

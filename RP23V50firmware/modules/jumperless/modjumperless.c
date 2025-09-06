@@ -46,6 +46,23 @@ float jl_ina_get_current(int sensor);
 float jl_ina_get_voltage(int sensor);
 float jl_ina_get_bus_voltage(int sensor);
 float jl_ina_get_power(int sensor);
+
+// Wavegen C wrappers (C linkage)
+void jl_wavegen_set_output(int channel);
+void jl_wavegen_set_freq(float hz);
+void jl_wavegen_set_wave(int wave);
+void jl_wavegen_set_amplitude(float vpp);
+void jl_wavegen_set_offset(float v);
+void jl_wavegen_set_sweep(float start_hz, float end_hz, float seconds);
+void jl_wavegen_start(int start);
+void jl_wavegen_stop(void);
+int jl_wavegen_get_output(void);
+float jl_wavegen_get_freq(void);
+int jl_wavegen_get_wave(void);
+float jl_wavegen_get_amplitude(void);
+float jl_wavegen_get_offset(void);
+int jl_wavegen_is_running(void);
+void jl_wavegen_get_sweep(float *start_hz, float *end_hz, float *seconds);
 void jl_gpio_set(int pin, int value);
 int jl_gpio_get(int pin);
 void jl_gpio_set_dir(int pin, int direction);
@@ -1102,6 +1119,126 @@ static mp_obj_t jl_dac_get_func(mp_obj_t channel_obj) {
     return mp_obj_new_float(voltage);
 }
 static MP_DEFINE_CONST_FUN_OBJ_1(jl_dac_get_obj, jl_dac_get_func);
+
+// Wavegen MicroPython bindings
+// Helper: parse node/int/str to DAC channel 0..3 for wavegen_set_output
+static int get_wavegen_channel(mp_obj_t obj) {
+    int node_value = get_node_value(obj);
+    int ch = map_node_to_dac_channel(node_value);
+    if (ch < 0 || ch > 3) {
+        mp_raise_ValueError(MP_ERROR_TEXT("Invalid output. Use DAC0, DAC1, TOP_RAIL, BOTTOM_RAIL"));
+    }
+    return ch;
+}
+
+// Helper: parse waveform from int or string
+static int get_wavegen_wave(mp_obj_t obj) {
+    if (mp_obj_is_int(obj)) {
+        int w = mp_obj_get_int(obj);
+        if (w < 0 || w > 4) {
+            mp_raise_ValueError(MP_ERROR_TEXT("Waveform must be 0-4"));
+        }
+        return w;
+    } else if (mp_obj_is_str(obj)) {
+        const char *s = mp_obj_str_get_str(obj);
+        // accept common aliases case-insensitively
+        char up[24];
+        size_t n = strlen(s);
+        if (n > 23) n = 23;
+        for (size_t i = 0; i < n; i++) up[i] = (char)toupper((unsigned char)s[i]);
+        up[n] = '\0';
+        if (strcmp(up, "SINE") == 0) return 0;
+        if (strcmp(up, "TRIANGLE") == 0 || strcmp(up, "TRI") == 0) return 1;
+        if (strcmp(up, "RAMP") == 0 || strcmp(up, "SAW") == 0 || strcmp(up, "SAWTOOTH") == 0) return 2;
+        if (strcmp(up, "SQUARE") == 0 || strcmp(up, "SQ") == 0) return 3;
+        if (strcmp(up, "ARBITRARY") == 0 || strcmp(up, "ARB") == 0) return 4;
+        mp_raise_ValueError(MP_ERROR_TEXT("Unknown waveform"));
+    }
+    mp_raise_TypeError(MP_ERROR_TEXT("Expected int or string for waveform"));
+}
+
+static mp_obj_t jl_wavegen_set_output_func(mp_obj_t out_obj) {
+    int ch = get_wavegen_channel(out_obj);
+    jl_wavegen_set_output(ch);
+    return mp_const_none;
+}
+static MP_DEFINE_CONST_FUN_OBJ_1(jl_wavegen_set_output_obj, jl_wavegen_set_output_func);
+
+static mp_obj_t jl_wavegen_set_freq_func(mp_obj_t hz_obj) {
+    float hz = mp_obj_get_float(hz_obj);
+    jl_wavegen_set_freq(hz);
+    return mp_const_none;
+}
+static MP_DEFINE_CONST_FUN_OBJ_1(jl_wavegen_set_freq_obj, jl_wavegen_set_freq_func);
+
+static mp_obj_t jl_wavegen_set_wave_func(mp_obj_t w_obj) {
+    int w = get_wavegen_wave(w_obj);
+    if (w == 4) {
+        // ARBITRARY not implemented yet
+        mp_raise_NotImplementedError(MP_ERROR_TEXT("ARBITRARY waveform not implemented yet"));
+    }
+    jl_wavegen_set_wave(w);
+    return mp_const_none;
+}
+static MP_DEFINE_CONST_FUN_OBJ_1(jl_wavegen_set_wave_obj, jl_wavegen_set_wave_func);
+
+static mp_obj_t jl_wavegen_set_sweep_func(size_t n_args, const mp_obj_t *args) {
+    if (n_args != 3) {
+        mp_raise_TypeError(MP_ERROR_TEXT("wavegen_set_sweep(start_hz, end_hz, seconds)"));
+    }
+    float start_hz = mp_obj_get_float(args[0]);
+    float end_hz = mp_obj_get_float(args[1]);
+    float seconds = mp_obj_get_float(args[2]);
+    jl_wavegen_set_sweep(start_hz, end_hz, seconds);
+    return mp_const_none;
+}
+static MP_DEFINE_CONST_FUN_OBJ_VAR_BETWEEN(jl_wavegen_set_sweep_obj, 3, 3, jl_wavegen_set_sweep_func);
+
+static mp_obj_t jl_wavegen_set_amplitude_func(mp_obj_t vpp_obj) {
+    float vpp = mp_obj_get_float(vpp_obj);
+    jl_wavegen_set_amplitude(vpp);
+    return mp_const_none;
+}
+static MP_DEFINE_CONST_FUN_OBJ_1(jl_wavegen_set_amplitude_obj, jl_wavegen_set_amplitude_func);
+
+static mp_obj_t jl_wavegen_set_offset_func(mp_obj_t v_obj) {
+    float v = mp_obj_get_float(v_obj);
+    jl_wavegen_set_offset(v);
+    return mp_const_none;
+}
+static MP_DEFINE_CONST_FUN_OBJ_1(jl_wavegen_set_offset_obj, jl_wavegen_set_offset_func);
+
+static mp_obj_t jl_wavegen_start_func(size_t n_args, const mp_obj_t *args) {
+    // wavegen_start([run=True])
+    int run = 1;
+    if (n_args >= 1) {
+        run = mp_obj_is_true(args[0]) ? 1 : 0;
+    }
+    jl_wavegen_start(run);
+    return mp_const_none;
+}
+static MP_DEFINE_CONST_FUN_OBJ_VAR_BETWEEN(jl_wavegen_start_obj, 0, 1, jl_wavegen_start_func);
+
+static mp_obj_t jl_wavegen_stop_func(void) {
+    jl_wavegen_stop();
+    return mp_const_none;
+}
+static MP_DEFINE_CONST_FUN_OBJ_0(jl_wavegen_stop_obj, jl_wavegen_stop_func);
+
+// Getters
+static mp_obj_t jl_wavegen_get_output_func(void) { return mp_obj_new_int(jl_wavegen_get_output()); }
+static MP_DEFINE_CONST_FUN_OBJ_0(jl_wavegen_get_output_obj, jl_wavegen_get_output_func);
+static mp_obj_t jl_wavegen_get_freq_func(void) { return mp_obj_new_float(jl_wavegen_get_freq()); }
+static MP_DEFINE_CONST_FUN_OBJ_0(jl_wavegen_get_freq_obj, jl_wavegen_get_freq_func);
+static mp_obj_t jl_wavegen_get_wave_func(void) { return mp_obj_new_int(jl_wavegen_get_wave()); }
+static MP_DEFINE_CONST_FUN_OBJ_0(jl_wavegen_get_wave_obj, jl_wavegen_get_wave_func);
+static mp_obj_t jl_wavegen_get_amplitude_func(void) { return mp_obj_new_float(jl_wavegen_get_amplitude()); }
+static MP_DEFINE_CONST_FUN_OBJ_0(jl_wavegen_get_amplitude_obj, jl_wavegen_get_amplitude_func);
+static mp_obj_t jl_wavegen_get_offset_func(void) { return mp_obj_new_float(jl_wavegen_get_offset()); }
+static MP_DEFINE_CONST_FUN_OBJ_0(jl_wavegen_get_offset_obj, jl_wavegen_get_offset_func);
+static mp_obj_t jl_wavegen_is_running_func(void) { return mp_obj_new_bool(jl_wavegen_is_running()); }
+static MP_DEFINE_CONST_FUN_OBJ_0(jl_wavegen_is_running_obj, jl_wavegen_is_running_func);
+// Remove old AWG stubs; replaced by wavegen_* API
 
 // ADC Functions
 static mp_obj_t jl_adc_get_func(mp_obj_t channel_obj) {
@@ -3488,6 +3625,36 @@ static const mp_rom_map_elem_t jumperless_module_globals_table[] = {
     { MP_ROM_QSTR(MP_QSTR_set_pwm_duty_cycle), MP_ROM_PTR(&jl_pwm_set_duty_cycle_obj) },
     { MP_ROM_QSTR(MP_QSTR_set_pwm_frequency), MP_ROM_PTR(&jl_pwm_set_frequency_obj) },
     { MP_ROM_QSTR(MP_QSTR_stop_pwm), MP_ROM_PTR(&jl_pwm_stop_obj) },
+
+    // Wavegen API
+    { MP_ROM_QSTR(MP_QSTR_wavegen_set_output), MP_ROM_PTR(&jl_wavegen_set_output_obj) },
+    { MP_ROM_QSTR(MP_QSTR_set_wavegen_output), MP_ROM_PTR(&jl_wavegen_set_output_obj) },
+    { MP_ROM_QSTR(MP_QSTR_wavegen_set_freq), MP_ROM_PTR(&jl_wavegen_set_freq_obj) },
+    { MP_ROM_QSTR(MP_QSTR_set_wavegen_freq), MP_ROM_PTR(&jl_wavegen_set_freq_obj) },
+    { MP_ROM_QSTR(MP_QSTR_wavegen_set_wave), MP_ROM_PTR(&jl_wavegen_set_wave_obj) },
+    { MP_ROM_QSTR(MP_QSTR_set_wavegen_wave), MP_ROM_PTR(&jl_wavegen_set_wave_obj) },
+    { MP_ROM_QSTR(MP_QSTR_wavegen_set_sweep), MP_ROM_PTR(&jl_wavegen_set_sweep_obj) },
+    { MP_ROM_QSTR(MP_QSTR_set_wavegen_sweep), MP_ROM_PTR(&jl_wavegen_set_sweep_obj) },
+    { MP_ROM_QSTR(MP_QSTR_wavegen_set_amplitude), MP_ROM_PTR(&jl_wavegen_set_amplitude_obj) },
+    { MP_ROM_QSTR(MP_QSTR_set_wavegen_amplitude), MP_ROM_PTR(&jl_wavegen_set_amplitude_obj) },
+    { MP_ROM_QSTR(MP_QSTR_wavegen_set_offset), MP_ROM_PTR(&jl_wavegen_set_offset_obj) },
+    { MP_ROM_QSTR(MP_QSTR_set_wavegen_offset), MP_ROM_PTR(&jl_wavegen_set_offset_obj) },
+    { MP_ROM_QSTR(MP_QSTR_wavegen_start), MP_ROM_PTR(&jl_wavegen_start_obj) },
+    { MP_ROM_QSTR(MP_QSTR_start_wavegen), MP_ROM_PTR(&jl_wavegen_start_obj) },
+    { MP_ROM_QSTR(MP_QSTR_wavegen_stop), MP_ROM_PTR(&jl_wavegen_stop_obj) },
+    { MP_ROM_QSTR(MP_QSTR_stop_wavegen), MP_ROM_PTR(&jl_wavegen_stop_obj) },
+    // Getters
+    { MP_ROM_QSTR(MP_QSTR_wavegen_get_output), MP_ROM_PTR(&jl_wavegen_get_output_obj) },
+    { MP_ROM_QSTR(MP_QSTR_get_wavegen_output), MP_ROM_PTR(&jl_wavegen_get_output_obj) },
+    { MP_ROM_QSTR(MP_QSTR_wavegen_get_freq), MP_ROM_PTR(&jl_wavegen_get_freq_obj) },
+    { MP_ROM_QSTR(MP_QSTR_get_wavegen_freq), MP_ROM_PTR(&jl_wavegen_get_freq_obj) },
+    { MP_ROM_QSTR(MP_QSTR_wavegen_get_wave), MP_ROM_PTR(&jl_wavegen_get_wave_obj) },
+    { MP_ROM_QSTR(MP_QSTR_get_wavegen_wave), MP_ROM_PTR(&jl_wavegen_get_wave_obj) },
+    { MP_ROM_QSTR(MP_QSTR_wavegen_get_amplitude), MP_ROM_PTR(&jl_wavegen_get_amplitude_obj) },
+    { MP_ROM_QSTR(MP_QSTR_get_wavegen_amplitude), MP_ROM_PTR(&jl_wavegen_get_amplitude_obj) },
+    { MP_ROM_QSTR(MP_QSTR_wavegen_get_offset), MP_ROM_PTR(&jl_wavegen_get_offset_obj) },
+    { MP_ROM_QSTR(MP_QSTR_get_wavegen_offset), MP_ROM_PTR(&jl_wavegen_get_offset_obj) },
+    { MP_ROM_QSTR(MP_QSTR_wavegen_is_running), MP_ROM_PTR(&jl_wavegen_is_running_obj) },
     
     // Node functions
     { MP_ROM_QSTR(MP_QSTR_connect), MP_ROM_PTR(&jl_nodes_connect_obj) },
@@ -3571,6 +3738,15 @@ static const mp_rom_map_elem_t jumperless_module_globals_table[] = {
     
     // JFS Module - Comprehensive filesystem API
     { MP_ROM_QSTR(MP_QSTR_jfs), MP_ROM_PTR(&jfs_user_cmodule) },
+
+    // Waveform constants
+    { MP_ROM_QSTR(MP_QSTR_SINE), MP_ROM_INT(0) },
+    { MP_ROM_QSTR(MP_QSTR_TRIANGLE), MP_ROM_INT(1) },
+    { MP_ROM_QSTR(MP_QSTR_SAWTOOTH), MP_ROM_INT(2) },
+    { MP_ROM_QSTR(MP_QSTR_SQUARE), MP_ROM_INT(3) },
+    // Aliases and extras for waveforms
+    { MP_ROM_QSTR(MP_QSTR_RAMP), MP_ROM_INT(2) },
+    { MP_ROM_QSTR(MP_QSTR_ARBITRARY), MP_ROM_INT(4) },
     
     // Enhanced Logic Analyzer Functions
     { MP_ROM_QSTR(MP_QSTR_la_set_trigger), MP_ROM_PTR(&jl_la_set_trigger_obj) },

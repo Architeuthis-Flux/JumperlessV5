@@ -7,10 +7,10 @@
 // =============================================================================
 // SIMPLE STATIC USB Interface Configuration
 // =============================================================================
-// Fixed configuration: 3 CDC + 1 MSC for logic analyzer on port 3
+// Fixed configuration: 5 CDC + 1 MSC for logic analyzer on port 3
 
 // CDC Serial Interfaces (Communication Device Class)  
-#define USB_CDC_ENABLE_COUNT 3
+#define USB_CDC_ENABLE_COUNT 4
 
 // MSC (Mass Storage Class) - Always enabled
 #define USB_MSC_ENABLE 1
@@ -37,7 +37,9 @@
 static const char* USB_CDC_NAMES[] = {
     "Jumperless Main",       // CDC 0 - Main serial
     "Jumperless Serial 1",   // CDC 1 - Arduino/Serial1
-    "JL Logic Analyzer"  // CDC 2 - Logic analyzer (port 3)
+    "JL Logic Analyzer",     // CDC 2 - Logic analyzer (port 3)
+    "JL TUI",                // CDC 3 - TUI
+    "JL Serial 3"            // CDC 4 - Serial 3
 };
 
 #define USB_MSC_NAME     "JL Mass Storage"

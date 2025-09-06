@@ -21,8 +21,10 @@
 #include "SafeString.h"
 
 #include "LogicAnalyzer.h"
+#include "WaveGen.h"
 
 extern LogicAnalyzer logicAnalyzer; // defined in main.cpp
+extern WaveGen wavegen; // defined in main.cpp
 
 // External declarations
 extern SafeString nodeFileString;
@@ -46,6 +48,24 @@ int justReadProbe(bool allowDuplicates);
 // C-compatible wrapper functions for MicroPython
 extern "C" {
 #include "py/mpthread.h"
+// WaveGen C wrappers (C linkage)
+void jl_wavegen_set_output(int channel);
+void jl_wavegen_set_freq(float hz);
+void jl_wavegen_set_wave(int wave);
+void jl_wavegen_set_amplitude(float vpp);
+void jl_wavegen_set_offset(float v);
+void jl_wavegen_set_sweep(float start_hz, float end_hz, float seconds);
+void jl_wavegen_start(int start);
+void jl_wavegen_stop(void);
+
+// WaveGen getters
+int jl_wavegen_get_output(void);
+float jl_wavegen_get_freq(void);
+int jl_wavegen_get_wave(void);
+float jl_wavegen_get_amplitude(void);
+float jl_wavegen_get_offset(void);
+int jl_wavegen_is_running(void);
+void jl_wavegen_get_sweep(float *start_hz, float *end_hz, float *seconds);
 
 
 
@@ -66,6 +86,122 @@ void jl_cycle_term_color(bool reset, float step, bool flush) {
 
 void jl_print_terminal_colors(void) {
     printSpectrumOrderedColorCube();
+}
+// WaveGen implementation
+static float s_wg_sweep_start_hz = 0.0f;
+static float s_wg_sweep_end_hz = 0.0f;
+static float s_wg_sweep_time_s = 0.0f;
+static bool s_wg_user_set_output = false;
+static bool s_wg_user_set_freq = false;
+static bool s_wg_user_set_wave = false;
+static bool s_wg_user_set_amp = false;
+static bool s_wg_user_set_offset = false;
+void jl_wavegen_set_output(int channel) {
+    // Map 0..3 to WAVEGEN_DAC0..3; also accept rails via same mapping the module uses
+    if (channel < 0) channel = 0;
+    if (channel > 3) channel = 3;
+    wavegen.setChannel((waveGen_channel_t)channel);
+    s_wg_user_set_output = true;
+}
+
+void jl_wavegen_set_freq(float hz) {
+    if (hz <= 0.0f) hz = 0.0001f;
+    wavegen.setFrequency(hz);
+    s_wg_user_set_freq = true;
+}
+
+void jl_wavegen_set_wave(int wave) {
+    if (wave < 0) wave = 0;
+    if (wave > 3) wave = 3;
+    wavegen.setWaveform((waveGen_waveform_t)wave);
+    s_wg_user_set_wave = true;
+}
+
+void jl_wavegen_set_amplitude(float vpp) {
+    // Public API specifies Vpp. Internally we use amplitude as peak value.
+    // So convert Vpp to peak amplitude: A = Vpp / 2
+    if (vpp < 0.0f) vpp = 0.0f;
+    float peak = vpp * 0.5f;
+    wavegen.setAmplitude(peak);
+    s_wg_user_set_amp = true;
+}
+
+void jl_wavegen_set_offset(float v) {
+    wavegen.setOffset(v);
+    s_wg_user_set_offset = true;
+}
+
+void jl_wavegen_set_sweep(float start_hz, float end_hz, float seconds) {
+    if (start_hz <= 0.0f) start_hz = 0.0001f;
+    if (end_hz <= 0.0f) end_hz = 0.0001f;
+    if (seconds < 0.0f) seconds = 0.0f;
+    s_wg_sweep_start_hz = start_hz;
+    s_wg_sweep_end_hz = end_hz;
+    s_wg_sweep_time_s = seconds;
+}
+
+void jl_wavegen_start(int start) {
+    if (start) {
+        // Ensure initialized and safe mode
+        wavegen.begin();
+        wavegen.setFallbackMode(true);
+        // Apply defaults if user didn't set anything yet
+        if (!s_wg_user_set_output) {
+            jl_wavegen_set_output(1); // default DAC1
+        }
+        if (!s_wg_user_set_freq) {
+            jl_wavegen_set_freq(100.0f); // default 100 Hz
+        }
+        if (!s_wg_user_set_wave) {
+            jl_wavegen_set_wave(0); // SINE
+        }
+        if (!s_wg_user_set_amp) {
+            jl_wavegen_set_amplitude(3.3f); // Vpp
+        }
+        if (!s_wg_user_set_offset) {
+            jl_wavegen_set_offset(1.65f); // center 0-3.3V
+        }
+        wavegen.start();
+    } else {
+        if (wavegen.isRunning()) {
+            wavegen.stop();
+        }
+    }
+}
+
+void jl_wavegen_stop(void) {
+    wavegen.stop();
+}
+
+int jl_wavegen_get_output(void) {
+    return (int)wavegen.getChannel();
+}
+
+float jl_wavegen_get_freq(void) {
+    return wavegen.getFrequency();
+}
+
+int jl_wavegen_get_wave(void) {
+    return (int)wavegen.getWaveform();
+}
+
+float jl_wavegen_get_amplitude(void) {
+    // Convert from internal peak to Vpp for external callers
+    return wavegen.getAmplitude() * 2.0f;
+}
+
+float jl_wavegen_get_offset(void) {
+    return wavegen.getOffset();
+}
+
+int jl_wavegen_is_running(void) {
+    return wavegen.isRunning() ? 1 : 0;
+}
+
+void jl_wavegen_get_sweep(float *start_hz, float *end_hz, float *seconds) {
+    if (start_hz) *start_hz = s_wg_sweep_start_hz;
+    if (end_hz) *end_hz = s_wg_sweep_end_hz;
+    if (seconds) *seconds = s_wg_sweep_time_s;
 }
 
 
@@ -318,8 +454,18 @@ int jl_nodes_save(int slot) {
     
     // Save the local nodeFileString to the specified slot
     saveLocalNodeFile(target_slot);
+//     printSlots(-1);
+//     //saveLocalNodeFile(netSlot);
+//     Serial.println("netslot = " + String(netSlot));
+//     Serial.print("jl_nodes_save: slot = ");
+//     Serial.println(slot);
+//     Serial.print("jl_nodes_save: target_slot = ");
+//     Serial.println(target_slot);
+//     Serial.println("jl_nodes_save: saving local nodeFileString to slot " + String(target_slot));
+// saveCurrentSlotToSlot(netSlot, target_slot, 0, 0);
+//     //saveLocalNodeFile(target_slot);
     
-    // Refresh connections to make sure everything is in sync
+//     // Refresh connections to make sure everything is in sync
     refreshConnections();
     
     return target_slot;  // Return the slot that was saved to

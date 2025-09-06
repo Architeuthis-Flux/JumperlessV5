@@ -3,12 +3,12 @@
 #define FILEPARSING_H
 
 #include <Arduino.h>
-
+#include "CoreBusyFlags.h"
 // #include "RotaryEncoder.h"
 
 
 //extern File nodeFile;  
-extern volatile bool core1busy;
+
 extern volatile bool netsUpdated;
 void createConfigFile(int overwrite = 0);
 

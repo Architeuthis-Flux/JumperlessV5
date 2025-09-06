@@ -56,7 +56,18 @@ KevinC@ppucc.io
 #include <hardware/adc.h>
 #include "AsyncPassthrough.h"
 #include "user_functions.h"
+#include "CoreBusyFlags.h"
+#include "TuiGlue.h"
+
+
+
+//#include "DacAwg.h"
+//#include "WaveGen.h"  // Old blocking wavegen
+#include "WaveGen.h"  // New async wavegen
 bread b;
+
+// Global async waveform generator
+WaveGen wavegen;
 
 int supplySwitchPosition = 0;
 volatile bool core1busy = false;
@@ -69,7 +80,7 @@ void printDirectoryContents( const char* dirname, int level );
 
 void core2stuff( void );
 
-volatile uint8_t pauseCore2 = 0;
+//volatile uint8_t pauseCore2 = 0;
 
 volatile int loadingFile = 0;
 
@@ -84,13 +95,13 @@ volatile bool configLoaded = false;
 
 volatile int startupAnimationFinished = 0;
 
-unsigned long startupTimers[ 10 ];
+unsigned long startupTimers[ 12 ];
 
 volatile int dumpLED = 0;
 unsigned long dumpLEDTimer = 0;
 unsigned long dumpLEDrate = 50;
 
-const char firmwareVersion[] = "5.3.1.4"; //! remember to update this
+const char firmwareVersion[] = "5.3.2.0"; //! remember to update this
 bool newConfigOptions = false;            //! set to true with new config options //!
                                           
 
@@ -144,15 +155,17 @@ void setup( ) {
     Serial.begin( 115200 );
 
     initDAC( );
+
+
     pinMode( PROBE_PIN, OUTPUT_8MA );
     pinMode( BUTTON_PIN, INPUT_PULLDOWN );
     // pinMode(buttonPin, INPUT_PULLDOWN);
     digitalWrite( PROBE_PIN, HIGH );
-
-    routableBufferPower( 1, 1 );
+startupTimers[ 2 ] = millis( );
+    
     // digitalWrite(BUTTON_PIN, HIGH);
 
-    startupTimers[ 2 ] = millis( );
+    
     initINA219( );
 
     startupTimers[ 3 ] = millis( );
@@ -164,6 +177,7 @@ void setup( ) {
     while ( core2initFinished == 0 ) {
         // delayMicroseconds(1);
     }
+    routableBufferPower( 1, 1 );
 
     if (jumperlessConfig.serial_1.async_passthrough == true) {
         AsyncPassthrough::begin(115200);
@@ -197,6 +211,11 @@ void setup( ) {
     startupTimers[ 9 ] = millis( );
 
     //  setupLogicAnalyzer();
+
+
+
+    TuiGlue::init();
+    startupTimers[ 10 ] = millis( );
 }
 
 unsigned long startupCore2timers[ 10 ];
@@ -293,9 +312,7 @@ unsigned long core1Timeout = millis( );
 #define SETUP_LOGIC_ANALYZER_ON_BOOT 0
 
 
-
-
-
+#define debug_startup_timers 0
 
 void loop( ) {
 
@@ -462,7 +479,29 @@ menu:
         Serial.println( );
 
         Serial.flush( );
+
+#if debug_startup_timers == 1
+    for (int i = 1; i < 12; i++) {
+        Serial.print("startupTimer[");
+        Serial.print(i - 1);
+        Serial.print(" - ");
+        Serial.print(i);
+        Serial.print("] = ");
+        Serial.println(startupTimers[ i ] - startupTimers[ i - 1 ]);
+        Serial.flush( );
     }
+
+    for (int i = 1; i < 12; i++) {
+        Serial.print("startupCore2Timer[");
+        Serial.print(i - 1);
+        Serial.print(" - ");
+        Serial.print(i);
+        Serial.print("] = ");
+        Serial.println(startupCore2timers[ i ] - startupCore2timers[ i - 1 ]);
+        Serial.flush( );
+    }
+#endif
+}
     if ( configChanged == true && millis( ) > 2000 ) {
         // Serial.print("config changed, saving...");
         saveConfig( );
@@ -495,8 +534,14 @@ dontshowmenu:
             continue;
         }
 
+        TuiGlue::loop();
+
 
         // watchdog core loop should be called here
+        // Drive wavegen progress if running or in async mode
+        // if (waveGen.isRunning() || !waveGen.isFallbackMode()) {
+        //     waveGen.service();
+        // }
 
         int encoderNetHighlighted = encoderNetHighlight( );
 
@@ -823,6 +868,125 @@ skipinput:
     }
 
     case 'G': { //! G - Load config.txt changes
+
+//pauseCore2 = true;
+
+   
+float wavegen_frequency = 1000.0f;
+            
+            // Initialize async wavegen
+            if (!wavegen.begin()) {
+                Serial.println("Failed to initialize wavegen");
+                Serial.flush();
+            } else {
+                Serial.println("wavegen initialized successfully");
+                Serial.print("Fallback mode: ");
+                Serial.println(wavegen.isFallbackMode() ? "ON" : "OFF");
+                
+                // Keep synchronous mode (no Wire.writeAsync)
+                wavegen.setFallbackMode(true);
+                Serial.println("Staying in synchronous fallback mode (no writeAsync)");
+                Serial.flush();
+                
+                // Configure wavegen for ±8V range
+                wavegen.setChannel(WAVEGEN_DAC1);
+                wavegen.setWaveform(WAVEGEN_SINE);
+                float actual_freq = wavegen.setFrequencyAdjusted(wavegen_frequency);
+                wavegen.setAmplitude(4.0f);  // 4V amplitude for ±4V swing
+                wavegen.setOffset(0.0f);     // 0V offset (centered)
+                
+                Serial.print("Initial frequency: ");
+                Serial.print(wavegen_frequency);
+                Serial.print(" Hz -> ");
+                Serial.print(actual_freq);
+                Serial.print(" Hz (");
+                Serial.print(wavegen.getTableSize());
+                Serial.print(" pts, ");
+                Serial.print(wavegen.getBufferSize());
+                Serial.print(" bytes, ");
+                Serial.print(wavegen.getBufferCycles());
+                Serial.println(" cycles)");
+                
+                Serial.print("Waveform: ±");
+                Serial.print(4.0f);
+                Serial.println("V sine wave");
+                Serial.flush();
+                
+                // Start wavegen
+                Serial.println("About to call wavegen.start()");
+                Serial.flush();
+                
+                // Add some debug info before the call
+                Serial.println("Debug: About to enter wavegen.start()");
+                Serial.flush();
+                
+                if (wavegen.start()) {
+                    Serial.println("wavegen started successfully");
+                    Serial.flush();
+                    
+                    // Service the wavegen immediately to start async transfers
+                    Serial.println("About to call wavegen.service()");
+                    Serial.flush();
+                   
+                    Serial.println("Initial wavegen service completed");
+                    Serial.flush();
+                    
+                    while (Serial.available() == 0) {
+                        // Service wavegen frequently while waiting for keypress
+                        rotaryEncoderStuff();
+                        
+                        if (encoderDirectionState == UP) {
+                            wavegen_frequency *= 1.1f;
+                            float actual_freq = wavegen.setFrequencyAdjusted(wavegen_frequency);
+                            Serial.print("Set: ");
+                            Serial.print(wavegen_frequency);
+                            Serial.print(" Hz, Actual: ");
+                            Serial.print(actual_freq);
+                            Serial.print(" Hz, Table: ");
+                            Serial.print(wavegen.getTableSize());
+                            Serial.print(" pts, Buffer: ");
+                            Serial.print(wavegen.getBufferSize());
+                            Serial.print(" bytes");
+                            Serial.println();
+                            Serial.flush();
+                        } else if (encoderDirectionState == DOWN) {
+                            wavegen_frequency *= 0.9f;
+                            float actual_freq = wavegen.setFrequencyAdjusted(wavegen_frequency);
+                            Serial.print("Set: ");
+                            Serial.print(wavegen_frequency);
+                            Serial.print(" Hz, Actual: ");
+                            Serial.print(actual_freq);
+                            Serial.print(" Hz, Table: ");
+                            Serial.print(wavegen.getTableSize());
+                            Serial.print(" pts, Buffer: ");
+                            Serial.print(wavegen.getBufferSize());
+                            Serial.print(" bytes");
+                            Serial.println();
+                            Serial.flush();
+                        }
+                        
+                        // Service the async wavegen
+                      //  wavegen.service();
+                        
+                        if (encoderButtonState == HELD) {
+                            wavegen.stop();
+                            Serial.print("Final stats - Success: ");
+                            Serial.print(wavegen.getSuccessfulWrites());
+                            Serial.print(", Failed: ");
+                            Serial.println(wavegen.getFailedWrites());
+                            break;
+                        }
+                    }
+                    
+                    wavegen.stop();
+                    Serial.println("wavegen stopped");
+                } else {
+                    Serial.println("Failed to start wavegen");
+                }
+                Serial.flush();
+            }
+            
+       // pauseCore2 = false;
         Serial.println( "Reloading config.txt..." );
         configChanged = true;
 
@@ -1926,6 +2090,17 @@ void loop1( ) {
     uint32_t current_time = millis( );
 
     // ENHANCED STATE-BASED HANDLER CALLING
+    // Priority order:
+    // 1) High: path/LED refresh triggered by core1 (handled in core2stuff)
+    // 2) Medium: wavegen_service (function generator streaming)
+    // 3) Medium-low: rotary encoder
+    // 4) Low: logo swirls/animations
+
+    // Medium: service wavegen on core2 if running
+    // if (wavegen_is_running()) {
+    //     wavegen_service();
+    // }
+
     // Use the new state variables to make smarter decisions about when to call the handler
     bool should_call_handler = false;
 
@@ -1935,7 +2110,7 @@ void loop1( ) {
         logicAnalyzer.handler( );
     }
 
-
+    wavegen.service();
 
     if ( doomOn == 1 ) {
         playDoom( );
@@ -1995,8 +2170,7 @@ void core2stuff( ) // core 2 handles the LEDs and the CH446Q8
 
    
     if ( micros( ) - schedulerTimer > schedulerUpdateTime || showLEDsCore2 == 3 ||
-         showLEDsCore2 == 4 ||
-         showLEDsCore2 == 6 && core1busy == false && core1request == 0 ) {
+         showLEDsCore2 == 4 || (showLEDsCore2 == 6 && core1busy == false && core1request == 0) ) {
 
         if ( ( ( ( showLEDsCore2 >= 1 && loadingFile == 0 ) || showLEDsCore2 == 3 ||
                  ( swirled == 1 ) && sendAllPathsCore2 == 0 ) ||
@@ -2109,8 +2283,8 @@ void core2stuff( ) // core 2 handles the LEDs and the CH446Q8
                 countsss++;
             }
 
-            if ( showLEDsCore2 == 0 ) {
-                swirled = 1;
+            if ( showLEDsCore2 == 0 && !wavegen.isRunning() ) {
+                swirled = 1; // only swirl when wavegen not streaming
             }
 
             // leds.show();

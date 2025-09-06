@@ -2361,7 +2361,7 @@ float checkProbeCurrentZero(void) {
 
   float currentSum = 0.0;
 
-  for (int i = 0; i < 10; i++) {
+  for (int i = 0; i < 16; i++) {
     currentSum += INA1.getCurrent_mA();
     delayMicroseconds(1000);
 
