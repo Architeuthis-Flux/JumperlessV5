@@ -198,9 +198,11 @@ void initSecondSerial( void ) {
 
 #if USB_CDC_ENABLE_COUNT >= 4
     // USBSer3 maps to CDC interface 3 (Debug Serial)
+
     Ser3.begin( 115200 );
     delay(3000);
     Ser3.println("Serial3 initialized");
+
     // Serial.println("  USBSer3 (Debug) initialized");
 #endif
 

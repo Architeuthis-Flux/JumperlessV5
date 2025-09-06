@@ -67,6 +67,7 @@ bread b;
 // Global async waveform generator
 WaveGen wavegen;
 
+
 int supplySwitchPosition = 0;
 volatile bool core1busy = false;
 volatile bool core2busy = false;
@@ -93,13 +94,17 @@ volatile bool configLoaded = false;
 
 volatile int startupAnimationFinished = 0;
 
+
 unsigned long startupTimers[ 12 ];
+
 
 volatile int dumpLED = 0;
 unsigned long dumpLEDTimer = 0;
 unsigned long dumpLEDrate = 50;
 
+
 const char firmwareVersion[] = "5.3.2.1"; //! remember to update this
+
 bool newConfigOptions = false;            //! set to true with new config options //!
                                           
 
@@ -163,20 +168,23 @@ startupTimers[ 2 ] = millis( );
     
     // digitalWrite(BUTTON_PIN, HIGH);
 
-    
+
     initINA219( );
 
     startupTimers[ 3 ] = millis( );
 
     delayMicroseconds( 100 );
 
+
     digitalWrite( RESETPIN, LOW );
     
     while ( core2initFinished == 0 ) {
         // delayMicroseconds(1);
     }
+
    
     routableBufferPower( 1, 1 );
+
     if (jumperlessConfig.serial_1.async_passthrough == true) {
         AsyncPassthrough::begin(115200);
     }
@@ -212,8 +220,8 @@ startupTimers[ 2 ] = millis( );
 
 
 
-    TuiGlue::init();
-    startupTimers[ 10 ] = millis( );
+    TuiGlue::openOnDemand();
+
 }
 
 unsigned long startupCore2timers[ 10 ];
@@ -241,6 +249,7 @@ void setupCore2stuff( ) {
     startupCore2timers[ 6 ] = millis( );
     initSecondSerial( );
     // delay(4);
+
 }
 
 void setup1( ) {
@@ -504,6 +513,7 @@ menu:
     }
 #endif
 }
+
     if ( configChanged == true && millis( ) > 2000 ) {
         // Serial.print("config changed, saving...");
         saveConfig( );
@@ -530,13 +540,13 @@ dontshowmenu:
 
         if ( logicAnalyzer.is_running( ) == true || logicAnalyzer.is_armed( ) == true ) {
             // julseview.check_heartbeat_watchdog();
-            Serial.println("Logic analyzer is running, skipping loop");
-            Serial.flush();
+
             delay( 100 );
 
 
             continue;
         }
+
         busyTimers[ 0 ] = micros( );
 
         TuiGlue::loop();
@@ -575,6 +585,7 @@ dontshowmenu:
         //     waveGen.service();
         // }
 
+
         int encoderNetHighlighted = encoderNetHighlight( );
 
         // Serial.println("encoderNetHighlighted: " + String(encoderNetHighlighted));
@@ -589,17 +600,21 @@ dontshowmenu:
         
         checkPads( );
         tud_task( );
+
         busyTimers[ 2 ] = micros( );
 
         if ( clickMenu( ) >= 0 ) {
             core1passthrough = 0;
             goto loadfile;
         }
+
         busyTimers[ 3 ] = micros( );
+
 
         int probeReading = justReadProbe( true );
 
         checkForReadingChanges( );
+
         busyTimers[ 4 ] = micros( );
 
         warnNetTimeout( 1 );
@@ -609,7 +624,9 @@ dontshowmenu:
                 firstConnection = probeReading;
             }
         }
+
         busyTimers[ 5 ] = micros( );
+
 
         if ( brightenedNet > 0 ) {
             int probeToggleResult = probeToggle( );
@@ -646,6 +663,7 @@ dontshowmenu:
                     }
                 }
 
+
                 blockProbeButton = 200;
                 blockProbeButtonTimer = millis( );
             } else if ( probeToggleResult == -3 ) {
@@ -654,6 +672,7 @@ dontshowmenu:
 
             } else if ( probeToggleResult == -2 ) {
                 blockProbeButton = 200;
+
                 blockProbeButtonTimer = millis( );
 
             } else if ( probeToggleResult == -4 ) {
@@ -667,7 +686,9 @@ dontshowmenu:
                 // clearHighlighting();
 
                 firstConnection = -1;
+
                 blockProbeButton = 100;
+
                 blockProbeButtonTimer = millis( );
             }
         } else {
@@ -675,6 +696,7 @@ dontshowmenu:
         }
 
         busyTimers[ 6 ] = micros( );
+
 
         if ( ( millis( ) - waitTimer ) > 12 ) {
             waitTimer = millis( );
@@ -719,11 +741,13 @@ dontshowmenu:
 
             }
         } else {
+
             
             checkSwitchPosition( ); 
            
         }
         busyTimers[ 7 ] = micros( );
+
 
         if ( lastHighlightedNet != highlightedNet ) {
 
@@ -741,6 +765,7 @@ dontshowmenu:
             // chooseShownReadings();
             showMeasurements( 16, 0, 0 );
         }
+
         busyTimers[ 8 ] = micros( );
         if ( mscModeEnabled == true ) {
             usbPeriodic();
@@ -927,6 +952,7 @@ skipinput:
 
     case 'G': { //! G - Load config.txt changes
 
+
 //pauseCore2 = true;
 
    
@@ -1045,6 +1071,7 @@ float wavegen_frequency = 1000.0f;
             }
             
        // pauseCore2 = false;
+
         Serial.println( "Reloading config.txt..." );
         configChanged = true;
 
@@ -1875,7 +1902,9 @@ float wavegen_frequency = 1000.0f;
     }
     case '}': {
         
+
         blockProbeButton = 100;
+
         blockProbeButtonTimer = millis( );
         probeMode( 1, firstConnection );
         
@@ -1889,7 +1918,9 @@ float wavegen_frequency = 1000.0f;
     }
     case '{': {
         
+
         blockProbeButton = 100;
+
         blockProbeButtonTimer = millis( );
         int probeReturn = probeMode( 0, firstConnection );
 
@@ -2148,6 +2179,7 @@ void loop1( ) {
     uint32_t current_time = millis( );
 
     // ENHANCED STATE-BASED HANDLER CALLING
+
     // Priority order:
     // 1) High: path/LED refresh triggered by core1 (handled in core2stuff)
     // 2) Medium: wavegen_service (function generator streaming)
@@ -2159,6 +2191,7 @@ void loop1( ) {
     //     wavegen_service();
     // }
 
+
     // Use the new state variables to make smarter decisions about when to call the handler
     bool should_call_handler = false;
 
@@ -2168,7 +2201,9 @@ void loop1( ) {
         logicAnalyzer.handler( );
     }
 
+
     wavegen.service();
+
 
     if ( doomOn == 1 ) {
         playDoom( );
@@ -2228,7 +2263,10 @@ void core2stuff( ) // core 2 handles the LEDs and the CH446Q8
 
    
     if ( micros( ) - schedulerTimer > schedulerUpdateTime || showLEDsCore2 == 3 ||
-         showLEDsCore2 == 4 || (showLEDsCore2 == 6 && core1busy == false && core1request == 0) ) {
+
+         showLEDsCore2 == 4 ||
+         showLEDsCore2 == 6 && core1busy == false && core1request == 0 ) {
+
 
         if ( ( ( ( showLEDsCore2 >= 1 && loadingFile == 0 ) || showLEDsCore2 == 3 ||
                  ( swirled == 1 ) && sendAllPathsCore2 == 0 ) ||
@@ -2341,8 +2379,10 @@ void core2stuff( ) // core 2 handles the LEDs and the CH446Q8
                 countsss++;
             }
 
+
             if ( showLEDsCore2 == 0 && !wavegen.isRunning() ) {
                 swirled = 1; // only swirl when wavegen not streaming
+
             }
 
             // leds.show();
