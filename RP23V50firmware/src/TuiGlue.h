@@ -3,12 +3,9 @@
 
 
 
-
 namespace TuiGlue {
 
-
   extern Stream* TUIserial;
-
 
   void init();
   void openOnDemand();
