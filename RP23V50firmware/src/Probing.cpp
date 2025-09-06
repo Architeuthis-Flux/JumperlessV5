@@ -2287,7 +2287,7 @@ float checkProbeCurrent( void ) {
     current = current / 4.0;
     current = current - jumperlessConfig.calibration.probe_current_zero;
 
-    if ( showProbeCurrent == 1 || true ) {
+    if ( showProbeCurrent == 1) {
         Serial.print( "                          \rProbe current: " );
         Serial.print( current );
         Serial.print( " mA" );
@@ -2407,7 +2407,7 @@ void routableBufferPower( int offOn, int flash, int force ) {
         // Serial.println("power on\n\r");
         //  delay(10);
         if ( probePowerDAC == 0 ) {
-            setDac0voltage( jumperlessConfig.calibration.measure_mode_output_voltage, 1, 0 );
+            setDac0voltage( jumperlessConfig.calibration.measure_mode_output_voltage, 0, 0 );
             if ( probePowerDACChanged == true ) {
                 removeBridgeFromNodeFile( ROUTABLE_BUFFER_IN, DAC1, netSlot, flashOrLocal, 0 );
                 addBridgeToNodeFile( ROUTABLE_BUFFER_IN, DAC0, netSlot, flashOrLocal, 0 );
@@ -2415,7 +2415,7 @@ void routableBufferPower( int offOn, int flash, int force ) {
                 needToRefresh = true;
             }
         } else if ( probePowerDAC == 1 ) {
-            setDac1voltage( jumperlessConfig.calibration.measure_mode_output_voltage, 1, 0 );
+            setDac1voltage( jumperlessConfig.calibration.measure_mode_output_voltage, 0, 0 );
             if ( probePowerDACChanged == true ) {
                 removeBridgeFromNodeFile( ROUTABLE_BUFFER_IN, DAC0, netSlot, flashOrLocal, 0 );
                 addBridgeToNodeFile( ROUTABLE_BUFFER_IN, DAC1, netSlot, flashOrLocal, 0 );
@@ -2432,6 +2432,7 @@ void routableBufferPower( int offOn, int flash, int force ) {
             if ( probePowerDAC == 0 ) {
                 if ( bufferPowerConnected == false ) {
                     addBridgeToNodeFile( ROUTABLE_BUFFER_IN, DAC0, netSlot, flashOrLocal, 0 );
+
                     needToRefresh = true;
                 }
             } else if ( probePowerDAC == 1 ) {
@@ -2668,8 +2669,8 @@ int longShortPress( int pressLength ) {
 int countLED = 0;
 volatile int checkingButton = 0;
 int lastProbeButtonState = 0;
-#define BUTTON_SETTLE_US 12
-#define BUTTON_SETTLE_SHORT_US 1
+#define BUTTON_SETTLE_US 32
+#define BUTTON_SETTLE_SHORT_US 4
 //// @brief checks the probe button and returns the state of the button, it's blocking but fast
 /// @return 0 = neither pressed, 1 = remove button, 2 = connect button
 int checkProbeButton( void ) {
@@ -2678,24 +2679,14 @@ int checkProbeButton( void ) {
 
     // unsigned long timeStart = micros();
 
-    // If blockProbeButton is active, ignore button press and return 0
-    if ( blockProbeButton != 0 ) {
-        // Still check timer-based clearing as a fallback
-        if ( millis( ) - blockProbeButtonTimer > blockProbeButton ) {
-          Serial.println("blockProbeButton cleared");
-          Serial.flush();
-            blockProbeButton = 0;
-        } else {
-            // Serial.println("blockProbeButton not cleared");
-            // Serial.flush();
-            return 0;
-        }
-    }
+
 
     int buttonState = 0;
     int buttonState2 = 0;
     int buttonState3 = 0;
     checkingButton = 1;
+
+    int returnState = 0;
     gpio_function_t lastProbeButtonFunction = gpio_get_function( 2 );
 
     // what we're doing here is tricking the Neopixel library into letting us use
@@ -2794,6 +2785,26 @@ int checkProbeButton( void ) {
     //   blockProbeButton = 0;
     //   }
 
+      // Check if button is physically not being pressed (both states are not triggered)
+  bool buttonNotPressed = (buttonState != 1 || buttonState2 != 1 || buttonState3 != 1) &&
+  (buttonState != 0 || buttonState2 != 0 || buttonState3 != 0);
+
+// If button is not pressed and blockProbeButton is active, clear it
+if (buttonNotPressed && blockProbeButton != 0) {
+  blockProbeButton = 0;
+  }
+
+// If blockProbeButton is active, ignore button press and return 0
+if (blockProbeButton != 0) {
+  // Still check timer-based clearing as a fallback
+  if (millis() - blockProbeButtonTimer > blockProbeButton) {
+    blockProbeButton = 0;
+    } else {
+      returnState = 0;
+    return 0;
+    }
+  }
+
     if ( buttonState == 1 && buttonState2 == 1 &&
          buttonState3 == 1 ) { // disconnect Button
 
@@ -2803,32 +2814,67 @@ int checkProbeButton( void ) {
         // Serial.flush();
 
         if ( jumperlessConfig.hardware.probe_revision >= 4 ) {
-            lastProbeButtonState = 2;
-            return 2;
+            //clear blockProbeButton if it's not the same as the last state
+
+            
+            returnState = 2;
         } else {
-            lastProbeButtonState = 1;
-            return 1;
+            //clear blockProbeButton if it's not the same as the last state
+
+            returnState = 1;
         }
         // return 1;
     } else if ( buttonState == 0 && buttonState2 == 0 &&
                 buttonState3 == 0 ) { // connect Button
 
         if ( jumperlessConfig.hardware.probe_revision >= 4 ) {
-            lastProbeButtonState = 1;
-            return 1;
+       
+            returnState = 1;
         } else {
-            lastProbeButtonState = 2;
-            return 2;
+
+            returnState = 2;
         }
         // return 2;
     }
+
+
+// if (returnState != lastProbeButtonState) {
+//     blockProbeButton = 0;
+// }
+
+
+
+
+      //   // If blockProbeButton is active, ignore button press and return 0
+      //   if ( blockProbeButton != 0 ) {
+      //     // Still check timer-based clearing as a fallback
+      //     if ( millis( ) - blockProbeButtonTimer > blockProbeButton ) {
+      //       Serial.println("blockProbeButton cleared");
+      //       Serial.flush();
+      //         blockProbeButton = 0;
+             
+      //     } else {
+      //       // if (returnState != lastProbeButtonState && returnState != 0) {
+      //       //     blockProbeButton = 0;
+      //       // }
+      //         Serial.println("blockProbeButton not cleared");
+      //         Serial.flush();
+      //         returnState = 0;
+      //     }
+      // }
+
+
+    //lastProbeButtonState = 0;
     //   Serial.print("buttonState ");
     // Serial.println(buttonState);
     // Serial.print("buttonState2 ");
     // Serial.println(buttonState2);
     // Serial.println(" ");
 
-    return 0;
+    lastProbeButtonState = returnState;
+
+
+    return returnState;
 }
 
 int readFloatingOrState( int pin, int rowBeingScanned ) { // this is the old probe reading code
@@ -3303,7 +3349,7 @@ int readProbeRaw( int readNothingTouched, bool allowDuplicates ) {
             if ( lowReads > 2 ) {
                 // numberOfReads = 8;
             }
-            delayMicroseconds( 5 );
+            delayMicroseconds( 15 );
         }
         // Serial.print("connect: ");
     } else if ( checkingPads == 1 ) {
@@ -3315,7 +3361,7 @@ int readProbeRaw( int readNothingTouched, bool allowDuplicates ) {
             if ( lowReads > 2 ) {
                 // numberOfReads = 8;
             }
-            delayMicroseconds( 5 );
+            delayMicroseconds( 15 );
         }
         // Serial.print("Pads: ");
 
@@ -3328,7 +3374,7 @@ int readProbeRaw( int readNothingTouched, bool allowDuplicates ) {
             if ( lowReads > 2 ) {
                 // numberOfReads = 8;
             }
-            delayMicroseconds( 5 );
+            delayMicroseconds( 15 );
         }
     }
 
@@ -3443,10 +3489,10 @@ int justReadProbe( bool allowDuplicates, int rawPad ) {
     // Serial.println(rowProbed);
 
     if ( rowProbed <= 0 || rowProbed > sizeof( probeRowMap ) ) {
-        // if (debugProbing == 1) {
+        if (debugProbing == 1) {
         Serial.print( "out of bounds of probeRowMap[" );
         Serial.println( rowProbed );
-        //}
+        }
         return -1;
     }
 
@@ -3540,11 +3586,11 @@ int readProbe( ) {
             buttonCheck = millis( );
             int buttonState = checkProbeButton( );
             if ( buttonState == 1 ) {
-                blockProbeButton = 100;
+                blockProbeButton = 3000;
                 blockProbeButtonTimer = millis( );
                 return -18;
             } else if ( buttonState == 2 ) {
-                blockProbeButton = 100;
+                blockProbeButton = 3000;
                 blockProbeButtonTimer = millis( );
                 return -16;
             }

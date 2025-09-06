@@ -6,7 +6,7 @@
 
 namespace TUI {
 
-Stream *TUIserial = &Ser3;
+Stream *TUIserial = &USBSer3;
 
 
 

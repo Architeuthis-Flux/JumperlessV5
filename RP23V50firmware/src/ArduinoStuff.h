@@ -44,7 +44,7 @@ extern Adafruit_USBD_CDC USBSer2;
 // #endif
 
 // #if USB_CDC_ENABLE_COUNT >= 4
-extern Adafruit_USBD_CDC Ser3;
+extern Adafruit_USBD_CDC USBSer3;
 // #endif
 
 #endif

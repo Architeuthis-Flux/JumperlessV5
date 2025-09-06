@@ -14,7 +14,7 @@
 
 using namespace TuiGlue;
 
-Stream* TuiGlue::TUIserial = &Ser3;
+Stream* TuiGlue::TUIserial = &USBSer3;
 extern int netSlot;
 
 namespace TUI {

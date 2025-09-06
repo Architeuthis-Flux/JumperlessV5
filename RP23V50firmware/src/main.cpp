@@ -11,6 +11,7 @@ KevinC@ppucc.io
 */
 
 #include "hardware/pio.h"
+#include "pico.h"
 #define PICO_RP2350A 0
 // #include <pico/stdlib.h>
 #include <Arduino.h>
@@ -103,7 +104,7 @@ unsigned long dumpLEDTimer = 0;
 unsigned long dumpLEDrate = 50;
 
 
-const char firmwareVersion[] = "5.3.2.1"; //! remember to update this
+const char firmwareVersion[] = "5.3.2.4"; //! remember to update this
 
 bool newConfigOptions = false;            //! set to true with new config options //!
                                           
@@ -164,14 +165,14 @@ void setup( ) {
     pinMode( BUTTON_PIN, INPUT_PULLDOWN );
     // pinMode(buttonPin, INPUT_PULLDOWN);
     digitalWrite( PROBE_PIN, HIGH );
-startupTimers[ 2 ] = millis( );
+
     
     // digitalWrite(BUTTON_PIN, HIGH);
-
+    startupTimers[ 2 ] = millis( );
 
     initINA219( );
 
-    startupTimers[ 3 ] = millis( );
+   
 
     delayMicroseconds( 100 );
 
@@ -179,11 +180,13 @@ startupTimers[ 2 ] = millis( );
     digitalWrite( RESETPIN, LOW );
     
     while ( core2initFinished == 0 ) {
+        tight_loop_contents();
         // delayMicroseconds(1);
     }
-
+    startupTimers[ 3 ] = millis( );
    
-    routableBufferPower( 1, 1 );
+    routableBufferPower( 1, 0 );
+    startupTimers[ 4 ] = millis( );
 
     if (jumperlessConfig.serial_1.async_passthrough == true) {
         AsyncPassthrough::begin(115200);
@@ -191,7 +194,7 @@ startupTimers[ 2 ] = millis( );
 
     drawAnimatedImage( 0 );
     startupAnimationFinished = 1;
-    startupTimers[ 4 ] = millis( );
+    
     clearAllNTCC( );
 
     startupTimers[ 5 ] = millis( );
@@ -238,16 +241,20 @@ void setupCore2stuff( ) {
     }
 
     initLEDs( );
+   
     startupCore2timers[ 2 ] = millis( );
     initRowAnimations( );
     startupCore2timers[ 3 ] = millis( );
     setupSwirlColors( );
     startupCore2timers[ 4 ] = millis( );
 
+   
+
     startupCore2timers[ 5 ] = millis( );
     initRotaryEncoder( );
     startupCore2timers[ 6 ] = millis( );
     initSecondSerial( );
+    core2initFinished = 1;
     // delay(4);
 
 }
@@ -257,7 +264,7 @@ void setup1( ) {
 
     setupCore2stuff( );
 
-    core2initFinished = 1;
+    
 
     while ( startupAnimationFinished == 0 ) {
         // delayMicroseconds(1);
@@ -320,8 +327,10 @@ unsigned long core1Timeout = millis( );
 
 
 #define debug_startup_timers 0
+#define debug_busy_timers 0
 
-
+unsigned long busyPrintTime = 0;
+unsigned long busyPrintInterval = 3000;
 unsigned long busyTimers[ 10 ] = { 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 };
 
 
@@ -530,8 +539,11 @@ dontshowmenu:
     firstConnection = -1;
     core1passthrough = 1;
 
-
-
+#if debug_busy_timers == 1
+Serial.println("Starting main loop: " + String(millis( )) + " ms");
+Serial.flush();
+#endif
+busyPrintTime = millis( );
     //! This is the main busy wait loop waiting for input
     while ( Serial.available( ) == 0 && connectFromArduino == '\0' &&
             slotChanged == 0 ) {
@@ -552,7 +564,7 @@ dontshowmenu:
         TuiGlue::loop();
         busyTimers[ 1 ] = micros( );
 
-// int lastProbeButtonResult = 0;
+// int lastProbeButtonResult = 0; //checking that the probe button is working
 //         while (1){
 //             int probeButtonResult = checkProbeButton();
 
@@ -579,11 +591,6 @@ dontshowmenu:
 //         }
             
 
-        // watchdog core loop should be called here
-        // Drive wavegen progress if running or in async mode
-        // if (waveGen.isRunning() || !waveGen.isFallbackMode()) {
-        //     waveGen.service();
-        // }
 
 
         int encoderNetHighlighted = encoderNetHighlight( );
@@ -664,14 +671,14 @@ dontshowmenu:
                 }
 
 
-                blockProbeButton = 200;
+                blockProbeButton = 800;
                 blockProbeButtonTimer = millis( );
             } else if ( probeToggleResult == -3 ) {
-                blockProbeButton = 200;
+                blockProbeButton = 800;
                 blockProbeButtonTimer = millis( );
 
             } else if ( probeToggleResult == -2 ) {
-                blockProbeButton = 200;
+                blockProbeButton = 800;
 
                 blockProbeButtonTimer = millis( );
 
@@ -687,7 +694,7 @@ dontshowmenu:
 
                 firstConnection = -1;
 
-                blockProbeButton = 100;
+                blockProbeButton = 800;
 
                 blockProbeButtonTimer = millis( );
             }
@@ -774,21 +781,28 @@ dontshowmenu:
 
         oled.oledPeriodic();
         busyTimers[ 9 ] = micros( );
-
-
+#if debug_busy_timers == 1
+        if ( millis( ) - busyPrintTime > busyPrintInterval ) {
+            busyPrintTime = millis( );
         for (int i = 1; i < 10; i++) {
             Serial.print("busyTimer ");
             Serial.print(i);
             Serial.print(": ");
-            Serial.println(busyTimers[ i ] - busyTimers[ i - 1 ]);
+            Serial.print(busyTimers[ i ] - busyTimers[ i - 1 ]);
+            Serial.println(" us");
     
 
         }
         Serial.print("total: ");
-        Serial.println(busyTimers[ 9 ] - busyTimers[ 0 ]);
-        Serial.println("\n\n\r");
+        Serial.print(busyTimers[ 9 ] - busyTimers[ 0 ]);
+        Serial.print(" us\t\ttotal system time: ");
+        Serial.print(millis( ));
+        Serial.println(" ms");
+        Serial.println("\n\r");
         Serial.flush();
-        delay(1000);
+        //delay(100);
+        }
+#endif
         
     }
 
@@ -1903,7 +1917,7 @@ float wavegen_frequency = 1000.0f;
     case '}': {
         
 
-        blockProbeButton = 100;
+        blockProbeButton = 500;
 
         blockProbeButtonTimer = millis( );
         probeMode( 1, firstConnection );
@@ -1919,7 +1933,7 @@ float wavegen_frequency = 1000.0f;
     case '{': {
         
 
-        blockProbeButton = 100;
+        blockProbeButton = 500;
 
         blockProbeButtonTimer = millis( );
         int probeReturn = probeMode( 0, firstConnection );
