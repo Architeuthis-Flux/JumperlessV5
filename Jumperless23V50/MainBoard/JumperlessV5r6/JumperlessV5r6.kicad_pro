@@ -108,6 +108,7 @@
         "solder_mask_bridge": "ignore",
         "starved_thermal": "warning",
         "text_height": "ignore",
+        "text_on_edge_cuts": "error",
         "text_thickness": "ignore",
         "through_hole_pad_without_hole": "error",
         "too_many_vias": "error",

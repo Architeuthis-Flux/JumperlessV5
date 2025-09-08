@@ -6,6 +6,12 @@
 #include "CoreBusyFlags.h"
 // #include "RotaryEncoder.h"
 
+// Forward declaration for TermControl
+class TermControl;
+extern TermControl termSerial;
+
+// Global storage for current command line (for backwards compatibility with parsers)
+extern String currentCommandLine;
 
 //extern File nodeFile;  
 

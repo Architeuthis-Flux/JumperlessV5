@@ -16,6 +16,7 @@
 #include "CH446Q.h"
 #include "Peripherals.h"
 #include "config.h"
+#include "TermControl.h"
 #include <Arduino.h>
 #include <EEPROM.h>
 #include <FatFS.h>
@@ -150,6 +151,7 @@ int openFileThreadSafe(int openTypeEnum, int slot, int flashOrLocal) {
   }
   // Serial.print("openFileThreadSafe done   ");
   // Serial.println(micros() - start);
+  //core1busy = false;
   return 1;
 }
 
@@ -1784,6 +1786,14 @@ void readStringFromSerial(int source, int addRemove) {
     specialFunctionsString.read(Serial);
   } else if (source == 1) {
    // specialFunctionsString.read(Serial1);
+  } else if (source == 3) {
+    // Read from global command line storage (without first character for backwards compatibility)
+    String lineData = currentCommandLine;
+    if (lineData.length() > 0) {
+      lineData = lineData.substring(1);  // Remove first character
+    }
+    specialFunctionsString.clear();
+    specialFunctionsString = lineData.c_str();
   }
 
   if (specialFunctionsString.endsWith("-") == 1 ||

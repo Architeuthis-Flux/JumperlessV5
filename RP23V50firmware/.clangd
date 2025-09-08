@@ -85,6 +85,8 @@ CompileFlags:
     - "-fno-rtti"
     - "-fno-exceptions"
 
+    - "-Wtrigraphs"
+
 ---
 If:
   PathMatch: .*\.c$

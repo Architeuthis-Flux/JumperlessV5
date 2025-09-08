@@ -25,6 +25,9 @@
 #include "Python_Proper.h"
 #include "config.h"
 #include "oled.h"
+#include "Tui.h"
+#include "TuiGlue.h"
+
 
 int debugProbing = 0;
 
@@ -321,6 +324,12 @@ restartProbingNoPrint:
         } else {
 
             row[ 0 ] = readProbe( );
+        }
+
+        if ( row[ 0 ] == -1 ) {
+
+          TuiGlue::loop();
+          
         }
         // Serial.println(row[0]);
 
@@ -2669,7 +2678,7 @@ int longShortPress( int pressLength ) {
 int countLED = 0;
 volatile int checkingButton = 0;
 int lastProbeButtonState = 0;
-#define BUTTON_SETTLE_US 32
+#define BUTTON_SETTLE_US 22
 #define BUTTON_SETTLE_SHORT_US 4
 //// @brief checks the probe button and returns the state of the button, it's blocking but fast
 /// @return 0 = neither pressed, 1 = remove button, 2 = connect button
@@ -2692,12 +2701,12 @@ int checkProbeButton( void ) {
     // what we're doing here is tricking the Neopixel library into letting us use
     // its pin to read the 2 buttons on the probe without it stopping
 
-    if ( showingProbeLEDs == 1 ) {
+    while ( showingProbeLEDs == 1 ) {
 
         // while (showingProbeLEDs == 1) {
         //   tight_loop_contents();
         //   }
-        return 0;
+        //return 0;
         // delay(10);
     }
     // waitCore2();
@@ -3349,7 +3358,7 @@ int readProbeRaw( int readNothingTouched, bool allowDuplicates ) {
             if ( lowReads > 2 ) {
                 // numberOfReads = 8;
             }
-            delayMicroseconds( 15 );
+            delayMicroseconds( 5 );
         }
         // Serial.print("connect: ");
     } else if ( checkingPads == 1 ) {
@@ -3361,7 +3370,7 @@ int readProbeRaw( int readNothingTouched, bool allowDuplicates ) {
             if ( lowReads > 2 ) {
                 // numberOfReads = 8;
             }
-            delayMicroseconds( 15 );
+            delayMicroseconds( 5 );
         }
         // Serial.print("Pads: ");
 
@@ -3374,7 +3383,7 @@ int readProbeRaw( int readNothingTouched, bool allowDuplicates ) {
             if ( lowReads > 2 ) {
                 // numberOfReads = 8;
             }
-            delayMicroseconds( 15 );
+            delayMicroseconds( 5 );
         }
     }
 

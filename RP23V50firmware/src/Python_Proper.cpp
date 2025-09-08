@@ -8,6 +8,7 @@
 #include "CH446Q.h"
 #include "Commands.h"
 #include "AsyncPassthrough.h"
+
 #include "LEDs.h"
 
 extern "C" {
@@ -452,6 +453,8 @@ void enterMicroPythonREPLWithFile(Stream *stream, const String& filepath) {
   global_mp_stream->println();
   global_mp_stream->flush();
 
+  Serial.write("\x1b[0 q");
+
 
   while (global_mp_stream->available() == 0) {
     delayMicroseconds(1);
@@ -501,7 +504,7 @@ void processMicroPythonInput(Stream *stream) {
   // Handle REPL input with proper text editor functionality and history
   if (mp_repl_active) {
     static REPLEditor editor;
-    static ScriptHistory history;
+    static ScriptHistory history;  // Each REPL instance gets its own history
     static bool history_initialized = false;
 
     // Check for pending initial file to load (do this BEFORE first_run check)
@@ -3024,222 +3027,16 @@ void REPLEditor::fullReset() {
 // New functions for single command execution from main.cpp
 
 
-char result_buffer[64];
-
-// Helper function to apply syntax highlighting to a string
-void displayStringWithSyntaxHighlighting(const String& text, Stream* stream) {
-  if (text.length() == 0) return;
-  
-  // Simple syntax highlighting keywords (reusing from eKilo editor)
-  const char* python_keywords[] = {
-    "and", "as", "assert", "break", "class", "continue", "def", "del",
-    "elif", "else", "except", "exec", "finally", "for", "from", "global",
-    "if", "import", "in", "is", "lambda", "not", "or", "pass", "print",
-    "raise", "return", "try", "while", "with", "yield", "async", "await",
-    "nonlocal", "True", "False", "None", nullptr
-  };
-  
-  const char* python_builtins[] = {
-    "abs", "all", "any", "bin", "bool", "bytes", "callable", "chr", "dict", 
-    "dir", "enumerate", "eval", "filter", "float", "format", "getattr", 
-    "globals", "hasattr", "hash", "help", "hex", "id", "input", "int", 
-    "isinstance", "iter", "len", "list", "locals", "map", "max", "min", 
-    "next", "object", "oct", "open", "ord", "pow", "print", "range", 
-    "repr", "reversed", "round", "set", "setattr", "slice", "sorted", 
-    "str", "sum", "super", "tuple", "type", "vars", "zip", "self", "cls", nullptr
-  };
-  
-  const char* jumperless_functions[] = {
-    "dac_set", "dac_get", "set_dac", "get_dac", "adc_get", "get_adc",
-    "ina_get_current", "ina_get_voltage", "ina_get_bus_voltage", "ina_get_power",
-    "get_current", "get_voltage", "get_bus_voltage", "get_power",
-    "gpio_set", "gpio_get", "gpio_set_dir", "gpio_get_dir", "gpio_set_pull", "gpio_get_pull",
-    "set_gpio", "get_gpio", "set_gpio_dir", "get_gpio_dir", "set_gpio_pull", "get_gpio_pull",
-    "connect", "disconnect", "is_connected", "nodes_clear", "node",
-    "oled_print", "oled_clear", "oled_connect", "oled_disconnect",
-    "clickwheel_up", "clickwheel_down", "clickwheel_press",
-    "print_bridges", "print_paths", "print_crossbars", "print_nets", "print_chip_status",
-    "probe_read", "read_probe", "probe_read_blocking", "probe_read_nonblocking",
-    "get_button", "probe_button", "probe_button_blocking", "probe_button_nonblocking",
-    "probe_wait", "wait_probe", "probe_touch", "wait_touch", "button_read", "read_button",
-    "check_button", "button_check", "arduino_reset", "probe_tap", "run_app", "format_output",
-    "help_nodes", "pwm", "pwm_set_frequency", "pwm_set_duty_cycle", "pwm_stop", "send_raw", "nodes_save",
-    // Wavegen
-    "wavegen_set_output", "set_wavegen_output",
-    "wavegen_set_freq", "set_wavegen_freq",
-    "wavegen_set_wave", "set_wavegen_wave",
-    "wavegen_set_sweep", "set_wavegen_sweep",
-    "wavegen_set_amplitude", "set_wavegen_amplitude",
-    "wavegen_set_offset", "set_wavegen_offset",
-    "wavegen_start", "start_wavegen",
-    "wavegen_stop", "stop_wavegen",
-    "wavegen_get_output", "get_wavegen_output",
-    "wavegen_get_freq", "get_wavegen_freq",
-    "wavegen_get_wave", "get_wavegen_wave",
-    "wavegen_get_amplitude", "get_wavegen_amplitude",
-    "wavegen_get_offset", "get_wavegen_offset",
-    "wavegen_is_running",
-    nullptr
-  };
-  
-  const char* jumperless_constants[] = {
-    "TOP_RAIL", "BOTTOM_RAIL", "GND", "DAC0", "DAC1", "ADC0", "ADC1", "ADC2", "ADC3", "ADC4",
-    "PROBE", "ISENSE_PLUS", "ISENSE_MINUS", "UART_TX", "UART_RX", "BUFFER_IN", "BUFFER_OUT",
-    "GPIO_1", "GPIO_2", "GPIO_3", "GPIO_4", "GPIO_5", "GPIO_6", "GPIO_7", "GPIO_8",
-    "D0", "D1", "D2", "D3", "D4", "D5", "D6", "D7", "D8", "D9", "D10", "D11", "D12", "D13",
-    "A0", "A1", "A2", "A3", "A4", "A5", "A6", "A7", "D13_PAD", "TOP_RAIL_PAD", "BOTTOM_RAIL_PAD",
-    "LOGO_PAD_TOP", "LOGO_PAD_BOTTOM", "CONNECT_BUTTON", "REMOVE_BUTTON", "BUTTON_NONE",
-    "CONNECT", "REMOVE", "NONE", "INPUT", "OUTPUT", "PULLUP", "PULLDOWN", "KEEPER", "HIGH", "LOW",
-    // Wavegen constants
-    "SINE", "TRIANGLE", "SAWTOOTH", "SQUARE", "RAMP", "ARBITRARY",
-    nullptr
-  };
-  
-  const char* jfs_functions[] = {
-    // JFS module functions
-    "open", "read", "write", "close", "seek", "tell", "size", "available",
-    "exists", "listdir", "mkdir", "rmdir", "remove", "rename", "stat", "info",
-    "SEEK_SET", "SEEK_CUR", "SEEK_END",
-    // Basic filesystem functions
-    "fs_exists", "fs_listdir", "fs_read", "fs_write", "fs_cwd", nullptr
-  };
-  
-  auto is_separator = [](char c) -> bool {
-    return isspace(c) || c == '\0' || strchr(",.()+-/*=~%<>[];", c) != nullptr;
-  };
-  
-  auto is_keyword = [&](const char* word, int len, const char* keywords[]) -> bool {
-    for (int i = 0; keywords[i] != nullptr; i++) {
-      if (strlen(keywords[i]) == len && !strncmp(word, keywords[i], len)) {
-        return true;
-      }
-    }
-    return false;
-  };
-  
-  int i = 0;
-  int current_color = -1;
-  const char* text_cstr = text.c_str();
-  int text_len = text.length();
-  
-  while (i < text_len) {
-    char c = text_cstr[i];
-    
-    // Handle comments
-    if (c == '#') {
-      if (current_color != 34) {
-        stream->print("\x1b[38;5;34m"); // Green for comments
-        current_color = 34;
-      }
-      // Print rest of line as comment
-      while (i < text_len && text_cstr[i] != '\n') {
-        stream->write(text_cstr[i]);
-        i++;
-      }
-      continue;
-    }
-    
-    // Handle strings
-    if (c == '"' || c == '\'') {
-      if (current_color != 39) {
-        stream->print("\x1b[38;5;39m"); // Cyan for strings
-        current_color = 39;
-      }
-      char quote = c;
-      stream->write(c);
-      i++;
-      while (i < text_len && text_cstr[i] != quote) {
-        if (text_cstr[i] == '\\' && i + 1 < text_len) {
-          stream->write(text_cstr[i]); // Backslash
-          i++;
-          if (i < text_len) {
-            stream->write(text_cstr[i]); // Escaped character
-            i++;
-          }
-        } else {
-          stream->write(text_cstr[i]);
-          i++;
-        }
-      }
-      if (i < text_len) {
-        stream->write(text_cstr[i]); // Closing quote
-        i++;
-      }
-      continue;
-    }
-    
-    // Handle numbers
-    if (isdigit(c) || (c == '.' && i + 1 < text_len && isdigit(text_cstr[i + 1]))) {
-      if (current_color != 199) {
-        stream->print("\x1b[38;5;199m"); // Bright red for numbers
-        current_color = 199;
-      }
-      while (i < text_len && (isdigit(text_cstr[i]) || text_cstr[i] == '.')) {
-        stream->write(text_cstr[i]);
-        i++;
-      }
-      continue;
-    }
-    
-    // Handle keywords/identifiers
-    if (isalpha(c) || c == '_') {
-      int start = i;
-      while (i < text_len && (isalnum(text_cstr[i]) || text_cstr[i] == '_')) {
-        i++;
-      }
-      
-      int word_len = i - start;
-      int new_color = 255; // Default white
-      
-      // Check for different types of keywords
-      if (is_keyword(text_cstr + start, word_len, python_keywords)) {
-        new_color = 214; // Orange for Python keywords
-      } else if (is_keyword(text_cstr + start, word_len, python_builtins)) {
-        new_color = 79; // Green for Python builtins
-      } else if (is_keyword(text_cstr + start, word_len, jfs_functions)) {
-        new_color = 45; // Cyan-blue for JFS filesystem functions
-      } else if (is_keyword(text_cstr + start, word_len, jumperless_functions)) {
-        new_color = 207; // Bright magenta for Jumperless functions
-      } else if (is_keyword(text_cstr + start, word_len, jumperless_constants)) {
-        new_color = 105; // Purple for Jumperless constants
-      }
-      
-      if (current_color != new_color) {
-        stream->print("\x1b[38;5;");
-        stream->print(new_color);
-        stream->print("m");
-        current_color = new_color;
-      }
-      
-      // Print the word
-      for (int j = start; j < start + word_len; j++) {
-        stream->write(text_cstr[j]);
-      }
-      continue;
-    }
-    
-    // Default characters
-    if (current_color != 255) {
-      stream->print("\x1b[38;5;255m"); // White for default
-      current_color = 255;
-    }
-    stream->write(c);
-    i++;
-  }
-  
-  // Reset color at end
-  if (current_color != -1) {
-    stream->print("\x1b[0m");
-  }
-}
+// moved to SyntaxHighlighting.cpp
 
 void getMicroPythonCommandFromStream(Stream *stream) {
-  stream->print("Python> ");
-  stream->flush();
+  // stream->print("Python> ");
+  // stream->flush();
   
   String command = "";
   while (stream->available() == 0) {
-    delay(1); // Wait for input
+    tight_loop_contents();
+    //delay(1); // Wait for input
   }
   
   // Read input character by character with syntax highlighting
@@ -3256,7 +3053,7 @@ void getMicroPythonCommandFromStream(Stream *stream) {
     } else if (c >= 32 && c <= 126) { // Printable characters
       command += c;
       // Real-time syntax highlighting - redraw the visible part
-      stream->print("\rPython> ");
+      // stream->print("\rPython> ");
       displayStringWithSyntaxHighlighting(command, stream);
       stream->flush();
     }
@@ -3266,8 +3063,12 @@ void getMicroPythonCommandFromStream(Stream *stream) {
   command.trim();
   
   if (command.length() > 0) {
+    char result_buffer[128];
     bool success = executeSinglePythonCommandFormatted(command.c_str(), result_buffer, sizeof(result_buffer));
+    (void)success;
+    changeTerminalColor(replColors[2], true, stream);
     stream->printf(result_buffer);
+    changeTerminalColor(replColors[0], true, stream);
   }
 }
 
@@ -3318,7 +3119,7 @@ bool initMicroPythonQuiet(void) {
       "        time.sleep_ms(1)\n"
       "    globals()['check_interrupt'] = check_interrupt\n"
       "except: pass\n");
-  
+  Serial.write("\x1b[0 q");
   return true;
 }
 

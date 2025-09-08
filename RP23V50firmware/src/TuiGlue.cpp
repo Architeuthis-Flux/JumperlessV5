@@ -92,6 +92,8 @@ static void cbToggleOLED() {
   }
   saveConfig( );
   TUI::setStatus(jumperlessConfig.top_oled.enabled ? "OLED ON" : "OLED OFF");
+
+  USBSer3.print("\x1bPq#0;2;0;0;0#1;2;100;100;0#2;2;0;100;0#1~~@@vv@@~~@@~~$#2??}}GG}}??}}??-#1!14@\x1b");
 }
 
 static void cbAbout()  {
@@ -123,14 +125,14 @@ static void cbMenuWider()   {
 }
 
 static void cbClearAllConnections() {
-  digitalWrite( RESETPIN, HIGH );
-  delay( 1 );
-  refreshPaths( );
-  clearAllNTCC( );
+  //digitalWrite( RESETPIN, HIGH );
+ // delay( 1 );
+  // refreshPaths( );
+  // clearAllNTCC( );
 
   clearNodeFile( netSlot, 0 );
   refreshConnections( -1, 1, 1 );
-  digitalWrite( RESETPIN, LOW );
+  //digitalWrite( RESETPIN, LOW );
 
   TUI::log( "Cleared all connections" );
 }
@@ -270,7 +272,7 @@ namespace {
         // On reopen, schedule a deferred size probe/redraw (no escape queries)
         s_needDeferredRedraw = true;
         s_redrawTries        = 12;
-        s_nextRetryAtMs      = millis() + 120;
+        s_nextRetryAtMs      = millis() + 10;
         s_seenHostByte       = false;
         TUI::fullRedraw();
       }
@@ -313,7 +315,7 @@ static void activate() {
   // Nudge terminal so some programs wake up
   TuiGlue::TUIserial->print("\r\n");
   TuiGlue::TUIserial->flush();
-  delay(20);
+  delay(10);
 
   s_active = true;
   TUI::fullRedraw();
@@ -329,7 +331,7 @@ static void activate() {
     s_needDeferredRedraw = true;
     s_seenHostByte       = false;
     s_redrawTries        = 12;      // ~1.4s total with 120–140ms steps
-    s_nextRetryAtMs      = millis() + 120;
+    s_nextRetryAtMs      = millis() + 10;
   }
 
   TUI::log("Use \x1b[1mUp/Down\x1b[0m to navigate, \x1b[1mEnter\x1b[0m to select, \x1b[1mESC\x1b[0m to go back.");
@@ -392,7 +394,7 @@ void TuiGlue::loop() {
         s_needDeferredRedraw = false;
       } else {
         s_redrawTries--;
-        s_nextRetryAtMs = millis() + 140;
+        s_nextRetryAtMs = millis() + 10;
       }
     }
 

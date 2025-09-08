@@ -3798,7 +3798,7 @@ int printMenuLine(const char* format, ...) {
   if (len > 0 && len < sizeof(buffer)) {
     // Print the formatted string
     Serial.print(buffer);
-    TUI::log(buffer);
+   // TUI::log(buffer);
     printed = len;
     // Cycle to next color
    // cycleTerminalColor();
@@ -3825,7 +3825,7 @@ int printMenuLine(int showExtraMenu, int minLevel, const char* format, ...) {
   if (len > 0 && len < sizeof(buffer)) {
     // Print the formatted string
     Serial.print(buffer);
-    TUI::log(buffer);
+    //TUI::log(buffer);
     printed = len;
   }
   if (printed > 0) {

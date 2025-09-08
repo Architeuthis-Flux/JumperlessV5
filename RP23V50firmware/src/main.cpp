@@ -59,6 +59,7 @@ KevinC@ppucc.io
 #include "user_functions.h"
 #include "CoreBusyFlags.h"
 #include "TuiGlue.h"
+#include "TermControl.h"
 
 #include "WaveGen.h"  // New async wavegen
 
@@ -334,6 +335,13 @@ unsigned long busyPrintInterval = 3000;
 unsigned long busyTimers[ 10 ] = { 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 };
 
 
+
+TermControl termSerial(&Serial);  // Creates its own history instance
+
+// Global storage for current command line (for backwards compatibility with parsers)
+String currentCommandLine = "";
+
+
 void loop( ) {
 
 menu:
@@ -544,9 +552,18 @@ Serial.println("Starting main loop: " + String(millis( )) + " ms");
 Serial.flush();
 #endif
 busyPrintTime = millis( );
+
+
     //! This is the main busy wait loop waiting for input
-    while ( Serial.available( ) == 0 && connectFromArduino == '\0' &&
+
+    
+    while ( !termSerial.hasCompletedLine() && connectFromArduino == '\0' &&
             slotChanged == 0 ) {
+
+        // Service input as early as possible - break immediately when line is ready
+        if (termSerial.service()) {
+            break;  // Line is ready for processing
+        }
 
         unsigned long busyTimer = millis( );
 
@@ -803,15 +820,28 @@ busyPrintTime = millis( );
         //delay(100);
         }
 #endif
-        
+        // Optionally service again at the end of the loop body
+        termSerial.service();
+
     }
 
+// Only proceed when a full line is ready; then parse it
+if (termSerial.hasCompletedLine()) {
+    String cmdLine = termSerial.getCompletedLine();  // Get and consume the line
+    cmdLine.trim();
+    currentCommandLine = cmdLine;  // Store for backwards compatibility with parsers
+    if (cmdLine.length() > 0) {
+            input = cmdLine[0];
+        } else {
+            input = '\n';
+        }
+    
+}
+   
+    // Service incoming serial and use our line buffer instead of direct Serial.read
 
-
-    input = Serial.read( );
-
-    timer = millis( );
-    // Serial.print("input = ");
+    // timer = millis( );
+    // // Serial.print("input = ");
     // Serial.println(input);
     // Serial.flush();
 
@@ -1355,8 +1385,20 @@ float wavegen_frequency = 1000.0f;
 
         // Add this case for single Python command
     case '>': { //! > - Execute single Python command
-        // readPythonCommand();
-        getMicroPythonCommandFromStream( );
+        // Use our buffer instead of reading from Serial again
+        String pythonCommand = currentCommandLine;
+        if (pythonCommand.length() > 1) {
+            pythonCommand = pythonCommand.substring(1);  // Remove the '>' prefix
+            pythonCommand.trim();
+            // Serial.print("Python> ");
+            // Apply Python syntax highlighting
+            // displayStringWithSyntaxHighlighting(pythonCommand, &Serial);
+            // Serial.println();
+            // Execute the command
+            executeSinglePythonCommand(pythonCommand.c_str());
+        } else {
+            Serial.println("Usage: > <python_command>");
+        }
         Serial.flush( );
         goto dontshowmenu;
         break;
@@ -1479,14 +1521,14 @@ float wavegen_frequency = 1000.0f;
 
     case '+': { //!  +
 
-        readStringFromSerial( 0, 0 );
+        readStringFromSerial( 3, 0 );
         goto loadfile;
 
         break;
     }
 
     case '-': { //!  -
-        readStringFromSerial( 0, 1 );
+        readStringFromSerial( 3, 1 );
         goto loadfile;
         break;
     }

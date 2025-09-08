@@ -131,7 +131,7 @@ String parseCommandWithPrefix(const char* command);
 bool isJumperlessFunction(const char* function_name);
 
 // Syntax highlighting helper
-void displayStringWithSyntaxHighlighting(const String& text, Stream* stream);
+#include "SyntaxHighlighting.h"
 
 // REPL control
 void startMicroPythonREPL(void);
