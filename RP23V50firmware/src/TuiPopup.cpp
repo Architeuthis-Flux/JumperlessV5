@@ -1,10 +1,15 @@
 // SPDX-License-Identifier: MIT
 // TuiPopup.cpp — implementation
+
 #include "TuiPopup.h"
 #include "Tui.h"        // uses TUI::S (rows/cols), TUI::THEME.borderStyle, TUI::fullRedraw()
 #include <Arduino.h>
 
 namespace TUI {
+
+// --- Input-mode ESC parser state ---
+// 0=idle, 1=ESC, 2=ESC[, 3=ESCO, 4=ESC[3 (expect '~')
+static uint8_t  s_inputEscState = 0;
 
 Popup& Popup::instance() {
   static Popup P;
@@ -28,6 +33,21 @@ void Popup::open(const String& title, int16_t boxRows, int16_t boxCols, float fr
   m_userFracH = fracRows;
   m_userFracW = fracCols;
 
+  // reset input-related state
+  m_inputActive = false;
+  m_prompt = "";
+  m_input  = "";
+  m_cursor = 0;
+  m_viewLeft = 0;
+  m_submitCb = nullptr;
+  m_cancelCb = nullptr;
+
+  s_inputEscState = 0;
+
+  if (m_ser) {
+    m_ser->print("\x1b[?25l"); // hide caret in non-input popups
+  }
+
   m_dirty = true;
 }
 
@@ -35,8 +55,28 @@ void Popup::close() {
   m_active = false;
   m_autoCloseAt = 0;
   m_dirty = false;
-  // Let the main UI repaint itself
+
+  // clear input callbacks and state
+  m_inputActive = false;
+  m_submitCb = nullptr;
+  m_cancelCb = nullptr;
+
+  s_inputEscState = 0;
+
+  if (m_ser) {
+    m_ser->print("\x1b[?25l"); // hide caret
+  }
+
   TUI::fullRedraw();
+}
+
+void Popup::clearInterior(uint16_t r0, uint16_t c0, uint16_t h, uint16_t w) {
+  if (!m_ser) return;
+  if (h < 3 || w < 3) return;
+  for (uint16_t r = 1; r < h - 1; ++r) {
+    mv(m_ser, (uint16_t)(r0 + r), (uint16_t)(c0 + 1));
+    hline(m_ser, (uint16_t)(w - 2), ' ');
+  }
 }
 
 void Popup::clear() {
@@ -169,12 +209,26 @@ void Popup::drawTitle(uint16_t r0, uint16_t c0, uint16_t w) {
   mv(m_ser, r0, tstart); m_ser->print(t);
 }
 
+// Help text goes on the last interior row; only for input mode
 void Popup::drawHelp(uint16_t r0, uint16_t c0, uint16_t h, uint16_t w) {
   if (!m_ser) return;
-  const char* help = "↑/↓ PgUp/PgDn scroll — ESC close";
-  uint16_t len = (uint16_t)strlen(help);
-  uint16_t tstart = (uint16_t)(c0 + (w - len)/2);
-  mv(m_ser, r0 + h - 1, tstart); m_ser->print(help);
+  const uint16_t helpRow = (uint16_t)(r0 + h - 2);
+  if (helpRow <= r0 + 1) return;
+
+  const uint16_t innerW = (uint16_t)(w > 2 ? w - 2 : 0);
+  if (!innerW) return;
+
+  // clear the line
+  mv(m_ser, helpRow, (uint16_t)(c0 + 1));
+  hline(m_ser, innerW, ' ');
+
+  if (!m_inputActive) return;
+
+  const char* help = " Enter submit — ESC cancel — Del/Backspace edit — ↑/↓ history — ←/→ move ";
+  const uint16_t len = (uint16_t)strlen(help);
+  const uint16_t startCol = (uint16_t)(c0 + 1 + ((innerW > len) ? (innerW - len)/2 : 0));
+  mv(m_ser, helpRow, startCol);
+  m_ser->print(help);
 }
 
 uint16_t Popup::countWrappedRows(const String& S, uint16_t innerW) {
@@ -210,35 +264,53 @@ void Popup::normalizeScroll(uint16_t innerH, uint16_t innerW) {
   uint16_t total = 0;
   for (uint16_t i=0;i<m_lineCount;i++)
     total = (uint16_t)(total + countWrappedRows(m_lines[i], innerW));
-  if (total <= innerH) { m_scroll = 0; return; }
-  if (m_scroll + innerH > total) m_scroll = (uint16_t)(total - innerH);
+  
+  if (total <= innerH) { 
+    m_scroll = 0; 
+    return; 
+  }
+
+  if (m_scroll + innerH > total) 
+    m_scroll = (uint16_t)(total - innerH);
 }
 
 void Popup::drawWrappedContent(uint16_t rStart, uint16_t cStart, uint16_t innerH, uint16_t innerW) {
   if (!m_ser) return;
-  for (uint16_t i=0;i<innerH;i++) { mv(m_ser, rStart + i, cStart); hline(m_ser, innerW, ' '); }
+
+  for (uint16_t i=0;i<innerH;i++) {
+    mv(m_ser, rStart + i, cStart); hline(m_ser, innerW, ' ');
+  }
 
   uint16_t skip = m_scroll, printed = 0;
+
   for (uint16_t li=0; li<m_lineCount && printed < innerH; li++) {
     const String& S = m_lines[li];
     uint16_t n = (uint16_t)S.length();
     if (innerW == 0) break;
 
     if (n == 0) {
-      if (skip > 0) { skip--; } else { mv(m_ser, rStart + printed, cStart); printed++; }
+      if (skip > 0) { skip--; }
+      else { mv(m_ser, rStart + printed, cStart); printed++; }
       continue;
     }
 
     uint16_t p = 0;
     while (p < n && printed < innerH) {
-      String out; out.reserve(innerW);
-      uint16_t q = p; while (q < n && S[q] == ' ') q++;
-      if (q >= n) { if (skip > 0) skip--; else { mv(m_ser, rStart + printed, cStart); printed++; } p = q; break; }
+      String out;
+      out.reserve(innerW);
+      uint16_t q = p;
+      while (q < n && S[q] == ' ') q++;
+      if (q >= n) {
+        if (skip > 0) skip--;
+        else { mv(m_ser, rStart + printed, cStart); printed++; }
+        p = q; break;
+      }
 
       bool first = true;
       while (true) {
         uint16_t t0 = q, t1 = q; while (t1 < n && S[t1] != ' ') t1++;
         uint16_t tok = (uint16_t)(t1 - t0);
+
         if (first) {
           if (tok > innerW) { out = S.substring(t0, (uint16_t)(t0 + innerW)); q = (uint16_t)(t0 + innerW); p = q; break; }
           out = S.substring(t0, t1); q = t1; first = false;
@@ -246,12 +318,17 @@ void Popup::drawWrappedContent(uint16_t rStart, uint16_t cStart, uint16_t innerH
           if ((uint16_t)(out.length() + 1 + tok) <= innerW) { out += ' '; out += S.substring(t0, t1); q = t1; }
           else break;
         }
+
         while (q < n && S[q] == ' ') q++;
         if (q >= n) { p = q; break; }
       }
 
       if (skip > 0) skip--;
-      else { mv(m_ser, rStart + printed, cStart); if (out.length() > 0) m_ser->print(out); printed++; }
+      else {
+        mv(m_ser, rStart + printed, cStart);
+        if (out.length() > 0) m_ser->print(out);
+        printed++;
+      }
 
       if (p < q) p = q;
     }
@@ -261,49 +338,68 @@ void Popup::drawWrappedContent(uint16_t rStart, uint16_t cStart, uint16_t innerH
 void Popup::draw() {
   if (!m_active || !m_ser) return;
 
-  uint16_t r0,c0,h,w;
-  computeBox(r0,c0,h,w);
+  uint16_t r0, c0, h, w;
+  computeBox(r0, c0, h, w);
 
-  uint16_t innerW = (uint16_t)(w - 2 - 2*PAD);
-  uint16_t innerH = (uint16_t)(h - 4);
+  const uint16_t innerW = (uint16_t)(w - 2 - 2*PAD);
+  const uint16_t innerH = (uint16_t)(h >= 4 ? (h - 4) : 0);
 
   normalizeScroll(innerH, innerW);
 
-  drawBorder(r0,c0,h,w);
-  drawTitle(r0,c0,w);
-  drawHelp(r0,c0,h,w);
+  drawBorder(r0, c0, h, w);
+  clearInterior(r0, c0, h, w);
+  drawTitle(r0, c0, w);
+  drawHelp(r0, c0, h, w);
 
-  uint16_t rStart = (uint16_t)(r0 + 2);
-  uint16_t cStart = (uint16_t)(c0 + 1 + PAD);
-  drawWrappedContent(rStart, cStart, innerH, innerW);
+  const uint16_t rStart = (uint16_t)(r0 + 2);
+  const uint16_t cStart = (uint16_t)(c0 + 1 + PAD);
+
+  if (m_inputActive) {
+    uint16_t contentH = innerH;
+    if (contentH > 1) {
+      drawWrappedContent(rStart, cStart, (uint16_t)(contentH - 1), innerW);
+    }
+    drawInputLine(rStart, cStart, innerW, (uint16_t)max<uint16_t>(contentH, 1));
+    m_ser->print("\x1b[?25h"); // ensure cursor visible
+  } else {
+    drawWrappedContent(rStart, cStart, innerH, innerW);
+    m_ser->print("\x1b[?25l"); // hide cursor
+  }
+
+  // --- Single-ESC cancel: if we saw ESC and no '['/'O' advanced the state
+  // during this input batch, treat as bare ESC right now (no timeout needed).
+  if (m_inputActive && s_inputEscState == 1) {
+    CancelFn cancel = m_cancelCb;
+    m_submitCb = nullptr; m_cancelCb = nullptr; m_inputActive = false;
+    s_inputEscState = 0;
+    close(); if (cancel) cancel();
+    return; // popup closed
+  }
 }
 
-// Reads additional bytes from the same serial stream when first byte was ESC
+// Reads additional bytes when first byte was ESC (non-input mode only)
 bool Popup::handleArrowSeq() {
   if (!m_ser) return true;
   char b[4] = {0,0,0,0};
   int n = 0;
-  while (m_ser->available() && n < 3) b[n++] = (char)m_ser->read();
 
-  auto lineUp = [&](){
-    if (m_scroll>0) { m_scroll--; m_dirty = true; }
-  };
+  while (m_ser->available() && n < 3) b[n++] = (char)m_ser->read();
+  uint32_t t0 = millis();
+  while (n < 3 && (millis() - t0) < 40) {
+    if (m_ser->available()) b[n++] = (char)m_ser->read();
+  }
+
+  auto lineUp = [&](){ if (m_scroll>0) { m_scroll--; m_dirty = true; } };
   auto lineDown = [&](){
     uint16_t innerW = (uint16_t)(m_boxW > 0 ? (m_boxW - 2 - 2*PAD) : 60);
     uint16_t innerH = (uint16_t)(m_boxH > 4 ? (m_boxH - 4) : 8);
-    m_scroll++;
-    normalizeScroll(innerH, innerW);
-    m_dirty = true;
+    m_scroll++; normalizeScroll(innerH, innerW); m_dirty = true;
   };
   auto page = [&](int dir){
     uint16_t innerW = (uint16_t)(m_boxW > 0 ? (m_boxW - 2 - 2*PAD) : 60);
     uint16_t innerH = (uint16_t)(m_boxH > 4 ? (m_boxH - 4) : 8);
-    if (dir < 0) {
-      m_scroll = (m_scroll > innerH) ? (uint16_t)(m_scroll - innerH) : 0;
-    } else {
-      m_scroll = (uint16_t)(m_scroll + innerH);
-      normalizeScroll(innerH, innerW);
-    }
+    if (dir < 0) m_scroll = (m_scroll > innerH) ? (uint16_t)(m_scroll - innerH) : 0;
+    else         { m_scroll = (uint16_t)(m_scroll + innerH); normalizeScroll(innerH, innerW); }
     m_dirty = true;
   };
 
@@ -314,21 +410,18 @@ bool Popup::handleArrowSeq() {
   return true; // swallow anything else
 }
 
+// --- Non-input mode key handler ---
 bool Popup::handleKey(int ch) {
   if (!m_active) return false;
 
-  // Auto close
-  if (m_autoCloseAt && (int32_t)(millis() - m_autoCloseAt) >= 0) {
-    close();
-    return true;
-  }
+  if (m_inputActive) return handleKeyInputMode(ch);
 
-  // ESC-prefixed sequences (arrows/pages) before treating ESC as close
+  if (m_autoCloseAt && (int32_t)(millis() - m_autoCloseAt) >= 0) { close(); return true; }
+
   if (ch == 0x1B) {
-    // small coalescing wait so ESC-[ lands
     int next = -1;
     uint32_t t0 = millis();
-    while ((!m_ser || !m_ser->available()) && (millis() - t0) < 10) { /* wait */ }
+    while ((!m_ser || !m_ser->available()) && (millis() - t0) < 60) { }
     if (m_ser && m_ser->available()) next = m_ser->read();
 
     if (next == '[') return handleArrowSeq();
@@ -336,7 +429,7 @@ bool Popup::handleKey(int ch) {
     if (next == 'O') {
       int b = -1;
       uint32_t t1 = millis();
-      while ((!m_ser || !m_ser->available()) && (millis() - t1) < 10) { }
+      while ((!m_ser || !m_ser->available()) && (millis() - t1) < 60) { }
       if (m_ser && m_ser->available()) b = m_ser->read();
       if (b == 'A') { if (m_scroll>0) { m_scroll--; m_dirty = true; } return true; } // Up
       if (b == 'B') { uint16_t innerW = (uint16_t)(m_boxW > 0 ? (m_boxW - 2 - 2*PAD) : 60);
@@ -345,12 +438,177 @@ bool Popup::handleKey(int ch) {
       return true;
     }
 
-    if (next < 0) { close(); return true; } // bare ESC closes
-    return true; // swallow any other ESC sequence
+    if (next < 0) { close(); return true; } // bare ESC
+    return true; // swallow anything else
   }
 
-  // swallow everything else (modal)
-  return true;
+  return true; // modal: swallow everything else
+}
+
+void Popup::openInput(const String& title, const String& prompt) {
+  open(title, -1, -1, 0.40f, 0.70f); 
+  m_prompt       = prompt;
+  m_input        = "";
+  m_cursor       = 0;
+  m_viewLeft     = 0;
+  m_inputActive  = true;
+  m_autoCloseAt  = 0;
+  m_dirty        = true;
+
+  s_inputEscState = 0;
+
+  if (m_ser) {
+    m_ser->print("\x1b[?25h");  // show cursor
+    m_ser->print("\x1b[?12h");  // enable cursor blink
+    m_ser->print("\x1b[5 q");   // fallback cursor style
+  }
+}
+
+void Popup::setInitialInput(const String& s) {
+  m_input  = s;
+  m_cursor = (uint16_t)m_input.length();
+  m_viewLeft = 0;          // let draw() place it as needed
+  m_dirty  = true;
+}
+void Popup::setOnSubmit(SubmitFn fn) { m_submitCb = fn; }
+void Popup::setOnCancel(CancelFn fn) { m_cancelCb = fn; }
+
+void Popup::drawInputLine(uint16_t rStart, uint16_t cStart, uint16_t innerW, uint16_t innerH) {
+  if (!m_ser) return;
+
+  // Put input on the last interior row (or only interior row)
+  const uint16_t contentRows = (uint16_t)max<uint16_t>(innerH, 1);
+  const uint16_t r = (uint16_t)(rStart + contentRows - 1);
+
+  // Label (prompt)
+  const String label = m_prompt.length() ? (m_prompt + " ") : String("");
+  const uint16_t labLen = (uint16_t)min<uint16_t>(label.length(), innerW);
+
+  // Clear line and print label
+  mv(m_ser, r, cStart);
+  hline(m_ser, innerW, ' ');
+  if (labLen) {
+    mv(m_ser, r, cStart);
+    m_ser->print(label.substring(0, labLen));
+  }
+
+  // Text area width after the label
+  const uint16_t textW = (uint16_t)((innerW > labLen) ? (innerW - labLen) : 0);
+
+  // Adjust horizontal view to keep caret visible
+  if (m_cursor < m_viewLeft) m_viewLeft = m_cursor;
+  if (textW && m_cursor > (uint16_t)(m_viewLeft + textW)) {
+    m_viewLeft = (uint16_t)(m_cursor - textW);
+  }
+
+  // Emit visible slice
+  if (textW) {
+    String vis;
+    if (m_input.length() <= textW) {
+      m_viewLeft = 0;
+      vis = m_input;
+    } else {
+      uint16_t right = (uint16_t)min<uint16_t>((uint16_t)(m_viewLeft + textW), (uint16_t)m_input.length());
+      vis = m_input.substring(m_viewLeft, right);
+    }
+    mv(m_ser, r, (uint16_t)(cStart + labLen));
+    if (!vis.isEmpty()) m_ser->print(vis);
+  }
+
+  // Compute absolute caret column on screen
+  uint16_t visibleCursor = 0;
+  if (m_cursor >= m_viewLeft) visibleCursor = (uint16_t)(m_cursor - m_viewLeft);
+  if (visibleCursor > textW)  visibleCursor = textW;
+
+  m_inputRow       = r;
+  m_inputCaretCol  = (uint16_t)(cStart + labLen + visibleCursor);
+
+  // Clamp to interior
+  const uint16_t leftClamp  = cStart;
+  const uint16_t rightClamp = (uint16_t)(cStart + innerW - 1);
+  if (m_inputCaretCol < leftClamp)  m_inputCaretCol = leftClamp;
+  if (m_inputCaretCol > rightClamp) m_inputCaretCol = rightClamp;
+
+  // Place the caret
+  mv(m_ser, m_inputRow, m_inputCaretCol);
+  m_ser->print("\x1b[?25h");
+}
+
+// --- Input-mode key handler (with ←/→, Home/End, Delete, and single-ESC cancel) ---
+bool Popup::handleKeyInputMode(int ch) {
+  // Continue ESC-sequence parsing if we're already in it
+  if (s_inputEscState) {
+    if (s_inputEscState == 1) {          // ESC received previously
+      if (ch == '[') { s_inputEscState = 2; return true; } // CSI
+      if (ch == 'O') { s_inputEscState = 3; return true; } // SS3
+      // Something else after ESC => treat prior ESC as cancel
+      CancelFn cancel = m_cancelCb;
+      m_submitCb = nullptr; m_cancelCb = nullptr; m_inputActive = false;
+      s_inputEscState = 0;
+      close(); if (cancel) cancel();
+      return true;
+    }
+    if (s_inputEscState == 2) {          // ESC [
+      if (ch == 'C') { if (m_cursor < m_input.length()) { m_cursor++; m_dirty = true; } s_inputEscState=0; return true; } // →
+      if (ch == 'D') { if (m_cursor > 0)                 { m_cursor--; m_dirty = true; } s_inputEscState=0; return true; } // ←
+      if (ch == 'H') { if (m_cursor != 0)                { m_cursor = 0; m_dirty = true; } s_inputEscState=0; return true; } // Home
+      if (ch == 'F') { uint16_t L=(uint16_t)m_input.length(); if (m_cursor != L) { m_cursor = L; m_dirty = true; } s_inputEscState=0; return true; } // End
+      if (ch == '3') { s_inputEscState = 4; return true; } // expect '~' (Delete)
+      // Unknown CSI -> swallow
+      s_inputEscState = 0; return true;
+    }
+    if (s_inputEscState == 4) {          // ESC [ 3
+      if (ch == '~') {                   // Delete at cursor
+        if (m_cursor < m_input.length()) { m_input.remove(m_cursor, 1); m_dirty = true; }
+      }
+      s_inputEscState = 0; return true;
+    }
+    if (s_inputEscState == 3) {          // ESC O (SS3)
+      if (ch == 'C') { if (m_cursor < m_input.length()) { m_cursor++; m_dirty = true; } s_inputEscState=0; return true; }
+      if (ch == 'D') { if (m_cursor > 0)                 { m_cursor--; m_dirty = true; } s_inputEscState=0; return true; }
+      if (ch == 'H') { if (m_cursor != 0)                { m_cursor = 0; m_dirty = true; } s_inputEscState=0; return true; }
+      if (ch == 'F') { uint16_t L=(uint16_t)m_input.length(); if (m_cursor != L) { m_cursor = L; m_dirty = true; } s_inputEscState=0; return true; }
+      s_inputEscState = 0; return true;
+    }
+  }
+
+  // ENTER -> submit
+  if (ch == '\r' || ch == '\n') {
+    SubmitFn cb = m_submitCb; String arg = m_input;
+    m_submitCb = nullptr; m_cancelCb = nullptr; m_inputActive = false;
+    s_inputEscState = 0;
+    close(); if (cb) cb(arg); return true;
+  }
+
+  // ESC -> start a possible multi-byte sequence. Do NOT sniff serial here.
+  if (ch == 0x1B) {
+    s_inputEscState = 1;   // got ESC; let subsequent calls deliver '[' or 'O'
+    m_dirty = true;        // ensure draw() runs this iteration to finalize cancel if bare
+    return true;
+  }
+
+  // Backspace (0x08 or 0x7F)
+  if (ch == 0x08 || ch == 0x7F) {
+    if (m_cursor > 0) {
+      m_input.remove((uint16_t)(m_cursor - 1), 1);
+      m_cursor--;
+      if (m_cursor < m_viewLeft) m_viewLeft = m_cursor;
+      m_dirty = true;
+    }
+    return true;
+  }
+
+  // Printable ASCII
+  if (ch >= 32 && ch <= 126) {
+    if (m_input.length() < m_inputMax) {
+      if (m_cursor == m_input.length()) m_input += (char)ch;
+      else m_input = m_input.substring(0, m_cursor) + (char)ch + m_input.substring(m_cursor);
+      m_cursor++; m_dirty = true;
+    }
+    return true;
+  }
+
+  return true; // ignore everything else
 }
 
 } // namespace TUI

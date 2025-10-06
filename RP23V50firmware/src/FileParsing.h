@@ -3,7 +3,8 @@
 #define FILEPARSING_H
 
 #include <Arduino.h>
-#include "CoreBusyFlags.h"
+#include "externVars.h"
+
 // #include "RotaryEncoder.h"
 
 // Forward declaration for TermControl
@@ -109,7 +110,6 @@ bool isSlotFileEmpty(int slot);
 // External declarations for node file operations
 // extern File nodeFile;
 // extern SafeString nodeFileString;
-// extern int netSlot;
 
 // External declaration for net color tracking
 extern uint32_t slotsWithNetColors;

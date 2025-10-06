@@ -15,7 +15,6 @@ public:
   void setSerial(Stream* ser);  // must be set by host (e.g., TuiGlue)
   bool isActive() const;
 
-  // Open/close/printing
   void open(const String& title,
             int16_t boxRows = -1, int16_t boxCols = -1,
             float fracRows = 0.0f, float fracCols = 0.0f);
@@ -25,9 +24,19 @@ public:
   void println(const String& s);
   void autoCloseMs(uint32_t ms);
 
-  // Rendering + input handling
   void drawIfDirty();
   bool handleKey(int ch);
+
+  typedef void (*SubmitFn)(const String& text);
+  typedef void (*CancelFn)();
+
+  void openInput(const String& title, const String& prompt);
+
+  void setInitialInput(const String& s);
+  void setOnSubmit(SubmitFn fn);
+  void setOnCancel(CancelFn fn);
+  bool inInputMode() const { return m_inputActive; }
+  const String& inputText() const { return m_input; }
 
 private:
   Popup() = default;
@@ -46,8 +55,27 @@ private:
   static void mv(Stream* ser, uint16_t r, uint16_t c);
   static void hline(Stream* ser, uint16_t len, char ch);
   static void hlineGlyph(Stream* ser, uint16_t len, const char* g);
+  void clearInterior(uint16_t r0, uint16_t c0, uint16_t h, uint16_t w);
 
-  // state
+  // Input-mode helpers
+  bool handleKeyInputMode(int ch);
+  void drawInputLine(uint16_t rStart, uint16_t cStart, uint16_t innerW, uint16_t innerH);
+
+  // Input state
+  bool     m_inputActive   = false;
+  String   m_prompt;               // label before the input
+  String   m_input;                // current text
+  uint16_t m_cursor        = 0;    // caret index within m_input
+  uint16_t m_viewLeft      = 0;    // leftmost index shown (for horizontal scrolling)
+  uint16_t m_inputMax      = 96;   // max chars
+  SubmitFn m_submitCb      = nullptr;
+  CancelFn m_cancelCb      = nullptr;
+
+  // For cursor placement after draw()
+  uint16_t m_inputRow      = 0;    // absolute row of input line
+  uint16_t m_inputCaretCol = 0;    // absolute col of caret after prompt
+
+  // popup state
   Stream*  m_ser = nullptr;
 
   bool     m_active      = false;

@@ -1,4 +1,4 @@
-#include "CoreBusyFlags.h"
+#include "externVars.h"
 
 // Single point of definition (ODR).
 volatile bool core1busy = false;

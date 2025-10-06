@@ -25,9 +25,7 @@
 #include "Python_Proper.h"
 #include "config.h"
 #include "oled.h"
-#include "Tui.h"
-#include "TuiGlue.h"
-
+#include "externVars.h"
 
 int debugProbing = 0;
 
@@ -328,7 +326,7 @@ restartProbingNoPrint:
 
         if ( row[ 0 ] == -1 ) {
 
-          TuiGlue::loop();
+          tuiGlue.loop();
           
         }
         // Serial.println(row[0]);
