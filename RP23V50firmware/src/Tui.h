@@ -1,37 +1,138 @@
+/*
+  tui:
+  - Text User Interface (TUI) for Jumperless
+  - Draws to the serial terminal, handles input, menus, popups, logging
+  - Most of this lives inside namespace TUI and is driven by TuiGlue
+  - You can check isActive() via TuiGlue; this header provides the TUI core
+*/
+
 #pragma once
 #include <Arduino.h>
 #include "ArduinoStuff.h"
+#include "TuiPopup.h"
+#include <cstdarg>
+
+// ========= Configurable =========
+#ifndef TUI_LOGPF_BUF
+  #define TUI_LOGPF_BUF 500   // scratch buffer for printf-style logging
+#endif
 
 namespace TUI {
 
-Stream *TUIserial = &USBSer3;
+// ========= Menu model =========
+struct MenuItem;
 
-// === Debug/timing mode =============================================
+enum ItemKind : uint8_t {
+  ITEM_ACTION    = 0,
+  ITEM_SUBMENU   = 1,
+  ITEM_SEPARATOR = 2
+};
+
+struct MenuView {
+  const MenuItem* items = nullptr;
+  uint8_t count    = 0;
+  int8_t  selected = 0;
+  uint8_t top      = 0;
+  const char* title = nullptr;
+};
+
+struct MenuItem {
+  const char*    label;
+  void         (*onEnter)();
+  const MenuItem* children  = nullptr;
+  uint8_t        childCount = 0;
+  const char*    childTitle = nullptr;
+  ItemKind       kind       = ITEM_ACTION;  // default keeps old initializers working
+};
+
+// Convenience macros (backward-compatible with existing code)
+#ifndef TUI_ARRLEN
+  #define TUI_ARRLEN(a) (uint8_t)(sizeof(a)/sizeof((a)[0]))
+#endif
+
+#ifndef TUI_ACTION
+  #define TUI_ACTION(label, cb) \
+    { (label), (cb), nullptr, 0, nullptr, TUI::ITEM_ACTION }
+#endif
+
+#ifndef TUI_SEPARATOR_ENTRY
+  #define TUI_SEPARATOR_ENTRY() \
+    { "", nullptr, nullptr, 0, nullptr, TUI::ITEM_SEPARATOR }
+#endif
+
+#ifdef TUI_SUBMENU_ENTRY
+  #undef TUI_SUBMENU_ENTRY
+#endif
+#define TUI_SUBMENU_ENTRY(label, arr, title) \
+  { (label), nullptr, (arr), (uint8_t)(sizeof(arr)/sizeof((arr)[0])), (title), TUI::ITEM_SUBMENU }
+
+constexpr uint8_t MENU_STACK_MAX = 6;
+struct MenuStack { MenuView stack[MENU_STACK_MAX]; int8_t depth = -1; };
+
+// ========= Globals / state (header-safe via inline) =========
+inline Stream* TUIserial = &USBSer3;  // single global serial for TUI
+
 #ifndef TUI_DEBUG_MODE
   #define TUI_DEBUG_MODE 0
 #endif
 
-#ifndef TUI_ARRLEN
-  #define TUI_ARRLEN(a) (uint8_t)(sizeof(a)/sizeof((a)[0]))
-#endif
-#ifndef TUI_SUBMENU_ENTRY
-  #define TUI_SUBMENU_ENTRY(label, arr, title) \
-    { (label), nullptr, (arr), (uint8_t)(sizeof(arr)/sizeof((arr)[0])), (title) }
-#endif
+// ========= Popup convenience wrappers (delegate to TuiPopup) =========
+inline void popupOpenInput(const String& title, const String& prompt)   { Popup::instance().openInput(title, prompt); }
+inline void popupOnSubmit(Popup::SubmitFn fn)                           { Popup::instance().setOnSubmit(fn); }
+inline void popupOnCancel(Popup::CancelFn fn)                           { Popup::instance().setOnCancel(fn); }
+inline void popupSetInitial(const String& s)                            { Popup::instance().setInitialInput(s); }
 
-// ---------- logging fwd ----------
+// ========= Logging (visible log pane, no ring buffer) =========
 inline void log(const String& line);
 inline void logPrint(const String& s);
-inline void logPrint(const char* s);
-inline void logPrint(char c);
+inline void logPrint(const char* s) { logPrint(String(s)); }
+inline void logPrint(char c)        { String t; t += c; logPrint(t); }
 inline void logPrintln(const String& s);
 
-// ---------- runtime debug ----------
+// printf-style helpers (fast path with small stack buffer)
+inline void vlogprintf_(bool add_newline, const char* fmt, va_list ap_in) {
+  char sbuf[TUI_LOGPF_BUF];
+
+  va_list ap1; va_copy(ap1, ap_in);
+  int n = vsnprintf(sbuf, sizeof(sbuf), fmt, ap1);
+  va_end(ap1);
+  if (n < 0) return;
+
+  if (n < (int)sizeof(sbuf)) {
+    if (add_newline) logPrintln(String(sbuf));
+    else             logPrint(String(sbuf));
+    return;
+  }
+
+  const size_t need = (size_t)n + 1;
+  char* dyn = (char*)malloc(need);
+  if (!dyn) { // OOM: emit truncated
+    if (add_newline) logPrintln(String(sbuf));
+    else             logPrint(String(sbuf));
+    return;
+  }
+
+  va_list ap2; va_copy(ap2, ap_in);
+  vsnprintf(dyn, need, fmt, ap2);
+  va_end(ap2);
+
+  if (add_newline) logPrintln(String(dyn));
+  else             logPrint(String(dyn));
+  free(dyn);
+}
+inline void logprintf(const char* fmt, ...) {
+  va_list ap; va_start(ap, fmt); vlogprintf_(false, fmt, ap); va_end(ap);
+}
+inline void logprintlnf(const char* fmt, ...) {
+  va_list ap; va_start(ap, fmt); vlogprintf_(true, fmt, ap); va_end(ap);
+}
+
+// ========= Debug flag =========
 inline uint8_t& dbgMode() { static uint8_t m = (uint8_t)TUI_DEBUG_MODE; return m; }
 inline void setDebugMode(uint8_t m) { dbgMode() = m; }
 inline uint8_t getDebugMode()       { return dbgMode(); }
 
-// ---------- ANSI helpers ----------
+// ========= ANSI helpers =========
 inline void W(const char* s)  { TUIserial->print(s); }
 inline void W(char c)         { TUIserial->write(c); }
 inline void P(const String& s){ TUIserial->print(s); }
@@ -40,7 +141,7 @@ inline void clr()        { W("\x1b[2J"); }
 inline void home()       { W("\x1b[H"); }
 inline void hideCursor() { W("\x1b[?25l"); }
 inline void showCursor() { W("\x1b[?25h"); }
-inline void rs()         { W("\x1b[0m"); } // reset color
+inline void rs()         { W("\x1b[0m"); }   // reset color
 inline void invOn()      { W("\x1b[7m"); }
 inline void invOff()     { W("\x1b[27m"); }
 inline void boldOn()     { W("\x1b[1m"); }
@@ -51,46 +152,23 @@ inline void at(uint8_t row, uint8_t col) {
   snprintf(buf, sizeof(buf), "\x1b[%u;%uH", (unsigned)row, (unsigned)col);
   W(buf);
 }
-
 inline void hline(uint8_t row, uint8_t col1, uint8_t col2, char ch=' ') {
   at(row, col1);
-  for (uint8_t c=col1; c<=col2; ++c) W(ch);
+  for (uint8_t c = col1; c <= col2; ++c) W(ch);
 }
 
-inline void box(uint8_t r1, uint8_t c1, uint8_t r2, uint8_t c2) {
-  at(r1,c1); W("+");
-  for (uint8_t c=c1+1;c<c2;c++) 
-    W("-");
-  
-  W("+");
-  for (uint8_t r=r1+1;r<r2;r++) { 
-    at(r,c1); 
-    W("|"); 
-    at(r,c2); 
-    W("|"); 
-  }
-
-  at(r2,c1); 
-    W("+");
-  for (uint8_t c=c1+1;c<c2;c++) 
-    W("-");
-  
-    W("+");
-}
-
-// ---- 256-color helpers ----
+// 256-color helpers
 inline void fg256(uint8_t c){ char b[20]; snprintf(b,sizeof(b),"\x1b[38;5;%um",c); TUIserial->print(b); }
 inline void bg256(uint8_t c){ char b[20]; snprintf(b,sizeof(b),"\x1b[48;5;%um",c); TUIserial->print(b); }
 
-// ---- Theme ----
+// ========= Theme & layout =========
 enum BorderStyle : uint8_t { BORDER_ASCII, BORDER_LIGHT, BORDER_ROUNDED, BORDER_HEAVY, BORDER_DOUBLE };
 
 struct Theme {
-  uint8_t borderFg   = 45;   // cyan
-  bool    unicodeBox = true; // ┌─┐/││/└─┘ vs ASCII
-  uint8_t hotkeyFg = 196;    // red
-  uint8_t hotkeyBg = 236;    // dark gray
-
+  uint8_t    borderFg   = 45;     // cyan
+  bool       unicodeBox = true;   // ┌─┐/││/└─┘ vs ASCII
+  uint8_t    hotkeyFg   = 196;    // red
+  uint8_t    hotkeyBg   = 236;    // dark gray
   BorderStyle borderStyle = BORDER_DOUBLE;
 };
 inline Theme THEME;
@@ -101,11 +179,9 @@ inline LayoutCfg L;
 struct LayoutLimits { uint8_t minMenu=15; uint8_t maxMenu=80; uint8_t minLog=24; };
 inline LayoutLimits LIM;
 
-// ---- Colored box (Unicode with ASCII fallback) ----
+// Unicode/ASCII framed box drawing (used for frames)
 inline void boxColored(uint8_t r1, uint8_t c1, uint8_t r2, uint8_t c2, uint8_t color = 0xFF) {
-  
-  if (color != 0xFF) fg256(color); 
-    else fg256(THEME.borderFg);
+  if (color != 0xFF) fg256(color); else fg256(THEME.borderFg);
 
   const bool ascii = !THEME.unicodeBox || THEME.borderStyle == BORDER_ASCII;
   const char *H, *V, *TL, *TR, *BL, *BR;
@@ -113,7 +189,6 @@ inline void boxColored(uint8_t r1, uint8_t c1, uint8_t r2, uint8_t c2, uint8_t c
   if (ascii) {
     H = "-"; V = "|"; TL = "+"; TR = "+"; BL = "+"; BR = "+";
   } else {
-    
     switch (THEME.borderStyle) {
       case BORDER_ROUNDED: H = "─"; V = "│"; TL = "╭"; TR = "╮"; BL = "╰"; BR = "╯"; break;
       case BORDER_HEAVY:   H = "━"; V = "┃"; TL = "┏"; TR = "┓"; BL = "┗"; BR = "┛"; break;
@@ -124,72 +199,45 @@ inline void boxColored(uint8_t r1, uint8_t c1, uint8_t r2, uint8_t c2, uint8_t c
   }
 
   at(r1, c1); TUIserial->print(TL);
-  for (uint8_t c = c1 + 1; c < c2; ++c) 
-    TUIserial->print(H);
-
+  for (uint8_t c = c1 + 1; c < c2; ++c) TUIserial->print(H);
   TUIserial->print(TR);
 
   for (uint8_t r = r1 + 1; r < r2; ++r) {
-  
     at(r, c1); TUIserial->print(V);
     at(r, c2); TUIserial->print(V);
-
   }
 
   at(r2, c1); TUIserial->print(BL);
-  for (uint8_t c = c1 + 1; c < c2; ++c) 
-    TUIserial->print(H);
-  
-    TUIserial->print(BR);
-
+  for (uint8_t c = c1 + 1; c < c2; ++c) TUIserial->print(H);
+  TUIserial->print(BR);
   rs();
 }
 
-
-
-// ---------- Menu model ----------
-struct MenuItem;
-struct MenuView {
-  const MenuItem* items = nullptr;
-  uint8_t count = 0;
-  int8_t  selected = 0;
-  uint8_t top = 0;
-  const char* title = nullptr;
-};
-
-struct MenuItem {
-  const char* label;
-  void (*onEnter)();
-  const MenuItem* children = nullptr;
-  uint8_t        childCount = 0;
-  const char*    childTitle = nullptr;
-};
-
-constexpr uint8_t MENU_STACK_MAX = 6;
-struct MenuStack { MenuView stack[MENU_STACK_MAX]; int8_t depth = -1; };
-
-// ---------- Screen layout/state ----------
+// ========= Screen state =========
 struct Screen {
   uint8_t cols=80, rows=24;
   String  appTitle   = "Jumperless";
   String  status     = "Ready.";
   uint8_t headerRow  = 1;
   uint8_t statusRow  = 24;
-  uint8_t menuTop=3, menuLeft=2, menuBottom=22, menuRight=46;
-  uint8_t logTop=3,  logLeft=48, logBottom=22, logRight=79;
+  uint8_t menuTop=3,  menuLeft=2,  menuBottom=22, menuRight=46;
+  uint8_t logTop =3,  logLeft =48, logBottom =22, logRight =79;
   MenuStack menus;
-  bool     logDirty = true; // compatibility with external callers
-  bool     inputActive = false;
+
+  // Logging & input
+  bool     logDirty     = true;
+  bool     inputActive  = false;
   String   inputTitle;
   String   inputPrompt;
   String   inputBuffer;
   void  (*onInputSubmit)(const String&) = nullptr;
-  void  (*onInputCancel)() = nullptr;
+  void  (*onInputCancel)()              = nullptr;
 };
 inline Screen S;
 
-// --- Forward declarations (solve Arduino order issues) ----------------
+// ========= Forward decls =========
 enum Key : uint8_t { NONE, ENTER, UP, DOWN, ESC, CHAR, UNKNOWN };
+
 inline void drawMenuItems();
 inline void drawHeader();
 inline void drawStatus();
@@ -203,14 +251,12 @@ inline void enterSelected();
 inline void fullRedraw();
 inline Key  readKey();
 inline bool handleInput();
-// hotkey helpers
 
 inline char  labelHotkeyAndRender(const char* src, String& rendered);
 inline void  fgDefault();
-
 inline int   lastChar();
 
-// --- Terminal size probe (CPR) and responsive layout -----------------
+// ========= Terminal size probe (CPR) =========
 inline bool readCPR(uint16_t& row, uint16_t& col, uint32_t timeout_ms=800) {
   char buf[32]; size_t n=0; uint32_t t0=millis();
   while ((millis()-t0) < timeout_ms && n < sizeof(buf)-1) {
@@ -267,7 +313,7 @@ inline void resizeTo(uint16_t rows, uint16_t cols) {
   S.logRight  = rightBound;
 }
 
-// ---------- Visible log (no ring buffer) ----------
+// ========= Visible log =========
 constexpr uint8_t LOG_VIS_MAX = 80;
 inline String  logVis[LOG_VIS_MAX];
 inline uint8_t logVisUsed = 0;
@@ -279,7 +325,6 @@ inline uint8_t logVisCap()      { uint8_t vis = logRowsVisible(); return (vis < 
 inline void ensureActiveLine() {
   if (logVisUsed == 0) { logVis[0] = ""; logVisUsed = 1; }
 }
-
 inline void clampToVisible() {
   uint8_t cap = logVisCap();
   ensureActiveLine();
@@ -289,14 +334,12 @@ inline void clampToVisible() {
   }
   if (logVisUsed == 0) { logVis[0] = ""; logVisUsed = 1; }
 }
-
 inline void clearLogPaneInner() {
   for (uint8_t r = (uint8_t)(S.logTop + 1); r <= (uint8_t)(S.logBottom - 1); ++r) {
     at(r, (uint8_t)(S.logLeft + 1));
     for (uint8_t c = (uint8_t)(S.logLeft + 1); c <= (uint8_t)(S.logRight - 1); ++c) W(' ');
   }
 }
-
 inline void drawLog() {
   clampToVisible();
   clearLogPaneInner();
@@ -331,12 +374,8 @@ inline void logPrint(const String& s) {
 
   TUIserial->flush();
 }
-inline void logPrint(const char* s) { logPrint(String(s)); }
-inline void logPrint(char c)        { String t; t += c; logPrint(t); }
-
 inline void logPrintln(const String& s) {
   logPrint(s);
-
   const uint8_t cap = logVisCap();
   if (logVisUsed < cap) {
     logVis[logVisUsed++] = "";
@@ -346,7 +385,6 @@ inline void logPrintln(const String& s) {
   }
   drawLog();
 }
-
 inline void log(const String& line) {
   ensureActiveLine();
   if (logVis[(uint8_t)(logVisUsed - 1)].isEmpty()) {
@@ -371,7 +409,7 @@ inline void log(const String& line) {
   drawLog();
 }
 
-// ---------- Drawing ----------
+// ========= Drawing =========
 inline void drawHeader() {
   at(S.headerRow,1);
   invOn();
@@ -383,7 +421,6 @@ inline void drawHeader() {
   at(S.headerRow,3); boldOn(); P(S.appTitle); boldOff(); invOff(); rs();
   TUIserial->flush();
 }
-
 inline void drawStatus() {
   at(S.statusRow,1);
   invOn();
@@ -393,18 +430,13 @@ inline void drawStatus() {
     at(S.statusRow, S.cols); W("╯");
   }
   at(S.statusRow,3); P(S.status); invOff(); rs();
-
- 
   TUIserial->flush();
 }
-
-
 inline void drawMenuFrame() {
   boxColored(S.menuTop, S.menuLeft, S.menuBottom, S.menuRight);
   at(S.menuTop, S.menuLeft+2); fg256(THEME.borderFg); P(" Menu "); rs();
   TUIserial->flush();
 }
-
 inline void drawLogFrame() {
   boxColored(S.logTop, S.logLeft, S.logBottom, S.logRight);
   at(S.logTop, S.logLeft+2); fg256(THEME.borderFg); P(" Log "); rs();
@@ -414,23 +446,18 @@ inline void drawLogFrame() {
 inline const MenuView& curMenu() { return S.menus.stack[S.menus.depth]; }
 inline MenuView&       curMenuRW(){ return S.menus.stack[S.menus.depth]; }
 
-// --- Hotkey helpers (CASE-SENSITIVE) ---------------------------------
-
-
+// ========= Hotkeys & menu rendering =========
 inline void fgDefault(){ W("\x1b[39m"); }
 
-
 inline char labelHotkeyAndRender(const char* src, String& rendered){
-  char hk = 0; 
-  rendered = ""; 
-  if (!src) return 0; 
+  char hk = 0; rendered = ""; if (!src) return 0;
   bool seenAmp = false;
 
   for (const char* p = src; *p; ++p){
     char ch = *p;
-    if (!seenAmp && ch == '&'){ seenAmp = true; continue; }  // consume '&'
+    if (!seenAmp && ch == '&'){ seenAmp = true; continue; }
     if (seenAmp){
-      if (!hk && ch > ' ') hk = ch;          // <-- keep exact case
+      if (!hk && ch > ' ') hk = ch; // exact case
       rendered += ch;
       seenAmp = false;
       continue;
@@ -440,34 +467,29 @@ inline char labelHotkeyAndRender(const char* src, String& rendered){
   return hk; // 0 => no explicit hotkey
 }
 
-inline void printLineWithHotColorStrict(const String& line, char hk, bool selected){
-  if (!hk) { P(line); return; }
-  int hit = -1;
-  for (uint16_t i = 0; i < line.length(); ++i){
-    char c = line[i];
-    if (i == 0 && c == ' ') continue;   // skip left padding
-    if (c == hk) { hit = (int)i; break; }  // exact case match
-  }
-  if (hit < 0) { P(line); return; }
+inline bool isSeparator(const MenuItem& it)  { return it.kind == ITEM_SEPARATOR; }
+inline bool isSelectable(const MenuItem& it) { return it.kind != ITEM_SEPARATOR; }
 
-  for (uint16_t i = 0; i < line.length(); ++i){
-    if (i == (uint16_t)hit){
-      if (selected){
-        invOff();
-        fg256(THEME.hotkeyFg);
-        bg256(THEME.hotkeyBg);
-        W(line[i]);
-        rs();
-        invOn();
-      } else {
-        fg256(THEME.hotkeyFg);
-        W(line[i]);
-        fgDefault();
-      }
-    } else {
-      W(line[i]);
-    }
+inline const char* hrGlyphForStyle() {
+  const bool ascii = !THEME.unicodeBox || THEME.borderStyle == BORDER_ASCII;
+  if (ascii) return "-";
+  switch (THEME.borderStyle) {
+    case BORDER_HEAVY:   return "━";
+    case BORDER_DOUBLE:  return "═";
+    case BORDER_ROUNDED: return "─";
+    case BORDER_LIGHT:
+    default:             return "─";
   }
+}
+
+inline int nextSelectableIndex(const MenuView& MV, int from, int dir) {
+  if (MV.count == 0) return from;
+  int i = from;
+  for (uint16_t k = 0; k < MV.count; ++k) {
+    i = (i + dir + MV.count) % MV.count;
+    if (isSelectable(MV.items[i])) return i;
+  }
+  return from; // all separators
 }
 
 inline void drawMenuItems() {
@@ -475,6 +497,7 @@ inline void drawMenuItems() {
   MenuView& MRW = curMenuRW();
   const MenuView& M = MRW;
 
+  // Clear inner
   for (uint8_t r = S.menuTop + 1; r <= S.menuBottom - 1; ++r) {
     at(r, S.menuLeft + 1);
     for (uint8_t c = S.menuLeft + 1; c <= S.menuRight - 1; ++c) W(' ');
@@ -487,7 +510,7 @@ inline void drawMenuItems() {
   if (MRW.selected >= (int)(MRW.top + vis)) MRW.top = (uint8_t)(MRW.selected - vis + 1);
 
   if (M.title) {
-    const uint8_t titleCol = (uint8_t)(S.menuLeft + 10);
+    const uint8_t titleCol  = (uint8_t)(S.menuLeft + 10);
     const uint8_t maxTitleW = (titleCol < (S.menuRight - 2))
         ? (uint8_t)((S.menuRight - 2) - titleCol + 1) : 0;
     if (maxTitleW > 0) {
@@ -508,11 +531,21 @@ inline void drawMenuItems() {
     const uint8_t row = (uint8_t)(S.menuTop + 1 + i);
     at(row, textCol);
 
-    if (idx == (uint8_t)MRW.selected) invOn();
-
     const MenuItem& it = M.items[idx];
+    const bool sel = (idx == (uint8_t)MRW.selected) && isSelectable(it);
 
-    // STRICT: only highlight if label contains '&' (case-sensitive)
+    if (isSeparator(it)) {
+      // draw horizontal rule
+      fg256(THEME.borderFg);
+      const char* H = hrGlyphForStyle();
+      at(row, (uint8_t)(S.menuLeft + 1));
+      for (uint8_t c = (uint8_t)(S.menuLeft + 1); c <= (uint8_t)(S.menuRight - 1); ++c) TUIserial->print(H);
+      rs();
+      continue;
+    }
+
+    if (sel) invOn();
+
     String rendered;
     char hk = labelHotkeyAndRender(it.label, rendered);
 
@@ -522,24 +555,51 @@ inline void drawMenuItems() {
     }
 
     if (hk) {
-      printLineWithHotColorStrict(line, hk, /*selected*/ idx == (uint8_t)MRW.selected);
+      // case-sensitive highlight of the hotkey character
+      int hit = -1;
+      for (uint16_t j = 0; j < line.length(); ++j){
+        char c = line[j];
+        if (j == 0 && c == ' ') continue;
+        if (c == hk) { hit = (int)j; break; }
+      }
+      if (hit < 0) {
+        P(line);
+      } else {
+        for (uint16_t j = 0; j < line.length(); ++j){
+          if (j == (uint16_t)hit){
+            if (sel){
+              invOff();
+              fg256(THEME.hotkeyFg); bg256(THEME.hotkeyBg); W(line[j]); rs(); invOn();
+            } else {
+              fg256(THEME.hotkeyFg); W(line[j]); fgDefault();
+            }
+          } else {
+            W(line[j]);
+          }
+        }
+      }
     } else {
       P(line);
     }
 
-    if (idx == (uint8_t)MRW.selected) invOff();
+    if (sel) invOff();
   }
 
   rs();
   TUIserial->flush();
 }
 
-// ---------- Menu ops ----------
 inline void pushMenu(const MenuItem* items, uint8_t count, const char* title) {
   if (S.menus.depth+1 >= (int)MENU_STACK_MAX) return;
   ++S.menus.depth;
   auto& M = S.menus.stack[S.menus.depth];
-  M.items = items; M.count = count; M.selected = 0; M.top = 0; M.title = title;
+  M.items = items; M.count = count; M.top = 0; M.title = title;
+
+  // Pick first selectable
+  int sel = 0;
+  for (uint8_t i = 0; i < count; ++i) { if (isSelectable(items[i])) { sel = i; break; } }
+  M.selected = (int8_t)sel;
+
   drawMenuItems();
 }
 
@@ -547,12 +607,17 @@ inline void enterSelected() {
   if (S.menus.depth < 0) return;
   const auto& M = curMenu();
   if (M.count == 0) return;
+
   const auto& it = M.items[M.selected];
-  if (it.children && it.childCount) { pushMenu(it.children, it.childCount, it.childTitle); return; }
+  if (!isSelectable(it)) return; // ignore separators
+
+  if (it.children && it.childCount) { 
+    pushMenu(it.children, it.childCount, it.childTitle); 
+    return; 
+  }
   if (it.onEnter) it.onEnter();
 }
 
-// ---------- Hotkey select/activate (CASE-SENSITIVE) ----------
 inline bool hotkeyActivate(char ch){
   if (S.menus.depth < 0) return false;
   MenuView& M = curMenuRW();
@@ -563,46 +628,23 @@ inline bool hotkeyActivate(char ch){
 
   for (int i = 0; i < M.count; ++i){
     const MenuItem& it = M.items[i];
+    if (!isSelectable(it)) continue;
     String rendered; 
-    char hk = labelHotkeyAndRender(it.label, rendered); // <-- strict
-    if (hk && hk == ch){                                      // <-- case-sensitive
+    char hk = labelHotkeyAndRender(it.label, rendered);
+    if (hk && hk == ch){
       if (first < 0) first = i;
       if (i > sel && next < 0) next = i;
     }
   }
   if (first < 0) return false;
+
   const int target = (next >= 0) ? next : first;
-  if (target != sel) M.selected = (uint8_t)target;
+  if (target != sel) { M.selected = (uint8_t)target; drawMenuItems(); }
   enterSelected();
   return true;
 }
 
-inline bool hotkeySelect(char ch){
-  if (S.menus.depth < 0) return false;
-  MenuView& M = curMenuRW();
-  if (!M.count) return false;
-
-  int sel = M.selected;
-  int first = -1, next = -1;
-
-  for (int i = 0; i < M.count; ++i){
-    const MenuItem& it = M.items[i];
-    String rendered; 
-    char hk = labelHotkeyAndRender(it.label, rendered); // <-- strict
-    if (hk && hk == ch){                                      // <-- case-sensitive
-      if (first < 0) first = i;
-      if (i > sel && next < 0) next = i;
-    }
-  }
-  if (first < 0) return false;
-
-  int target = (next >= 0) ? next : first;
-  if (target != sel){ M.selected = (uint8_t)target; drawMenuItems(); }
-  return true;
-}
-
-
-// ---------- Modal input ----------
+// ========= Modal input =========
 inline void drawInputModal() {
   uint8_t w = (uint8_t)(S.cols * 0.6f); if (w < 40) w = 40;
   uint8_t h = 7;
@@ -617,7 +659,6 @@ inline void drawInputModal() {
   at(r2,   c1+2); P("Enter=OK   ESC=Cancel    BKSP=Delete");
   TUIserial->flush();
 }
-
 inline void startInput(const String& title, const String& prompt, const String& initial,
                        void (*onSubmit)(const String&), void (*onCancel)() ) {
   S.inputActive = true;
@@ -625,19 +666,16 @@ inline void startInput(const String& title, const String& prompt, const String& 
   S.onInputSubmit = onSubmit; S.onInputCancel = onCancel;
   drawInputModal();
 }
-
 inline void cancelInput() { S.inputActive = false; drawMenuItems(); drawStatus(); }
-
 inline void submitInput() {
   auto cb = S.onInputSubmit; String val = S.inputBuffer;
   S.inputActive = false;
   drawMenuItems(); drawStatus();
   if (cb) cb(val);
 }
-
 inline void redrawInput() { drawInputModal(); }
 
-// ---------- Redraw & border ----------
+// ========= Redraw & border =========
 inline void setStatus(const String& s) { S.status = s; drawStatus(); }
 inline void setTitle(const String& s)  { S.appTitle = s; drawHeader(); }
 
@@ -646,7 +684,6 @@ inline void popMenu() {
   --S.menus.depth;
   drawMenuItems();
 }
-
 inline void fullRedraw() {
   clr(); home(); hideCursor();
   drawHeader(); drawMenuFrame(); drawLogFrame(); drawMenuItems(); drawStatus();
@@ -655,10 +692,9 @@ inline void fullRedraw() {
   rs();
   TUIserial->flush();
 }
-
 inline void setBorderStyle(BorderStyle s) { THEME.borderStyle = s; fullRedraw(); }
 
-// ---------- Input handling ----------
+// ========= Input handling =========
 namespace {
   enum EscState { IDLE, GOT_ESC, GOT_CSI, GOT_O, CSI_PARAMS };
   static EscState esc_state = IDLE;
@@ -669,9 +705,9 @@ namespace {
   static int      last_char_code = -1;
 }
 
-inline int lastChar() { return last_char_code; }
-inline void unget(int ch) { ungot = ch; }
-inline bool inEscapeSeq() { return esc_state != IDLE; }
+inline int  lastChar()      { return last_char_code; }
+inline void unget(int ch)   { ungot = ch; }
+inline bool inEscapeSeq()   { return esc_state != IDLE; }
 
 inline int read_byte_nonblock() {
   if (ungot >= 0) { int v = ungot; ungot = -1; return v; }
@@ -680,7 +716,6 @@ inline int read_byte_nonblock() {
   if (getDebugMode() == 1) log(String("key 0x") + String(b, HEX));
   return b;
 }
-
 inline int read_byte_with_wait(uint32_t wait_ms) {
   int v = read_byte_nonblock();
   if (v >= 0) return v;
@@ -693,10 +728,8 @@ inline int read_byte_with_wait(uint32_t wait_ms) {
   }
   return -1;
 }
-
 inline void reset_esc() { esc_state = IDLE; esc_ts = 0; csi_len = 0; }
 
-// Aggressive, one-shot sequence parser (avoids timing dependence)
 inline Key readKey() {
   const uint32_t ESC_TIMEOUT_MS = 200;
   const auto timed_out = [&](uint32_t start)->bool {
@@ -776,21 +809,29 @@ inline bool handleInput() {
       return true;
     }
     if (ch >= 32 && ch <= 126) { S.inputBuffer += (char)ch; redrawInput(); return true; }
-
     return false;
   }
 
   Key k = readKey();
   switch (k) {
     case UP:
-      if (S.menus.depth >= 0 && curMenu().selected > 0) { curMenuRW().selected--; drawMenuItems(); }
+      if (S.menus.depth >= 0 && curMenu().count) {
+        MenuView& M = curMenuRW();
+        M.selected = (int8_t)nextSelectableIndex(M, M.selected, -1);
+        drawMenuItems();
+      }
       return true;
 
     case DOWN:
-      if (S.menus.depth >= 0 && curMenu().selected < (curMenu().count-1)) { curMenuRW().selected++; drawMenuItems(); }
+      if (S.menus.depth >= 0 && curMenu().count) {
+        MenuView& M = curMenuRW();
+        M.selected = (int8_t)nextSelectableIndex(M, M.selected, +1);
+        drawMenuItems();
+      }
       return true;
 
     case ENTER: enterSelected(); return true;
+
     case ESC:   popMenu(); setStatus("Back."); return true;
 
     case CHAR: {
@@ -798,6 +839,7 @@ inline bool handleInput() {
       if (c >= 0 && hotkeyActivate((char)c)) return true;
       return false;
     }
+
     default: return false;
   }
 }

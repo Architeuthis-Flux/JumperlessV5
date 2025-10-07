@@ -27,6 +27,7 @@
 #include <JDI_MIP_Display.h>
 #include <Display_cfg.h>
 #include "Images.h"
+#include "externVars.h"
 
 #define DISPLAY_WIDTH   72
 #define DISPLAY_HEIGHT  144

@@ -57,14 +57,17 @@ KevinC@ppucc.io
 #include <hardware/adc.h>
 #include "AsyncPassthrough.h"
 #include "user_functions.h"
-#include "CoreBusyFlags.h"
+#include "externVars.h"
 #include "TuiGlue.h"
 #include "TermControl.h"
 
 #include "WaveGen.h"  // New async wavegen
-
+#include "externVars.h"
 
 bread b;
+
+//Tui UI/UX System
+TuiGlue tuiGlue;
 
 // Global async waveform generator
 WaveGen wavegen;
@@ -231,8 +234,8 @@ void setup( ) {
     }
     Serial.flush();
 
-
-    TuiGlue::openOnDemand();
+    tuiGlue.setSerial(&USBSer3);
+    tuiGlue.openOnDemand();
 
 }
 
@@ -587,7 +590,8 @@ busyPrintTime = millis( );
 
         busyTimers[ 0 ] = micros( );
 
-        TuiGlue::loop();
+        tuiGlue.loop();
+        
         busyTimers[ 1 ] = micros( );
 
 // int lastProbeButtonResult = 0; //checking that the probe button is working
