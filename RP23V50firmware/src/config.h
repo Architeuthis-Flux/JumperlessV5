@@ -85,7 +85,12 @@ struct config {
         float adc_7_spread = 18.28;
         int probe_max = 4060;
         int probe_min = 15;
-        float probe_switch_threshold = 0.40;
+        // Hysteresis thresholds to prevent oscillation between modes
+        // Switch to SELECT mode when current > high threshold
+        // Switch to MEASURE mode when current < low threshold
+        float probe_switch_threshold_high = 0.35;  // mA - switch to SELECT
+        float probe_switch_threshold_low = 0.10;   // mA - switch to MEASURE
+        float probe_switch_threshold = 0.40;       // DEPRECATED - kept for backward compatibility
         float measure_mode_output_voltage = 3.30;
         float probe_current_zero = 2.0;
     } calibration;
@@ -107,6 +112,7 @@ struct config {
         int net_color_mode = 0;
         int dump_leds = -1;
         int dump_format = 0;
+        int terminal_line_buffering = 0;
     } display;
 
     struct gpio {

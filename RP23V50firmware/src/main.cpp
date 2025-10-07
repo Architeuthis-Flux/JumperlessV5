@@ -158,6 +158,7 @@ void setup( ) {
 
 
     Serial.begin( 115200 );
+    
 
     initDAC( );
 
@@ -222,6 +223,13 @@ void setup( ) {
 
     //  setupLogicAnalyzer();
 
+    // Send initial interactive mode command based on terminal_line_buffering setting
+    if (jumperlessConfig.display.terminal_line_buffering == 1) {
+        Serial.write(0x0E);  // Turn ON interactive mode
+    } else {
+        Serial.write(0x0F);  // Turn OFF interactive mode
+    }
+    Serial.flush();
 
 
     TuiGlue::openOnDemand();
@@ -555,16 +563,17 @@ busyPrintTime = millis( );
 
 
     //! This is the main busy wait loop waiting for input
-
     
-    while ( !termSerial.hasCompletedLine() && connectFromArduino == '\0' &&
-            slotChanged == 0 ) {
+    while ( ((jumperlessConfig.display.terminal_line_buffering == 1 && !termSerial.hasCompletedLine()) || 
+             (jumperlessConfig.display.terminal_line_buffering == 0 && Serial.available() == 0)) && 
+            connectFromArduino == '\0' && slotChanged == 0 ) {
 
+        if (jumperlessConfig.display.terminal_line_buffering == 1) {
         // Service input as early as possible - break immediately when line is ready
         if (termSerial.service()) {
             break;  // Line is ready for processing
         }
-
+        }
         unsigned long busyTimer = millis( );
 
         if ( logicAnalyzer.is_running( ) == true || logicAnalyzer.is_armed( ) == true ) {
@@ -820,22 +829,32 @@ busyPrintTime = millis( );
         //delay(100);
         }
 #endif
+if (jumperlessConfig.display.terminal_line_buffering == 1) {
         // Optionally service again at the end of the loop body
         termSerial.service();
 
+}
     }
-
+if (jumperlessConfig.display.terminal_line_buffering == 1) {
 // Only proceed when a full line is ready; then parse it
 if (termSerial.hasCompletedLine()) {
     String cmdLine = termSerial.getCompletedLine();  // Get and consume the line
     cmdLine.trim();
     currentCommandLine = cmdLine;  // Store for backwards compatibility with parsers
+    
     if (cmdLine.length() > 0) {
             input = cmdLine[0];
         } else {
             input = '\n';
         }
-    
+    }
+} else {
+    // Fallback mode: read single character like the old method
+    if (Serial.available() > 0) {
+        input = Serial.read();
+        // Set currentCommandLine with just the single character for backwards compatibility
+        currentCommandLine = String(input);
+    }
 }
    
     // Service incoming serial and use our line buffer instead of direct Serial.read
@@ -1384,12 +1403,25 @@ float wavegen_frequency = 1000.0f;
     }
 
         // Add this case for single Python command
-    case '>': { //! > - Execute single Python command
+    case '>': { //! > - Execute single Python command   
+
+
+        String pythonCommand = "";
         // Use our buffer instead of reading from Serial again
-        String pythonCommand = currentCommandLine;
+        if (jumperlessConfig.display.terminal_line_buffering == 1) {
+        pythonCommand = currentCommandLine;
+        pythonCommand = pythonCommand.substring(1);  // Remove the '>' prefix
+        pythonCommand.trim();
+
+        } else {
+            while (Serial.available() > 0) {
+                pythonCommand += Serial.readString();
+            }
+            // Serial.println(pythonCommand);
+            // Serial.flush();
+        }
         if (pythonCommand.length() > 1) {
-            pythonCommand = pythonCommand.substring(1);  // Remove the '>' prefix
-            pythonCommand.trim();
+
             // Serial.print("Python> ");
             // Apply Python syntax highlighting
             // displayStringWithSyntaxHighlighting(pythonCommand, &Serial);
@@ -1521,14 +1553,14 @@ float wavegen_frequency = 1000.0f;
 
     case '+': { //!  +
 
-        readStringFromSerial( 3, 0 );
+        readStringFromSerial( jumperlessConfig.display.terminal_line_buffering == 1 ? 3 : 0, 0 );
         goto loadfile;
 
         break;
     }
 
     case '-': { //!  -
-        readStringFromSerial( 3, 1 );
+        readStringFromSerial( jumperlessConfig.display.terminal_line_buffering == 1 ? 3 : 0, 1 );
         goto loadfile;
         break;
     }

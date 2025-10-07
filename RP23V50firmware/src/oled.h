@@ -24,6 +24,17 @@
 #include "fonts/new_science_medium_extended8pt7b.h"
 #include "fonts/new_science_medium_extended12pt7b.h"
 
+#include "fonts/IosevkaSS08_Light8pt7b.h"
+#include "fonts/IosevkaSS08_Light12pt7b.h"
+
+
+#include "fonts/IosevkaSS08_Regular11pt7b.h"
+
+
+#include "fonts/IosevkaSS08_Medium11pt7b.h"
+
+#include "fonts/IosevkaSS08_SemiBold11pt7b.h"
+
 // Monospaced fonts for text highlighting
 #include "fonts/ANDALEMO5pt7b.h"
 #include "fonts/ANDALEMO6pt7b.h"
@@ -59,7 +70,12 @@ enum FontFamily {
     FONT_NEW_SCIENCE_MEDIUM = 4,
     FONT_NEW_SCIENCE_MEDIUM_EXTENDED = 5,
     FONT_ANDALE_MONO = 6,
-    FONT_FREE_MONO = 7
+    FONT_FREE_MONO = 7,
+    FONT_IOSEVKA_LIGHT = 10,
+    FONT_IOSEVKA_REGULAR = 9,
+    FONT_IOSEVKA_MEDIUM = 8,
+    FONT_IOSEVKA_SEMI_BOLD = 11
+
 };
 
 // Small font enumeration for file manager and detailed displays
@@ -67,7 +83,11 @@ enum SmallFont {
     SMALL_FONT_UBUNTU = 0,
     SMALL_FONT_DOTGOTHIC = 1,
     SMALL_FONT_JOKERMAN = 2,
-    SMALL_FONT_ANDALE_MONO = 3
+    SMALL_FONT_ANDALE_MONO = 3,
+    SMALL_FONT_IOSEVKA_LIGHT = 4,
+    SMALL_FONT_IOSEVKA_REGULAR = 5,
+    SMALL_FONT_IOSEVKA_MEDIUM = 6,
+    SMALL_FONT_IOSEVKA_SEMI_BOLD = 7
 };
 
 // Positioning mode enum for simplified positioning system

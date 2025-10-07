@@ -13,6 +13,7 @@
 #include "oled.h"
 #include "ArduinoStuff.h"
 #include "Apps.h"
+#include "TermControl.h"
 
 #ifdef DONOTUSE_SERIALWRAPPER
     #include "SerialWrapper.h"
@@ -414,6 +415,8 @@ void updateConfigFromFile(const char* filename) {
             else if (strcmp(key, "adc_7_spread") == 0) jumperlessConfig.calibration.adc_7_spread = parseFloat(value);
             else if (strcmp(key, "probe_max") == 0) jumperlessConfig.calibration.probe_max = parseInt(value);
             else if (strcmp(key, "probe_min") == 0) jumperlessConfig.calibration.probe_min = parseInt(value);
+            else if (strcmp(key, "probe_switch_threshold_high") == 0) jumperlessConfig.calibration.probe_switch_threshold_high = parseFloat(value);
+            else if (strcmp(key, "probe_switch_threshold_low") == 0) jumperlessConfig.calibration.probe_switch_threshold_low = parseFloat(value);
             else if (strcmp(key, "probe_switch_threshold") == 0) jumperlessConfig.calibration.probe_switch_threshold = parseFloat(value);
             else if (strcmp(key, "measure_mode_output_voltage") == 0) jumperlessConfig.calibration.measure_mode_output_voltage = parseFloat(value);
             else if (strcmp(key, "probe_current_zero") == 0) jumperlessConfig.calibration.probe_current_zero = parseFloat(value);
@@ -431,6 +434,7 @@ void updateConfigFromFile(const char* filename) {
             else if (strcmp(key, "net_color_mode") == 0) jumperlessConfig.display.net_color_mode = parseNetColorMode(value);
             else if (strcmp(key, "dump_leds") == 0) jumperlessConfig.display.dump_leds = parseSerialPort(value);
             else if (strcmp(key, "dump_format") == 0) jumperlessConfig.display.dump_format = parseDumpFormat(value);
+            else if (strcmp(key, "terminal_line_buffering") == 0) jumperlessConfig.display.terminal_line_buffering = parseBool(value);
         } else if (strcmp(section, "gpio") == 0) {
             if (strcmp(key, "direction") == 0) parseCommaSeparatedInts(value, jumperlessConfig.gpio.direction, 10);
             else if (strcmp(key, "pulls") == 0) parseCommaSeparatedInts(value, jumperlessConfig.gpio.pulls, 10);
@@ -683,6 +687,8 @@ void saveConfigToFile(const char* filename) {
     file.print("adc_7_spread = "); file.print(jumperlessConfig.calibration.adc_7_spread); file.println(";");
     file.print("probe_max = "); file.print(jumperlessConfig.calibration.probe_max); file.println(";");
     file.print("probe_min = "); file.print(jumperlessConfig.calibration.probe_min); file.println(";");
+    file.print("probe_switch_threshold_high = "); file.print(jumperlessConfig.calibration.probe_switch_threshold_high); file.println(";");
+    file.print("probe_switch_threshold_low = "); file.print(jumperlessConfig.calibration.probe_switch_threshold_low); file.println(";");
     file.print("probe_switch_threshold = "); file.print(jumperlessConfig.calibration.probe_switch_threshold); file.println(";");
     file.print("measure_mode_output_voltage = "); file.print(jumperlessConfig.calibration.measure_mode_output_voltage); file.println(";");
     file.print("probe_current_zero = "); file.print(jumperlessConfig.calibration.probe_current_zero); file.println(";");
@@ -706,6 +712,7 @@ void saveConfigToFile(const char* filename) {
     file.print("net_color_mode = "); file.print(jumperlessConfig.display.net_color_mode); file.println(";");
     file.print("dump_leds = "); file.print(jumperlessConfig.display.dump_leds); file.println(";");
     file.print("dump_format = "); file.print(jumperlessConfig.display.dump_format); file.println(";");
+    file.print("terminal_line_buffering = "); file.print(jumperlessConfig.display.terminal_line_buffering); file.println(";");
     file.println();
 
     // Write GPIO section
@@ -955,6 +962,10 @@ void printConfigSectionToSerial(int section, bool showNames, bool pasteable) {
         if (pasteable == true) Serial.print("`[calibration] ");
         Serial.print("probe_min = "); Serial.print(jumperlessConfig.calibration.probe_min); Serial.println(";");
         if (pasteable == true) Serial.print("`[calibration] ");
+        Serial.print("probe_switch_threshold_high = "); Serial.print(jumperlessConfig.calibration.probe_switch_threshold_high); Serial.println(";");
+        if (pasteable == true) Serial.print("`[calibration] ");
+        Serial.print("probe_switch_threshold_low = "); Serial.print(jumperlessConfig.calibration.probe_switch_threshold_low); Serial.println(";");
+        if (pasteable == true) Serial.print("`[calibration] ");
         Serial.print("probe_switch_threshold = "); Serial.print(jumperlessConfig.calibration.probe_switch_threshold); Serial.println(";");
         if (pasteable == true) Serial.print("`[calibration] ");
         Serial.print("measure_mode_output_voltage = "); Serial.print(jumperlessConfig.calibration.measure_mode_output_voltage); Serial.println(";");
@@ -994,6 +1005,8 @@ void printConfigSectionToSerial(int section, bool showNames, bool pasteable) {
         Serial.print("dump_leds = "); Serial.print(getStringFromTable(jumperlessConfig.display.dump_leds, serialPortTable)); Serial.println(";");
         if (pasteable == true) Serial.print("`[display] ");
         Serial.print("dump_format = "); Serial.print(getStringFromTable(jumperlessConfig.display.dump_format, dumpFormatTable)); Serial.println(";");
+        if (pasteable == true) Serial.print("`[display] ");
+        Serial.print("terminal_line_buffering = "); Serial.print(jumperlessConfig.display.terminal_line_buffering); Serial.println(";");
     }
     cycleTerminalColor();
     // Print GPIO section
@@ -1106,9 +1119,9 @@ void printConfigSectionToSerial(int section, bool showNames, bool pasteable) {
         Serial.print("font = "); Serial.print(getStringFromTable(jumperlessConfig.top_oled.font, fontTable)); Serial.println(";");
     }
     cycleTerminalColor();
-    if (section == -1) {
-        Serial.println("\nEND\n\r");
-    }
+    // if (section == -1) {
+    //     Serial.println("\nEND\n\r");
+    // }
 }
 
 // Helper function to clean whitespace
@@ -1220,6 +1233,8 @@ bool parseSetting(const char* line, char* section, char* key, char* value) {
     return true;
 }
 
+    
+
 // Helper function to print setting change
 void printSettingChange(const char* section, const char* key, const char* oldValue, const char* newValue) {
     // Try to print names for enums/bools if possible
@@ -1328,10 +1343,65 @@ void printConfigToSerial(bool showNamesArg) {
     unsigned long lastCharTime = millis();
     const unsigned long timeout = 1000; // 100ms timeout
 
-    // Wait for input with timeout
+    // Check if we already have a command line from line buffering mode
+    // ONLY use buffered mode if terminal_line_buffering is enabled
+    if (jumperlessConfig.display.terminal_line_buffering == 1 && currentCommandLine.length() > 1) {
+        // Capture and clear immediately to prevent reuse
+        String configCmd = currentCommandLine;
+        currentCommandLine = ""; // Clear NOW before any processing
+        
+        // Remove the leading tilde character
+        configCmd = configCmd.substring(1);
+        configCmd.trim();
+        
+        // Check for ~names or ~numbers
+        if (configCmd.startsWith("names")) {
+            showNames = 1;
+            Serial.println("showing names");
+            currentCommandLine = "";
+            return;
+        } else if (configCmd.startsWith("numbers")) {
+            showNames = 0;
+            Serial.println("showing numbers");
+            currentCommandLine = "";
+            return;
+        } else if (configCmd.startsWith("help") || configCmd == "?" || configCmd == "-h" || configCmd == "--help") {
+            printConfigHelp();
+            currentCommandLine = "";
+            return;
+        }
+        
+        // Check if we have a section like ~[display]
+        if (configCmd.length() > 0 && configCmd[0] == '[') {
+            int endBracket = configCmd.indexOf(']');
+            if (endBracket > 0) {
+                String sectionName = configCmd.substring(1, endBracket);
+                int section = parseSectionName(sectionName.c_str());
+                if (section != -1) {
+                    printConfigSectionToSerial(section, showNamesArg);
+                } else {
+                    Serial.print("Unknown section: ");
+                    Serial.println(sectionName);
+                }
+                currentCommandLine = "";
+                return;
+            }
+        }
+        
+        // Default: print all config
+        printConfigSectionToSerial(-1, showNamesArg);
+        Serial.println("\n\n");
+        currentCommandLine = "";
+        return;
+    }
+
+    // Wait for input with timeout (character-by-character mode)
+    // Use Serial directly when line buffering is disabled, termSerial when enabled
+    Stream* inputStream = (jumperlessConfig.display.terminal_line_buffering == 1) ? (Stream*)&termSerial : (Stream*)&Serial;
+    
     while (true) {
-        if (Serial.available() > 0) {
-            char c = Serial.read();
+        if (inputStream->available() > 0) {
+            char c = inputStream->read();
             if (lineIndex < sizeof(line) - 1) {
                 line[lineIndex++] = c;
                 line[lineIndex] = '\0';
@@ -1392,15 +1462,152 @@ void readConfigFromSerial() {
     int lineIndex = 0;
     char currentSection[32] = {0};
     bool inSection = false;
-    Serial.println("\n\renter config settings (? for help)\n\r");
-
+    
 
 bool ledChange = false;
 bool dacChange = false;
     unsigned long lastCharTime = millis();
     const unsigned long timeout = 10;
 
-    while (Serial.available() == 0) {
+    // Check if we already have a command line from line buffering mode
+    // ONLY use buffered mode if terminal_line_buffering is enabled
+    if (jumperlessConfig.display.terminal_line_buffering == 1 && currentCommandLine.length() > 1) {
+        // Capture and clear immediately to prevent reuse
+        String configCmd = currentCommandLine;
+        currentCommandLine = ""; // Clear NOW before any processing
+        
+        // Remove the leading backtick character
+        configCmd = configCmd.substring(1);
+        configCmd.trim();
+        
+        if (configCmd.length() > 0) {
+            // Copy to our line buffer for processing
+            strncpy(line, configCmd.c_str(), sizeof(line) - 1);
+            line[sizeof(line) - 1] = '\0';
+            lineIndex = strlen(line);
+            
+            // Check for special commands first (before trying to parse as settings)
+            if (strcmp(line, "?") == 0 || strcmp(line, "-h") == 0 || strcmp(line, "--help") == 0 || strcmp(line, "help") == 0) {
+                printConfigHelp();
+                return;
+            }
+            else if (strcmp(line, "reset") == 0) {
+                resetConfigToDefaults();
+                saveConfigToFile("/config.txt");
+                Serial.println("Done. Settings have been reset to defaults");
+                ledChange = true;
+                dacChange = true;
+                return;
+            }
+            else if (strcmp(line, "clear_calibration") == 0 || strcmp(line, "clear_cal") == 0 || 
+                     strcmp(line, "reset_calibration") == 0 || strcmp(line, "reset_cal") == 0) {
+                resetConfigToDefaults(1, 0);
+                Serial.println("Done. Calibration has been cleared");
+                ledChange = true;
+                dacChange = true;
+                return;
+            }
+            else if (strcmp(line, "clear_hardware") == 0 || strcmp(line, "clear_hw") == 0 || 
+                     strcmp(line, "reset_hardware") == 0 || strcmp(line, "reset_hw") == 0) {
+                resetConfigToDefaults(0, 1);
+                Serial.println("Done. Hardware has been cleared");
+                ledChange = true;
+                dacChange = true;
+                return;
+            }
+            else if (strcmp(line, "clear_all") == 0 || strcmp(line, "reset_all") == 0) {
+                resetConfigToDefaults(1, 1);
+                Serial.println("Done. All settings have been cleared");
+                ledChange = true;
+                dacChange = true;
+                return;
+            }
+            else if (strcmp(line, "clear_filesystem") == 0 || strcmp(line, "reset_filesystem") == 0) {
+                Serial.println("Deleting all filesystem contents...");
+                bool deleteSuccess = deleteDirectoryContents("/");
+                Serial.println("Filesystem contents deleted.");
+                return;
+            }
+            else if (strcmp(line, "force_first_start") == 0 || strcmp(line, "factory_reset") == 0) {
+                cycleTerminalColor(true, 100.0, true, &Serial, 0, 1);
+                FatFS.remove("/config.txt");
+                Serial.println("Config file deleted.");
+                Serial.flush();
+                
+                bool deleteSuccess = deleteDirectoryContents("/");
+                
+                cycleTerminalColor(false, 100.0, true, &Serial, 0, 1);
+                if (deleteSuccess) {
+                    Serial.println("All filesystem contents deleted successfully.");
+                } else {
+                    Serial.println("Some files/directories could not be deleted (this may be normal).");
+                }
+                Serial.flush();
+                
+                EEPROM.write(FIRSTSTARTUPADDRESS, 0x00);
+                EEPROM.commit();
+                cycleTerminalColor(false, 100.0, true, &Serial, 0, 1);
+                Serial.println("First startup flag cleared.");
+                Serial.flush();
+                
+                cycleTerminalColor(false, 100.0, true, &Serial, 0, 1);
+                Serial.println("Done. All settings have been cleared");
+                delay(200);
+                
+                unsigned long startTime = millis() + 1000;
+                int dots = 0;
+                while (millis() < 3000) {
+                    if (millis() - startTime > 500) {
+                        Serial.print("\r                                           \r");
+                        Serial.print("Power cycling");
+                        dots++;
+                        for (int i = 0; i < dots; i++) {
+                            Serial.print(".");
+                        }
+                        startTime = millis();
+                    }
+                    if (dots >= 3) {
+                        dots = 0;
+                    }
+                    Serial.flush();
+                }
+                
+                rp2040.reboot();
+                return;
+            }
+            
+            // If not a special command, try to parse as a config setting
+            char section[32], key[32], value[64];
+            if (parseSetting(line, section, key, value)) {
+                updateConfigValue(section, key, value);
+                Serial.println("Config updated");
+                readSettingsFromConfig();
+                setRailsAndDACs(0);
+                showLEDsCore2 = -1;
+                
+                // Clear any leftover characters from termSerial buffer
+                while (termSerial.available() > 0) {
+                    termSerial.read();
+                }
+                // Also clear any completed lines waiting
+                if (termSerial.hasCompletedLine()) {
+                    termSerial.clearCompletedLine();
+                }
+                
+                return;
+            } else {
+                Serial.println("Failed to parse config setting");
+            }
+        }
+        return;
+    }
+
+    Serial.println("\n\renter config settings (? for help)\n\r");
+
+    // Use Serial directly when line buffering is disabled, termSerial when enabled
+    Stream* inputStream = (jumperlessConfig.display.terminal_line_buffering == 1) ? (Stream*)&termSerial : (Stream*)&Serial;
+    
+    while (inputStream->available() == 0) {
         // delayMicroseconds(10);
         if (millis() - lastCharTime > 400) {
             //Serial.println("No input detected. Showing help.");
@@ -1410,8 +1617,8 @@ bool dacChange = false;
     }
     int timedOut = 0;
     while (true) {
-        if (Serial.available() > 0) {
-            char c = Serial.read();
+        if (inputStream->available() > 0) {
+            char c = inputStream->read();
             if (c == '\n' || c == '\r') {
                // parseSetting(line);
                 // Serial.println("New line");
@@ -1625,8 +1832,8 @@ bool dacChange = false;
         }
     }
 
-    while (Serial.available() > 0) {
-        Serial.read();
+    while (inputStream->available() > 0) {
+        inputStream->read();
         delayMicroseconds(100);
     }
    // configChanged = true;
@@ -1705,6 +1912,8 @@ void updateConfigValue(const char* section, const char* key, const char* value) 
         else if (strcmp(key, "adc_7_spread") == 0) sprintf(oldValue, "%.2f", jumperlessConfig.calibration.adc_7_spread);
         else if (strcmp(key, "probe_max") == 0) sprintf(oldValue, "%d", jumperlessConfig.calibration.probe_max);
         else if (strcmp(key, "probe_min") == 0) sprintf(oldValue, "%d", jumperlessConfig.calibration.probe_min);
+        else if (strcmp(key, "probe_switch_threshold_high") == 0) sprintf(oldValue, "%.2f", jumperlessConfig.calibration.probe_switch_threshold_high);
+        else if (strcmp(key, "probe_switch_threshold_low") == 0) sprintf(oldValue, "%.2f", jumperlessConfig.calibration.probe_switch_threshold_low);
         else if (strcmp(key, "probe_switch_threshold") == 0) sprintf(oldValue, "%.2f", jumperlessConfig.calibration.probe_switch_threshold);
         else if (strcmp(key, "probe_current_zero") == 0) sprintf(oldValue, "%.2f", jumperlessConfig.calibration.probe_current_zero);
         }
@@ -1723,6 +1932,7 @@ void updateConfigValue(const char* section, const char* key, const char* value) 
         else if (strcmp(key, "net_color_mode") == 0) sprintf(oldValue, "%d", jumperlessConfig.display.net_color_mode);
         else if (strcmp(key, "dump_leds") == 0) sprintf(oldValue, "%d", jumperlessConfig.display.dump_leds);
         else if (strcmp(key, "dump_format") == 0) sprintf(oldValue, "%d", jumperlessConfig.display.dump_format);
+        else if (strcmp(key, "terminal_line_buffering") == 0) sprintf(oldValue, "%d", jumperlessConfig.display.terminal_line_buffering);
     }
     else if (strcmp(section, "gpio") == 0) {
         if (strcmp(key, "direction") == 0) {
@@ -1838,6 +2048,8 @@ void updateConfigValue(const char* section, const char* key, const char* value) 
         else if (strcmp(key, "probe_max") == 0) jumperlessConfig.calibration.probe_max = parseInt(value);
         else if (strcmp(key, "probe_min") == 0) jumperlessConfig.calibration.probe_min = parseInt(value);
         else if (strcmp(key, "measure_mode_output_voltage") == 0) jumperlessConfig.calibration.measure_mode_output_voltage = parseFloat(value);
+        else if (strcmp(key, "probe_switch_threshold_high") == 0) jumperlessConfig.calibration.probe_switch_threshold_high = parseFloat(value);
+        else if (strcmp(key, "probe_switch_threshold_low") == 0) jumperlessConfig.calibration.probe_switch_threshold_low = parseFloat(value);
         else if (strcmp(key, "probe_switch_threshold") == 0) jumperlessConfig.calibration.probe_switch_threshold = parseFloat(value);
         else if (strcmp(key, "probe_current_zero") == 0) jumperlessConfig.calibration.probe_current_zero = parseFloat(value);
         }
@@ -1856,6 +2068,7 @@ void updateConfigValue(const char* section, const char* key, const char* value) 
         else if (strcmp(key, "net_color_mode") == 0) jumperlessConfig.display.net_color_mode = parseNetColorMode(value);
         else if (strcmp(key, "dump_leds") == 0) jumperlessConfig.display.dump_leds = parseSerialPort(value);
         else if (strcmp(key, "dump_format") == 0) jumperlessConfig.display.dump_format = parseDumpFormat(value);
+        else if (strcmp(key, "terminal_line_buffering") == 0) jumperlessConfig.display.terminal_line_buffering = parseBool(value);
     }
     else if (strcmp(section, "gpio") == 0) {
         if (strcmp(key, "direction") == 0) {
@@ -1920,6 +2133,18 @@ void updateConfigValue(const char* section, const char* key, const char* value) 
     }
     saveConfigToFile("/config.txt");
     printSettingChange(section, key, oldValue, value);
+    
+    // If we changed terminal_line_buffering, send command to app to switch interactive mode
+    if (strcmp(section, "display") == 0 && strcmp(key, "terminal_line_buffering") == 0) {
+        if (jumperlessConfig.display.terminal_line_buffering == 1) {
+            Serial.write(0x0E);  // Turn ON interactive mode
+           // Serial.println("Interactive mode enabled (app will echo characters)");
+        } else {
+            Serial.write(0x0F);  // Turn OFF interactive mode
+         //   Serial.println("Interactive mode disabled (app won't echo characters)");
+        }
+        Serial.flush();
+    }
 }
 
 // Fast config parsing function optimized for tight loops

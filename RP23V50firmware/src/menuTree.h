@@ -158,6 +158,12 @@ String menuLines[] = {
        "--SciExt^",
        "--AndlMno^",
        "--FreMno^",
+       "--Iosevka^",
+       
+      //  "--IosevkaLt^",
+      //  "--IosevkaRg^",
+      //  "--IosevkaMd^",
+      //  "--IosevkaBd^",
        "-Show in Term",
       //  "-Demo",
 

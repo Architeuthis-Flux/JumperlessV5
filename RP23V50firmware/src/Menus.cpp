@@ -3197,7 +3197,19 @@ int doMenuAction(int menuPosition, int selection) {
                                             } else if (menuLines[currentAction.previousMenuPositions[2]].indexOf("FreMno") != -1) {
                                               selectedFamily = FONT_FREE_MONO;
                                               configFontValue = 7;
-                                              }
+                                              } else if (menuLines[currentAction.previousMenuPositions[2]].indexOf("Iosevka") != -1) {
+                                                selectedFamily = FONT_IOSEVKA_LIGHT;
+                                                configFontValue = 8;
+                                                // } else if (menuLines[currentAction.previousMenuPositions[2]].indexOf("IosevkaRg") != -1) {
+                                                //   selectedFamily = FONT_IOSEVKA_REGULAR;
+                                                //   configFontValue = 9;
+                                                //   } else if (menuLines[currentAction.previousMenuPositions[2]].indexOf("IosevkaMd") != -1) {
+                                                //     selectedFamily = FONT_IOSEVKA_MEDIUM;
+                                                //     configFontValue = 10;
+                                                //     } else if (menuLines[currentAction.previousMenuPositions[2]].indexOf("IosevkaBd") != -1) {
+                                                //       selectedFamily = FONT_IOSEVKA_SEMI_BOLD;
+                                                //       configFontValue = 11;
+                                                      }
 
                                         // Set the font family (smart selection will choose appropriate size)
                                         //oled.setFontForSize(selectedFamily, 1);

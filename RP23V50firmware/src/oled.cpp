@@ -66,12 +66,15 @@ struct font fontList[] = {
   { &new_science_medium12pt7b, "Science", "New Science", 0, FONT_NEW_SCIENCE_MEDIUM },        // Index 9 - Size 2
   { &new_science_medium_extended8pt7b, "SciExt", "New Science Ext", 0, FONT_NEW_SCIENCE_MEDIUM_EXTENDED },  // Index 10 - Size 1
   { &new_science_medium_extended12pt7b, "SciExt", "New Science Ext", 0, FONT_NEW_SCIENCE_MEDIUM_EXTENDED }, // Index 11 - Size 2
-  
+  { &IosevkaSS08_Light8pt7b, "Iosevka", "Iosevka SS08 Light", 0, FONT_IOSEVKA_LIGHT },         // Index 12 - Size 1
+  { &IosevkaSS08_Light12pt7b, "Iosevka", "Iosevka SS08 Light", 0, FONT_IOSEVKA_LIGHT },        // Index 13 - Size 2
+
   // Monospaced fonts for text highlighting
   { &ANDALEMO5pt7b, "AndlMno5", "Andale Mono", 0, FONT_ANDALE_MONO },                        // Index 12 - Size 1
   { &ANDALEMO6pt7b, "AndlMno6", "Andale Mono", 0, FONT_ANDALE_MONO },                        // Index 13 - Size 2
   { &FreeMono4pt7b, "FreMno4", "Free Mono", 0, FONT_FREE_MONO },                             // Index 14 - Size 1
   { &FreeMono5pt7b, "FreMno5", "Free Mono", 0, FONT_FREE_MONO },                             // Index 15 - Size 2
+  
 
   // Small fonts for file manager (4-5pt for better readability)
   { &ubuntu5pt7b, "Ubuntu5", "Ubuntu 5pt", 0, FONT_EUROSTILE },                              // Index 16 - Small font
@@ -95,6 +98,10 @@ FontSizeMapping fontFamilyMap[] = {
     {10, 11}, // FONT_NEW_SCIENCE_MEDIUM_EXTENDED: 8pt for size 1, 12pt for size 2
     {12, 13}, // FONT_ANDALE_MONO: 5pt for size 1, 6pt for size 2
     {14, 15}, // FONT_FREE_MONO: 4pt for size 1, 5pt for size 2
+    {16, 17}, // FONT_IOSEVKA_LIGHT: 8pt for size 1, 12pt for size 2
+    {18, 19}, // FONT_IOSEVKA_REGULAR: 11pt for size 1, 12pt for size 2
+    {20, 21}, // FONT_IOSEVKA_MEDIUM: 11pt for size 1, 12pt for size 2
+    {22, 23}, // FONT_IOSEVKA_SEMI_BOLD: 11pt for size 1, 12pt for size 2
 };
 
 // SIMPLIFIED POSITIONING SYSTEM

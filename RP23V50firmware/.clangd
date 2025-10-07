@@ -14,9 +14,10 @@ CompileFlags:
     # Project includes
     - "-Iinclude"
     - "-Ilib/JDI_MIP_Display"
-    - "-Isrc"
+    - "-Isrc/"
     - "-Iboards/jumperless_v5"
     - "-Ilib"
+    - "-Isrc/*"
     
     # Library dependencies
     - "-I.pio/libdeps/jumperless_v5/INA219/src"
@@ -47,6 +48,10 @@ CompileFlags:
     - "-I/Users/kevinsanto/.platformio/packages/framework-arduinopico/cores/rp2040"
     - "-I/Users/kevinsanto/.platformio/packages/framework-arduinopico/variants/rpipico"
     - "-I/Users/kevinsanto/.platformio/packages/framework-arduinopico/libraries"
+    
+    # lwIP includes (for networking)
+    - "-I/Users/kevinsanto/.platformio/packages/framework-arduinopico/pico-sdk/lib/"
+    - "-I/Users/kevinsanto/.platformio/packages/framework-arduinopico/pico-sdk/src/rp2_common/pico_lwip/include"
     
     # Arduino preprocessor defines
     - "-DARDUINO=10607"
@@ -85,7 +90,7 @@ CompileFlags:
     - "-fno-rtti"
     - "-fno-exceptions"
 
-    - "-Wtrigraphs"
+  CompilationDatabase: .
 
 ---
 If:
@@ -122,6 +127,3 @@ Format:
   IndentWidth: 2
   TabWidth: 2
   UseTab: Never
-
-CompileFlags:
-  Add: ["-Iinclude", "-I.pio/libdeps/jumperless_v5/JDI_MIP_Display", "-I.pio/libdeps/jumperless_v5/Adafruit GFX Library", "-I.pio/libdeps/jumperless_v5/Adafruit BusIO", "-I.pio/libdeps/jumperless_v5/SPI", "-DUSE_TINYUSB"]

@@ -1096,8 +1096,14 @@ void initINA219( void ) {
     }
 
 
-    INA0.setShuntSamples(2);
-    INA1.setShuntSamples(2);
+    // Set shunt samples to 4 (16 averages) for more stable readings
+    // This gives ~8.5ms conversion time which is acceptable for probe readings
+    INA0.setShuntSamples(4);  // 16 samples averaged
+    INA1.setShuntSamples(4);  // 16 samples averaged
+    
+    // Also set bus samples for consistency
+    INA0.setBusSamples(4);    // 16 samples averaged
+    INA1.setBusSamples(4);    // 16 samples averaged
 
     INA0.setMaxCurrentShunt( 1, 2.0 );
     INA1.setMaxCurrentShunt( 1, 2.0 );

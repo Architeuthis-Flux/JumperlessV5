@@ -2199,7 +2199,7 @@ int checkSwitchPosition( ) { // 0 = measure, 1 = select
 
     // Use the global interval if available; otherwise default to 50ms.
     // unsigned long switchPositionCheckInterval = 200;
-    unsigned long interval_ms = 500; // switchPositionCheckInterval;
+    unsigned long interval_ms = 1500; // switchPositionCheckInterval;
 
     if ( checkingButton == 1 ) {
         Serial.println( "checkingButton" );
@@ -2223,17 +2223,38 @@ int checkSwitchPosition( ) { // 0 = measure, 1 = select
     }
 
     float current_mA = checkProbeCurrent( );
-    // if (probePowerDAC == 0) {
-    //   setDac0voltage(3.33, 0, 0, false);
-    // } else if (probePowerDAC == 1) {
-    //   setDac1voltage(3.33, 0, 0, false);
-    // }
-
-    if ( current_mA > jumperlessConfig.calibration.probe_switch_threshold ) {
-        switchPosition = 1;
+    
+    // HYSTERESIS LOGIC to prevent oscillation:
+    // Use different thresholds depending on current state to create a "dead zone"
+    // 
+    // State transitions:
+    //   MEASURE -> SELECT: only when current > HIGH threshold (0.90 mA)
+    //   SELECT -> MEASURE: only when current < LOW threshold (0.70 mA)
+    //
+    // This prevents oscillation because changing the LED mode affects current draw,
+    // but the new current will still be within the hysteresis band so no state change occurs.
+    
+    // Serial.print("Switch position (before): ");
+    // Serial.print(switchPosition);
+    // Serial.print("  Current: ");
+    // Serial.println(current_mA);
+    
+    if ( switchPosition == 0 ) {
+        // Currently in MEASURE mode - only switch to SELECT if current exceeds HIGH threshold
+        if ( current_mA > jumperlessConfig.calibration.probe_switch_threshold_high ) {
+            switchPosition = 1;
+          //  Serial.println("Switching to SELECT mode (HIGH threshold exceeded)");
+        }
     } else {
-        switchPosition = 0;
+        // Currently in SELECT mode - only switch to MEASURE if current falls below LOW threshold
+        if ( current_mA < jumperlessConfig.calibration.probe_switch_threshold_low ) {
+            switchPosition = 0;
+            //Serial.println("Switching to MEASURE mode (LOW threshold crossed)");
+        }
     }
+    
+    // Serial.print("Switch position (after): ");
+    // Serial.println(switchPosition);
 
     if ( switchPosition == 0 ) {
         showProbeLEDs = 3; // measure
@@ -2246,55 +2267,49 @@ int checkSwitchPosition( ) { // 0 = measure, 1 = select
     //   Serial.print(" ");
     // }
     // Serial.println();
-    // Serial.flush();
+     Serial.flush();
 
     return switchPosition;
 }
-// float calibrated3v3 = 3.3;
 
-// void calibrateDac0(float target) {
-//   target = 3.33;
-//   int calibrationFound = 0;
-
-//   removeBridgeFromNodeFile(DAC0, -1, netSlot, 1);
-//   removeBridgeFromNodeFile(ROUTABLE_BUFFER_IN, -1, netSlot, 1);
-//   addBridgeToNodeFile(ROUTABLE_BUFFER_IN, DAC0, netSlot, 1);
-
-//   refreshBlind(-1);
-
-//   while (calibrationFound == 0) {
-//     setDac0voltage(calibrated3v3, 0);
-//     delay(10);
-//     float MeasuredVoltage = INA1.getBusVoltage();
-//     Serial.print("setVoltage: ");
-//     Serial.print(calibrated3v3);
-//     Serial.print("\t\tMeasuredVoltage: ");
-//     Serial.println(MeasuredVoltage);
-
-//     if (MeasuredVoltage > target + 0.01) {
-//       calibrated3v3 = calibrated3v3 - 0.01;
-//     } else if (MeasuredVoltage < target - 0.01) {
-//       calibrated3v3 = calibrated3v3 + 0.01;
-//     } else {
-//       calibrationFound = 1;
-//     }
-//   }
-// }
 
 float checkProbeCurrent( void ) {
-
+    // showProbeLEDs = 10;
+    // probeLEDs.setPixelColor( 0, 0x010101 );
+    // probeLEDs.show( );
     int bs = 0;
+    int div = 1;
 
     float lastDac = dacOutput[ 0 ];
 
-    float current = 0.0; // = INA1.getCurrent_mA()-jumperlessConfig.calibration.probe_current_zero;
-
-    for ( int i = 0; i < 4; i++ ) {
-        current += INA1.getCurrent_mA( );
-        delayMicroseconds( 1200 );
+    float current = 0.0;
+    
+    // Wait for INA219 conversion to complete (~8.5ms with 16 sample averaging)
+    // The conversion flag indicates when a new reading is ready
+    unsigned long timeout_start = millis();
+    while (!INA1.getConversionFlag() && (millis() - timeout_start < 20)) {
+        delayMicroseconds(100);
     }
-    current = current / 4.0;
+    
+    // Take fewer samples since INA219 is already doing 16x averaging internally
+    for ( int i = 0; i < div; i++ ) {
+        // Wait for conversion flag before each read
+        timeout_start = millis();
+        while (!INA1.getConversionFlag() && (millis() - timeout_start < 20)) {
+            delayMicroseconds(100);
+        }
+        current += INA1.getCurrent_mA( );
+        //delayMicroseconds( 2000 );  // Allow time for next conversion (~8.5ms needed)
+    }
+    current = current / (float)div;
+    // Serial.print("current (before zero) = ");
+    // Serial.println(current);
+    // Serial.flush();
     current = current - jumperlessConfig.calibration.probe_current_zero;
+
+    // Serial.print("current (after zero) = ");
+    // Serial.println(current);
+    // Serial.flush();
 
     if ( showProbeCurrent == 1) {
         Serial.print( "                          \rProbe current: " );
@@ -2308,6 +2323,8 @@ float checkProbeCurrent( void ) {
         // Serial.println();
         // Serial.flush();
     }
+    // Serial.println();
+    // Serial.flush();
     // if (millis() % 1000 < 10) {
     //   Serial.print("current: ");
     //   Serial.print(current);
@@ -2334,23 +2351,39 @@ float checkProbeCurrentZero( void ) {
     showProbeLEDs = 10;
     probeLEDs.setPixelColor( 0, 0x000000 );
     probeLEDs.show( );
-    delayMicroseconds( 1000 );
+    delayMicroseconds( 100);
 
-    float current = 0.0; // INA1.getCurrent_mA();
+    int div = 8;
 
+    float current = 0.0;
     float currentSum = 0.0;
 
-    for ( int i = 0; i < 16; i++ ) {
+    // With 16x averaging in the INA219, we can take fewer samples here
+    // Wait for first conversion to complete
+    unsigned long timeout_start = millis();
+    while (!INA1.getConversionFlag() && (millis() - timeout_start < 20)) {
+        delayMicroseconds(100);
+    }
+
+    for ( int i = 0; i < div; i++ ) {
+        // Wait for conversion flag before each read
+        timeout_start = millis();
+        while (!INA1.getConversionFlag() && (millis() - timeout_start < 20)) {
+            delayMicroseconds(100);
+        }
         currentSum += INA1.getCurrent_mA( );
-        delayMicroseconds( 1000 );
+        //delayMicroseconds( 2000 );  // Allow time for next conversion
     }
 
     // Serial.print("currentSum = ");
     // Serial.println(currentSum);
 
-    current = currentSum / 16;
+    current = currentSum / (float)div;
 
     jumperlessConfig.calibration.probe_current_zero = current;
+
+    // Serial.print("Zero calibration current = ");
+    // Serial.println(current);
 
     // saveConfig();
 

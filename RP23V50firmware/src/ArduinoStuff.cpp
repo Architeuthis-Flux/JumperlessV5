@@ -334,7 +334,7 @@ void printUSBInterfaceNames( void ) {
 #endif
 
 #if USB_CDC_ENABLE_COUNT >= 4
-    Serial.println( "Interface 3: Jumperless Debug" );
+    Serial.println( "Interface 3: Jumperless TUI" );
 #endif
 
 #if USB_MSC_ENABLE
@@ -1435,7 +1435,7 @@ void replyWithSerialInfo( void ) {
 #endif
 
 #if USB_CDC_ENABLE_COUNT >= 4
-            Serial.println( "CDC3: Jumperless Debug" );
+            Serial.println( "CDC3: Jumperless TUI" );
 #endif
             Serial.flush( );
         }

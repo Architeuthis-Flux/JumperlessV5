@@ -71,3 +71,4 @@ JumperlessWokwiBridge/WokwiSketch/WokwiSketch.ino
 RP23V50firmware/lib/JDI_MIP_Display/breakout/
 RP23V50firmware/lib/JDI_MIP_Display/images/
 RP23V50firmware/lib/JDI_MIP_Display/examples/
+RP23V50firmware/src/fonts/MoreFonts/
