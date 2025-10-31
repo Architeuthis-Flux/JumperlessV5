@@ -1,0 +1,9 @@
+[submodule "JumperlOS"]
+	path = JumperlOS
+	url = https://github.com/Architeuthis-Flux/JumperlOS
+[submodule "Jumperless-App"]
+	path = Jumperless-App
+	url = https://github.com/Architeuthis-Flux/Jumperless-App
+[submodule "Jocumentation"]
+	path = Jocumentation
+	url = https://github.com/Architeuthis-Flux/Jumperless-docs
