@@ -1,29 +1,101 @@
-# Jumperless V5
+
+![](https://jumperless-docs.readthedocs.io/en/latest/assets/JNameLogo.png)
+
 ###### The next generation [jumperless](https://github.com/Architeuthis-Flux/Jumperless) breadboard
 ---
 ## If you got here by scanning the QR code on your box and want to know how to use this thing, the [There's a readthedocs.io site here](https://jumperless-docs.readthedocs.io/en/latest).
 #### Don't hesitate to ask me *anything* in [Discord](https://discord.gg/Zvv7Dvgxa5) or wherever. Seriously, even if you think it's a dumb question, someone else probably has it too, so it helps me out a lot to know what to put in the guide.
 
 
-   ---
-Jumperless V5 is a breadboard where any point can be connected to any other with software-defined jumpers. RGB LEDs under each hole turn the breadboard itself into a display; paired with its assortment of routable analog/digial IO, Jumperless V5 gives you real-time information about everything that's happening in your circuit and the ability to change it at a whim.
+Watch the launch video here:
+[![Launch Video](https://img.youtube.com/vi/fJTE7R_CV8w/maxresdefault.jpg)](https://www.youtube.com/watch?v=fJTE7R_CV8w)
 
-## You can get one on [Crowd Supply](https://www.crowdsupply.com/architeuthis-flux/jumperless-v5).
 
-![HeroNew](https://github.com/user-attachments/assets/8eb56a45-aa24-4dd0-8528-8c3656c0b4ae)
+
+  ---
+
+# What is it?
+
+Jumperless V5 lets you prototype like a nerdy wizard who can see electricity and conjure jumpers with a magic wand. It’s an Integrated Development Environment (IDE) for hardware, with an analog-by-nature RP2350B dev board, a drawer full of wires, and a workbench full of test equipment (including a power supply, a multimeter, an oscilloscope, a function generator, and a logic analyzer) all crammed inside a breadboard.
+
+You can connect any point to any other using software-defined jumpers, so the four individually programmable ±8 V power supplies; ten GPIO; and seven management channels for voltage, current, and resistance can all be connected anywhere on the breadboard or the Arduino Nano header. RGB LEDs under each hole turn the breadboard itself into a display that provides real-time information about whatever’s happening in your circuit.
+
+It's not just about being too lazy to plug in some jumpers. With software controlled wiring, the circuit *itself* is now [***scriptable***](08-micropython.md), which opens up a world of infinite crazy new things you could never do on a regular breadboard. Have a script try out every combination of parts until it does what you want (*à la* [evolvable hardware](https://evolvablehardware.org/)), automatically switch around audio effects on the fly, characterize some unknown chip with the part numbers sanded off, or don't bother with any of that and just [play Doom on it](https://www.youtube.com/watch?v=xWYWruUO0F4).
+
+But more likely, you'll be using it to get circuits from your brain into hardware with so little friction it feels like you're just thinking them into existence. So yeah, wizard shit.
+
+### **These are the docs where you will learn how to wield your new powers**
+
+![](https://github.com/user-attachments/assets/3f0584fd-2cc1-4036-bf2b-6a18eb98a6d5)
+
+
+If you don't already have one,
+## [Get a Jumperless V5 on Crowd Supply](https://www.crowdsupply.com/architeuthis-flux/jumperless-v5)
+
+
+## Getting Started
+
+![](https://github.com/user-attachments/assets/f1c03244-172c-416b-ae50-55e4a7bc7eea)
+
+## Documentation Sections
+
+- **[Basic Controls](https://jumperless-docs.readthedocs.io/en/latest/01-basic-controls/)** - Learn how to use the probe, click wheel, and slot system
+- **[The App](https://jumperless-docs.readthedocs.io/en/latest/03-app/)** - For talking to your Jumperless, importing from Wokwi, and flashing Arduino sketches
+- **[OLED](https://jumperless-docs.readthedocs.io/en/latest/04-oled/)** - Add a better display
+- **[Arduino](https://jumperless-docs.readthedocs.io/en/latest/05-arduino/)** - UART passthrough and automatic flashing
+- **[Configuration](https://jumperless-docs.readthedocs.io/en/latest/06-config)** - Persistent settings
+- **[Debugging](https://jumperless-docs.readthedocs.io/en/latest/07-debugging)** - Crossbar, bridge, and net list views
+- **[File Manager](https://jumperless-docs.readthedocs.io/en/latest/08-file-manager)** - Filesystem access, YAML slot file editing, and text editor
+- **[MicroPython](https://jumperless-docs.readthedocs.io/en/latest/08-micropython)** - Use the onboard MicroPython interpreter
+- **[Odds and Ends](https://jumperless-docs.readthedocs.io/en/latest/09-odds-and-ends)** - Stuff I couldn't think of a good category for
+- **[3D Printable Stand](https://jumperless-docs.readthedocs.io/en/latest/10-3d-stand)** - Print your own stand
+- **[Writing Native Apps](https://jumperless-docs.readthedocs.io/en/latest/11-WritingApps)** - Dig into the actual firmware and write your own apps
+- **[Glossary](https://jumperless-docs.readthedocs.io/en/latest/99-glossary)** - Key terms including slots, nodes, bridges, and the W command
+
+
+---
+
+## Find Me On The Internet
+
+Join the [Discord](https://discord.gg/bvacV7r3FP) for pretty much instant answers to your questions
+
+<div class="social-icons">
+  <a href="https://github.com/Architeuthis-Flux">
+    <img src="https://cdn.jsdelivr.net/npm/simple-icons@v10/icons/github.svg" class="social-icon" alt="GitHub" width="80" height="80">
+  </a>
+
+     
+  <a href="https://bsky.app/profile/architeuthisflux.bsky.social">
+    <img src="https://cdn.jsdelivr.net/npm/simple-icons@v10/icons/bluesky.svg" class="social-icon" alt="Bluesky" width="80" height="80">
+  </a>
+    <a href="https://x.com/arabidsquid">
+    <img src="https://cdn.jsdelivr.net/npm/simple-icons@v10/icons/twitter.svg" class="social-icon" alt="Twitter" width="80" height="80">
+  </a>
+    <a href="https://leds.social/@ArchiteuthisFlux">
+    <img src="https://cdn.jsdelivr.net/npm/simple-icons@v10/icons/mastodon.svg" class="social-icon" alt="Mastodon" width="80" height="80">
+  </a>
+  <a href="https://discord.gg/bvacV7r3FP">
+    <img src="https://cdn.jsdelivr.net/npm/simple-icons@v10/icons/discord.svg" class="social-icon" alt="Discord" width="80" height="80">
+  </a>
+
+
+  <a href="https://www.youtube.com/@arabidsquid">
+    <img src="https://cdn.jsdelivr.net/npm/simple-icons@v10/icons/youtube.svg" class="social-icon" alt="YouTube" width="80" height="80">
+  </a>
+
+</div>
+
+
 
 ![dymo-6s](https://github.com/user-attachments/assets/d59e3ebc-591c-4c2c-bce3-1f65f9555c61)
 
 
-
+---
 
 The 4 individually programmable ±8V power supplies, 5 voltage/current/resistance measurement channels, and 10 GPIO can all be connected anywhere on the breadboard or the Arduino Nano header. Connections made with its matrix of 12 analog crossbar switches can be changed in just a few microseconds, so measurements and GPIO can multiplexed to cover the entire board at once.
 
 V5 is a major redesign of the original [Jumperless](https://github.com/Architeuthis-Flux/Jumperless). Having a few hundred people out there using Jumperlesses, sharing ideas, and [writing their](https://github.com/nilclass/jlctl) [own apps](https://github.com/nilclass/jumperlab) gave me a long enough list of things I wish I had done that I felt it was time to push the design even further. Now that the fundamentals are battle-tested (switching matrix, power supply, routing algorithm), Jumperless V5 can add some even crazier new stuff like; an ungodly number (445) of LEDs, a built in rotary encoder/switch, daisy chain headers, individually programmable power rails, and an isolated, always-on probing system. 
 
-
-Watch the launch video here:
-[![Launch Video](https://img.youtube.com/vi/fJTE7R_CV8w/maxresdefault.jpg)](https://www.youtube.com/watch?v=fJTE7R_CV8w)
 
 
 
@@ -39,7 +111,7 @@ https://github.com/user-attachments/assets/c78493ee-f2cd-4704-bab7-26346f978c54
 https://github.com/user-attachments/assets/168cb387-934b-4a25-b30d-b696312ee0e1
 
 
-Jumperless V5 will cost roughly $360 (with free shipping worldwide)
+
 
 
 ![V5r5-9](https://github.com/user-attachments/assets/bf30c323-7071-48df-9679-cbe8289fe615)
