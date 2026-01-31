@@ -10867,6 +10867,15 @@
 				(hide yes)
 			)
 		)
+		(property "LCSC" "C5349953"
+			(at -5.08 81.28 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(hide yes)
+			)
+		)
 		(pin "1"
 			(uuid "44eebd39-f0db-4243-933d-66aae58e4501")
 		)
@@ -10941,6 +10950,15 @@
 				(hide yes)
 			)
 		)
+		(property "LCSC" "C5349953"
+			(at 65.405 46.99 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(hide yes)
+			)
+		)
 		(pin "1"
 			(uuid "c1950e99-8f54-4677-8637-547e1834bc1b")
 		)
@@ -11007,6 +11025,15 @@
 			)
 		)
 		(property "Description" ""
+			(at 202.565 46.99 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(hide yes)
+			)
+		)
+		(property "LCSC" "C5349953"
 			(at 202.565 46.99 0)
 			(effects
 				(font
@@ -11130,7 +11157,7 @@
 				(justify right)
 			)
 		)
-		(property "Footprint" ""
+		(property "Footprint" "JumperlessFootprints:Pogo_pin_YZP0120-16020-01"
 			(at 59.69 256.54 0)
 			(effects
 				(font
@@ -11139,7 +11166,7 @@
 				(hide yes)
 			)
 		)
-		(property "Datasheet" "~"
+		(property "Datasheet" "https://www.lcsc.com/product-detail/C5157215.html"
 			(at 59.69 256.54 0)
 			(effects
 				(font
@@ -11148,7 +11175,16 @@
 				(hide yes)
 			)
 		)
-		(property "Description" "Generic connector, single row, 01x01, script generated (kicad-library-utils/schlib/autogen/connector/)"
+		(property "Description" "YZ52015028P-01"
+			(at 59.69 256.54 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(hide yes)
+			)
+		)
+		(property "LCSC Part" " C5157215 "
 			(at 59.69 256.54 0)
 			(effects
 				(font
@@ -11427,6 +11463,15 @@
 				(hide yes)
 			)
 		)
+		(property "LCSC" "C5349953"
+			(at -26.67 58.42 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(hide yes)
+			)
+		)
 		(pin "1"
 			(uuid "9c2a1849-4d7d-431b-97b1-d63656029a7b")
 		)
@@ -11502,6 +11547,15 @@
 				(hide yes)
 			)
 		)
+		(property "LCSC" "C5349953"
+			(at 65.405 123.19 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(hide yes)
+			)
+		)
 		(pin "1"
 			(uuid "3e017455-aef0-4ea8-be60-9a5fe88ad4e7")
 		)
@@ -11569,6 +11623,15 @@
 			)
 		)
 		(property "Description" ""
+			(at 111.125 123.19 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(hide yes)
+			)
+		)
+		(property "LCSC" "C5349953"
 			(at 111.125 123.19 0)
 			(effects
 				(font
@@ -11693,7 +11756,7 @@
 				(justify left)
 			)
 		)
-		(property "Footprint" "JumperlessFootprints:PINHEADER-1x1_vertical"
+		(property "Footprint" ""
 			(at 19.05 43.18 0)
 			(effects
 				(font
@@ -11702,7 +11765,7 @@
 				(hide yes)
 			)
 		)
-		(property "Datasheet" "~"
+		(property "Datasheet" ""
 			(at 19.05 43.18 0)
 			(effects
 				(font
@@ -11711,7 +11774,7 @@
 				(hide yes)
 			)
 		)
-		(property "Description" "test point"
+		(property "Description" ""
 			(at 13.97 43.18 0)
 			(effects
 				(font
@@ -11786,6 +11849,15 @@
 				(hide yes)
 			)
 		)
+		(property "LCSC" "C5349953"
+			(at 34.925 123.19 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(hide yes)
+			)
+		)
 		(pin "1"
 			(uuid "fc082ea7-71bd-4496-a6d0-8ebad483c695")
 		)
@@ -11842,7 +11914,7 @@
 				(hide yes)
 			)
 		)
-		(property "Datasheet" "~"
+		(property "Datasheet" ""
 			(at 49.53 274.32 0)
 			(effects
 				(font
@@ -11851,7 +11923,7 @@
 				(hide yes)
 			)
 		)
-		(property "Description" "Generic connector, single row, 01x01, script generated (kicad-library-utils/schlib/autogen/connector/)"
+		(property "Description" ""
 			(at 49.53 274.32 0)
 			(effects
 				(font
@@ -11917,6 +11989,15 @@
 			)
 		)
 		(property "Description" ""
+			(at 111.125 46.99 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(hide yes)
+			)
+		)
+		(property "LCSC" "C5349953"
 			(at 111.125 46.99 0)
 			(effects
 				(font
@@ -11992,6 +12073,15 @@
 			)
 		)
 		(property "Description" ""
+			(at 50.165 123.19 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(hide yes)
+			)
+		)
+		(property "LCSC" "C5349953"
 			(at 50.165 123.19 0)
 			(effects
 				(font
@@ -12280,6 +12370,15 @@
 				(hide yes)
 			)
 		)
+		(property "LCSC" "C5349953"
+			(at -59.69 105.41 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(hide yes)
+			)
+		)
 		(pin "1"
 			(uuid "d1bb8268-4f97-4925-baff-c6aa726b479f")
 		)
@@ -12354,6 +12453,15 @@
 				(hide yes)
 			)
 		)
+		(property "LCSC" "C5349953"
+			(at 95.885 46.99 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(hide yes)
+			)
+		)
 		(pin "1"
 			(uuid "ce17780b-75be-4cb4-90f0-4418fdb7b132")
 		)
@@ -12420,6 +12528,15 @@
 			)
 		)
 		(property "Description" ""
+			(at 126.365 46.99 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(hide yes)
+			)
+		)
+		(property "LCSC" "C5349953"
 			(at 126.365 46.99 0)
 			(effects
 				(font
@@ -12568,6 +12685,15 @@
 				(hide yes)
 			)
 		)
+		(property "LCSC" "C5349953"
+			(at -74.93 76.2 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(hide yes)
+			)
+		)
 		(pin "1"
 			(uuid "84a7b20b-a79c-4548-bc5e-15c03781828c")
 		)
@@ -12643,6 +12769,15 @@
 				(hide yes)
 			)
 		)
+		(property "LCSC" "C5349953"
+			(at 95.885 123.19 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(hide yes)
+			)
+		)
 		(pin "1"
 			(uuid "f8bbf182-ad96-4393-989e-63c775d207e6")
 		)
@@ -12690,7 +12825,7 @@
 				)
 			)
 		)
-		(property "Footprint" ""
+		(property "Footprint" "JumperlessFootprints:SolderJumper-3_P1.3mm_Bridged12_Pad1.0x1.5mm"
 			(at 59.69 274.32 0)
 			(effects
 				(font
@@ -12699,7 +12834,7 @@
 				(hide yes)
 			)
 		)
-		(property "Datasheet" "~"
+		(property "Datasheet" ""
 			(at 59.69 274.32 0)
 			(effects
 				(font
@@ -12856,6 +12991,15 @@
 				(hide yes)
 			)
 		)
+		(property "LCSC" "C5349953"
+			(at 248.285 46.99 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(hide yes)
+			)
+		)
 		(pin "1"
 			(uuid "527bb4f6-b17d-479e-94c0-aa336be8e112")
 		)
@@ -12923,6 +13067,15 @@
 			)
 		)
 		(property "Description" ""
+			(at -90.17 111.76 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(hide yes)
+			)
+		)
+		(property "LCSC" "C5349953"
 			(at -90.17 111.76 0)
 			(effects
 				(font
@@ -13143,6 +13296,15 @@
 				(hide yes)
 			)
 		)
+		(property "LCSC" "C5349953"
+			(at 126.365 123.19 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(hide yes)
+			)
+		)
 		(pin "1"
 			(uuid "d05b5d45-ea85-45f8-bef5-579553740d8c")
 		)
@@ -13285,6 +13447,15 @@
 				(hide yes)
 			)
 		)
+		(property "LCSC" "C5349953"
+			(at 156.845 46.99 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(hide yes)
+			)
+		)
 		(pin "1"
 			(uuid "bdf32a9d-1b17-4b28-836d-eb4515a21240")
 		)
@@ -13351,6 +13522,15 @@
 			)
 		)
 		(property "Description" ""
+			(at -59.69 83.82 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(hide yes)
+			)
+		)
+		(property "LCSC" "C5349953"
 			(at -59.69 83.82 0)
 			(effects
 				(font
@@ -13501,6 +13681,15 @@
 				(hide yes)
 			)
 		)
+		(property "LCSC" "C5349953"
+			(at 233.045 46.99 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(hide yes)
+			)
+		)
 		(pin "1"
 			(uuid "813cb0ec-6c5a-43de-99b4-2f6d2c627af2")
 		)
@@ -13567,6 +13756,15 @@
 			)
 		)
 		(property "Description" ""
+			(at 141.605 46.99 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(hide yes)
+			)
+		)
+		(property "LCSC" "C5349953"
 			(at 141.605 46.99 0)
 			(effects
 				(font
@@ -13715,6 +13913,15 @@
 				(hide yes)
 			)
 		)
+		(property "LCSC" "C5349953"
+			(at 217.805 46.99 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(hide yes)
+			)
+		)
 		(pin "1"
 			(uuid "23a85315-4169-451e-a671-7f8140c7f29f")
 		)
@@ -13789,6 +13996,15 @@
 				(hide yes)
 			)
 		)
+		(property "LCSC" "C5349953"
+			(at 172.085 46.99 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(hide yes)
+			)
+		)
 		(pin "1"
 			(uuid "f8093190-26d8-4bd4-a842-e678f3854682")
 		)
@@ -13855,6 +14071,15 @@
 			)
 		)
 		(property "Description" ""
+			(at -90.17 90.17 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(hide yes)
+			)
+		)
+		(property "LCSC" "C5349953"
 			(at -90.17 90.17 0)
 			(effects
 				(font
@@ -14140,6 +14365,15 @@
 				(hide yes)
 			)
 		)
+		(property "LCSC" "C5349953"
+			(at 34.925 46.99 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(hide yes)
+			)
+		)
 		(pin "1"
 			(uuid "926de6bf-9f37-4907-93f8-81d34bf64d5c")
 		)
@@ -14342,6 +14576,15 @@
 			)
 		)
 		(property "Description" ""
+			(at -74.93 97.79 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(hide yes)
+			)
+		)
+		(property "LCSC" "C5349953"
 			(at -74.93 97.79 0)
 			(effects
 				(font
@@ -14558,6 +14801,15 @@
 				(hide yes)
 			)
 		)
+		(property "LCSC" "C5349953"
+			(at 50.165 46.99 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(hide yes)
+			)
+		)
 		(pin "1"
 			(uuid "60fb2fb9-02e0-479c-9d0c-25d44e3cec65")
 		)
@@ -14633,6 +14885,15 @@
 				(hide yes)
 			)
 		)
+		(property "LCSC" "C5349953"
+			(at -74.93 119.38 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(hide yes)
+			)
+		)
 		(pin "1"
 			(uuid "607466c4-e4b2-468d-9e9d-28fc5e229eca")
 		)
@@ -14700,6 +14961,15 @@
 			)
 		)
 		(property "Description" ""
+			(at 80.645 123.19 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(hide yes)
+			)
+		)
+		(property "LCSC" "C5349953"
 			(at 80.645 123.19 0)
 			(effects
 				(font
@@ -14918,6 +15188,15 @@
 				(hide yes)
 			)
 		)
+		(property "LCSC" "C5349953"
+			(at 233.045 123.19 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(hide yes)
+			)
+		)
 		(pin "1"
 			(uuid "5ed46076-70a1-4b14-b9ff-624788ca4c6a")
 		)
@@ -14985,6 +15264,15 @@
 			)
 		)
 		(property "Description" ""
+			(at 156.845 123.19 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(hide yes)
+			)
+		)
+		(property "LCSC" "C5349953"
 			(at 156.845 123.19 0)
 			(effects
 				(font
@@ -15135,6 +15423,15 @@
 				(hide yes)
 			)
 		)
+		(property "LCSC" "C5349953"
+			(at -24.13 85.09 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(hide yes)
+			)
+		)
 		(pin "1"
 			(uuid "8f791216-df67-4f4d-9414-3249a75a50ab")
 		)
@@ -15184,7 +15481,7 @@
 				(justify left)
 			)
 		)
-		(property "Footprint" "JumperlessFootprints:PINHEADER-1x1_vertical"
+		(property "Footprint" "JumperlessFootprints:TestPoint_D0.75mm"
 			(at -83.82 63.5 0)
 			(effects
 				(font
@@ -15193,7 +15490,7 @@
 				(hide yes)
 			)
 		)
-		(property "Datasheet" "~"
+		(property "Datasheet" ""
 			(at -83.82 63.5 0)
 			(effects
 				(font
@@ -15277,6 +15574,15 @@
 				(hide yes)
 			)
 		)
+		(property "LCSC" "C5349953"
+			(at 202.565 123.19 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(hide yes)
+			)
+		)
 		(pin "1"
 			(uuid "12458b99-ec03-473c-bde3-2beb699baa9c")
 		)
@@ -15352,6 +15658,15 @@
 				(hide yes)
 			)
 		)
+		(property "LCSC" "C5349953"
+			(at -7.62 50.8 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(hide yes)
+			)
+		)
 		(pin "1"
 			(uuid "b685c3e8-6faf-4a47-a260-70cbf67025db")
 		)
@@ -15418,6 +15733,15 @@
 			)
 		)
 		(property "Description" ""
+			(at 187.325 46.99 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(hide yes)
+			)
+		)
+		(property "LCSC" "C5349953"
 			(at 187.325 46.99 0)
 			(effects
 				(font
@@ -15501,6 +15825,15 @@
 				(hide yes)
 			)
 		)
+		(property "LCSC" "C5349953"
+			(at 248.285 123.19 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(hide yes)
+			)
+		)
 		(pin "1"
 			(uuid "0ed21063-91ac-4b0f-b479-144b3ed74a9e")
 		)
@@ -15551,7 +15884,7 @@
 				(justify left)
 			)
 		)
-		(property "Footprint" "Package_SO:SOIC-8_5.3x5.3mm_P1.27mm"
+		(property "Footprint" "JumperlessFootprints:SOIC-8_Castillated"
 			(at 63.5 285.75 0)
 			(effects
 				(font
@@ -15560,7 +15893,7 @@
 				(hide yes)
 			)
 		)
-		(property "Datasheet" "https://www.winbond.com/resource-files/w25q128jv_dtr%20revc%2003272018%20plus.pdf"
+		(property "Datasheet" ""
 			(at 63.5 283.21 0)
 			(effects
 				(font
@@ -15569,8 +15902,26 @@
 				(hide yes)
 			)
 		)
-		(property "Description" "128Mbit / 16MiB Serial Flash Memory, Standard/Dual/Quad SPI, 2.7-3.6V, SOIC-8"
+		(property "Description" ""
 			(at 63.5 280.67 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(hide yes)
+			)
+		)
+		(property "LCSC" "C97521"
+			(at 63.5 308.61 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(hide yes)
+			)
+		)
+		(property "LCSC Part #" "C97521"
+			(at 63.5 308.61 0)
 			(effects
 				(font
 					(size 1.27 1.27)
@@ -15657,6 +16008,15 @@
 			)
 		)
 		(property "Description" ""
+			(at 217.805 123.19 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(hide yes)
+			)
+		)
+		(property "LCSC" "C5349953"
 			(at 217.805 123.19 0)
 			(effects
 				(font
@@ -15860,7 +16220,7 @@
 				(hide yes)
 			)
 		)
-		(property "Datasheet" "https://www.mouser.com/datasheet/2/1127/APM_PSRAM_QSPI_APS6404L_3SQR_v2_3_PKG-1954826.pdf"
+		(property "Datasheet" "https://www.pjrc.com/store/APS6404L_3SQR.pdf"
 			(at 101.6 326.39 0)
 			(effects
 				(font
@@ -15869,8 +16229,17 @@
 				(hide yes)
 			)
 		)
-		(property "Description" "64 Mbit / 8M x 8-bits serial pseudo SRAM MEMORY, up to 133MHz, 2.7-3.6V supply, USON-8 (XSON-8)"
+		(property "Description" ""
 			(at 101.6 328.93 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(hide yes)
+			)
+		)
+		(property "LCSC Part" "C3040877"
+			(at 101.6 308.61 0)
 			(effects
 				(font
 					(size 1.27 1.27)
@@ -15968,6 +16337,15 @@
 				(hide yes)
 			)
 		)
+		(property "LCSC" "C5349953"
+			(at 172.085 123.19 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(hide yes)
+			)
+		)
 		(pin "1"
 			(uuid "a1b32fde-b12c-405c-91f3-85d71da50425")
 		)
@@ -16043,6 +16421,15 @@
 				(hide yes)
 			)
 		)
+		(property "LCSC" "C5349953"
+			(at 141.605 123.19 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(hide yes)
+			)
+		)
 		(pin "1"
 			(uuid "d90ab268-84dd-4814-a91d-e1438216d37a")
 		)
@@ -16110,6 +16497,15 @@
 			)
 		)
 		(property "Description" ""
+			(at -7.62 110.49 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(hide yes)
+			)
+		)
+		(property "LCSC" "C5349953"
 			(at -7.62 110.49 0)
 			(effects
 				(font
@@ -16329,6 +16725,15 @@
 				(hide yes)
 			)
 		)
+		(property "LCSC" "C5349953"
+			(at 187.325 123.19 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(hide yes)
+			)
+		)
 		(pin "1"
 			(uuid "0f492861-4906-47be-b699-f81125703776")
 		)
@@ -16395,6 +16800,15 @@
 			)
 		)
 		(property "Description" ""
+			(at 80.645 46.99 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(hide yes)
+			)
+		)
+		(property "LCSC" "C5349953"
 			(at 80.645 46.99 0)
 			(effects
 				(font
@@ -16470,6 +16884,15 @@
 			)
 		)
 		(property "Description" ""
+			(at -24.13 111.76 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(hide yes)
+			)
+		)
+		(property "LCSC" "C5349953"
 			(at -24.13 111.76 0)
 			(effects
 				(font
