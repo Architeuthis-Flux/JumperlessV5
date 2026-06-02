@@ -1,0 +1,4 @@
+(sym_lib_table
+  (version 7)
+  (lib (name "JumperlessSymbols")(type "KiCad")(uri "${KICAD_8_SYMBOLS}/JumperlessSymbols.kicad_sym")(options "")(descr ""))
+)
