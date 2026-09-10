@@ -50,7 +50,23 @@
         "silk_text_thickness": 0.15,
         "silk_text_upright": false,
         "zones": {
-          "min_clearance": 0.13
+          "border_display_style": 2,
+          "border_hatch_pitch": 0.5,
+          "corner_radius": 0.0,
+          "corner_smoothing": 0,
+          "fill_mode": 0,
+          "hatch_gap": 1.5,
+          "hatch_orientation": 0.0,
+          "hatch_smoothing_level": 0,
+          "hatch_smoothing_value": 0.1,
+          "hatch_thickness": 1.0,
+          "min_clearance": 0.13,
+          "min_island_area": 10.0,
+          "min_thickness": 0.25,
+          "pad_connection": 1,
+          "remove_islands": 0,
+          "thermal_relief_gap": 0.5,
+          "thermal_relief_spoke_width": 0.5
         }
       },
       "diff_pair_dimensions": [
@@ -274,7 +290,7 @@
       "internal_id": "",
       "mfg": "",
       "mpn": "",
-      "sch_revision": ""
+      "sch_revision": "5r2"
     },
     "layer_pairs": [],
     "layer_presets": [],
@@ -700,7 +716,7 @@
       "specctra_dsn": "",
       "step": "../../../../../Desktop/3DModelsV5parts/MainBoard.step",
       "svg": "",
-      "vrml": "../../Jumperless2.wrl"
+      "vrml": "../../../../../../Desktop/Jumperless2.wrl"
     },
     "page_layout_descr_file": ""
   },
@@ -848,7 +864,7 @@
       {
         "filename": "JumperlessV5r7.kicad_sch",
         "name": "JumperlessV5r7",
-        "uuid": "00000000-0000-0000-0000-000000000000"
+        "uuid": "8ec97ee2-81b7-42dd-ac8f-66899dc25929"
       }
     ],
     "used_designators": "",
@@ -857,7 +873,7 @@
   "sheets": [
     [
       "8ec97ee2-81b7-42dd-ac8f-66899dc25929",
-      "Root"
+      "JumperlessV5r7"
     ],
     [
       "00706319-cfc8-4847-b5d2-80389c131319",
